@@ -35,7 +35,7 @@ import {
   CASE_LUG_T, CASE_LUG_EDGE_R, CASE_SPRING_BAR_D, CASE_SPRING_BAR_TIP_D,
   caseLugPlan,
 } from './layout.js';
-import { makeRoundedSlab, PLATE_BEVEL_F, COLLAR_PROUD, TUBE_WALL } from './geometry.js';
+import { makeRoundedSlab, PLATE_BEVEL_F, COLLAR_PROUD, TUBE_WALL, cutEndOnPlane } from './geometry.js';
 import { CASE_POLISH_ATTR } from './materials.js';
 
 // The press-contact idiom (makeCase's own `SEAT_EMBED`, geometry.js): two
@@ -74,6 +74,34 @@ export function rayExit(loop, dir, base = [0, 0]) {
     if (t > 0 && s >= -1e-9 && s <= 1 + 1e-9) tMax = Math.max(tMax, t);
   }
   return tMax;
+}
+
+// TODO 275 — the wall's OUTWARD NORMAL where that same ray leaves the loop: the
+// unit normal of the edge rayExit's farthest crossing lies on, signed to face
+// along the ray. With rayExit it is the whole wall on a line — where it stands
+// and which way it faces — read off the one loop, so the pusher's button and the
+// flush sleeve it seats on are cut to the plane the wall actually presents. A
+// crossing exactly at a vertex takes the first edge the walk meets at that
+// distance; the loops are sampled curves, so the two edges there differ by a
+// sampling step and both are supporting lines of a convex wall.
+export function rayExitNormal(loop, dir, base = [0, 0]) {
+  let tMax = -Infinity, nx = NaN, ny = NaN;
+  const n = loop.length;
+  for (let i = 0; i < n; i++) {
+    const [px, py] = loop[i], [qx, qy] = loop[(i + 1) % n];
+    const ex = qx - px, ey = qy - py;
+    const den = dir[0] * ey - dir[1] * ex;
+    if (Math.abs(den) < 1e-12) continue;
+    const wx = px - base[0], wy = py - base[1];
+    const t = (wx * ey - wy * ex) / den;
+    const s = (wx * dir[1] - wy * dir[0]) / den;
+    if (t > 0 && s >= -1e-9 && s <= 1 + 1e-9 && t > tMax) {
+      tMax = t;
+      const L = Math.hypot(ex, ey), sg = Math.sign(ey * dir[0] - ex * dir[1]) || 1;
+      nx = sg * ey / L; ny = -sg * ex / L;
+    }
+  }
+  return [nx, ny];
 }
 
 // The four loops every part of the case is cut from, each one grow of the
@@ -452,6 +480,16 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
     pivot.position.y = perp[1] * off;
     const sleeve = new THREE.Mesh(ringExtrude(rw, r, Math.max(len, 1e-6), 20), material);
     sleeve.geometry.rotateX(-Math.PI / 2);  // ringExtrude runs +Z; the stems run +Y
+    // TODO 275 — a FLUSH bore ends on the wall's TANGENT PLANE at its exit
+    // (rayExitNormal, on the loop rayExit read), not square to its line: a
+    // square end on a wall the line meets at 18.3° (rect) stood up to 0.78 u
+    // proud of it on one side, where the button then landed on it. In the pivot's frame +X is −perp, so the plane through the
+    // exit rises (n·perp)/(n·dir) per unit of x.
+    if (flush) {
+      const [nx, ny] = rayExitNormal(loops.outer, dir, lineAt(0));
+      cutEndOnPlane(sleeve.geometry, 'y', Math.max(len, 1e-6) / 2, 'x',
+        (nx * perp[0] + ny * perp[1]) / (nx * dir[0] + ny * dir[1]));
+    }
     sleeve.position.y = inboard + len / 2;
     sleeve.name = `${name}Sleeve`;
     pivot.add(sleeve);
