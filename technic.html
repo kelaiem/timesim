@@ -410,6 +410,7 @@ import { frameAlarm, alarmStates, alarmBuild, TECHNIC_ALARM_STRIKE, strikesPerBa
          columnModel, columnWarmSteps, columnStart, columnAdvance, columnCommand, columnPose, columnPhase, trainAngles } from './src/technic-alarm.js';
 import { frameEscapement, escapementBuild, cycleModelSteps, cyclePose, balanceMoments, framedBalance, periodAt, partSolid, escSpec,
          ESC_SWING_DEG, BEAT_PERIOD_S, TECHNIC_ESCAPEMENT, TECHNIC_BALANCE, F2_PLAY_MM, ESC_DENSITY, G_MM_S2 } from './src/technic-escapement.js';
+import { frameTrain, trainBuild, trainModel, trainPose, goingTime } from './src/technic-train.js';
 import { describeCells, stopsOf, skipNote, indicator, step, resolveId, resolveFocus, initialTour, swipeDir, withCell, ease, TWEEN_S, CAROUSEL_WRAPS } from './src/technic-carousel.js';
 import { copyText } from './src/technic-clipboard.js';
 import { clockModules, clockLayout, clockBuild, TECHNIC_CLOCK } from './src/technic-clock.js';
@@ -629,9 +630,10 @@ const provisionalRides = (build) => ({ click: { at: () => build.pose.psiC, provi
 const CORD_SHOW_R = 1.1;   // mm: a DISPLAY radius, about twice the string's own (0.6)
 const CORD_SHOW_MAT = new THREE.MeshStandardMaterial({ color: 0xff7a1a, emissive: 0x6a2a00, roughness: 0.6, metalness: 0 });
 // The cord at `paid` mm off the cone, placed by the build's own law; redrawn
-// only when the cord has moved.
-function drawFuseeCord(paid) {
-  const v = fuseeView;
+// only when the cord has moved. (§315: the going train's cell draws its fusee's
+// cord the same way, from its own view.)
+function drawFuseeCord(paid) { drawCord(fuseeView, paid); }
+function drawCord(v, paid) {
   if (!v) return;
   const moved = v.drawnPaid === null || Math.abs(paid - v.drawnPaid) >= 0.02 || (paid === 0 && v.drawnPaid !== 0);
   if (!moved) return;
@@ -1050,6 +1052,94 @@ function writeEscMeasures() {
 }
 const S8 = () => escFrame.spec.teeth;
 
+// --- §315: the going train ----------------------------------------------------
+// The fusee, the going train and the escapement on one baseplate (src/technic-train.js).
+// ONE STATE: display time, trainT, seconds of going. The escapement's traced cycle
+// gives the escape wheel's angle and the balance's (cyclePose: the posed swing at the
+// SOLVED period); every other body's angle is that one carried back through the tooth
+// counts, and the fusee's loop is put at the great wheel's turn (trainPose). The rate
+// is display time against real time: real time, or a minute or an hour a second
+// (DISPLAY rates, said on the panel), times the speed slider. Until the cycle is read
+// off the teeth the balance swings and nothing else moves, and the panel says so.
+let trainFrame = null, trainView = null, trainBand = null, trainBuildNow = null, trainT = 0, trainRate = 1, trainCycleP = null;
+const TRAIN_RATES = [[1, 'real time'], [60, 'a minute a second'], [3600, 'an hour a second']];
+const trainCycle = (sense) => (sense === TECHNIC_ESCAPEMENT.sense && escFrame?.spec?.sense === sense
+  ? (escCycleP ??= measureEscCycle(escFrame)) : (trainCycleP ??= measureEscCycle({ spec: { ...TECHNIC_ESCAPEMENT, sense } })));
+function setTrainRate(r, btns) {
+  trainRate = r;
+  for (const b of btns ?? document.querySelectorAll('#trates button')) b.dataset.state = Number(b.dataset.rate) === r ? 'on' : 'off';
+}
+// the model is rebuilt whenever one of its three measured inputs arrives: the cycle, the
+// balance's solved period, the pawls' rides (the state, trainT, is kept)
+function trainRemodel() {
+  const v = trainView;
+  if (!v || !v.cycle?.ok) return;
+  v.cycle.T = escMoments?.T ?? BEAT_PERIOD_S;
+  const loop = fuseeLoopModel(trainFrame.fusee, lib, v.run, trainBuildNow.fusee, { rides: v.rides ?? provisionalRides(trainBuildNow.fusee) });
+  v.model = trainModel(trainBuildNow, v.cycle, loop);
+  writeTrainMeasures();
+}
+function applyTrain(now, dt) {
+  const v = trainView;
+  if (!v) return;
+  trainT += dt * trainRate;
+  const b = trainBuildNow, LDU = (mm) => mm / 0.4;
+  if (!v.model) {
+    const T = escMoments?.T ?? BEAT_PERIOD_S;
+    v.by[b.index.balance].rotor.rotation.z = b.o * -ESC_SWING_DEG * Math.PI / 180 * Math.cos(2 * Math.PI * trainT / T);
+    return;
+  }
+  const p = trainPose(v.model, trainT), lp = p.loop, fr = trainFrame.fusee;
+  b.shafts.forEach((s, i) => {
+    const r = v.by[i].rotor;
+    if (s.module !== 'fusee') { r.rotation.z = p.phi[i]; return; }
+    if (s.shaft === 'barrel') r.rotation.z = lp.phiB;
+    else if (s.shaft === 'fusee') r.rotation.z = lp.phiF;
+    else if (s.shaft === 'maintaining') r.rotation.z = lp.phiM;
+    else if (s.shaft === 'great') r.rotation.z = lp.phiG;
+    else if (s.shaft === 'centre') r.rotation.z = p.phi[i];
+    else if (s.shaft === 'click pawl') { r.position.set(LDU(fr.cd + lp.clickPivot[0]), -LDU(fr.axleZ - lp.clickPivot[1]), 0); r.rotation.z = lp.phiM + lp.psiC; }
+    else if (s.shaft === 'detent pawl') r.rotation.z = lp.psiD;
+    else r.rotation.z = s.phi;
+  });
+  drawCord(v.cord, lp.paid);
+  const key = `${p.kind}/${lp.phase}`;
+  if (key !== v.lastKey) {
+    v.lastKey = key;
+    setSpriteText(v.phaseLbl, `${p.kind} · ${lp.phase === 'going' ? 'running down' : lp.phase}`, ESC_PHASE_COLOUR[p.kind] ?? '#d9dde3');
+  }
+  if (now - v.lastText > 150) {
+    v.lastText = now;
+    const el = document.getElementById('tdetail'), d = (x) => (x * 180 / Math.PI).toFixed(2);
+    const h = Math.floor(trainT / 3600), mi = Math.floor((trainT % 3600) / 60), se = (trainT % 60).toFixed(1);
+    if (el) el.textContent = `going ${h} h ${String(mi).padStart(2, '0')} m ${se.padStart(4, '0')} s; balance ${d(p.alpha)}° (${p.kind}); `
+      + `escape wheel ${p.cycle} teeth on; great wheel ${(p.dG * 180 / Math.PI).toFixed(3)}° on; the fusee ${loopPhaseLine(v.model.loop, lp)}${v.model.loop.rides.click.provisional ? ' (the pawls at their seats while their rides are measured)' : ''}`;
+  }
+}
+function writeTrainMeasures() {
+  const el = document.getElementById('tmeasure');
+  if (!el || !trainView) return;
+  const T = escMoments?.T ?? null, g = goingTime(trainView.run, trainBuildNow.ratio, TECHNIC_ESCAPEMENT.teeth, T ?? BEAT_PERIOD_S);
+  el.innerHTML = `a wind turns the great wheel <code>${g.greatTurns.toFixed(4)}</code> turns (the cone's run); through the <code>${trainBuildNow.ratio}:1</code> the escape wheel turns <code>${g.escapeTurns.toFixed(0)}</code> times, one tooth a period: `
+    + `<b>${g.hours.toFixed(2)} h a wind</b> at ${T ? `the balance's solved <code>${T.toFixed(4)} s</code>` : `the row's <code>${BEAT_PERIOD_S} s</code> (the solved period is being read off the parts)`}, `
+    + `<span class="bad">under the POSED spring law</span> <span style="color:var(--dim)">(TECHNIC_FUSEE_SPRING's stand-in: the steel's run of the barrel, not a LEGO band's)</span>. `
+    + `The centre arbor turns once in <code>${(g.centreTurnS / 3600).toFixed(4)} h</code>, the great wheel once in <code>${(g.greatTurnS / 3600).toFixed(3)} h</code>.`;
+}
+// the cell's box: its parts as they stand (not the baseplate) and its labels
+function trainBox(entry) {
+  const root = entry.band.children.find((o) => o.isGroup), box = new THREE.Box3();
+  scene.updateMatrixWorld(true);
+  for (const o of root.children.slice(2)) if (o.isMesh || o.isLineSegments || o.isGroup) box.expandByObject(o);
+  const p = entry.label.getWorldPosition(new THREE.Vector3());
+  box.expandByPoint(p); box.expandByPoint(p.clone().add(new THREE.Vector3(entry.label.scale.x, 0, 0)));
+  return box;
+}
+function focusTrain() {
+  if (!cellReg.train) return;
+  tableLens(); frameOn(trainBox(cellReg.train));
+  document.getElementById('tdetail')?.closest('.row')?.scrollIntoView({ block: 'start' });
+}
+
 // --- §294: the carousel -------------------------------------------------------
 // One cell at a time. DISPLAY ONLY, all of it below: the camera, which cells
 // show, a lit row in the panel and the bar. No placement, probe or .ldr reads
@@ -1118,6 +1208,7 @@ const STOP_VIEW = {
   wheel: () => { if (!alarmAuto) setAlarmAuto(true); focusAlarm('wheel'); },
   strike: () => { if (!alarmAuto) setAlarmAuto(true); focusAlarm('strike'); },
   escapement: () => focusEscapement(),
+  train: () => focusTrain(),
   clock: (s) => { tableLens(); frameOn(cellBox(cellReg[s.cell])); },
 };
 const camPose = () => ({ pos: cam.position.clone(), target: controls.target.clone(), fov: cam.fov, far: cam.far });
@@ -1206,6 +1297,7 @@ function tourRebuild(frames, kf, ff) {
   const cells = describeCells({
     rows: TECHNIC_FORK.rows.map((row, k) => ({ key: row.key, chain: row.chains[gen], frame: frames[k] })),
     keyless: kf, fusee: ff ?? { framed: false, reason: 'no fusee' }, alarm: alarmFrame ?? { framed: false, reason: 'no frame' }, escapement: escFrame ?? { framed: false, reason: 'no frame' },
+    train: trainFrame ?? { framed: false, reason: 'no frame' },
     clock: clockFramed ?? { framed: false, reason: 'not built' } });
   const { stops, skipped } = stopsOf(cells);
   // a stop needs its cell's band and row; a cell missing from the build is a bug to see, not hide
@@ -1263,6 +1355,7 @@ function seedBoms(gen) {
   if (fuseeBuildNow) seedBuild(lib, gen, 'fusee', fuseeBuildNow);
   if (alarmFrame?.framed && alarmStatesNow) seedBuild(lib, gen, 'alarm', alarmBuild(alarmFrame, lib, alarmStatesNow.armed));
   if (escFrame?.framed) seedBuild(lib, gen, 'escapement', escapementBuild(escFrame, lib));
+  if (trainBuildNow) seedBuild(lib, gen, 'train', trainBuildNow);
 }
 // BUILT §302: the build as an .mpd — `0 STEP` after every step, a `0 FILE` per sub-assembly. The order is
 // derived from the model (src/technic-steps.js) and swept for insertion by tools/probe-technic-steps.mjs;
@@ -1624,18 +1717,73 @@ async function build(gen) {
       });
       // the cycle and the moments are measured once, between frames
       (escCycleP ??= measureEscCycle(escFrame)).then((c) => { escCycle = c; writeEscMeasures(); });
-      (escMomentsP ??= measureEscMoments(escFrame)).then((m) => { escMoments = m; writeEscMeasures(); });
+      (escMomentsP ??= measureEscMoments(escFrame)).then((m) => { escMoments = m; writeEscMeasures(); trainRemodel(); });
       cellReg.escapement = { band: escBand, row: div };
     } else div.innerHTML = `<b>${k + 1}. escapement</b><br><span class="bad">not framed in LEGO: ${escFrame.reason}</span>`;
     rowsEl.appendChild(div);
   }
-  // BUILT §312 L1 — the alarm clock, the LEGO view's ninth cell: the cells above
+  // §315 — the going train, the LEGO view's ninth cell: the fusee, the train and the
+  // escapement on one baseplate. Per generation (the train's rows are the generation's).
+  // Its band stands past the cells before it by its own length (the classic train is
+  // 35 studs long, on a 48 × 48 plate).
+  trainView = null; trainBuildNow = null;
+  {
+    const k = TECHNIC_FORK.rows.length + 4;
+    trainFrame = frameTrain(gen);
+    trainBand = new THREE.Group(); world.add(trainBand);
+    const div = document.createElement('div'); div.className = 'row';
+    const run = fuseeView?.run ?? solveFusee(TECHNIC_FUSEE_SPRING).best;
+    if (trainFrame.framed && run) {
+      const F = trainFrame, b = trainBuildNow = trainBuild(F, lib, { run });
+      trainBand.position.set((k % 2) * LEGO_CELL, 0, (Math.floor(k / 2) - 0.5) * LEGO_CELL + F.base.y1 + 16);
+      const isCord = (p) => p.role === 'cord' || p.role === 'cordEnd';
+      const made = buildLego({ ...b, statics: b.statics.filter((p) => !isCord(p)) }, trainBand);
+      made.forEach((sh, i) => legoShafts.push({ ...sh, train: b.shafts[i].shaft }));
+      const croot = new THREE.Group(); croot.scale.setScalar(0.4); croot.rotation.x = Math.PI; trainBand.add(croot);
+      const cordGroup = new THREE.Group(); croot.add(cordGroup);
+      const lbl = labelSprite(`${k + 1}. going train`), phaseLbl = labelSprite(' ');
+      // the two labels BEHIND and above the build (the camera looks from in front and above), as the fusee's are,
+      // over the balance's highest reach (its mass gears on the crossbar)
+      const top = F.escapement.ef.zK + 2.4 + 21;
+      lbl.position.set(F.base.x0, top + 24, -F.base.y1 - 6); phaseLbl.position.set(F.base.x0, top + 12, -F.base.y1 - 6);
+      trainBand.add(lbl, phaseLbl);
+      const C = F.chain, gt = goingTime(run, b.ratio, TECHNIC_ESCAPEMENT.teeth, BEAT_PERIOD_S);
+      const rowsOf = (key) => C.meshes.filter((m) => m.row === key).map((m) => `${m.ta}:${m.tb}`).join(' × ');
+      div.innerHTML = `<b>${k + 1}. going train — LEGO build</b>`
+        + `the fusee's great wheel to the balance, one train: <code>${rowsOf('great→centre')}</code> (the centre pinion) × <code>${rowsOf('centre→fourth')}</code> (centre→fourth) × <code>${rowsOf('fourth→escape')}</code> (fourth→escape, the row's two meshes the other way round: its 8T is the escape wheel itself, driven from straight below) = <code>${b.ratio}:1</code> from the great wheel to the escape wheel. `
+        + `The escape wheel turns ${TECHNIC_ESCAPEMENT.teeth} teeth a turn, one a period, so the fourth arbor turns once a minute and the centre once an hour at the row's ${BEAT_PERIOD_S} s.`
+        + `<div class="gen" id="trates">${TRAIN_RATES.map(([r, t]) => `<button type="button" data-rate="${r}" title="display time: ${t} at speed 1">${r === 1 ? 'real time' : `×${r}`}</button>`).join('')}<button id="tfocus" type="button">look at the train</button></div>`
+        + `<div id="tdetail" style="color:var(--dim)">swinging; the train waits while the escapement's cycle is read off the teeth</div>`
+        + `<div id="tmeasure" style="color:var(--dim)"></div>`
+        + ` <span class="bad">Driven by a POSED law, modelled:</span> <span style="color:var(--dim)">nothing is integrated and no torque is carried. The balance swings ±${ESC_SWING_DEG}° (posed) at the period its inertia gives; the escape wheel's angle is the traced cycle's; every other angle is that one through the tooth counts, and the fusee stands where the great wheel's turn puts it (its spring law the stand-in, its winding a person's). The escapement is an analogue (a recoil anchor and a knife-edge balance). Display time is real time or a minute or an hour a second, times the speed slider. `
+        + `Base ${F.base.studsX}×${F.base.studsY} studs on a ${F.base.plate.studs}×${F.base.plate.studs} baseplate; the escape arbor ${F.zE} mm up, the escapement ${F.o > 0 ? 'as §287 lays it out' : 'turned half round'}; ${gt.hours.toFixed(2)} h a wind at ${BEAT_PERIOD_S} s.</span>`
+        + `<br><a id="tldr" href="#" style="color:#9fb6d9">download .ldr (at full wind)</a> · ${mpdLink('tmpd')}`;
+      wireMpd(div, 'tmpd', () => ({ build: trainBuildNow }), () => `${gen}-going-train.mpd`);
+      div.querySelector('#tldr').addEventListener('click', (e) => {
+        const a = e.currentTarget; URL.revokeObjectURL(a.href); a.href = URL.createObjectURL(new Blob([toLdr(trainBuildNow)], { type: 'text/plain' })); a.download = `${gen}-going-train.ldr`;
+      });
+      const rbtns = [...div.querySelectorAll('#trates button')];
+      rbtns.forEach((bt) => bt.addEventListener('click', () => setTrainRate(Number(bt.dataset.rate), rbtns)));
+      setTrainRate(trainRate, rbtns);
+      div.querySelector('#tfocus').addEventListener('click', focusTrain);
+      trainView = { frame: F, run, by: made, phaseLbl, lastKey: null, lastText: 0, cycle: null, rides: null, model: null,
+        cord: { frame: F.fusee, run, cordGroup, drawnPaid: null } };
+      drawCord(trainView.cord, 0);
+      const v = trainView;
+      trainCycle(F.sense).then((c) => { if (trainView === v) { v.cycle = c; trainRemodel(); } });
+      (escMomentsP ??= measureEscMoments(escFrame ?? frameEscapement())).then((m) => { escMoments ??= m; if (trainView === v) trainRemodel(); });
+      (fuseeRidesP ??= measureRides(fuseeBuildNow ?? b.fusee)).then((r) => { if (trainView === v) { v.rides = r; trainRemodel(); } });
+      cellReg.train = { band: trainBand, row: div, label: lbl, frame: F, build: b, shafts: made };
+    } else div.innerHTML = `<b>${k + 1}. going train</b><br><span class="bad">not framed in LEGO: ${trainFrame.reason ?? 'no step set fits the table'}</span>`;
+    rowsEl.appendChild(div);
+  }
+  // BUILT §312 L1 — the alarm clock, the LEGO view's tenth cell (§315's going train is the ninth): the cells above
   // placed on one baseplate by src/technic-clock.js, each shared axle one keyed
   // body. Display only and posed: every module stands as its own laws pose it at
   // the chosen state, and nothing drives anything. The modules are the ones just
   // built (handed in), the placement the declared one the probe re-solves.
   {
-    const k = TECHNIC_FORK.rows.length + 4;
+    const k = TECHNIC_FORK.rows.length + 5;
     const band = new THREE.Group(); band.position.set((k % 2) * LEGO_CELL, 0, Math.floor(k / 2) * LEGO_CELL); world.add(band);
     const div = document.createElement('div'); div.className = 'row';
     const rowPre = (i) => cellReg[`row-${i + 1}`] && { frame: cellReg[`row-${i + 1}`].frame, build: cellReg[`row-${i + 1}`].build };
@@ -1692,6 +1840,7 @@ async function build(gen) {
   const cellAt = resolveId(tour.stops, wantCell);
   if (cellAt >= 0) tourGo(cellAt, { instant: true, opening });
   else if (focus === 'escapement' && escView) focusEscapement();
+  else if (focus === 'train' && trainView) focusTrain();
   else if (focus === 'fusee' && fuseeView) focusFusee();
   else if (focus === 'alarm' && alarmView) focusAlarm('wheel');
   else if (focus === 'strike' && alarmView) focusAlarm('strike');
@@ -1742,10 +1891,14 @@ renderer.setAnimationLoop((now) => {
   // §287: the balance swings at its SOLVED period in display seconds (the
   // speed slider's rate), the wheel read off the traced cycle
   applyEscapement(now, dt * Number(speedEl.value));
+  // §315: the going train, display time at its own rate (real time, or a minute or an
+  // hour a second) times the speed slider; every angle from that one state
+  applyTrain(now, dt * Number(speedEl.value));
   for (const s of legoShafts) {
     if (s.fusee) { if (!fuseeLoop) s.rotor.rotation.z = s.phi; continue; }        // the fusee cell: posed by applyFusee from the loop's state
     if (s.alarm) continue;                                                           // the alarm cell: posed by applyAlarm from the press's state
     if (s.escape) continue;                                                          // the escapement cell: posed by applyEscapement
+    if (s.train) continue;                                                           // §315: the going train, posed by applyTrain from one state
     if (s.slider) continue;                                                          // the pull's rack: it slides with the mode, it does not turn
     if (s.axis === 'x') s.rotor.rotation.x = s.phi + (s.pose?.[keylessMode] ?? 0);   // the selector and the detent's arm: the mode's rest
     else s.rotor.rotation.z = s.keyless ? s.phi + s.speeds[keylessMode] * keylessAngle : s.phi + s.speed * inputAngle;
@@ -1762,6 +1915,9 @@ window.__technic = { build, setKeylessMode, setAlarmMode, get keyless() { return
   // §287: an instrument's hook — the escapement's state, and a seek to a display time
   get escapement() { return escCycle && { ok: escCycle.ok, T: escMoments?.T ?? null, pose: escCycle.ok ? cyclePose(escCycle, escT) : null, t: escT }; },
   seekEscapement: (t) => { escT = t; }, focusEscapement,
+  // §315: an instrument's hook — the train's state (its model's pose at display time), a seek, the rate
+  get train() { return trainView && { framed: true, t: trainT, rate: trainRate, ready: !!trainView.model, pose: trainView.model ? trainPose(trainView.model, trainT) : null, base: trainFrame.base, o: trainFrame.o }; },
+  seekTrain: (t) => { trainT = t; }, setTrainRate: (r) => setTrainRate(r), focusTrain,
   // §312 L1: the clock cell's build at its state, for an instrument
   get clock() { return clockCell && { build: clockCell.build, layout: clockCell.lay, state: clockCell.state }; },
   // §294: the carousel's state, for an instrument (the page's own code never reads it)

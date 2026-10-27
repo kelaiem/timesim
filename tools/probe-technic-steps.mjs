@@ -35,7 +35,7 @@
 // and stay below the depth a part pushed one stud into its neighbour reads. Both are printed.
 //
 //   node tools/probe-technic-steps.mjs            all builds, both generations (about ten minutes)
-//   node tools/probe-technic-steps.mjs row-2      one cell (row-1..row-4, keyless, fusee, alarm, escapement)
+//   node tools/probe-technic-steps.mjs row-2      one cell (row-1..row-4, keyless, fusee, alarm, escapement, train)
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -72,7 +72,7 @@ const FLAGGED = Object.freeze({   // value: the TODO that owns the row
 });
 
 // ── THE BUILDS
-const CELLS = ['row-1', 'row-2', 'row-3', 'row-4', 'keyless', 'fusee', 'alarm', 'escapement'];
+const CELLS = ['row-1', 'row-2', 'row-3', 'row-4', 'keyless', 'fusee', 'alarm', 'escapement', 'train'];   // §315: the going train, per generation
 const SHARED = ['fusee', 'alarm', 'escapement'];              // the same build in both generations
 const targets = [];
 for (const gen of B.GENERATIONS) for (const cell of CELLS) {
@@ -101,11 +101,24 @@ function supportEdges(build, parts) {
     if (!cols.has(k)) cols.set(k, []);
     cols.get(k).push(i);
   }
+  // §315: a stack may stand on a part of ANOTHER spot (a knife stack centred on a stud stands on a jumper half a
+  // stud off it): its bottom part then rests on the static whose top face is its underside and whose footprint it
+  // overlaps, read off the pack's bounds
+  const foot = (i) => { const q = Bd(parts[i].part), xs = [], zs = [];
+    for (const x of [q.lo[0], q.hi[0]]) for (const z of [q.lo[2], q.hi[2]]) { const w = compose(parts[i].m, [x, 0, z, 1, 0, 0, 0, 1, 0, 0, 0, 1]); xs.push(w[0]); zs.push(w[2]); }
+    return { x0: Math.min(...xs), x1: Math.max(...xs), z0: Math.min(...zs), z1: Math.max(...zs) }; };
+  const overlaps = (a, b) => Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0) > 1 && Math.min(a.z1, b.z1) - Math.max(a.z0, b.z0) > 1;
   for (const stack of cols.values()) {
     stack.sort((a, b) => parts[b].m[1] - parts[a].m[1]);                         // bottom first (+Y is down)
     let floorY = 0, below = base;
-    for (const i of stack) {
+    for (const [n, i] of stack.entries()) {
       const under = parts[i].m[1] + Bd(parts[i].part).hi[1];                        // this part's underside, from the pack
+      if (n === 0 && !near(under, 0, 1e-4)) {
+        const fi = foot(i), on = [...Array(ns).keys()].find((j) => j !== i && j !== base && !B.CORD_ROLES.includes(parts[j].role) && near(parts[j].m[1], under, 1e-4) && overlaps(foot(j), fi));
+        if (on === undefined) bad.push(`part ${i} (${parts[i].part}) underside at Y ${under.toFixed(3)} stands on nothing`);
+        else edges.push([on, i, 'seated']);
+        floorY = parts[i].m[1]; below = i; continue;
+      }
       if (!near(under, floorY, 1e-4)) bad.push(`part ${i} (${parts[i].part}) underside at Y ${under.toFixed(3)}, not on ${floorY.toFixed(3)}`);
       edges.push([below, i, 'seated']);
       floorY = parts[i].m[1]; below = i;
@@ -234,7 +247,7 @@ for (const { gen, cell } of targets) {
     // WORDS
     for (const st of plan.steps) if (FORBIDDEN.test(`${st.title} ${st.text} ${st.notes.join(' ')}`)) bad.push(`step ${st.n} says ${FORBIDDEN.exec(`${st.title} ${st.text} ${st.notes.join(' ')}`)[0]}`);
     if (['fusee', 'alarm'].includes(cell) && !plan.steps.some((s) => s.kind === 'note' && s.posed && /POSED/.test(s.text))) bad.push('no step says the forces are posed');
-    if (cell === 'escapement' && !plan.steps.some((s) => /analogue/i.test(s.text))) bad.push('the escapement\'s analogue caption is not on a step');
+    if ((cell === 'escapement' || cell === 'train') && !plan.steps.some((s) => /analogue/i.test(s.text))) bad.push(`the ${cell}'s analogue caption is not on a step`);
     if (!/Modelled, not built/.test(plan.steps[plan.steps.length - 1].title)) bad.push('the last step does not say modelled, not built');
     // THE FILE
     const mpd = T.toMpd(plan);

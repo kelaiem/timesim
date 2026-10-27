@@ -9,7 +9,9 @@
 // FUSEE_PULLEYS (landing H's five and §285's surveyed grooves), FUSEE_STRINGS
 // and FUSEE_PARTS (landing H), and
 // `technic-alarm.js`' ALARM_PARTS (landing I), and `technic-escapement.js`'
-// ESCAPEMENT_PARTS (landing J). Add a gear to the
+// ESCAPEMENT_PARTS (landing J), and `technic-train.js`' TRAIN_PARTS (§315: the
+// 48 × 48 baseplate the classic going train needs, and the 1 × 2 Technic brick
+// that bears its drive arbor in the front knife's stack). Add a gear to the
 // catalogue and the next run fetches it; a part
 // the library does not hold FAILS the run rather than shipping a build with a
 // hole in it.
@@ -50,6 +52,7 @@ import { FRAME_PARTS, AXLE_PARTS, TURNTABLE_BASES, KEYLESS_PARTS } from '../src/
 import { FUSEE_PULLEYS, FUSEE_STRINGS, FUSEE_PARTS } from '../src/technic-fusee.js';
 import { ALARM_PARTS } from '../src/technic-alarm.js';
 import { ESCAPEMENT_PARTS } from '../src/technic-escapement.js';
+import { TRAIN_PARTS } from '../src/technic-train.js';
 import { fetchParts } from './ldraw-fetch.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -61,7 +64,7 @@ export const PACK_PARTS = [...new Set([
   ...Object.values(FRAME_PARTS), ...Object.values(AXLE_PARTS), ...Object.values(TURNTABLE_BASES),
   ...Object.values(KEYLESS_PARTS),
   ...FUSEE_PULLEYS, ...Object.values(FUSEE_STRINGS), ...Object.values(FUSEE_PARTS),
-  ...Object.values(ALARM_PARTS), ...Object.values(ESCAPEMENT_PARTS),
+  ...Object.values(ALARM_PARTS), ...Object.values(ESCAPEMENT_PARTS), ...Object.values(TRAIN_PARTS),
 ])].sort();
 
 const CAND_OUT = join(ROOT, 'tools/data/technic-candidates.mpd');

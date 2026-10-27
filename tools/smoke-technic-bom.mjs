@@ -114,7 +114,10 @@ for (const vp of [{ name: 'desktop', width: 1280, height: 800 }, { name: 'phone'
   const page = await open(ctx, '', errors);
   const stops = await page.evaluate(() => window.__technic.tour.stops.map((s) => ({ id: s.id, cell: s.cell })));
   console.log(`  ${stops.length} stops: ${stops.map((s) => s.id).join(' ')}`);
-  ok(stops.length === 10, `${stops.length} stops`);
+  // (every build with a parts list is a stop: read off the module, not typed — motion and strike ride the keyless
+  // and alarm builds, and the clock cell, which carries no list of its own, is a stop too)
+  const listed = B.cellIds().filter((c) => !stops.some((s) => s.cell === c));
+  ok(!listed.length, `${stops.length} stops, none for ${listed.join(', ')}`);
   ok(await page.locator('#tour-parts').isVisible(), 'the tour bar has no parts button');
   let pictures = 0, nonBlank = 0;
   const seen = new Set();
@@ -126,6 +129,11 @@ for (const vp of [{ name: 'desktop', width: 1280, height: 800 }, { name: 'phone'
     const geo = await page.evaluate(() => { const b = document.getElementById('tour').getBoundingClientRect(); return { l: b.left, r: b.right, vw: innerWidth, sw: document.scrollingElement.scrollWidth }; });
     ok(geo.l >= 0 && geo.r <= geo.vw + 0.5 && geo.sw <= geo.vw, `${s.id}: the tour bar leaves the screen ${JSON.stringify(geo)}`);
     await page.click('#tour-parts');
+    // a stop whose cell the parts list does not know (§312 L1's clock, its list is a later landing) opens nothing
+    if (!B.cellIds().includes(s.cell)) {
+      ok(!(await page.evaluate((c) => !!document.querySelector(`details.bom[data-cell="${c}"]`), s.cell)), `${s.id}: a parts list for a cell the module does not list`);
+      continue;
+    }
     const first = !seen.has(s.cell);
     if (first) await ready(page, s.cell, 'technic_2026');
     seen.add(s.cell);
@@ -191,7 +199,7 @@ for (const vp of [{ name: 'desktop', width: 1280, height: 800 }, { name: 'phone'
       await page.screenshot({ path: join(SHOTS, `bom-${vp.name}-${s.cell}.png`) });
     }
   }
-  ok(seen.size === 8, `${seen.size} builds had a list opened, expected 8`);
+  ok(seen.size === B.cellIds().length, `${seen.size} builds had a list opened, expected ${B.cellIds().length}`);
   ok(pictures >= 140 && nonBlank === pictures, `${nonBlank} of ${pictures} pictures read as their parts`);
   console.log(`  ${nonBlank} of ${pictures} pictures are non-blank and the size of their parts' projected bounds`);
 

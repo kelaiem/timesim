@@ -104,9 +104,11 @@ const ALLOWED = { R: [], E: [], D: [...FORM_SHARED, ...DESIGN_OWN], S: FORM_SHAR
 const run = only ? BUILDS.filter((b) => b.id === only) : BUILDS;
 if (!run.length) { console.error(`--only ${only}: no such build`); process.exit(2); }
 
-// THE BATTERY BOOTS AND SWEEPS BUILD A TOO, as its `arrangement-308`
-// SPEC_POINTS row (since the form-build sweep: `sweep: true`, booting exactly
-// the warning set it DECLARES, `expectWarns`). That row's query is a second
+// THE BATTERY BOOTS BUILD A TOO, as its `arrangement-308` SPEC_POINTS row,
+// booting exactly the warning set it DECLARES (`expectWarns`). It was swept
+// from the form-build sweep until §313 moved the form cases' default off this
+// arrangement; the swept form build is now the battery's `form-rect` row,
+// which probe-313-reserve-at-12.mjs reads back. That row's query is a second
 // copy of build A's, and a copy that drifts would have the battery guarding an
 // arrangement nobody designed while this probe guards the real one; its
 // declared set is a second copy of ALLOWED.A, and a copy that drifts would have
@@ -127,8 +129,8 @@ if (!run.length) { console.error(`--only ${only}: no such build`); process.exit(
   const ew = row1.match(/expectWarns: \[([\s\S]*?)\]/);
   const declared = ew ? [...ew[1].matchAll(/'((?:\\.|[^'\\])*)'/g)].map((x) => x[1].replace(/\\(.)/g, '$1')) : [];
   const fired = ALLOWED.A.map((re) => declared.filter((p) => re.test(`warning: ${p}`)));
-  ok('the row declares exactly ALLOWED.A\'s warning set, one prefix per pattern', /sweep: true/.test(row1) && declared.length === ALLOWED.A.length && fired.every((f) => f.length === 1),
-    `declared ${declared.length} [${declared.join(' | ')}] against ${ALLOWED.A.length} pattern(s)${/sweep: true/.test(row1) ? '' : ' — the row is not swept'}`);
+  ok('the row declares exactly ALLOWED.A\'s warning set, one prefix per pattern', /expect: 'declared'/.test(row1) && declared.length === ALLOWED.A.length && fired.every((f) => f.length === 1),
+    `declared ${declared.length} [${declared.join(' | ')}] against ${ALLOWED.A.length} pattern(s)${/expect: 'declared'/.test(row1) ? '' : ' — the row does not declare (expect: \'declared\')'}`);
 }
 
 let chromium;

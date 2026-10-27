@@ -84,7 +84,7 @@ export function placedIndex(lib) {
 export const CELL_KIND = (cell) => (cell.startsWith('row-') ? 'row' : cell);
 export const KIND_PROBES = Object.freeze({
   row: ['build', 'ldraw'], keyless: ['build', 'ldraw', 'keyless', 'motion'], fusee: ['ldraw', 'fusee', 'fusee-loop'],
-  alarm: ['ldraw', 'alarm', 'column-wheel', 'pusher'], escapement: ['ldraw', 'escapement'] });
+  alarm: ['ldraw', 'alarm', 'column-wheel', 'pusher'], escapement: ['ldraw', 'escapement'], train: ['ldraw', 'train'] });
 export function probeRuns(cells) {
   const runs = new Map();
   for (const cell of [...cells].sort()) {
