@@ -12,11 +12,13 @@
 // the browser's: tools/smoke-technic-carousel.mjs drives them.
 //
 //   · CELLS — describeCells over the REAL frames of each generation (frameFork,
-//     frameKeyless, frameFusee, frameAlarm, frameEscapement): the stops are
-//     those the frames frame, in build order, row ids carry the panel's number;
+//     frameKeyless, frameFusee, frameAlarm, frameEscapement, and since BUILT
+//     §312 the clock's declared layout, clockLayout over the vendored parts):
+//     the stops are those the frames frame, in build order, row ids carry the
+//     panel's number;
 //   · IDS — unique, round-trip through resolveId, case and edge spaces forgiven,
 //     an unknown id (and a prototype name) is the overview (-1);
-//   · SKIP — a row, the keyless works, the fusee left unframed are skipped with
+//   · SKIP — a row, the keyless works, the fusee, the clock left unframed are skipped with
 //     their reason and panel number, skipNote says so, the other ids stand;
 //   · ENDS — Next from the last stop is the first and Previous from the first
 //     the last (CAROUSEL_WRAPS); from the overview they enter at the first and
@@ -51,6 +53,8 @@ import { frameFork, frameKeyless } from '../src/technic-frame.js';
 import { TECHNIC_FUSEE_SPRING, solveFusee, frameFusee } from '../src/technic-fusee.js';
 import { frameAlarm } from '../src/technic-alarm.js';
 import { frameEscapement } from '../src/technic-escapement.js';
+import { clockModules, clockLayout } from '../src/technic-clock.js';
+import { loadPack } from './technic-pack.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const page = readFileSync(join(ROOT, 'technic.html'), 'utf8');
@@ -65,15 +69,18 @@ console.log('THE TECHNIC CAROUSEL — stops derived from the built cells (displa
 const fusRun = solveFusee(TECHNIC_FUSEE_SPRING).best, ff = fusRun && frameFusee();
 const fuseeIn = { framed: !!(fusRun && ff.framed), reason: ff?.reason ?? 'no step set fits the table' };
 const alarmIn = frameAlarm(), escIn = frameEscapement();
+// the clock (§312): its declared layout judged over the vendored parts, as the page reads it
+const lib = loadPack(), clockIn = {};
+const clockOf = (gen) => { if (!clockIn[gen]) { const m = clockModules(lib, gen), l = m.framed ? clockLayout(lib, m) : null; clockIn[gen] = { framed: !!l?.framed, reason: m.reason ?? l?.reason, refused: l?.refused.map((r) => r.key) ?? [] }; } return clockIn[gen]; };
 const inputs = (gen) => ({ rows: TECHNIC_FORK.rows.map((row, k) => ({ key: row.key, chain: row.chains[gen], frame: frameFork(gen)[k] })),
-  keyless: frameKeyless(gen), fusee: fuseeIn, alarm: alarmIn, escapement: escIn });
+  keyless: frameKeyless(gen), fusee: fuseeIn, alarm: alarmIn, escapement: escIn, clock: clockOf(gen) });
 
 for (const gen of Object.keys(CATALOGUES).filter((k) => CATALOGUES[k])) {
   const inp = inputs(gen), cells = C.describeCells(inp), { stops, skipped } = C.stopsOf(cells);
   const R = TECHNIC_FORK.rows.length;
   console.log(`${gen}: ${cells.length} cells, ${stops.length} stops, ${skipped.length} skipped`);
   console.log('  ' + stops.map((s, i) => `${i + 1}:${s.id}`).join('  '));
-  ok(cells.length === R + 4, `${gen}: ${R} rows + keyless + fusee + alarm + escapement = ${R + 4} cells, got ${cells.length}`);
+  ok(cells.length === R + 5, `${gen}: ${R} rows + keyless + fusee + alarm + escapement + clock = ${R + 5} cells, got ${cells.length}`);
   // the stops are what the frames frame
   const want = [];
   inp.rows.forEach((r, k) => { if (r.frame?.framed) want.push(`row-${k + 1}`); });
@@ -81,6 +88,7 @@ for (const gen of Object.keys(CATALOGUES).filter((k) => CATALOGUES[k])) {
   if (inp.fusee.framed) want.push('fusee');
   if (inp.alarm.framed) want.push('alarm', 'strike');
   if (inp.escapement.framed) want.push('escapement');
+  if (inp.clock.framed) want.push('clock');
   ok(JSON.stringify(stops.map((s) => s.id)) === JSON.stringify(want), `${gen}: stops ${stops.map((s) => s.id)} are not the framed cells' ${want}`);
   ok(stops.length + skipped.length >= cells.length, `${gen}: a cell vanished (stops+skipped < cells)`);
   // row ids carry the panel's number; numbers never decrease; the order is the build's
@@ -89,7 +97,7 @@ for (const gen of Object.keys(CATALOGUES).filter((k) => CATALOGUES[k])) {
     if (i) ok(stops[i - 1].n <= s.n, `${gen}: ${s.id} stands before a lower-numbered stop`);
     ok(s.title && s.caption, `${gen}: ${s.id} lacks a title or caption`);
   });
-  const order = ['keyless', 'motion', 'fusee', 'alarm', 'strike', 'escapement'].map((id) => stops.findIndex((s) => s.id === id)).filter((i) => i >= 0);
+  const order = ['keyless', 'motion', 'fusee', 'alarm', 'strike', 'escapement', 'clock'].map((id) => stops.findIndex((s) => s.id === id)).filter((i) => i >= 0);
   ok(order.every((v, i) => !i || order[i - 1] < v), `${gen}: keyless, motion, fusee, alarm, strike, escapement out of order`);
   // ids: unique, round trip, forgiven case and spaces
   const ids = stops.map((s) => s.id);
@@ -115,6 +123,11 @@ for (const gen of Object.keys(CATALOGUES).filter((k) => CATALOGUES[k])) {
     const f = mutate((i) => { i.fusee = { framed: false, reason: 'no step set fits the table' }; });
     ok(!f.stops.some((s) => s.id === 'fusee') && C.skipNote(f.skipped).includes('fusee'), `${gen}: an unframed fusee was not skipped out loud`);
     ok(C.skipNote([]) === '', `${gen}: skipNote of nothing is not empty`);
+    const ck = mutate((i) => { i.clock = { framed: false, reason: 'no arrangement joins its lines' }; });
+    ok(!ck.stops.some((s) => s.id === 'clock') && C.skipNote(ck.skipped).includes('alarm clock'), `${gen}: an unframed clock was not skipped out loud`);
+    // the clock's caption names a refused line
+    const cs = stops.find((s) => s.id === 'clock');
+    if (cs) ok(inp.clock.refused.every((r) => cs.caption.includes(`the ${r} line refused`)), `${gen}: the clock's caption hides a refused line`);
     // CONTROL: a stopsOf that skips nothing
     const noSkip = (cs) => cs.flatMap((c) => c.views.map((v) => ({ id: v.id, cell: c.id })));
     const bad = C.describeCells({ ...inp, rows: inp.rows.map((rr, i) => (i === 1 ? { ...rr, frame: { framed: false, reason: 'x' } } : rr)) });
@@ -122,7 +135,7 @@ for (const gen of Object.keys(CATALOGUES).filter((k) => CATALOGUES[k])) {
   }
   // CONTROL: a hand-typed id table with a row too few, against the derived stops
   {
-    const typed = ['row-1', 'row-2', 'row-3', 'keyless', 'motion', 'fusee', 'alarm', 'strike', 'escapement'];   // as if a row were dropped
+    const typed = ['row-1', 'row-2', 'row-3', 'keyless', 'motion', 'fusee', 'alarm', 'strike', 'escapement', 'clock'];   // as if a row were dropped
     control(`stop ids typed by hand (${gen})`, JSON.stringify(typed) !== JSON.stringify(ids));
   }
   // overview, unknown ids
