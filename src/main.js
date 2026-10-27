@@ -7412,7 +7412,14 @@ const RSV_TRAIN = (() => {
 //  · then the FEWEST idlers that fit, and among those the smallest largest tip.
 // If nothing fits, the smallest largest tip is built and the boot says what a
 // fit would need. The idler count is searched over pairs up to RSV_IDLER_MAX.
-const RSV_FIT = reserveWellLaw === 'sector';
+// §313 — AND AN ARRANGEMENT MAY NAME ITS IDLERS (`?rsvidl=`, SPEC.rsvIdlers):
+// a disc station farther from the barrel than two meshes reach, which the
+// swung barrel makes of 12 o'clock (22.4 u against the designed 14.7). The
+// path is the same and the count is exactly the named one; a disc well keeps
+// TODO 33's well-wall ceiling on w2 (only a sector trades it for the case
+// shape), and off a form case the shape gives no bound, so the rank is the
+// smallest largest tip.
+const RSV_FIT = reserveWellLaw === 'sector' || SPEC.rsvIdlers !== null;
 const RSV_IDLER_MAX = 6;
 const RSV_IDLER_BORE_R = RSV_W1_BORE_R;   // a post the size of rsvPost1, the one running fit
 function rsvFitTrainAt(pivotXY, quiet = false) {
@@ -7426,7 +7433,9 @@ function rsvFitTrainAt(pivotXY, quiet = false) {
   let best = null, bestAny = null;
   const reduction = RSV_TRAIN.reduction;
   const st1 = new Map();   // stage one's floors per split (module0 is fixed)
-  for (let n = 0; n <= RSV_IDLER_MAX; n += 2) {
+  // §313 — an arrangement that names its idlers takes exactly that count
+  const nLo = SPEC.rsvIdlers ?? 0, nHi = SPEC.rsvIdlers ?? RSV_IDLER_MAX;
+  for (let n = nLo; n <= nHi; n += 2) {
     for (const c of reserveTrainCandidates(reduction)) {
       if (!st1.has(c.p0)) st1.set(c.p0, c.p0 >= G.minGearTeeth(rsvModule0, RSV_ARB_EXT_R, [c.w1]) && c.w1 >= G.minGearTeeth(rsvModule0, RSV_W1_BORE_R, [c.p0]));
       if (!st1.get(c.p0)) continue;
@@ -7962,7 +7971,20 @@ const ALARM_FLANGE_OUT = 4.05;                  // the carrier flange's rim (hoi
 //   slope — the blade passes one CLEAR_MARGIN under the arm's pin end at full
 //     lift (the blade is drawn rigid about its root, TODO 206's convention), so
 //     its root sits that far below the bearing — which is what the spend buys.
-const ALARM_PINB_SEAT_MN = 5.2780;   // §278 landing 6: re-quoted to its fixed point — the reclaim moved the dial-hung column against the held arming blade's corner, and hanger 3's jog, moved beside the blade, lengthened the ground's developed path and with it the section and the room (was 5.2650). TODO 240: re-quoted to its fixed point — the re-aimed lever reflects the blade to the nose by its new ratio, and the pin's journal is charged on the same-side reaction (was 5.4263). mN at the pin — the shared equal margin, re-derived and asserted at the link's arming solve (rounded to 0.1 µN). §261 2c: re-quoted to its fixed point — the folded same-side beak reflects the arming blade to the nose by its own lever (was 5.2502)
+// §313 — THE FIXED POINT IS THE ARRANGEMENT'S. It is the shared equal margin
+// the arming solve re-derives at the link (B* = √(250 / (a + K₁))), and both a
+// and K₁ read the link's own site and the guide triangle about the ring, so an
+// arrangement that moves the link moves it — the designed 5.2780 read 5.1554
+// against a need of 5.1792 on the swung barrel. Re-quoted to its fixed point PER
+// ARRANGEMENT (the key the gong seats use: configKey with the case shape, its fit
+// and the seat mode dropped, since a case cuts nothing the link stands on); a
+// spec with no row takes the designed value and the assert says so.
+const ALARM_ARR_KEY = configKey({ spec: { ...SPEC, caseShape: null, formRectSpec: null, gongSeat: null } });
+const ALARM_PINB_SEAT_FIXED = Object.freeze({
+  'cfg1:{"spec":{"reserveHours":30,"vph":18000},"route":null,"tuned":[]}': 5.2780,   // §278 landing 6: re-quoted to its fixed point — the reclaim moved the dial-hung column against the held arming blade's corner, and hanger 3's jog, moved beside the blade, lengthened the ground's developed path and with it the section and the room (was 5.2650). TODO 240: re-quoted to its fixed point — the re-aimed lever reflects the blade to the nose by its new ratio, and the pin's journal is charged on the same-side reaction (was 5.4263). mN at the pin — the shared equal margin, re-derived and asserted at the link's arming solve (rounded to 0.1 µN). §261 2c: re-quoted to its fixed point — the folded same-side beak reflects the arming blade to the nose by its own lever (was 5.2502)
+  'cfg1:{"spec":{"alarmModAzDeg":60,"barrelStepDeg":0,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":6,"vph":18000},"route":null,"tuned":[]}': 5.1837,   // §313: the swung barrel, the reserve at 12 on six idlers, the module at 60°
+});
+const ALARM_PINB_SEAT_MN = ALARM_PINB_SEAT_FIXED[ALARM_ARR_KEY] ?? 5.2780;   // mN at the pin; a spec with no row takes the designed value
 const ALARM_PINB_BLADE = (() => {
   const t = SPRING_FLAT_U, eps = 0.9 * SPRING_SIGMA_Y_PA / STEEL_E_PA, mu = MU_STEEL, U = UNIT_MM / 1000;
   const xb = ALARM_PINB_POST_R + 2 * CLEAR_MARGIN;
@@ -16835,7 +16857,7 @@ const GONG_SEAT_MODE = FORM ? (SPEC.gongSeat ?? 'bar') : null;
 // arranged movement (spec knobs that move stations — §308 landing 5's barrel swing and module turn) reads its seats
 // from GONG_SEATS_ARRANGED under that key; the designed movement's are GONG_SEATS
 const GONG_SPEC_KEY = configKey({ spec: { ...SPEC, formRectSpec: null, gongSeat: null } });
-const GONG_ARR_KEY = configKey({ spec: { ...SPEC, caseShape: null, formRectSpec: null, gongSeat: null } });
+const GONG_ARR_KEY = ALARM_ARR_KEY;   // the one arrangement key (§313 reads it first, for the arming fixed point)
 const GONG_SEAT_LOOKUP = (() => {
   if (!FORM || GONG_SEAT_MODE === 'arc') return null;
   const specKey = GONG_SPEC_KEY;
@@ -21006,7 +21028,7 @@ const rsvTrainWarnsAt = (station, sdR = reserveWellR, m1Override = null) => {
     out.push(`reserve train: w2's tip circle reaches ${(stationDist - w2Tip).toFixed(2)} from the dial `
       + `centre, inside the ${boreNeed.toFixed(2)} the centre bore, its wall and the margin need `
       + `(tip r ${w2Tip.toFixed(2)} at station ${stationDist.toFixed(2)})`);
-  if (RSV_FIT) {
+  if (reserveWellLaw === 'sector') {
     // §308 L4 option B — under a SECTOR well w2 is not under a disc it must
     // stay inside: it stands under the dial in the corner, and what bounds it
     // is the case shape (the counted metal's rim margin, the fit's own bound).
@@ -61601,6 +61623,10 @@ window.__clock = {
     return { law: k.reserveWellLaw, r: s ? s.r : k.reserveWellR, halfDeg: s ? s.halfRad / DEG2RAD : null, hubR: s?.hubR, binds: s?.binds, handInset: s?.handInset,
       train: tr && { p1: tr.p1, w2: tr.w2, idlers: tr.idlers, idlerTeeth: tr.idlerTeeth, maxTip: tr.maxTip, short: tr.short, m1: tr.m1 }, warns };
   },
+  // §313 — the reserve train as cut, on every build: its station (dial-local), the counts and the idlers
+  reserveTrain: Object.freeze({ station: { x: RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, r: reserveStationR }, p0: rsvTeethP0, w1: rsvTeethW1, p1: rsvTeethP1, w2: rsvTeethW2,
+    idlers: RSV_IDLERS, idlerTeeth: RSV_IDLER_T, module1: rsvModule1, swingDeg: rsvSwing / DEG2RAD }),
+  armingFixedPoint: Object.freeze({ key: ALARM_ARR_KEY, quoted: ALARM_PINB_SEAT_MN, tabled: ALARM_PINB_SEAT_FIXED[ALARM_ARR_KEY] !== undefined }),
   // §308 L4 option B — the reserve's fan well and the train the corner chose (null off the sector path)
   reserveSector: reserveSector ? { r: reserveSector.r, halfDeg: reserveSector.halfRad / DEG2RAD, hubR: reserveSector.hubR,
     midDeg: reserveSector.midRad / DEG2RAD, binds: reserveSector.binds, rRail: reserveSector.rRail, terms: reserveSector.extent.terms,

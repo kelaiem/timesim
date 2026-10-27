@@ -96,15 +96,19 @@ const RATE_TABLE = {
 // The row a rate's balance reads: its own, or the shipped movement's.
 const rateBalanceRow = (vph) => (RATE_TABLE[vph].rimF !== undefined ? RATE_TABLE[vph] : RATE_TABLE[18000]);
 export const FOURTH_MODULE_DEFAULT = 0.21; // the fourth⇄escape mesh's cut, the rows above's module when they carry none
-// THE FORM CASES' MOVEMENT (§308 landing 5): a fitted form case is cased about the hands, and the designed
+// THE FORM CASES' MOVEMENT (§308 landing 5, §313): a fitted form case is cased about the hands, and the designed
 // train cannot be — its alarm hammer sets the case's width on the crown's far side (x 43.2), over the owner's
-// 40 mm cap once the case is centred. The barrel swung to 180° (barrelstep 0) frees the alarm module's turn to
-// 80°, which carries the hammer to the top edge where the cap does not run, and the reserve station 36° is the
-// least on its key's grid at which the link keeps its measured site there. So a form case takes this arrangement
-// unless the URL names any of its keys; the ROUND build keeps the designed train (it is the one the battery
-// sweeps, and nothing caps its width). Written out as numbers, exactly as a URL would carry them, so a form build
-// and the same build spelled in full share one configKey.
-export const FORM_ARRANGEMENT = Object.freeze({ barrelStepDeg: 0, rsvAzDeg: 36, alarmModAzDeg: 80 });
+// 40 mm cap once the case is centred. The barrel swung to 180° (barrelstep 0) frees the alarm module's turn, and
+// the module turned 60° carries the strike group off the width (its seats, tools/gong-seats.mjs, fit every form
+// at 38.8–39.0 mm). §313 holds the power reserve at 12 o'clock, as designed: 22.4 u from the swung barrel against
+// the designed 14.7, past what two meshes reach without wheels over the setting route, so its train carries six
+// idlers (rsvIdlers), the fewest at which the alarm link keeps its measured site (two: −0.627, four: −0.148,
+// measured at 60°); and 60° is where that link misses the reserve (65°–75° and 85°–120° refuse it — §308
+// landing 5's 80° turn ran it through 12 o'clock). So a form case takes this arrangement unless the URL names
+// any of its keys; the ROUND build keeps the designed train (it is the one the battery sweeps, and nothing caps
+// its width). Written out as numbers, exactly as a URL would carry them, so a form build and the same build
+// spelled in full share one configKey.
+export const FORM_ARRANGEMENT = Object.freeze({ barrelStepDeg: 0, rsvAzDeg: 0, alarmModAzDeg: 60, rsvIdlers: 6 });
 export const SPEC = (() => {
   const raw0 = (typeof globalThis !== 'undefined' && globalThis.__WATCH_SPEC) || {};
   const given = (v) => v !== undefined && v !== null && v !== '';
@@ -221,6 +225,16 @@ export const SPEC = (() => {
   // graduate (not an integer in (0, 360), which reserveReduction needs to
   // reduce R exactly). null = as designed (300°), bit-exact.
   const rsvSweepDeg = Number.isFinite(Number(raw.rsvSweepDeg)) ? Number(raw.rsvSweepDeg) : null;
+  // §313 — THE RESERVE TRAIN'S IDLERS, an arrangement's own key: how many idlers
+  // stand between p1 and w2 (§308 L4 option B's machinery, which until here only a
+  // sector station could reach). They come in PAIRS, so the hand keeps its sense,
+  // and they cancel out of R, so the counts still solve from the reserve. The count
+  // is the arrangement's, not a solve's: what binds it (the alarm link's measured
+  // site) is cut long after the train, so an arrangement names the fewest pairs at
+  // which its own scan found that site held. An even count in 0..6 (RSV_IDLER_MAX)
+  // or null = the two-stage train as designed, bit-exact.
+  const rsvIdlers = Number.isInteger(Number(raw.rsvIdlers)) && raw.rsvIdlers !== null && raw.rsvIdlers !== ''
+    && Number(raw.rsvIdlers) >= 0 && Number(raw.rsvIdlers) <= 6 && Number(raw.rsvIdlers) % 2 === 0 ? Number(raw.rsvIdlers) : null;
   // §237 — THE HAIRSPRING STUD'S RADIUS, which is also the cock's stud
   // carrier arm: the two are one number by construction, because the stud has
   // to sit where the terminal ends or it is not holding the spring. TODO 147
@@ -309,7 +323,7 @@ export const SPEC = (() => {
   // fitted case's measured free space and the lever the hammer hangs off.
   // Ignored on the round build, where the arc is the design.
   const gongSeat = ['bar', 'spiral', 'arc'].includes(raw.gongSeat) ? raw.gongSeat : null;
-  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, alarmr, subdialr, dialr, studr, caseShape, formRectSpec, gongSeat });
+  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, rsvIdlers, alarmr, subdialr, dialr, studr, caseShape, formRectSpec, gongSeat });
 })();
 
 // §36 APPLY — THE ROUTE IS A DOCUMENT. Part three shipped routing as a SPEC:
