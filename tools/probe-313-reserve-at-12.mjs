@@ -6,7 +6,9 @@
 // round to 36°. §313 holds the reserve at 12 o'clock instead: the station is
 // 22.4 u from the swung barrel (14.7 designed), so the reserve train carries six
 // idlers (`?rsvidl=6`, §308 L4 option B's machinery), and the alarm module turns
-// 60°, where the link's measured site misses the station. The arming spring's
+// 60°, where the link's measured site misses the station. §314 stepped the barrel
+// to −10° (the fusee cone clear of the third wheel), where two idlers keep the
+// link's site with the module at 50°. The arming spring's
 // fixed point (ALARM_PINB_SEAT_MN) moves with the link and is quoted per
 // arrangement. This probe holds, per build, the whole boot's warning list,
 // because every one of the failures below announced itself as a boot warning.
@@ -15,20 +17,19 @@
 //   R   the ROUND build as designed (`?arrangement=designed`, §314): boots
 //       SILENT, the reserve at 12 on the designed two-stage train (the fingerprint is reported, not gated; the
 //       battery holds the bytes).
-//   N   the round DEFAULT, the arrangement since §314 (barrelstep 0, rsvaz 0,
-//       alarmmod 60, rsvidl 6), and S the same spelled out — one fingerprint: SILENT; the reserve station on the 12 o'clock axis; six
-//       idlers cut; the arming fixed point read off its own table row.
+//   N   the round DEFAULT, the arrangement since §314 (barrelstep −10, rsvaz 0,
+//       alarmmod 50, rsvidl 2), and S the same spelled out — one fingerprint: SILENT; the reserve station on the 12 o'clock axis; the
+//       arrangement's idlers cut; the arming fixed point read off its own table row.
 //   F-* each form case at its DEFAULT (the arrangement, its committed bar seat), booted
 //       at that seat's fitted `formrect=` (a plain boot cuts a provisional outline):
 //       only the two rows every form build carries (§186's plate seat, §261's
-//       depth), and on the cushion its own lug-plane finding (§308 landing 1); the reserve at 12 on six idlers; cased width hands-centred
+//       depth), and on the cushion its own lug-plane finding (§308 landing 1); the reserve at 12 on its idlers; cased width hands-centred
 //       under the cap.
 //   Controls — each must print the refusal it exists for:
-//   C4  four idlers: the link's measured site refused by the reserve train.
-//   C0  no idlers: the setting traverse finds no cap bearing.
+//   C0  no idlers: the two-stage train takes the link's measured site.
 //   C80 the module at 80° (§308 landing 5's turn): the link refused again.
 //
-// Run: node tools/probe-313-reserve-at-12.mjs [--only R|N|F-rect|…|C4|C0|C80]
+// Run: node tools/probe-313-reserve-at-12.mjs [--only R|N|F-rect|…|C0|C80]
 //      PW_CHROMIUM=/path/to/chrome when Playwright's own browser is not installed
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -55,8 +56,7 @@ const BUILDS = [
   { id: 'F-rect', name: 'rect, its default', q: `case=rect&formrect=${GONG_SEATS.rect.bar.formrect.join(',')}`, form: true },
   { id: 'F-cushion', name: 'cushion, its default', q: `case=cushion&formrect=${GONG_SEATS.cushion.bar.formrect.join(',')}`, form: true },
   { id: 'F-tonneau', name: 'tonneau, its default', q: `case=tonneau&formrect=${GONG_SEATS.tonneau.bar.formrect.join(',')}`, form: true },
-  { id: 'C4', name: 'control: four idlers', q: ARR.replace(/rsvidl=\d+/, 'rsvidl=4'), control: LINK_REFUSED },
-  { id: 'C0', name: 'control: no idlers', q: ARR.replace(/&rsvidl=\d+/, ''), control: /setting traverse: no cap bearing within/ },
+  { id: 'C0', name: 'control: no idlers', q: ARR.replace(/&rsvidl=\d+/, ''), control: LINK_REFUSED },
   { id: 'C80', name: 'control: the module at 80°', q: ARR.replace(/alarmmod=\d+/, 'alarmmod=80'), control: LINK_REFUSED },
 ];
 const FORM_SHARED = [/^warning: §186: the rim-to-bore fit/, /^warning: §261: cased assembly/];
