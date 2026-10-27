@@ -4,7 +4,7 @@
 
 # The instruments
 
-367 scripts. **249 are ACCEPTANCE tests** — they decide and exit non-zero.
+368 scripts. **250 are ACCEPTANCE tests** — they decide and exit non-zero.
 **118 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -228,6 +228,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-269-case-path.mjs` | §269 | acceptance | §269 — THE CASE AS THE RADIATOR: does the structure-borne path on the record follow from the metal, and does every integral behind it reproduce by a second method? ACCEPTANCE. |
 | `probe-274-picker.mjs` | §274 | acceptance | §274 — DOES THE PICKERS' "SHOW INCOMPLETE TRANSLATIONS" TOGGLE DO WHAT IT SAYS? |
 | `probe-274-surfaces.mjs` | §274 | acceptance | §274 — DO THE DECLARED-SURFACE GATES MEASURE ANYTHING? Pure Node, no browser. |
+| `probe-275-button-seat.mjs` | §275 | acceptance | DOES THE ALARM PUSHER'S BUTTON STAY OUT OF THE CASE WALL UNTIL ITS STOP — ON EVERY CASE SHAPE? Acceptance (TODO 275). The head is solved (TODO 241) to land on the wall at the end of the carry, and the battery excuses it against the band BY NAME for that stop (`Alarm switch ⇄ Case` floors row, probe-case-relief's STOP set) — so a head whose RIM buries in the band reads as the stop, and did, on every form case, for as long as the head's face was square to a press line that crosses a form wall obliquely. |
 | `probe-277-nav.mjs` | §277 | acceptance | §277 part E — navigation on the scripted-user engine, measured in a browser. |
 | `probe-277-route-i18n.mjs` | §277 | acceptance | §277 part F — does every locale carry the Inspect route's captions and stop titles, and does each keep what the English CLAIMS? |
 | `probe-278-dial-step.mjs` | §278 | acceptance | HOW FAR CAN THE DIAL SIDE COME DOWN, AND WHAT STOPS IT? — §278 landing 6's step study for the dial-side reclaim. Since landing 5 the detector stands on its satellite, so the centre column's dial-side band no longer has to carry it; `DIAL_RECLAIM` (layout.js) brings the dial plane plate-ward by that much and the chain below the sleeve rises in the dial frame by the same amount (main.js's ALARM_FEELER_TOP), so the satellite stack, i1b, the hour wheel and the motion works keep their world planes. This measures, on the tree under test, how much further it could go and which pair stops it. |
