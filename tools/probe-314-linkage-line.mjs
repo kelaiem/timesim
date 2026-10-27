@@ -67,7 +67,7 @@ const srv = createServer(async (req, res) => {
 await new Promise((r) => srv.listen(0, '127.0.0.1', r));
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--disable-background-timer-throttling', '--disable-renderer-backgrounding'] });
 const page = await (await browser.newContext()).newPage();
-page.on('console', (m) => { if (m.type() === 'warning' && !/GPU|GL Driver|swiftshader|ReadPixels|fallback/i.test(m.text())) console.log(`  boot warn: ${m.text().slice(0, 160)}`); });
+page.on('console', (m) => { if (m.type() === 'info') console.log(`  ${m.text()}`); if (m.type() === 'warning' && !/GPU|GL Driver|swiftshader|ReadPixels|fallback/i.test(m.text())) console.log(`  boot warn: ${m.text().slice(0, 160)}`); });
 await page.goto(`http://127.0.0.1:${srv.address().port}/index.html?hud=0&sync=0&${Q}`);
 await page.waitForFunction(() => !!window.__clock || !!window.__bootError, null, { timeout: 900000, polling: 1000 });
 if (await page.evaluate(() => !!window.__bootError)) { console.log('boot failed'); process.exit(2); }
@@ -114,6 +114,7 @@ const out = await page.evaluate(async ({ TOP }) => {
     for (const m of meshes) {
       const { o, unit, rot } = m;
       if (rot) { if (!ringed.has(o)) { ringed.add(o); binRing(m); } continue; }
+      if (unit === 'Chain' && lastMat.has(o)) continue;   // its mesh is re-tessellated per pose (§152's DIGEST_ALWAYS_CHANGED); it lies in its groove, read once
       const key = o.matrixWorld.elements.map((x) => x.toFixed(6)).join(',') + '|' + o.geometry.id;
       if (lastMat.get(o)?.has(key)) continue;
       if (!lastMat.has(o)) lastMat.set(o, new Set());
@@ -148,10 +149,15 @@ const out = await page.evaluate(async ({ TOP }) => {
   const t0 = performance.now();
   for (const p of poses) { I.enterAxis(c); c.resetInputs(); c.setPose(p); sampleAll(); await new Promise((r) => setTimeout(r, 0)); }
   const scanMs = performance.now() - t0;
+  console.info(`scan ${Math.round(scanMs)} ms over ${poses.length} poses, ${occ.size} cells`);
   // ---- a candidate's verdict ----
   const reach = CM + CELL * Math.SQRT1_2;
   const R = Math.ceil(reach / CELL);
   const TQ = c.alarmLinkage.swept()[0].zHi - 0.5;   // the studs' piece tops 0.5 into the plate: its underside
+  // the studs are planted in the three-quarter plate. A window with a boss shrinks around a keep (§62), but the
+  // arrest's is BOSSLESS and all-or-nothing (§115), so each stud stands a land (TQ_LAND_MIN) outside its reveal
+  const WIN = LK.windowDiscs().filter((w) => w.name === 'arrest');
+  const studOut = (k) => { for (const P of [k.PA, k.PB]) for (const w of WIN) if (Math.hypot(P.x - w.x, P.y - w.y) < w.r + LK.landMin + LK.studR) return `stud in the ${w.name} window`; return null; };
   const judge = (swept, firstOnly = true) => {
     const hits = new Map();
     for (const pc of swept) {
@@ -173,8 +179,8 @@ const out = await page.evaluate(async ({ TOP }) => {
   };
   // ---- C2: the law reproduces the build's own linkage ----
   const cur = LK.at(LK.line.dirDeg, LK.line.c);
-  const built = LK.swept();
-  const lawErr = cur ? Math.max(...[24, 49].map((i) => Math.hypot(cur.swept[0].xy[i][0] - built[0].xy[i][0], cur.swept[0].xy[i][1] - built[0].xy[i][1]))) : Infinity;
+  const built = LK.swept(), curS = cur && cur.swept();
+  const lawErr = cur ? Math.max(...[24, 49].map((i) => Math.hypot(curS[0].xy[i][0] - built[0].xy[i][0], curS[0].xy[i][1] - built[0].xy[i][1]))) : Infinity;
   const curHits = [...judge(built, false).entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
   // ---- the search ----
   const stroke = Math.hypot(cur.p1.x - cur.p0.x, cur.p1.y - cur.p0.y);
@@ -193,17 +199,21 @@ const out = await page.evaluate(async ({ TOP }) => {
     }
   }
   cands.sort((p, q) => p.len - q.len);
-  const clear = [];
+  console.info(`law sweep ${Math.round(performance.now() - t0 - scanMs)} ms: ${cands.length} candidates`);
+  const strip = (cd) => ({ dirDeg: cd.td, c: cd.c, len: +cd.len.toFixed(3), PA: [+cd.k.PA.x.toFixed(3), +cd.k.PA.y.toFixed(3)], PB: [+cd.k.PB.x.toFixed(3), +cd.k.PB.y.toFixed(3)],
+    arms: [cd.k.armA, cd.k.armBin, cd.k.armBout].map((a) => +a.toFixed(3)), rod: +cd.k.rod.toFixed(3) });
+  const clear = [], near = [];
   let judged = 0;
   for (const cd of cands) {
     judged++;
-    if (judge(cd.k.swept).size === 0) { clear.push(cd); if (clear.length >= TOP) break; }
-    if (judged % 50 === 0) await new Promise((r) => setTimeout(r, 0));
+    if (studOut(cd.k)) continue;
+    const h = judge(cd.k.swept(), false);
+    if (h.size === 0) { clear.push(cd); if (clear.length >= TOP) break; }
+    else if (near.length < 25) near.push({ ...strip(cd), hits: [...h.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3) });
+    if (judged % 50 === 0) { console.info(`judged ${judged}, clear ${clear.length}`); await new Promise((r) => setTimeout(r, 0)); }
   }
-  const strip = (cd) => ({ dirDeg: cd.td, c: cd.c, len: +cd.len.toFixed(3), PA: [+cd.k.PA.x.toFixed(3), +cd.k.PA.y.toFixed(3)], PB: [+cd.k.PB.x.toFixed(3), +cd.k.PB.y.toFixed(3)],
-    arms: [cd.k.armA, cd.k.armBin, cd.k.armBout].map((a) => +a.toFixed(3)), rod: +cd.k.rod.toFixed(3) });
   return { key: LK.key, line: LK.line, modRotDeg: LK.modRotDeg, scanMs: Math.round(scanMs), poses: poses.length, cells: occ.size, lawErr,
-    curHits, A_MIN, A_MAX, nCands: cands.length, judged, clear: clear.map(strip), curLen: 2 * cur.armA + cur.armBin + cur.armBout + cur.rod };
+    curHits, A_MIN, A_MAX, nCands: cands.length, judged, clear: clear.map(strip), near, curLen: 2 * cur.armA + cur.armBin + cur.armBout + cur.rod };
 }, { TOP });
 await browser.close(); srv.close();
 
@@ -219,4 +229,5 @@ console.log(`\nsearch: ${out.nCands} linkages inside the bounds (arms ${out.A_MI
 for (const [i, cd] of out.clear.entries())
   console.log(`  ${i + 1}. dir ${cd.dirDeg}°, c ${cd.c}: length ${cd.len} (arms ${cd.arms.join(' / ')}, rod ${cd.rod}); crank A at (${cd.PA}), crank B at (${cd.PB})`);
 if (!out.clear.length) console.log('  none clears');
+for (const n of out.near || []) console.log(`  near: dir ${n.dirDeg}°, c ${n.c}, len ${n.len}, A (${n.PA}) B (${n.PB}): ${n.hits.map(([k, m]) => `${k} ×${m}`).join('; ')}`);
 process.exit(fail ? 2 : 0);

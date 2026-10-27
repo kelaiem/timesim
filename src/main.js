@@ -61107,8 +61107,15 @@ window.__clock = {
   // probe-261-fold-site's K9 once its own search no longer finds the fold.
   // §314 — the pusher linkage's law and its swept plan, for the rod line's search
   alarmLinkage: { line: _linkageLine, modRotDeg: ALARM_MOD_ROT / DEG2RAD, key: ALARM_ARR_KEY,
-    at: (dirDeg, c) => { const L = alarmLinkageFor(dirDeg * DEG2RAD + ALARM_MOD_ROT, c, true); return L && Math.abs(L.closure) < 1e-9 ? { PA: L.PA, PB: L.PB, EA: L.EA, EB: L.EB, p0: L.p0, p1: L.p1, q0: L.q0, q1: L.q1, rod: L.rod, armA: L.armA, armBin: L.armBin, armBout: L.armBout, swept: alarmLinkageSweptOf(L) } : null; },
-    swept: () => alarmLinkageSweptOf(ALARM_LINKAGE) },
+    at: (dirDeg, c) => { const L = alarmLinkageFor(dirDeg * DEG2RAD + ALARM_MOD_ROT, c, true); return L && Math.abs(L.closure) < 1e-9 ? { PA: L.PA, PB: L.PB, EA: L.EA, EB: L.EB, p0: L.p0, p1: L.p1, q0: L.q0, q1: L.q1, rod: L.rod, armA: L.armA, armBin: L.armBin, armBout: L.armBout, swept: () => alarmLinkageSweptOf(L) } : null; },
+    swept: () => alarmLinkageSweptOf(ALARM_LINKAGE),
+    // the three-quarter plate's window intents (what each opening wants to reveal): a stud planted in the plate
+    // must stand a land outside them, or the window shrinks for it (a bossless one, the arrest's, is then not cut)
+    windowDiscs: () => TQ_WINDOW_INTENTS.flatMap((w) => {
+      if (w.discs) { const d = w.discs(); return d.filter(Boolean).map((q) => ({ x: q.x, y: q.y, r: q.r, name: w.name })); }
+      const a = w.at(); return a ? [{ x: a.x, y: a.y, r: w.reveal(), name: w.name }] : [];
+    }),
+    studR: ALARM_LINKAGE_STUD_R, landMin: TQ_LAND_MIN },
   get alarmFold() { return { phi: ALARM_FOLD_PHI, pitches: ALARM_FOLD_PITCHES, stopTeeth: ALARM_STOP_TEETH, zSum: ALARM_FOLD_Z_SUM, axis: { x: alarmSwPos.x, y: alarmSwPos.y } }; },
   // TODO 236 — the release run's laws and solved record, read-only, for
   // tools/probe-236-release-run.mjs: the sleeve's law (the helix solve's own
