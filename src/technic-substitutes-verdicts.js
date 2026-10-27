@@ -160,10 +160,18 @@ export const SUBSTITUTE_VERDICTS = {
      {
       "run": "steps row-3",
       "ok": true
+     },
+     {
+      "run": "steps train",
+      "ok": true
+     },
+     {
+      "run": "train",
+      "ok": true
      }
     ],
     "judge": null,
-    "detail": "passes 17 judges",
+    "detail": "passes 19 judges",
     "cells": {
      "alarm": {
       "status": "pass",
@@ -196,6 +204,11 @@ export const SUBSTITUTE_VERDICTS = {
       "detail": "passes 3 judges"
      },
      "row-3": {
+      "status": "pass",
+      "judge": null,
+      "detail": "passes 3 judges"
+     },
+     "train": {
       "status": "pass",
       "judge": null,
       "detail": "passes 3 judges"
@@ -265,6 +278,18 @@ export const SUBSTITUTE_VERDICTS = {
       "detail": "✗ pin: the shaft's radius differs"
      }
     }
+   }
+  ],
+  "3700": [
+   {
+    "candidate": "389",
+    "rb": "3700b",
+    "rel": "M",
+    "dir": "child",
+    "status": "fail",
+    "judge": "bricklink",
+    "detail": "BrickLink lists no element for 3700b in any colour this page uses",
+    "sameItem": false
    }
   ],
   "3705": [
@@ -370,10 +395,18 @@ export const SUBSTITUTE_VERDICTS = {
      {
       "run": "steps row-4",
       "ok": true
+     },
+     {
+      "run": "steps train",
+      "ok": true
+     },
+     {
+      "run": "train",
+      "ok": true
      }
     ],
     "judge": null,
-    "detail": "passes 16 judges",
+    "detail": "passes 18 judges",
     "cells": {
      "alarm": {
       "status": "pass",
@@ -409,10 +442,16 @@ export const SUBSTITUTE_VERDICTS = {
       "status": "pass",
       "judge": null,
       "detail": "passes 3 judges"
+     },
+     "train": {
+      "status": "pass",
+      "judge": null,
+      "detail": "passes 3 judges"
      }
     }
    }
   ],
+  "4186": [],
   "4519": [],
   "6541": [],
   "6558": [
@@ -662,15 +701,28 @@ export const SUBSTITUTE_VERDICTS = {
      {
       "run": "steps fusee",
       "ok": true
+     },
+     {
+      "run": "steps train",
+      "ok": true
+     },
+     {
+      "run": "train",
+      "ok": true
      }
     ],
     "judge": null,
-    "detail": "passes 4 judges",
+    "detail": "passes 6 judges",
     "cells": {
      "fusee": {
       "status": "pass",
       "judge": null,
       "detail": "passes 4 judges"
+     },
+     "train": {
+      "status": "pass",
+      "judge": null,
+      "detail": "passes 3 judges"
      }
     }
    }
@@ -740,10 +792,18 @@ export const SUBSTITUTE_VERDICTS = {
      {
       "run": "steps keyless",
       "ok": true
+     },
+     {
+      "run": "steps train",
+      "ok": true
+     },
+     {
+      "run": "train",
+      "ok": true
      }
     ],
     "judge": null,
-    "detail": "passes 14 judges",
+    "detail": "passes 16 judges",
     "cells": {
      "alarm": {
       "status": "pass",
@@ -764,6 +824,11 @@ export const SUBSTITUTE_VERDICTS = {
       "status": "pass",
       "judge": null,
       "detail": "passes 5 judges"
+     },
+     "train": {
+      "status": "pass",
+      "judge": null,
+      "detail": "passes 3 judges"
      }
     }
    }
@@ -794,12 +859,25 @@ export const SUBSTITUTE_VERDICTS = {
      {
       "run": "steps escapement",
       "ok": true
+     },
+     {
+      "run": "steps train",
+      "ok": true
+     },
+     {
+      "run": "train",
+      "ok": true
      }
     ],
     "judge": "friction",
     "detail": "every geometric judge passes; the placed part is with friction ridges and this one without, and friction is not modelled",
     "cells": {
      "escapement": {
+      "status": "not judged",
+      "judge": "friction",
+      "detail": "every geometric judge passes; the placed part is with friction ridges and this one without, and friction is not modelled"
+     },
+     "train": {
       "status": "not judged",
       "judge": "friction",
       "detail": "every geometric judge passes; the placed part is with friction ridges and this one without, and friction is not modelled"
@@ -843,6 +921,20 @@ export const SUBSTITUTE_VERDICTS = {
        "✗ both generations fusee",
        "FAIL both generations fusee 36 steps, 7 chapters, 2 sub-assemblies, 0 flagged {\"straight\":73,\"turn\":1} "
       ]
+     },
+     {
+      "run": "steps train",
+      "ok": false,
+      "why": [
+       "✗ technic_2026 train: OVERLAP, not in the inventory: train|pulley3482|pulley55982 1.46 LDU",
+       "✗ technic_2026 train",
+       "FAIL technic_2026 train 73 steps, 10 chapters, 4 sub-assemblies, 0 flagged {\"straight\":181,\"two-leg\":2,\"turn\":1} ",
+       "✗ technic_classic train: OVERLAP, not in the inventory: train|pulley3482|pulley55982 1.46 LDU"
+      ]
+     },
+     {
+      "run": "train",
+      "ok": true
      }
     ],
     "judge": "fusee",
@@ -852,6 +944,11 @@ export const SUBSTITUTE_VERDICTS = {
       "status": "fail",
       "judge": "fusee",
       "detail": "✗ 55982: half width 8.0000, table 7.4"
+     },
+     "train": {
+      "status": "fail",
+      "judge": "steps train",
+      "detail": "✗ technic_2026 train: OVERLAP, not in the inventory: train|pulley3482|pulley55982 1.46 LDU"
      }
     }
    }
@@ -882,15 +979,28 @@ export const SUBSTITUTE_VERDICTS = {
      {
       "run": "steps fusee",
       "ok": true
+     },
+     {
+      "run": "steps train",
+      "ok": true
+     },
+     {
+      "run": "train",
+      "ok": true
      }
     ],
     "judge": null,
-    "detail": "passes 4 judges",
+    "detail": "passes 6 judges",
     "cells": {
      "fusee": {
       "status": "pass",
       "judge": null,
       "detail": "passes 4 judges"
+     },
+     "train": {
+      "status": "pass",
+      "judge": null,
+      "detail": "passes 3 judges"
      }
     }
    }
@@ -1070,12 +1180,25 @@ export const SUBSTITUTE_VERDICTS = {
      {
       "run": "steps escapement",
       "ok": true
+     },
+     {
+      "run": "steps train",
+      "ok": true
+     },
+     {
+      "run": "train",
+      "ok": true
      }
     ],
     "judge": null,
-    "detail": "passes 3 judges",
+    "detail": "passes 5 judges",
     "cells": {
      "escapement": {
+      "status": "pass",
+      "judge": null,
+      "detail": "passes 3 judges"
+     },
+     "train": {
       "status": "pass",
       "judge": null,
       "detail": "passes 3 judges"
@@ -1262,6 +1385,14 @@ export const SUBSTITUTE_VERDICTS = {
      {
       "run": "steps row-4",
       "ok": true
+     },
+     {
+      "run": "steps train",
+      "ok": true
+     },
+     {
+      "run": "train",
+      "ok": true
      }
     ],
     "judge": "ldraw",
@@ -1303,6 +1434,11 @@ export const SUBSTITUTE_VERDICTS = {
       "detail": "✗ 3794b is \"Plate 1 x 2 with Groove with 1 Centre Stud, without Understud\", expected /^Plate 1 x 2 .*1 Centre Stud$/"
      },
      "row-4": {
+      "status": "fail",
+      "judge": "ldraw",
+      "detail": "✗ 3794b is \"Plate 1 x 2 with Groove with 1 Centre Stud, without Understud\", expected /^Plate 1 x 2 .*1 Centre Stud$/"
+     },
+     "train": {
       "status": "fail",
       "judge": "ldraw",
       "detail": "✗ 3794b is \"Plate 1 x 2 with Groove with 1 Centre Stud, without Understud\", expected /^Plate 1 x 2 .*1 Centre Stud$/"
@@ -1389,10 +1525,18 @@ export const SUBSTITUTE_VERDICTS = {
      {
       "run": "steps row-4",
       "ok": true
+     },
+     {
+      "run": "steps train",
+      "ok": true
+     },
+     {
+      "run": "train",
+      "ok": true
      }
     ],
     "judge": null,
-    "detail": "passes 18 judges",
+    "detail": "passes 20 judges",
     "cells": {
      "alarm": {
       "status": "pass",
@@ -1433,6 +1577,11 @@ export const SUBSTITUTE_VERDICTS = {
       "status": "pass",
       "judge": null,
       "detail": "passes 3 judges"
+     },
+     "train": {
+      "status": "pass",
+      "judge": null,
+      "detail": "passes 3 judges"
      }
     }
    }
@@ -1462,15 +1611,28 @@ export const SUBSTITUTE_VERDICTS = {
      {
       "run": "steps fusee",
       "ok": true
+     },
+     {
+      "run": "steps train",
+      "ok": true
+     },
+     {
+      "run": "train",
+      "ok": true
      }
     ],
     "judge": null,
-    "detail": "passes 4 judges",
+    "detail": "passes 6 judges",
     "cells": {
      "fusee": {
       "status": "pass",
       "judge": null,
       "detail": "passes 4 judges"
+     },
+     "train": {
+      "status": "pass",
+      "judge": null,
+      "detail": "passes 3 judges"
      }
     }
    }

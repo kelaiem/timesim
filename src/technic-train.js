@@ -24,7 +24,9 @@
 //     room for a second gear without moving the back knife, which lengthens the crossbar and moves the period.
 //     A 24:8 is 16 mm, five plates, so the 24T can stand STRAIGHT BELOW the wheel and drive it in the wheel's
 //     own slab, its teeth at the wheel's bottom while the pallets work its top. Its arbor (the DRIVE) runs back
-//     under the anchor through a second Technic brick in each escape column (frameEscapement's driveZ).
+//     under the anchor, borne in a 1×2 Technic brick in a knife's stack and the escape columns' holes
+//     (frameEscapement's driveZ and driveFrom), threaded from in front or, where the line in front runs into the
+//     fusee, from behind.
 //
 // THE PLACE. Every axle is parallel to the fusee's, every mesh on the 4 mm lattice in its plane: across (x) by
 // the centre distance, or straight up where the centre distance is a whole number of plates (a 24:8, 16 mm; the
@@ -452,17 +454,18 @@ export function escapementAt(chain, lib, xF, zF, f40, dx, w, o, from = 'front') 
   return { ...P, eb: E.eb, local: E.shapes, localDrive: dShapes, world: [...E.shapes, ...dShapes].map((s) => placeShape(s, P.X, P.Y, o)),
     way: placeShape(driveWay(P.drive, from), P.X, P.Y, o) };
 }
-// THE DRIVE'S WAY IN: its axle is threaded from in front of the front knife, through the 1 × 2 Technic brick in
-// the knife's stack (it can be lowered nowhere: the knife stack stands over its front end and the escape column
-// behind its back end), so the whole line in front of that brick is its corridor and must be clear of every other
-// body — the swept insertion found the classic train's first drive threaded straight into the barrel's cord hook.
-// (a disc on the axle's line from far in front to half a millimetre short of its front end, in the escapement's
-// own frame; the drive's own body, so its gears behind are not in its way). What it must clear is what stands
-// when the drive goes in: the escape wheel and the balance go in after it, so `wayAgainst` leaves them out.
-const WAY_FAR_MM = 1000;
+// THE DRIVE'S WAY IN: its axle is threaded from beyond a knife (the front one, or the back one when it comes from
+// behind), through the 1 × 2 Technic brick in that knife's stack. It can be lowered nowhere: a knife stack stands
+// over each end of its line, and the gap between a knife and the escape columns is shorter than the axle. So the
+// whole line beyond that brick is its corridor and must be clear of every other body — the swept insertion found
+// the classic train's first drive threaded straight into the barrel's cord hook. (A disc on the axle's line from its
+// end to past the largest baseplate's span, in the escapement's own frame; the drive's own body, so its gears are
+// not in its way; the brick it starts in bears it, its line.) What it must clear is what stands when the drive goes in: the escape wheel and the balance
+// go in after it, so `wayAgainst` leaves them out.
+const wayFar = () => BASE_MAX_STUDS * D.stud;
 const wayAgainst = (world) => world.filter((x) => !/^escapement\/(?:balance|escape)#/.test(x.body));
 const driveWay = (drv, from = 'front') => ({ t: 'disc', x: drv.x ?? 0, z: drv.z, r: D.axleR,
-  ...(from === 'back' ? { y0: r6(drv.axle.y1 + 0.5), y1: WAY_FAR_MM } : { y0: -WAY_FAR_MM, y1: r6(drv.axle.y0 - 0.5) }), body: 'train/drive/way', who: 'the drive axle\'s way in', axle: true, train: true });
+  ...(from === 'back' ? { y0: drv.axle.y1, y1: r6(drv.axle.y1 + wayFar()) } : { y0: r6(drv.axle.y0 - wayFar()), y1: drv.axle.y0 }), body: 'train/drive/way', who: 'the drive axle\'s way in', axle: true, train: true });
 // THE FRAMES' OWN BLOCKS, lib-free: the columns of a frame as boxes, each Technic brick with its hole's line —
 // what an arbor's axle overhang is placed against (frameShafts' rule reads the frame, never the parts)
 export const frameBoxes = (columns, body) => columns.flatMap((c) => { const lines = c.boxes.filter((b) => b.hole).map((b) => ({ x: r6((b.x0 + b.x1) / 2), z: r6(b.z0 + D.holeZ) }));
@@ -501,7 +504,7 @@ export function driveLayers(ef, chain) {
 // plate's half-stud snap). The pack held 16 × 16 (3867) and 32 × 32 (3811); the classic train needs 34 studs
 // along its axles (the 12 mm meshes of its centre→fourth row climb a layer or two a stage, and none can fold back
 // past the fusee's back columns), so this landing vendors the 48 × 48 (4186) for it, TRAIN_PARTS.
-// The drive's front bearing is a 1×2 Technic brick (3700) in the front knife's stack (frameEscapement says why).
+// The drive's knife-side bearing is a 1×2 Technic brick (3700) in a knife's stack (frameEscapement says why).
 export const TRAIN_PARTS = Object.freeze({ baseplate48: '4186', driveBrick: '3700' });
 export const BASEPLATES = Object.freeze([[16, FRAME_PARTS.baseplate16], [32, KEYLESS_PARTS.baseplate32], [48, TRAIN_PARTS.baseplate48]]);
 export const plateFor = (base) => { const need = Math.max(base.studsX, base.studsY) + 1; const p = BASEPLATES.find(([n]) => need <= n + EPS); return p ? { studs: p[0], part: p[1] } : null; };
