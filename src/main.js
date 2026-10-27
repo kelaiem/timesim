@@ -10313,6 +10313,7 @@ const WIND_SPUR_SWEPT_R = xyRadiusAbout(windSpur, P.barrel, GW_UNDER_Z, CORRIDOR
 // reporting 3.05 of clearance against a table that did not know the staff
 // was there. Measured in the band, like the transfer wheel and the spur.
 const THIRD_STAFF_R = xyRadiusAbout(thirdArbor, P.third, GW_UNDER_Z, CORRIDOR_Z_BOT);
+const FORK_LEG_SWEPT_R = xyRadiusAbout(forkCock.obj, forkCock.legB, GW_UNDER_Z, CORRIDOR_Z_BOT);   // §314
 // §234 — the rows carry the LINK's plan half-width (`halfW`, W / 2) as an
 // argument rather than a shared constant, so the reset solve, the stop-work
 // solve and the §86 envelope check (at 0) each say which blank they price.
@@ -10327,6 +10328,12 @@ const lowRodObstaclesFor = (p, kw, halfW) => [
   // read Escape wheel ⇄ Hack rod FORBIDDEN on the first route the widened
   // elbow found). Same collar model as the fourth, one arbor on.
   { x: p.escape.x, y: p.escape.y, r: 1.4 * 1.7 + halfW + CLEAR_MARGIN, what: 'the escape arbor’s lower collar', of: () => escapeArbor },
+  // §314 — and the fork cock's leg, which stands from the base plate up
+  // through the band: at the arrangement's −20° barrel step the hack rod's
+  // southern dogleg swung out to it (inspection: Fork cock ⇄ Hack rod
+  // FORBIDDEN over the pulled crown) against a table that did not know the
+  // leg was there. Measured in the band, like the third staff (its foot boss).
+  { x: forkCock.legB.x, y: forkCock.legB.y, r: FORK_LEG_SWEPT_R + halfW + CLEAR_MARGIN, what: 'the fork cock’s leg', of: () => forkCock.obj },
   // §85 step C1 — THE GREAT WHEEL, the body this corridor is named after and
   // never contained. The fusee station was represented by the winding SPUR
   // (r ≈ 5.0) because that is what the rod passes beside; the body it passes
