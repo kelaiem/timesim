@@ -129,6 +129,11 @@ for (const vp of [{ name: 'desktop', width: 1280, height: 800 }, { name: 'phone'
     const geo = await page.evaluate(() => { const b = document.getElementById('tour').getBoundingClientRect(); return { l: b.left, r: b.right, vw: innerWidth, sw: document.scrollingElement.scrollWidth }; });
     ok(geo.l >= 0 && geo.r <= geo.vw + 0.5 && geo.sw <= geo.vw, `${s.id}: the tour bar leaves the screen ${JSON.stringify(geo)}`);
     await page.click('#tour-parts');
+    // a stop whose cell the parts list does not know (§312 L1's clock, its list is a later landing) opens nothing
+    if (!B.cellIds().includes(s.cell)) {
+      ok(!(await page.evaluate((c) => !!document.querySelector(`details.bom[data-cell="${c}"]`), s.cell)), `${s.id}: a parts list for a cell the module does not list`);
+      continue;
+    }
     const first = !seen.has(s.cell);
     if (first) await ready(page, s.cell, 'technic_2026');
     seen.add(s.cell);
