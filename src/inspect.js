@@ -6842,7 +6842,13 @@ export const STRIKE_HANDOFFS = [
 // the cock's snap with it; re-read the same way (the ring's net angle crossing
 // the law's holdNet and crestNet): `riding` τ 0.13 mid-climb, lift 0.2587 of a
 // 0.2958 travel; `seated` τ 2559.2 unchanged (lift 6e-6); `crest` τ 2067.3
-// (was 2340.0), lift 0.29583.
+// (was 2340.0), lift 0.29583. §314 made the ARRANGEMENT the default, and its
+// −20° barrel step re-phases the great wheel, so the two were re-read off the
+// build's own law (`maintHoldLaw.begin`, the instant `onFace` turns over —
+// which reads 2559.1 and 2067.2 on the designed build, the table's own
+// values): `seated` τ 3367.3 (crossing 3367.213, the recoil 6e-6 a tenth
+// after it), `crest` τ 2875.4 (crossing 2875.413, the recoil 0.12943 of
+// rCrest's 0.12945); `riding` stays τ 0.13, mid-climb (recoil 0.0162 rad).
 //
 // TODO 224 — and two poses of a WIND, the drive off at τ 0.13 (`riding`'s
 // instant, mid-ramp, so the recoil is a real one — 0.0985 rad): `holding` with
@@ -6853,8 +6859,8 @@ export const STRIKE_HANDOFFS = [
 // on, or it would inherit the hold.
 export const MAINT_DETENT_HANDOFF_POSES = [
   ['riding', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 0 }],
-  ['seated', { tau: 2559.2, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 0 }],
-  ['crest', { tau: 2067.3, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 0 }],
+  ['seated', { tau: 3367.3, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 0 }],
+  ['crest', { tau: 2875.4, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 0 }],
   ['holding', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 0.5 }],
   ['runout', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 1 }],
 ];
