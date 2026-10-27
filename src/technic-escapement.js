@@ -65,7 +65,7 @@ import { walk, LDU_MM } from './ldraw.js';
 import { LEGO_DIM_MM, FRAME_PARTS, AXLE_PARTS, GEAR_TIP_MM } from './technic-frame.js';
 import { toothPhase } from './technic-ldraw.js';
 import { starProfile } from './technic-fusee.js';
-import { CATALOGUES, TECHNIC_VPH, TECHNIC_ESCAPE_TEETH, catalogueMesh } from './layout.js';
+import { CATALOGUES, TECHNIC_VPH, TECHNIC_ESCAPE_TEETH } from './layout.js';
 
 const D = LEGO_DIM_MM;
 const L = (mm) => mm / LDU_MM;
@@ -229,10 +229,6 @@ const holeAt = (at, dir, r) => [at[0] + r * Math.cos(dir), at[1] + r * Math.sin(
 // THE DECLARED BALANCE (re-solved by the probe; solveBalance below): the mass
 // arms, the masses per side, the bob arm and the bob's gears.
 export const TECHNIC_BALANCE = Object.freeze({ massArm: '11478', masses: Object.freeze(['3649', '3648', '3648']), bobArm: '6632', bob: Object.freeze(['3649', '3649']) });
-// THE DRIVE'S BALANCE (BUILT §312 L1b; solveBalance with `drive`, re-solved by probe-technic-escapement-drive): the drive pushes the back
-// knife two studs back and the crossbar grows from 10L to 12L, which moves TECHNIC_BALANCE to 1.0050 s, past
-// RATE_BAND. The same solve on the drive's frame answers this, its only arrangement inside the band.
-export const TECHNIC_BALANCE_DRIVE = Object.freeze({ massArm: '11478', masses: Object.freeze(['3648', '3648', '4019']), bobArm: '6632', bob: Object.freeze(['3649']) });
 // THE BEAT the escapement row is cut for: RATE_TABLE's law at TECHNIC_VPH,
 // two beats a period, so the period is 2 × 3600 / vph seconds.
 export const BEAT_PERIOD_S = 2 * 3600 / TECHNIC_VPH;
@@ -312,13 +308,13 @@ function* multisets(items, max) {
   const rec = function* (start, cur) { yield cur; if (cur.length === max) return; for (let i = start; i < items.length; i++) yield* rec(i, [...cur, items[i]]); };
   yield* rec(0, []);
 }
-export function solveBalance(lib, spec = TECHNIC_ESCAPEMENT, { target = BEAT_PERIOD_S, maxSide = 3, maxBob = 2, drive = false } = {}) {
+export function solveBalance(lib, spec = TECHNIC_ESCAPEMENT, { target = BEAT_PERIOD_S, maxSide = 3, maxBob = 2 } = {}) {
   const rows = [];
   for (const massArm of ['6632', '11478']) for (const masses of multisets(MASS_PARTS, maxSide))
     for (const bobArm of ['41677', '6632', '11478']) for (const bob of multisets(MASS_PARTS, maxBob)) {
       if (!bob.length && bobArm !== '41677') continue;                     // no bob: one row, not three
       const bal = { massArm, masses, bobArm, bob };
-      const fr = frameEscapement(spec, bal, { drive });
+      const fr = frameEscapement(spec, bal);
       if (!fr.framed) continue;
       const mo = balanceMoments(lib, framedBalance(fr, lib));
       if (mo.T === null) continue;
@@ -647,45 +643,23 @@ const HALF = D.stud / 2;
 const lens = Object.keys(AXLE_PARTS).map(Number).sort((p, q) => p - q);
 export const axleLen = (n) => n * D.stud - 0.4;                       // the library trims half an LDU each end
 const axleCovering = (need) => lens.find((n) => axleLen(n) >= need - 1e-9) ?? null;
-// ── THE DRIVE (BUILT §312 L1b) ───────────────────────────────────────────────
-// Nothing reaches the escape arbor along its own axis. In front of the wheel
-// stand the pallets, and behind the escape columns the BACK KNIFE stands on the
-// arbor's line: the arbor runs at the apex less vW (10.4 mm), and the knife's
-// 3044b and the top of its stack fill the 9.6 mm under the apex, 1.6 mm into the
-// arbor's section (the clock measured it, `lineExits`). And the knife cannot move
-// off that line, because it IS the balance's pivot. So when a going train drives
-// the escapement (the clock cell), it does so through a TRANSFER: a gear keyed on
-// the escape arbor behind the mass gears, meshing an equal gear on an INPUT
-// axle beside it, which runs back past the back knife and out of its own two
-// Technic bricks, open behind.
-//   · 1:1, so the arbor keeps the rate the row delivers (RATE_TABLE's law).
-//   · ONE mesh, so the input turns the arbor's opposite way. The clock takes that
-//     by the module's turn, because no module's turn changes a ratio inside it.
-//   · The reach: the input axle passes the knife's 1×2 stack (±knifeHalfSpan
-//     about the line) with its 1×1 columns standing beside it, which is a
-//     half stud more than the span. That is more than the axle's own corridor
-//     (the span, the axle's half width and AX_CLEAR: 10.8 mm).
-//   · The pair: of the parallel 1:1 meshes every catalogue carries, the fewest
-//     teeth at that reach. The transfer slab stands an AX_CLEAR behind the mass
-//     gears (and the escape columns), so neither gear meets a mass.
-// The arbor's new end pushes the back knife two studs back and the crossbar
-// grows from 10L to 12L, which moves the cell's balance out of RATE_BAND; so the
-// balance the drive carries is solved again on this frame (TECHNIC_BALANCE_DRIVE).
-// tools/probe-technic-escapement-drive.mjs holds the variant.
-export function solveDrive() {
-  const reach = E.knifeHalfSpan + Math.max(HALF, D.axleR + AX_CLEAR);
-  const cats = Object.values(CATALOGUES).filter(Boolean);           // the LEGO catalogues (the steel's is null)
-  const shared = (c) => cats.every((cat) => cat.counts.some((d) => d.teeth === c.teeth && d.part === c.part && d.kind === c.kind));
-  let best = null;
-  for (const c of cats[0].counts) {
-    if (c.slips || c.kind !== 'spur' || !shared(c)) continue;
-    const m = catalogueMesh(c, c, cats[0]);
-    if (m?.class !== 'parallel' || m.cd < reach - 1e-9) continue;
-    if (!best || c.teeth < best.teeth) best = { teeth: c.teeth, part: c.part, cd: m.cd };
-  }
-  return best && { ...best, reach };
-}
-export function frameEscapement(spec = TECHNIC_ESCAPEMENT, bal = TECHNIC_BALANCE, { drive = false } = {}) {
+// §315 — THE ESCAPEMENT IN A GOING TRAIN (src/technic-train.js) takes three options, each a position-space
+// fold that moves no part of the balance or the anchor (so the period and the cycle are §287's):
+//   · `x0`, the knife line. The train lands the escape arbor on whatever x its meshes reach, and every
+//     catalogue centre distance it uses keeps x ≡ 0 (mod 8) from the centre arbor's, so the line may be ON
+//     the stud grid. A 1×2 stack centred on a stud stands half a stud off the grid: its bottom plate is a
+//     1×2 JUMPER (3794b, the frame's own half-stud part) along x, its one stud under the stack's −x anti-stud.
+//     The escape arbor's columns, on a stud, stand on 1×1 plates.
+//   · `zE`, the escape arbor's height: the train drives the escape wheel from straight below (a 24:8 mesh is
+//     16 mm, five plates), so the arbor stands where the train puts it, raised by whole plates from the lowest.
+//   · `driveZ`, the drive's bearings at that height, under the anchor: a 1×2 Technic brick (`driveBrick`, the
+//     train's part) in the FRONT knife's stack and a second 1×1 Technic brick in the front escape column. The
+//     drive's axle is threaded through the knife's hole from in front, before the balance is hung (between the two
+//     knives it could not be: they shut both ends of its line, and the gap between the front knife and the escape
+//     columns is shorter than the axle — the steps' swept insertion found it). `driveFrom: 'back'` turns that
+//     round: the 1×2 Technic brick in the BACK knife's stack and a hole in both escape columns, the axle threaded
+//     from behind through all three (the classic going train's line in front runs into its fusee).
+export function frameEscapement(spec = TECHNIC_ESCAPEMENT, bal = TECHNIC_BALANCE, { x0: X0 = ESC_X0, zE: zWant = null, driveZ = null, driveBrick = null, driveFrom = 'front' } = {}) {
   const ra = E.axleReach, tip40 = GEAR_TIP_MM[ESCAPEMENT_PARTS.mass];
   // ── heights: the lowest knife whose balance clears the baseplate's studs
   // (its lowest point, the bob's 40T or a mass 40T, at the posed swing's
@@ -696,7 +670,14 @@ export function frameEscapement(spec = TECHNIC_ESCAPEMENT, bal = TECHNIC_BALANCE
   const lowest = Math.max(bal.bob.length ? bobV + tipB : -Infinity, bal.masses.length ? -ra + massU * Math.sin(sw) + tipM : -Infinity, spec.vA + E.armHalfWidth, spec.vW + GEAR_TIP_MM[spec.wheelPart]);
   let n = 1;
   while (D.plateH * n + E.knifeH < lowest + D.studH + AX_CLEAR) n++;
+  if (zWant !== null) {
+    const nw = Math.round((zWant + spec.vW - E.knifeH) / D.plateH);
+    if (Math.abs(D.plateH * nw + E.knifeH - spec.vW - zWant) > 1e-6) return { framed: false, reason: `an escape arbor at ${zWant} mm puts the knife off the plate lattice` };
+    if (nw < n) return { framed: false, reason: `an escape arbor at ${zWant} mm hangs the balance under the stud tops (it needs ${r6(D.plateH * n + E.knifeH - spec.vW)})` };
+    n = nw;
+  }
   const zK = r6(D.plateH * n + E.knifeH), zE = r6(zK - spec.vW);
+  if (mod(X0, D.stud / 2) !== 0) return { framed: false, reason: `a knife line at x ${X0} is on neither the stud grid nor its half` };
   const m = Math.round((zE - D.holeZ - D.plateH) / D.plateH);
   if (Math.abs(D.plateH * (1 + m) + D.holeZ - zE) > 1e-6) return { framed: false, reason: `the escape arbor at ${zE} mm is not a column's hole height` };
   // ── slabs along y
@@ -754,24 +735,10 @@ export function frameEscapement(spec = TECHNIC_ESCAPEMENT, bal = TECHNIC_BALANCE
   if (!anchorAxle || (B && !bobAxle)) return { framed: false, reason: 'an axle on the knife\'s line is past the longest axle' };
   // the escape columns on the stud grid behind the wheel
   const e1 = Math.ceil((Ww.y1 + AX_CLEAR + HALF) / D.stud) * D.stud, e2 = e1 + D.stud;
-  // the drive's transfer slab (§312 L1b): behind the mass gears and the escape columns
-  const dr = drive ? solveDrive() : null;
-  if (drive && !dr) return { framed: false, reason: 'no 1:1 mesh reaches past the back knife' };
-  const T = dr ? (() => { const y0 = r6(Math.max(Gb ? Gb.y1 : Ww.y1, e2 + HALF) + AX_CLEAR); return { name: 'transfer', y0, y1: r6(y0 + 2 * E.gearHalf) }; })() : null;
-  // the escape arbor: from the wheel's front face back through both columns (and the transfer gear)
-  const eNeed = Math.max(e2 + HALF, T ? T.y1 : -Infinity) - Ww.y0, eN = axleCovering(eNeed);
-  if (eN === null) return { framed: false, reason: `the escape arbor needs ${eNeed.toFixed(1)} mm, past the longest axle` };
-  const escAxle = { shaft: 'escape', x: ESC_X0, z: zE, y0: Ww.y0, y1: r6(Ww.y0 + axleLen(eN)), part: AXLE_PARTS[eN], lenStuds: eN };
+  // the escape arbor: from the wheel's front face back through both columns
+  const eNeed = e2 + HALF - Ww.y0, eN = axleCovering(eNeed);
+  const escAxle = { shaft: 'escape', x: X0, z: zE, y0: Ww.y0, y1: r6(Ww.y0 + axleLen(eN)), part: AXLE_PARTS[eN], lenStuds: eN };
   const r2 = Math.ceil((escAxle.y1 + AX_CLEAR + HALF) / D.stud) * D.stud;
-  // the input axle: from the transfer slab back through its own two columns, beside the back knife
-  let driveFrame = null;
-  if (dr) {
-    const xI = r6(ESC_X0 + dr.cd), i1 = Math.ceil((T.y1 + AX_CLEAR + HALF) / D.stud) * D.stud, i2 = i1 + D.stud;
-    const iN = axleCovering(i2 + HALF - T.y0);
-    if (iN === null) return { framed: false, reason: 'the drive\'s input axle is past the longest axle' };
-    driveFrame = { teeth: dr.teeth, part: dr.part, cd: dr.cd, reach: dr.reach, x: xI, slab: T, columns: [i1, i2],
-      axle: { shaft: 'drive', x: xI, z: zE, y0: T.y0, y1: r6(T.y0 + axleLen(iN)), part: AXLE_PARTS[iN], lenStuds: iN } };
-  }
   // the crossbar: from R1's front face to R2's back face, the shortest that spans
   // (from the frontmost arm's front face when the gears hang ahead of the front knife, §305)
   const c0 = reachesBar ? Math.min(...[B, M1].filter((s) => s && s.y1 <= -HALF).map((s) => s.y0)) : -HALF;
@@ -783,35 +750,45 @@ export function frameEscapement(spec = TECHNIC_ESCAPEMENT, bal = TECHNIC_BALANCE
   if (massAxles.some((a) => !a)) return { framed: false, reason: 'a mass axle is past the longest axle' };
   if (behind && Math.max(Gb.y1, ...massAxles.map((a) => a.y1)) > crossbar.y1) return { framed: false, reason: 'the mass gears stand past the crossbar\'s end' };
   // ── columns: the knives (1×2 stacks, the 3044b on top) and the escape arbor's
+  const onStud = mod(X0, D.stud) === 0;
+  if (driveZ !== null && !driveBrick) return { framed: false, reason: 'a drive hole needs the 1×2 Technic brick that carries it in a knife' };
+  if (!['front', 'back'].includes(driveFrom)) return { framed: false, reason: `the drive is threaded from the front or the back, not ${driveFrom}` };
+  // the front knife's drive brick: plate heights from the stack's bottom plate to it, and from it to the knife
+  const kD = driveZ === null ? null : Math.round((driveZ - D.holeZ - D.plateH) / D.plateH), kUp = kD === null ? null : n - 1 - kD - 3;
+  if (kD !== null && (Math.abs(D.plateH * (1 + kD) + D.holeZ - driveZ) > 1e-6 || kD < 0 || kUp < 0)) return { framed: false, reason: `a drive hole at ${driveZ} mm is not a brick's hole height in the knife's stack` };
   const knifeCol = (end, yc) => {
     const units = n;                                                // plate heights under the knife
     const boxes = [];
     let zz = 0;
-    const push = (part, h) => { boxes.push({ part, x0: ESC_X0 - D.stud, x1: ESC_X0 + D.stud, y0: yc - HALF, y1: yc + HALF, z0: r6(zz), z1: r6(zz + h) }); zz += h; };
-    push(ESCAPEMENT_PARTS.stackPlate, D.plateH);
-    const k = Math.floor((units - 1) / 3), p = units - 1 - 3 * k;
-    for (let i = 0; i < p; i++) push(ESCAPEMENT_PARTS.stackPlate, D.plateH);
-    for (let i = 0; i < k; i++) push(ESCAPEMENT_PARTS.stackBrick, D.brickH);
-    boxes.push({ part: ESCAPEMENT_PARTS.knife, knife: true, x0: ESC_X0 - E.knifeHalfSpan, x1: ESC_X0 + E.knifeHalfSpan, y0: yc - E.knifeHalfLength, y1: yc + E.knifeHalfLength, z0: r6(zz), z1: r6(zz + E.knifeH) });
-    return { shaft: 'knife', end, x: ESC_X0, y: yc, boxes, apex: r6(zz + E.knifeH) };
+    const push = (part, h, dx = 0, extra = {}) => { boxes.push({ part, x0: X0 + dx - D.stud, x1: X0 + dx + D.stud, y0: yc - HALF, y1: yc + HALF, z0: r6(zz), z1: r6(zz + h), ...(dx ? { jumper: true } : {}), ...extra }); zz += h; };
+    // on a stud, the stack's bottom plate is a jumper half a stud toward −x (its stud under the −x anti-stud)
+    if (onStud) push(FRAME_PARTS.jumper1x2, D.plateH, -HALF);
+    else push(ESCAPEMENT_PARTS.stackPlate, D.plateH);
+    const fill2 = (m2) => { const k = Math.floor(m2 / 3), p = m2 - 3 * k; for (let i = 0; i < p; i++) push(ESCAPEMENT_PARTS.stackPlate, D.plateH); for (let i = 0; i < k; i++) push(ESCAPEMENT_PARTS.stackBrick, D.brickH); };
+    if (kD !== null && end === driveFrom) { fill2(kD); push(driveBrick, D.brickH, 0, { hole: true, drive: true }); fill2(kUp); }
+    else fill2(units - 1);
+    boxes.push({ part: ESCAPEMENT_PARTS.knife, knife: true, x0: X0 - E.knifeHalfSpan, x1: X0 + E.knifeHalfSpan, y0: yc - E.knifeHalfLength, y1: yc + E.knifeHalfLength, z0: r6(zz), z1: r6(zz + E.knifeH) });
+    return { shaft: 'knife', end, x: X0, y: yc, boxes, apex: r6(zz + E.knifeH) };
   };
-  const arborCol = (end, yc, x0 = ESC_X0, shaft = 'escape') => {
-    const onGrid = mod(x0, D.stud) === 0;
-    const stack = [{ part: onGrid ? FRAME_PARTS.plate1x1 : FRAME_PARTS.jumper1x2, h: D.plateH, dx: onGrid ? HALF : D.stud }];
-    const k = Math.floor(m / 3), p = m - 3 * k;
-    for (let i = 0; i < p; i++) stack.push({ part: FRAME_PARTS.plate1x1, h: D.plateH, dx: HALF });
-    for (let i = 0; i < k; i++) stack.push({ part: FRAME_PARTS.brick1x1, h: D.brickH, dx: HALF });
+  // plates and bricks for `m` plate heights, bricks where three plates would stand
+  const fill = (stack, m2) => { const k = Math.floor(m2 / 3), p = m2 - 3 * k; for (let i = 0; i < p; i++) stack.push({ part: FRAME_PARTS.plate1x1, h: D.plateH, dx: HALF }); for (let i = 0; i < k; i++) stack.push({ part: FRAME_PARTS.brick1x1, h: D.brickH, dx: HALF }); };
+  // the drive's hole, when asked: plate heights from the bottom plate's top to it, and from its brick's top to the arbor's
+  const mD = driveZ === null ? null : Math.round((driveZ - D.holeZ - D.plateH) / D.plateH), mGap = mD === null ? null : m - mD - 3;
+  if (mD !== null && (Math.abs(D.plateH * (1 + mD) + D.holeZ - driveZ) > 1e-6 || mD < 0 || mGap < 0)) return { framed: false, reason: `a drive hole at ${driveZ} mm is not a column's hole height under the arbor's` };
+  const arborCol = (end, yc) => {
+    const stack = [{ part: onStud ? FRAME_PARTS.plate1x1 : FRAME_PARTS.jumper1x2, h: D.plateH, dx: onStud ? HALF : D.stud }];
+    if (mD !== null && (end === 'front' || driveFrom === 'back')) { fill(stack, mD); stack.push({ part: FRAME_PARTS.technicBrick1x1, h: D.brickH, dx: HALF, hole: true, drive: true }); fill(stack, mGap); }
+    else fill(stack, m);
     stack.push({ part: FRAME_PARTS.technicBrick1x1, h: D.brickH, dx: HALF, hole: true });
     let zz = 0;
-    const boxes = stack.map((s) => { const b = { part: s.part, x0: x0 - s.dx, x1: x0 + s.dx, y0: yc - HALF, y1: yc + HALF, z0: r6(zz), z1: r6(zz + s.h), hole: !!s.hole }; zz += s.h; return b; });
-    return { shaft, end, x: x0, y: yc, boxes, holeZ: r6(zz - D.brickH + D.holeZ) };
+    const boxes = stack.map((s) => { const b = { part: s.part, x0: X0 - s.dx, x1: X0 + s.dx, y0: yc - HALF, y1: yc + HALF, z0: r6(zz), z1: r6(zz + s.h), hole: !!s.hole, ...(s.drive ? { drive: true } : {}) }; zz += s.h; return b; });
+    return { shaft: 'escape', end, x: X0, y: yc, boxes, holeZ: r6(zz - D.brickH + D.holeZ), ...(mD !== null ? { driveZ: r6(driveZ) } : {}) };
   };
   const columns = [knifeCol('front', 0), arborCol('front', e1), arborCol('back', e2), knifeCol('back', r2)];
-  if (driveFrame) columns.push(...driveFrame.columns.map((yc, i) => arborCol(i ? 'back' : 'front', yc, driveFrame.x, 'drive')));
   const frame = {
-    key: 'escapement', gen: 'technic_classic', spec, bal, x0: ESC_X0, zK, zE, plates: n, columnPlates: m,
+    key: 'escapement', gen: 'technic_classic', spec, bal, x0: X0, zK, zE, plates: n, columnPlates: m, ...(driveZ !== null ? { driveZ: r6(driveZ), driveFrom } : {}),
     slabs: { G, B, M1, M2, D: Dp, P1, P2, W: Wp, wheel: Ww, Gb }, behind, shareFront,
-    crossbar, massAxles, bobAxle, anchorAxle, escAxle, columns, drive: driveFrame,
+    crossbar, massAxles, bobAxle, anchorAxle, escAxle, columns,
   };
   const xs = columns.flatMap((c) => c.boxes.flatMap((b) => [b.x0, b.x1])), ys = columns.flatMap((c) => c.boxes.flatMap((b) => [b.y0, b.y1]));
   frame.base = { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
@@ -843,42 +820,25 @@ export function framedBalance(frame, lib) {
 // about the knife's apex line, and the ESCAPE ARBOR, turning θ about its axis.
 const fr = (x, y, z) => [L(x), -L(z), L(y)];
 const at = (X, Y, Z, r = I3) => [X, Y, Z, ...r];
-// ldrawBuild's mesh law (Na·A + Nb·(B − π) ≡ π, each tooth angle measured off its part) solved for the
-// second gear: the angle of the body at `oB` whose gear `gB` meshes `gA` on the body at `oA` standing at phiA
-const phaseMemo = new WeakMap();
-const toothAt = (lib, g) => { let m = phaseMemo.get(lib); if (!m) phaseMemo.set(lib, m = new Map()); const k = `${g.part}/${g.teeth}`; if (!m.has(k)) m.set(k, toothPhase(lib, g.part, g.teeth).theta); return m.get(k); };
-export function meshPhase(lib, oA, gA, phiA, oB, gB) {
-  const toB = Math.atan2(oB[1] - oA[1], oB[0] - oA[0]);
-  const a = phiA + toothAt(lib, gA) - toB, b = (Math.PI - gA.teeth * a) / gB.teeth;
-  return b + toB + Math.PI - toothAt(lib, gB);
-}
 export function escapementBuild(frame, lib, { alpha = 0, theta = 0 } = {}) {
   const statics = [];
   const midX = L((frame.base.x0 + frame.base.x1) / 2), midZ = L((frame.base.y0 + frame.base.y1) / 2);
   const snap = (v) => Math.round((v - 10) / 20) * 20 + 10;
   const studs = Math.max(frame.base.studsX, frame.base.studsY) + 1;
   statics.push({ role: 'baseplate', part: studs <= 16 ? FRAME_PARTS.baseplate16 : '3811', m: at(snap(midX), 0, snap(midZ)) });
-  const roleOf = (p) => (p === FRAME_PARTS.technicBrick1x1 ? 'technicBrick' : p === ESCAPEMENT_PARTS.knife ? 'knife' : p === FRAME_PARTS.brick1x1 || p === ESCAPEMENT_PARTS.stackBrick ? 'brick' : 'plate');
+  const roleOf = (p, b) => (p === FRAME_PARTS.technicBrick1x1 || (b.hole && b.drive) ? 'technicBrick' : p === ESCAPEMENT_PARTS.knife ? 'knife' : p === FRAME_PARTS.brick1x1 || p === ESCAPEMENT_PARTS.stackBrick ? 'brick' : 'plate');
   for (const c of frame.columns) for (const b of c.boxes)
-    statics.push({ role: roleOf(b.part), part: b.part, m: at(L((b.x0 + b.x1) / 2), -L(b.z1), L((b.y0 + b.y1) / 2), b.knife ? KNIFE : I3) });
+    statics.push({ role: roleOf(b.part, b), part: b.part, m: at(L((b.x0 + b.x1) / 2), -L(b.z1), L((b.y0 + b.y1) / 2), b.knife ? KNIFE : I3) });
   // the balance: origin on the knife's apex line (y = 0 there), each part at
   // its body-frame place — (u, v, w) mm is LDraw (X, Y, Z)/0.4 about the origin
   const body = framedBalance(frame, lib).map((p) => ({ role: p.role === 'crossbar' ? 'axle' : p.role, part: p.part, m: [L(p.m[0]), L(p.m[1]), L(p.m[2]), ...p.m.slice(3)] }));
   const balance = { shaft: 'balance', origin: fr(frame.x0, 0, frame.zK), phi: alpha, speed: 0, parts: body };
-  const ea = frame.escAxle, dv = frame.drive;
+  const ea = frame.escAxle;
   const arbor = { shaft: 'escape', origin: fr(frame.x0, 0, frame.zE), phi: theta, speed: 0, parts: [
     { role: 'axle', part: ea.part, m: at(0, 0, L((ea.y0 + ea.y1) / 2), X2Z) },
     { role: 'wheel', part: frame.spec.wheelPart, teeth: frame.spec.teeth, m: at(0, 0, L((frame.slabs.wheel.y0 + frame.slabs.wheel.y1) / 2)) },
   ] };
-  if (!dv) return { key: 'escapement', gen: frame.gen, statics, shafts: [balance, arbor], meshes: [], modes: ['swing'] };
-  // §312 L1b: the transfer gear on the arbor, and the input body phased to mesh it by the build's own law
-  const tz = L((dv.slab.y0 + dv.slab.y1) / 2), gear = { role: 'spur', part: dv.part, teeth: dv.teeth, m: at(0, 0, tz) };
-  arbor.parts.push(gear);
-  const origin = fr(dv.x, 0, frame.zE);
-  const input = { shaft: 'drive', origin, phi: meshPhase(lib, arbor.origin, gear, theta, origin, gear), speed: 0, parts: [
-    { role: 'axle', part: dv.axle.part, m: at(0, 0, L((dv.axle.y0 + dv.axle.y1) / 2), X2Z) }, { ...gear },
-  ] };
-  return { key: 'escapement', gen: frame.gen, statics, shafts: [balance, arbor, input], meshes: [{ a: 1, ga: 2, b: 2, gb: 1 }], modes: ['swing'] };
+  return { key: 'escapement', gen: frame.gen, statics, shafts: [balance, arbor], meshes: [], modes: ['swing'] };
 }
 
 // ── THE CYCLE THE PAGE DRAWS ────────────────────────────────────────────────

@@ -509,7 +509,9 @@ console.log('\nPAGE');
   ok(seeded(page).length === 0, `technic.html seeds no build for: ${seeded(page)}`);
   control('a page with the fusee seed removed is caught', seeded(page.replace(/seedBuild\(lib, gen, 'fusee'[^;]*;/, '')).includes('fusee'));
   ok(/import \{[^}]*bomForCell[^}]*\} from '\.\/src\/technic-bom\.js'/.test(page) && /makePartPictures/.test(page), 'technic.html does not import the parts list');
-  ok(/for \(const c of Object\.keys\(cellReg\)\) addBomDetails\(c, gen\)/.test(page), 'technic.html does not give every built cell a parts list');
+  // (§312 L1 walks the parts list's own roster, cellIds(), not every registered cell: the clock cell is registered and
+  // has no list yet; addBomDetails skips a cell that was not built)
+  ok(/for \(const c of cellIds\(\)\) addBomDetails\(c, gen\)/.test(page) && /import \{[^}]*cellIds[^}]*\} from '\.\/src\/technic-bom\.js'/.test(page), 'technic.html does not give every built cell a parts list');
   // every carousel stop's cell has a BOM
   const run = solveFusee(TECHNIC_FUSEE_SPRING).best, ff = frameFusee(), al = frameAlarm(), es = frameEscapement();
   for (const gen of B.GENERATIONS) {

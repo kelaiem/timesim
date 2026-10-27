@@ -62,7 +62,7 @@ async function download(id) {
   return { name: dl.suggestedFilename(), text: readFileSync(await dl.path(), 'utf8') };
 }
 const planOf = (cell, mode) => { const { build } = B.buildOf(lib, 'technic_2026', cell); return T.deriveSteps(build, { lib, mode }); };
-const links = [['mpd-row-1', 'row-1'], ['mpd-row-2', 'row-2'], ['mpd-row-3', 'row-3'], ['mpd-row-4', 'row-4'], ['fmpd', 'fusee'], ['empd', 'escapement']];
+const links = [['mpd-row-1', 'row-1'], ['mpd-row-2', 'row-2'], ['mpd-row-3', 'row-3'], ['mpd-row-4', 'row-4'], ['fmpd', 'fusee'], ['empd', 'escapement'], ['tmpd', 'train']];
 for (const [id, cell] of links) {
   const have = await page.evaluate((id) => !!document.getElementById(id), id);
   if (!ok(have, `${cell}: the page has no #${id} link`)) continue;

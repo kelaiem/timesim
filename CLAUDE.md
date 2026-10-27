@@ -170,29 +170,25 @@ KNIFE EDGE (a cross axle on two 3044b apices) whose arms and gears are solved,
 its I and d read off the parts' SOLIDS (`partSolid`), to land the row's 1 s;
 `tools/probe-technic-escapement.mjs` holds the lattice survey (no 16T escapes),
 the beat, the lock against F2's play and the rate law. **Since §312 L1 the CELLS
-JOIN in one more** (`src/technic-clock.js`, display only, modelled): `TECHNIC_CLOCK`
-names each LINE as the two module bodies it makes one keyed axle (centre, fourth,
-escape, minute); `solveClockLayout` lifts each group to its highest line on whole
+JOIN in one more** (`src/technic-clock.js`, display only, modelled): since L1b its
+going group is §315's GOING TRAIN placed whole (fusee to escape wheel, joining no
+line, re-phased by nothing), beside the keyless works and the alarm. `TECHNIC_CLOCK`
+names each LINE as the two module bodies it makes one keyed axle (the minute axle
+is the alarm's hour axle); `solveClockLayout` lifts each group to its highest line on whole
 plates, re-foots a module half a stud over where a line pairs the grid classes (or
 runs it through a derived 8:8 × 12:12 half-stud ADAPTER where neither module can),
-slides the modules apart until their plans clear and keeps the fewest studs — its
-answer DECLARED in `CLOCK_PLACEMENT`, which the probe re-solves. **Since L1b the
-escapement is DRIVEN** there: nothing reaches its arbor along its axis (the back knife,
-the balance's pivot, stands on the arbor's line), so the clock builds its DRIVE variant
-(`frameEscapement`'s `drive`, `solveDrive`: a 12:12 transfer onto an input axle 12 mm
-over, past the back knife, on `TECHNIC_BALANCE_DRIVE`, the balance solved for that
-frame; the cell on the page stays undriven, and `probe-technic-escapement-drive.mjs`
-holds the variant apart from the cell's probe, the cell's substitutes judge). A joint
-reaches every part keyed on its line (the line's HOLD, which L1's brick-face joints
-missed twice), the going group is phased from the escapement with the fusee built at
-the ratchet angle that meshes (`fuseePhases`), and the train must drive the escape
-wheel the way it escapes (`goingSenseRule`, held by the search and the judge). The
-going train does not yet turn the hands (that slip is L2's).
-`tools/probe-technic-clock.mjs` holds the lifts, the lines and what they carry, every
-mesh in phase, the ratios and the sense, and CLEAR over the alarm's three × the keyless
-works' three states. The frame, ldraw, build,
-keyless, motion, fusee, fusee-loop, alarm, column-wheel, pusher, escapement,
-escapement-drive and clock probes are pure Node. **Since §294 a CAROUSEL walks the cells** (display only): its stops
+stands a module on no line as built, slides the modules apart until their plans
+clear and keeps the fewest studs — its answer DECLARED in `CLOCK_PLACEMENT`, which
+the probe re-solves and compares. A joint's far ends are the line's HOLD (its bricks
+and every part keyed on its body), because L1's, laid to the bricks, left two gears
+on no axle under a green probe. The going train does not yet turn the hands (that
+slip is L2's). `tools/probe-technic-clock.mjs` holds the lifts, the lines, every
+keyed part CARRIED on an axle, every mesh in phase, the ratios and CLEAR over the
+alarm's three × the keyless works' three
+states. The frame, ldraw, build,
+keyless, motion, fusee, fusee-loop, alarm, column-wheel, pusher, escapement, train and
+clock
+probes are pure Node. **Since §294 a CAROUSEL walks the cells** (display only): its stops
 are DERIVED from the cells `build()` made (`src/technic-carousel.js`, held by
 `probe-technic-carousel.mjs`; an unframed cell is skipped aloud), `?cell=<id>`
 opens one, and the page writes the URL only inside the tour. **Since §298 the page OPENS in the tour** at stop 1 (`initialTour`'s table: `?tour=0` or an explicit `?focus=` opens the overview as before, `?cell=` its stop); the browser half is
@@ -204,6 +200,32 @@ bob hangs in front of its front knife, the fusee detent clears the baseplate and
 its cone ends at its metal, and the step order holds a part its own group shuts in,
 presses pins into a held part off the model, never lowers a gear between two
 meshes and reads a pin's LIP as its press.
+**And since §315 the GOING TRAIN joins them** (`src/technic-train.js`, the ninth
+cell, one per generation): the fusee's great wheel → centre pinion → the
+`TECHNIC_FORK` rows → the 8T escape wheel under the recoil anchor and knife-edge
+balance, one framed LDraw build, its tooth counts read off the rows (2250:1
+both generations: classic (40:8)(16:8)(16:8)(24:8)(40:8)(40:16)(24:8), 2026
+(40:8)(24:8)(40:8)(64:16)(40:16)(24:8)). The escape row is REORDERED, (40:16)
+then (24:8), because no 16T fits on the escape arbor: the 8T IS the escape wheel,
+driven from straight below by a DRIVE arbor borne in a 1×2 Technic brick (3700)
+in a knife's stack and the escape columns' holes, threaded from in front (2026) or,
+where the line in front runs into the fusee, from behind (classic); the solve holds
+that WAY IN clear. Lattice parity
+puts the knife line on a stud, so both knife stacks stand on 1×2 jumpers.
+`solveTrain` walks the lattice (moves, layer steps, column choices, the centre
+driver's side, the drive's layer and the escapement turned half round) under
+the rows' law within the train and `TRAIN_CLEAR` against everything else, one
+arbor to an axle line, and ranks by baseplate (16/32/48 studs, 4186 vendored),
+contacts, parts; the DECLARED layout `TECHNIC_TRAIN` is the first ranked one
+whose derived steps the swept insertion clears, and the probe re-derives that.
+ONE STATE drives every angle: the balance's posed swing sets the escape wheel's
+recoil-included angle and every arbor, the great wheel and §282's fusee loop
+follow it through the tooth counts (`trainPose`). The going time per wind is
+~6.6 h, read through the fusee's cone run under the POSED spring law. The swing
+is POSED (landing 2 drives it; landing 3 integrates the dynamics).
+`tools/probe-technic-train.mjs` holds the chain, the solve, the frame, the
+build (seated, through, meshed, phased), the rate, the state and the clearance,
+each with a control.
 **Since §300 each build has a PARTS LIST** (`src/technic-bom.js`) **and since
 §302 a STEP ORDER** (`src/technic-steps.js`, pure): the placements partitioned
 into steps by rules read off the placements (columns bottom-up, a part held in
@@ -1345,7 +1367,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 363 measuring scripts and this file names 71. The rest are named for the
+`tools/` holds 367 measuring scripts and this file names 73. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -1362,7 +1384,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **245 of
+The index also carries the split that decides how to read a result: **249 of
 them are ACCEPTANCE tests** that exit non-zero, and **118 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
