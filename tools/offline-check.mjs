@@ -404,7 +404,9 @@ try {
   // ./src/ URL, technic-parts.mpd's precedent). Its other modules (gong-solve.js, gong-seats.js, layout.js) are the
   // app's. The count also catches a mis-listed bench seed (drop it from ADOPTED and this reads 105, and the bench's
   // offline boot below fails).
-  check('release: precache complete', counts === 108, `${counts}/108`);
+  // §312 L1 — 109: src/technic-clock.js, the cells joined into one clock, imported statically by technic.html. One
+  // module, so it adds one.
+  check('release: precache complete', counts === 109, `${counts}/109`);
 
   // ---- offline: the whole point ----
   mark('offline: booting the documents');
