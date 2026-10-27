@@ -261,6 +261,7 @@
       d4: 'd4',                         // §94 tier A — centre→fourth distance: the small-seconds station, in movement units
       rsvr: 'rsvr',                     // §94 tier C — the power-reserve station's radius, dial-local, in movement units
       rsvaz: 'rsvAzDeg',                // §308 L4 option A — the power-reserve station's azimuth, dial-clock degrees (0 = 12 o'clock, clockwise from the front); with rsvr a polar station
+      arrangement: { field: 'arrangement', parse: String }, // §314 — 'designed' builds the designed train; absent, every build takes layout.js' ARRANGEMENT unless the URL names one of its keys. Read by SPEC, never a spec field itself, so it never enters a configKey
       rsvidl: 'rsvIdlers',              // §313 — idler PAIRS between the reserve train's p1 and w2 (0, 2, 4 or 6 idlers), for a station farther from the barrel than two meshes reach; null = the two-stage train as designed
       rsvsweep: 'rsvSweepDeg',          // §308 L4 option A — the reserve hand's graduated sweep, degrees (the reduction train re-solves from it; null = 300)
       alarmr: 'alarmr',                 // §98 — the alarm corner's radius, in movement units (§76's pin)

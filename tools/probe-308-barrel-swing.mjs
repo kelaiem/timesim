@@ -17,7 +17,8 @@
 // nothing else did.
 //
 // Builds and gates:
-//   R   the ROUND build, no spec: boots SILENT (the arranged-train branches are
+//   R   the ROUND build as designed (`?arrangement=designed`, §314 — the bare
+//       URL is the arrangement now): boots SILENT (the arranged-train branches are
 //       never taken on the designed train; the battery's fingerprint gate holds
 //       the bytes — the hash is reported here, not gated).
 //   D   the DESIGNED rect at its fitted outline: its warning set is the known
@@ -75,13 +76,13 @@ const FITTED = {   // each build's own fitted outline (FORM_FOOTPRINT.rect of a 
   A: [-45.96, 45.72, -43.91, 51.41],
 };
 const BUILDS = [
-  { id: 'R', name: 'round, as designed', q: '' },
+  { id: 'R', name: 'round, as designed', q: 'arrangement=designed' },   // §314: the bare round build is the arrangement now
   // E — the designed values written OUT: every arranged-train branch is taken
   // at a turn of float noise (the stem's atan2 lands 1e-14 off 145°), so this is
   // the round build to that noise, and it must be silent (gated) — the branches
   // reproduce the design, they do not merely skip it.
   { id: 'E', name: 'round, designed values explicit', q: 'barrelstep=-35&rsvaz=0&alarmmod=40' },
-  // a form case defaults to the arrangement since layout.js' FORM_ARRANGEMENT, so the designed train is spelled out
+  // a form case defaults to the arrangement since layout.js' ARRANGEMENT, so the designed train is spelled out
   { id: 'D', name: 'rect, as designed', q: `case=rect&barrelstep=-35&rsvaz=0&alarmmod=40&gong=arc&formrect=${FITTED.D.join(',')}` },
   { id: 'S', name: 'rect, barrel swung', q: `case=rect&barrelstep=${SWING.barrelstep}&rsvaz=35&gong=arc&formrect=${FITTED.S.join(',')}` },
   { id: 'A', name: 'rect, swing + module 80°', q: `case=rect&barrelstep=${SWING.barrelstep}&rsvaz=${SWING.rsvaz}&alarmmod=${SWING.alarmmod}&gong=arc&formrect=${FITTED.A.join(',')}` },

@@ -12,11 +12,11 @@
 // because every one of the failures below announced itself as a boot warning.
 //
 // Builds and gates:
-//   R   the ROUND build, no spec: boots SILENT, the reserve at 12 on the
-//       designed two-stage train (the fingerprint is reported, not gated; the
+//   R   the ROUND build as designed (`?arrangement=designed`, §314): boots
+//       SILENT, the reserve at 12 on the designed two-stage train (the fingerprint is reported, not gated; the
 //       battery holds the bytes).
-//   N   the round build ON the arrangement (barrelstep 0, rsvaz 0, alarmmod 60,
-//       rsvidl 6): SILENT; the reserve station on the 12 o'clock axis; six
+//   N   the round DEFAULT, the arrangement since §314 (barrelstep 0, rsvaz 0,
+//       alarmmod 60, rsvidl 6), and S the same spelled out — one fingerprint: SILENT; the reserve station on the 12 o'clock axis; six
 //       idlers cut; the arming fixed point read off its own table row.
 //   F-* each form case at its DEFAULT (the arrangement, its committed bar seat), booted
 //       at that seat's fitted `formrect=` (a plain boot cuts a provisional outline):
@@ -35,7 +35,7 @@ import { readFile } from 'node:fs/promises';
 import { join, extname, normalize, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
-import { UNIT_MM, CASE_CLEAR, CASE_BAND_T, CASE_WIDTH_MAX, FORM_ARRANGEMENT } from '../src/layout.js';
+import { UNIT_MM, CASE_CLEAR, CASE_BAND_T, CASE_WIDTH_MAX, ARRANGEMENT } from '../src/layout.js';
 import { GONG_SEATS } from '../src/gong-seats.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -45,12 +45,13 @@ const fails = [];
 const ok = (name, cond, detail = '') => { console.log(`${cond ? 'PASS' : 'FAIL'}  ${name}${detail ? ` — ${detail}` : ''}`); if (!cond) fails.push(name); };
 
 // the arrangement as a URL carries it, READ from layout.js (a typed copy would drift)
-const A = FORM_ARRANGEMENT;
+const A = ARRANGEMENT;
 const ARR = `barrelstep=${A.barrelStepDeg}&rsvaz=${A.rsvAzDeg}&alarmmod=${A.alarmModAzDeg}&rsvidl=${A.rsvIdlers}`;
 const LINK_REFUSED = /§308: the turned module refuses the link's measured site/;
 const BUILDS = [
-  { id: 'R', name: 'round, as designed', q: '' },
-  { id: 'N', name: 'round, on the arrangement', q: ARR },
+  { id: 'R', name: 'round, as designed', q: 'arrangement=designed' },   // §314: the bare URL is the arrangement
+  { id: 'N', name: 'round, its default (the arrangement)', q: '' },
+  { id: 'S', name: 'round, the arrangement spelled out', q: ARR },
   { id: 'F-rect', name: 'rect, its default', q: `case=rect&formrect=${GONG_SEATS.rect.bar.formrect.join(',')}`, form: true },
   { id: 'F-cushion', name: 'cushion, its default', q: `case=cushion&formrect=${GONG_SEATS.cushion.bar.formrect.join(',')}`, form: true },
   { id: 'F-tonneau', name: 'tonneau, its default', q: `case=tonneau&formrect=${GONG_SEATS.tonneau.bar.formrect.join(',')}`, form: true },
@@ -105,9 +106,11 @@ async function boot(q) {
 const casedMm = (rect) => 2 * (Math.max(-rect[0], rect[1]) + CASE_CLEAR + CASE_BAND_T) * UNIT_MM;
 const CAP_MM = 2 * CASE_WIDTH_MAX * UNIT_MM;
 const at12 = (t) => Math.abs(t.station.x) < 1e-9 && t.station.y > 0;
+const got = {};
 for (const b of run) {
   console.log(`\n== ${b.id}  ${b.name}  ?${b.q}`);
   const r = await boot(b.q);
+  got[b.id] = r;
   if (r.bootError) { ok(`${b.id} boots`, false, r.bootError); continue; }
   const t = r.train;
   console.log(`   fingerprint ${r.fingerprint.hash}; station (${t.station.x.toFixed(4)}, ${t.station.y.toFixed(4)}); train ${t.p0}:${t.w1}, ${t.p1}:${t.w2}, ${t.idlers} × ${t.idlerTeeth} idlers, module ${t.module1.toFixed(4)}, swing ${t.swingDeg.toFixed(2)}°; arming ${r.arming.quoted} mN (tabled ${r.arming.tabled})`);
@@ -129,6 +132,8 @@ for (const b of run) {
     ok(`${b.id}: cased width hands-centred under the cap`, casedMm(r.form.rect) <= CAP_MM, `${casedMm(r.form.rect).toFixed(2)} ≤ ${CAP_MM.toFixed(2)} mm`);
   }
 }
+if (got.N && got.S && !got.N.bootError && !got.S.bootError)
+  ok('N = S: the default IS the arrangement spelled out (one fingerprint)', got.N.fingerprint.hash === got.S.fingerprint.hash, `${got.N.fingerprint.hash} / ${got.S.fingerprint.hash}`);
 await browser.close(); srv.close();
 console.log(`\n${fails.length ? `FAIL ${fails.length}: ${fails.join('; ')}` : 'ALL PASS'}`);
 process.exit(fails.length ? 1 : 0);

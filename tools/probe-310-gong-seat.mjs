@@ -51,7 +51,7 @@ import { join, extname, normalize, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as GS from '../src/gong-solve.js';
 import { GONG_SEATS } from '../src/gong-seats.js';
-import { configKey, SPEC, FORM_ARRANGEMENT } from '../src/layout.js';
+import { configKey, SPEC, ARRANGEMENT } from '../src/layout.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fails = [];
@@ -95,7 +95,7 @@ const ok = (name, cond, detail = '') => { console.log(`${cond ? 'PASS' : 'FAIL'}
     && Math.abs(GS.hullDist(sq, 2, 2) - Math.SQRT2) < 1e-12 && GS.hullDist(sq.slice().reverse(), 0.5, 0.5) === 0);
 }
 const rows = Object.values(GONG_SEATS).flatMap((k) => Object.values(k));
-ok('P4 every row names its spec and a readable curve', rows.length > 0 && rows.every((r) => r.specKey === configKey({ spec: { ...SPEC, ...FORM_ARRANGEMENT, caseShape: r.kind } })   // a form case is cased on the arrangement (layout.js)
+ok('P4 every row names its spec and a readable curve', rows.length > 0 && rows.every((r) => r.specKey === configKey({ spec: { ...SPEC, ...ARRANGEMENT, caseShape: r.kind } })   // a form case is cased on the arrangement (layout.js)
   && ['line', 'arc', 'spiral'].includes(r.curve.type) && r.formrect?.length === 4), `${rows.length} row(s)`);
 
 // ---- browser half

@@ -96,24 +96,25 @@ const RATE_TABLE = {
 // The row a rate's balance reads: its own, or the shipped movement's.
 const rateBalanceRow = (vph) => (RATE_TABLE[vph].rimF !== undefined ? RATE_TABLE[vph] : RATE_TABLE[18000]);
 export const FOURTH_MODULE_DEFAULT = 0.21; // the fourth⇄escape mesh's cut, the rows above's module when they carry none
-// THE FORM CASES' MOVEMENT (§308 landing 5, §313): a fitted form case is cased about the hands, and the designed
-// train cannot be — its alarm hammer sets the case's width on the crown's far side (x 43.2), over the owner's
-// 40 mm cap once the case is centred. The barrel swung to 180° (barrelstep 0) frees the alarm module's turn, and
-// the module turned 60° carries the strike group off the width (its seats, tools/gong-seats.mjs, fit every form
-// at 38.8–39.0 mm). §313 holds the power reserve at 12 o'clock, as designed: 22.4 u from the swung barrel against
-// the designed 14.7, past what two meshes reach without wheels over the setting route, so its train carries six
-// idlers (rsvIdlers), the fewest at which the alarm link keeps its measured site (two: −0.627, four: −0.148,
-// measured at 60°); and 60° is where that link misses the reserve (65°–75° and 85°–120° refuse it — §308
-// landing 5's 80° turn ran it through 12 o'clock). So a form case takes this arrangement unless the URL names
-// any of its keys; the ROUND build keeps the designed train (it is the one the battery sweeps, and nothing caps
-// its width). Written out as numbers, exactly as a URL would carry them, so a form build and the same build
-// spelled in full share one configKey.
-export const FORM_ARRANGEMENT = Object.freeze({ barrelStepDeg: 0, rsvAzDeg: 0, alarmModAzDeg: 60, rsvIdlers: 6 });
+// THE MOVEMENT'S ARRANGEMENT (§308 landing 5, §313, §314): the barrel swung to 180° (barrelstep 0), the alarm
+// module turned 60°, the power reserve held at 12 o'clock on six idlers. A fitted form case needs it — the designed
+// train's alarm hammer sets the case's width on the crown's far side (x 43.2), over the owner's 40 mm cap once the
+// case is centred, and the 60° module carries the strike group off the width (its seats, tools/gong-seats.mjs, fit
+// every form at 38.8–39.2 mm). §313 held the reserve at 12: 22.4 u from the swung barrel against the designed 14.7,
+// past what two meshes reach without wheels over the setting route, so its train carries six idlers (rsvIdlers),
+// the fewest at which the alarm link keeps its measured site (two: −0.627, four: −0.148, measured at 60°); and 60°
+// is where that link misses the reserve (65°–75° and 85°–120° refuse it). §314 made it EVERY build's default, the
+// round one too, so the movement the battery sweeps is the one the cases are cut for. A URL that names any of its
+// keys builds what it names; `?arrangement=designed` builds the designed train (every arrangement key null),
+// exactly as before §314. Written out as numbers, as a URL would carry them, so a default build and the same build
+// spelled in full share one configKey — and the `arrangement` marker itself is NOT a spec field, so the designed
+// train and its variants keep the configKeys they were validated under.
+export const ARRANGEMENT = Object.freeze({ barrelStepDeg: 0, rsvAzDeg: 0, alarmModAzDeg: 60, rsvIdlers: 6 });
 export const SPEC = (() => {
   const raw0 = (typeof globalThis !== 'undefined' && globalThis.__WATCH_SPEC) || {};
   const given = (v) => v !== undefined && v !== null && v !== '';
-  const raw = ['rect', 'cushion', 'tonneau'].includes(raw0.caseShape) && !Object.keys(FORM_ARRANGEMENT).some((k) => given(raw0[k]))
-    ? { ...raw0, ...FORM_ARRANGEMENT } : raw0;
+  const designed = raw0.arrangement === 'designed';
+  const raw = !designed && !Object.keys(ARRANGEMENT).some((k) => given(raw0[k])) ? { ...raw0, ...ARRANGEMENT } : raw0;
   const vph = RATE_TABLE[raw.vph] ? Number(raw.vph) : 18000;
   // Reserve clamped to what the STRUCTURE accepts: below ~12 h the fusee
   // loses its reason to exist; above 48 h the cone's groove stack (0.7 u per

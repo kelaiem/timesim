@@ -180,7 +180,7 @@ for (const kind of KINDS) {
     if (CUR_KEY && CUR_KEY !== first.seat.arrKey) { console.error(`  the arrangement key moved between kinds (${CUR_KEY} → ${first.seat.arrKey})`); failed = true; break; }
     if (!CUR_KEY) { CUR_KEY = first.seat.arrKey; committed = FILE.arranged[CUR_KEY] ?? {}; derived = JSON.parse(JSON.stringify(committed)); console.log(`  arrangement ${CUR_KEY}`); }
   }
-  // the row's spec key is the BUILD's own, read off the page: a form case is cased on layout.js' FORM_ARRANGEMENT,
+  // the row's spec key is the BUILD's own, read off the page: a form case is cased on layout.js' ARRANGEMENT,
   // which Node's SPEC (no URL) does not carry, so a key computed here would refuse every seat it wrote
   CUR_SPECKEY = first.seat?.specKey ?? null;
   const rows = {};
