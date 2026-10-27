@@ -1288,25 +1288,43 @@ const SPEC_POINTS = [
   // this arrangement by a local run alone, and a later landing could stop it
   // building with every gate green.
   //
-  // SWEPT, AND THE FIRST ROW THAT DECLARES ITS WARNINGS. It boots with three
-  // (the form plate's §186 seat fit and §261 depth, which every form build
-  // carries, and TODO 206's shared margin, landing 4's residue at every turned
-  // module), so `sweep: true` alone could never read it clean: the point judge
-  // read any warning as 'warns'. `expectWarns` names the set by prefix and
-  // both tiers hold it EXACTLY — the spec tier here (`expect: 'declared'`), the
-  // point tier in judgePoint — so a fourth warning fails the row and a
-  // declared row that stops firing fails it as stale. The three are filed
-  // debt about the case and the module, none a collision; the sweep is the
-  // collision claim, and its evidence row says the boot warns. The probe
-  // still holds the same set on the same build.
+  // THE FIRST ROW THAT DECLARED ITS WARNINGS. It boots with three (the form
+  // plate's §186 seat fit and §261 depth, which every form build carries, and
+  // TODO 206's shared margin, the designed fixed point at an arrangement with
+  // no row of its own), and `expectWarns` names the set by prefix: the spec
+  // tier holds it EXACTLY (`expect: 'declared'`), so a fourth warning fails
+  // the row and a declared row that stops firing fails it as stale.
   //
-  // `formrect=` is the arrangement's own fitted outline (FORM_FOOTPRINT's
-  // bounds, rounded outward), so the cut holds its metal and no provisional-
-  // cut artefact joins the warnings. The query is the probe's build A — the
-  // probe reads this row back and fails if the two have parted.
-  { name: 'arrangement-308', q: 'case=rect&barrelstep=0&rsvaz=36&alarmmod=80&gong=arc&formrect=-45.96,45.72,-43.91,51.41', expect: 'declared', sweep: true,
+  // NO LONGER SWEPT. It was the first form build swept, and its sweep read
+  // FINDING (TODO 274); then §310 landing 4 cased the form cases about the
+  // hands and §313 moved their default to a different arrangement (the
+  // reserve back at 12 on six idlers, the module at 60°), so this build is
+  // nobody's default and the swept form build is the one below. A boot keeps
+  // landing 5's arrangement building, at the cost of a boot rather than a
+  // sweep. The query is probe-308-barrel-swing.mjs's build A, which still
+  // holds the exact set; `formrect=` is its own metal-centred fit and
+  // `gong=arc` its case-path gong, both as landing 5 shipped them.
+  { name: 'arrangement-308', q: 'case=rect&barrelstep=0&rsvaz=36&alarmmod=80&gong=arc&formrect=-45.96,45.72,-43.91,51.41', expect: 'declared',
     expectWarns: ['§186: the rim-to-bore fit', '§261: cased assembly', 'TODO 206 arming spring: follower-B\'s seat sits at the nose\'s margin'],
-    why: '§308 landing 5 — barrel swung to 180°, reserve at 36°, alarm module at 80° on the fitted rect; the first FORM build swept, warning exactly its three declared rows (two form rows, TODO 206)' },
+    why: '§308 landing 5 — barrel swung to 180°, reserve at 36°, alarm module at 80° on its own fit; boots exactly its three declared rows (two form rows, TODO 206); no longer swept (the form default moved, §313)' },
+  // THE FORM CASES' DEFAULT, SWEPT. Since §310 landing 4 a form case builds
+  // the arrangement by default, and since §313 that arrangement is
+  // FORM_ARRANGEMENT (barrel at 180°, reserve at 12 on six idlers, module at
+  // 60°) with a seated bar gong, cased about the hands. This is the rect at
+  // its bar seat's fit — what `?case=rect` shows once the page has its fit —
+  // and so the build TODO 274's findings are about. It boots exactly the two
+  // rows every form build carries (probe-313-reserve-at-12.mjs's F-rect holds
+  // the same set on the same build, and reads this row back so the two cannot
+  // part). Its sweep is the collision claim; while it reads FINDING the build
+  // stays out of validated-configs.js and the page marks it unverified.
+  //
+  // `formrect=` is GONG_SEATS.rect.bar.formrect, written out because a spec
+  // row is a URL; the probe holds it equal to the generated seat, so a
+  // re-solved seat that moves the fit fails there rather than leaving this
+  // row on an outline nobody cuts.
+  { name: 'form-rect', q: 'case=rect&formrect=-45.96,45.96,-45.25,45.25', expect: 'declared', sweep: true,
+    expectWarns: ['§186: the rim-to-bore fit', '§261: cased assembly'],
+    why: '§310 landing 4 / §313 — the rect form case at its default (FORM_ARRANGEMENT, the bar seat) and that seat\'s fit; swept, booting exactly the two rows every form build carries' },
 ];
 
 // TODO 186 B1 — THE POINTS THE BATTERY SWEEPS, and what each costs.
@@ -1362,15 +1380,12 @@ const POINT_COSTS = {
   'studr=4.71': 233,      // 3 changed [Balance cock, Chain, Hairspring]
   'studr=7.1175': 287,    // 5 changed [Balance cock, Base plate, Chain, Fork cock, Hairspring]
   'route=2-leg': 155,     // 3 changed [Applied route, Base plate, Chain]
-  // §308 landing 5 — the arrangement is a FORM build: its plate, case, train
-  // and module all change against the round default, so its restriction
-  // reaches most of the movement and the point costs close to the default's
-  // own three sweeps. Measured on the 4-vCPU dev container that landed it,
-  // beside the default's three whole sweeps (1174 s: 59 changed, inspection
-  // 212, clearances 215, undeclaredClearance 703, against the default's 181 /
-  // 195 / 259 alone); only the order is evidence, and it is the longest by
-  // far, so LPT hands it out first.
-  'arrangement-308': 1174,
+  // The form default is a FORM build: its plate, case, train and module all
+  // change against the round default, so its restriction reaches most of the
+  // movement and the point costs close to the default's own three sweeps.
+  // PROVISIONAL: §308 landing 5's arrangement row measured 1174 s here (59
+  // changed) and this row replaces it; re-measured below before landing.
+  'form-rect': 1174,
 };
 {
   const named = new Set(SWEEP_POINTS.map((p) => p.name));

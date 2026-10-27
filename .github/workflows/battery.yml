@@ -637,7 +637,14 @@ jobs:
           # (from its harness's start, ~the same instant), runs that tier
           # itself — a slower run, never a different verdict. Re-derive from
           # the push runs that carry the fan-out.
-          tiers_cap_min=14
+          #
+          # MEASURING (§308 landing 5's form-build sweep): the form build the
+          # point tier now sweeps outlasts 14 min on the sibling — pushes
+          # 40438439985 and 40450787429 killed it at ~885 s with the other six
+          # points done by 634 s, the battery re-ran the tier itself, and both
+          # runs read "cancelled". 40 lets one hosted dispatch finish so the
+          # tier's wall can be read; the derived value replaces it before landing.
+          tiers_cap_min=40
           { echo "host=$host"; echo "run=$run"; echo "verdict=$verdict"; echo "matrix=$matrix"; echo "workers=$workers"; echo "tiers_job=$tiers_job"; echo "tiers_cap_min=$tiers_cap_min"; echo "tiers_cap_s=$(( tiers_cap_min * 60 ))"; } >> "$GITHUB_OUTPUT"
           echo "§200/§251: $EVENT from $HEAD_REPO by $ACTOR — $verdict" | tee -a "$GITHUB_STEP_SUMMARY"
           [ -n "$mwhy" ] && echo "§259: $mwhy" | tee -a "$GITHUB_STEP_SUMMARY"

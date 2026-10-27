@@ -64,6 +64,34 @@ const CUSHION_OWN = [/^warning: makeFormCase: the cushion's [+−]y end wall fal
 const run = only ? BUILDS.filter((b) => b.id === only) : BUILDS;
 if (!run.length) { console.error(`--only ${only}: no such build`); process.exit(2); }
 
+// THE BATTERY SWEEPS F-rect, as its `form-rect` SPEC_POINTS row (`sweep: true`,
+// booting exactly the warning set it DECLARES, `expectWarns`) — the form-build
+// sweep TODO 274's findings are read off. The row's query is a second copy of
+// F-rect's (which is built from the GENERATED seat's fit), and a copy that
+// drifts would have the battery sweeping an outline no form case cuts while
+// this probe holds the real one; its declared prefixes are a second copy of
+// FORM_SHARED, and a copy that drifts would have the two instruments accepting
+// different warnings on one build. So the row is read back off the battery's
+// SOURCE (importing ci-battery.mjs would run it) and held to F-rect's query
+// byte for byte, and its prefixes to FORM_SHARED one for one. Not browser
+// work, so it runs first and under every --only.
+{
+  const src = await readFile(join(ROOT, 'tools/ci-battery.mjs'), 'utf8');
+  const at = src.indexOf("{ name: 'form-rect'");
+  const next = at === -1 ? -1 : src.indexOf('\n  {', at + 1);
+  const row = at === -1 ? '' : src.slice(at, next === -1 ? undefined : next);
+  const q = row.match(/q: '([^']*)'/)?.[1] ?? null;
+  const want = BUILDS.find((b) => b.id === 'F-rect').q;
+  ok('the battery\'s form-rect SPEC_POINTS row boots F-rect', q === want,
+    q === null ? 'no form-rect row in tools/ci-battery.mjs' : q === want ? q : `row ${q} vs F-rect ${want}`);
+  const ew = row.match(/expectWarns: \[([\s\S]*?)\]/);
+  const declared = ew ? [...ew[1].matchAll(/'((?:\\.|[^'\\])*)'/g)].map((x) => x[1].replace(/\\(.)/g, '$1')) : [];
+  const fired = FORM_SHARED.map((re) => declared.filter((p) => re.test(`warning: ${p}`)));
+  ok('the row is swept and declares exactly FORM_SHARED, one prefix per pattern',
+    /sweep: true/.test(row) && /expect: 'declared'/.test(row) && declared.length === FORM_SHARED.length && fired.every((f) => f.length === 1),
+    `declared ${declared.length} [${declared.join(' | ')}] against ${FORM_SHARED.length} pattern(s)${/sweep: true/.test(row) ? '' : ' — the row is not swept'}`);
+}
+
 let chromium;
 try { ({ chromium } = await import(join(ROOT, 'tools/node_modules/playwright/index.mjs'))); }
 catch { ({ chromium } = createRequire(import.meta.url)('playwright')); }
