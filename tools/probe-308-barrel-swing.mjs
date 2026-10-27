@@ -102,19 +102,31 @@ const ALLOWED = { R: [], E: [], D: [...FORM_SHARED, ...DESIGN_OWN], S: FORM_SHAR
 const run = only ? BUILDS.filter((b) => b.id === only) : BUILDS;
 if (!run.length) { console.error(`--only ${only}: no such build`); process.exit(2); }
 
-// THE BATTERY BOOTS BUILD A TOO, as its `arrangement-308` SPEC_POINTS row
-// (liveness: it must build, finite, and read unverified). That row's query is a
-// second copy of build A's, and a copy that drifts would have the battery
-// guarding an arrangement nobody designed while this probe guards the real one.
-// So the row is read back off the battery's SOURCE (importing ci-battery.mjs
-// would run it) and held to build A's query, byte for byte. Not browser work,
-// so it runs first and under every --only.
+// THE BATTERY BOOTS AND SWEEPS BUILD A TOO, as its `arrangement-308`
+// SPEC_POINTS row (since the form-build sweep: `sweep: true`, booting exactly
+// the warning set it DECLARES, `expectWarns`). That row's query is a second
+// copy of build A's, and a copy that drifts would have the battery guarding an
+// arrangement nobody designed while this probe guards the real one; its
+// declared set is a second copy of ALLOWED.A, and a copy that drifts would have
+// the two instruments accepting different warnings on one build. So the row is
+// read back off the battery's SOURCE (importing ci-battery.mjs would run it)
+// and held to build A's query byte for byte, and its declared prefixes to
+// ALLOWED.A one for one (each prefix fires exactly one of A's patterns, and
+// each pattern is fired). Not browser work, so it runs first and under every
+// --only.
 {
   const src = await readFile(join(ROOT, 'tools/ci-battery.mjs'), 'utf8');
   const m = src.match(/\{ name: 'arrangement-308', q: '([^']*)'/);
   const a = BUILDS.find((b) => b.id === 'A').q;
   ok('the battery\'s arrangement-308 SPEC_POINTS row boots build A', !!m && m[1] === a,
     m ? (m[1] === a ? a : `row ${m[1]} vs build A ${a}`) : 'no arrangement-308 row in tools/ci-battery.mjs');
+  const row = src.slice(src.indexOf("{ name: 'arrangement-308'"));
+  const row1 = row.slice(0, row.indexOf('\n  {', 1) === -1 ? undefined : row.indexOf('\n  {', 1));
+  const ew = row1.match(/expectWarns: \[([\s\S]*?)\]/);
+  const declared = ew ? [...ew[1].matchAll(/'((?:\\.|[^'\\])*)'/g)].map((x) => x[1].replace(/\\(.)/g, '$1')) : [];
+  const fired = ALLOWED.A.map((re) => declared.filter((p) => re.test(`warning: ${p}`)));
+  ok('the row declares exactly ALLOWED.A\'s warning set, one prefix per pattern', /sweep: true/.test(row1) && declared.length === ALLOWED.A.length && fired.every((f) => f.length === 1),
+    `declared ${declared.length} [${declared.join(' | ')}] against ${ALLOWED.A.length} pattern(s)${/sweep: true/.test(row1) ? '' : ' — the row is not swept'}`);
 }
 
 let chromium;
