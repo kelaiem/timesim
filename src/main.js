@@ -3832,6 +3832,24 @@ const R_BORE_BACK = CASE_R_OUT - CASE_BAND_T;
 const caseWallAlong = (u, off = 0) => FORM
   ? FORM_CASE_MOD.rayExit(FORM_CASE_MOD.formCaseLoops(FORM).outer, [u.x, u.y], [-u.y * off, u.x * off])
   : off === 0 ? CASE_R_OUT : Math.sqrt(Math.max(0, CASE_R_OUT * CASE_R_OUT - off * off));
+// TODO 275 — AND WHICH WAY THAT WALL FACES, the same law's other half: the
+// wall's outward unit normal where the line leaves it. Under FORM it is the
+// outer loop's edge at rayExit's crossing (form-case.js rayExitNormal, the same
+// loop makeFormCase cuts on); on the round case it is the exit point's radial,
+// which on a radial line (off = 0) is `u` itself, returned as `u` so nothing
+// the round build derives from it moves. A part that ENDS at the wall — the
+// pusher's button and the flush sleeve it seats on — is cut to the plane this
+// names, because a face square to the line meets a wall the line crosses
+// obliquely only at one line, and buries its rim on the high side.
+const caseWallNormal = (u, off = 0) => {
+  if (FORM) {
+    const [nx, ny] = FORM_CASE_MOD.rayExitNormal(FORM_CASE_MOD.formCaseLoops(FORM).outer, [u.x, u.y], [-u.y * off, u.x * off]);
+    return { x: nx, y: ny };
+  }
+  if (off === 0) return { x: u.x, y: u.y };
+  const s = caseWallAlong(u, off), ex = -u.y * off + u.x * s, ey = u.x * off + u.y * s, L = Math.hypot(ex, ey);
+  return { x: ex / L, y: ey / L };
+};
 // §186 — THE MOUNTING RIM the plate grows (the plate MESH alone: plateR is
 // the movement's working radius and fans out to dialRadius, R_IN, and every
 // station — growing it would move the dial, the case and the lugs at once).
@@ -28214,16 +28232,65 @@ const ALARM_PUSH_STEM_LEN = ALARM_PUSH_STEM_OUTER_S - ALARM_PUSH_INNER;
 // ergonomic claim stays legible and survives a change of scale.
 const PUSHER_HEAD_MM = 1.0;                          // RADIUS floor ⇒ a 2 mm head
 const PUSHER_HEAD_R = PUSHER_HEAD_MM / UNIT_MM;      // 2.64 u at 0.379 mm/u
-// Head DEPTH follows the width so it still reads as a turned cap rather than
-// a wafer; at the old 1.1 u against a 5.3 u face it would have been a disc.
-// This is the HEAD, not the stem's travel — the throw that indexes the
-// column wheel one castellation per press is mechanism and is untouched
-// at the pusher's build, which is why the pusher is not simply scaled up as a whole.
-const PUSHER_HEAD_LEN = PUSHER_HEAD_R * 0.62;
-// THE BAR, at last: what `turning` clusters — the stem and the cap, coaxial at
-// consecutive stations, one piece of stock — and the governing ⌀ is the
-// stem's. 26.0 u on the round case; 38.01 u on the §308 arrangement.
-const ALARM_PUSH_BAR = ALARM_PUSH_STEM_LEN + PUSHER_HEAD_LEN;
+// TODO 275 — THE HEAD IS A FLAT BUTTON SEATED ON THE WALL'S TANGENT PLANE.
+// It was a cylinder 0.62 of its radius deep, its flat inner face square to the
+// press line and solved (TODO 241) to land on the wall at T = 1 — exactly, but
+// only ON THE LINE. The line runs through the movement's centre (§170), which
+// on the round band is the wall's normal, so a face square to the line met the
+// band as a tangent there and cleared it everywhere else. A FORM case's wall is
+// not a circle and the line crosses it obliquely — measured where the line
+// leaves it, 4.2° on the cushion, 5.6° on the tonneau, 18.3° on the rect and
+// 38.3° on §308's arrangement — so the face touched at its centre and its rim on
+// the high side stood in the band: 0.09, 0.25, 0.85 and 1.54 u deep at full
+// press, the last from a quarter of the stroke onward. No gate saw it: the
+// floors row and the relief probe excuse the cap against the band by name, for
+// the stop, and the battery's one swept form build is that arrangement.
+//
+// So the head is cut to the wall rather than to the line. A button is a flat
+// disc whose faces lie PARALLEL to the wall's tangent plane where the line
+// leaves it (caseWallNormal, the wall law's other half), centred on the line,
+// and the stop is still TODO 241's: the inner face crosses the line at the
+// stem's published outer end, so at T = 1 it stands ALARM_SEAT_SINK past the
+// wall's exit point ALONG THE LINE — the stroke's own coordinate. Every wall
+// the case library cuts is convex under the button (asserted at its build,
+// off the loop), so a plane tangent at the exit has the whole wall behind it
+// and the button clears the band at every pose of the stroke and lands on it
+// along the tangent line. On the round case the tangent plane IS the plane
+// square to the line, so nothing about where the head stands moves there.
+//
+// The stem is pressed into the button, and since the stem's end is square to
+// its line it must reach PAST the seat plane by the plane's fall across the
+// stem, r·tanθ (the SPIGOT), or the near side of its end would stand short of
+// the face. The spigot's deepest point is 2·r·sinθ into the button along the
+// wall's normal, and the button carries §50's stock floor over it.
+//
+// The two STYLING INPUTS, in the head radius's standing — the look is chosen,
+// what carries it is derived and the larger governs: FLAT is the owner's word
+// for the button (2026-10-27, against the 0.62-deep turned cap), 0.40 mm, the
+// low end of a dress watch's pushpiece; and its outer edge is broken by a 45°
+// chamfer of 0.10 mm, the edge break a case finisher puts on a face a finger
+// meets. The chamfer stays INSIDE §43's 2 mm, which is the button's diameter.
+const PUSHER_BUTTON_T_MM = 0.40;                     // styling: the flat profile
+const PUSHER_BUTTON_EDGE_MM = 0.10;                  // styling: the 45° edge break
+const PUSHER_BUTTON_EDGE = PUSHER_BUTTON_EDGE_MM / UNIT_MM;
+const _pushWallN = caseWallNormal(_pushU, _pushOffAxis);
+const PUSHER_SEAT_COS = _pushWallN.x * _pushU.x + _pushWallN.y * _pushU.y;   // n·û — the wall's normal against the line
+// the seat plane through the line's exit falls this much ALONG the line per
+// unit ACROSS it (+ toward _pushPerp): c·(s − s₀) + σ·x = 0, with σ = n·perp
+const PUSHER_SEAT_SLOPE = (_pushWallN.x * _pushPerp.x + _pushWallN.y * _pushPerp.y) / PUSHER_SEAT_COS;
+const PUSHER_SEAT_TAN = Math.abs(PUSHER_SEAT_SLOPE);
+const PUSHER_SEAT_SIN = PUSHER_SEAT_TAN * PUSHER_SEAT_COS;
+const pusherSpigot = (r) => r * PUSHER_SEAT_TAN;
+const pusherButtonT = (r) => Math.max(PUSHER_BUTTON_T_MM / UNIT_MM, 2 * r * PUSHER_SEAT_SIN + STOCK_MIN_U);
+// THE BAR, at last: what is turned in one piece, and so what `turning` holds to
+// its L/D — the STEM, with its spigot. This read "the stem and the cap, one
+// piece of stock" and added the cap's depth, which was never so: §203 cut the
+// head from case metal and the stem from steel, so they are two parts pressed
+// together, and a head as wide as it is deep is a disc, which `turning`
+// refuses to cluster with anything (TURN_TILT's own reasoning). The button is
+// flatter still. It depends on the stem's own radius through the spigot, so
+// the radius below is its fixed point.
+const pusherBar = (r) => ALARM_PUSH_STEM_LEN + pusherSpigot(r);
 // ============================================================================
 const GONG_RIM_PLANT = 0.5;                        // a stud's plant depth into the rim — the plate-top idiom, kept
 const GONG_RIM_Z = PLATE_RIM.back;                 // the annulus's own floor plane: the rim's back face
@@ -28248,7 +28315,10 @@ const GONG_RIM_Z = PLATE_RIM.back;                 // the annulus's own floor pl
 // (L/D 14.1) and this expression returns the floor itself, bit for bit — the
 // fingerprint holds. On §308 landing 5's arrangement the bar is 38.01 u and
 // asks 1.056 u, so the target governs and the bar is cut at L/D 18.0 exactly,
-// where the floor left it at 20.6. Until §234's residue closed, the target
+// where the floor left it at 20.6. (TODO 275: the bar is the stem and its
+// spigot now, the head being a separate part of case metal — 24.21 u on the round
+// case, where the stock still governs bit for bit, and 37.19 u on the
+// arrangement, which asks r 1.0331 where stem-and-cap asked 1.0559.) Until §234's residue closed, the target
 // was only HELD at the cap's build, as a warn the arrangement fired. The old
 // 0.32 was a bare literal at L/D 40.7, a bar no lathe holds, and the one
 // waiver the first landing retired. What a thicker stem costs is the
@@ -28259,7 +28329,24 @@ const GONG_RIM_Z = PLATE_RIM.back;                 // the annulus's own floor pl
 // of that band (the annulus floor, the head's band, the skirt's floor)
 // re-derives below and is asserted where it is read. The case tube's liner
 // follows the bore too, and its wall is held to the §50 floor where it is cut.
-const ALARM_PUSH_STEM_R = Math.max(STEM_STOCK_R_U, ALARM_PUSH_BAR / (2 * TURN_LD_TARGET));
+// TODO 275: the bar reads the radius through the spigot, so this is the fixed
+// point of r = max(stock, bar(r) / 2K) — a contraction (the bar's slope in r is
+// tan θ, under 1, against 2K = 36), from the stock floor up. On the round case
+// the spigot is 0, the bar is 24.21 u and asks 0.673, the stock governs, and the
+// first iterate is the floor itself, bit for bit.
+const ALARM_PUSH_STEM_R = (() => {
+  let r = STEM_STOCK_R_U;
+  for (let i = 0; i < 64; i++) {
+    const next = Math.max(STEM_STOCK_R_U, pusherBar(r) / (2 * TURN_LD_TARGET));
+    if (Math.abs(next - r) < 1e-15) return next;
+    r = next;
+  }
+  console.warn(`TODO 275: the pusher stem's radius did not converge over its own bar (${r})`);
+  return r;
+})();
+const ALARM_PUSH_BAR = pusherBar(ALARM_PUSH_STEM_R);
+const PUSHER_SPIGOT = pusherSpigot(ALARM_PUSH_STEM_R);   // the stem's reach past the seat plane, on its axis
+const PUSHER_BUTTON_T = pusherButtonT(ALARM_PUSH_STEM_R); // the button's thickness, along the wall's normal
 const ALARM_PUSH_GUIDE_TUBE = 0.12;                                        // ring stock (§50 floor)
 const ALARM_PUSH_GUIDE_BORE = ALARM_PUSH_STEM_R + PIVOT_BORE_CLEAR;        // a running fit, not a press fit
 const ALARM_PUSH_GUIDE_RING = ALARM_PUSH_GUIDE_BORE + ALARM_PUSH_GUIDE_TUBE;
@@ -42265,22 +42352,64 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
   // seat on the case wall and the stop it bottoms on (TODO 241, §307 landing
   // 2), its outer end and length (ALARM_PUSH_INNER, ALARM_PUSH_SEAT_S,
   // ALARM_PUSH_STEM_OUTER_S, ALARM_PUSH_STEM_LEN) — and the head's size (§43,
-  // PUSHER_HEAD_R, PUSHER_HEAD_LEN) are derived at the gong block since §234
+  // PUSHER_HEAD_R, and since TODO 275 the button's PUSHER_BUTTON_T and its
+  // seat on the wall, PUSHER_SEAT_*, with the stem's PUSHER_SPIGOT) are derived at the gong block since §234
   // (grep ALARM_PUSH_BAR), each with its reasoning: the bar they make is what
   // sizes the stem's radius, and that radius is read thousands of lines before
   // this build. The metal is cut here from those numbers, unchanged.
-  const stem = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_PUSH_STEM_R, ALARM_PUSH_STEM_R, ALARM_PUSH_STEM_LEN, 10), MATS.steel);
+  // TODO 275: the stem runs PUSHER_SPIGOT past its published outer end, into the
+  // button — the seat plane's fall across the stem, so the whole of its square
+  // end is inside the button. 0 on the round case, where nothing here moves.
+  const stemCut = ALARM_PUSH_STEM_LEN + PUSHER_SPIGOT;
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_PUSH_STEM_R, ALARM_PUSH_STEM_R, stemCut, 10), MATS.steel);
   stem.name = 'alarmPusherStem';  // §162: the pusher body's own name, so the §48 member key and the joint rows stop selecting it as CylinderGeometry#9
   stem.rotation.z = ALARM_PUSH_AZ - Math.PI / 2; // cylinder +Y → outward along the push azimuth
-  stem.position.set(_pushU.x * (ALARM_PUSH_INNER + ALARM_PUSH_STEM_LEN / 2), _pushU.y * (ALARM_PUSH_INNER + ALARM_PUSH_STEM_LEN / 2), 0);
+  stem.position.set(_pushU.x * (ALARM_PUSH_INNER + stemCut / 2), _pushU.y * (ALARM_PUSH_INNER + stemCut / 2), 0);
   alarmPusherGroup.add(stem);
   alarmPusherStemMesh = stem;
-  const cap = new THREE.Mesh(new THREE.CylinderGeometry(PUSHER_HEAD_R, PUSHER_HEAD_R, PUSHER_HEAD_LEN, 20), MATS.caseMetal); // §203: the head is case exterior; the stem stays steel
+  // TODO 275 — THE BUTTON: a turned disc on its own axis, the wall's normal,
+  // PUSHER_BUTTON_T thick and §43's radius, its outer edge broken 45° by
+  // PUSHER_BUTTON_EDGE, its inner face (lathe y = 0) the seat plane through the
+  // line at the stem's published outer end. §203: the head is case exterior.
+  const cap = new THREE.Mesh(new THREE.LatheGeometry([
+    new THREE.Vector2(0, 0),
+    new THREE.Vector2(PUSHER_HEAD_R, 0),
+    new THREE.Vector2(PUSHER_HEAD_R, PUSHER_BUTTON_T - PUSHER_BUTTON_EDGE),
+    new THREE.Vector2(PUSHER_HEAD_R - PUSHER_BUTTON_EDGE, PUSHER_BUTTON_T),
+    new THREE.Vector2(0, PUSHER_BUTTON_T),
+  ], 32), MATS.caseMetal);
   cap.name = 'alarmPusherCap';
-  cap.rotation.z = ALARM_PUSH_AZ - Math.PI / 2;
-  cap.position.set(_pushU.x * (ALARM_PUSH_STEM_OUTER_S + PUSHER_HEAD_LEN / 2),
-                   _pushU.y * (ALARM_PUSH_STEM_OUTER_S + PUSHER_HEAD_LEN / 2), 0);
+  cap.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(_pushWallN.x, _pushWallN.y, 0));
+  cap.position.set(_pushU.x * ALARM_PUSH_STEM_OUTER_S, _pushU.y * ALARM_PUSH_STEM_OUTER_S, 0);
   alarmPusherGroup.add(cap);
+  // ...and what has to be true of it, with the achieved and required numbers:
+  // the edge break leaves a land and a face (a chamfer as deep as the button is
+  // a cone), and the spigot's footprint on the face — an ellipse r / cos θ
+  // across — sits inside the flat, clear of the chamfer. (The floor of metal
+  // over the spigot needs no guard: PUSHER_BUTTON_T is the max that includes it.)
+  if (!(PUSHER_BUTTON_EDGE < PUSHER_BUTTON_T && PUSHER_BUTTON_EDGE < PUSHER_HEAD_R - ALARM_PUSH_STEM_R / PUSHER_SEAT_COS))
+    console.warn(`TODO 275: the button's ${PUSHER_BUTTON_EDGE.toFixed(4)} edge break does not fit a ${PUSHER_BUTTON_T.toFixed(4)}-thick `
+      + `button of r ${PUSHER_HEAD_R.toFixed(4)} round a spigot spanning ${(ALARM_PUSH_STEM_R / PUSHER_SEAT_COS).toFixed(4)} of its face`);
+  // THE WALL IS BEHIND THE SEAT PLANE wherever the button reaches — the claim
+  // the whole cut rests on (a convex wall under the button). Read off the wall
+  // the case is cut from: under FORM the outer loop's vertices within the
+  // button's reach of the exit stand on or behind the plane; the round band is
+  // a circle, convex by construction, and the exit is ON the plane both ways.
+  {
+    const sExit = caseWallAlong(_pushU, _pushOffAxis);
+    const ex = -_pushU.y * _pushOffAxis + _pushU.x * sExit, ey = _pushU.x * _pushOffAxis + _pushU.y * sExit;
+    let proud = 0, at = null;
+    if (FORM) {
+      for (const [vx, vy] of FORM_CASE_MOD.formCaseLoops(FORM).outer) {
+        if (Math.hypot(vx - ex, vy - ey) > PUSHER_HEAD_R / PUSHER_SEAT_COS + CLEAR_MARGIN) continue;
+        const h = (vx - ex) * _pushWallN.x + (vy - ey) * _pushWallN.y;
+        if (h > proud) { proud = h; at = [vx, vy]; }
+      }
+    }
+    if (proud > 1e-9)
+      console.warn(`TODO 275: the case wall stands ${proud.toFixed(4)} proud of the pusher button's seat plane at `
+        + `(${at[0].toFixed(3)}, ${at[1].toFixed(3)}) — the wall is not convex under the button, so its rim buries`);
+  }
   // §234 — the turning target is no longer HELD here, it is MET by
   // construction: the stem's radius at the gong block is max(stem stock,
   // ALARM_PUSH_BAR / (2 · TURN_LD_TARGET)) over exactly this stem and cap, so
@@ -42685,7 +42814,8 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
   alarmPusherGroup.userData.stem = {
     ux: _pushU.x, uy: _pushU.y,
     inner: ALARM_PUSH_INNER, capS: ALARM_PUSH_STEM_OUTER_S,
-    capR: PUSHER_HEAD_R, capLen: PUSHER_HEAD_LEN,
+    capR: PUSHER_HEAD_R, capLen: PUSHER_BUTTON_T / PUSHER_SEAT_COS,   // TODO 275: the button's extent ON the line
+    capNx: _pushWallN.x, capNy: _pushWallN.y,                          // ...and its face's normal, the wall's
     pinS: ALARM_PIN_HALF, pinR: STOCK_MIN_R10,
     riserTop: ALARM_DRIVER_TOP_Z - (ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL),
   };
@@ -49602,6 +49732,13 @@ registerLabel('Case', caseSolid);
       // along any line that is not a world axis — so the liner, cut to that
       // span, could stand proud of the tube's face exactly where the stop now
       // lands the head.
+      // TODO 275 — the sleeve's outboard end is cut on the wall's tangent plane
+      // (makeCase / makeFormCase), so its reach is read the way that plane is
+      // stated: each vertex's height along the wall's normal, over the normal's
+      // component along the line, is where a plane with that normal through the
+      // vertex crosses the axis. The farthest is where the end's plane crosses
+      // it, `hi`. On the round case the normal IS the line and this is the
+      // vertex's own s, as it was.
       let lo = Infinity, hi = -Infinity;
       {
         const p = sleeve.geometry.attributes.position, v = new THREE.Vector3();
@@ -49609,7 +49746,8 @@ registerLabel('Case', caseSolid);
         for (let i = 0; i < p.count; i++) {
           v.fromBufferAttribute(p, i).applyMatrix4(sleeve.matrixWorld);
           const s = (v.x - _pushBase.x) * _pushU.x + (v.y - _pushBase.y) * _pushU.y;
-          lo = Math.min(lo, s); hi = Math.max(hi, s);
+          const sN = ((v.x - _pushBase.x) * _pushWallN.x + (v.y - _pushBase.y) * _pushWallN.y) / PUSHER_SEAT_COS;
+          lo = Math.min(lo, s); hi = Math.max(hi, sN);
         }
       }
       // TODO 241 — THE STOP'S SEAT, held to touch against the metal the case
@@ -49628,6 +49766,11 @@ registerLabel('Case', caseSolid);
               ? 'is not reached, so the finger loads the chain past the carry' : 'lands before the carry ends, so the click cannot drop'}`);
       }
       const m = liner(ALARM_PUSH_GUIDE_BORE, CASE_PUSHER_D / 2 - 0.01, hi - lo, 'alarmPusherCaseLiner');
+      // TODO 275 — the liner ends on the sleeve's own plane: its geometry runs
+      // +z down the line and +y along _pushPerp once aimed (below), and the
+      // plane falls PUSHER_SEAT_SLOPE along the line per unit across it. Square
+      // on the round case.
+      G.cutEndOnPlane(m.geometry, 'z', (hi - lo) / 2, 'y', -PUSHER_SEAT_SLOPE);
       m.rotation.set(0, Math.PI / 2, ALARM_PUSH_AZ, 'ZYX');           // ringGeo runs along z; aim it down the axis, as the abutment is
       const mid = (lo + hi) / 2;
       m.position.set(_pushBase.x + _pushU.x * mid, _pushBase.y + _pushU.y * mid, ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL);
@@ -50370,12 +50513,14 @@ document.getElementById('btn-case').addEventListener('click', () => setCaseLines
       const s = alarmPusherGroup.userData.stem;
       const U = (d, z = 0) => V(s.ux * d, s.uy * d, z);
       addLine(alarmPusherGroup, [U(s.inner), U(s.capS + s.capLen)]);
-      { // cap face: a ring in the plane ⊥ the press axis
+      { // cap face: a ring in the button's own plane — TODO 275: the wall's
+        // tangent plane, whose in-plan direction is the normal turned a quarter
+        // (⊥ the press axis on the round case, where the normal IS the axis)
         const pts = [];
         for (let i = 0; i <= 32; i++) {
           const a = (i / 32) * Math.PI * 2;
           const w = Math.cos(a) * s.capR, z = Math.sin(a) * s.capR;
-          pts.push(V(s.ux * s.capS - s.uy * w, s.uy * s.capS + s.ux * w, z));
+          pts.push(V(s.ux * s.capS - s.capNy * w, s.uy * s.capS + s.capNx * w, z));
         }
         addLine(alarmPusherGroup, pts);
       }

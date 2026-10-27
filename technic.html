@@ -1147,7 +1147,7 @@ function focusTrain() {
 // src/technic-carousel.js (pure, held by tools/probe-technic-carousel.mjs).
 let cellReg = {}, keylessFrame = null, fuseeFramed = null;
 // BUILT §312 L1: the clock cell's modules, layout and state, and what the carousel reads of it
-let clockCell = null, clockFramed = null, fuseePre = null;
+let clockCell = null, clockFramed = null;
 let firstBuild = true;
 const tour = { active: false, i: -1, id: null, stops: [], skipped: [] };
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -1567,7 +1567,6 @@ async function build(gen) {
     fuseeLoop = null; fuseeBand = band;
     if (run && ff.framed) {
       fuseeBuildNow = fuseeBuild(ff, lib, { run });
-      fuseePre = { frame: ff, run, build: fuseeBuildNow };
       // §282: the cord is drawn apart from the statics, because the loop
       // re-places it at every state (cordPlacements, the build's own law)
       const isCord = (p) => p.role === 'cord' || p.role === 'cordEnd';
@@ -1777,18 +1776,18 @@ async function build(gen) {
     } else div.innerHTML = `<b>${k + 1}. going train</b><br><span class="bad">not framed in LEGO: ${trainFrame.reason ?? 'no step set fits the table'}</span>`;
     rowsEl.appendChild(div);
   }
-  // BUILT §312 L1 — the alarm clock, the LEGO view's tenth cell (§315's going train is the ninth): the cells above
-  // placed on one baseplate by src/technic-clock.js, each shared axle one keyed
-  // body. Display only and posed: every module stands as its own laws pose it at
-  // the chosen state, and nothing drives anything. The modules are the ones just
+  // BUILT §312 L1/L1b — the alarm clock, the LEGO view's tenth cell: the going
+  // train (§315, the ninth cell, placed whole), the keyless works and the alarm
+  // on one baseplate by src/technic-clock.js, each shared axle one keyed body.
+  // Display only and posed: every module stands as its own laws pose it at the
+  // chosen state, and nothing drives anything. The modules are the ones just
   // built (handed in), the placement the declared one the probe re-solves.
   {
     const k = TECHNIC_FORK.rows.length + 5;
     const band = new THREE.Group(); band.position.set((k % 2) * LEGO_CELL, 0, Math.floor(k / 2) * LEGO_CELL); world.add(band);
     const div = document.createElement('div'); div.className = 'row';
-    const rowPre = (i) => cellReg[`row-${i + 1}`] && { frame: cellReg[`row-${i + 1}`].frame, build: cellReg[`row-${i + 1}`].build };
-    const pre = { 'centre→fourth': rowPre(0), 'fourth→escape': rowPre(1), keyless: keylessBuild && { frame: keylessFrame, build: keylessBuild },
-      fusee: fuseePre, alarm: alarmFrame?.framed && alarmStatesNow ? { frame: alarmFrame, states: alarmStatesNow } : null, escapement: escFrame?.framed ? { frame: escFrame } : null };
+    const pre = { train: trainBuildNow && { frame: trainFrame, build: trainBuildNow }, keyless: keylessBuild && { frame: keylessFrame, build: keylessBuild },
+      alarm: alarmFrame?.framed && alarmStatesNow ? { frame: alarmFrame, states: alarmStatesNow } : null };
     for (const key of Object.keys(pre)) if (!pre[key]) delete pre[key];
     clockCell = null;
     const mods = clockModules(lib, gen, pre), lay = mods.framed ? clockLayout(lib, mods) : null;
@@ -1800,13 +1799,13 @@ async function build(gen) {
       const ad = Object.values(mods.modules).find((m) => m.adapter);
       const joint = (j) => (j.kind === 'axle' ? `one ${j.axles[0].lenStuds}L axle through both` : `${j.axles.map((a) => `${a.lenStuds}L`).join(' and ')} keyed in a ridged joiner`);
       div.innerHTML = `<b>${k + 1}. alarm clock — LEGO build</b>`
-        + `${Object.keys(lay.placement).filter((m) => !mods.modules[m].adapter).length} of the cells above${ad ? ' and a half-stud adapter' : ''} on ${b.base.plates.length} baseplates of 32×32 studs, each shared axle one keyed body:`
+        + `the going train (cell ${TECHNIC_FORK.rows.length + 5}, placed whole), the keyless works and the alarm${ad ? ', with a half-stud adapter,' : ''} on ${b.base.plates.length} baseplates of 32×32 studs, each shared axle one keyed body:`
         + b.lines.map((l) => `<br>${l.key}: <span style="color:var(--dim)">${l.why}</span> — ${joint(l.joint)}`).join('')
         + (ad ? `<br>a half-stud ADAPTER on the ${ad.adapter} line, <code>${ad.chain.map(([a, c]) => `${a}:${c}`).join(' × ')}</code>: <span style="color:var(--dim)">its two modules carry the line on the two grid classes and neither can stand half a stud over</span>` : '')
         + `<br>lifted to one height: ${Object.entries(lay.placement).filter(([, p]) => p.lift).map(([m, p]) => `${m} ${p.lift} mm`).join(', ') || 'none'}; half a stud over: ${Object.entries(lay.placement).filter(([, p]) => p.shift).map(([m]) => m).join(', ') || 'none'}`
         + lay.refused.map((r) => `<br><span class="bad">the ${r.key} line is refused:</span> <span style="color:var(--dim)">${r.reason}</span>`).join('')
         + `<div class="gen" id="clstates"></div>`
-        + `<span style="color:var(--dim)">Display only, and modelled: each module stands as its own laws pose it at the state chosen, and nothing drives anything. The going train does not turn the hands yet (the slip between the centre arbor and the minute axle is BACKLOG §312's L2), the escapement is not in the cell, and the parts list, steps and booklet are §312's L4.</span>`
+        + `<span style="color:var(--dim)">Display only, and modelled: each module stands as its own laws pose it at the state chosen, and nothing drives anything. The going train does not turn the hands yet (the slip between its centre arbor and the minute axle is BACKLOG §312's L2), and the parts list, steps and booklet are §312's L4.</span>`
         + `<br><a id="clldr" href="#" style="color:#9fb6d9">download .ldr (this state)</a>`;
       const sts = div.querySelector('#clstates');
       for (const [field, list] of [['alarm', TECHNIC_CLOCK.alarmStates], ['keyless', TECHNIC_CLOCK.keylessModes]]) for (const v of list) {

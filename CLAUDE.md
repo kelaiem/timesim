@@ -170,17 +170,21 @@ KNIFE EDGE (a cross axle on two 3044b apices) whose arms and gears are solved,
 its I and d read off the parts' SOLIDS (`partSolid`), to land the row's 1 s;
 `tools/probe-technic-escapement.mjs` holds the lattice survey (no 16T escapes),
 the beat, the lock against F2's play and the rate law. **Since §312 L1 the CELLS
-JOIN in one more** (`src/technic-clock.js`, display only, modelled): `TECHNIC_CLOCK`
-names each LINE as the two module bodies it makes one keyed axle (centre, fourth,
-escape, minute); `solveClockLayout` lifts each group to its highest line on whole
+JOIN in one more** (`src/technic-clock.js`, display only, modelled): since L1b its
+going group is §315's GOING TRAIN placed whole (fusee to escape wheel, joining no
+line, re-phased by nothing), beside the keyless works and the alarm. `TECHNIC_CLOCK`
+names each LINE as the two module bodies it makes one keyed axle (the minute axle
+is the alarm's hour axle); `solveClockLayout` lifts each group to its highest line on whole
 plates, re-foots a module half a stud over where a line pairs the grid classes (or
 runs it through a derived 8:8 × 12:12 half-stud ADAPTER where neither module can),
-slides the modules apart until their plans clear and keeps the fewest studs — its
-answer DECLARED in `CLOCK_PLACEMENT`, which the probe re-solves. The ESCAPE line is
-REFUSED by measurement (`lineExits`: the escape arbor is closed at both ends), so the
-cell carries no escapement, and the going train does not yet turn the hands (that
-slip is L2's). `tools/probe-technic-clock.mjs` holds the lifts, the lines, every mesh
-in phase, the ratios and CLEAR over the alarm's three × the keyless works' three
+stands a module on no line as built, slides the modules apart until their plans
+clear and keeps the fewest studs — its answer DECLARED in `CLOCK_PLACEMENT`, which
+the probe re-solves and compares. A joint's far ends are the line's HOLD (its bricks
+and every part keyed on its body), because L1's, laid to the bricks, left two gears
+on no axle under a green probe. The going train does not yet turn the hands (that
+slip is L2's). `tools/probe-technic-clock.mjs` holds the lifts, the lines, every
+keyed part CARRIED on an axle, every mesh in phase, the ratios and CLEAR over the
+alarm's three × the keyless works' three
 states. The frame, ldraw, build,
 keyless, motion, fusee, fusee-loop, alarm, column-wheel, pusher, escapement, train and
 clock
