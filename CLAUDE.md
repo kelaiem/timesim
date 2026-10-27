@@ -1380,7 +1380,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **249 of
+The index also carries the split that decides how to read a result: **250 of
 them are ACCEPTANCE tests** that exit non-zero, and **118 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
