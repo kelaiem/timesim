@@ -43,7 +43,7 @@ const { server, base } = await serve(ROOT);
 const browser = await chromium.launch({ executablePath: EXE, ...LAUNCH });
 const ONE = arg('--run');                                          // cell:paper
 const RUNS = ONE ? [{ cell: ONE.split(':')[0], paper: ONE.split(':')[1] }] : ALL
-  ? ['row-1', 'row-2', 'row-3', 'row-4', 'keyless', 'fusee', 'alarm', 'escapement'].flatMap((cell) => ['letter', 'a4'].map((paper) => ({ cell, paper })))
+  ? ['row-1', 'row-2', 'row-3', 'row-4', 'keyless', 'fusee', 'alarm', 'escapement', 'train'].flatMap((cell) => ['letter', 'a4'].map((paper) => ({ cell, paper })))
   : [{ cell: 'row-2', paper: 'letter' }, { cell: 'row-2', paper: 'a4' }, { cell: 'fusee', paper: 'letter' }, { cell: 'keyless', paper: 'a4' }];
 const measured = [];
 

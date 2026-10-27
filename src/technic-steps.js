@@ -52,6 +52,8 @@ import { bounds, placements, compose, LDU_MM as LDU_MM_STEPS } from './ldraw.js'
 import { LDRAW_COLOUR, placedParts } from './technic-ldraw.js';
 import { colourOf } from './technic-colour.js';
 import { HONESTY, CORD_ROLES } from './technic-bom.js';
+import { CATALOGUES } from './layout.js';
+import { trainChain, TRAIN_KEY } from './technic-train.js';
 
 export const DOWN = Object.freeze([0, 1, 0]);                // LDraw +Y is down: a stud-seated part is lowered along +Y
 const AXES6 = Object.freeze([[0, 1, 0], [0, -1, 0], [1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1]]);
@@ -98,6 +100,25 @@ export const RECIPES = Object.freeze({
     { id: 'escape', title: 'The escape wheel', take: ['escape'] },
     { id: 'balance', title: 'The balance on its knife edge', take: ['balance'],
       notes: [{ text: `${HONESTY.analogue}`, posed: false }] }],
+  // §315 — THE GOING TRAIN, per generation (its arbors are the generation's chain, read off trainChain, never
+  // typed). Its build carries a mesh list (the probes read it) but its chapters are the recipe's alone (`walk:
+  // false`): the fusee's three as the fusee cell has them, the train from the centre pinion to the drive in the
+  // chain's order, then the escapement's two.
+  ...Object.fromEntries(Object.keys(CATALOGUES).filter((g) => CATALOGUES[g]).map((gen) => [`${TRAIN_KEY}/${gen}`, Object.freeze({ walk: false, chapters: Object.freeze([
+    { id: 'barrel', title: 'The barrel', take: ['barrel'],
+      notes: [{ text: `${BAND} The barrel's band stands in for the going spring; its law is POSED (TECHNIC_FUSEE_SPRING), only a built model could measure it.`, posed: true }] },
+    { id: 'line', title: 'The fusee, the maintaining ratchet and the great wheel on one line', take: ['maintaining', { key: 'joiner', nth: 0 }, { key: 'joiner', nth: 1 }, 'fusee', 'great'],
+      notes: [{ text: `${BAND} The maintaining band carries the ratchet to the great wheel; its force is POSED.`, posed: true }] },
+    { id: 'pawls', title: 'The two pawls', take: ['click pawl', 'detent pawl'] },
+    // (the centre pinion its own chapter, as the fusee cell has it: it slides on from its one open end, past the
+    // maintaining ratchet, so it goes in before the line; the rest of the train goes in after the line, whose
+    // great axle it would otherwise have to pass — the classic train's first insertion found that cycle)
+    { id: 'centre', title: 'The centre pinion and its arbor', take: ['centre'] },
+    { id: 'train', title: 'The going train, from the centre arbor to the drive under the escape wheel',
+      take: trainChain(gen).arbors.filter((a) => !['great', 'centre', 'escape'].includes(a.key)).map((a) => a.key) },
+    { id: 'escape', title: 'The escape wheel', take: ['escape'] },
+    { id: 'balance', title: 'The balance on its knife edge', take: ['balance'],
+      notes: [{ text: `${HONESTY.analogue} The train turns the escape wheel; the swing that meters it is POSED, the period the balance's inertia gives.`, posed: true }] }]) })])),
 });
 
 // ---------------------------------------------------------------------------
@@ -347,9 +368,11 @@ export function deriveSteps(build, { lib, mode = build.modes?.[0], recipes = REC
     for (const b of bs) takenBody.add(b);
     return bs.length ? { key: g.key, bodies: bs, ...(only !== null ? { nth: only } : {}) } : null;
   };
-  const recipe = recipes[build.key];
+  // (a build may name its own recipe, `build.recipe` — §315's train, one per generation; a recipe may be
+  // { walk: false, chapters } when its chapters are the whole order and the mesh walk is not wanted)
+  const R = recipes[build.recipe ?? build.key], recipe = Array.isArray(R) ? R : R?.chapters, walkMeshes = !(R && R.walk === false);
   // (1) the mesh walk: the root is the group of body 0; a group is added after the group whose gear drives it
-  if (build.meshes?.length) {
+  if (build.meshes?.length && walkMeshes) {
     const order = [], label = new Map(), root = groupOfBody(0);
     const hasClutch = build.shafts.some((s) => s.clutch);
     order.push(root); label.set(root, hasClutch ? 'stem' : 'train');
@@ -415,8 +438,11 @@ export function deriveSteps(build, { lib, mode = build.modes?.[0], recipes = REC
         for (const q of items) {
           const sides = lanes(q, ax);
           if (!sides.length) continue;                          // shut at both ends: it is lowered, not slid
-          // the end it will use is the one with the fewest other chapters' parts in its corridor
-          const hits = sides.map((d) => { const box = sweptBox(q, d), hit = []; for (const [r, cj] of chapterOfPart) if (cj !== ci && hitsBox(box, boxCached(r))) hit.push(cj); return hit; });
+          // the end it will use is the one with the fewest other chapters' parts in its corridor (a gear it
+          // MESHES with is not in its corridor: their boxes overlap at rest because the teeth interleave, and
+          // whether it slides into that mesh is the turned insertion's question, not an order — §315's centre
+          // and first train arbor, one straight over the other, read as each in the other's way without it)
+          const hits = sides.map((d) => { const box = sweptBox(q, d), hit = []; for (const [r, cj] of chapterOfPart) if (cj !== ci && !meshes(q, r) && hitsBox(box, boxCached(r))) hit.push(cj); return hit; });
           const best = hits.reduce((a, b) => (b.length < a.length ? b : a));
           for (const cj of best) edges[ci].add(cj);
         }
@@ -429,7 +455,11 @@ export function deriveSteps(build, { lib, mode = build.modes?.[0], recipes = REC
     const ready = [...remaining].filter((k) => inc(k) === 0);
     // a cycle (two chapters each in the other's corridor, e.g. interleaved layers) is broken at the
     // chapter with the fewest others still owed before it, earliest first, and reported
-    const pick = ready.length ? Math.min(...ready) : (() => { const m = Math.min(...[...remaining].map(inc)); const k = Math.min(...[...remaining].filter((x) => inc(x) === m)); cyc.push(k); return k; })();
+    // (among the ready ones, what the earliest chapter still to come is owed first, so the recipe's order bends
+    // only where an edge bends it: §315's train, owed before the line, goes in before the pawls the line precedes)
+    const owed = (k, seen = new Set()) => { for (const j of remaining) if (j !== k && !seen.has(j) && edges[j].has(k)) { seen.add(j); owed(j, seen); } return seen; };
+    const first = Math.min(...remaining), want = owed(first), preferred = ready.filter((k) => k === first || want.has(k));
+    const pick = ready.length ? Math.min(...(preferred.length ? preferred : ready)) : (() => { const m = Math.min(...[...remaining].map(inc)); const k = Math.min(...[...remaining].filter((x) => inc(x) === m)); cyc.push(k); return k; })();
     orderIdx.push(pick); remaining.delete(pick);
   }
   const reordered = orderIdx.map((k) => chaptersPlan[k]);
@@ -756,7 +786,7 @@ export function deriveSteps(build, { lib, mode = build.modes?.[0], recipes = REC
   openChapter('done', 'Finished');
   emit({ kind: 'final', title: 'Modelled, not built', parts: [], text: HONESTY.modelled });
 
-  const rolesPosed = build.key === 'fusee' || build.key === 'alarm' || build.key === 'escapement';
+  const rolesPosed = build.key === 'fusee' || build.key === 'alarm' || build.key === 'escapement' || build.key === TRAIN_KEY;
   return { key: build.key, gen: build.gen, mode, build, parts, bodyOf, steps, chapters, subs, unmatched,
     leftover: leftover.map((g) => String(g.key)), posedForces: rolesPosed || steps.some((s) => s.posed), chapterCycles };
 }

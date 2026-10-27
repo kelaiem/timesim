@@ -49,7 +49,7 @@ let fails = 0, checks = 0;
 const ok = (cond, msg) => { checks++; if (!cond) { fails++; console.log(`  ✗ ${msg}`); } return !!cond; };
 const controls = [];
 const control = (name, caught) => { controls.push([name, !!caught]); };
-const CELLS = ['row-1', 'row-2', 'row-3', 'row-4', 'keyless', 'fusee', 'alarm', 'escapement'];
+const CELLS = ['row-1', 'row-2', 'row-3', 'row-4', 'keyless', 'fusee', 'alarm', 'escapement', 'train'];
 const SHARED = ['fusee', 'alarm', 'escapement'];
 // §302's closed inventory, as the booklet shows it: the flagged STEP counts per build (plan steps whose part no path cleared).
 // EMPTY since §305 cleared TODO 264's 27 rows: every build prints no flagged step, and one would fail here.
@@ -171,8 +171,8 @@ function marksProblems(model, table = BOOKLET_FLAGS) {
   const gotOv = model.steps.reduce((n, s) => n + s.marks.filter((m) => m.kind === 'overlap').length, 0), wantOv = OVERLAP_MARKS[model.meta.cell] ?? 0;
   if (gotOv !== wantOv) bad.push(`${gotOv} overlap markers on paper, §302's OVERLAPS inventory has ${wantOv}`);
   if (['fusee', 'alarm'].includes(model.meta.cell) && !model.steps.some((s) => s.marks.some((m) => m.kind === 'posed' && /POSED/.test(m.text)))) bad.push('no step says the forces are posed');
-  if (['fusee', 'alarm', 'escapement'].includes(model.meta.cell) && !model.honesty.some((t) => /forces are posed/.test(t))) bad.push('the cover and closing page do not say the forces are posed');
-  if (['alarm', 'escapement'].includes(model.meta.cell) && !model.honesty.some((t) => /analogue/.test(t))) bad.push('the analogue line is not on the cover');
+  if (['fusee', 'alarm', 'escapement', 'train'].includes(model.meta.cell) && !model.honesty.some((t) => /forces are posed/.test(t))) bad.push('the cover and closing page do not say the forces are posed');
+  if (['alarm', 'escapement', 'train'].includes(model.meta.cell) && !model.honesty.some((t) => /analogue/.test(t))) bad.push('the analogue line is not on the cover');
   if (model.meta.cell === 'escapement' && !model.steps.some((s) => s.marks.some((m) => m.kind === 'analogue'))) bad.push('the escapement\'s analogue caption is not on a step');
   return bad;
 }
