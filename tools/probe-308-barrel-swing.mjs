@@ -81,7 +81,8 @@ const BUILDS = [
   // the round build to that noise, and it must be silent (gated) — the branches
   // reproduce the design, they do not merely skip it.
   { id: 'E', name: 'round, designed values explicit', q: 'barrelstep=-35&rsvaz=0&alarmmod=40' },
-  { id: 'D', name: 'rect, as designed', q: `case=rect&gong=arc&formrect=${FITTED.D.join(',')}` },
+  // a form case defaults to the arrangement since layout.js' FORM_ARRANGEMENT, so the designed train is spelled out
+  { id: 'D', name: 'rect, as designed', q: `case=rect&barrelstep=-35&rsvaz=0&alarmmod=40&gong=arc&formrect=${FITTED.D.join(',')}` },
   { id: 'S', name: 'rect, barrel swung', q: `case=rect&barrelstep=${SWING.barrelstep}&rsvaz=35&gong=arc&formrect=${FITTED.S.join(',')}` },
   { id: 'A', name: 'rect, swing + module 80°', q: `case=rect&barrelstep=${SWING.barrelstep}&rsvaz=${SWING.rsvaz}&alarmmod=${SWING.alarmmod}&gong=arc&formrect=${FITTED.A.join(',')}` },
   { id: 'C', name: 'control: swing, reserve left', q: `case=rect&barrelstep=${SWING.barrelstep}&gong=arc&formrect=${FITTED.S.join(',')}` },

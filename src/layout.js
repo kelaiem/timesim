@@ -96,8 +96,20 @@ const RATE_TABLE = {
 // The row a rate's balance reads: its own, or the shipped movement's.
 const rateBalanceRow = (vph) => (RATE_TABLE[vph].rimF !== undefined ? RATE_TABLE[vph] : RATE_TABLE[18000]);
 export const FOURTH_MODULE_DEFAULT = 0.21; // the fourth⇄escape mesh's cut, the rows above's module when they carry none
+// THE FORM CASES' MOVEMENT (§308 landing 5): a fitted form case is cased about the hands, and the designed
+// train cannot be — its alarm hammer sets the case's width on the crown's far side (x 43.2), over the owner's
+// 40 mm cap once the case is centred. The barrel swung to 180° (barrelstep 0) frees the alarm module's turn to
+// 80°, which carries the hammer to the top edge where the cap does not run, and the reserve station 36° is the
+// least on its key's grid at which the link keeps its measured site there. So a form case takes this arrangement
+// unless the URL names any of its keys; the ROUND build keeps the designed train (it is the one the battery
+// sweeps, and nothing caps its width). Written out as numbers, exactly as a URL would carry them, so a form build
+// and the same build spelled in full share one configKey.
+export const FORM_ARRANGEMENT = Object.freeze({ barrelStepDeg: 0, rsvAzDeg: 36, alarmModAzDeg: 80 });
 export const SPEC = (() => {
-  const raw = (typeof globalThis !== 'undefined' && globalThis.__WATCH_SPEC) || {};
+  const raw0 = (typeof globalThis !== 'undefined' && globalThis.__WATCH_SPEC) || {};
+  const given = (v) => v !== undefined && v !== null && v !== '';
+  const raw = ['rect', 'cushion', 'tonneau'].includes(raw0.caseShape) && !Object.keys(FORM_ARRANGEMENT).some((k) => given(raw0[k]))
+    ? { ...raw0, ...FORM_ARRANGEMENT } : raw0;
   const vph = RATE_TABLE[raw.vph] ? Number(raw.vph) : 18000;
   // Reserve clamped to what the STRUCTURE accepts: below ~12 h the fusee
   // loses its reason to exist; above 48 h the cone's groove stack (0.7 u per
@@ -3703,9 +3715,18 @@ export function caseShapeOf(kind, box, opts = {}) {
 // rect that is s = 1 exactly (the rounded box of corner `margin` is the box's
 // own offset by it); the cushion and the tonneau leave their corners empty and
 // so need s > 1. Bisection to 1e-9 of s from a bracket found by doubling.
-export function fitCaseShape(kind, hull, metal, { margin = PLATE_RIM_MARGIN, ...opts } = {}) {
+//
+// `centre` [x, y] FIXES the shape's centre (the hands' axis: the owner's rule
+// since the hands-centred landing — a watch's hands stand in the middle of its
+// case, as they do in the round one), and the box it scales is the metal box
+// made symmetric about that point: its half-widths are the metal's farther
+// reach either side. Without it the shape is centred on the metal's own box,
+// the smallest case, which is §308's first rule and stood the hands up to
+// 1.39 mm off the case's centre.
+export function fitCaseShape(kind, hull, metal, { margin = PLATE_RIM_MARGIN, centre = null, ...opts } = {}) {
   const [x0, x1, y0, y1] = metal;
-  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, A = (x1 - x0) / 2 + margin, B = (y1 - y0) / 2 + margin;
+  const cx = centre ? centre[0] : (x0 + x1) / 2, cy = centre ? centre[1] : (y0 + y1) / 2;
+  const A = Math.max(cx - x0, x1 - cx) + margin, B = Math.max(cy - y0, y1 - cy) + margin;
   const at = (s) => caseShapeOf(kind, { xMin: cx - s * A, xMax: cx + s * A, yMin: cy - s * B, yMax: cy + s * B }, opts);
   const worst = (sh) => { let w = Infinity; for (const [x, y] of hull) w = Math.min(w, sh.inset(x, y)); return w; };
   const ok = (s) => worst(at(s)) >= margin - 1e-9;

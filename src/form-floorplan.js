@@ -158,6 +158,10 @@ export function makeFloorplan({ kind, regions, moves, shapeOpts = {}, margin = P
   const anchors = [];
   for (const gid of groupIds) for (const a of regions.groups[gid]?.anchors ?? [])
     anchors.push({ group: gid, ...a, xy: resolvePt(a.point) });
+  // The case is fitted about the HANDS (main.js FORM_FOOTPRINT), which no plan
+  // moves — a 'hand' anchor's pin is the identity below — so the fit's centre
+  // is that anchor's point (null, the metal box's centre, only if none resolved).
+  const handCentre = anchors.find((a) => a.pin === 'hand' && a.xy)?.xy ?? null;
 
   function evaluate(values) {
     const T = new Map();
@@ -221,7 +225,7 @@ export function makeFloorplan({ kind, regions, moves, shapeOpts = {}, margin = P
     const hull = convexHull2(xs, ys, xs.length);
     let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
     for (const [x, y] of hull) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
-    const fit = fitCaseShape(kind, hull, [x0, x1, y0, y1], { margin, ...shapeOpts });
+    const fit = fitCaseShape(kind, hull, [x0, x1, y0, y1], { margin, centre: handCentre, ...shapeOpts });
     const b = fit.shape.bounds;
     return { values, feasible: why.length === 0, why, area: polyArea(fit.shape.loop()), bounds: [b.xMin, b.xMax, b.yMin, b.yMax],
       size: [b.xMax - b.xMin, b.yMax - b.yMin], metal: [x0, x1, y0, y1] };

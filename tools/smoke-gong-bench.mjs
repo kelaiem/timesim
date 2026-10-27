@@ -41,10 +41,12 @@ for (const width of [1280, 390]) {
   }
   if (width === 1280) {
     const n = await page.evaluate(async () => { const sel = document.getElementById('kind'); sel.value = 'rect'; sel.dispatchEvent(new Event('change'));
-      for (const [id, v] of [['s-edge', true], ['s-col', false], ['s-any', false], ['s-spiral', false], ['s-lever', true]]) document.getElementById(id).checked = v;
+      for (const [id, v] of [['s-edge', true], ['s-col', false], ['s-any', true], ['s-spiral', false], ['s-lever', true]]) document.getElementById(id).checked = v;
       document.getElementById('s-run').click();
       for (let i = 0; i < 2400 && document.getElementById('s-run').disabled; i++) await new Promise((r) => setTimeout(r, 100));
       return document.getElementById('s-results').rows.length; });
+    // the bar families tools/gong-seats.mjs searches (along a flat edge, and anywhere it fits): on §308 landing 5's
+    // arrangement the lever stands on the top edge and no flat-edge bar reaches it, so the rect's bar seat is an arc
     ok('the solver (module worker, the hammer on its lever) returns bars for the rect', n > 0, `${n} rows`);
   }
   ok(`${width}: no page or console error`, errs.length === 0, errs.slice(0, 2).join(' | '));
