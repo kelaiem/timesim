@@ -161,7 +161,7 @@ function rowOf(kind, mode, r, rect, lever, wireR, mapInfo, st) {
   const curve = rowCurve(r);
   // strikeS is the EXACT root on the analytic curve (GS.seatStrike, the build's own solve), not the sampled one
   // TODO 269: a spiral is struck ALONG its end (blow 'tangent'), so it has no face side and its strike is s = 0
-  return { kind, mode, fam: r.fam, label: r.label, curve, ...(r.blow === 'tangent' ? { blow: 'tangent' } : {}), sg: r.hammer.side, strikeS: r6(st.s),
+  return { kind, mode, fam: r.fam, label: r.label, curve, ...(r.blow === 'tangent' ? { blow: 'tangent' } : {}), sg: r.hammer.side, strikeS: r6(st.s), ...(st.alpha ? { alpha: r12(st.alpha) } : {}),
     f: r.f.map((v) => Math.round(v * 100) / 100), fo: r.fo.map((v) => Math.round(v * 100) / 100), band: BAND_HZ,
     pivot: r.hammer.pivot.map(r6), face: r.hammer.face.map(r6), pivotMoved: r6(r.pivotMoved),
     formrect: rect, specKey: CUR_SPECKEY ?? configKey({ spec: { ...SPEC, caseShape: kind } }), wireR: r6(wireR), map: mapInfo };
@@ -231,8 +231,10 @@ for (const kind of KINDS) {
       for (const cand of pool.slice(0, DEPTH)) {
         const sh = (q) => q.map((v) => v.toFixed(2)).join(', ');
         console.log(`  ${mode}: ${cand.label} (${cand.fam}), L ${cand.L.toFixed(2)} u, f ${cand.f.map((v) => v.toFixed(0)).join(' / ')} Hz, out of plane ${cand.fo.map((v) => v.toFixed(0)).join(' / ')}; free end (${sh(cand.pts[0])}), foot (${sh(cand.pts.at(-1))}); pivot (${sh(cand.hammer.pivot)}), moved ${cand.pivotMoved.toFixed(2)} u; its wire needs ${cand.wide.toFixed(2)} u across`);
-        const st = cand.blow === 'tangent' ? GS.seatStrikeEnd(GS.seatCurve(rowCurve(cand)), lever)
-          : GS.seatStrike(GS.seatCurve(rowCurve(cand)), lever, S.wireR, cand.hammer.side, cand.hammer.at * 0.25);
+        // §319: a side strike the lever reaches only with the blow tilted carries its tilt (cand.hammer.alpha, 0 when exact)
+        const alpha = r12(cand.hammer.alpha ?? 0);
+        const st = cand.blow === 'tangent' ? GS.seatStrikeEnd(GS.seatCurve(rowCurve(cand)), lever, alpha)
+          : GS.seatStrike(GS.seatCurve(rowCurve(cand)), lever, S.wireR, cand.hammer.side, cand.hammer.at * 0.25, alpha);
         // the row stores a spiral's end to 1e-12 (rowCurve), so the residual its pivot carries is float noise
         if (!st || (cand.blow === 'tangent' && Math.abs(st.g) > 1e-9)) { console.log(`    refused: the exact strike solve ${st ? `leaves the pivot ${st.g.toExponential(2)} off the lever's circle` : 'finds no root on the analytic curve'}`); continue; }
         let r = rowOf(kind, mode, cand, rect, lever, S.wireR, mapInfo, st);

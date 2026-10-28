@@ -28796,7 +28796,12 @@ const GONG_SEAT = (() => {
     tanLen: Math.sqrt(ALARM_ARM_LEN ** 2 - ALARM_HEAD_R ** 2), side: ALARM_LIFT_SIDE, gap: HAMMER_HEAD_GAP };
   // TODO 269 — a seat struck ALONG its end (a spiral, `blow: 'tangent'`) has no root to find: its strike is
   // the end, the face one gap before it, and the lever's equation is a residual to hold, not to solve
-  const st = row.blow === 'tangent' ? GS.seatStrikeEnd(curve, lever) : GS.seatStrike(curve, lever, GONG_WIRE_R, row.sg, row.strikeS);
+  // §319 — THE STRIKE TOLERANCE: a row whose lever circle is reached only with the blow tilted off the
+  // wire's normal carries that tilt (`alpha`, within GS.STRIKE_ALPHA_MAX, the 0.5 dB budget); absent it is 0 and the
+  // solve is the untilted one verbatim. The lever's circle, arms and rest gap are still held exactly (g below).
+  const alpha = row.alpha ?? 0;
+  if (Math.abs(alpha) > GS.STRIKE_ALPHA_MAX + 1e-9) return { refused: `the ${GONG_SEAT_MODE} seat's blow is tilted ${(alpha * 180 / Math.PI).toFixed(2)}°, past the ${(GS.STRIKE_ALPHA_MAX * 180 / Math.PI).toFixed(2)}° the strike tolerance admits`, row };
+  const st = row.blow === 'tangent' ? GS.seatStrikeEnd(curve, lever, alpha) : GS.seatStrike(curve, lever, GONG_WIRE_R, row.sg, row.strikeS, alpha);
   if (!st) return { refused: `the lifting lever reaches no point of the ${GONG_SEAT_MODE} seat's wire within 3 u of its solved strike`, row };
   if (row.blow === 'tangent' && Math.abs(st.g) > 0.05)
     console.warn(`§310/TODO 269: the ${GONG_SEAT_MODE} seat's end strike leaves the hammer pivot ${st.g.toFixed(4)} off the lifting lever's circle — the lever has moved since tools/gong-seats.mjs ran; re-run it`);
