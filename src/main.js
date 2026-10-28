@@ -48797,6 +48797,15 @@ const BACK_SWEPT_REGIONS = [
   // is what read the liner 0.650 over the bin's build-pose 7.964. The skirt
   // drops 10.23 → 8.77, and the pane floor (the hammer's plane) takes the band.
   { unit: 'Alarm switch', r0: 48.3, r1: 50.1, z: ALARM_SWITCH_SKIRT_ROW_Z },
+  // §314 — THE LET-DOWN SQUARE turns with the fusee, so its corners sweep the
+  // annulus its half-diagonal reaches about the fusee's axis, and at the
+  // arrangement's −20° barrel step the axis stands where the build pose's
+  // corners leave a bin of that annulus empty: probe-back-envelope swept
+  // 11.204 at r 15.6–15.7 against the plate's 10.314 declared. DERIVED: the
+  // axis's radius, the square's half-diagonal (FUSEE_SQ_S/√2) either side,
+  // at the square's top.
+  ...(() => { const o = barrelArbor.getWorldPosition(new THREE.Vector3()), R = Math.hypot(o.x, o.y), h = FUSEE_SQ_S * Math.SQRT1_2;
+    return [{ unit: 'Fusee & great wheel', r0: R - h, r1: R + h, z: LETDOWN_TOP }]; })(),
   // §278 landing 2 — THE HAMMER HAS A ROW AGAIN, and it is DERIVED, not
   // typed: the cranked tail's riser and upper bar stand at the lever's plane
   // (its top, Z_STRIKE + ALARM_TAIL_T/2) under the glass's step, and the blow
