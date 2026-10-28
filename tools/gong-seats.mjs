@@ -184,7 +184,9 @@ for (const kind of KINDS) {
   // which Node's SPEC (no URL) does not carry, so a key computed here would refuse every seat it wrote
   CUR_SPECKEY = first.seat?.specKey ?? null;
   const rows = {};
-  for (const m of ['bar', 'spiral']) if (!MODES.includes(m) && committed[kind]?.[m]) rows[m] = committed[kind][m];
+  // a mode left out keeps its committed row only while that row was solved for this very spec: a row keyed to
+  // another arrangement would be refused by every build that read it (§314 dropped the bars cut at §313's)
+  for (const m of ['bar', 'spiral']) if (!MODES.includes(m) && committed[kind]?.[m]?.specKey === CUR_SPECKEY) rows[m] = committed[kind][m];
   // EACH SEAT CLOSES ITS OWN FIT: the bar and the spiral move the hammer to different stations, so each is
   // solved and re-booted at the fit its own seated build needs (the spiral rides ?gong=spiral)
   for (const mode of MODES) {
@@ -312,9 +314,9 @@ for (const kind of KINDS) {
     }
     }
     if (closed) rows[mode] = row;
-    else { console.error(`  ${kind} ${mode}: the fit and the seat did not close`); if (mode === 'bar') failed = true; }
+    else { console.error(`  ${kind} ${mode}: the fit and the seat did not close`); if (mode === 'spiral') failed = true; }   // §314: the spiral is the default seat; a bar that does not close is reported
   }
-  if (rows.bar) derived[kind] = rows;
+  if (rows.spiral) derived[kind] = rows;
 }
 await browser.close(); srv.close();
 const text = SPECQ ? (CUR_KEY ? seatModuleText(derived) : seatsText) : seatModuleText(derived);

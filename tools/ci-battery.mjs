@@ -1331,7 +1331,7 @@ const SPEC_POINTS = [
   // row is a URL; the probe holds it equal to the generated seat, so a
   // re-solved seat that moves the fit fails there rather than leaving this
   // row on an outline nobody cuts.
-  { name: 'form-rect', q: 'case=rect&formrect=-45.96,45.96,-45.25,45.25', expect: 'declared', sweep: true,
+  { name: 'form-rect', q: 'case=rect&formrect=-45.72,45.72,-44.38,44.38', expect: 'declared', sweep: true,
     expectWarns: ['§186: the rim-to-bore fit', '§261: cased assembly'],
     why: '§310 landing 4 / §313 — the rect form case at its default (ARRANGEMENT, the spiral seat since §314) and that seat\'s fit; swept, booting exactly the two rows every form build carries' },
 ];
