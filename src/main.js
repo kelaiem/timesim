@@ -45609,6 +45609,13 @@ viewHud.innerHTML = `
         <span class="label-small">Measure</span>
         <button id="btn-axes">Off</button>
       </div>
+      <!-- The camera reflection's pre-blur (src/selfie-reflection.js). Off at
+           every load and never persisted, like the camera row itself: how
+           sharply the viewer's face shows is chosen fresh each session. -->
+      <div class="row">
+        <span class="label-small">Sharp camera reflection</span>
+        <button id="btn-selfie-sharp" title="Sharpens your camera's picture in the polished metal. Off at every load, never saved.">Off</button>
+      </div>
       <div class="row label-small" id="measure-slide-row" style="display:none;">
         <span class="label-small">Scale distance</span>
         <input type="range" id="measure-slide" min="0" max="100" step="1" value="30" />
@@ -52422,6 +52429,12 @@ async function setSelfie(on, pending = null) {
   b.classList.toggle('active', selfie.on);
 }
 document.getElementById('btn-selfie').addEventListener('click', () => setSelfie(!selfie.on));
+// The pre-blur's sharp setting: session-only, no state key, no link param.
+document.getElementById('btn-selfie-sharp').addEventListener('click', (e) => {
+  selfie.setSharp(!selfie.sharp);
+  setBtnState(e.currentTarget, selfie.sharp);
+  e.currentTarget.classList.toggle('active', selfie.sharp);
+});
 // The loading screen's camera opt-in (index.html), on the sound opt-in's
 // pattern: OFF at every load, never saved, never set by a link. A click there
 // asked for the camera during the wait. This adopts that stream once the
@@ -56559,12 +56572,27 @@ const linkShot = (at, R, out = 0.45, up = 0.75) => {
     look: [at.x, at.y, at.z],
   };
 };
-const _colAt = { x: ALARM_COL_POS.x, y: ALARM_COL_POS.y, z: ALARM_LOCK_Z + 0.22 };
-const _pushAt = { x: _pushBase.x, y: _pushBase.y, z: ALARM_LOCK_Z + 0.17 };
-const _rodAt = { x: ALARM_LINK_ROD_XY.x, y: ALARM_LINK_ROD_XY.y, z: ALARM_LOCK_Z + 0.2 };
-const _tailAt = { x: (_colAt.x + _rodAt.x) / 2, y: (_colAt.y + _rodAt.y) / 2, z: ALARM_LOCK_Z + 0.2 };
-// The rod's whole run, plate top down to the shaft: its mid-Z is the frame.
-const _dropAt = { x: ALARM_LINK_ROD_XY.x, y: ALARM_LINK_ROD_XY.y, z: (ALARM_LOCK_Z + ALARM_LINK_SHAFT_Z) / 2 };
+// §261 FOLDED THE DIAL-SIDE CLUSTER, so the sites are read through the fold, not off
+// the unfolded constants: the column, its beak, the rod and the lay shaft stand UNDER
+// THE DIAL (z < 0) and only the pusher and its two-crank linkage stay between the
+// plates (z > 0). The first draft of this table kept ALARM_LOCK_Z for the column and
+// the tail and aimed three stops at metal that had moved 11 units in z.
+const _colW = alarmFoldPoint(ALARM_COL_POS.x, ALARM_COL_POS.y, ALARM_LOCK_Z + ALARM_COL_SPIN_REL)   // the point carries the z reflection itself: a cluster z in, a world z out;
+const _colAt = { x: _colW.x, y: _colW.y, z: _colW.z };
+// The pusher STAYS between the plates, at its own axis (ALARM_PUSH_AXIS_REL below the lock band).
+const _pushAt = { x: _pushBase.x, y: _pushBase.y, z: ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL };
+// The two cranks' pivots are the linkage's own sites (ALARM_LINKAGE.PA / .PB, world
+// xy), on the arms' plane; the stop frames the pair and the rod between them.
+const _linkageAt = {
+  x: (ALARM_LINKAGE.PA.x + ALARM_LINKAGE.PB.x) / 2,
+  y: (ALARM_LINKAGE.PA.y + ALARM_LINKAGE.PB.y) / 2,
+  z: ALARM_LINKAGE_ARM_Z,
+};
+const _linkageSpan = Math.hypot(ALARM_LINKAGE.PA.x - ALARM_LINKAGE.PB.x, ALARM_LINKAGE.PA.y - ALARM_LINKAGE.PB.y);
+const _rodAt = { x: ALARM_LINK_ROD_XY.x, y: ALARM_LINK_ROD_XY.y, z: _colAt.z };
+// The beak lever is a SAME-SIDE lever (pivot, rod and nose along the run), so the
+// middle of the run between the column and the rod frames the whole lever.
+const _beakAt = { x: (_colAt.x + _rodAt.x) / 2, y: (_colAt.y + _rodAt.y) / 2, z: _colAt.z };
 const _shaftAt = {
   x: (ALARM_LINK_SHAFT_TIP_XY.x + ALARM_LINK_INNER_XY.x) / 2,   // TODO 205: the shaft ends at its tip, beside the rod
   y: (ALARM_LINK_SHAFT_TIP_XY.y + ALARM_LINK_INNER_XY.y) / 2,
@@ -56583,7 +56611,7 @@ const _tabAt = {
   y: ALARM_LINK_INNER_XY.y,
   z: Z_DIAL - alarmSelRingZAt(0),   // TODO 222: the ring's rest (built) pose is its plate-most end
 };
-const _rodRun = Math.hypot(_rodAt.x - _colAt.x, _rodAt.y - _colAt.y);
+const _rodRun = Math.hypot(_rodAt.x - _colAt.x, _rodAt.y - _colAt.y);   // the beak lever's run, column to rod
 const _shaftRun = ALARM_LINK_CHORD_LEN;
 // The centre is the one stop a radial standoff cannot frame. On the dial side
 // the hands sweep directly in front of it (they sit BEYOND the dial, so x-ray
@@ -56612,24 +56640,26 @@ const _tabShot = (() => {
   if (Math.abs(ringAt.z - _tabAt.z) > 1e-6)
     console.warn(`§37 tab stop: derived world z ${_tabAt.z.toFixed(3)} but the selector ring sits at ${ringAt.z.toFixed(3)} — the dialFace flip is wrong`);
 }
+// Stops 3–6 look at the dial side from BEHIND the dial, so they X-RAY (the dial and the
+// three-quarter plate glassify) and hold `up` negative; stop 2 is between the plates.
 const ALARM_LINK_STEPS = [
   { camera: linkShot(_pushAt, 4.0), alarm: false, alarmCrown: 'in', xray: false, explode: 0, labels: false, scale: 1, schematic: false,
     caption: 'The PUSHER at the rim — the one thing an owner touches. A cased movement cannot reach a plate-top column wheel, so §3’s case band will bore for exactly this stem', dwell: 3.4 },
-  { camera: linkShot(_colAt, ALARM_COL_BASE_R + 1.4, 0.4, 0.8), alarm: true,
-    caption: 'One press = one index = half a column pitch. A SECOND beak, 120° round — two full pitches, so identical parity — reads the same castellations the §25 D lock does', dwell: 4.0 },
-  { camera: linkShot(_tailAt, _rodRun / 2 + 2.0, 0.35, 0.85),
-    caption: 'Its long TAIL carries that read across the south-west, clear of the keyless works, to a rod at the rim. Nothing here is decreed — every hand-off is two parts touching', dwell: 3.8 },
-  { camera: linkShot(_dropAt, Math.abs(ALARM_LOCK_Z - ALARM_LINK_SHAFT_Z) / 2 + 2.5, 0.9, 0.25), xray: true,
-    caption: 'X-ray the plates: the beak’s fall drops the ROD through bores in both, the §29 climb in reverse. Rod down = ring down = armed', dwell: 4.0 },
-  // Low and well outboard, not straight up the z axis: from directly below,
+  { camera: linkShot(_linkageAt, _linkageSpan / 3 + 2.0, 0.2, 0.9), alarm: true, xray: true,
+    caption: 'Between the plates the press runs through two 1:1 CRANKS and a rod. The last crank’s pin drops through a slot in the base plate into the driver that indexes the column wheel', dwell: 4.2 },
+  { camera: linkShot(_colAt, ALARM_COL_BASE_R + 1.4, 0.4, -0.8), alarm: true, xray: true,
+    caption: 'Under the dial: one press = one index = half a column pitch. The link’s BEAK stands three pitches round and reads the same castellations the §25 D lock does', dwell: 4.0 },
+  { camera: linkShot(_beakAt, _rodRun / 2 + 5.0, 0.3, -0.9), xray: true,
+    caption: 'The beak lever is pivoted on a post beside the run, nose and rod on the same side: its fall steps down to a short ROD. Nothing here is decreed — every hand-off is two parts touching', dwell: 3.8 },
+  // Low and well outboard, not straight along the z axis: from directly behind,
   // the dial furniture stacks over the shaft and the hands cross it. Skimming
   // along its run instead puts both cranks in frame — checked on screen, which
   // is the only way to check a framing.
-  { camera: linkShot(_shaftAt, _shaftRun / 2 + 1.0, 0.78, -0.55),
-    caption: 'Under the base plate, a LAY SHAFT with a crank at each end runs the read 32 units inboard — the distance no single lever should ever span', dwell: 4.0 },
+  { camera: linkShot(_shaftAt, _shaftRun / 2 + 1.0, 0.78, -0.55), xray: true,
+    caption: 'The rod slides in a guide on the LAY SHAFT’s third hanger. The shaft, with a crank at each end, carries the read inboard to the centre', dwell: 4.0 },
   { camera: _tabShot,
     caption: 'The centre crank presses the selector ring’s DRIVE TAB and the ring slides. `alarmOn` is a READOUT of this chain now, not its cause', dwell: 4.0 },
-  { camera: linkShot(_colAt, ALARM_COL_BASE_R + 1.4, 0.4, 0.8), alarm: false, xray: false,
+  { camera: linkShot(_colAt, ALARM_COL_BASE_R + 1.4, 0.4, -0.8), alarm: false, xray: true,
     caption: 'Press again and the whole run reverses — column, beak, rod, shaft, crank, ring. Pusher to arming, unbroken', dwell: 3.4 },
 ];
 
