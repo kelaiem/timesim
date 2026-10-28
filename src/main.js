@@ -7486,6 +7486,14 @@ function rsvFitTrainAt(pivotXY, quiet = false) {
     }
     if (best) break;
   }
+  // §314 — a NAMED idler count may leave no admissible train at all (every
+  // candidate under §50's module floor or a bore over the span a closer station
+  // leaves): say so and build the two-stage train, never a null train.
+  if (!bestAny) {
+    if (!quiet) console.warn(`reserve train: no exact train with ${nLo === nHi ? nLo : `${nLo}–${nHi}`} idlers clears the tooth floor and the bores `
+      + `over the ${d1.toFixed(2)} stage-two span — building the two-stage train`);
+    return null;
+  }
   if (!best) {
     if (!quiet) console.warn(`reserve train: no exact train of two stages and up to ${RSV_IDLER_MAX} idlers keeps every stage-two member `
       + `${PLATE_RIM_MARGIN} inside the case shape over the ${d1.toFixed(2)} stage-two span — building the least largest tip `
@@ -8001,6 +8009,7 @@ const ALARM_ARR_KEY = configKey({ spec: { ...SPEC, caseShape: null, formRectSpec
 const ALARM_PINB_SEAT_FIXED = Object.freeze({
   'cfg1:{"spec":{"reserveHours":30,"vph":18000},"route":null,"tuned":[]}': 5.2780,   // §278 landing 6: re-quoted to its fixed point — the reclaim moved the dial-hung column against the held arming blade's corner, and hanger 3's jog, moved beside the blade, lengthened the ground's developed path and with it the section and the room (was 5.2650). TODO 240: re-quoted to its fixed point — the re-aimed lever reflects the blade to the nose by its new ratio, and the pin's journal is charged on the same-side reaction (was 5.4263). mN at the pin — the shared equal margin, re-derived and asserted at the link's arming solve (rounded to 0.1 µN). §261 2c: re-quoted to its fixed point — the folded same-side beak reflects the arming blade to the nose by its own lever (was 5.2502)
   'cfg1:{"spec":{"alarmModAzDeg":60,"barrelStepDeg":0,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":6,"vph":18000},"route":null,"tuned":[]}': 5.1837,   // §313: the swung barrel, the reserve at 12 on six idlers, the module at 60°
+  'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-20,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":18000},"route":null,"tuned":[]}': 5.2248,   // §314: the barrel at −20°, the reserve at 12 on two idlers, the module at 50°
 });
 const ALARM_PINB_SEAT_MN = ALARM_PINB_SEAT_FIXED[ALARM_ARR_KEY] ?? 5.2780;   // mN at the pin; a spec with no row takes the designed value
 const ALARM_PINB_BLADE = (() => {
@@ -10322,6 +10331,7 @@ const WIND_SPUR_SWEPT_R = xyRadiusAbout(windSpur, P.barrel, GW_UNDER_Z, CORRIDOR
 // reporting 3.05 of clearance against a table that did not know the staff
 // was there. Measured in the band, like the transfer wheel and the spur.
 const THIRD_STAFF_R = xyRadiusAbout(thirdArbor, P.third, GW_UNDER_Z, CORRIDOR_Z_BOT);
+const FORK_LEG_SWEPT_R = xyRadiusAbout(forkCock.obj, forkCock.legB, GW_UNDER_Z, CORRIDOR_Z_BOT);   // §314
 // §234 — the rows carry the LINK's plan half-width (`halfW`, W / 2) as an
 // argument rather than a shared constant, so the reset solve, the stop-work
 // solve and the §86 envelope check (at 0) each say which blank they price.
@@ -10336,6 +10346,12 @@ const lowRodObstaclesFor = (p, kw, halfW) => [
   // read Escape wheel ⇄ Hack rod FORBIDDEN on the first route the widened
   // elbow found). Same collar model as the fourth, one arbor on.
   { x: p.escape.x, y: p.escape.y, r: 1.4 * 1.7 + halfW + CLEAR_MARGIN, what: 'the escape arbor’s lower collar', of: () => escapeArbor },
+  // §314 — and the fork cock's leg, which stands from the base plate up
+  // through the band: at the arrangement's −20° barrel step the hack rod's
+  // southern dogleg swung out to it (inspection: Fork cock ⇄ Hack rod
+  // FORBIDDEN over the pulled crown) against a table that did not know the
+  // leg was there. Measured in the band, like the third staff (its foot boss).
+  { x: forkCock.legB.x, y: forkCock.legB.y, r: FORK_LEG_SWEPT_R + halfW + CLEAR_MARGIN, what: 'the fork cock’s leg', of: () => forkCock.obj },
   // §85 step C1 — THE GREAT WHEEL, the body this corridor is named after and
   // never contained. The fusee station was represented by the winding SPUR
   // (r ≈ 5.0) because that is what the rod passes beside; the body it passes
@@ -16284,8 +16300,21 @@ const TQ_WINDOW_INTENTS = [
     late: true,
     at: () => ARREST_WINDOW,
     discs: () => [{ x: ARREST_WINDOW.x, y: ARREST_WINDOW.y, r: ARREST_WINDOW.r + CLEAR_MARGIN }],
+    // §314 — A WINDOW CARRIES NO FORCE, SO IT YIELDS TO A STUD THE PLATE CARRIES. The arranged movement's
+    // pusher linkage (its rod line searched round the arrest's tower, tools/probe-314-linkage-line.mjs)
+    // plants crank A's stud inside this reveal; a bossless window cut all-or-nothing cannot open round it,
+    // so the plate keeps its metal over the cross and the row is reported as yielded, never as NOT CUT.
+    yieldsTo: () => {
+      if (!ALARM_LINKAGE_STUDS) return null;
+      for (const st of ALARM_LINKAGE_STUDS)
+        if (Math.hypot(st.x - ARREST_WINDOW.x, st.y - ARREST_WINDOW.y) < ARREST_WINDOW.r + CLEAR_MARGIN + TQ_LAND_MIN + st.r)
+          return `the pusher linkage's ${st.name} stud, planted in the plate inside its reveal`;
+      return null;
+    },
   },
 ];
+// §314 — the pusher linkage's studs (planted in this plate), filled in once the linkage is solved
+let ALARM_LINKAGE_STUDS = null;
 // §201 — the late intent's centre. null until the arrest block has placed the
 // cross's stud; the solver reports the row as deferred while it is null.
 let ARREST_WINDOW = null;
@@ -16333,6 +16362,13 @@ function solveTqWindows() {
         console.warn(`§201 window '${intent.name}': at() returned nothing and the intent is not declared late — an early window with no centre`);
       report.push({ name: intent.name, c: null, discs: [], wanted: 0, r0: 0, boss: false, cut: false,
         deferred: true, late: !!intent.late, webW: 0, webSpan: 0, sectors: [], rOut: [] });
+      continue;
+    }
+    // §314 — a window that yields to metal the plate carries is reported, not cut and not warned
+    const yielded = intent.yieldsTo ? intent.yieldsTo() : null;
+    if (yielded) {
+      report.push({ name: intent.name, c, discs: [], wanted: 0, r0: 0, boss: false, cut: false, yielded,
+        late: !!intent.late, webW: 0, webSpan: 0, sectors: [], rOut: [] });
       continue;
     }
     // The framed circles. A coaxial intent declares one radius about its own
@@ -16870,7 +16906,11 @@ function checkPlateWindows(stage) {
 // below solves the strike from this same lookup, so there is one reading of
 // which row a build stands on. The declaration is held to the cut metal at the
 // strike opening (STRIKE_KEEP_MEASURED), where a stale `keep` warns.
-const GONG_SEAT_MODE = FORM ? (SPEC.gongSeat ?? 'bar') : null;
+// §314 — the SPIRAL is the default seat: at the arrangement's 50° module no bar seats inside the owner's 40 mm
+// cap (rect and cushion read 40.15–40.75 mm across the short side; the cushion's others set the caseback's
+// floor with the hammer, tools/gong-seats.mjs), and the owner chose the spiral over a second arrangement or
+// a wider cap. ?gong=bar still builds the bar wherever a seat is generated for its spec.
+const GONG_SEAT_MODE = FORM ? (SPEC.gongSeat ?? 'spiral') : null;
 // the seat's spec key, and the ARRANGEMENT's (the spec without the case shape, its fit or the seat mode): an
 // arranged movement (spec knobs that move stations — §308 landing 5's barrel swing and module turn) reads its seats
 // from GONG_SEATS_ARRANGED under that key; the designed movement's are GONG_SEATS
@@ -21189,6 +21229,13 @@ reserveTrain.add(rsvHandArbor);
 const rsvIdlers = [];
 if (RSV_IDLERS > 0) {
   const zI = Z_RSV - RSV_Z_STEP;
+  // §314 — the metal the idlers' posts stand between: w1's dial-ward face (its
+  // hub hangs below its pitch plane) and the reserve well's printed floor
+  rsvWheel1.updateWorldMatrix(true, true);
+  const rsvW1Lo = new THREE.Box3().setFromObject(rsvWheel1).min.z;
+  const _rsvFloor = dialGroup.getObjectByName('reserveSubdialFace');
+  _rsvFloor.updateWorldMatrix(true, false);
+  const rsvWellFloorZ = new THREE.Box3().setFromObject(_rsvFloor).max.z;
   const dx = rsvPivotXY.x - rsvW1Pos.x, dy = rsvPivotXY.y - rsvW1Pos.y, dd = Math.hypot(dx, dy);
   const v = { x: dx / dd, y: dy / dd };
   for (let k = 1; k <= RSV_IDLERS; k++) {
@@ -21196,18 +21243,33 @@ if (RSV_IDLERS > 0) {
     const at = { x: rsvW1Pos.x + v.x * along, y: rsvW1Pos.y + v.y * along };
     const mates = [k === 1 ? rsvTeethP1 : RSV_IDLER_T, k === RSV_IDLERS ? rsvTeethW2 : RSV_IDLER_T];
     const wheel = G.makeGear({ name: `rsvIdler${k}`, module: rsvModule1, teeth: RSV_IDLER_T, mates, thickness: 1.0, boreR: RSV_IDLER_BORE_R, spokes: 0, material: MATS.brass });
+    wheel.traverse((o) => { if (o.isMesh && !o.name) o.name = `rsvIdlerWheel${k}`; });   // §314 — the intra-unit mesh rows select it
     const arbor = new THREE.Group();
     arbor.position.set(at.x, at.y, zI);
     arbor.add(wheel);
     reserveTrain.add(arbor);
-    const postTop = Z_RSV + 1, postBot = zI - 0.6;
+    // §314 — PLANTED IN THE DIAL PLATE, not hung toward the base plate. Every
+    // idler stands inside w1's radius (the first meshes p1, on w1's own arbor),
+    // so a post run plate-ward crosses w1's plane where w1 turns (intraUnit read
+    // w1 ⇄ the post, MF, at every pose). The dial plate is the metal under the
+    // stage-two plane (its back face Z_DIAL), so the post is set into it — 0.5,
+    // the alarm studs' rule, or as far as the reserve well's floor allows (the
+    // idlers stand over the well, where the plate is that floor: one margin off
+    // its printed face) — and rises through the idler's bore to one margin
+    // under w1's dial-ward face.
+    const postTop = rsvW1Lo - CLEAR_MARGIN, postBot = Math.max(Z_DIAL - 0.5, rsvWellFloorZ + CLEAR_MARGIN);
     const post = new THREE.Mesh(new THREE.CylinderGeometry(RSV_POST1_R, RSV_POST1_R, postTop - postBot, 10), MATS.steel);
-    post.name = `rsvIdlerPost${k}`;
+    post.name = 'rsvIdlerPost';   // §314 — one name for every idler's post: the dial-plate seat row names them together
     post.rotation.x = Math.PI / 2;
     post.position.set(at.x, at.y, (postTop + postBot) / 2);
     reserveTrain.add(post);
     rsvIdlers.push({ arbor, wheel, at, tip: cutTipR(G.makeGear, { module: rsvModule1, teeth: RSV_IDLER_T, mates, thickness: 1.0, boreR: RSV_IDLER_BORE_R, spokes: 0, material: MATS.brass }) });
   }
+  // §314 — each post stands through its idler's bore, and is set into metal
+  if (rsvW1Lo - CLEAR_MARGIN < zI + 0.5)
+    console.warn(`reserve train: the idler posts top at ${(rsvW1Lo - CLEAR_MARGIN).toFixed(4)}, under the idlers' face ${(zI + 0.5).toFixed(4)} — w1 hangs too low to carry them`);
+  if (Math.max(Z_DIAL - 0.5, rsvWellFloorZ + CLEAR_MARGIN) >= Z_DIAL)
+    console.warn(`reserve train: the idler posts cannot be set into the dial plate — its well floor stands at ${rsvWellFloorZ.toFixed(4)}`);
   // the line closes on w2: the last idler's centre distance to the pivot is its pitch sum
   const last = rsvIdlers[rsvIdlers.length - 1].at;
   const closeErr = Math.hypot(rsvPivotXY.x - last.x, rsvPivotXY.y - last.y) - rsvModule1 * (RSV_IDLER_T + rsvTeethW2) / 2;
@@ -22772,7 +22834,14 @@ const ALARM_SLEEVE_R_IN = alarmTailRAt(ALARM_FOLLOWER_A0) + ALARM_A_PIN_R + 0.03
 //     selector's own third guide station and stands one margin OUTBOARD of
 //     its pins — the one plate whose radius is not the floor's. Max gap 145°,
 //     so the triangle holds the tube's axis.
-const ALARM_SLEEVE_GUIDE_AZ = [105, 250, ALARM_SEL_POST_AZ[2] / DEG2RAD].map((d) => d * DEG2RAD); // world az
+// §314 — the fork turns with a turned module (its tab is the link's measured site, module-relative) while the
+// seat posts do not, so the first plate follows the fork by a SHARE of the module's turn (exactly 105° at
+// identity). The share is measured, not chosen: the stations feed the helix solve, so moving this plate turns
+// the sleeve's rest phase and its fork land toward the feeler's banking stop, while the plate itself backs away
+// from the selector's tab. Under the arrangement's 10° turn, sampled at shares 0.3/0.35/0.4/0.5/0.7: tab
+// 0.151/0.179/>0.2/0.238/–, feeler stop 0.156/0.157/0.158/0.141/0.129. At 0.4 both stand clearest of the
+// margin (0.158 the smaller), so 0.4 of the turn; a world 105° stood 0.03 off the tab.
+const ALARM_SLEEVE_GUIDE_AZ = [105 + ALARM_MOD_ROT / DEG2RAD * 0.4, 250, ALARM_SEL_POST_AZ[2] / DEG2RAD].map((d) => d * DEG2RAD); // world az
 // The plates' inboard face: they hang from the sheet through the selector's
 // band, so they stand one margin outside the selector rocker's orbit (it turns
 // with the tube: ALARM_SELR_REACH 4.837 + CLEAR_MARGIN = 4.987); the owner's
@@ -26864,7 +26933,9 @@ const alarmReleaseCrank = new THREE.Group();   // the moving crank — tick turn
     const sh = new THREE.Shape();
     sh.moveTo(xc, hb);
     if (outEnd > xc) { sh.lineTo(outEnd, hb); sh.lineTo(outEnd, -hb); }
-    sh.lineTo(xc, -hb);
+    // the arc opens at (xc, −hb) and absarc draws its own line there from the
+    // pen; a lineTo to that point first left a zero-length curve wherever the
+    // two readings of it parted by float noise (§314: the outlines gate's seams)
     sh.absarc(0, 0, hubOut, -a0, -2 * Math.PI + a0, true);   // the long way round, through the far side of the hub
     const bore = new THREE.Path();
     bore.absarc(0, 0, hubIn, 0, 2 * Math.PI, true);
@@ -41940,11 +42011,24 @@ const ALARM_PIN_HALF = ALARM_PUSH_TRAVEL / 2;
 // then one column step by construction, exactly as §163's straight track gave
 // it, and the switch's drive line is untouched — the path between the ends is
 // the linkage's, and the tick reads it rather than the straight line.
-const ALARM_LINKAGE_ROD_DIR = 105 * DEG2RAD + ALARM_MOD_ROT;   // the rod line's direction (the search's pick; turns with the module)
-const ALARM_LINKAGE_ROD_C = 25.34;                             // and its offset, m·x = c (rotation about the centre leaves c)
+// §314 — THE ROD LINE IS A SEARCH'S PICK PER ARRANGEMENT. A turned module carries the winding arrest's
+// tower under crank A's arm (the arrest cannot step aside: with the linkage's swept footprint counted, no
+// station on its mesh circle clears, short by 0.009 at every barrel step from −20° to −30°, and its top tier
+// is the cage's height, which the barrel's lid binds), so the arranged movement's line was searched again,
+// on the same grid and the same rule, by tools/probe-314-linkage-line.mjs against the band as built — the
+// arrest at its own station — and keyed like the arming fixed point. A spec with no row takes the designed
+// line. `dirDeg` is the line's direction before the module's turn, `c` its offset (m·x = c).
+const ALARM_LINKAGE_LINES = Object.freeze({
+  'cfg1:{"spec":{"reserveHours":30,"vph":18000},"route":null,"tuned":[]}': { dirDeg: 105, c: 25.34 },   // §261 2c: the fold-site search's pick at φ = 240°
+  'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-20,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":18000},"route":null,"tuned":[]}': { dirDeg: 28, c: 31.34 },   // §314: probe-314-linkage-line's shortest line clear of the metal (52.51 against the designed line's 60.83, whose crank A arm runs through the arrest's leg B here); its crank A stud stands in the arrest's cross window, which yields (the owner's call)
+});
+const _linkageLine = ALARM_LINKAGE_LINES[ALARM_ARR_KEY] ?? ALARM_LINKAGE_LINES['cfg1:{"spec":{"reserveHours":30,"vph":18000},"route":null,"tuned":[]}'];
+const ALARM_LINKAGE_ROD_DIR = _linkageLine.dirDeg * DEG2RAD + ALARM_MOD_ROT;   // the rod line's direction (the search's pick; turns with the module)
+const ALARM_LINKAGE_ROD_C = _linkageLine.c;                                    // and its offset, m·x = c (rotation about the centre leaves c)
 const ALARM_LINKAGE_SIDE = 1;                                  // both output arms on the line's +m side of their pivots (the search's tangent choice)
-const ALARM_LINKAGE = (() => {
-  const m = { x: Math.cos(ALARM_LINKAGE_ROD_DIR), y: Math.sin(ALARM_LINKAGE_ROD_DIR) };
+// the linkage as a LAW of its rod line (§314: the search reads the build's own construction through it)
+const alarmLinkageFor = (ROD_DIR, ROD_C, quiet = false) => {
+  const m = { x: Math.cos(ROD_DIR), y: Math.sin(ROD_DIR) };
   const dotv = (u, v) => u.x * v.x + u.y * v.y;
   const perpv = (v) => ({ x: -v.y, y: v.x });
   const rot = (P, X, th) => { const c = Math.cos(th), s = Math.sin(th), dx = X.x - P.x, dy = X.y - P.y; return { x: P.x + c * dx - s * dy, y: P.y + s * dx + c * dy }; };
@@ -41958,7 +42042,7 @@ const ALARM_LINKAGE = (() => {
   const n0 = perpv({ x: -_pushU.x, y: -_pushU.y });
   // crank A: its pivot on the stem's normal at rest, its output arm square to
   // the rod line and as long as its input — 1:1 at rest (the search's form)
-  const gA = dotv(m, n0), a = (ALARM_LINKAGE_ROD_C - dotv(m, p0)) / (gA - ALARM_LINKAGE_SIDE);
+  const gA = dotv(m, n0), a = (ROD_C - dotv(m, p0)) / (gA - ALARM_LINKAGE_SIDE);
   const PA = { x: p0.x + a * n0.x, y: p0.y + a * n0.y };
   const EA = { x: PA.x - a * ALARM_LINKAGE_SIDE * m.x, y: PA.y - a * ALARM_LINKAGE_SIDE * m.y };
   // crank B: on the folded track's bisector, at distance b; its input arm the
@@ -41970,9 +42054,9 @@ const ALARM_LINKAGE = (() => {
   // is the BISECTOR point nearest that one (the same b — q0's offset from the
   // midpoint lies along the track, square to the normal), so its pin's arc
   // passes through both stations
-  const bq = (ALARM_LINKAGE_ROD_C - dotv(m, q0)) / (dotv(m, nq) - ALARM_LINKAGE_SIDE);
+  const bq = (ROD_C - dotv(m, q0)) / (dotv(m, nq) - ALARM_LINKAGE_SIDE);
   const PB = { x: mq.x + bq * nq.x, y: mq.y + bq * nq.y };
-  const hB = dotv(m, PB) - ALARM_LINKAGE_ROD_C;
+  const hB = dotv(m, PB) - ROD_C;
   const uB = { x: -Math.sign(hB) * m.x, y: -Math.sign(hB) * m.y };      // toward the rod line, square to it
   const geomAt = (rho) => {
     const EB = { x: PB.x + rho * uB.x, y: PB.y + rho * uB.y };
@@ -42013,7 +42097,7 @@ const ALARM_LINKAGE = (() => {
     const u = Math.abs(hB) * f, v = Math.abs(hB) * (f + 0.02), mu = miss(u), mv = miss(v);
     if (Number.isFinite(mu) && Number.isFinite(mv) && mu * mv <= 0) { lo = u; hi = v; }
   }
-  if (Number.isNaN(lo)) console.warn(`§261 2c: the linkage's closure is not bracketed by any input arm from ${(Math.abs(hB) / 2).toFixed(3)} to ${(3 * Math.abs(hB)).toFixed(3)}`);
+  if (Number.isNaN(lo)) { if (quiet) return null; console.warn(`§261 2c: the linkage's closure is not bracketed by any input arm from ${(Math.abs(hB) / 2).toFixed(3)} to ${(3 * Math.abs(hB)).toFixed(3)}`); }
   for (let k = 0; k < 100; k++) { const mid = (lo + hi) / 2; if (miss(lo) * miss(mid) <= 0) hi = mid; else lo = mid; }
   const rho = (lo + hi) / 2, g = geomAt(rho), path = run(g);
   const b = bq;
@@ -42029,7 +42113,8 @@ const ALARM_LINKAGE = (() => {
     crankAAt(T) { return ang(PA, p0, pinAt(T)); },
     crankBAt(T) { const f = Math.max(0, Math.min(1, T)) * STEPS, i = Math.min(STEPS - 1, Math.floor(f)), u = f - i; return path[i].thB + (path[i + 1].thB - path[i].thB) * u; },
   };
-})();
+};
+const ALARM_LINKAGE = alarmLinkageFor(ALARM_LINKAGE_ROD_DIR, ALARM_LINKAGE_ROD_C);
 if (!(Math.abs(ALARM_LINKAGE.closure) < 1e-9))
   console.warn(`§261 2c: the linkage does not close — crank B's turn misses the folded track's end by ${ALARM_LINKAGE.closure.toExponential(3)} rad`);
 // the carry: the azimuth crank B's pin sweeps about the wheel, read in the
@@ -42252,8 +42337,35 @@ const ALARM_LINKAGE_ROD_Z = ALARM_LINKAGE_ARM_Z + ALARM_LINKAGE_ARM_T;
 // length the shank's section answers to, not its own
 const ALARM_LINKAGE_STUD_R = STOCK_MIN_U;
 const ALARM_LINKAGE_HUB_R = ALARM_LINKAGE_STUD_R + PIVOT_BORE_CLEAR + STOCK_MIN_U;
+ALARM_LINKAGE_STUDS = [{ name: 'crank A', x: ALARM_LINKAGE.PA.x, y: ALARM_LINKAGE.PA.y, r: ALARM_LINKAGE_HUB_R }, { name: 'crank B', x: ALARM_LINKAGE.PB.x, y: ALARM_LINKAGE.PB.y, r: ALARM_LINKAGE_HUB_R }];
 const ALARM_LINKAGE_SHANK_R = Math.max(STOCK_MIN_R10,
   ((ALARM_LINKAGE_ARM_Z + ALARM_LINKAGE_ARM_T / 2) - alarmFoldZ(ALARM_DRIVER_TOP_Z)) / (2 * TURN_LD_TARGET));
+// §314 — a linkage's SWEPT PLAN over the press, piece by piece at its own band: the studs and hubs (hung
+// from the three-quarter plate to the arms' underside), the arms and the rod lying on them at every
+// forward-kinematics step, and crank B's pin shank along its arc, from the base plate to the arm (bounded by
+// the hub's radius). Points at each piece's half-width, read by tools/probe-314-linkage-line.mjs.
+const alarmLinkageSweptOf = (L) => {
+  const hw = ALARM_LINKAGE_ARM_W / 2, T_ = ALARM_LINKAGE_ARM_T;
+  const armLo = ALARM_LINKAGE_ARM_Z - T_ / 2, armHi = ALARM_LINKAGE_ARM_Z + T_ / 2, rodHi = ALARM_LINKAGE_ROD_Z + T_ / 2;
+  const out = [];
+  const piece = (name, zLo, zHi) => { const xy = []; out.push({ name, zLo, zHi, xy }); return xy; };
+  const seg = (xy, A, B, h) => {
+    const dx = B.x - A.x, dy = B.y - A.y, len = Math.hypot(dx, dy) || 1e-9, nx = -dy / len, ny = dx / len;
+    const n = Math.max(1, Math.ceil(len / 0.1));
+    for (let k = 0; k <= n; k++) for (const o of [-h, 0, h]) xy.push([A.x + dx * k / n + nx * o, A.y + dy * k / n + ny * o]);
+  };
+  const disc = (xy, P, r) => { for (let k = 0; k < 24; k++) { const t = k * Math.PI / 12; xy.push([P.x + r * Math.cos(t), P.y + r * Math.sin(t)]); } xy.push([P.x, P.y]); };
+  const studs = piece('the studs and hubs', armLo, TQ_BOT_Z + 0.5);
+  disc(studs, L.PA, ALARM_LINKAGE_HUB_R); disc(studs, L.PB, ALARM_LINKAGE_HUB_R);
+  const arms = piece('the arms and the rod', armLo, rodHi);
+  const shank = piece("crank B's pin", ALARM_U_FLOOR, armHi);
+  for (const st of L.path) {
+    const pin = L.pinBAt(st.T), riser = L.pinAt(st.T);
+    seg(arms, L.PB, st.EB, hw); seg(arms, L.PB, pin, hw); seg(arms, L.PA, st.EA, hw); seg(arms, L.PA, riser, hw); seg(arms, st.EA, st.EB, hw);
+    disc(shank, pin, ALARM_LINKAGE_HUB_R);
+  }
+  return out;
+};
 const alarmLinkageParts = { crankA: null, crankB: null, rod: null };
 alarmPusherGroup.position.set(_pushBase.x, _pushBase.y, ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL);
 alarmSwitchUnit.add(alarmPusherGroup);
@@ -48685,6 +48797,15 @@ const BACK_SWEPT_REGIONS = [
   // is what read the liner 0.650 over the bin's build-pose 7.964. The skirt
   // drops 10.23 → 8.77, and the pane floor (the hammer's plane) takes the band.
   { unit: 'Alarm switch', r0: 48.3, r1: 50.1, z: ALARM_SWITCH_SKIRT_ROW_Z },
+  // §314 — THE LET-DOWN SQUARE turns with the fusee, so its corners sweep the
+  // annulus its half-diagonal reaches about the fusee's axis, and at the
+  // arrangement's −20° barrel step the axis stands where the build pose's
+  // corners leave a bin of that annulus empty: probe-back-envelope swept
+  // 11.204 at r 15.6–15.7 against the plate's 10.314 declared. DERIVED: the
+  // axis's radius, the square's half-diagonal (FUSEE_SQ_S/√2) either side,
+  // at the square's top.
+  ...(() => { const o = barrelArbor.getWorldPosition(new THREE.Vector3()), R = Math.hypot(o.x, o.y), h = FUSEE_SQ_S * Math.SQRT1_2;
+    return [{ unit: 'Fusee & great wheel', r0: R - h, r1: R + h, z: LETDOWN_TOP }]; })(),
   // §278 landing 2 — THE HAMMER HAS A ROW AGAIN, and it is DERIVED, not
   // typed: the cranked tail's riser and upper bar stand at the lever's plane
   // (its top, Z_STRIKE + ALARM_TAIL_T/2) under the glass's step, and the blow
@@ -59373,11 +59494,11 @@ const JMP_SITE_MOVERS = [
   { name: 'alarm setting wheel', kind: 'revolve', roots: [alarmSetWheelGroup], onto: jmpRotorNamed(alarmSetWheelGroup, 'alarmSettingWheel'), slack: 0 },
   // ---- bounded: each bound is the census's measured minimum over the pose
   // net, rounded down to 0.01 (trailing: the reading and the mesh that sets it)
-  { name: 'going-train bodies', kind: 'bounded', units: ['Fusee & great wheel', 'Center wheel', 'Third wheel'], bound: 0.85 },   // 0.8554, the fusee's lower pivot at train 46/96 — TODO 202: the pivot seats mid-plate, and the plate's centre is −1.15 now (was the centre arbor's 0.9901)
+  { name: 'going-train bodies', kind: 'bounded', units: ['Fusee & great wheel', 'Center wheel', 'Third wheel'], bound: 0.84 },   // 0.8401, the fusee's lower pivot at beat 0/193 — TODO 202: the pivot seats mid-plate (was 0.8554 before §314's barrel step of −20° moved the fusee)
   // the clutch and the reset rod are PHANTOMS as built — tick places both, so
   // the solve reads the clutch 32.8 off its stem and the rod at the origin;
   // both stay this far from any station the whole net over
-  { name: 'winding clutch', kind: 'bounded', units: ['Winding clutch'], bound: 5.96 },   // 5.9672, clutchSaw
+  { name: 'winding clutch', kind: 'bounded', units: ['Winding clutch'], bound: 1.02 },   // 1.0264, clutchSaw at wind 95/720 — §314's arrangement swung the stem toward the jumper (was 5.9672)
   { name: 'reset rod', kind: 'bounded', roots: [resetRod], bound: 2.38 },               // 2.3818
   { name: 'hack rod', kind: 'bounded', roots: [hackRod], bound: 2.72 },                 // 2.7278
   { name: 'hands', kind: 'bounded', roots: [hourHand, minuteHand, smallSecondsHand, reserveHand, alarmHand], bound: 0.81 },   // 0.8124, the small-seconds body
@@ -59393,15 +59514,23 @@ const JMP_SITE_MOVERS = [
   { name: 'column driver', kind: 'lawed', roots: [alarmColDriverGroup, alarmColPawlGroup, alarmColPawlSpringBlade],
     pose: poseAlarmDriverCycle },
   // TODO 214 moved the yoke to the lever's side of the stem, into the census's
-  // view: the yoke stays this far off the region the whole net over…
-  { name: 'yoke', kind: 'bounded', roots: [yokeGroup], bound: 0.81 },                  // 0.8147, yokeBoss at crown 44/48
+  // view, and §314's arrangement swung the stem far enough round that the yoke
+  // reaches the jumper's region (0 against the 0.8147 it was bounded at): so it
+  // is LAWED, on tick's own law — the fork's prong station between the seat and
+  // the pull (yokeAngleAt), its stroke measured off the law like the runs'
+  { name: 'yoke', kind: 'lawed', roots: [yokeGroup],
+    pose: (u) => { yokeGroup.rotation.z = yokeAngleAt(YOKE_A_SEAT + u * (YOKE_A_FULL - YOKE_A_SEAT)); } },
+  // …and the stem (journal, collars, square, crown) and the winding pinion it
+  // turns came into the solve's culling region with it, spinning and sliding,
+  // but their whole travel stays this far off the jumper's reach
+  { name: 'keyless stem', kind: 'bounded', roots: [windSpinner, windPinionGroup], bound: 0.67 },   // 0.6703, windingPinion at arrest 9/96
 ];
-// …and the yoke spring's blade does not — it lies inside the region — so it is
+// The yoke spring's blade lies inside the region too, so it is
 // LAWED, on its own law: aimed from its stud to its tangent on the tail pin at
 // the yoke's station, which every pose keeps between the seat and the pull
 // (a cam-over lifts the clutch by at most a tooth height, far inside the
 // fork's stroke). Its tip is the fastest point: the tail pin's stroke.
-for (const r of JMP_SITE_MOVERS) if (r.kind === 'lawed' && r.stroke === undefined && r.pose && (r.name === 'alarm link run' || r.name === 'column driver' || r.name === 'release run'))
+for (const r of JMP_SITE_MOVERS) if (r.kind === 'lawed' && r.stroke === undefined && r.pose && (r.name === 'alarm link run' || r.name === 'column driver' || r.name === 'release run' || r.name === 'yoke'))
   r.stroke = jmpStrokeOf(r.roots, r.pose);
 JMP_SITE_MOVERS.push({ name: 'yoke spring', kind: 'lawed', roots: [yokeSpringBlade], stroke: YK_SPRING.stroke_u,
   pose: (u) => { const aim = _ykBladeAim(YOKE_A_SEAT + u * (YOKE_A_FULL - YOKE_A_SEAT)); yokeSpringBlade.rotation.z = aim.ang; yokeSpringBlade.scale.x = aim.len; } });
@@ -59854,8 +59983,12 @@ const JMP_SITE = await (async () => {
     g.computeBoundingBox();
     return { g, F };
   };
+  // §314 — every geometric query the stages ask, COUNTED: the stage order's cost
+  // measure (byRefusalsPerWork below), a property of the program, not the clock
+  let jmpWork = 0;
   const bvhShort = (bvh, geo, M, tau) => {
     if (!bvh) return false;
+    jmpWork++;
     const q = rigidQ(geo, M);
     try {
       const r = bvh.closestPointToGeometry(q ? q.g : geo, q ? q.F : M, t1, t2, 0, tau);
@@ -59922,6 +60055,7 @@ const JMP_SITE = await (async () => {
     return 'p' + Array.prototype.join.call(a, ',') + '|' + (geo.index ? Array.prototype.join.call(geo.index.array, ',') : '');   // the lifter bar is cut afresh per station, so it is keyed by its metal
   };
   const rotorsClear = (geo, M, tau, withCoaxial) => {
+    jmpWork++;
     let byObs = _rcMemo.get(OBS.rotors);
     if (!byObs) _rcMemo.set(OBS.rotors, byObs = new Map());
     const key = _rcGeoKey(geo) + '|' + M.elements.join(',') + '|' + (withCoaxial ? 1 : 0);
@@ -59961,6 +60095,7 @@ const JMP_SITE = await (async () => {
   const ray = new THREE.Ray();
   const inside = (bvh, geo, M) => {
     if (!bvh) return false;
+    jmpWork++;
     ray.origin.fromBufferAttribute(geo.attributes.position, 0).applyMatrix4(M);
     ray.direction.set(0.5773502691896258, 0.5773502691896258, 0.5773502691896258);
     // TODO 161 — PARITY PER TREE. Each tree is one closed body, so its own
@@ -59993,14 +60128,19 @@ const JMP_SITE = await (async () => {
   const liftJobs = coarseToFine(pulls.length).flatMap((k) => [[0, k], [RIDE_MAX, k]]);
   const psiJobs = coarseToFine(psiSamples.length);
   // test()'s adaptive order (see its stages): per stage, the runs, the refusals
-  // and the time spent in it; per pose loop, the pose that refused last. Cost
-  // only — never a verdict.
+  // and the WORK spent in it; per pose loop, the pose that refused last. Cost
+  // only — never a verdict. §314: the work is the count of geometric queries the
+  // stage asked (jmpWork), not its milliseconds — on the arrangement two stages'
+  // ratios stood close enough that the clock flipped their order from boot to
+  // boot, so the build did a different amount of work each time (18,465–18,617
+  // seam visits over three boots, which §267's bar table refuses). A count is the
+  // same on every boot and every machine.
   const breatheOuter = breathe;
   const stageOrder = [0, 1, 2, 3, 4, 5, 6];
-  const stageRuns = [0, 0, 0, 0, 0, 0, 0], stageRefusals = [0, 0, 0, 0, 0, 0, 0], stageMs = [0, 0, 0, 0, 0, 0, 0];
-  const byRefusalsPerMs = (x, y) =>
+  const stageRuns = [0, 0, 0, 0, 0, 0, 0], stageRefusals = [0, 0, 0, 0, 0, 0, 0], stageWork = [0, 0, 0, 0, 0, 0, 0];
+  const byRefusalsPerWork = (x, y) =>
     (stageRuns[x] === 0) - (stageRuns[y] === 0)
-    || stageRefusals[y] / (stageMs[y] || Number.MIN_VALUE) - stageRefusals[x] / (stageMs[x] || Number.MIN_VALUE)
+    || stageRefusals[y] / (stageWork[y] || Number.MIN_VALUE) - stageRefusals[x] / (stageWork[x] || Number.MIN_VALUE)
     || x - y;
   const lastRefuter = { lever: 0, lift: 0, p2lever: 0, p2lift: 0 };
   const posesFrom = (n, key) => {
@@ -60052,15 +60192,14 @@ const JMP_SITE = await (async () => {
       // recency (it promotes whatever refused last, expensive or not: measured
       // 65 s at ?alarmaz=175 against 38 s fixed). The optimum for independent
       // checks is the one that puts first what refuses most per unit of time
-      // spent in it: refusals / time, per stage, cumulative over the scan. A
-      // stage not yet run has no evidence and keeps its source place behind the
-      // ones that do. Time is the work: the yields breathe() takes land on
-      // whichever stage is running, so they are not charged to it.
+      // spent in it: refusals / work, per stage, cumulative over the scan (§314:
+      // the work is the queries the stage asked, counted — the clock flipped the
+      // order between boots). A stage not yet run has no evidence and keeps its
+      // source place behind the ones that do.
       // Inside a pose loop the pose that refused last goes first: neighbouring
       // candidates are refused at the same pose. None of this is a constant.
       {
-        let idle = 0;
-        const breathe = async (id) => { const t0 = performance.now(); await breatheOuter(id); idle += performance.now() - t0; };
+        const breathe = breatheOuter;
         const stages = [
           // PASS 1 — the exact distances, cheapest and most telling first
           async () => {
@@ -60145,14 +60284,13 @@ const JMP_SITE = await (async () => {
           },
         ];
         for (const st of stageOrder) {
-          idle = 0;
-          const t0 = performance.now();
+          const w0 = jmpWork;
           const ok = await stages[st]();
           stageRuns[st]++;
-          stageMs[st] += performance.now() - t0 - idle;
+          stageWork[st] += jmpWork - w0;
           if (ok) continue;
           stageRefusals[st]++;
-          stageOrder.sort(byRefusalsPerMs);
+          stageOrder.sort(byRefusalsPerWork);
           return false;
         }
       }
@@ -61151,6 +61289,17 @@ window.__clock = {
   // §261 2c — the fold the cluster SHIPS at (TODO 244): φ about the striking
   // staff, in whole stop pitches, and the z reflection's sum. Read-only, for
   // probe-261-fold-site's K9 once its own search no longer finds the fold.
+  // §314 — the pusher linkage's law and its swept plan, for the rod line's search
+  alarmLinkage: { line: _linkageLine, modRotDeg: ALARM_MOD_ROT / DEG2RAD, key: ALARM_ARR_KEY,
+    at: (dirDeg, c) => { const L = alarmLinkageFor(dirDeg * DEG2RAD + ALARM_MOD_ROT, c, true); return L && Math.abs(L.closure) < 1e-9 ? { PA: L.PA, PB: L.PB, EA: L.EA, EB: L.EB, p0: L.p0, p1: L.p1, q0: L.q0, q1: L.q1, rod: L.rod, armA: L.armA, armBin: L.armBin, armBout: L.armBout, swept: () => alarmLinkageSweptOf(L) } : null; },
+    swept: () => alarmLinkageSweptOf(ALARM_LINKAGE),
+    // the three-quarter plate's window intents (what each opening wants to reveal): a stud planted in the plate
+    // must stand a land outside them, or the window shrinks for it (a bossless one, the arrest's, is then not cut)
+    windowDiscs: () => TQ_WINDOW_INTENTS.flatMap((w) => {
+      if (w.discs) { const d = w.discs(); return d.filter(Boolean).map((q) => ({ x: q.x, y: q.y, r: q.r, name: w.name })); }
+      const a = w.at(); return a ? [{ x: a.x, y: a.y, r: w.reveal(), name: w.name }] : [];
+    }),
+    studR: ALARM_LINKAGE_STUD_R, landMin: TQ_LAND_MIN },
   get alarmFold() { return { phi: ALARM_FOLD_PHI, pitches: ALARM_FOLD_PITCHES, stopTeeth: ALARM_STOP_TEETH, zSum: ALARM_FOLD_Z_SUM, axis: { x: alarmSwPos.x, y: alarmSwPos.y } }; },
   // TODO 236 — the release run's laws and solved record, read-only, for
   // tools/probe-236-release-run.mjs: the sleeve's law (the helix solve's own

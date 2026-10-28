@@ -2856,6 +2856,7 @@ export const EXPECTED_CONTACT_FLOORS = [
       ['reserveBody', 'rsvHandArbor'],
       ['rsvHandArbor', 'dialPlate'],         // the arbor passes the sector floor's bore (SUBDIAL_BORE_R is derived from its radius) and stands out of the plate to the proud hand (§153)
       ['rsvHandArbor', 'reserveSubdialFace'], // …and crosses the printed floor's plane inside that bore (the face is a zero-volume decal)
+      ['rsvIdlerPost', 'dialPlate'],         // §314 — the reserve idlers' posts, set 0.5 into the dial plate (the arrangement's train)
     ],
   },
   {
@@ -3949,6 +3950,14 @@ export const INTRA_UNIT_WAIVERS = [
     debt: 'TODO 77: p0 ⇄ w1, the stage-one mesh — the profile rolls conjugate, the extrude bevel grows it past its backlash (TODO 84); 0.118 mm, measured' },
   { unit: 'Power-reserve train', a: 'ExtrudeGeometry#4', b: 'ExtrudeGeometry#6',
     debt: 'TODO 77: p1 ⇄ w2, the stage-two mesh — same extrude debt (TODO 84); depth refused by the probe at a 6-tooth wheel, not measured' },
+  // §314 — the arrangement's two idlers carry stage two from p1 to w2, three
+  // meshes of the same cut and the same debt
+  { unit: 'Power-reserve train', a: 'ExtrudeGeometry#4', b: 'rsvIdlerWheel1',
+    debt: 'TODO 77: p1 ⇄ idler 1, a stage-two mesh — the same extrude debt (TODO 84)' },
+  { unit: 'Power-reserve train', a: 'rsvIdlerWheel1', b: 'rsvIdlerWheel2',
+    debt: 'TODO 77: idler 1 ⇄ idler 2, a stage-two mesh — the same extrude debt (TODO 84)' },
+  { unit: 'Power-reserve train', a: 'rsvIdlerWheel2', b: 'ExtrudeGeometry#6',
+    debt: 'TODO 77: idler 2 ⇄ w2, a stage-two mesh — the same extrude debt (TODO 84)' },
 ];
 // TODO 191 — INTRA-UNIT CLEARANCE FLOORS, `EXPECTED_CONTACT_FLOORS`' shape one
 // level down. The tiers above gate INTERSECTION only, so two members of one
@@ -6833,7 +6842,13 @@ export const STRIKE_HANDOFFS = [
 // the cock's snap with it; re-read the same way (the ring's net angle crossing
 // the law's holdNet and crestNet): `riding` τ 0.13 mid-climb, lift 0.2587 of a
 // 0.2958 travel; `seated` τ 2559.2 unchanged (lift 6e-6); `crest` τ 2067.3
-// (was 2340.0), lift 0.29583.
+// (was 2340.0), lift 0.29583. §314 made the ARRANGEMENT the default, and its
+// −20° barrel step re-phases the great wheel, so the two were re-read off the
+// build's own law (`maintHoldLaw.begin`, the instant `onFace` turns over —
+// which reads 2559.1 and 2067.2 on the designed build, the table's own
+// values): `seated` τ 3367.3 (crossing 3367.213, the recoil 6e-6 a tenth
+// after it), `crest` τ 2875.4 (crossing 2875.413, the recoil 0.12943 of
+// rCrest's 0.12945); `riding` stays τ 0.13, mid-climb (recoil 0.0162 rad).
 //
 // TODO 224 — and two poses of a WIND, the drive off at τ 0.13 (`riding`'s
 // instant, mid-ramp, so the recoil is a real one — 0.0985 rad): `holding` with
@@ -6844,8 +6859,8 @@ export const STRIKE_HANDOFFS = [
 // on, or it would inherit the hold.
 export const MAINT_DETENT_HANDOFF_POSES = [
   ['riding', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 0 }],
-  ['seated', { tau: 2559.2, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 0 }],
-  ['crest', { tau: 2067.3, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 0 }],
+  ['seated', { tau: 3367.3, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 0 }],
+  ['crest', { tau: 2875.4, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 0 }],
   ['holding', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 0.5 }],
   ['runout', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 1 }],
 ];
@@ -13870,8 +13885,11 @@ export const LINE_SPEC_FORKS = [
     name: 'alarm switch drive as folded',
     ref: 'alarm switch drive',
     rows: {
-      straight: { value: 0.13470189764102053,
-        forcedBy: '§261 2c’s fold: crank B’s pin, not the pusher’s, works the driver’s slot, on an arc of the crank’s output arm (6.762) through the line’s two ends; its greatest departure from that chord is the arc’s sagitta, arm·(1 − cos(θ/2)) over the crank’s 0.3996 rad swing (clock.alarmLinkage), read off the metal' },
+      // §314 — the arranged movement's rod line (ALARM_LINKAGE_LINES, searched round the arrest's tower)
+      // gives crank B a longer output arm and a smaller swing, so the sagitta is re-read off the metal
+      // (the designed line's was 0.13470189764102053: arm 6.762, swing 0.3996 rad)
+      straight: { value: 0.083199897954356,
+        forcedBy: '§261 2c’s fold: crank B’s pin, not the pusher’s, works the driver’s slot, on an arc of the crank’s output arm through the line’s two ends; its greatest departure from that chord is the arc’s sagitta, arm·(1 − cos(θ/2)) — on §314’s arranged line the arm 10.861 over a 0.2479 rad swing (clock.alarmLinkage), 0.0834 by the formula and 0.0832 read off the metal' },
     },
   },
   {

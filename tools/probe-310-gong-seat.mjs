@@ -51,9 +51,10 @@ import { join, extname, normalize, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as GS from '../src/gong-solve.js';
 import { GONG_SEATS } from '../src/gong-seats.js';
-import { configKey, SPEC, FORM_ARRANGEMENT } from '../src/layout.js';
+import { configKey, SPEC, ARRANGEMENT } from '../src/layout.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const DEFAULT_MODE = 'spiral';   // §314: a form build's seat when the URL names none (main.js GONG_SEAT_MODE)
 const fails = [];
 const ok = (name, cond, detail = '') => { console.log(`${cond ? 'PASS' : 'FAIL'}  ${name}${detail ? ` — ${detail}` : ''}`); if (!cond) fails.push(name); };
 
@@ -95,7 +96,7 @@ const ok = (name, cond, detail = '') => { console.log(`${cond ? 'PASS' : 'FAIL'}
     && Math.abs(GS.hullDist(sq, 2, 2) - Math.SQRT2) < 1e-12 && GS.hullDist(sq.slice().reverse(), 0.5, 0.5) === 0);
 }
 const rows = Object.values(GONG_SEATS).flatMap((k) => Object.values(k));
-ok('P4 every row names its spec and a readable curve', rows.length > 0 && rows.every((r) => r.specKey === configKey({ spec: { ...SPEC, ...FORM_ARRANGEMENT, caseShape: r.kind } })   // a form case is cased on the arrangement (layout.js)
+ok('P4 every row names its spec and a readable curve', rows.length > 0 && rows.every((r) => r.specKey === configKey({ spec: { ...SPEC, ...ARRANGEMENT, caseShape: r.kind } })   // a form case is cased on the arrangement (layout.js)
   && ['line', 'arc', 'spiral'].includes(r.curve.type) && r.formrect?.length === 4), `${rows.length} row(s)`);
 
 // ---- browser half
@@ -177,7 +178,7 @@ const seatRead = async () => {   // (Infinity crosses page.evaluate as null: the
 }
 const firstFit = {};   // per kind: the movement as first fitted (the arc build, no ?formrect=), the warnings a seat may not add
 for (const row of rows) {
-  const q = `case=${row.kind}&formrect=${row.formrect.join(',')}${row.mode === 'bar' ? '' : `&gong=${row.mode}`}`;
+  const q = `case=${row.kind}&formrect=${row.formrect.join(',')}&gong=${row.mode}`;
   firstFit[row.kind] ??= (await boot(`case=${row.kind}&gong=arc`, () => ({}))).warnings;
   const seated = await boot(q, seatRead), arc = await boot(`case=${row.kind}&formrect=${row.formrect.join(',')}&gong=arc`, () => ({}));
   const o = seated.out, ch = o.check, tag = `B2 ${row.kind} ${row.mode}`;
@@ -229,7 +230,7 @@ for (const row of rows) {
     }
     ok(`${tag}: TODO 272 — every pillar stands clear of the strike group`, o.pillars.length === 4 && worst.d >= -1e-6,
       `${o.pillars.length} pillars; least spare ${worst.d.toFixed(3)} (${worst.what})`);
-    if (row.kind === 'cushion' && row.mode === 'bar') {
+    if (row.kind === 'cushion' && row.mode === DEFAULT_MODE) {
       // the reader's control: a pillar planted on the hammer's own swept metal (the hull's first vertex) must read as
       // inside the margin. (It was the 30° pillar `main` shipped before TODO 271, (32.49, 18.76), which stood in the
       // cushion's hammer on the designed train; on §308 landing 5's arrangement the hammer is on the top edge.)
@@ -240,7 +241,8 @@ for (const row of rows) {
 }
 // controls
 {
-  const bar = rows.find((r) => r.mode === 'bar');
+  // on the default seat (§314: the spiral), booted without ?gong= so the default is what is called out
+  const bar = rows.find((r) => r.mode === DEFAULT_MODE);
   if (bar) {
     const fr = `case=${bar.kind}&formrect=${bar.formrect.join(',')}`;
     const a = await boot(`${fr}&gong=arc`, seatRead);
@@ -255,19 +257,19 @@ for (const row of rows) {
     const pull = Math.max(3, d[k] - bar.map.need + 1);
     const narrow = bar.formrect.slice(); narrow[k] += (k % 2 ? -pull : pull);
     const n = await boot(`case=${bar.kind}&formrect=${narrow.join(',')}`, seatRead);
-    ok(`B3 control: a seat carried to a fit narrowed past its wire on that side (${pull.toFixed(2)} u) is called out`, n.warnings.some((w) => /§310: the bar gong stands .* inside the/.test(w)),
+    ok(`B3 control: a seat carried to a fit narrowed past its wire on that side (${pull.toFixed(2)} u) is called out`, n.warnings.some((w) => new RegExp(`§310: the ${DEFAULT_MODE} gong stands .* inside the`).test(w)),
       n.warnings.filter((w) => /§310/.test(w)).slice(0, 1).join(''));
-    const moved = JSON.parse(JSON.stringify(GONG_SEATS)); moved[bar.kind].bar.strikeS += 1;
+    const moved = JSON.parse(JSON.stringify(GONG_SEATS)); moved[bar.kind][DEFAULT_MODE].strikeS += 1;
     seatsOverride = `export const GONG_SEATS = Object.freeze(${JSON.stringify(moved)});\nexport const GONG_SEATS_ARRANGED = Object.freeze({});\n`;
     const m = await boot(fr, seatRead);
     seatsOverride = null;
-    ok('B3 control: a seat whose strike moved 1 u is called out', m.warnings.some((w) => /§310: the bar seat's strike solved at/.test(w)), m.warnings.filter((w) => /§310/.test(w)).slice(0, 1).join(''));
+    ok('B3 control: a seat whose strike moved 1 u is called out', m.warnings.some((w) => new RegExp(`§310: the ${DEFAULT_MODE} seat's strike solved at`).test(w)), m.warnings.filter((w) => /§310/.test(w)).slice(0, 1).join(''));
     // TODO 272 — the keep-out dropped, and shrunk to half about its own centre
-    const dropped = JSON.parse(JSON.stringify(GONG_SEATS)); delete dropped[bar.kind].bar.keep;
+    const dropped = JSON.parse(JSON.stringify(GONG_SEATS)); delete dropped[bar.kind][DEFAULT_MODE].keep;
     seatsOverride = `export const GONG_SEATS = Object.freeze(${JSON.stringify(dropped)});\nexport const GONG_SEATS_ARRANGED = Object.freeze({});\n`;
     const dk = await boot(fr, () => ({}));
     ok('B3 control: TODO 272 — a seat with no keep-out is called out', dk.warnings.some((w) => /TODO 272: the .* seat carries no pillar keep-out/.test(w)), dk.warnings.filter((w) => /TODO 272/.test(w)).slice(0, 1).join(''));
-    const shrunk = JSON.parse(JSON.stringify(GONG_SEATS)), kp = shrunk[bar.kind].bar.keep;
+    const shrunk = JSON.parse(JSON.stringify(GONG_SEATS)), kp = shrunk[bar.kind][DEFAULT_MODE].keep;
     if (kp) for (const key of ['hull', 'opening']) { const cx = kp[key].reduce((t, q) => t + q[0], 0) / kp[key].length, cy = kp[key].reduce((t, q) => t + q[1], 0) / kp[key].length;
       kp[key] = kp[key].map(([x, y]) => [cx + (x - cx) / 2, cy + (y - cy) / 2]); }
     seatsOverride = `export const GONG_SEATS = Object.freeze(${JSON.stringify(shrunk)});\nexport const GONG_SEATS_ARRANGED = Object.freeze({});\n`;

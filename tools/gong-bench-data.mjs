@@ -59,7 +59,7 @@ const pack = (bits) => { const bytes = new Uint8Array(Math.ceil(bits.length / 8)
 const data = { generatedFrom: 'each committed seat\'s fit (src/gong-seats.js), ?gong=arc', band: BAND_HZ, kinds: {} };
 for (const kind of KINDS) for (const mode of ['bar', 'spiral']) {
   const fit = GONG_SEATS[kind]?.[mode]?.formrect;
-  if (!fit) { if (mode === 'bar') { console.error(`${kind}: no committed bar seat to read the fit from`); process.exit(1); } continue; }
+  if (!fit) { if (mode === 'spiral') { console.error(`${kind}: no committed spiral seat (the form default since §314) to read the fit from`); process.exit(1); } continue; }
   const ctx = await browser.newContext({ viewport: { width: 800, height: 600 } }), page = await ctx.newPage();
   await page.goto(`http://127.0.0.1:${srv.address().port}/index.html?hud=0&sync=0&case=${kind}&formrect=${fit.join(',')}&gong=arc`);
   await page.waitForFunction(() => !!window.__clock || !!window.__bootError, null, { timeout: 600000, polling: 1000 });

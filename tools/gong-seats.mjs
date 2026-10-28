@@ -180,11 +180,13 @@ for (const kind of KINDS) {
     if (CUR_KEY && CUR_KEY !== first.seat.arrKey) { console.error(`  the arrangement key moved between kinds (${CUR_KEY} → ${first.seat.arrKey})`); failed = true; break; }
     if (!CUR_KEY) { CUR_KEY = first.seat.arrKey; committed = FILE.arranged[CUR_KEY] ?? {}; derived = JSON.parse(JSON.stringify(committed)); console.log(`  arrangement ${CUR_KEY}`); }
   }
-  // the row's spec key is the BUILD's own, read off the page: a form case is cased on layout.js' FORM_ARRANGEMENT,
+  // the row's spec key is the BUILD's own, read off the page: a form case is cased on layout.js' ARRANGEMENT,
   // which Node's SPEC (no URL) does not carry, so a key computed here would refuse every seat it wrote
   CUR_SPECKEY = first.seat?.specKey ?? null;
   const rows = {};
-  for (const m of ['bar', 'spiral']) if (!MODES.includes(m) && committed[kind]?.[m]) rows[m] = committed[kind][m];
+  // a mode left out keeps its committed row only while that row was solved for this very spec: a row keyed to
+  // another arrangement would be refused by every build that read it (§314 dropped the bars cut at §313's)
+  for (const m of ['bar', 'spiral']) if (!MODES.includes(m) && committed[kind]?.[m]?.specKey === CUR_SPECKEY) rows[m] = committed[kind][m];
   // EACH SEAT CLOSES ITS OWN FIT: the bar and the spiral move the hammer to different stations, so each is
   // solved and re-booted at the fit its own seated build needs (the spiral rides ?gong=spiral)
   for (const mode of MODES) {
@@ -239,13 +241,13 @@ for (const kind of KINDS) {
         // second boot, with the pillars yielding, is the one judged. The hammer does not depend on where the
         // pillars stand, so one measuring boot is the fixed point (the build holds that: declared vs cut).
         seatsText = seatModuleText({ ...others, [kind]: { ...rows, [mode]: r } });
-        const m = await boot(`case=${kind}&formrect=${rect.join(',')}${mode === 'bar' ? '' : `&gong=${mode}`}`);
+        const m = await boot(`case=${kind}&formrect=${rect.join(',')}&gong=${mode}`);
         if (m.bootError || !m.seat?.keep) { console.log(`    refused: the seated build ${m.bootError ? `fails to boot (${m.bootError})` : 'measures no strike footprint'}`); continue; }
         r = { ...r, keep: m.seat.keep };
         // GONG_ROWS=dir writes each candidate row as judged, so a refused seat can be booted and read by hand
         if (process.env.GONG_ROWS) await writeFile(join(process.env.GONG_ROWS, `${kind}-${mode}-${round}-${pool.indexOf(cand)}.json`), JSON.stringify(r));
         seatsText = seatModuleText({ ...others, [kind]: { ...rows, [mode]: r } });
-        let b = await boot(`case=${kind}&formrect=${rect.join(',')}${mode === 'bar' ? '' : `&gong=${mode}`}`);
+        let b = await boot(`case=${kind}&formrect=${rect.join(',')}&gong=${mode}`);
         if (b.bootError) { console.log(`    refused: the seated build fails to boot (${b.bootError})`); continue; }
         // THE SEAT AT ITS OWN FIT (TODO 269's second search change, owed since the case is fitted about the
         // hands): a seat is judged at the smallest case that holds BOTH its seated metal and its own wire, not at
@@ -261,7 +263,7 @@ for (const kind of KINDS) {
         if (!sameRect(own, rect)) {
           const r2 = { ...r, formrect: own };
           seatsText = seatModuleText({ ...others, [kind]: { ...rows, [mode]: r2 } });
-          const c = await boot(`case=${kind}&formrect=${own.join(',')}${mode === 'bar' ? '' : `&gong=${mode}`}`);
+          const c = await boot(`case=${kind}&formrect=${own.join(',')}&gong=${mode}`);
           if (!c.bootError && within(c.rect, own)) {
             seatsText = seatModuleText({ ...others });
             arcAt = await boot(`case=${kind}&formrect=${own.join(',')}&gong=arc`);
@@ -312,9 +314,9 @@ for (const kind of KINDS) {
     }
     }
     if (closed) rows[mode] = row;
-    else { console.error(`  ${kind} ${mode}: the fit and the seat did not close`); if (mode === 'bar') failed = true; }
+    else { console.error(`  ${kind} ${mode}: the fit and the seat did not close`); if (mode === 'spiral') failed = true; }   // §314: the spiral is the default seat; a bar that does not close is reported
   }
-  if (rows.bar) derived[kind] = rows;
+  if (rows.spiral) derived[kind] = rows;
 }
 await browser.close(); srv.close();
 const text = SPECQ ? (CUR_KEY ? seatModuleText(derived) : seatsText) : seatModuleText(derived);

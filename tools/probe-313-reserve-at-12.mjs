@@ -6,36 +6,37 @@
 // round to 36°. §313 holds the reserve at 12 o'clock instead: the station is
 // 22.4 u from the swung barrel (14.7 designed), so the reserve train carries six
 // idlers (`?rsvidl=6`, §308 L4 option B's machinery), and the alarm module turns
-// 60°, where the link's measured site misses the station. The arming spring's
+// 60°, where the link's measured site misses the station. §314 stepped the barrel
+// to −10° (the fusee cone clear of the third wheel), where two idlers keep the
+// link's site with the module at 50°. The arming spring's
 // fixed point (ALARM_PINB_SEAT_MN) moves with the link and is quoted per
 // arrangement. This probe holds, per build, the whole boot's warning list,
 // because every one of the failures below announced itself as a boot warning.
 //
 // Builds and gates:
-//   R   the ROUND build, no spec: boots SILENT, the reserve at 12 on the
-//       designed two-stage train (the fingerprint is reported, not gated; the
+//   R   the ROUND build as designed (`?arrangement=designed`, §314): boots
+//       SILENT, the reserve at 12 on the designed two-stage train (the fingerprint is reported, not gated; the
 //       battery holds the bytes).
-//   N   the round build ON the arrangement (barrelstep 0, rsvaz 0, alarmmod 60,
-//       rsvidl 6): SILENT; the reserve station on the 12 o'clock axis; six
-//       idlers cut; the arming fixed point read off its own table row.
-//   F-* each form case at its DEFAULT (the arrangement, its committed bar seat), booted
+//   N   the round DEFAULT, the arrangement since §314 (barrelstep −20, rsvaz 0,
+//       alarmmod 50, rsvidl 2), and S the same spelled out — one fingerprint: SILENT; the reserve station on the 12 o'clock axis; the
+//       arrangement's idlers cut; the arming fixed point read off its own table row.
+//   F-* each form case at its DEFAULT (the arrangement, its committed spiral seat), booted
 //       at that seat's fitted `formrect=` (a plain boot cuts a provisional outline):
 //       only the two rows every form build carries (§186's plate seat, §261's
-//       depth), and on the cushion its own lug-plane finding (§308 landing 1); the reserve at 12 on six idlers; cased width hands-centred
+//       depth), and on the cushion its own lug-plane finding (§308 landing 1); the reserve at 12 on its idlers; cased width hands-centred
 //       under the cap.
 //   Controls — each must print the refusal it exists for:
-//   C4  four idlers: the link's measured site refused by the reserve train.
-//   C0  no idlers: the setting traverse finds no cap bearing.
+//   C0  no idlers: the two-stage train takes the link's measured site.
 //   C80 the module at 80° (§308 landing 5's turn): the link refused again.
 //
-// Run: node tools/probe-313-reserve-at-12.mjs [--only R|N|F-rect|…|C4|C0|C80]
+// Run: node tools/probe-313-reserve-at-12.mjs [--only R|N|F-rect|…|C0|C80]
 //      PW_CHROMIUM=/path/to/chrome when Playwright's own browser is not installed
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { join, extname, normalize, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
-import { UNIT_MM, CASE_CLEAR, CASE_BAND_T, CASE_WIDTH_MAX, FORM_ARRANGEMENT } from '../src/layout.js';
+import { UNIT_MM, CASE_CLEAR, CASE_BAND_T, CASE_WIDTH_MAX, ARRANGEMENT } from '../src/layout.js';
 import { GONG_SEATS } from '../src/gong-seats.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -45,17 +46,17 @@ const fails = [];
 const ok = (name, cond, detail = '') => { console.log(`${cond ? 'PASS' : 'FAIL'}  ${name}${detail ? ` — ${detail}` : ''}`); if (!cond) fails.push(name); };
 
 // the arrangement as a URL carries it, READ from layout.js (a typed copy would drift)
-const A = FORM_ARRANGEMENT;
+const A = ARRANGEMENT;
 const ARR = `barrelstep=${A.barrelStepDeg}&rsvaz=${A.rsvAzDeg}&alarmmod=${A.alarmModAzDeg}&rsvidl=${A.rsvIdlers}`;
 const LINK_REFUSED = /§308: the turned module refuses the link's measured site/;
 const BUILDS = [
-  { id: 'R', name: 'round, as designed', q: '' },
-  { id: 'N', name: 'round, on the arrangement', q: ARR },
-  { id: 'F-rect', name: 'rect, its default', q: `case=rect&formrect=${GONG_SEATS.rect.bar.formrect.join(',')}`, form: true },
-  { id: 'F-cushion', name: 'cushion, its default', q: `case=cushion&formrect=${GONG_SEATS.cushion.bar.formrect.join(',')}`, form: true },
-  { id: 'F-tonneau', name: 'tonneau, its default', q: `case=tonneau&formrect=${GONG_SEATS.tonneau.bar.formrect.join(',')}`, form: true },
-  { id: 'C4', name: 'control: four idlers', q: ARR.replace(/rsvidl=\d+/, 'rsvidl=4'), control: LINK_REFUSED },
-  { id: 'C0', name: 'control: no idlers', q: ARR.replace(/&rsvidl=\d+/, ''), control: /setting traverse: no cap bearing within/ },
+  { id: 'R', name: 'round, as designed', q: 'arrangement=designed' },   // §314: the bare URL is the arrangement
+  { id: 'N', name: 'round, its default (the arrangement)', q: '' },
+  { id: 'S', name: 'round, the arrangement spelled out', q: ARR },
+  { id: 'F-rect', name: 'rect, its default', q: `case=rect&formrect=${GONG_SEATS.rect.spiral.formrect.join(',')}`, form: true },
+  { id: 'F-cushion', name: 'cushion, its default', q: `case=cushion&formrect=${GONG_SEATS.cushion.spiral.formrect.join(',')}`, form: true },
+  { id: 'F-tonneau', name: 'tonneau, its default', q: `case=tonneau&formrect=${GONG_SEATS.tonneau.spiral.formrect.join(',')}`, form: true },
+  { id: 'C0', name: 'control: no idlers', q: ARR.replace(/&rsvidl=\d+/, ''), control: LINK_REFUSED },
   { id: 'C80', name: 'control: the module at 80°', q: ARR.replace(/alarmmod=\d+/, 'alarmmod=80'), control: LINK_REFUSED },
 ];
 const FORM_SHARED = [/^warning: §186: the rim-to-bore fit/, /^warning: §261: cased assembly/];
@@ -133,9 +134,11 @@ async function boot(q) {
 const casedMm = (rect) => 2 * (Math.max(-rect[0], rect[1]) + CASE_CLEAR + CASE_BAND_T) * UNIT_MM;
 const CAP_MM = 2 * CASE_WIDTH_MAX * UNIT_MM;
 const at12 = (t) => Math.abs(t.station.x) < 1e-9 && t.station.y > 0;
+const got = {};
 for (const b of run) {
   console.log(`\n== ${b.id}  ${b.name}  ?${b.q}`);
   const r = await boot(b.q);
+  got[b.id] = r;
   if (r.bootError) { ok(`${b.id} boots`, false, r.bootError); continue; }
   const t = r.train;
   console.log(`   fingerprint ${r.fingerprint.hash}; station (${t.station.x.toFixed(4)}, ${t.station.y.toFixed(4)}); train ${t.p0}:${t.w1}, ${t.p1}:${t.w2}, ${t.idlers} × ${t.idlerTeeth} idlers, module ${t.module1.toFixed(4)}, swing ${t.swingDeg.toFixed(2)}°; arming ${r.arming.quoted} mN (tabled ${r.arming.tabled})`);
@@ -157,6 +160,8 @@ for (const b of run) {
     ok(`${b.id}: cased width hands-centred under the cap`, casedMm(r.form.rect) <= CAP_MM, `${casedMm(r.form.rect).toFixed(2)} ≤ ${CAP_MM.toFixed(2)} mm`);
   }
 }
+if (got.N && got.S && !got.N.bootError && !got.S.bootError)
+  ok('N = S: the default IS the arrangement spelled out (one fingerprint)', got.N.fingerprint.hash === got.S.fingerprint.hash, `${got.N.fingerprint.hash} / ${got.S.fingerprint.hash}`);
 await browser.close(); srv.close();
 console.log(`\n${fails.length ? `FAIL ${fails.length}: ${fails.join('; ')}` : 'ALL PASS'}`);
 process.exit(fails.length ? 1 : 0);

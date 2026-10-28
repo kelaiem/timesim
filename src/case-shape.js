@@ -18,7 +18,7 @@ export function caseShapeSearch(search, kind, fits) {
   p.delete('formrect');
   if (!kind) { p.delete('case'); p.delete('gong'); return p.toString(); }
   p.set('case', kind);
-  const seat = GONG_SEATS[kind]?.[p.get('gong') || 'bar'] ?? GONG_SEATS[kind]?.bar;
+  const seat = GONG_SEATS[kind]?.[p.get('gong') || 'spiral'] ?? GONG_SEATS[kind]?.spiral;   // §314: the spiral is the form default
   if (seat && fits(seat)) p.set('formrect', seat.formrect.join(','));
   return p.toString();
 }

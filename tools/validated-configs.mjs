@@ -18,7 +18,9 @@
 // incremental), so an entry naming a key no run reproduces fails as stale:
 // the closed-ratchet shape of UNDECLARED_CLEARANCE_DEBT.
 //
-//   node tools/validated-configs.mjs --write [--points FILE]
+//   node tools/validated-configs.mjs --write [--points FILE] [--drop NAME,…]
+//     --drop withdraws listed points by name (§314: a claim can always be
+//     withdrawn by hand; only ADDING one needs a whole run's points file)
 //   node tools/validated-configs.mjs --check   identity key current, file canonical
 import { writeFileSync, readFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -68,6 +70,14 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         .sort((a, b) => (a.point < b.point ? -1 : a.point > b.point ? 1 : 0));
       const dropped = Object.entries(file.points).filter(([, e]) => !(e.verdict === 'clean' && e.mode === 'full')).map(([n, e]) => `${n} (${e.verdict}, ${e.mode})`);
       if (dropped.length) console.log(`not listed: ${dropped.join(', ')}`);
+    }
+    const dropAt = process.argv.indexOf('--drop');
+    if (dropAt !== -1) {
+      const names = new Set(process.argv[dropAt + 1].split(','));
+      const unknown = [...names].filter((n) => !pts.some((r) => r.point === n));
+      if (unknown.length) throw new Error(`--drop: not listed: ${unknown.join(', ')}`);
+      pts = pts.filter((r) => !names.has(r.point));
+      console.log(`withdrawn: ${[...names].join(', ')}`);
     }
     const rows = [...EXPECTED, ...pts];
     writeFileSync(FILE, render(rows));
