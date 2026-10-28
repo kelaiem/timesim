@@ -45573,6 +45573,13 @@ viewHud.innerHTML = `
         <span class="label-small">Measure</span>
         <button id="btn-axes">Off</button>
       </div>
+      <!-- The camera reflection's pre-blur (src/selfie-reflection.js). Off at
+           every load and never persisted, like the camera row itself: how
+           sharply the viewer's face shows is chosen fresh each session. -->
+      <div class="row">
+        <span class="label-small">Sharp camera reflection</span>
+        <button id="btn-selfie-sharp" title="Sharpens your camera's picture in the polished metal. Off at every load, never saved.">Off</button>
+      </div>
       <div class="row label-small" id="measure-slide-row" style="display:none;">
         <span class="label-small">Scale distance</span>
         <input type="range" id="measure-slide" min="0" max="100" step="1" value="30" />
@@ -52376,6 +52383,12 @@ async function setSelfie(on, pending = null) {
   b.classList.toggle('active', selfie.on);
 }
 document.getElementById('btn-selfie').addEventListener('click', () => setSelfie(!selfie.on));
+// The pre-blur's sharp setting: session-only, no state key, no link param.
+document.getElementById('btn-selfie-sharp').addEventListener('click', (e) => {
+  selfie.setSharp(!selfie.sharp);
+  setBtnState(e.currentTarget, selfie.sharp);
+  e.currentTarget.classList.toggle('active', selfie.sharp);
+});
 // The loading screen's camera opt-in (index.html), on the sound opt-in's
 // pattern: OFF at every load, never saved, never set by a link. A click there
 // asked for the camera during the wait. This adopts that stream once the
