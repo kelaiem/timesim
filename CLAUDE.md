@@ -934,6 +934,16 @@ in a function, widening a budget or waiver. If no arrangement exists
 without spending P0–P2, that is a LAYOUT problem to file and solve, not a
 mechanism problem to absorb.
 
+**Within P3, a LINK yields.** When two members contest the same space, the
+one that only TRANSFERS motion (a link, reach bar, rod, crank, idler: no
+structural duty and no working surface of its own) moves before one that is
+STRUCTURAL (a plate, bridge, pillar, post, bearing) or that ACTS (a hammer
+and its gong, a wheel's working teeth, a detent's face). A link is re-routed
+around the member it meets, never the member around the link (the owner's
+rule, 2026-10-28, first applied to the form cases' strike group against the
+alarm pusher's reach). Re-routing a link is still a fold: its new path carries
+the same spec quantities, and every part it adds owes its own P1 duties.
+
 **P4 — Finish** (AESTHETICS.md), last, as now.
 
 **Why this is written down.** §35 ran the order backwards. Three corridor
