@@ -243,9 +243,11 @@ for (const kind of KINDS) {
       // the block's radius at the shortest wire the band admits (the clamp condition's ¼ power makes it the largest)
       const footR = Math.max(...S.postRAt.map(([, r]) => r));
       // THE HAMMER'S OWN BANDS (gong-solve's map.hammer): the same counted hulls read at the post's height and at the
-      // arm's and head's, less the hammer, the pillars (TODO 272: they yield to it) and the lifting lever its tail
-      // rides; a hammer part stands where none is within its own radius plus the margin
-      const hNeed = Math.max(S.lever.postR, S.lever.headR) + S.lever.margin, HX = new Set(['Alarm hammer', 'pillars', 'Alarm lifting lever']);
+      // arm's and head's, less the hammer, the pillars (TODO 272: they yield to it), the lifting lever its tail
+      // rides and the alarm switch — the pusher and its linkage are LINKS, and under CLAUDE.md's P3 rule a link
+      // yields: §318 turns the pusher off the seated strike group (ALARM_PUSH_TURNS, probe-318-pusher-turn) and the
+      // battery's form sweep holds the result. A hammer part stands where none is within its radius plus the margin
+      const hNeed = Math.max(S.lever.postR, S.lever.headR) + S.lever.margin, HX = new Set(['Alarm hammer', 'pillars', 'Alarm lifting lever', 'Alarm switch']);
       const hMap = (z) => z ? GS.bandMap(GS.bandParts(arc.regions, z[0], z[1], S.lever.margin, HX), { x0: rect[0] - RES, y0: rect[2] - RES, W, H, RES, need: hNeed, inset: () => Infinity }) : null;
       if (!arc.hammerZ?.staff || !arc.hammerZ?.arm) { console.error('  the arc build reports no hammer heights'); break; }
       const hammerMaps = { staff: hMap(arc.hammerZ.staff), arm: hMap(arc.hammerZ.arm) };
@@ -326,7 +328,8 @@ for (const kind of KINDS) {
         arcSweeps[ak] ??= (await boot(`case=${kind}&formrect=${fk}&gong=arc`, { sweep: true })).swept;
         const hs = (await boot(`case=${kind}&formrect=${fk}&gong=${mode}`, { sweep: true })).swept;
         if (!hs || hs.error || !arcSweeps[ak] || arcSweeps[ak].error) { console.log(`    refused: the hammer's sweep did not run (${hs?.error ?? arcSweeps[ak]?.error ?? 'no boot'})`); continue; }
-        const arcKeys = new Set(arcSweeps[ak].rows.map((x) => x.key)), contacts = hs.rows.filter((x) => !arcKeys.has(x.key)).map((x) => x.text);
+        // (the alarm switch's rows are the links' to yield, §318: not the seat's to answer)
+        const arcKeys = new Set(arcSweeps[ak].rows.map((x) => x.key)), contacts = hs.rows.filter((x) => !arcKeys.has(x.key) && !/Alarm switch/.test(x.key)).map((x) => x.text);
         if (contacts.length) { console.log(`    refused: the seated hammer adds ${contacts.length} contact(s): ${contacts.slice(0, 3).join(' | ')}`); continue; }
         // A clean seat whose own metal fits INSIDE this cut closes here and is taken at once. One that would WIDEN
         // the cut is kept as the round's fallback and the rest are still tried: taking the first clean seat sent

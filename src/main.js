@@ -28149,8 +28149,25 @@ if (!(Math.abs(_colSinDelta) <= 1))
 // nine thousand lines on); the built wheel's `userData.ratchetDrive` IS that
 // constant, and the §43 postscript at the pusher's build holds the chord's
 // sign against the built wheel, so the two cannot part in silence.
-const ALARM_PUSH_AZ = Math.atan2(ALARM_COL_POS.y, ALARM_COL_POS.x)
+// (the WHEEL'S press line — the one the coupling's offset is measured on; `0` because the pusher may turn off it, below)
+const ALARM_PUSH_AZ0 = Math.atan2(ALARM_COL_POS.y, ALARM_COL_POS.x)
   + G.COLUMN_WHEEL_RATCHET_DRIVE * Math.asin(Math.max(-1, Math.min(1, _colSinDelta)));
+const _pushU0 = { x: Math.cos(ALARM_PUSH_AZ0), y: Math.sin(ALARM_PUSH_AZ0) };
+const _pushPerp0 = { x: -_pushU0.y, y: _pushU0.x };
+// §318 — THE PUSHER TURNS ABOUT THE CENTRE, and the wheel does not. Since §261 2c the pusher no longer bears on
+// the column wheel: its pin drives crank A and the linkage carries the press to the driver's own track, which is
+// fixed by the wheel. So the pusher — stem, reach, riser, return spring and the case's tube — is a LINK, and under
+// CLAUDE.md's P3 rule a link yields: where a form case's strike group stands on the wheel's press line (the seated
+// hammer's arm spans it from post to head), the whole pusher is turned off it about the movement's centre, every
+// station along the line kept, the linkage re-searched to the unturned driver track (alarmLinkageFor). The turn
+// is a SEARCH'S PICK per build — keyed by the seat's spec and mode, so it is a form-case quantity — written by
+// tools/probe-318-pusher-turn.mjs; a build with no row keeps the wheel's line (the round build, and every one
+// whose strike group does not stand on it).
+const ALARM_PUSH_TURNS = Object.freeze({
+});
+const ALARM_PUSH_ROT = (FORM && GONG_SEAT_MODE !== 'arc' ? ALARM_PUSH_TURNS[`${GONG_SPEC_KEY}|${GONG_SEAT_MODE}`] ?? 0 : 0) * DEG2RAD
+  + (Number.isFinite(globalThis.__PUSH_TURN_DEG) ? globalThis.__PUSH_TURN_DEG * DEG2RAD : 0);   // a probe's trial turn (tools/probe-318-pusher-turn.mjs)
+const ALARM_PUSH_AZ = ALARM_PUSH_AZ0 + ALARM_PUSH_ROT;
 const _pushU = { x: Math.cos(ALARM_PUSH_AZ), y: Math.sin(ALARM_PUSH_AZ) };
 const _pushPerp = { x: -_pushU.y, y: _pushU.x };
 // Lateral offset — the pawl's line grazes the ratchet tangentially (the skirt
@@ -28169,9 +28186,14 @@ const ALARM_PUSH_CHORD = G.COLUMN_WHEEL_RATCHET_DRIVE * ALARM_DRIVE_OFFSET;
 // The pusher's base: the wheel's centre displaced by the chord along the press
 // line's perpendicular — the foot of the perpendicular, which §170 lands ON
 // the line through the origin.
+const _pushBase0 = {
+  x: ALARM_COL_POS.x + _pushPerp0.x * ALARM_PUSH_CHORD,
+  y: ALARM_COL_POS.y + _pushPerp0.y * ALARM_PUSH_CHORD,
+};
+// …and the pusher's, the same station turned with it (on the line through the centre, so at the same distance)
 const _pushBase = {
-  x: ALARM_COL_POS.x + _pushPerp.x * ALARM_PUSH_CHORD,
-  y: ALARM_COL_POS.y + _pushPerp.y * ALARM_PUSH_CHORD,
+  x: _pushBase0.x * Math.cos(ALARM_PUSH_ROT) - _pushBase0.y * Math.sin(ALARM_PUSH_ROT),
+  y: _pushBase0.x * Math.sin(ALARM_PUSH_ROT) + _pushBase0.y * Math.cos(ALARM_PUSH_ROT),
 };
 // --- The bar's stations along the line, hoisted whole from the pusher's build.
 // TODO 22 closed: the stem ENDS clear of the wheel. Its chord enters the
@@ -42034,11 +42056,13 @@ const alarmLinkageFor = (ROD_DIR, ROD_C, quiet = false) => {
   const rot = (P, X, th) => { const c = Math.cos(th), s = Math.sin(th), dx = X.x - P.x, dy = X.y - P.y; return { x: P.x + c * dx - s * dy, y: P.y + s * dx + c * dy }; };
   const ang = (P, A, B) => Math.atan2((A.x - P.x) * (B.y - P.y) - (A.y - P.y) * (B.x - P.x), (A.x - P.x) * (B.x - P.x) + (A.y - P.y) * (B.y - P.y));
   // the stem's pin stations (unfolded, between the plates) and their images
-  const base = { x: ALARM_COL_POS.x + _pushPerp.x * ALARM_PUSH_CHORD, y: ALARM_COL_POS.y + _pushPerp.y * ALARM_PUSH_CHORD };
+  const base = _pushBase;
   const pinAt = (T) => ({ x: base.x + _pushU.x * (ALARM_PIN_HALF - ALARM_PUSH_TRAVEL * T), y: base.y + _pushU.y * (ALARM_PIN_HALF - ALARM_PUSH_TRAVEL * T) });
   const p0 = pinAt(0), p1 = pinAt(1);
   const fp = (P) => { const v = alarmFoldPoint(P.x, P.y, 0); return { x: v.x, y: v.y }; };
-  const q0 = fp(p0), q1 = fp(p1);
+  // §318: the driver's track is the fold of the pin's stations on the WHEEL's line, wherever the pusher turned
+  const pin0At = (T) => ({ x: _pushBase0.x + _pushU0.x * (ALARM_PIN_HALF - ALARM_PUSH_TRAVEL * T), y: _pushBase0.y + _pushU0.y * (ALARM_PIN_HALF - ALARM_PUSH_TRAVEL * T) });
+  const q0 = fp(pin0At(0)), q1 = fp(pin0At(1));
   const n0 = perpv({ x: -_pushU.x, y: -_pushU.y });
   // crank A: its pivot on the stem's normal at rest, its output arm square to
   // the rod line and as long as its input — 1:1 at rest (the search's form)
@@ -43069,8 +43093,9 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
   // seat by the angle the return was measured at, and the seats sit at fixed
   // azimuths in the wheel. So the post arm's angle off the slot arm is
   // DERIVED — one branch per tooth, and the compact one is taken.
-  const pinRest = { x: _pushPerp.x * ALARM_PUSH_CHORD + _pushU.x * ALARM_PIN_HALF,
-                    y: _pushPerp.y * ALARM_PUSH_CHORD + _pushU.y * ALARM_PIN_HALF };
+  // (on the WHEEL's line: the driver's coupling stands where the pusher's pin stood before §318 turned the pusher)
+  const pinRest = { x: _pushPerp0.x * ALARM_PUSH_CHORD + _pushU0.x * ALARM_PIN_HALF,
+                    y: _pushPerp0.y * ALARM_PUSH_CHORD + _pushU0.y * ALARM_PIN_HALF };
   ALARM_DRIVER_REST_A = Math.atan2(pinRest.y, pinRest.x);
   const relRest = ALARM_DRIVER_REST_A - ALARM_LOCK_ENGAGED;      // driver, in the WHEEL's frame
   // Every branch is one tooth apart, and the seat geometry is identical in each
