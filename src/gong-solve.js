@@ -164,6 +164,13 @@ export const flatRuns = (loop, minLen = 15) => { const n = loop.length, runs = [
 export const solveGong = (map, opts, progress = () => {}) => {
   const M = map, D = opts.wireD_m, WR = opts.wireR, STEP = 0.25, fLo = opts.fLo, fHi = opts.fHi, fT = Math.sqrt(fLo * fHi);
   const free = (x, y) => { const i = Math.floor((x - M.x0) / M.RES), j = Math.floor((y - M.y0) / M.RES); return i >= 0 && j >= 0 && i < M.W && j < M.H && M.free[j * M.W + i] === 1; };
+  // the HAMMER'S band (map.hammer, the same grid read at the hammer's own heights — its staff, arm and head stand
+  // above and below the wire's band, where the alarm pusher's linkage runs): where the hammer's metal may stand.
+  // No map, no constraint (the bench's own solves and the round build's callers pass none).
+  // Two grids: `arm` read over the arm's and head's heights (the arm's line and the head's travel), `staff` over the
+  // post's whole height (the pivot, where the post stands).
+  const gridFree = (G) => G ? (x, y) => { const i = Math.floor((x - G.x0) / G.RES), j = Math.floor((y - G.y0) / G.RES); return i >= 0 && j >= 0 && i < G.W && j < G.H && G.free[j * G.W + i] === 1; } : () => true;
+  const hfree = gridFree(M.hammer?.arm), sfree = gridFree(M.hammer?.staff);
   const march = (gen, Lmax) => { for (let s = 0; s <= Lmax; s += STEP) { const p = gen(s); if (!p || !free(p[0], p[1])) return Math.max(0, s - STEP); } return Lmax; };
   const allFree = (pts) => pts.every(([x, y]) => free(x, y));
   const Lstraight = (f) => Math.sqrt(1.8751 ** 2 * (D / 4) * STEEL_C / (2 * Math.PI * f)) / U_M;
@@ -199,10 +206,10 @@ export const solveGong = (map, opts, progress = () => {}) => {
   const leverAt = (S, n, sg) => { const L = opts.lever, off = WR + L.gap, fx = S[0] + sg * n[0] * off, fy = S[1] + sg * n[1] * off;
     const bx = -sg * n[0], by = -sg * n[1], px = fx + L.side * L.tanLen * -by, py = fy + L.side * L.tanLen * bx;
     return { fx, fy, bx, by, px, py, g: Math.hypot(px - L.Q.x, py - L.Q.y) - L.rho }; };
-  const leverRoom = (h) => { const L = opts.lever; if (!free(h.px, h.py)) return false;
+  const leverRoom = (h) => { const L = opts.lever; if (!free(h.px, h.py) || !sfree(h.px, h.py)) return false;
     // the staff and the arm (eye to pivot) stand in free space too: sampled at a quarter unit
     const ex = h.fx - h.bx * L.headR, ey = h.fy - h.by * L.headR, d = Math.hypot(h.px - ex, h.py - ey);
-    for (let t = 0; t <= d; t += 0.25) if (!free(ex + (h.px - ex) * t / d, ey + (h.py - ey) * t / d)) return false; return true; };
+    for (let t = 0; t <= d; t += 0.25) { const x = ex + (h.px - ex) * t / d, y = ey + (h.py - ey) * t / d; if (!free(x, y) || !hfree(x, y)) return false; } return true; };
   const leverHammer = (pts, want) => { const L = opts.lever, roots = [];
     for (const sg of [1, -1]) { let prev = null;
       for (let i = 0; i < pts.length - 1; i++) { const f = strikeFrame(pts, i), h = leverAt([f.x, f.y], [f.nx, f.ny], sg);
@@ -219,7 +226,7 @@ export const solveGong = (map, opts, progress = () => {}) => {
         prev = { h }; } }
     roots.sort((a, b) => Math.abs(a.idx - want) - Math.abs(b.idx - want));
     for (const r of roots) { let room = true; const f = strikeFrame(pts, Math.floor(r.idx));
-      for (let dd = 1.6; dd <= 4.5; dd += 0.4) if (!free(f.x + r.sg * f.nx * dd, f.y + r.sg * f.ny * dd)) { room = false; break; }
+      for (let dd = 1.6; dd <= 4.5; dd += 0.4) { const x = f.x + r.sg * f.nx * dd, y = f.y + r.sg * f.ny * dd; if (!free(x, y) || !hfree(x, y)) { room = false; break; } }
       if (!room || !leverRoom(r.q)) continue;
       const near = pts.reduce((m, p) => Math.min(m, Math.hypot(p[0] - r.q.px, p[1] - r.q.py)), Infinity);
       if (near < WR + L.postR + L.margin) continue;   // the staff clear of the wire it strikes
@@ -233,7 +240,7 @@ export const solveGong = (map, opts, progress = () => {}) => {
   // (the wire beyond its first unit, one wire's need plus the head's half-width off the head's line).
   const endHammer = (c, pts) => { const L = opts.lever, e = c.end, h = { fx: e.fx, fy: e.fy, bx: e.bx, by: e.by, px: e.px, py: e.py };
     if (!leverRoom(h)) return null;
-    for (let dd = L.gap + 0.4; dd <= 4.5; dd += 0.4) if (!free(e.fx - e.bx * (dd - L.gap), e.fy - e.by * (dd - L.gap))) return null;
+    for (let dd = L.gap + 0.4; dd <= 4.5; dd += 0.4) { const x = e.fx - e.bx * (dd - L.gap), y = e.fy - e.by * (dd - L.gap); if (!free(x, y) || !hfree(x, y)) return null; }
     const near = pts.reduce((m, p) => Math.min(m, Math.hypot(p[0] - e.px, p[1] - e.py)), Infinity);
     if (near < WR + L.postR + L.margin) return null;
     if (endHeadClear(pts, STEP, { x: e.fx, y: e.fy }, { x: e.bx, y: e.by }, L.headR, L.headH ?? 2 * L.headR, WR) < L.margin) return null;
@@ -289,7 +296,7 @@ export const solveGong = (map, opts, progress = () => {}) => {
   // of each curvature leaving the strike away from the pivot — struck at its free end (the loudest f1).
   if ((opts.any || opts.spiral) && opts.lever) { const L = opts.lever;
     for (let ph = 0; ph < 360; ph += 2) { const px = L.Q.x + L.rho * Math.cos(ph * Math.PI / 180), py = L.Q.y + L.rho * Math.sin(ph * Math.PI / 180);
-      if (!free(px, py)) continue;
+      if (!free(px, py) || !sfree(px, py)) continue;
       for (let be = 0; be < 360; be += 3) { const bx = Math.cos(be * Math.PI / 180), by = Math.sin(be * Math.PI / 180);
         const fx = px - L.side * L.tanLen * -by, fy = py - L.side * L.tanLen * bx;   // P = F + side·tanLen·(ẑ×b)
         const radialOk = !L.outward || bx * fx + by * fy > 0;

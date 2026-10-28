@@ -934,6 +934,16 @@ in a function, widening a budget or waiver. If no arrangement exists
 without spending P0–P2, that is a LAYOUT problem to file and solve, not a
 mechanism problem to absorb.
 
+**Within P3, a LINK yields.** When two members contest the same space, the
+one that only TRANSFERS motion (a link, reach bar, rod, crank, idler: no
+structural duty and no working surface of its own) moves before one that is
+STRUCTURAL (a plate, bridge, pillar, post, bearing) or that ACTS (a hammer
+and its gong, a wheel's working teeth, a detent's face). A link is re-routed
+around the member it meets, never the member around the link (the owner's
+rule, 2026-10-28, first applied to the form cases' strike group against the
+alarm pusher's reach). Re-routing a link is still a fold: its new path carries
+the same spec quantities, and every part it adds owes its own P1 duties.
+
 **P4 — Finish** (AESTHETICS.md), last, as now.
 
 **Why this is written down.** §35 ran the order backwards. Three corridor
@@ -1367,7 +1377,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 369 measuring scripts and this file names 73. The rest are named for the
+`tools/` holds 370 measuring scripts and this file names 73. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -1384,7 +1394,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **251 of
+The index also carries the split that decides how to read a result: **252 of
 them are ACCEPTANCE tests** that exit non-zero, and **118 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
