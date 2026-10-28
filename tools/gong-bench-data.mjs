@@ -4,7 +4,7 @@
 // technic.html: the battery never sees it), so the space is GENERATED here from booted builds and committed,
 // never typed, and --check re-derives it.
 //
-//   node tools/gong-bench-data.mjs --write     every kind (rect, cushion, tonneau); a few minutes
+//   node tools/gong-bench-data.mjs --write     every kind (layout.js FORM_KINDS — §317 added the fitted tonneau); a few minutes
 //   node tools/gong-bench-data.mjs --check     re-derive and compare with the committed file (same cost)
 //
 // Per kind and per committed seat (bar, spiral), the build booted at THAT seat's fit (src/gong-seats.js) — a
@@ -28,14 +28,15 @@ import { readFileSync } from 'node:fs';
 import { join, extname, normalize, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as GS from '../src/gong-solve.js';
-import { caseShapeOf, CASE_CLEAR, UNIT_MM } from '../src/layout.js';
+import { formShapeOf, CASE_CLEAR, UNIT_MM, FORM_KINDS } from '../src/layout.js';
 import { GONG_SEATS } from '../src/gong-seats.js';
+import { defaultSeatMode } from '../src/case-shape.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'src/gong-bench-data.json');
 const ARGS = process.argv.slice(2), WRITE = ARGS.includes('--write'), CHECK = ARGS.includes('--check');
 if (WRITE === CHECK) { console.error('usage: node tools/gong-bench-data.mjs --write | --check'); process.exit(2); }
-const KINDS = ['rect', 'cushion', 'tonneau'];
+const KINDS = FORM_KINDS;
 const BAND_HZ = [1000, 4000];   // §197, tools/gong-seats.mjs' BAND_HZ
 const RES = 0.25;               // tools/gong-seats.mjs' cell
 const r4 = (v) => Math.round(v * 1e4) / 1e4;
@@ -59,7 +60,9 @@ const pack = (bits) => { const bytes = new Uint8Array(Math.ceil(bits.length / 8)
 const data = { generatedFrom: 'each committed seat\'s fit (src/gong-seats.js), ?gong=arc', band: BAND_HZ, kinds: {} };
 for (const kind of KINDS) for (const mode of ['bar', 'spiral']) {
   const fit = GONG_SEATS[kind]?.[mode]?.formrect;
-  if (!fit) { if (mode === 'spiral') { console.error(`${kind}: no committed spiral seat (the form default since §314) to read the fit from`); process.exit(1); } continue; }
+  // a kind must have its DEFAULT seat (the spiral since §314, the bar where no spiral closes — §317's fitted
+  // tonneau): the page opens on it, so a kind with neither is a table to regenerate, not a bench to draw
+  if (!fit) { if (mode === defaultSeatMode(GONG_SEATS, kind)) { console.error(`${kind}: no committed ${mode} seat (its default) to read the fit from`); process.exit(1); } continue; }
   const ctx = await browser.newContext({ viewport: { width: 800, height: 600 } }), page = await ctx.newPage();
   await page.goto(`http://127.0.0.1:${srv.address().port}/index.html?hud=0&sync=0&case=${kind}&formrect=${fit.join(',')}&gong=arc`);
   await page.waitForFunction(() => !!window.__clock || !!window.__bootError, null, { timeout: 600000, polling: 1000 });
@@ -75,7 +78,7 @@ for (const kind of KINDS) for (const mode of ['bar', 'spiral']) {
   });
   await ctx.close();
   if (S.bootError) { console.error(`${kind}: boot failed: ${S.bootError}`); process.exit(1); }
-  const shape = caseShapeOf(kind, { xMin: fit[0], xMax: fit[1], yMin: fit[2], yMax: fit[3] });
+  const shape = formShapeOf(kind, fit);   // §317: the fitted tonneau's fit carries its two shape numbers after the bounds
   const need = S.wireR + S.lever.margin;
   const z0 = S.zGong - S.wireR, z1 = S.zGong + S.wireR;
   const parts = [...GS.bandParts(S.regions, z0, z1, S.lever.margin, new Set(['Alarm hammer', 'pillars'])), ...GS.bandParts(S.tenants, z0, z1, S.lever.margin)];
