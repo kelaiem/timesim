@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // §277 part F — does every locale carry the Inspect route's captions and stop
-// titles, and does each keep what the English CLAIMS?
+// titles (and, since TODO 276, the §37 link tour's seven captions), and does each
+// keep what the English CLAIMS?
 //
 // WHY THIS EXISTS. The route's strings are ordinary `t()` keys, so a missing
 // entry falls back to English VISIBLY and nothing else notices: the chrome-coverage
@@ -42,9 +43,18 @@ const main = fs.readFileSync(path.join(root, 'src/main.js'), 'utf8');
 const a = main.indexOf('const INSPECT_STEPS = [');
 const b = main.indexOf('\n];', a);
 if (a < 0 || b < 0) throw new Error('INSPECT_STEPS not found in src/main.js');
-const EN = [...main.slice(a, b).matchAll(/\b(?:title|caption): '((?:[^'\\]|\\.)*)'/g)]
+const stepStrings = (src) => [...src.matchAll(/\b(?:title|caption): '((?:[^'\\]|\\.)*)'/g)]
   .map((m) => m[1].replace(/\\'/g, "'"));
+const EN = stepStrings(main.slice(a, b));
 if (EN.length < 20) throw new Error(`read only ${EN.length} route strings — the step table changed shape`);
+// TODO 276 — the §37 link tour's captions ride the same keys and fall back the same
+// way when its English is rewritten (the §261 retarget rewrote four and no gate said so).
+const la = main.indexOf('const ALARM_LINK_STEPS = [');
+const lb = main.indexOf('\n];', la);
+if (la < 0 || lb < 0) throw new Error('ALARM_LINK_STEPS not found in src/main.js');
+const LINK = stepStrings(main.slice(la, lb));
+if (LINK.length !== 7) throw new Error(`read ${LINK.length} link-tour captions, expected 7 — the step table changed shape`);
+EN.push(...LINK);
 
 // --- the honesty stems, from the source that gates the pages.
 const exSrc = fs.readFileSync(path.join(root, 'tools/explain-i18n.mjs'), 'utf8');
