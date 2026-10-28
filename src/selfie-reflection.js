@@ -39,14 +39,28 @@ export const SELFIE_BAKE_HZ = 15;
 export const SELFIE_FOV_DEG = 65;
 const SCREEN_R = 70;            // the studio's panel radius (main.js buildStudioScene)
 const SCREEN_GAIN = 1.2;        // the picture's emission, against the studio panels' 0.8–3.2
+// THE PRE-BLUR, two settings. PMREMGenerator.fromScene blurs the cube by a
+// Gaussian of SIGMA radians before it builds the roughness chain. The default
+// is the studio's own 0.04 (main.js buildStudioEnvironment), so the room reads
+// alike with and without the camera, and a face in the bezel is a soft
+// likeness rather than a mirror image. The SHARP setting is the smallest blur
+// that still band-limits the cube to its own resolution: one texel of the
+// 256-px face three r165's fromScene renders, π/2 over 256. Under a texel the
+// blur does nothing, and with none at all the 640-px picture aliases down into
+// 256. It is opt-in per session (Advanced, never persisted): how sharply the
+// viewer's face shows is their choice, made fresh at each load.
+export const SELFIE_SIGMA = 0.04;
+const PMREM_CUBE_PX = 256;      // three r165 PMREMGenerator.fromScene: this._setSize( 256 )
+export const SELFIE_SIGMA_SHARP = (Math.PI / 2) / PMREM_CUBE_PX;
 
 export function makeSelfieReflection({ renderer, envScene, frontCard, studioTexture, setEnvironment }) {
   let stream = null, video = null, tex = null, screen = null, rt = null, pmrem = null;
   let last = -Infinity;
+  let sharp = false;   // session-only: nothing stores it, nothing restores it
   const d = new THREE.Vector3(), up = new THREE.Vector3(), right = new THREE.Vector3(), m = new THREE.Matrix4();
 
   const bake = () => {
-    const next = pmrem.fromScene(envScene, 0.04, 0.1, 250);
+    const next = pmrem.fromScene(envScene, sharp ? SELFIE_SIGMA_SHARP : SELFIE_SIGMA, 0.1, 250);
     setEnvironment(next.texture);
     if (rt) rt.dispose();
     rt = next;
@@ -113,5 +127,8 @@ export function makeSelfieReflection({ renderer, envScene, frontCard, studioText
     bake();
   }
 
-  return { start, stop, update, get on() { return !!screen; } };
+  // The next update() re-bakes at once rather than waiting out the rate.
+  function setSharp(on) { sharp = !!on; last = -Infinity; }
+
+  return { start, stop, update, setSharp, get sharp() { return sharp; }, get on() { return !!screen; } };
 }
