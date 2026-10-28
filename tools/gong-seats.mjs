@@ -333,9 +333,13 @@ for (const kind of KINDS) {
     }
     }
     if (closed) rows[mode] = row;
-    else { console.error(`  ${kind} ${mode}: the fit and the seat did not close`); if (mode === 'spiral') failed = true; }   // §314: the spiral is the default seat; a bar that does not close is reported
+    else console.error(`  ${kind} ${mode}: the fit and the seat did not close`);
   }
-  if (rows.spiral) derived[kind] = rows;
+  // §314: the spiral is the default seat; §317: a kind whose spiral does not close keeps its BAR, which the build
+  // and the case-shape reload then take as its default (case-shape.js defaultSeatMode). A kind with neither fails.
+  if (rows.spiral || rows.bar) derived[kind] = rows;
+  else failed = true;
+  if (!rows.spiral && rows.bar) console.log(`  ${kind}: no spiral seat closes — its default is the bar`);
 }
 await browser.close(); srv.close();
 const text = SPECQ ? (CUR_KEY ? seatModuleText(derived) : seatsText) : seatModuleText(derived);
