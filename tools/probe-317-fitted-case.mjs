@@ -11,7 +11,9 @@
 //      the lug pair's reach; F3 it is TIGHT: each bound pulled in 0.01 u refuses the metal (the control on F1 —
 //      a fit that held by being loose would pass F1 alone); F4 it is a LOCAL MINIMUM: k and yA nudged ±1% and
 //      re-tightened never enclose less; F5 it encloses less than the tonneau it started from, and less than
-//      every other kind's §308 fit (the ranking is printed — the owner's question, measured).
+//      every other kind's §308 fit (the ranking is printed — the owner's question, measured); F6 it is GLOBAL over a
+//      25 × 25 grid of (k, yA) — the landscape is a diagonal V-valley an axis search stalls in (it did, at 1074.19
+//      mm²), and the grid's best must beat that stalled answer, its control.
 //   B  the back, on synthetic metal whose answer is known. B1 a slab with two far posts: two islands, the pane
 //      one lift over the slab, the volume the formula's; B2 the control: posts nearer than `join` make one; B3 the flat back is a candidate (posts covering the slab: no step); B4
 //      zLowMin refuses a pane under it; B5 an island too wide for the window (`fits`) is refused.
@@ -89,6 +91,24 @@ const NEED = (20 / U + 1 / U) / 2 + 0.5 / U;   // makeFormCase's lug reach: (CAS
     worse = Math.min(worse, L.shapeArea(make(r)) - fit.area);
   }
   ok('F4 the fit is a local minimum: k and yA nudged and re-tightened never enclose less', worse > -1e-6 * fit.area, `least change ${(worse * mm2).toFixed(4)} mm²`);
+  // F6 — GLOBAL, not only local: the solve's landscape is a V-shaped valley along a diagonal (the record's grid),
+  // where an axis-aligned search stalls on the floor. A brute grid over (k, yA) — 25 × 25, k from a quarter of the
+  // tonneau's curvature to four times it, yA over the ends, the half-width bisected at the fit's own ends — must find
+  // nothing smaller. Its CONTROL: the grid's best must beat 1074.19 mm², what the stalled compass solve shipped on
+  // this hull's first measurement, or the grid is too coarse to catch the defect it exists for.
+  {
+    const kt = fit.tonneau.fitted?.k ?? 2 * L.TONNEAU_BOW / (L.TONNEAU_BOW ** 2 + (fit.tonneau.hh / fit.tonneau.hw) ** 2);
+    let gBest = Infinity;
+    for (let i = 0; i < 25; i++) for (let j = 0; j < 25; j++) {
+      const k = kt * 4 ** (2 * i / 24 - 1), yA = p.y0 + (p.y1 - p.y0) * j / 24;
+      let lo = 20, hi = 80;
+      if (!feasible({ ...p, a: hi, k, yA })) continue;
+      while (hi - lo > 1e-5) { const m = (lo + hi) / 2; if (feasible({ ...p, a: m, k, yA })) hi = m; else lo = m; }
+      gBest = Math.min(gBest, L.shapeArea(make({ ...p, a: hi, k, yA })));
+    }
+    ok('F6 the fit is the valley\'s floor: no point of a 25 × 25 grid encloses less', fit.area <= gBest + 1e-6 * fit.area && gBest * mm2 < 1074.19,
+      `fit ${(fit.area * mm2).toFixed(2)} mm², grid's best ${(gBest * mm2).toFixed(2)} (control: under the stalled solve's 1074.19)`);
+  }
   const rows = ['rect', 'cushion', 'tonneau'].map((k) => [k, L.shapeArea(L.fitCaseShape(k, hull, metal, { centre }).shape)]);
   let A = 0, P = 0; for (let i = 0; i < hull.length; i++) { const [ax, ay] = hull[i], [bx, by] = hull[(i + 1) % hull.length]; A += ax * by - ay * bx; P += Math.hypot(bx - ax, by - ay); }
   const bound = A / 2 + P * M + Math.PI * M * M;

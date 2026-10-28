@@ -3865,6 +3865,7 @@ function drainFit(gen) { for (;;) { const r = gen.next(); if (r.done) return r.v
 // §317 — in steps, §266's rule for a single call longer than the boot's
 // budget: it yields once per compass evaluation, and main.js resumes it with
 // `await breathe()` between them (fitFittedCase drains it for every other caller).
+const KSCAN = 13;   // the curvature scan's steps: a factor 4^(1/6) ≈ 1.26 apart, finer than the valley's measured width in k
 export function* fitFittedCaseSteps(hull, metal, { margin = PLATE_RIM_MARGIN, centre, flatMin = 0, cornerR = PLATE_RIM_MARGIN } = {}) {
   const tonneau = fitCaseShape('tonneau', hull, metal, { margin, centre, cornerR });
   const t = tonneau.shape, cx = centre ? centre[0] : t.cx, cyH = centre ? centre[1] : t.cy;
@@ -3909,21 +3910,39 @@ export function* fitFittedCaseSteps(hull, metal, { margin = PLATE_RIM_MARGIN, ce
   const areaOf = (p) => (p ? quiet(() => shapeArea(make(p))) : Infinity);
   const tb = t.bounds, b0 = (tb.yMax - tb.yMin) / 2, a0 = (tb.xMax - tb.xMin) / 2;
   const start = { a: a0, y0: tb.yMin, y1: tb.yMax, k: 2 * TONNEAU_BOW / (TONNEAU_BOW ** 2 + (b0 / a0) ** 2), yA: (tb.yMin + tb.yMax) / 2 };
-  let best = tighten(start), bestA = areaOf(best);
-  const stepK = { k: start.k * 0.25, yA: b0 * 0.25 };
-  let evals = 0;
-  while (stepK.k > 1e-5 * start.k || stepK.yA > 1e-4) {
-    let moved = false;
-    for (const key of ['k', 'yA']) for (const d of [1, -1]) {
-      if (stepK[key] <= (key === 'k' ? 1e-5 * start.k : 1e-4)) continue;
-      const trial = tighten({ ...best, [key]: best[key] + d * stepK[key] });
-      evals++;
-      yield evals;
-      const A = areaOf(trial);
-      if (A < bestA - 1e-9) { best = trial; bestA = A; moved = true; }
+  // THE LANDSCAPE IS A V-SHAPED VALLEY, measured (the record's grid): the tightened
+  // area over (k, yA) runs down a DIAGONAL floor — a larger k wants a lower apex —
+  // and across it is a V, two hull vertices trading the binding. A compass search
+  // on the axes stalls on that floor (it did: 1074.2 mm² where the floor reaches
+  // 1063.6). Each row is unimodal in yA, so the search is NESTED: for a given k,
+  // a golden-section search over the apex height (within the tonneau's own ends,
+  // to 1e-3 u); over k, a scan of KSCAN geometric steps from a quarter of the
+  // tonneau's curvature to four times it, then a golden-section refinement in the
+  // bracket round the best scanned step (to 1e-5 of the tonneau's k). Every
+  // candidate is tightened from the best so far, so the bounds start warm.
+  let evals = 0, best = tighten(start), bestA = areaOf(best);
+  const G = (Math.sqrt(5) - 1) / 2;
+  const golden = function* (lo, hi, tol, f) {   // least f on [lo, hi]; yields per evaluation
+    let c = hi - G * (hi - lo), d = lo + G * (hi - lo), fc = yield* f(c), fd = yield* f(d);
+    while (hi - lo > tol) {
+      if (fc.A <= fd.A) { hi = d; d = c; fd = fc; c = hi - G * (hi - lo); fc = yield* f(c); }
+      else { lo = c; c = d; fc = fd; d = lo + G * (hi - lo); fd = yield* f(d); }
     }
-    if (!moved) { stepK.k /= 2; stepK.yA /= 2; }
-  }
+    return fc.A <= fd.A ? fc : fd;
+  };
+  const at = function* (k, yA) {   // the tightened candidate at (k, yA), and its area
+    const p = tighten({ ...best, k, yA });
+    evals++;
+    yield evals;
+    const A = areaOf(p);
+    if (A < bestA) { best = p; bestA = A; }
+    return { p, A };
+  };
+  const rowMin = function* (k) { return yield* golden(tb.yMin, tb.yMax, 1e-3, (yA) => at(k, yA)); };
+  const ks = Array.from({ length: KSCAN }, (_, i) => start.k * 4 ** (2 * i / (KSCAN - 1) - 1));
+  let iBest = 0, rBest = Infinity;
+  for (let i = 0; i < ks.length; i++) { const r = yield* rowMin(ks[i]); if (r.A < rBest) { rBest = r.A; iBest = i; } }
+  yield* golden(ks[Math.max(0, iBest - 1)], ks[Math.min(ks.length - 1, iBest + 1)], 1e-5 * start.k, rowMin);
   const shape = make(best);
   return { shape, params: best, area: bestA, tonneau: t, tonneauArea: shapeArea(t), worst: worst(shape),
     handOff: cyH - (best.y0 + best.y1) / 2, evals,
