@@ -28163,7 +28163,14 @@ const _pushPerp0 = { x: -_pushU0.y, y: _pushU0.x };
 // is a SEARCH'S PICK per build — keyed by the seat's spec and mode, so it is a form-case quantity — written by
 // tools/probe-318-pusher-turn.mjs; a build with no row keeps the wheel's line (the round build, and every one
 // whose strike group does not stand on it).
+// probe-318-pusher-turn over −60…60° in 6° steps on the rect: the pusher's own metal is clear of the strike group
+// and every other unit at −18, 12, 18, 48, 54 and 60; the linkage then clears at 48, 54 and 60 only (at 12 and 18
+// crank B's stud meets the winding arrest's leg-B pinion, at −18 the rod crosses the hammer's arm). 48 is the
+// smallest turn that carries a linkage, and the cushion and tonneau read clear at it too.
 const ALARM_PUSH_TURNS = Object.freeze({
+  'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-20,"caseShape":"rect","reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":18000},"route":null,"tuned":[]}|spiral': 48,
+  'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-20,"caseShape":"cushion","reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":18000},"route":null,"tuned":[]}|spiral': 48,
+  'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-20,"caseShape":"tonneau","reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":18000},"route":null,"tuned":[]}|spiral': 48,
 });
 const ALARM_PUSH_ROT = (FORM && GONG_SEAT_MODE !== 'arc' ? ALARM_PUSH_TURNS[`${GONG_SPEC_KEY}|${GONG_SEAT_MODE}`] ?? 0 : 0) * DEG2RAD
   + (Number.isFinite(globalThis.__PUSH_TURN_DEG) ? globalThis.__PUSH_TURN_DEG * DEG2RAD : 0);   // a probe's trial turn (tools/probe-318-pusher-turn.mjs)
@@ -42043,6 +42050,7 @@ const ALARM_PIN_HALF = ALARM_PUSH_TRAVEL / 2;
 const ALARM_LINKAGE_LINES = Object.freeze({
   'cfg1:{"spec":{"reserveHours":30,"vph":18000},"route":null,"tuned":[]}': { dirDeg: 105, c: 25.34 },   // §261 2c: the fold-site search's pick at φ = 240°
   'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-20,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":18000},"route":null,"tuned":[]}': { dirDeg: 28, c: 31.34 },   // §314: probe-314-linkage-line's shortest line clear of the metal (52.51 against the designed line's 60.83, whose crank A arm runs through the arrest's leg B here); its crank A stud stands in the arrest's cross window, which yields (the owner's call)
+  'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-20,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":18000},"route":null,"tuned":[]}|turn 48': { dirDeg: 96, c: 27.34 },   // §318: the form cases' pusher turned 48° — probe-314-linkage-line --turn 48, the shortest line clear (28.524, against the unturned 52.51), the same pick on the rect, cushion and tonneau
 });
 // §318: a TURNED pusher carries its own line, re-searched at the turn (probe-314-linkage-line --turn), keyed by the
 // arrangement and the turn in whole degrees; an unturned build reads the arrangement's
@@ -48194,6 +48202,9 @@ if (FORM) {
   const z0 = TQ_BOT_Z - CLEAR_MARGIN, z1 = TQ_TOP_Z + CLEAR_MARGIN, xs = [], ys = [], v = new THREE.Vector3();
   const pz0 = PLATE_BACK_FACE - CLEAR_MARGIN, pz1 = TQ_BOT_Z + CLEAR_MARGIN, pxs = [], pys = [];
   const keepRot = alarmHammerPivot.rotation.z, N = 12;
+  // the pivot's axis in plan, so the opening can be held between samples (below)
+  const pivW = alarmHammerPivot.getWorldPosition(new THREE.Vector3());
+  let sweptR = 0;
   const meshes = []; alarmHammerUnit.traverse((o) => { if (o.isMesh && !o.userData.schematic && o.geometry?.attributes?.position) meshes.push(o); });
   const under = (o) => { for (let a = o; a; a = a.parent) if (a === alarmHammerPivot) return true; return false; };
   for (let k = 0; k <= N; k++) {
@@ -48208,16 +48219,23 @@ if (FORM) {
         for (let e = 0; e < 3; e++) { v.fromBufferAttribute(pa, idx ? idx.getX(t + e) : t + e).applyMatrix4(m); tri[e] = [v.x, v.y]; lo = Math.min(lo, v.z); hi = Math.max(hi, v.z); }
         if (!(hi < pz0 || lo > pz1)) for (const [x, y] of tri) { pxs.push(x); pys.push(y); }
         if (hi < z0 || lo > z1) continue;
-        for (const [x, y] of tri) { xs.push(x); ys.push(y); }
+        for (const [x, y] of tri) { xs.push(x); ys.push(y); if (under(o)) sweptR = Math.max(sweptR, Math.hypot(x - pivW.x, y - pivW.y)); }
       }
     }
   }
   alarmHammerPivot.rotation.z = keepRot;
   alarmHammerUnit.updateWorldMatrix(true, true);
   if (xs.length >= 3) {
-    // the hull, grown one margin: the hull of each vertex's margin circle
+    // the hull, grown one margin: the hull of each vertex's margin circle. §318 — and by the SAGITTA the swing's
+    // samples leave: between two samples a step apart the moving metal runs on arcs about the pivot, which bow past
+    // the chord the hull draws by at most R·(1 − cos(step/2)) at the farthest radius R it reaches. The rect's
+    // spiral seat measured the tail 0.1484 off the opened plate between samples (0.0016 under the margin), its
+    // far end ~8 u from the pivot on a 0.045 rad step — that sagitta, to the measurement.
+    // The margin's circle is drawn as a 24-gon, CIRCUMSCRIBED (its vertices at grow / cos(π/24)) so its edges stand
+    // on the circle rather than cutting inside it by grow·(1 − cos(π/24)).
+    const sag = sweptR * (1 - Math.cos(ALARM_DRAW_RAD / N)), grow = (CLEAR_MARGIN + sag) / Math.cos(Math.PI / 24);
     const h0 = convexHull2(xs, ys, xs.length), gx = [], gy = [];
-    for (const [x, y] of h0) for (let a = 0; a < 24; a++) { gx.push(x + CLEAR_MARGIN * Math.cos(a * Math.PI / 12)); gy.push(y + CLEAR_MARGIN * Math.sin(a * Math.PI / 12)); }
+    for (const [x, y] of h0) for (let a = 0; a < 24; a++) { gx.push(x + grow * Math.cos(a * Math.PI / 12)); gy.push(y + grow * Math.sin(a * Math.PI / 12)); }
     const pts = convexHull2(gx, gy, gx.length).map(([x, y]) => [x, y]);
     STRIKE_PLATE_OPENING = { pts };   // TODO 270: an opening the re-solved windows keep a land to
     STRIKE_PLATE_VERTS = xs.length;
