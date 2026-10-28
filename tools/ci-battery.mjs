@@ -1327,13 +1327,13 @@ const SPEC_POINTS = [
   // part). Its sweep is the collision claim; while it reads FINDING the build
   // stays out of validated-configs.js and the page marks it unverified.
   //
-  // `formrect=` is GONG_SEATS.rect.bar.formrect, written out because a spec
+  // `formrect=` is GONG_SEATS.rect.spiral.formrect (§314: the spiral is the form default), written out because a spec
   // row is a URL; the probe holds it equal to the generated seat, so a
   // re-solved seat that moves the fit fails there rather than leaving this
   // row on an outline nobody cuts.
   { name: 'form-rect', q: 'case=rect&formrect=-45.96,45.96,-45.25,45.25', expect: 'declared', sweep: true,
     expectWarns: ['§186: the rim-to-bore fit', '§261: cased assembly'],
-    why: '§310 landing 4 / §313 — the rect form case at its default (ARRANGEMENT, the bar seat) and that seat\'s fit; swept, booting exactly the two rows every form build carries' },
+    why: '§310 landing 4 / §313 — the rect form case at its default (ARRANGEMENT, the spiral seat since §314) and that seat\'s fit; swept, booting exactly the two rows every form build carries' },
 ];
 
 // TODO 186 B1 — THE POINTS THE BATTERY SWEEPS, and what each costs.

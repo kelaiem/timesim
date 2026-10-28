@@ -16906,7 +16906,11 @@ function checkPlateWindows(stage) {
 // below solves the strike from this same lookup, so there is one reading of
 // which row a build stands on. The declaration is held to the cut metal at the
 // strike opening (STRIKE_KEEP_MEASURED), where a stale `keep` warns.
-const GONG_SEAT_MODE = FORM ? (SPEC.gongSeat ?? 'bar') : null;
+// §314 — the SPIRAL is the default seat: at the arrangement's 50° module no bar seats inside the owner's 40 mm
+// cap (rect and cushion read 40.15–40.75 mm across the short side; the cushion's others set the caseback's
+// floor with the hammer, tools/gong-seats.mjs), and the owner chose the spiral over a second arrangement or
+// a wider cap. ?gong=bar still builds the bar wherever a seat is generated for its spec.
+const GONG_SEAT_MODE = FORM ? (SPEC.gongSeat ?? 'spiral') : null;
 // the seat's spec key, and the ARRANGEMENT's (the spec without the case shape, its fit or the seat mode): an
 // arranged movement (spec knobs that move stations — §308 landing 5's barrel swing and module turn) reads its seats
 // from GONG_SEATS_ARRANGED under that key; the designed movement's are GONG_SEATS

@@ -17,10 +17,10 @@
 //   R   the ROUND build as designed (`?arrangement=designed`, §314): boots
 //       SILENT, the reserve at 12 on the designed two-stage train (the fingerprint is reported, not gated; the
 //       battery holds the bytes).
-//   N   the round DEFAULT, the arrangement since §314 (barrelstep −10, rsvaz 0,
+//   N   the round DEFAULT, the arrangement since §314 (barrelstep −20, rsvaz 0,
 //       alarmmod 50, rsvidl 2), and S the same spelled out — one fingerprint: SILENT; the reserve station on the 12 o'clock axis; the
 //       arrangement's idlers cut; the arming fixed point read off its own table row.
-//   F-* each form case at its DEFAULT (the arrangement, its committed bar seat), booted
+//   F-* each form case at its DEFAULT (the arrangement, its committed spiral seat), booted
 //       at that seat's fitted `formrect=` (a plain boot cuts a provisional outline):
 //       only the two rows every form build carries (§186's plate seat, §261's
 //       depth), and on the cushion its own lug-plane finding (§308 landing 1); the reserve at 12 on its idlers; cased width hands-centred
@@ -53,9 +53,9 @@ const BUILDS = [
   { id: 'R', name: 'round, as designed', q: 'arrangement=designed' },   // §314: the bare URL is the arrangement
   { id: 'N', name: 'round, its default (the arrangement)', q: '' },
   { id: 'S', name: 'round, the arrangement spelled out', q: ARR },
-  { id: 'F-rect', name: 'rect, its default', q: `case=rect&formrect=${GONG_SEATS.rect.bar.formrect.join(',')}`, form: true },
-  { id: 'F-cushion', name: 'cushion, its default', q: `case=cushion&formrect=${GONG_SEATS.cushion.bar.formrect.join(',')}`, form: true },
-  { id: 'F-tonneau', name: 'tonneau, its default', q: `case=tonneau&formrect=${GONG_SEATS.tonneau.bar.formrect.join(',')}`, form: true },
+  { id: 'F-rect', name: 'rect, its default', q: `case=rect&formrect=${GONG_SEATS.rect.spiral.formrect.join(',')}`, form: true },
+  { id: 'F-cushion', name: 'cushion, its default', q: `case=cushion&formrect=${GONG_SEATS.cushion.spiral.formrect.join(',')}`, form: true },
+  { id: 'F-tonneau', name: 'tonneau, its default', q: `case=tonneau&formrect=${GONG_SEATS.tonneau.spiral.formrect.join(',')}`, form: true },
   { id: 'C0', name: 'control: no idlers', q: ARR.replace(/&rsvidl=\d+/, ''), control: LINK_REFUSED },
   { id: 'C80', name: 'control: the module at 80°', q: ARR.replace(/alarmmod=\d+/, 'alarmmod=80'), control: LINK_REFUSED },
 ];

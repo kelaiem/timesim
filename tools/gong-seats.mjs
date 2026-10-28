@@ -239,13 +239,13 @@ for (const kind of KINDS) {
         // second boot, with the pillars yielding, is the one judged. The hammer does not depend on where the
         // pillars stand, so one measuring boot is the fixed point (the build holds that: declared vs cut).
         seatsText = seatModuleText({ ...others, [kind]: { ...rows, [mode]: r } });
-        const m = await boot(`case=${kind}&formrect=${rect.join(',')}${mode === 'bar' ? '' : `&gong=${mode}`}`);
+        const m = await boot(`case=${kind}&formrect=${rect.join(',')}&gong=${mode}`);
         if (m.bootError || !m.seat?.keep) { console.log(`    refused: the seated build ${m.bootError ? `fails to boot (${m.bootError})` : 'measures no strike footprint'}`); continue; }
         r = { ...r, keep: m.seat.keep };
         // GONG_ROWS=dir writes each candidate row as judged, so a refused seat can be booted and read by hand
         if (process.env.GONG_ROWS) await writeFile(join(process.env.GONG_ROWS, `${kind}-${mode}-${round}-${pool.indexOf(cand)}.json`), JSON.stringify(r));
         seatsText = seatModuleText({ ...others, [kind]: { ...rows, [mode]: r } });
-        let b = await boot(`case=${kind}&formrect=${rect.join(',')}${mode === 'bar' ? '' : `&gong=${mode}`}`);
+        let b = await boot(`case=${kind}&formrect=${rect.join(',')}&gong=${mode}`);
         if (b.bootError) { console.log(`    refused: the seated build fails to boot (${b.bootError})`); continue; }
         // THE SEAT AT ITS OWN FIT (TODO 269's second search change, owed since the case is fitted about the
         // hands): a seat is judged at the smallest case that holds BOTH its seated metal and its own wire, not at
@@ -261,7 +261,7 @@ for (const kind of KINDS) {
         if (!sameRect(own, rect)) {
           const r2 = { ...r, formrect: own };
           seatsText = seatModuleText({ ...others, [kind]: { ...rows, [mode]: r2 } });
-          const c = await boot(`case=${kind}&formrect=${own.join(',')}${mode === 'bar' ? '' : `&gong=${mode}`}`);
+          const c = await boot(`case=${kind}&formrect=${own.join(',')}&gong=${mode}`);
           if (!c.bootError && within(c.rect, own)) {
             seatsText = seatModuleText({ ...others });
             arcAt = await boot(`case=${kind}&formrect=${own.join(',')}&gong=arc`);

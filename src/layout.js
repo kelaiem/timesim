@@ -319,8 +319,8 @@ export const SPEC = (() => {
     const v = String(raw.formRectSpec).split(',').map(Number);
     return (v.length === 4 && v.every(Number.isFinite) && v[0] < v[1] && v[2] < v[3]) ? Object.freeze(v) : null;
   })();
-  // §310 landing 2 — THE GONG'S SEAT on a form build: 'bar' (the default under
-  // ?case=, so null means it there), 'spiral' (the alternative), or 'arc' (the
+  // §310 landing 2 — THE GONG'S SEAT on a form build: 'spiral' (the default under
+  // ?case= since §314, so null means it there), 'bar' (the alternative), or 'arc' (the
   // round build's case-path arc, kept to compare against). The seat itself is
   // never typed: src/gong-seats.js is GENERATED (tools/gong-seats.mjs) from the
   // fitted case's measured free space and the lever the hammer hangs off.
