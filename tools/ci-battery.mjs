@@ -1104,19 +1104,26 @@ const SPEC_POINTS = [
   // The identity, as a control: if this ever warns, the trial harness itself
   // is lying, because the default spec is what every gate above boots.
   { name: 'identity', q: '', expect: 'silent', why: 'the control — the same spec every other gate boots' },
+  // §314 — THE DESIGNED TRAIN, which was the identity until the arrangement became every build's
+  // default. It boots silent and is the one designed build the battery still SWEEPS: its key is the old
+  // identity's (the `arrangement` marker is not a spec field), so the designed movement stays measured.
+  // The designed-train VARIANTS below keep their boots (`arrangement=designed&…`, the builds they always
+  // were) but no longer sweep: against the arrangement every one changes most of the movement, a near-full
+  // sweep each, and their validated rows were withdrawn with the flip (tools/validated-configs.mjs --drop).
+  { name: 'designed', q: 'arrangement=designed', expect: 'silent', sweep: true, why: '§314 — the designed train (barrel 145°, reserve on two meshes, module as designed): the old identity, swept' },
   // §33 step 1 / step 2 — the stem and crown azimuths, each a shipped handle.
-  { name: 'crownaz=90', q: 'crownaz=90', expect: 'any', why: '§33 step 1 — the crown a quarter turn round' },
-  { name: 'stemaz=200', q: 'stemaz=200', expect: 'any', why: '§33 step 2 — the stem decoupled from the barrel' },
+  { name: 'crownaz=90', q: 'arrangement=designed&crownaz=90', expect: 'any', why: '§33 step 1 — the crown a quarter turn round' },
+  { name: 'stemaz=200', q: 'arrangement=designed&stemaz=200', expect: 'any', why: '§33 step 2 — the stem decoupled from the barrel' },
   // §33 step 3 — solveLayout's own arrangement angles.
-  { name: 'barrelstep=-20', q: 'barrelstep=-20', expect: 'any', why: '§33 step 3 — the barrel step off its default -35' },
-  { name: 'escstep=-70', q: 'escstep=-70', expect: 'any', why: '§33 step 3 — the escape step off its default -57.9' },
-  { name: 'balstep=60', q: 'balstep=60', expect: 'any', sweep: true, why: '§33 step 3 — a balance TARGET the solver must move off' },
+  { name: 'barrelstep=-20', q: 'arrangement=designed&barrelstep=-20', expect: 'any', why: '§33 step 3 — the barrel step off its default -35' },
+  { name: 'escstep=-70', q: 'arrangement=designed&escstep=-70', expect: 'any', why: '§33 step 3 — the escape step off its default -57.9' },
+  { name: 'balstep=60', q: 'arrangement=designed&balstep=60', expect: 'any', why: '§33 step 3 — a balance TARGET the solver must move off' },
   // The alarm corner, including the band that did not build. 175 is TODO 35's
   // own regression case and is here so it can never come back unnoticed.
-  { name: 'alarmaz=90', q: 'alarmaz=90', expect: 'any', why: '§33 — the alarm corner at 90°' },
-  { name: 'alarmaz=175', q: 'alarmaz=175', expect: 'any', why: "TODO 35's regression case — this exact spec did not build" },
-  { name: 'alarmaz=180', q: 'alarmaz=180', expect: 'any', why: "TODO 35's regression case, the far edge of the band" },
-  { name: 'alarmmod=200', q: 'alarmmod=200', expect: 'any', why: '§33 — the whole alarm module round to 200°' },
+  { name: 'alarmaz=90', q: 'arrangement=designed&alarmaz=90', expect: 'any', why: '§33 — the alarm corner at 90°' },
+  { name: 'alarmaz=175', q: 'arrangement=designed&alarmaz=175', expect: 'any', why: "TODO 35's regression case — this exact spec did not build" },
+  { name: 'alarmaz=180', q: 'arrangement=designed&alarmaz=180', expect: 'any', why: "TODO 35's regression case, the far edge of the band" },
+  { name: 'alarmmod=200', q: 'arrangement=designed&alarmmod=200', expect: 'any', why: '§33 — the whole alarm module round to 200°' },
   // §94 tier A — the small-seconds station, re-measured for the §125
   // margins tweak (the DEFAULT is 18.7778 now — the well-maximizing
   // station under the furniture law):
@@ -1138,10 +1145,10 @@ const SPEC_POINTS = [
   //   · 24 is past the two-bar's closure window (1.95 ≤ d4 ≤ 23.55). It
   //     must BOOT — the solve reports the refusal and keeps D4 rather than
   //     handing the build a NaN layout — the guard on that fallback.
-  { name: 'd4=20', q: 'd4=20', expect: 'any', why: '§125 — an outward station in the |K| band: stop work warns once, measured' },
-  { name: 'd4=22.9', q: 'd4=22.9', expect: 'any', why: '§125 — the Tier B ceiling, measured silent: the frame program re-solves across the band' },
-  { name: 'd4=16', q: 'd4=16', expect: 'any', why: '§94 tier A — inside the keyless side-sign window: this point is EXPECTED to warn' },
-  { name: 'd4=24', q: 'd4=24', expect: 'any', why: '§94 tier A — past the two-bar closure: must fall back to D4 and warn, never NaN' },
+  { name: 'd4=20', q: 'arrangement=designed&d4=20', expect: 'any', why: '§125 — an outward station in the |K| band: stop work warns once, measured' },
+  { name: 'd4=22.9', q: 'arrangement=designed&d4=22.9', expect: 'any', why: '§125 — the Tier B ceiling, measured silent: the frame program re-solves across the band' },
+  { name: 'd4=16', q: 'arrangement=designed&d4=16', expect: 'any', why: '§94 tier A — inside the keyless side-sign window: this point is EXPECTED to warn' },
+  { name: 'd4=24', q: 'arrangement=designed&d4=24', expect: 'any', why: '§94 tier A — past the two-bar closure: must fall back to D4 and warn, never NaN' },
   // §94 tier C — the reserve station. Four points, each measured on this
   // tree before it was written down:
   //   · 20 is the OUTWARD point, and it boots silent;
@@ -1161,10 +1168,10 @@ const SPEC_POINTS = [
   //     23.45 and the 32 t tip fits it easily), and 27 now sits past the
   //     23.24 window instead — the row stays as the measured record of
   //     the two keys composing (the 48 h fusee warn + the window warn).
-  { name: 'rsvr=20', q: 'rsvr=20', expect: 'any', why: '§94 tier C — the reserve station moved out; measured silent on this tree' },
-  { name: 'rsvr=8', q: 'rsvr=8', expect: 'any', why: '§94 tier C — inside the window, EXPECTED to warn: w2 tip twice, §34 post, alarm bearing re-sweep (4, measured)' },
-  { name: 'rsvr=30', q: 'rsvr=30', expect: 'any', why: '§94 tier C — past the well window: must warn and BOOT (an off-face well is nonsense, not NaN)' },
-  { name: 'reserveh=48&rsvr=27', q: 'reserveh=48&rsvr=27', expect: 'any', why: '§94 tier C/§125 Tier B — two keys composing: the 48 h fusee warn rides the station\'s window refusal (2, measured)' },
+  { name: 'rsvr=20', q: 'arrangement=designed&rsvr=20', expect: 'any', why: '§94 tier C — the reserve station moved out; measured silent on this tree' },
+  { name: 'rsvr=8', q: 'arrangement=designed&rsvr=8', expect: 'any', why: '§94 tier C — inside the window, EXPECTED to warn: w2 tip twice, §34 post, alarm bearing re-sweep (4, measured)' },
+  { name: 'rsvr=30', q: 'arrangement=designed&rsvr=30', expect: 'any', why: '§94 tier C — past the well window: must warn and BOOT (an off-face well is nonsense, not NaN)' },
+  { name: 'reserveh=48&rsvr=27', q: 'arrangement=designed&reserveh=48&rsvr=27', expect: 'any', why: '§94 tier C/§125 Tier B — two keys composing: the 48 h fusee warn rides the station\'s window refusal (2, measured)' },
   // §98 — the alarm corner's radius, §76's pin. Three points, measured on
   // this tree before written down (all at the default balance):
   //   · 14 is the INWARD pin and boots silent;
@@ -1175,9 +1182,9 @@ const SPEC_POINTS = [
   //   · 46 is past the stem's (0, plateR + 2.2) window — the solver's own
   //     warn fires and the boot proceeds (nonsense, not NaN), with the
   //     dogleg reporting no route at any bearing behind it.
-  { name: 'alarmr=14', q: 'alarmr=14', expect: 'any', why: '§98 — the corner pinned inward; measured silent on this tree' },
-  { name: 'alarmr=20', q: 'alarmr=20', expect: 'any', why: '§98 — past the dogleg reach: the chain\'s own assert reports, boot proceeds' },
-  { name: 'alarmr=46', q: 'alarmr=46', expect: 'any', why: '§98 — past the stem window: the solver warns with both bounds, boot proceeds' },
+  { name: 'alarmr=14', q: 'arrangement=designed&alarmr=14', expect: 'any', why: '§98 — the corner pinned inward; measured silent on this tree' },
+  { name: 'alarmr=20', q: 'arrangement=designed&alarmr=20', expect: 'any', why: '§98 — past the dogleg reach: the chain\'s own assert reports, boot proceeds' },
+  { name: 'alarmr=46', q: 'arrangement=designed&alarmr=46', expect: 'any', why: '§98 — past the stem window: the solver warns with both bounds, boot proceeds' },
   // §97/§125 Tier B — the SECONDS well's radius (the wells split; this key
   // stopped reaching the reserve). Three points, re-measured for Tier B:
   //   · 8 is the interior value and boots silent (the seconds well and its
@@ -1190,9 +1197,9 @@ const SPEC_POINTS = [
   //   · 1 is under the derived floor (1.40): the solver clamps to the
   //     floor and warns — one warn now, measured: the reserve train's tip
   //     check left this row when the key stopped reaching its well.
-  { name: 'subdialr=8', q: 'subdialr=8', expect: 'any', sweep: true, why: '§97 — the seconds well resized inward; measured silent on this tree' },
-  { name: 'subdialr=21', q: 'subdialr=21', expect: 'any', why: '§97/§125 Tier B — over the per-station ceiling: clamps to it and warns (TODO 33\'s degeneracy stays closed)' },
-  { name: 'subdialr=1', q: 'subdialr=1', expect: 'any', why: '§97 — under the floor: clamps to it and warns (1, measured — the train\'s tip check left with the shared radius)' },
+  { name: 'subdialr=8', q: 'arrangement=designed&subdialr=8', expect: 'any', why: '§97 — the seconds well resized inward; measured silent on this tree' },
+  { name: 'subdialr=21', q: 'arrangement=designed&subdialr=21', expect: 'any', why: '§97/§125 Tier B — over the per-station ceiling: clamps to it and warns (TODO 33\'s degeneracy stays closed)' },
+  { name: 'subdialr=1', q: 'arrangement=designed&subdialr=1', expect: 'any', why: '§97 — under the floor: clamps to it and warns (1, measured — the train\'s tip check left with the shared radius)' },
   // §125 — the dial's own radius, re-measured for Tier B: the wells' outer
   // edge moved to 42.25, so the spec's legal window is the narrow
   // [42.25, 44.27] between the big well and the alarm crown's metal.
@@ -1204,17 +1211,17 @@ const SPEC_POINTS = [
   //     §125 hand-stack assert (the bigger face's longer hands eat the
   //     alarm lane: 0.068 vs 0.15) and the rim assert all report — three
   //     instruments on one oversized face, measured.
-  { name: 'dialr=43', q: 'dialr=43', expect: 'any', why: '§125 Tier B — the interior of the narrowed window; measured silent on this tree' },
-  { name: 'dialr=20', q: 'dialr=20', expect: 'any', why: '§125 — inside the wells\' outer edge: must warn and BOOT (rings off the face are nonsense, not NaN)' },
-  { name: 'dialr=47.22', q: 'dialr=47.22', expect: 'any', why: '§125 — past the metal: the spec bracket, the hand-stack assert and the rim assert all report (3, measured)' },
+  { name: 'dialr=43', q: 'arrangement=designed&dialr=43', expect: 'any', why: '§125 Tier B — the interior of the narrowed window; measured silent on this tree' },
+  { name: 'dialr=20', q: 'arrangement=designed&dialr=20', expect: 'any', why: '§125 — inside the wells\' outer edge: must warn and BOOT (rings off the face are nonsense, not NaN)' },
+  { name: 'dialr=47.22', q: 'arrangement=designed&dialr=47.22', expect: 'any', why: '§125 — past the metal: the spec bracket, the hand-stack assert and the rim assert all report (3, measured)' },
   // §93 made the MODE itself a deep link, so entering it is now a boot-time
   // path: rings measured off six parts, the schematic tier forced, the panel
   // rows opened — all before a viewer has clicked anything. Silent, because
   // this point changes no station: it is the default spec with the tool open.
   { name: 'reconf=1', q: 'reconf=1', expect: 'silent', why: '§93 — reconfigure mode entered at boot from its own deep link' },
   // §22's two knobs, at both ends of their clamped ranges.
-  { name: 'vph=28800', q: 'vph=28800', expect: 'any', why: '§22 — the fastest rate in RATE_TABLE, a re-geared escape mesh' },
-  { name: 'reserveh=48', q: 'reserveh=48', expect: 'any', why: "§22 — the reserve clamp's upper end, the deepest fusee groove stack" },
+  { name: 'vph=28800', q: 'arrangement=designed&vph=28800', expect: 'any', why: '§22 — the fastest rate in RATE_TABLE, a re-geared escape mesh' },
+  { name: 'reserveh=48', q: 'arrangement=designed&reserveh=48', expect: 'any', why: "§22 — the reserve clamp's upper end, the deepest fusee groove stack" },
   // §237 — the hairspring stud's radius, which is TODO 147's solve condition
   // exposed and the cock's carrier arm with it (`yS` reads `termEndR`, so the
   // two move as one). Four points, each measured on this tree before it was
@@ -1236,10 +1243,10 @@ const SPEC_POINTS = [
   //   · 2 is past that end, and is the guard on the clamp: it must WARN with
   //     both bounds and BUILD (a stud inside its own carrier is nonsense, not
   //     NaN) — one warn, measured.
-  { name: 'studr=7.595', q: 'studr=7.595', expect: 'silent', sweep: true, why: '§237 — the outboard end of the window: the terminal re-solves, measured silent' },
-  { name: 'studr=4.71', q: 'studr=4.71', expect: 'silent', sweep: true, why: '§237 — four coil pitches in, the interior of the window; measured silent' },
-  { name: 'studr=7.1175', q: 'studr=7.1175', expect: 'silent', sweep: true, why: '§237 — one coil pitch in, TODO 147\'s original rule and the old default; measured silent' },
-  { name: 'studr=2', q: 'studr=2', expect: 'any', why: '§237 — past the inboard end: must warn with both bounds and BUILD, never NaN' },
+  { name: 'studr=7.595', q: 'arrangement=designed&studr=7.595', expect: 'silent', why: '§237 — the outboard end of the window: the terminal re-solves, measured silent' },
+  { name: 'studr=4.71', q: 'arrangement=designed&studr=4.71', expect: 'silent', why: '§237 — four coil pitches in, the interior of the window; measured silent' },
+  { name: 'studr=7.1175', q: 'arrangement=designed&studr=7.1175', expect: 'silent', why: '§237 — one coil pitch in, TODO 147\'s original rule and the old default; measured silent' },
+  { name: 'studr=2', q: 'arrangement=designed&studr=2', expect: 'any', why: '§237 — past the inboard end: must warn with both bounds and BUILD, never NaN' },
   // §36 Apply — THE CANONICAL ROUTE, and it is a spec point rather than a
   // probe's private fixture because that is what keeps it honest: every
   // battery run boots it, so a change that stops a route applying is caught
@@ -1271,11 +1278,13 @@ const SPEC_POINTS = [
   // alarm stem by nothing at all. The lesson for Apply's own verdict is that
   // checkRoute's legality and a route's fitness as METAL are two questions,
   // and only the second one is answered by measuring boxes.
-  { name: 'route=2-leg', q: 'route=-16,-27.71,-6;-16,-27.71,3;-18.5,-32.04,3&routebush=0,0.33', expect: 'silent', sweep: true,
+  { name: 'route=2-leg', q: 'arrangement=designed&route=-16,-27.71,-6;-16,-27.71,3;-18.5,-32.04,3&routebush=0,0.33', expect: 'silent',
     why: '§36 Apply — a committed route becomes metal: one back-plate bore, one knuckle, one footed bush' },
   // The refusal, asserted as a WARNING rather than a silence: a route that
   // meets a plate edge-on is a channel through it, and Apply must say so and
   // build the identity instead of quietly cutting a slot nobody designed.
+  // §314 — on the default (the arrangement), NOT the designed train: the control's claim is that a refused
+  // route builds the IDENTITY and reads verified, and the identity is the arrangement since §314
   { name: 'route=channel', q: 'route=10,20,-1;30,20,-0.9', expect: 'any',
     why: '§36 Apply — a leg almost in the plate plane is refused, and the movement builds as designed' },
   // §308 landing 5 — THE ARRANGEMENT, and the first FORM build on this table.
@@ -1309,7 +1318,7 @@ const SPEC_POINTS = [
     why: '§308 landing 5 — barrel swung to 180°, reserve at 36°, alarm module at 80° on its own fit; boots exactly its three declared rows (two form rows, TODO 206); no longer swept (the form default moved, §313)' },
   // THE FORM CASES' DEFAULT, SWEPT. Since §310 landing 4 a form case builds
   // the arrangement by default, and since §313 that arrangement is
-  // FORM_ARRANGEMENT (barrel at 180°, reserve at 12 on six idlers, module at
+  // ARRANGEMENT (barrel at 180°, reserve at 12 on six idlers, module at
   // 60°) with a seated bar gong, cased about the hands. This is the rect at
   // its bar seat's fit — what `?case=rect` shows once the page has its fit —
   // and so the build TODO 274's findings are about. It boots exactly the two
@@ -1318,13 +1327,13 @@ const SPEC_POINTS = [
   // part). Its sweep is the collision claim; while it reads FINDING the build
   // stays out of validated-configs.js and the page marks it unverified.
   //
-  // `formrect=` is GONG_SEATS.rect.bar.formrect, written out because a spec
+  // `formrect=` is GONG_SEATS.rect.spiral.formrect (§314: the spiral is the form default), written out because a spec
   // row is a URL; the probe holds it equal to the generated seat, so a
   // re-solved seat that moves the fit fails there rather than leaving this
   // row on an outline nobody cuts.
-  { name: 'form-rect', q: 'case=rect&formrect=-45.96,45.96,-45.25,45.25', expect: 'declared', sweep: true,
+  { name: 'form-rect', q: 'case=rect&formrect=-45.72,45.72,-44.38,44.38', expect: 'declared', sweep: true,
     expectWarns: ['§186: the rim-to-bore fit', '§261: cased assembly'],
-    why: '§310 landing 4 / §313 — the rect form case at its default (FORM_ARRANGEMENT, the bar seat) and that seat\'s fit; swept, booting exactly the two rows every form build carries' },
+    why: '§310 landing 4 / §313 — the rect form case at its default (ARRANGEMENT, the spiral seat since §314) and that seat\'s fit; swept, booting exactly the two rows every form build carries' },
 ];
 
 // TODO 186 B1 — THE POINTS THE BATTERY SWEEPS, and what each costs.
@@ -1374,20 +1383,19 @@ const SWEEP_POINTS = SPEC_POINTS.filter((p) => p.sweep);
 // and `subdialr=8` now outweighs `studr=7.595`. The order is what pointOwners
 // and the lanes read.
 const POINT_COSTS = {
-  'balstep=60': 181,      // 1 changed [Chain]
-  'subdialr=8': 224,      // 3 changed [Chain, Dial, Small seconds]
-  'studr=7.595': 210,     // 5 changed [Balance cock, Base plate, Chain, Fork cock, Hairspring]
-  'studr=4.71': 233,      // 3 changed [Balance cock, Chain, Hairspring]
-  'studr=7.1175': 287,    // 5 changed [Balance cock, Base plate, Chain, Fork cock, Hairspring]
-  'route=2-leg': 155,     // 3 changed [Applied route, Base plate, Chain]
-  // The form default is a FORM build: its plate, case, train and module all
-  // change against the round default, so its restriction reaches most of the
-  // movement and the point costs close to the default's own three sweeps.
-  // Measured on the 4-vCPU dev container, beside the default's three whole
-  // sweeps (1344 s: 62 changed, inspection 262, clearances 222,
-  // undeclaredClearance 798, against the default's 233 / 223 / 285 alone);
-  // only the order is evidence, and it is the longest by far, so LPT hands it
-  // out first. (§308 landing 5's row it replaces measured 1174 s, 59 changed.)
+  // §314 — the designed train against the arrangement default changes most of
+  // the movement, the same reach §308 landing 5's arrangement measured (1174 s,
+  // 59 changed); until a run writes its own `ms` back it carries that (a wrong
+  // number costs wall clock, never a verdict). The six designed-train variants
+  // that sat here stopped sweeping with the flip (see their SPEC_POINTS rows).
+  designed: 1174,
+  // The form default is a FORM build: against the designed round default its
+  // plate, case, train and module all changed, so its restriction reached most
+  // of the movement (1344 s: 62 changed, inspection 262, clearances 222,
+  // undeclaredClearance 798, against the default's 233 / 223 / 285 alone,
+  // 4-vCPU dev container). Since §314 the round default IS the arrangement, so
+  // it changes only the case's units and this row over-reads until a run
+  // refreshes it — wall clock, never a verdict.
   'form-rect': 1344,
 };
 {

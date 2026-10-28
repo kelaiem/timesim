@@ -11175,6 +11175,45 @@ if (TUBE_WALL >= COLLAR_PROUD)
   console.warn(`case: tube wall ${(TUBE_WALL * UNIT_MM).toFixed(2)} mm is not under the collar's `
     + `${(COLLAR_PROUD * UNIT_MM).toFixed(2)} mm proud radius — the collar is no longer a flange`);
 
+// TODO 275 — ONE LAW FOR CUTTING A BODY'S END ONTO AN OBLIQUE PLANE. The alarm
+// pusher's line runs through the movement's centre (§170) and so meets a FORM
+// case's wall obliquely (18.3° on ?case=rect, 38.3° on §308's arrangement), and
+// everything that ends AT that wall — the flush bore's sleeve, its §202 liner,
+// the button's seat — has to end ON the wall's tangent plane rather than square
+// to the line, or it stands proud of the wall on one side and buries on the
+// other. Every vertex of `geo` standing at `end` along `axis` ('x' | 'y' | 'z')
+// moves along that axis by `slope` times its coordinate on `cross`; the end's
+// cap normals turn with it (the side walls keep theirs). Slope 0 is the square
+// end and returns the geometry untouched, so a radial line — the round case's
+// — keeps its bytes. Built for ExtrudeGeometry and LatheGeometry rings, whose
+// end vertices all stand at `end` to the position buffer's FLOAT32 precision
+// (a relative 6e-8, so a tolerance of 1e-9 matched nothing on a 2.8 u sleeve);
+// the next vertex along a ring's axis is a whole length away.
+export function cutEndOnPlane(geo, axis, end, cross, slope) {
+  if (slope === 0) return geo;
+  const tol = 1e-6 * Math.max(1, Math.abs(end));
+  const ia = 'xyz'.indexOf(axis), ic = 'xyz'.indexOf(cross);
+  const P = geo.attributes.position, N = geo.attributes.normal;
+  const nLen = Math.hypot(1, slope);
+  for (let i = 0; i < P.count; i++) {
+    const a = P.array[i * 3 + ia];
+    if (Math.abs(a - end) > tol) continue;
+    P.array[i * 3 + ia] = end + slope * P.array[i * 3 + ic];
+    // a cap normal lies along ±axis; the plane a = end + slope·c has normal
+    // (axis 1, cross −slope), with the cap's own sign
+    if (N && Math.abs(Math.abs(N.array[i * 3 + ia]) - 1) < 1e-6) {
+      const sg = Math.sign(N.array[i * 3 + ia]);
+      N.array[i * 3 + ia] = sg / nLen;
+      N.array[i * 3 + ic] = -sg * slope / nLen;
+    }
+  }
+  P.needsUpdate = true;
+  if (N) N.needsUpdate = true;
+  geo.computeBoundingBox();
+  geo.computeBoundingSphere();
+  return geo;
+}
+
 // ---------------------------------------------------------------------------
 // Backlog (watch case) — THE SOLID CASE. makeCase builds the housing as real
 // closed metal, BACK-LOADING like the real construction: the movement enters
@@ -11934,6 +11973,14 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     // are supposed to sleeve. ringExtrude caps both ends by construction.
     const sleeve = new THREE.Mesh(ringExtrude(r + TUBE_WALL, r, len, 20), material);
     sleeve.geometry.rotateX(-Math.PI / 2);  // ringExtrude runs +Z; the stems run +Y
+    // TODO 275 — a FLUSH bore ends on the band's TANGENT PLANE where its line
+    // leaves the wall, not square to the line: the wall's normal there is the
+    // exit point's radial, which in the pivot's frame (+Y outboard along the
+    // line, +X its perpendicular, the line's foot at the origin) is
+    // (−off, alongAt(R_OUT)) / R_OUT, so the end plane rises off/along per
+    // unit of x. On a radial line (off = 0, the pusher's since §170) the slope
+    // is 0 and the end stays square, bit for bit.
+    if (flush) cutEndOnPlane(sleeve.geometry, 'y', len / 2, 'x', off / alongAt(R_OUT));
     sleeve.position.y = inboard + len / 2;
     sleeve.name = `${name}Sleeve`;
     pivot.add(sleeve);

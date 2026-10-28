@@ -221,17 +221,17 @@ const Wire = { modes: (segs, S, nMax = 4, gMax = 20, fam = 'in', step = 0.004) =
   hz: (g, L, d) => GS.hz(g, L, d), shape: (segs, S, g, nSamp = 200, fam = 'in') => GS.shape(segs, S, g, { nSamp, fam }), at: GS.shapeAt };
 
   // the wire's section and the margin are the build's (read off the booted build into the data); the unit is layout.js'
-  const U_MM = UNIT_MM, D_M = DATA.kinds.rect.bar.wireD_m, WIRE_R = DATA.kinds.rect.bar.wireR, MARGIN = CLEAR_MARGIN;
+  const U_MM = UNIT_MM, D_M = DATA.kinds.rect.spiral.wireD_m, WIRE_R = DATA.kinds.rect.spiral.wireR, MARGIN = CLEAR_MARGIN;
   const $ = (id) => document.getElementById(id);
   const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-  const st = { kind: 'rect', fit: 'bar', shape: 'arc', fx: 48.195 * Math.cos(24.5 * Math.PI / 180), fy: 48.195 * Math.sin(24.5 * Math.PI / 180) };
+  const st = { kind: 'rect', fit: 'spiral', shape: 'arc', fx: 48.195 * Math.cos(24.5 * Math.PI / 180), fy: 48.195 * Math.sin(24.5 * Math.PI / 180) };
   const unpack = (b64, n) => { const s = atob(b64), out = new Uint8Array(n); for (let i = 0; i < n; i++) out[i] = (s.charCodeAt(i >> 3) >> (i & 7)) & 1; return out; };
   const maps = {};
   // the space a wire is laid into: per case and per FIT (each seat's own; the plate is cut to the fit)
   const mapOf = (kind, fit = st.fit) => {
-    const k = `${kind}:${DATA.kinds[kind][fit] ? fit : 'bar'}`;
+    const k = `${kind}:${DATA.kinds[kind][fit] ? fit : 'spiral'}`;
     if (maps[k]) return maps[k];
-    const d = DATA.kinds[kind][DATA.kinds[kind][fit] ? fit : 'bar'], { W, H } = d.grid;
+    const d = DATA.kinds[kind][DATA.kinds[kind][fit] ? fit : 'spiral'], { W, H } = d.grid;
     const m = { d, free: unpack(d.free, W * H), strike: unpack(d.strike, W * H) };
     const inside = (x, y) => { let c = false, L = d.loop; for (let i = 0, j = L.length - 1; i < L.length; j = i++) { const [xi, yi] = L[i], [xj, yj] = L[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
     m.inside = new Uint8Array(W * H);
@@ -520,7 +520,7 @@ const Wire = { modes: (segs, S, nMax = 4, gMax = 20, fam = 'in', step = 0.004) =
   $('kind').value = st.kind;
   const fitLabels = () => { const k = DATA.kinds[st.kind];
     $('fitsel').innerHTML = ['bar', 'spiral'].filter((f) => k[f]).map((f) => `<option value="${f}">the ${f} seat's, ${k[f].mm[0].toFixed(1)} × ${k[f].mm[1].toFixed(1)} mm</option>`).join('');
-    if (!k[st.fit]) st.fit = 'bar'; $('fitsel').value = st.fit; };
+    if (!k[st.fit]) st.fit = 'spiral'; $('fitsel').value = st.fit; };
   $('kind').addEventListener('change', fitLabels); fitLabels();
   // §197's band, as tools/gong-seats.mjs solves to it
   $('s-lo').value = DATA.band[0]; $('s-hi').value = DATA.band[1];
