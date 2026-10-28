@@ -4,7 +4,7 @@
 
 # The instruments
 
-369 scripts. **251 are ACCEPTANCE tests** — they decide and exit non-zero.
+370 scripts. **252 are ACCEPTANCE tests** — they decide and exit non-zero.
 **118 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -282,6 +282,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-alarm-relayout.mjs` |  | report | Relayout feasibility: if the BARREL SIDE (fusee cone, mainspring drum, chain, set-up work) vacated its sector, would a pocket open under the three-quarter plate big enough to take the alarm striking module? |
 | `probe-alarm-tier-split.mjs` |  | report | THE TIER-SPLIT GATE — §112 design (a): can the alarm's POWER TIERS live under the three-quarter plate while the strike group stays on top? |
 | `probe-alarm-under-plate.mjs` |  | report | Can the alarm striking module be LOWERED UNDER the three-quarter plate? |
+| `probe-alarm-volume.mjs` |  | acceptance | THE VOLUME-ADJUSTABLE ALARM'S LINE SPEC (BUILT §320) — acceptance, pure Node, a second. |
 | `probe-alarmr-handle.mjs` |  | acceptance | THE ALARM CORNER'S RADIUS — is a spec'd value one the movement can build? |
 | `probe-back-envelope.mjs` |  | acceptance | WHAT STANDS ABOVE THE THREE-QUARTER PLATE — the back envelope, per member and per station, SWEPT over the pose net. |
 | `probe-bearing-candidates.mjs` |  | report | TODO 109 step 1 — WHO HOLDS THESE PARTS? The scan that has to run before a single `userData.bearings` line is written. |
