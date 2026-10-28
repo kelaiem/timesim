@@ -42044,7 +42044,10 @@ const ALARM_LINKAGE_LINES = Object.freeze({
   'cfg1:{"spec":{"reserveHours":30,"vph":18000},"route":null,"tuned":[]}': { dirDeg: 105, c: 25.34 },   // §261 2c: the fold-site search's pick at φ = 240°
   'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-20,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":18000},"route":null,"tuned":[]}': { dirDeg: 28, c: 31.34 },   // §314: probe-314-linkage-line's shortest line clear of the metal (52.51 against the designed line's 60.83, whose crank A arm runs through the arrest's leg B here); its crank A stud stands in the arrest's cross window, which yields (the owner's call)
 });
-const _linkageLine = ALARM_LINKAGE_LINES[ALARM_ARR_KEY] ?? ALARM_LINKAGE_LINES['cfg1:{"spec":{"reserveHours":30,"vph":18000},"route":null,"tuned":[]}'];
+// §318: a TURNED pusher carries its own line, re-searched at the turn (probe-314-linkage-line --turn), keyed by the
+// arrangement and the turn in whole degrees; an unturned build reads the arrangement's
+const ALARM_LINKAGE_KEY = ALARM_PUSH_ROT ? `${ALARM_ARR_KEY}|turn ${Math.round(ALARM_PUSH_ROT / DEG2RAD)}` : ALARM_ARR_KEY;
+const _linkageLine = ALARM_LINKAGE_LINES[ALARM_LINKAGE_KEY] ?? ALARM_LINKAGE_LINES[ALARM_ARR_KEY] ?? ALARM_LINKAGE_LINES['cfg1:{"spec":{"reserveHours":30,"vph":18000},"route":null,"tuned":[]}'];
 const ALARM_LINKAGE_ROD_DIR = _linkageLine.dirDeg * DEG2RAD + ALARM_MOD_ROT;   // the rod line's direction (the search's pick; turns with the module)
 const ALARM_LINKAGE_ROD_C = _linkageLine.c;                                    // and its offset, m·x = c (rotation about the centre leaves c)
 const ALARM_LINKAGE_SIDE = 1;                                  // both output arms on the line's +m side of their pivots (the search's tangent choice)
