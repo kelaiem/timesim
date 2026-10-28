@@ -59489,11 +59489,11 @@ const JMP_SITE_MOVERS = [
   { name: 'alarm setting wheel', kind: 'revolve', roots: [alarmSetWheelGroup], onto: jmpRotorNamed(alarmSetWheelGroup, 'alarmSettingWheel'), slack: 0 },
   // ---- bounded: each bound is the census's measured minimum over the pose
   // net, rounded down to 0.01 (trailing: the reading and the mesh that sets it)
-  { name: 'going-train bodies', kind: 'bounded', units: ['Fusee & great wheel', 'Center wheel', 'Third wheel'], bound: 0.85 },   // 0.8554, the fusee's lower pivot at train 46/96 — TODO 202: the pivot seats mid-plate, and the plate's centre is −1.15 now (was the centre arbor's 0.9901)
+  { name: 'going-train bodies', kind: 'bounded', units: ['Fusee & great wheel', 'Center wheel', 'Third wheel'], bound: 0.84 },   // 0.8401, the fusee's lower pivot at beat 0/193 — TODO 202: the pivot seats mid-plate (was 0.8554 before §314's barrel step of −20° moved the fusee)
   // the clutch and the reset rod are PHANTOMS as built — tick places both, so
   // the solve reads the clutch 32.8 off its stem and the rod at the origin;
   // both stay this far from any station the whole net over
-  { name: 'winding clutch', kind: 'bounded', units: ['Winding clutch'], bound: 5.96 },   // 5.9672, clutchSaw
+  { name: 'winding clutch', kind: 'bounded', units: ['Winding clutch'], bound: 1.02 },   // 1.0264, clutchSaw at wind 95/720 — §314's arrangement swung the stem toward the jumper (was 5.9672)
   { name: 'reset rod', kind: 'bounded', roots: [resetRod], bound: 2.38 },               // 2.3818
   { name: 'hack rod', kind: 'bounded', roots: [hackRod], bound: 2.72 },                 // 2.7278
   { name: 'hands', kind: 'bounded', roots: [hourHand, minuteHand, smallSecondsHand, reserveHand, alarmHand], bound: 0.81 },   // 0.8124, the small-seconds body
@@ -59509,15 +59509,23 @@ const JMP_SITE_MOVERS = [
   { name: 'column driver', kind: 'lawed', roots: [alarmColDriverGroup, alarmColPawlGroup, alarmColPawlSpringBlade],
     pose: poseAlarmDriverCycle },
   // TODO 214 moved the yoke to the lever's side of the stem, into the census's
-  // view: the yoke stays this far off the region the whole net over…
-  { name: 'yoke', kind: 'bounded', roots: [yokeGroup], bound: 0.81 },                  // 0.8147, yokeBoss at crown 44/48
+  // view, and §314's arrangement swung the stem far enough round that the yoke
+  // reaches the jumper's region (0 against the 0.8147 it was bounded at): so it
+  // is LAWED, on tick's own law — the fork's prong station between the seat and
+  // the pull (yokeAngleAt), its stroke measured off the law like the runs'
+  { name: 'yoke', kind: 'lawed', roots: [yokeGroup],
+    pose: (u) => { yokeGroup.rotation.z = yokeAngleAt(YOKE_A_SEAT + u * (YOKE_A_FULL - YOKE_A_SEAT)); } },
+  // …and the stem (journal, collars, square, crown) and the winding pinion it
+  // turns came into the solve's culling region with it, spinning and sliding,
+  // but their whole travel stays this far off the jumper's reach
+  { name: 'keyless stem', kind: 'bounded', roots: [windSpinner, windPinionGroup], bound: 0.67 },   // 0.6703, windingPinion at arrest 9/96
 ];
-// …and the yoke spring's blade does not — it lies inside the region — so it is
+// The yoke spring's blade lies inside the region too, so it is
 // LAWED, on its own law: aimed from its stud to its tangent on the tail pin at
 // the yoke's station, which every pose keeps between the seat and the pull
 // (a cam-over lifts the clutch by at most a tooth height, far inside the
 // fork's stroke). Its tip is the fastest point: the tail pin's stroke.
-for (const r of JMP_SITE_MOVERS) if (r.kind === 'lawed' && r.stroke === undefined && r.pose && (r.name === 'alarm link run' || r.name === 'column driver' || r.name === 'release run'))
+for (const r of JMP_SITE_MOVERS) if (r.kind === 'lawed' && r.stroke === undefined && r.pose && (r.name === 'alarm link run' || r.name === 'column driver' || r.name === 'release run' || r.name === 'yoke'))
   r.stroke = jmpStrokeOf(r.roots, r.pose);
 JMP_SITE_MOVERS.push({ name: 'yoke spring', kind: 'lawed', roots: [yokeSpringBlade], stroke: YK_SPRING.stroke_u,
   pose: (u) => { const aim = _ykBladeAim(YOKE_A_SEAT + u * (YOKE_A_FULL - YOKE_A_SEAT)); yokeSpringBlade.rotation.z = aim.ang; yokeSpringBlade.scale.x = aim.len; } });
