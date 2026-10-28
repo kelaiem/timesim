@@ -99,7 +99,14 @@ const boot = async (q, { sweep = false } = {}) => {
   const out = await page.evaluate(() => {
     if (window.__bootError) return { bootError: String(window.__bootError.message || window.__bootError) };
     const c = window.__clock, g = c.gongSeat;
-    return { rect: c.formFootprint?.rect ?? null, regions: JSON.parse(JSON.stringify(c.regions)),
+    // the hammer's heights, read off its own meshes: the post's whole height, and the arm's with the head's
+    const hz = {}, e = c.labelEntries.find((x) => x.name === 'Alarm hammer');
+    if (e) { const v = e.obj.position.clone(); e.obj.updateWorldMatrix(true, true);
+      e.obj.traverse((o) => { if (!o.isMesh || o.userData.schematic) return; const p = o.geometry.attributes.position; let z0 = Infinity, z1 = -Infinity;
+        for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld); z0 = Math.min(z0, v.z); z1 = Math.max(z1, v.z); }
+        hz[o.name] = [z0, z1]; }); }
+    const span = (...ns) => { const r = ns.map((n) => hz[n]).filter(Boolean); return r.length ? [Math.min(...r.map((q) => q[0])), Math.max(...r.map((q) => q[1]))] : null; };
+    return { hammerZ: { staff: span('alarmHammerPost'), arm: span('alarmHammerArm', 'alarmHammerHead') }, rect: c.formFootprint?.rect ?? null, regions: JSON.parse(JSON.stringify(c.regions)),
       seat: g && { specKey: g.specKey, arrKey: g.arrKey, tenants: JSON.parse(JSON.stringify(g.tenants)), keep: g.keep ? JSON.parse(JSON.stringify(g.keep)) : null, pivot: g.pivot, mode: g.mode, seated: g.seated, refused: g.refused, strike: g.strike, check: g.check, lever: g.lever, wireR: g.wireR, wireD_m: g.wireD_m,
         zGong: g.zGong, postR: g.postR, postRAt: [10, 20, 30, 40, 50, 60, 70, 80].map((L) => [L, g.postRFor(L)]) } };
   });
@@ -235,7 +242,14 @@ for (const kind of KINDS) {
         postR: S.lever.postR, margin: S.lever.margin, inboard: 3, outward: true };
       // the block's radius at the shortest wire the band admits (the clamp condition's ¼ power makes it the largest)
       const footR = Math.max(...S.postRAt.map(([, r]) => r));
-      const base = { free: map.free, W, H, x0: map.x0, y0: map.y0, RES, loop: shape.loop(), pillars: [], need, footR, plateInset: (x, y) => shape.inset(x, y) };
+      // THE HAMMER'S OWN BANDS (gong-solve's map.hammer): the same counted hulls read at the post's height and at the
+      // arm's and head's, less the hammer, the pillars (TODO 272: they yield to it) and the lifting lever its tail
+      // rides; a hammer part stands where none is within its own radius plus the margin
+      const hNeed = Math.max(S.lever.postR, S.lever.headR) + S.lever.margin, HX = new Set(['Alarm hammer', 'pillars', 'Alarm lifting lever']);
+      const hMap = (z) => z ? GS.bandMap(GS.bandParts(arc.regions, z[0], z[1], S.lever.margin, HX), { x0: rect[0] - RES, y0: rect[2] - RES, W, H, RES, need: hNeed, inset: () => Infinity }) : null;
+      if (!arc.hammerZ?.staff || !arc.hammerZ?.arm) { console.error('  the arc build reports no hammer heights'); break; }
+      const hammerMaps = { staff: hMap(arc.hammerZ.staff), arm: hMap(arc.hammerZ.arm) };
+      const base = { free: map.free, W, H, x0: map.x0, y0: map.y0, RES, loop: shape.loop(), pillars: [], need, footR, plateInset: (x, y) => shape.inset(x, y), hammer: hammerMaps };
       const opts = { fLo: BAND_HZ[0], fHi: BAND_HZ[1], strike: 'end', rank: 'pitch', perFamily: DEPTH, wireD_m: S.wireD_m, wireR: S.wireR, lever };
       const free = map.free.reduce((t, v) => t + v, 0);
       const mapInfo = { cells: W * H, free, parts: parts.length, res: RES, need: r6(need) };
