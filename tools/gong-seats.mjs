@@ -71,7 +71,26 @@ await new Promise((r) => srv.listen(0, '127.0.0.1', r));
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist',
   '--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'] });
 const NOISE = /GPU stall|GL Driver Message|swiftshader|ReadPixels|Automatic fallback to software WebGL/i;
-const boot = async (q) => {
+// THE HAMMER'S OWN METAL, judged the battery's way (src/inspect.js, restricted with `pairsTouching` to the hammer's
+// pairs, the point sweep's own narrowing): `inspection` reads FORBIDDEN contacts and `undeclaredClearance` the pairs
+// under CLEAR_MARGIN that nothing declares, both over the whole pose net. A boot warning cannot see the hammer
+// re-sited into another unit's metal — the spiral seats §314 solved put its arm and head through the alarm pusher's
+// reach in every form case with the boot silent and every other judge here green — so a seated candidate is swept,
+// and refused for any row its arc build at the same fit does not carry (the seat may not ADD a contact).
+const HAMMER_UNITS = ['Alarm hammer'];
+const hammerSweep = async (page) => page.evaluate(async (units) => {
+  const I = await import('./src/inspect.js'), c = window.__clock;
+  const run = async (name, opts) => {
+    I.start(c, name, { yieldEvery: 64, pairsTouching: units, ...opts });
+    for (;;) { await new Promise((r) => setTimeout(r, 1000)); const s = I.status(name); if (s.state !== 'running') return s; }
+  };
+  const ins = await run('inspection', { includeExcluded: true }), und = await run('undeclaredClearance', {});
+  if (ins.state !== 'done' || und.state !== 'done') return { error: `inspection ${ins.state}${ins.error ? ` (${ins.error})` : ''}, undeclaredClearance ${und.state}${und.error ? ` (${und.error})` : ''}` };
+  // keyed by the PAIR (a measured depth drifts with the fit; the pair is what a seat may not add)
+  return { rows: [...ins.result.report.filter((r) => r.class === 'FORBIDDEN').map((r) => ({ key: `FORBIDDEN ${r.pair}`, text: `FORBIDDEN ${r.pair}` })),
+    ...und.result.violations.map((v) => ({ key: `margin ${v.pair}`, text: `under the margin ${v.pair} (${typeof v.min === 'number' ? v.min.toFixed(4) : v.min}${v.meshes ? `, ${v.meshes}` : ''})` }))] };
+}, HAMMER_UNITS);
+const boot = async (q, { sweep = false } = {}) => {
   const ctx = await browser.newContext({ viewport: { width: 800, height: 600 } }), page = await ctx.newPage(), warnings = [];
   page.on('console', (m) => { if ((m.type() === 'warning' || m.type() === 'error') && !NOISE.test(m.text())) warnings.push(m.text()); });
   page.on('pageerror', (e) => warnings.push('PAGEERROR ' + e.message));
@@ -80,13 +99,22 @@ const boot = async (q) => {
   const out = await page.evaluate(() => {
     if (window.__bootError) return { bootError: String(window.__bootError.message || window.__bootError) };
     const c = window.__clock, g = c.gongSeat;
-    return { rect: c.formFootprint?.rect ?? null, regions: JSON.parse(JSON.stringify(c.regions)),
+    // the hammer's heights, read off its own meshes: the post's whole height, and the arm's with the head's
+    const hz = {}, e = c.labelEntries.find((x) => x.name === 'Alarm hammer');
+    if (e) { const v = e.obj.position.clone(); e.obj.updateWorldMatrix(true, true);
+      e.obj.traverse((o) => { if (!o.isMesh || o.userData.schematic) return; const p = o.geometry.attributes.position; let z0 = Infinity, z1 = -Infinity;
+        for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld); z0 = Math.min(z0, v.z); z1 = Math.max(z1, v.z); }
+        hz[o.name] = [z0, z1]; }); }
+    const span = (...ns) => { const r = ns.map((n) => hz[n]).filter(Boolean); return r.length ? [Math.min(...r.map((q) => q[0])), Math.max(...r.map((q) => q[1]))] : null; };
+    return { hammerZ: { staff: span('alarmHammerPost'), arm: span('alarmHammerArm', 'alarmHammerHead') }, rect: c.formFootprint?.rect ?? null, regions: JSON.parse(JSON.stringify(c.regions)),
       seat: g && { specKey: g.specKey, arrKey: g.arrKey, tenants: JSON.parse(JSON.stringify(g.tenants)), keep: g.keep ? JSON.parse(JSON.stringify(g.keep)) : null, pivot: g.pivot, mode: g.mode, seated: g.seated, refused: g.refused, strike: g.strike, check: g.check, lever: g.lever, wireR: g.wireR, wireD_m: g.wireD_m,
         zGong: g.zGong, postR: g.postR, postRAt: [10, 20, 30, 40, 50, 60, 70, 80].map((L) => [L, g.postRFor(L)]) } };
   });
+  const swept = sweep && !out.bootError ? await hammerSweep(page) : null;
   await ctx.close();
-  return { ...out, warnings };
+  return { ...out, warnings, swept };
 };
+const arcSweeps = {};   // per kind and fit: the arc build's own hammer rows, which a seat may carry but never add
 const sameRect = (a, b) => a && b && a.every((v, i) => Math.abs(v - b[i]) < 0.005);
 // the smallest box about `fit`'s own centre whose shape holds every station of the wire `need` inside: the seat's
 // own fit (the metal's fit never shrinks; the wire is not counted in it, so it may grow it). It grows LUG TO LUG
@@ -214,7 +242,16 @@ for (const kind of KINDS) {
         postR: S.lever.postR, margin: S.lever.margin, inboard: 3, outward: true };
       // the block's radius at the shortest wire the band admits (the clamp condition's ¼ power makes it the largest)
       const footR = Math.max(...S.postRAt.map(([, r]) => r));
-      const base = { free: map.free, W, H, x0: map.x0, y0: map.y0, RES, loop: shape.loop(), pillars: [], need, footR, plateInset: (x, y) => shape.inset(x, y) };
+      // THE HAMMER'S OWN BANDS (gong-solve's map.hammer): the same counted hulls read at the post's height and at the
+      // arm's and head's, less the hammer, the pillars (TODO 272: they yield to it), the lifting lever its tail
+      // rides and the alarm switch — the pusher and its linkage are LINKS, and under CLAUDE.md's P3 rule a link
+      // yields: §318 turns the pusher off the seated strike group (ALARM_PUSH_TURNS, probe-318-pusher-turn) and the
+      // battery's form sweep holds the result. A hammer part stands where none is within its radius plus the margin
+      const hNeed = Math.max(S.lever.postR, S.lever.headR) + S.lever.margin, HX = new Set(['Alarm hammer', 'pillars', 'Alarm lifting lever', 'Alarm switch']);
+      const hMap = (z) => z ? GS.bandMap(GS.bandParts(arc.regions, z[0], z[1], S.lever.margin, HX), { x0: rect[0] - RES, y0: rect[2] - RES, W, H, RES, need: hNeed, inset: () => Infinity }) : null;
+      if (!arc.hammerZ?.staff || !arc.hammerZ?.arm) { console.error('  the arc build reports no hammer heights'); break; }
+      const hammerMaps = { staff: hMap(arc.hammerZ.staff), arm: hMap(arc.hammerZ.arm) };
+      const base = { free: map.free, W, H, x0: map.x0, y0: map.y0, RES, loop: shape.loop(), pillars: [], need, footR, plateInset: (x, y) => shape.inset(x, y), hammer: hammerMaps };
       const opts = { fLo: BAND_HZ[0], fHi: BAND_HZ[1], strike: 'end', rank: 'pitch', perFamily: DEPTH, wireD_m: S.wireD_m, wireR: S.wireR, lever };
       const free = map.free.reduce((t, v) => t + v, 0);
       const mapInfo = { cells: W * H, free, parts: parts.length, res: RES, need: r6(need) };
@@ -288,6 +325,14 @@ for (const kind of KINDS) {
         const widened = b.warnings.filter((w) => !firstKinds.has(warnKind(w)) && !RUNTIME.test(w) && !/§310/.test(w) && !/§307\/§308: the movement's counted metal/.test(w)
           && !(SPECQ && ARRANGED_RESIDUE.test(w)));
         if (widened.length) { console.log(`    refused: at its fit the seated build carries ${widened.length} warning(s) the first fit lacks: ${widened.slice(0, 2).map((w) => w.slice(0, 160)).join(' | ')}`); continue; }
+        // …nor any CONTACT its arc build at the same fit lacks: the hammer swept against every unit (hammerSweep)
+        const fk = r.formrect.join(','), ak = `${kind}:${fk}`;
+        arcSweeps[ak] ??= (await boot(`case=${kind}&formrect=${fk}&gong=arc`, { sweep: true })).swept;
+        const hs = (await boot(`case=${kind}&formrect=${fk}&gong=${mode}`, { sweep: true })).swept;
+        if (!hs || hs.error || !arcSweeps[ak] || arcSweeps[ak].error) { console.log(`    refused: the hammer's sweep did not run (${hs?.error ?? arcSweeps[ak]?.error ?? 'no boot'})`); continue; }
+        // (the alarm switch's rows are the links' to yield, §318: not the seat's to answer)
+        const arcKeys = new Set(arcSweeps[ak].rows.map((x) => x.key)), contacts = hs.rows.filter((x) => !arcKeys.has(x.key) && !/Alarm switch/.test(x.key)).map((x) => x.text);
+        if (contacts.length) { console.log(`    refused: the seated hammer adds ${contacts.length} contact(s): ${contacts.slice(0, 3).join(' | ')}`); continue; }
         // A clean seat whose own metal fits INSIDE this cut closes here and is taken at once. One that would WIDEN
         // the cut is kept as the round's fallback and the rest are still tried: taking the first clean seat sent
         // the tonneau's spiral to a 53.2 cut it then could not hold (41.25 mm, over the cap) while a later seat,

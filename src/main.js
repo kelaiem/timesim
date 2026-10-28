@@ -28150,8 +28150,32 @@ if (!(Math.abs(_colSinDelta) <= 1))
 // nine thousand lines on); the built wheel's `userData.ratchetDrive` IS that
 // constant, and the §43 postscript at the pusher's build holds the chord's
 // sign against the built wheel, so the two cannot part in silence.
-const ALARM_PUSH_AZ = Math.atan2(ALARM_COL_POS.y, ALARM_COL_POS.x)
+// (the WHEEL'S press line — the one the coupling's offset is measured on; `0` because the pusher may turn off it, below)
+const ALARM_PUSH_AZ0 = Math.atan2(ALARM_COL_POS.y, ALARM_COL_POS.x)
   + G.COLUMN_WHEEL_RATCHET_DRIVE * Math.asin(Math.max(-1, Math.min(1, _colSinDelta)));
+const _pushU0 = { x: Math.cos(ALARM_PUSH_AZ0), y: Math.sin(ALARM_PUSH_AZ0) };
+const _pushPerp0 = { x: -_pushU0.y, y: _pushU0.x };
+// §318 — THE PUSHER TURNS ABOUT THE CENTRE, and the wheel does not. Since §261 2c the pusher no longer bears on
+// the column wheel: its pin drives crank A and the linkage carries the press to the driver's own track, which is
+// fixed by the wheel. So the pusher — stem, reach, riser, return spring and the case's tube — is a LINK, and under
+// CLAUDE.md's P3 rule a link yields: where a form case's strike group stands on the wheel's press line (the seated
+// hammer's arm spans it from post to head), the whole pusher is turned off it about the movement's centre, every
+// station along the line kept, the linkage re-searched to the unturned driver track (alarmLinkageFor). The turn
+// is a SEARCH'S PICK per build — keyed by the seat's spec and mode, so it is a form-case quantity — written by
+// tools/probe-318-pusher-turn.mjs; a build with no row keeps the wheel's line (the round build, and every one
+// whose strike group does not stand on it).
+// probe-318-pusher-turn over −60…60° in 6° steps on the rect: the pusher's own metal is clear of the strike group
+// and every other unit at −18, 12, 18, 48, 54 and 60; the linkage then clears at 48, 54 and 60 only (at 12 and 18
+// crank B's stud meets the winding arrest's leg-B pinion, at −18 the rod crosses the hammer's arm). 48 is the
+// smallest turn that carries a linkage, and the cushion and tonneau read clear at it too.
+const ALARM_PUSH_TURNS = Object.freeze({
+  'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-20,"caseShape":"rect","reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":18000},"route":null,"tuned":[]}|spiral': 48,
+  'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-20,"caseShape":"cushion","reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":18000},"route":null,"tuned":[]}|spiral': 48,
+  'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-20,"caseShape":"tonneau","reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":18000},"route":null,"tuned":[]}|spiral': 48,
+});
+const ALARM_PUSH_ROT = (FORM && GONG_SEAT_MODE !== 'arc' ? ALARM_PUSH_TURNS[`${GONG_SPEC_KEY}|${GONG_SEAT_MODE}`] ?? 0 : 0) * DEG2RAD
+  + (Number.isFinite(globalThis.__PUSH_TURN_DEG) ? globalThis.__PUSH_TURN_DEG * DEG2RAD : 0);   // a probe's trial turn (tools/probe-318-pusher-turn.mjs)
+const ALARM_PUSH_AZ = ALARM_PUSH_AZ0 + ALARM_PUSH_ROT;
 const _pushU = { x: Math.cos(ALARM_PUSH_AZ), y: Math.sin(ALARM_PUSH_AZ) };
 const _pushPerp = { x: -_pushU.y, y: _pushU.x };
 // Lateral offset — the pawl's line grazes the ratchet tangentially (the skirt
@@ -28170,9 +28194,14 @@ const ALARM_PUSH_CHORD = G.COLUMN_WHEEL_RATCHET_DRIVE * ALARM_DRIVE_OFFSET;
 // The pusher's base: the wheel's centre displaced by the chord along the press
 // line's perpendicular — the foot of the perpendicular, which §170 lands ON
 // the line through the origin.
+const _pushBase0 = {
+  x: ALARM_COL_POS.x + _pushPerp0.x * ALARM_PUSH_CHORD,
+  y: ALARM_COL_POS.y + _pushPerp0.y * ALARM_PUSH_CHORD,
+};
+// …and the pusher's, the same station turned with it (on the line through the centre, so at the same distance)
 const _pushBase = {
-  x: ALARM_COL_POS.x + _pushPerp.x * ALARM_PUSH_CHORD,
-  y: ALARM_COL_POS.y + _pushPerp.y * ALARM_PUSH_CHORD,
+  x: _pushBase0.x * Math.cos(ALARM_PUSH_ROT) - _pushBase0.y * Math.sin(ALARM_PUSH_ROT),
+  y: _pushBase0.x * Math.sin(ALARM_PUSH_ROT) + _pushBase0.y * Math.cos(ALARM_PUSH_ROT),
 };
 // --- The bar's stations along the line, hoisted whole from the pusher's build.
 // TODO 22 closed: the stem ENDS clear of the wheel. Its chord enters the
@@ -42002,8 +42031,12 @@ const ALARM_PIN_HALF = ALARM_PUSH_TRAVEL / 2;
 const ALARM_LINKAGE_LINES = Object.freeze({
   'cfg1:{"spec":{"reserveHours":30,"vph":18000},"route":null,"tuned":[]}': { dirDeg: 105, c: 25.34 },   // §261 2c: the fold-site search's pick at φ = 240°
   'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-20,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":18000},"route":null,"tuned":[]}': { dirDeg: 28, c: 31.34 },   // §314: probe-314-linkage-line's shortest line clear of the metal (52.51 against the designed line's 60.83, whose crank A arm runs through the arrest's leg B here); its crank A stud stands in the arrest's cross window, which yields (the owner's call)
+  'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-20,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":18000},"route":null,"tuned":[]}|turn 48': { dirDeg: 96, c: 27.34 },   // §318: the form cases' pusher turned 48° — probe-314-linkage-line --turn 48, the shortest line clear (28.524, against the unturned 52.51), the same pick on the rect, cushion and tonneau
 });
-const _linkageLine = ALARM_LINKAGE_LINES[ALARM_ARR_KEY] ?? ALARM_LINKAGE_LINES['cfg1:{"spec":{"reserveHours":30,"vph":18000},"route":null,"tuned":[]}'];
+// §318: a TURNED pusher carries its own line, re-searched at the turn (probe-314-linkage-line --turn), keyed by the
+// arrangement and the turn in whole degrees; an unturned build reads the arrangement's
+const ALARM_LINKAGE_KEY = ALARM_PUSH_ROT ? `${ALARM_ARR_KEY}|turn ${Math.round(ALARM_PUSH_ROT / DEG2RAD)}` : ALARM_ARR_KEY;
+const _linkageLine = ALARM_LINKAGE_LINES[ALARM_LINKAGE_KEY] ?? ALARM_LINKAGE_LINES[ALARM_ARR_KEY] ?? ALARM_LINKAGE_LINES['cfg1:{"spec":{"reserveHours":30,"vph":18000},"route":null,"tuned":[]}'];
 const ALARM_LINKAGE_ROD_DIR = _linkageLine.dirDeg * DEG2RAD + ALARM_MOD_ROT;   // the rod line's direction (the search's pick; turns with the module)
 const ALARM_LINKAGE_ROD_C = _linkageLine.c;                                    // and its offset, m·x = c (rotation about the centre leaves c)
 const ALARM_LINKAGE_SIDE = 1;                                  // both output arms on the line's +m side of their pivots (the search's tangent choice)
@@ -42015,11 +42048,13 @@ const alarmLinkageFor = (ROD_DIR, ROD_C, quiet = false) => {
   const rot = (P, X, th) => { const c = Math.cos(th), s = Math.sin(th), dx = X.x - P.x, dy = X.y - P.y; return { x: P.x + c * dx - s * dy, y: P.y + s * dx + c * dy }; };
   const ang = (P, A, B) => Math.atan2((A.x - P.x) * (B.y - P.y) - (A.y - P.y) * (B.x - P.x), (A.x - P.x) * (B.x - P.x) + (A.y - P.y) * (B.y - P.y));
   // the stem's pin stations (unfolded, between the plates) and their images
-  const base = { x: ALARM_COL_POS.x + _pushPerp.x * ALARM_PUSH_CHORD, y: ALARM_COL_POS.y + _pushPerp.y * ALARM_PUSH_CHORD };
+  const base = _pushBase;
   const pinAt = (T) => ({ x: base.x + _pushU.x * (ALARM_PIN_HALF - ALARM_PUSH_TRAVEL * T), y: base.y + _pushU.y * (ALARM_PIN_HALF - ALARM_PUSH_TRAVEL * T) });
   const p0 = pinAt(0), p1 = pinAt(1);
   const fp = (P) => { const v = alarmFoldPoint(P.x, P.y, 0); return { x: v.x, y: v.y }; };
-  const q0 = fp(p0), q1 = fp(p1);
+  // §318: the driver's track is the fold of the pin's stations on the WHEEL's line, wherever the pusher turned
+  const pin0At = (T) => ({ x: _pushBase0.x + _pushU0.x * (ALARM_PIN_HALF - ALARM_PUSH_TRAVEL * T), y: _pushBase0.y + _pushU0.y * (ALARM_PIN_HALF - ALARM_PUSH_TRAVEL * T) });
+  const q0 = fp(pin0At(0)), q1 = fp(pin0At(1));
   const n0 = perpv({ x: -_pushU.x, y: -_pushU.y });
   // crank A: its pivot on the stem's normal at rest, its output arm square to
   // the rod line and as long as its input — 1:1 at rest (the search's form)
@@ -43050,8 +43085,9 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
   // seat by the angle the return was measured at, and the seats sit at fixed
   // azimuths in the wheel. So the post arm's angle off the slot arm is
   // DERIVED — one branch per tooth, and the compact one is taken.
-  const pinRest = { x: _pushPerp.x * ALARM_PUSH_CHORD + _pushU.x * ALARM_PIN_HALF,
-                    y: _pushPerp.y * ALARM_PUSH_CHORD + _pushU.y * ALARM_PIN_HALF };
+  // (on the WHEEL's line: the driver's coupling stands where the pusher's pin stood before §318 turned the pusher)
+  const pinRest = { x: _pushPerp0.x * ALARM_PUSH_CHORD + _pushU0.x * ALARM_PIN_HALF,
+                    y: _pushPerp0.y * ALARM_PUSH_CHORD + _pushU0.y * ALARM_PIN_HALF };
   ALARM_DRIVER_REST_A = Math.atan2(pinRest.y, pinRest.x);
   const relRest = ALARM_DRIVER_REST_A - ALARM_LOCK_ENGAGED;      // driver, in the WHEEL's frame
   // Every branch is one tooth apart, and the seat geometry is identical in each
@@ -48154,6 +48190,9 @@ if (FORM) {
   const z0 = TQ_BOT_Z - CLEAR_MARGIN, z1 = TQ_TOP_Z + CLEAR_MARGIN, xs = [], ys = [], v = new THREE.Vector3();
   const pz0 = PLATE_BACK_FACE - CLEAR_MARGIN, pz1 = TQ_BOT_Z + CLEAR_MARGIN, pxs = [], pys = [];
   const keepRot = alarmHammerPivot.rotation.z, N = 12;
+  // the pivot's axis in plan, so the opening can be held between samples (below)
+  const pivW = alarmHammerPivot.getWorldPosition(new THREE.Vector3());
+  let sweptR = 0;
   const meshes = []; alarmHammerUnit.traverse((o) => { if (o.isMesh && !o.userData.schematic && o.geometry?.attributes?.position) meshes.push(o); });
   const under = (o) => { for (let a = o; a; a = a.parent) if (a === alarmHammerPivot) return true; return false; };
   for (let k = 0; k <= N; k++) {
@@ -48168,16 +48207,23 @@ if (FORM) {
         for (let e = 0; e < 3; e++) { v.fromBufferAttribute(pa, idx ? idx.getX(t + e) : t + e).applyMatrix4(m); tri[e] = [v.x, v.y]; lo = Math.min(lo, v.z); hi = Math.max(hi, v.z); }
         if (!(hi < pz0 || lo > pz1)) for (const [x, y] of tri) { pxs.push(x); pys.push(y); }
         if (hi < z0 || lo > z1) continue;
-        for (const [x, y] of tri) { xs.push(x); ys.push(y); }
+        for (const [x, y] of tri) { xs.push(x); ys.push(y); if (under(o)) sweptR = Math.max(sweptR, Math.hypot(x - pivW.x, y - pivW.y)); }
       }
     }
   }
   alarmHammerPivot.rotation.z = keepRot;
   alarmHammerUnit.updateWorldMatrix(true, true);
   if (xs.length >= 3) {
-    // the hull, grown one margin: the hull of each vertex's margin circle
+    // the hull, grown one margin: the hull of each vertex's margin circle. §318 — and by the SAGITTA the swing's
+    // samples leave: between two samples a step apart the moving metal runs on arcs about the pivot, which bow past
+    // the chord the hull draws by at most R·(1 − cos(step/2)) at the farthest radius R it reaches. The rect's
+    // spiral seat measured the tail 0.1484 off the opened plate between samples (0.0016 under the margin), its
+    // far end ~8 u from the pivot on a 0.045 rad step — that sagitta, to the measurement.
+    // The margin's circle is drawn as a 24-gon, CIRCUMSCRIBED (its vertices at grow / cos(π/24)) so its edges stand
+    // on the circle rather than cutting inside it by grow·(1 − cos(π/24)).
+    const sag = sweptR * (1 - Math.cos(ALARM_DRAW_RAD / N)), grow = (CLEAR_MARGIN + sag) / Math.cos(Math.PI / 24);
     const h0 = convexHull2(xs, ys, xs.length), gx = [], gy = [];
-    for (const [x, y] of h0) for (let a = 0; a < 24; a++) { gx.push(x + CLEAR_MARGIN * Math.cos(a * Math.PI / 12)); gy.push(y + CLEAR_MARGIN * Math.sin(a * Math.PI / 12)); }
+    for (const [x, y] of h0) for (let a = 0; a < 24; a++) { gx.push(x + grow * Math.cos(a * Math.PI / 12)); gy.push(y + grow * Math.sin(a * Math.PI / 12)); }
     const pts = convexHull2(gx, gy, gx.length).map(([x, y]) => [x, y]);
     STRIKE_PLATE_OPENING = { pts };   // TODO 270: an opening the re-solved windows keep a land to
     STRIKE_PLATE_VERTS = xs.length;
