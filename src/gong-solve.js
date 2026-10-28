@@ -182,7 +182,7 @@ export const solveGong = (map, opts, progress = () => {}) => {
     return Math.min(L, Lfit); };
   // the hammer: a head's travel of room on the side it strikes from, and (with a reach) the face where the module can put it
   const strikeFrame = (pts, idx) => { const i = Math.max(0, Math.min(pts.length - 2, idx)), [x, y] = pts[i], [x2, y2] = pts[i + 1], l = Math.hypot(x2 - x, y2 - y) || 1; return { x, y, nx: -(y2 - y) / l, ny: (x2 - x) / l }; };
-  const hammer = (pts, idx) => { if (opts.lever) return leverHammer(pts, idx); const f = strikeFrame(pts, idx), R = opts.reach;
+  const hammer = (pts, idx, alpha = 0) => { if (opts.lever) return leverHammer(pts, idx, alpha); const f = strikeFrame(pts, idx), R = opts.reach;
     for (const sg of [1, -1]) {
       let room = true; for (let dd = 1.6; dd <= 4.5; dd += 0.4) if (!free(f.x + sg * f.nx * dd, f.y + sg * f.ny * dd)) { room = false; break; }
       if (!room) continue;
@@ -203,21 +203,22 @@ export const solveGong = (map, opts, progress = () => {}) => {
   // side. So for a wire, the strike is where |P(s) - Q| = rho: a root along
   // the wire, found by sign change and interpolated, and the wire must leave
   // the strike AWAY from the pivot toward its foot (§198's GONG_HAND rule).
-  const leverAt = (S, n, sg) => { const L = opts.lever, off = WR + L.gap, fx = S[0] + sg * n[0] * off, fy = S[1] + sg * n[1] * off;
-    const bx = -sg * n[0], by = -sg * n[1], px = fx + L.side * L.tanLen * -by, py = fy + L.side * L.tanLen * bx;
-    return { fx, fy, bx, by, px, py, g: Math.hypot(px - L.Q.x, py - L.Q.y) - L.rho }; };
+  const leverAt = (S, n, sg, alpha = 0) => { const L = opts.lever, off = WR + L.gap; let fx = S[0] + sg * n[0] * off, fy = S[1] + sg * n[1] * off, bx = -sg * n[0], by = -sg * n[1];
+    if (alpha !== 0) { const ca = Math.cos(alpha), sa = Math.sin(alpha); [bx, by] = [bx * ca - by * sa, bx * sa + by * ca]; fx = S[0] - bx * off; fy = S[1] - by * off; }   // the tilted blow (STRIKE_TOL), the face still a gap off the wire's surface
+    const px = fx + L.side * L.tanLen * -by, py = fy + L.side * L.tanLen * bx;
+    return { fx, fy, bx, by, px, py, alpha, g: Math.hypot(px - L.Q.x, py - L.Q.y) - L.rho }; };
   const leverRoom = (h) => { const L = opts.lever; if (!free(h.px, h.py) || !sfree(h.px, h.py)) return false;
     // the staff and the arm (eye to pivot) stand in free space too: sampled at a quarter unit
     const ex = h.fx - h.bx * L.headR, ey = h.fy - h.by * L.headR, d = Math.hypot(h.px - ex, h.py - ey);
     for (let t = 0; t <= d; t += 0.25) { const x = ex + (h.px - ex) * t / d, y = ey + (h.py - ey) * t / d; if (!free(x, y) || !hfree(x, y)) return false; } return true; };
-  const leverHammer = (pts, want) => { const L = opts.lever, roots = [];
+  const leverHammer = (pts, want, alpha = 0) => { const L = opts.lever, roots = [];
     for (const sg of [1, -1]) { let prev = null;
-      for (let i = 0; i < pts.length - 1; i++) { const f = strikeFrame(pts, i), h = leverAt([f.x, f.y], [f.nx, f.ny], sg);
+      for (let i = 0; i < pts.length - 1; i++) { const f = strikeFrame(pts, i), h = leverAt([f.x, f.y], [f.nx, f.ny], sg, alpha);
         // a root ON a sample (the lever family anchors its free end exactly at the strike) counts as one
         const onPt = Math.abs(h.g) < 1e-6 && (!prev || Math.abs(prev.h.g) >= 1e-6);
         if (onPt || (prev && Math.abs(prev.h.g) >= 1e-6 && Math.sign(prev.h.g) !== Math.sign(h.g))) { const t = onPt ? 1 : prev.h.g / (prev.h.g - h.g), j = onPt ? i : i - 1;
           const ii = onPt ? Math.min(i + 1, pts.length - 1) : i;
-          const S = onPt ? [pts[i][0], pts[i][1]] : [pts[j][0] + t * (pts[i][0] - pts[j][0]), pts[j][1] + t * (pts[i][1] - pts[j][1])], fr = strikeFrame(pts, j), q = leverAt(S, [fr.nx, fr.ny], sg);
+          const S = onPt ? [pts[i][0], pts[i][1]] : [pts[j][0] + t * (pts[i][0] - pts[j][0]), pts[j][1] + t * (pts[i][1] - pts[j][1])], fr = strikeFrame(pts, j), q = leverAt(S, [fr.nx, fr.ny], sg, alpha);
           const fdx = pts[ii][0] - pts[j][0], fdy = pts[ii][1] - pts[j][1];   // toward the foot (pts run free end first)
           const idx = onPt ? i : j + t;
           // §198: the blow runs OUTWARD (toward the case) unless the caller lifts that rule
@@ -231,7 +232,7 @@ export const solveGong = (map, opts, progress = () => {}) => {
       const near = pts.reduce((m, p) => Math.min(m, Math.hypot(p[0] - r.q.px, p[1] - r.q.py)), Infinity);
       if (near < WR + L.postR + L.margin) continue;   // the staff clear of the wire it strikes
       return { side: r.sg, face: [r.q.fx, r.q.fy], rFace: Math.hypot(r.q.fx, r.q.fy), azDeg: Math.atan2(r.q.fy, r.q.fx) * 180 / Math.PI,
-        blowDeg: Math.atan2(r.q.by, r.q.bx) * 180 / Math.PI, pivot: [r.q.px, r.q.py], at: r.idx, frac: 1 - r.idx / (pts.length - 1) }; }
+        blowDeg: Math.atan2(r.q.by, r.q.bx) * 180 / Math.PI, pivot: [r.q.px, r.q.py], at: r.idx, frac: 1 - r.idx / (pts.length - 1), alpha }; }
     return null; };
   // TODO 269 — the hammer of an END strike: the face one gap before the wire's end, the blow along the
   // wire, the pivot on the lever's circle by construction (the candidate was built from it). What it owes:
@@ -259,6 +260,10 @@ export const solveGong = (map, opts, progress = () => {}) => {
     // the bar's standoff from the edge: one wire's need, or (under the lever, whose reach is a circle)
     // up to opts.lever.inboard further in, a quarter unit at a time — the first that the lever reaches wins
     const off0 = Math.max(M.need, M.footR ?? 0) + 0.1;   // a wire's need, or the block's radius where that is larger
+    // the untilted blow first, over every standoff; only a run the lever reaches at NO standoff is tried tilted
+    // (STRIKE_TOL: 1 degree at a time to STRIKE_ALPHA_MAX, smaller tilts first), so a seat with an exact root keeps it
+    const alphas = [0]; if (opts.lever && opts.tol !== false) for (let d = 1; d * Math.PI / 180 <= STRIKE_ALPHA_MAX + 1e-12; d++) alphas.push(d * Math.PI / 180, -d * Math.PI / 180);
+    for (const alpha of alphas) {
     for (let off = off0; off <= off0 + (opts.lever?.inboard ?? 0) + 1e-9; off += 0.25) {
     const ax = run.a[0] + nx * off, ay = run.a[1] + ny * off;
     const segsAt = () => [{ k: 0, ds: 1 }];
@@ -266,7 +271,7 @@ export const solveGong = (map, opts, progress = () => {}) => {
     // strike positions: the perpendicular's foot under a reach, else every unit along the run
     // under the lever, the strike is where the pivot P(u) = P0 + u t lands rho from Q (two roots per face side)
     const leverUs = () => { const L = opts.lever, us = [];
-      for (const sg of [1, -1]) { const h = leverAt([ax, ay], [nx, ny], sg), dx = h.px - L.Q.x, dy = h.py - L.Q.y, b = dx * tx + dy * ty, c = dx * dx + dy * dy - L.rho * L.rho, disc = b * b - c;
+      for (const sg of [1, -1]) { const h = leverAt([ax, ay], [nx, ny], sg, alpha), dx = h.px - L.Q.x, dy = h.py - L.Q.y, b = dx * tx + dy * ty, c = dx * dx + dy * dy - L.rho * L.rho, disc = b * b - c;
         if (disc >= 0) for (const r of [-b - Math.sqrt(disc), -b + Math.sqrt(disc)]) us.push(r); }
       return us; };
     const us = opts.lever ? leverUs() : opts.reach ? [-(ax * tx + ay * ty)] : Array.from({ length: Math.floor(run.len) + 1 }, (_, i) => i);
@@ -276,9 +281,11 @@ export const solveGong = (map, opts, progress = () => {}) => {
       for (const L of [Lband, ...Array.from({ length: 30 }, (_, i) => Lband - (i + 1) * (Lband - Lstraight(fHi)) / 30)]) {
         const freeEnd = [px - dx * (1 - hit) * L, py - dy * (1 - hit) * L], gen = arcGen(freeEnd[0], freeEnd[1], Math.atan2(dy, dx), 0), pts = sample(gen, 0, L);
         if (!allFree(pts) || !onPlate(pts[pts.length - 1])) continue;
-        const hm = hammer(pts, Math.round((1 - hit) * (pts.length - 1))); if (!hm) break;
-        sol.push({ fam: 'edge', label: 'bar along a flat edge', pts, L, nseg: 1, hit: opts.lever ? hm.frac : hit, hammer: hm, slack: 0, segs: segsAt(), spread: `run${ri}`, off }); break;
+        const hm = hammer(pts, Math.round((1 - hit) * (pts.length - 1)), alpha); if (!hm) break;
+        sol.push({ fam: 'edge', label: alpha ? `bar along a flat edge, blow tilted ${(Math.abs(alpha) * 180 / Math.PI).toFixed(0)}°` : 'bar along a flat edge', pts, L, nseg: 1, hit: opts.lever ? hm.frac : hit, hammer: hm, slack: 0, segs: segsAt(), spread: `run${ri}`, off, alpha }); break;
       }
+    }
+    if (sol.some((q) => q.spread === `run${ri}`)) break;
     }
     if (sol.some((q) => q.spread === `run${ri}`)) break;
     }
@@ -403,10 +410,16 @@ export const seatCurve = (c) => {
 // The strike on a seat, exactly: the root of |P(s) - Q| - rho nearest `guess`
 // (arc length from the free end), the face on side `sg` of the wire's left
 // normal — the same law as the solver's leverAt, on the analytic tangent.
-export const seatStrike = (curve, { Q, rho, tanLen, side, gap }, wireR, sg, guess) => {
-  const g = (s) => { const q = curve.at(s), nx = -q.ty, ny = q.tx, off = wireR + gap, fx = q.x + sg * nx * off, fy = q.y + sg * ny * off;
-    const bx = -sg * nx, by = -sg * ny, px = fx + side * tanLen * -by, py = fy + side * tanLen * bx;
-    return { s, S: { x: q.x, y: q.y }, n: { x: nx, y: ny }, F: { x: fx, y: fy }, b: { x: bx, y: by }, P: { x: px, y: py }, k: q.k, g: Math.hypot(px - Q.x, py - Q.y) - rho }; };
+export const seatStrike = (curve, { Q, rho, tanLen, side, gap }, wireR, sg, guess, alpha = 0) => {
+  // alpha (rad) tilts the blow off the wire's normal about the contact: the face stays one gap off the wire's
+  // surface on the line of action, which still runs through the round wire's axis, so the contact stays normal
+  // to the wire's SURFACE; only the transverse drive loses cos(alpha) (STRIKE_TOL). alpha = 0 is the historical branch, verbatim.
+  const ca = Math.cos(alpha), sa = Math.sin(alpha);
+  const g = (s) => { const q = curve.at(s), nx = -q.ty, ny = q.tx, off = wireR + gap;
+    let fx = q.x + sg * nx * off, fy = q.y + sg * ny * off, bx = -sg * nx, by = -sg * ny;
+    if (alpha !== 0) { const rx = bx * ca - by * sa, ry = bx * sa + by * ca; bx = rx; by = ry; fx = q.x - bx * off; fy = q.y - by * off; }
+    const px = fx + side * tanLen * -by, py = fy + side * tanLen * bx;
+    return { s, S: { x: q.x, y: q.y }, n: { x: nx, y: ny }, F: { x: fx, y: fy }, b: { x: bx, y: by }, P: { x: px, y: py }, k: q.k, alpha, g: Math.hypot(px - Q.x, py - Q.y) - rho }; };
   // the search runs a twentieth of a unit PAST the free end: a strike solved AT the end (the lever family's
   // anchor) has its root there to float noise, either side, and must not be lost to the other root
   const s0min = -0.05;
@@ -436,12 +449,53 @@ export const endHeadClear = (pts, ds, F, b, headR, headH, wireR) => { let best =
 // the face one gap before the end and normal to it, the pivot tanLen along the face from F on the lever's
 // side (the same P = F + side·tanLen·(ẑ×b) as every seat). No root to find: the end is the strike, and
 // g = |P − Q| − rho is the residual the build holds (the generator placed the end from P, so it is float noise).
-export const seatStrikeEnd = (curve, { Q, rho, tanLen, side, gap }) => {
-  const q = curve.at(0), bx = q.tx, by = q.ty, fx = q.x - bx * gap, fy = q.y - by * gap;
+export const seatStrikeEnd = (curve, { Q, rho, tanLen, side, gap }, alpha = 0) => {
+  const q = curve.at(0); let bx = q.tx, by = q.ty;
+  if (alpha !== 0) { const ca = Math.cos(alpha), sa = Math.sin(alpha); [bx, by] = [bx * ca - by * sa, bx * sa + by * ca]; }   // the blow tilted off the tangent about the end
+  const fx = q.x - bx * gap, fy = q.y - by * gap;
   const px = fx + side * tanLen * -by, py = fy + side * tanLen * bx;
-  return { s: 0, S: { x: q.x, y: q.y }, n: { x: -by, y: bx }, F: { x: fx, y: fy }, b: { x: bx, y: by }, P: { x: px, y: py }, k: q.k,
+  return { s: 0, S: { x: q.x, y: q.y }, n: { x: -by, y: bx }, F: { x: fx, y: fy }, b: { x: bx, y: by }, P: { x: px, y: py }, k: q.k, alpha,
     g: Math.hypot(px - Q.x, py - Q.y) - rho, blow: 'tangent' };
 };
+// §319 — THE STRIKE TOLERANCE. The strike was one exact point: the root of |P − Q| = rho along the wire
+// (side strike) or, for the end strike, the end itself. Two things are free that the hammer's mechanism does not
+// spend: the blow's tilt alpha off the wire's normal (or tangent), and with it the contact's place along the wire.
+// The lever's circle, tanLen, the rest gap and every arm stay EXACT (a tolerance bought by stretching a lever arm or
+// opening a contact is the forbidden P3 resolution): g = |P − Q| − rho is still held to float noise, at a chosen
+// (s, alpha) instead of the one the untilted blow forces.
+// The BUDGET is the tilt's cost to the transverse drive, a blow of impulse J tilted alpha drives the wire's
+// normal mode with J cos(alpha): STRIKE_TOL_DB is the most f1 level a seat may give up to it, and
+//     STRIKE_ALPHA_MAX = acos(10^(−STRIKE_TOL_DB / 20))      (0.5 dB → 19.25°)
+// The strike's slide along the wire is bounded separately and by the same budget on the MODE SHAPE (mode1's
+// level at the contact, strikeLevelDb), which the caller prices with `shape`: sliding costs 0.12 dB per percent
+// of the wire from the tip on a straight bar, and a node strike (purest) is not tolerance-eligible.
+export const STRIKE_TOL_DB = 0.5;
+export const STRIKE_ALPHA_MAX = Math.acos(10 ** (-STRIKE_TOL_DB / 20));
+export const STRIKE_ALPHA_STEP = Math.PI / 720;   // 0.25°, the search's step: the window's edge is found to a quarter degree, then bisected
+export const strikeDriveDb = (alpha) => 20 * Math.log10(Math.cos(alpha));
+// the smallest-|alpha| strike the tolerance admits: the untilted solve first (so a seat that has an exact
+// root keeps it, bit for bit), then alpha = ±step, ±2 step, … to alphaMax. A side strike re-searches its root
+// near `guess` at each tilt; an end strike has no s to move, so alpha itself is the root of g. null when the
+// lever reaches nothing inside the window.
+export const seatStrikeTol = (curve, lever, wireR, sg, guess, { end = false, alphaMax = STRIKE_ALPHA_MAX } = {}) => {
+  const at = (a) => end ? seatStrikeEnd(curve, lever, a) : seatStrike(curve, lever, wireR, sg, guess, a);
+  const exact = at(0); if (exact && Math.abs(exact.g) < 1e-9) return exact;
+  if (!end) { for (let k = 1; k * STRIKE_ALPHA_STEP <= alphaMax + 1e-12; k++) for (const a of [k * STRIKE_ALPHA_STEP, -k * STRIKE_ALPHA_STEP]) { const st = at(a); if (st && Math.abs(st.g) < 1e-9) return st; }
+    return null; }
+  // end: g(alpha) by sign scan, the smaller |alpha| of the two roots first, then bisection to float noise
+  const gOf = (a) => seatStrikeEnd(curve, lever, a).g; let best = null;
+  for (let k = 0; k * STRIKE_ALPHA_STEP <= alphaMax + 1e-12; k++) for (const dir of k ? [1, -1] : [1]) {
+    const a0 = dir * k * STRIKE_ALPHA_STEP, a1 = dir * (k + 1) * STRIKE_ALPHA_STEP, g0 = gOf(a0), g1 = gOf(a1);
+    if (Math.sign(g0) === Math.sign(g1) || Math.abs(a0) > alphaMax) continue;
+    let lo = a0, hi = a1; for (let it = 0; it < 80; it++) { const m = (lo + hi) / 2; if (Math.sign(gOf(m)) === Math.sign(gOf(lo))) lo = m; else hi = m; }
+    const a = (lo + hi) / 2; if (Math.abs(a) <= alphaMax && (!best || Math.abs(a) < Math.abs(best))) best = a; }
+  return best === null ? null : seatStrikeEnd(curve, lever, best);
+};
+// the whole window of a placement: every contact s the tolerance reaches and the tilt each needs (alpha step by
+// step), for a side strike; the end strike's window is the tilt interval over which g changes sign (one s).
+export const strikeWindow = (curve, lever, wireR, sg, guess, { alphaMax = STRIKE_ALPHA_MAX, n = 24 } = {}) => {
+  const rows = []; for (let k = -n; k <= n; k++) { const a = k * alphaMax / n, st = seatStrike(curve, lever, wireR, sg, guess, a); if (st && Math.abs(st.g) < 1e-9) rows.push({ alpha: a, s: st.s, db: strikeDriveDb(a) }); }
+  return rows; };
 // ---- the band's metal, as the build measures it (FORM_REGIONS' per-mesh hulls)
 // distance from a point to a convex polygon (0 inside)
 export const hullDist = (hull, x, y) => { let inside = true, best = Infinity;

@@ -308,7 +308,13 @@ booted builds at each committed seat's fit (never edit it; `--check`
 re-derives it, and a seat table that moves owes a re-run).
 `tools/smoke-gong-bench.mjs` holds the page in Chromium: the build's seats ring
 their generated f₁ on it, and the solver returns a seat with the hammer on its
-lever.
+lever. **Since §320 it also carries the VOLUME prototype**: a volume-adjustable
+alarm designed IN A LINE (no fold yet), whose line spec is `src/alarm-volume.js`
+(the strike station as the volume, from the tip to mode 2's node, where the level
+stops falling; a snail cam, a jumper and a hammer carriage, every row derived) and
+whose levels read the gong's level law through `src/gong-level.js`, the pure leaves
+`main.js`' acoustics block calls, moved there verbatim so the two cannot part.
+`tools/probe-alarm-volume.mjs` holds the spec (pure Node, each rule with a control).
 
 `explain.html` is the mechanism explainer (§65, plates for every
 mechanism as of §67), styled as the HUD. §95 made the PRIMER the HUD's
@@ -1377,7 +1383,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 370 measuring scripts and this file names 73. The rest are named for the
+`tools/` holds 371 measuring scripts and this file names 74. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -1394,7 +1400,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **252 of
+The index also carries the split that decides how to read a result: **253 of
 them are ACCEPTANCE tests** that exit non-zero, and **118 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as

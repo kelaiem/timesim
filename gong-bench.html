@@ -96,6 +96,18 @@ input[type=number] { font: 11px var(--f-num); padding: 3px 6px; border-radius: 6
 tr.out td.fam::after { content: " ↕"; }
 .notes { color: var(--muted); font-size: 12px; max-width: 68ch; display: grid; gap: 6px; }
 .notes p { margin: 0; }
+/* §320 — the volume prototype: a full-width section under the bench, the same panels and tokens */
+.vol { display: grid; gap: 14px; border-top: 1px solid var(--rule-strong); padding-top: 18px; }
+.vol h2 { font-size: 12px; margin: 0; letter-spacing: 0.06em; text-transform: uppercase; color: var(--head); font-weight: 600; }
+.volgrid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 860px) { .volgrid { grid-template-columns: minmax(0, 1fr); } }
+.vol svg { width: 100%; height: auto; display: block; border-radius: 6px; background: rgba(10,12,15,0.45); }
+.vol svg text { font-family: var(--f-num); fill: var(--muted); }   /* size from each label's own attribute: a shorthand here would override it */
+#vol-spec td.why { white-space: normal; font: 12px var(--f-ui); color: var(--muted); min-width: 16em; }
+#vol-spec tr.sub td { color: var(--head); font: 600 10.5px var(--f-ui); text-transform: uppercase; letter-spacing: .06em; padding-top: 10px; }
+/* on a phone each row's reason goes under its name and value, rather than into a column too narrow to read */
+@media (max-width: 600px) { #vol-spec-t thead { display: none; } #vol-spec tr:not(.sub) { display: grid; grid-template-columns: minmax(0, 1fr) auto; border-bottom: 1px solid var(--rule); }
+  #vol-spec tr:not(.sub) td { border-bottom: 0; } #vol-spec td.why { grid-column: 1 / -1; min-width: 0; padding-top: 0; } }
 code { font: 11px/1.4 var(--f-num); color: var(--mono-ink); background: rgba(255,255,255,0.06); padding: 0.1em 0.35em; border-radius: 4px; }
 [hidden] { display: none !important; }
 .check { display: flex; gap: 8px; align-items: flex-start; color: var(--muted); }
@@ -205,6 +217,57 @@ code { font: 11px/1.4 var(--f-num); color: var(--mono-ink); background: rgba(255
     </div>
   </div>
 
+  <section class="vol" id="vol" aria-labelledby="vol-h">
+    <h2 id="vol-h">Volume — a new complication, designed in a line</h2>
+    <p class="intro">A volume-adjustable alarm, designed as a straight chain in free space with no size budget: a knob turns a star and a snail cam on one arbor; the cam's follower sets a carriage that slides along a straight gong bar; the carriage carries the whole hammer, so it strikes the bar square at the station the cam holds. Moving the strike inboard from the free end lowers the level. Each setting's station, the cam, the springs and the detent are derived in <code>src/alarm-volume.js</code>, and the levels come from the same law the movement's gong uses (<code>src/gong-level.js</code>).</p>
+    <div class="volgrid">
+      <div class="plan">
+        <svg id="vol-chain" role="img" aria-label="The volume chain drawn to scale at the chosen setting"></svg>
+        <div class="legend">
+          <span style="--c: var(--wire)">gong bar (square: the foot's clamp)</span>
+          <span style="--c: var(--hammer)">hammer, carried at the setting's station</span>
+          <span style="--c: var(--head)">carriage, guide, follower spring and lift rail</span>
+          <span style="--c: var(--accent)">cam and star on the selector arbor</span>
+          <span style="--c: var(--bad)">mode 2's node: the carriage's stop</span>
+        </div>
+      </div>
+      <div class="side">
+        <fieldset>
+          <legend>Setting</legend>
+          <div class="seg" id="vol-set" role="group" aria-label="Volume setting"></div>
+          <div class="voice">
+            <div><span class="k">Level</span><span class="v" id="vol-db">–</span><span class="s">dBA against a tip strike</span></div>
+            <div><span class="k">Fundamental</span><span class="v" id="vol-f1">–</span><span class="s">2 kHz, dB against the tip</span></div>
+            <div><span class="k">Bright partial</span><span class="v" id="vol-f2">–</span><span class="s">12.5 kHz, dB against the tip</span></div>
+          </div>
+          <div id="vol-where" class="status">–</div>
+          <div class="seg"><button class="btn primary" id="vol-play">Strike it</button></div>
+        </fieldset>
+        <fieldset>
+          <legend>Level along the wire</legend>
+          <svg id="vol-curve" role="img" aria-label="Level against where the hammer strikes, with the settings marked"></svg>
+          <div class="legend">
+            <span style="--c: var(--wire)">total, A-weighted</span>
+            <span style="--c: var(--hammer)">fundamental</span>
+            <span style="--c: var(--head)">bright partial</span>
+            <span style="--c: var(--bad)">past the stop: the level rises again</span>
+          </div>
+        </fieldset>
+      </div>
+    </div>
+    <fieldset>
+      <legend>The line spec</legend>
+      <div class="tbl"><table id="vol-spec-t">
+        <thead><tr><th scope="col">Row</th><th scope="col">Value</th><th scope="col">Why, or what binds it</th></tr></thead>
+        <tbody id="vol-spec"></tbody>
+      </table></div>
+    </fieldset>
+    <div class="notes">
+      <p><b>What it really adjusts.</b> On this bar the level you hear is carried by the bright 12.5 kHz partial, 22 dB over the fundamental at a tip strike. The quietest setting strikes that partial's node, where it vanishes and only the 2 kHz fundamental rings. So the settings trade brightness for level: the pitch stays 2 kHz throughout, and the fundamental itself gets slightly louder. Past the node the bright partial comes back, the level rises to within 1.5 dB of the tip, and that is why the carriage has a hard stop there.</p>
+      <p><b>Modelled, not simulated, and not built.</b> Every level is the wire radiating on its own, relative to a tip strike: the blow's energy cancels out, and the case, which carries most of the real loudness, is not in it. Rows marked POSED (the land's width, the carriage's mass and its positional tolerance) are choices the fold into the movement has to meet, not measurements. The movement's own gong is a spiral struck along its end, so folding this in needs a straight seat. That is the next landing, and nothing here has been fitted into a case.</p>
+    </div>
+  </section>
+
   <div class="notes">
     <p><b>What is measured and what is not.</b> The free space is read off the real build by <code>tools/gong-bench-data.mjs</code> (generated, never typed; <code>--check</code> re-derives it), at each case's bar seat fit with the round build's ring left out, the same map <code>tools/gong-seats.mjs</code> solves its seats on: every movement triangle within one clearance margin of the wire's z band, on each case kind at its own fitted size. The pitch comes from two bending models of the wire, each a chain of short circular arcs clamped at the foot and free at the struck end: IN PLANE, the model the watch already uses for its gong, extended to any curve; and OUT OF PLANE, the wire flapping across the plate while it twists (Love's curved-rod equations, round section, Poisson's ratio 0.3). The out-of-plane model reproduces Love's free-ring frequencies and a straight bar's bending and twisting roots. Against today's gong (the 61.14° arc at radius 48.2) it reproduces 2093 Hz, the C7 the build tunes to, and it matches a straight bar's textbook roots exactly.</p>
     <p><b>Not modelled here.</b> The hammer is not re-solved: the blow is taken normal to the wire wherever the slider puts it, square in the plate's plane unless you tilt it. A square blow drives only the in-plane modes; a tilt of θ hands sin θ of the impulse to the out-of-plane ones (marked ↕). On a tight curl those can sit below f₁, and two close modes sounding together beat. The foot block's own room is not checked. A spiral's turns must stay apart (pitch at least the wire plus a margin, 3.05 units), which the status line checks. The sound is a sketch. Its partial frequencies come from the model, and so does how strongly a blow at the chosen point excites each one (the mode's own shape there, over its modal mass, as an equal impulse). What the ear finally gets is not modelled: the hammer's contact time and the case's radiation both favour the low partials, so the page rolls the higher partials off by f₁/f and gives each a made-up decay. Strike at about 78% from the foot on a straight bar and its first overtone, sitting on that mode's node, nearly vanishes.</p>
@@ -215,6 +278,8 @@ code { font: 11px/1.4 var(--f-num); color: var(--mono-ink); background: rgba(255
 import * as GS from './src/gong-solve.js';
 import { GONG_SEATS } from './src/gong-seats.js';
 import { UNIT_MM, CLEAR_MARGIN } from './src/layout.js';
+import { solveVolume, volumeWire, levelAt, VOLUME_INPUTS } from './src/alarm-volume.js';   // §320 — the volume prototype's line spec
+import { aWeight } from './src/gong-level.js';
 const DATA = await (await fetch('./src/gong-bench-data.json')).json();
 // the wire's models, in the shape the bench reads them
 const Wire = { modes: (segs, S, nMax = 4, gMax = 20, fam = 'in', step = 0.004) => GS.modes(segs, S, { nMax, gMax, fam, step }),
@@ -526,7 +591,119 @@ const Wire = { modes: (segs, S, nMax = 4, gMax = 20, fam = 'in', step = 0.004) =
   $('s-lo').value = DATA.band[0]; $('s-hi').value = DATA.band[1];
   fillCentres(); outs(); evaluate();
 
-window.__gongBench = { ready: true };
+  // ---- §320: the volume prototype — the line spec drawn and voiced; nothing here restates a number ----
+  const VOL = (() => {
+    const V = solveVolume(), W = volumeWire(), N = V.N, Lmm = V.wire.L_mm, tipLv = levelAt(W, 1);
+    const svgNS = 'http://www.w3.org/2000/svg', el = (tag, at) => { const e = document.createElementNS(svgNS, tag); for (const [k, v] of Object.entries(at)) e.setAttribute(k, v); return e; };
+    const fx = (v, n = 2) => v.toFixed(n), sgn = (v, n = 2) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(n)}`;
+    let k = 0;
+    // the curve, sampled once: contact inset from the tip, 0 to half the bar (past the node, to show why it stops)
+    const samples = Array.from({ length: 241 }, (_, i) => { const inset = Lmm * 0.5 * i / 240, r = levelAt(W, 1 - inset / Lmm);
+      return { inset, tot: r.total - tipLv.total, f1: r.perMode[0] - tipLv.perMode[0], f2: Math.max(-40, r.perMode[1] - tipLv.perMode[1]) }; });
+    // the chain, in mm: the bar on y = 0 (foot at x = 0, tip at L), the carriage below, the cam's centre on the follower's line
+    const aMm = V.wire.D_mm / 2, faceMm = V.inputs.faceW_u * UNIT_MM, gapMm = 0.4 * UNIT_MM, yF = 6.5, d = 4;
+    const xSt = (j) => Lmm - V.stations[j].inset_mm, xc = xSt(0) + d + V.cam.radii_mm[0];
+    const P = V.cam.pitch_deg * Math.PI / 180, H = V.cam.land_deg * Math.PI / 360, B = P - 2 * H, tr = V.stations.map((s) => s.inset_mm - V.stations[0].inset_mm);
+    const camR = (ph) => { if (ph <= H) return V.cam.rBase_mm; const j = Math.min(N - 1, Math.floor((ph + H) / P)), u = ph - j * P;
+      if (u <= H || j === N - 1) return V.cam.rBase_mm + tr[j]; const t = (u - H) / B, h = tr[j + 1] - tr[j]; return V.cam.rBase_mm + tr[j] + h * (t - Math.sin(2 * Math.PI * t) / (2 * Math.PI)); };
+    const chain = $('vol-chain'), rMax = V.cam.radii_mm[N - 1];
+    chain.setAttribute('viewBox', `-7 ${-rMax + yF - 1.5} ${xc + rMax + 8} ${2 * rMax + 4.5}`);
+    const drawChain = () => {
+      chain.replaceChildren();
+      const sw = 0.12, x = xSt(k);
+      // the bar, its clamp, the node (the stop), the stations
+      chain.append(el('rect', { x: -2.2, y: -1.6, width: 2.2, height: 3.2, fill: 'none', stroke: css('--wire'), 'stroke-width': sw }));
+      chain.append(el('line', { x1: 0, y1: 0, x2: Lmm, y2: 0, stroke: css('--wire'), 'stroke-width': 2 * aMm, 'stroke-linecap': 'butt' }));
+      const xn = V.wire.node * Lmm; chain.append(el('line', { x1: xn, y1: -1.8, x2: xn, y2: 1.2, stroke: css('--bad'), 'stroke-width': sw, 'stroke-dasharray': '0.4 0.3' }));
+      V.stations.forEach((s, j) => { chain.append(el('line', { x1: xSt(j), y1: -aMm - 0.2, x2: xSt(j), y2: -aMm - (j === k ? 1.1 : 0.6), stroke: j === k ? css('--hammer') : css('--muted'), 'stroke-width': sw }));
+        const t = el('text', { x: xSt(j), y: -aMm - 1.4, 'text-anchor': 'middle', 'font-size': 0.9 }); t.textContent = String(j + 1); chain.append(t); });
+      // the hammer: its face one gap off the wire, the head a face wide, the arm down to its pivot on the carriage
+      const yFace = aMm + gapMm;
+      chain.append(el('rect', { x: x - faceMm / 2, y: yFace, width: faceMm, height: faceMm, fill: css('--hammer'), stroke: 'none' }));
+      chain.append(el('line', { x1: x, y1: yFace + faceMm, x2: x, y2: yF - 0.6, stroke: css('--hammer'), 'stroke-width': 0.3 }));
+      chain.append(el('circle', { cx: x, cy: yF - 0.6, r: 0.35, fill: 'none', stroke: css('--hammer'), 'stroke-width': sw }));
+      // the carriage, its guide, the follower pin, the spring to the left post, the lift rail under the travel
+      chain.append(el('rect', { x: x - 3, y: yF - 1.1, width: 3 + d, height: 2.2, fill: 'none', stroke: css('--head'), 'stroke-width': sw, rx: 0.3 }));
+      chain.append(el('line', { x1: -6, y1: yF + 1.7, x2: xc - rMax - 0.5, y2: yF + 1.7, stroke: css('--head'), 'stroke-width': 0.25 }));
+      chain.append(el('circle', { cx: x + d, cy: yF, r: 0.3, fill: css('--head') }));
+      const sx0 = -5.5, sx1 = x - 3, zz = [`M ${sx0} ${yF}`]; for (let i = 1; i <= 12; i++) zz.push(`L ${sx0 + (sx1 - sx0) * (i - 0.5) / 12} ${yF + (i % 2 ? 0.5 : -0.5)}`); zz.push(`L ${sx1} ${yF}`);
+      chain.append(el('rect', { x: -6.3, y: yF - 1.2, width: 0.8, height: 2.4, fill: css('--metal'), stroke: css('--head'), 'stroke-width': sw }));
+      chain.append(el('path', { d: zz.join(' '), fill: 'none', stroke: css('--head'), 'stroke-width': sw }));
+      const railL = xSt(N - 1) - faceMm / 2 - 0.0569, railR = railL + V.rail_mm;
+      chain.append(el('rect', { x: railL, y: yF + 2.4, width: railR - railL, height: 0.6, fill: 'none', stroke: css('--head'), 'stroke-width': sw, 'stroke-dasharray': '0.3 0.2' }));
+      // the cam, turned so setting k's land faces the follower (angle π), and the star on the same arbor with its jumper
+      // the profile over the settings, then the STOP SECTOR: the top radius carried round to the banking face at
+      // −H (one turn on), where the profile steps back down to the base radius — the polygon closes along that step
+      const pts = []; const end = (N - 1) * P + H, turn = 2 * Math.PI - H;
+      for (let i = 0; i <= 720; i++) { const ph = -H + (turn + H) * i / 720, ang = Math.PI + (ph - k * P), r = ph <= end ? camR(ph) : rMax; pts.push(`${fx(xc + r * Math.cos(ang), 3)},${fx(yF + r * Math.sin(ang), 3)}`); }
+      chain.append(el('polygon', { points: pts.join(' '), fill: 'none', stroke: css('--accent'), 'stroke-width': 0.18 }));
+      const rs = V.cam.rBase_mm * 0.55, star = []; for (let i = 0; i < 2 * (N + 1); i++) { const ang = Math.PI + (i * P / 2) - k * P, r = i % 2 ? rs : rs * 0.78; star.push(`${fx(xc + r * Math.cos(ang), 3)},${fx(yF + r * Math.sin(ang), 3)}`); }
+      chain.append(el('polygon', { points: star.join(' '), fill: 'none', stroke: css('--accent'), 'stroke-width': sw, 'stroke-dasharray': '0.35 0.2' }));
+      chain.append(el('circle', { cx: xc, cy: yF, r: 0.5, fill: css('--accent') }));
+      chain.append(el('path', { d: `M ${xc + rs + 2.2} ${yF - rs - 2} L ${xc + rs * 0.95} ${yF - 0.2} L ${xc + rs + 1} ${yF + 0.3}`, fill: 'none', stroke: css('--accent'), 'stroke-width': sw }));
+      const lab = (tx, ty, txt) => { const t = el('text', { x: tx, y: ty, 'font-size': 0.95 }); t.textContent = txt; chain.append(t); };
+      lab(-6.3, -2.2, 'foot'); lab(Lmm - 1.5, -2.2, 'tip'); lab(xc - 2.5, yF + rMax + 1.4, `cam, setting ${k + 1}`); lab(-6.3, yF + 3.9, 'guide · lift rail');
+    };
+    // the level curve
+    const curve = $('vol-curve'), CW = 600, CH = 300, m = { l: 46, r: 12, t: 12, b: 34 }, xMaxI = Lmm * 0.5, yTop = 5, yBot = -26;
+    curve.setAttribute('viewBox', `0 0 ${CW} ${CH}`);
+    const X = (inset) => m.l + (CW - m.l - m.r) * inset / xMaxI, Y = (db) => m.t + (CH - m.t - m.b) * (yTop - db) / (yTop - yBot);
+    const drawCurve = () => {
+      curve.replaceChildren();
+      const xn = (1 - V.wire.node) * Lmm;
+      curve.append(el('rect', { x: X(xn), y: m.t, width: X(xMaxI) - X(xn), height: CH - m.t - m.b, fill: css('--bad'), opacity: 0.12 }));
+      for (let db = 0; db >= -25; db -= 5) { curve.append(el('line', { x1: m.l, x2: CW - m.r, y1: Y(db), y2: Y(db), stroke: css('--rule-strong'), 'stroke-width': 1 }));
+        const t = el('text', { x: m.l - 6, y: Y(db) + 4, 'text-anchor': 'end', 'font-size': 11 }); t.textContent = `${db} dB`; curve.append(t); }
+      for (let mm = 0; mm <= xMaxI; mm += 2) { const t = el('text', { x: X(mm), y: CH - m.b + 16, 'text-anchor': 'middle', 'font-size': 11 }); t.textContent = `${mm}`; curve.append(t); }
+      const tx = el('text', { x: (m.l + CW - m.r) / 2, y: CH - 4, 'text-anchor': 'middle', 'font-size': 11 }); tx.textContent = 'where the hammer strikes: mm in from the free end'; curve.append(tx);
+      const line = (key, col, w, dash) => curve.append(el('polyline', { points: samples.map((q) => `${fx(X(q.inset), 1)},${fx(Y(Math.max(yBot, Math.min(yTop, q[key]))), 1)}`).join(' '), fill: 'none', stroke: col, 'stroke-width': w, ...(dash ? { 'stroke-dasharray': dash } : {}) }));
+      line('f2', css('--head'), 1.2, '4 3'); line('f1', css('--hammer'), 1.2, '6 3'); line('tot', css('--wire'), 2.2);
+      V.stations.forEach((s, j) => curve.append(el('circle', { cx: X(s.inset_mm), cy: Y(s.dB), r: j === k ? 6 : 3.5, fill: j === k ? css('--hammer') : css('--wire'), stroke: css('--bg'), 'stroke-width': 1.5 })));
+    };
+    const show = () => {
+      const s = V.stations[k];
+      [...$('vol-set').children].forEach((b, j) => b.setAttribute('aria-pressed', String(j === k)));
+      $('vol-db').textContent = `${sgn(s.dB, 1)} dB`; $('vol-f1').textContent = `${sgn(s.f1_dB, 1)} dB`; $('vol-f2').textContent = s.f2_dB < -40 ? 'gone' : `${sgn(s.f2_dB, 1)} dB`;
+      $('vol-where').textContent = `setting ${k + 1} of ${N}: the hammer strikes ${fx(s.inset_mm)} mm in from the free end; the cam rests on land ${k + 1} at r ${fx(V.cam.radii_mm[k])} mm${k === N - 1 ? ' (the node: the stop)' : ''}`;
+      drawChain(); drawCurve(); };
+    $('vol-set').innerHTML = V.stations.map((s, j) => `<button type="button" aria-pressed="false" data-k="${j}">${j + 1}${j === 0 ? ' · loudest' : j === N - 1 ? ' · quietest' : ''}</button>`).join('');
+    $('vol-set').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { k = +b.dataset.k; show(); } });
+    // the spec: every input with its reason, every derived row with what binds it
+    const row = (name, val, why) => `<tr><td class="fam">${name}</td><td>${val}</td><td class="why">${why}</td></tr>`, sub = (t) => `<tr class="sub"><td colspan="3">${t}</td></tr>`;
+    const inName = { wireR_u: 'Wire radius', f1_Hz: 'Fundamental', faceW_u: 'Head face width', stepMin_dB: 'Smallest step', pressureMax_deg: 'Cam pressure-angle ceiling', landHalf_deg: 'Land half-width', flank_deg: 'Jumper flank', posTol_mm: 'Carriage tolerance', carriage_mg: 'Carriage mass' };
+    const inVal = { wireR_u: (v) => `${fx(v * UNIT_MM, 3)} mm`, f1_Hz: (v) => `${v} Hz`, faceW_u: (v) => `${fx(v * UNIT_MM, 3)} mm`, stepMin_dB: (v) => `${v} dB`, pressureMax_deg: (v) => `${v}°`, landHalf_deg: (v) => `±${v}°`, flank_deg: (v) => `${v}°`, posTol_mm: (v) => `±${v} mm`, carriage_mg: (v) => `${v} mg` };
+    const D = V.detent, worst = Math.max(...V.stations.map((s) => s.tolErr_dB));
+    $('vol-spec').innerHTML = sub('Inputs: choices, each with its reason')
+      + Object.entries(VOLUME_INPUTS).map(([key, r]) => row(inName[key], inVal[key](r.v), r.why)).join('')
+      + sub('Derived: each from the constraint beside it')
+      + row('Bar length', `${fx(Lmm)} mm`, `rings the fundamental: the cantilever's first root at this wire; f₂ ${fx(V.wire.f_Hz[1] / 1000, 2)} kHz`)
+      + row('Head mass', `${fx(V.wire.head_mg, 1)} mg`, 'matched to the bar at the tip (§198: a straight bar\'s modal mass is a quarter of its mass)')
+      + row('Settings', `${N}, ${fx(V.step)} dB apart`, `as many as ${fx(V.range)} dB holds at no less than the smallest step, equal in total level`)
+      + row('Loudest station', `${fx(V.stations[0].inset_mm, 3)} mm in`, 'the head\'s whole face on the wire: half its width in from the free end')
+      + row('Quietest station', `${fx(V.stations[N - 1].inset_mm, 3)} mm in`, `the level's minimum on the run: mode 2's node, ${fx(V.wire.node, 4)} of the length from the foot`)
+      + row('Carriage travel', `${fx(V.cam.travel_mm, 3)} mm`, 'the loudest station to the node; a hard stop there, because past it the level rises again')
+      + row('Cam base radius', `${fx(V.cam.rBase_mm, 3)} mm`, `the least whose every rise holds the pressure ceiling (peak ${fx(V.cam.pressMax_deg)}°, sampled on the profile)`)
+      + row('Star pitch, land, rise', `${fx(V.cam.pitch_deg, 1)}°, ${fx(V.cam.land_deg, 1)}°, ${fx(V.cam.rise_deg, 1)}°`, `${N} settings and one sector for the banking stop; concentric lands, so a resting setting has no back-drive`)
+      + row('Follower spring', `${fx(D.Fs_mN, 3)} mN`, `returns the carriage against the guide's friction (μ ${D.muSlide}, the adverse plain-bearing corner) with the chain's 3× headroom`)
+      + row('Jumper force', `${fx(D.Fj_mN, 2)} mN`, `inside the detent window [${D.window_mN.join(', ')}] mN; its torque ${fx(D.Tj_uNm, 1)} µN·m beats the worst mid-step back-drive ${fx(D.Tback_uNm, 2)} µN·m ×${fx(D.margin, 1)}`)
+      + row('Knob torque, peak', `${fx(D.knobPeak_uNm, 1)} µN·m`, 'the jumper and the cam\'s rise together, mid-step')
+      + row('Lift rail', `${fx(V.rail_mm, 3)} mm`, 'the lifting lever meets the tail at every station: the travel, the tail\'s pad (posed at the face width) and one clearance margin each end')
+      + row('Worst level error', `${fx(worst, 3)} dB`, `the carriage's tolerance times the level's slope at each station, against half a step (${fx(V.step / 2)} dB)`)
+      + row('Blow along the slide', '0', 'the hammer rides the carriage, so it strikes square at every station: striking cannot move the setting');
+    // the strike: the two partials at their modelled relative pressures (A-weighting removed); the decay is illustrative, as the bench's is
+    let vac = null;
+    $('vol-play').addEventListener('click', () => {
+      vac = vac || new (window.AudioContext || window.webkitAudioContext)();
+      const r = levelAt(W, V.stations[k].x), ref = Math.max(...tipLv.perMode.map((v, n) => v - aWeight(W.modes[n].f)));
+      const t0 = vac.currentTime + 0.02, out = vac.createGain(); out.gain.value = 0.22; out.connect(vac.destination); const f1 = W.modes[0].f;
+      W.modes.forEach((mo, n) => { const amp = 0.9 * 10 ** ((r.perMode[n] - aWeight(mo.f) - ref) / 20); if (!(amp > 1e-4)) return;
+        const o = vac.createOscillator(), g = vac.createGain(), tau = 1.6 * Math.sqrt(f1 / mo.f);
+        o.frequency.value = mo.f; g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(amp, t0 + 0.004);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 5 * tau); o.connect(g).connect(out); o.start(t0); o.stop(t0 + 5 * tau + 0.05); }); });
+    show();
+    return { V, select: (j) => { k = j; show(); } };
+  })();
+window.__gongBench = { ready: true, volume: VOL };
 </script>
 </body>
 </html>

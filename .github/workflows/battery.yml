@@ -122,6 +122,10 @@
 #   src/gong-bench-*   the pure gong modules, its worker and its generated data
 #                      are read by the page alone; the arrow points away from
 #                      index.html
+#   src/alarm-volume.js §320's volume prototype — the bench's alone: it imports
+#                      the gong modules, nothing on index.html's graph imports
+#                      it (src/gong-level.js, which main.js DOES import, is
+#                      deliberately not listed)
 #   sw.js              the battery "runs the source tree and so deliberately
 #                      has no worker at all" (CLAUDE.md). offline.yml owns it
 #   .githooks, .gitignore, LICENSE, vendor/LICENSE-*.txt
@@ -236,6 +240,7 @@ on:
       - 'booklet.html'
       - 'gong-bench.html'
       - 'src/gong-bench-*'
+      - 'src/alarm-volume.js'
       - 'sw.js'
       - '.githooks/**'
       - '.gitignore'
