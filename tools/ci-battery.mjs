@@ -1324,8 +1324,9 @@ const SPEC_POINTS = [
   // and so the build TODO 274's findings are about. It boots exactly the two
   // rows every form build carries (probe-313-reserve-at-12.mjs's F-rect holds
   // the same set on the same build, and reads this row back so the two cannot
-  // part). Its sweep is the collision claim; while it reads FINDING the build
-  // stays out of validated-configs.js and the page marks it unverified.
+  // part). Its sweep is the collision claim: it read FINDING until §318, and
+  // since TODO 274 closed it is CLEAN and listed in validated-configs.js, so
+  // the validated-configs gate fails the run the day it stops sweeping clean.
   //
   // `formrect=` is GONG_SEATS.rect.spiral.formrect (§314: the spiral is the form default), written out because a spec
   // row is a URL; the probe holds it equal to the generated seat, so a
