@@ -11750,6 +11750,7 @@ FOURTH_BRIDGE = await (async () => {
       // opening's tenants is a long bar, not a bad one), and never past the
       // plate's own radius: a bar that long would cross the movement.
       for (let reach = bossR + nodeR + CLEAR_MARGIN; reach <= rimR; reach += 0.25) {
+        if (best && reach >= best.reach - 1e-9) break;   // a seat at least this far out cannot beat the one found: the nearest wins
         const x = host.x + cs * reach, y = host.y + sn * reach;
         const mPlate = rimR - nodeR - Math.hypot(x, y);
         const col = columnClear(x, y);
@@ -11870,13 +11871,20 @@ FOURTH_BRIDGE = await (async () => {
     const worldTop = boxOf(arbor).max.z;
     const staffEnd = stoneBotZ - CLEAR_MARGIN;
     const len = staffEnd - worldTop;
-    if (len > 0.05) {
+    // A staff run shorter than the stock floor is not a member: the slab hugs
+    // the wheel (its floor is one margin over the arbor's top), so the run
+    // between the hub and the stone's underside is 0.28 u, which §50's census
+    // reads as 0.106 mm of stock. The pivot shoulders on the hub's top face
+    // instead — the arbor's shoulder IS that face — and the staff is cut only
+    // where there is a staff's worth of it.
+    const stub = len >= STOCK_MIN_U;
+    if (stub) {
       const shaft = new THREE.Mesh(new THREE.CylinderGeometry(TRAIN_STAFF_R, TRAIN_STAFF_R, len, PIVOT_SEGMENTS), MATS.steel);
       shaft.rotation.x = Math.PI / 2;
       shaft.position.z = (worldTop - arbor.position.z) + len / 2;
       arbor.add(shaft);
     }
-    const from = Math.max(worldTop, staffEnd), pLen = stoneTopZ - from;
+    const from = stub ? staffEnd : worldTop, pLen = stoneTopZ - from;
     const pivot = new THREE.Mesh(new THREE.CylinderGeometry(TRAIN_PIVOT_R, TRAIN_PIVOT_R, pLen, PIVOT_SEGMENTS), MATS.steel);
     pivot.name = 'trainPivot';
     pivot.rotation.x = Math.PI / 2;

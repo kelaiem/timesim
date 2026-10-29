@@ -197,9 +197,10 @@ else {
   console.log(`bridge: slab ${b.bot.toFixed(3)}..${(b.bot + b.T).toFixed(3)}, bosses r ${b.bossR.toFixed(3)}, feet r ${b.nodeR.toFixed(3)}; foot A (${b.footA.x.toFixed(2)}, ${b.footA.y.toFixed(2)}) reach ${b.footA.reach.toFixed(2)} at ${b.footA.deg.toFixed(0)}° (margin ${b.footA.short.toFixed(3)}); foot B (${b.footB.x.toFixed(2)}, ${b.footB.y.toFixed(2)}) reach ${b.footB.reach.toFixed(2)} at ${b.footB.deg.toFixed(0)}° (margin ${b.footB.short.toFixed(3)}); ${b.meshes} meshes`);
   if (b.footA.missed || b.footB.missed) fail('a foot found no seat'); else ok('both feet seated');
   for (const [n, e] of Object.entries(out.pivotEnds)) {
+    // the staff shoulders CLEAR_MARGIN under the stone where a staff's worth of run exists, else on the hub's top face (the wheel's own top), which must then stand at least the margin under the stone
     if (Math.abs(e.pivTop - b.stoneTopZ) > 1e-6) fail(`${n}: its upper pivot ends at ${e.pivTop.toFixed(4)}, the bridge's stone top is ${b.stoneTopZ.toFixed(4)}`);
-    else if (Math.abs(e.staffTop - (b.stoneBotZ - M)) > 1e-6) fail(`${n}: its staff shoulders at ${e.staffTop.toFixed(4)}, ${(b.stoneBotZ - M).toFixed(4)} wanted (stone underside less the margin)`);
-    else ok(`${n}: pivot to the stone's top (${e.pivTop.toFixed(3)}), staff shouldered ${M} under it`);
+    else if (!(e.staffTop <= b.stoneBotZ - M + 1e-6)) fail(`${n}: its staff shoulders at ${e.staffTop.toFixed(4)}, inside the margin under the stone's underside ${b.stoneBotZ.toFixed(4)}`);
+    else ok(`${n}: pivot to the stone's top (${e.pivTop.toFixed(3)}), shouldered ${(b.stoneBotZ - e.staffTop).toFixed(3)} under the stone`);
   }
   if (out.joints.length !== 2) fail(`${out.joints.length} bridge foot joints declared, 2 wanted`);
   for (const j of out.joints) if (!(j.engagedMM != null && j.engagedMM >= j.requiredMM - 1e-4)) fail(`foot screw at (${j.at.x.toFixed(2)}, ${j.at.y.toFixed(2)}) engages ${j.engagedMM} mm of ${j.requiredMM.toFixed(4)}`);
