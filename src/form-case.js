@@ -317,7 +317,7 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   const {
     UNIT_MM: U, z0, zMidBack, zStep, zBandFront, zCrystInner, zCrystOuter, zBezelOuter,
     crystT, tubeD, pusherD, stemAz, alarmAz, pusherAz, pusherOff, stemZ, alarmZ, pusherZ,
-    lugSpanInner, apertureR, glassEdgeR, formApertureGrow = null, formGlassGrow = null,
+    lugSpanInner, apertureR, glassEdgeR, formApertureGrow = null, formGlassGrow = null, formStep = null,
   } = dims;
   // §307 landing 2 — THE BACK'S WINDOW IS THE PLATE'S SHAPE: main.js derives
   // it as grows of the plate's outline (the three-quarter plate's measured
@@ -429,7 +429,28 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   // (makeCase's back pane; the inspect.js row `caseBackCrystal ⇄ caseBack`
   // declares exactly this). Flat: the round case's raised step over the alarm
   // tower is not built (prototype — the plate stands at zMidBack everywhere).
-  const backCrystal = new THREE.Mesh(holdWound(glassLoop ? prism(glassLoop, [], zCrystIn, zCrystOut + SEAT_EMBED) : disc(glassEdgeR, zCrystIn, zCrystOut + SEAT_EMBED), 'the back glass'), crystalMaterial);
+  //
+  // §317 — THE FITTED BACK'S ISLANDS (main.js FITTED_BACK, layout.js
+  // solveFittedBack): the round case's box-stepped glass on the form, once per
+  // island of tall metal. The pane as before, holed by each island's OUTER wall;
+  // each island's wall, one glass thickness, from the pane's inner face up to the
+  // raised pane's; and the raised pane over the outer loop, zStepUnder up to
+  // zStepTop or the pane's own outer face, whichever is higher (a step lower than
+  // the glass is thick is a pocket under a flush face) — closed prisms merged
+  // into one glass, sharing faces inside it (the back's own lip-and-channel
+  // precedent above).
+  let glassGeo;
+  if (formStep && glassLoop) {
+    const { islands, zStepUnder, zStepTop } = formStep, top = Math.max(zStepTop, zCrystOut + SEAT_EMBED);
+    const parts = [prism(glassLoop, islands.map((is) => is.outer), zCrystIn, zCrystOut + SEAT_EMBED)];
+    for (const { inner, outer } of islands) {
+      if (!loopConvex(inner) || !loopConvex(outer))
+        console.warn('makeFormCase §317: a back island\'s loops are not convex — the hull it was grown from folded');
+      parts.push(prism(outer, [inner], zCrystIn, zStepUnder), prism(outer, [], zStepUnder, top));
+    }
+    glassGeo = mergeGeos(parts);
+  } else glassGeo = glassLoop ? prism(glassLoop, [], zCrystIn, zCrystOut + SEAT_EMBED) : disc(glassEdgeR, zCrystIn, zCrystOut + SEAT_EMBED);
+  const backCrystal = new THREE.Mesh(holdWound(glassGeo, 'the back glass'), crystalMaterial);
   backCrystal.name = 'caseBackCrystal';
   backAsm.add(backCrystal);
 

@@ -36,7 +36,7 @@ import { readFileSync } from 'node:fs';
 import { join, extname, normalize, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as GS from '../src/gong-solve.js';
-import { caseShapeOf, configKey, SPEC } from '../src/layout.js';
+import { formShapeOf, configKey, SPEC, FORM_KINDS, PLATE_RIM_MARGIN, fitFittedCase } from '../src/layout.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'src/gong-seats.js');
@@ -47,7 +47,14 @@ const ARGS = process.argv.slice(2), WRITE = ARGS.includes('--write'), CHECK = AR
 const MODES = ARGS.includes('--modes') ? ARGS[ARGS.indexOf('--modes') + 1].split(',') : ['bar', 'spiral'];
 const SPECQ = ARGS.includes('--spec') ? ARGS[ARGS.indexOf('--spec') + 1] : null;
 const _pos = ARGS.filter((a, i) => !a.startsWith('--') && ARGS[i - 1] !== '--modes' && ARGS[i - 1] !== '--spec' && ARGS[i - 1] !== '--out');
-const KINDS = _pos.length ? _pos : ['rect', 'cushion', 'tonneau'];
+const KINDS = _pos.length ? _pos : [...FORM_KINDS];
+// §317 — the fitted tonneau's spec carries two SHAPE numbers after the bounds (k, tau). The fixed point below
+// moves the bounds only; a kind's shape numbers are its FIRST fit's (the unfitted boot's solve), carried on every
+// URL, every shape this tool builds and the row it writes. Every other kind has none.
+const EXTRA = {};
+// a rect carrying its own shape numbers (six: a fitted cut re-solved about a wire, below) keeps them
+const FR = (kind, rect) => (rect.length === 6 ? rect : [...rect.slice(0, 4), ...(EXTRA[kind] ?? [])]).join(',');
+const shapeAt = (kind, b) => formShapeOf(kind, b.length === 6 ? b : [b[0], b[1], b[2], b[3], ...(EXTRA[kind] ?? [])]);
 if (!MODES.every((m) => m === 'bar' || m === 'spiral')) { console.error(`--modes takes bar and/or spiral (got ${MODES.join(',')})`); process.exit(2); }
 if (WRITE === CHECK) { console.error('usage: node tools/gong-seats.mjs --write | --check [kind …]'); process.exit(2); }
 export const BAND_HZ = [1000, 4000];   // §197: a struck alarm gong's fundamental (GONG §197 assert, 1–4 kHz)
@@ -106,12 +113,24 @@ const boot = async (q, { sweep = false } = {}) => {
         for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld); z0 = Math.min(z0, v.z); z1 = Math.max(z1, v.z); }
         hz[o.name] = [z0, z1]; }); }
     const span = (...ns) => { const r = ns.map((n) => hz[n]).filter(Boolean); return r.length ? [Math.min(...r.map((q) => q[0])), Math.max(...r.map((q) => q[1]))] : null; };
-    return { hammerZ: { staff: span('alarmHammerPost'), arm: span('alarmHammerArm', 'alarmHammerHead') }, rect: c.formFootprint?.rect ?? null, regions: JSON.parse(JSON.stringify(c.regions)),
+    const ff = c.formFootprint;
+    return { fittedFit: ff?.fitted ? { hull: ff.hull, metal: ff.metal, centre: ff.fitted.centre, flatMin: ff.fitted.flatMin } : null, hammerZ: { staff: span('alarmHammerPost'), arm: span('alarmHammerArm', 'alarmHammerHead') }, rect: c.formFootprint?.rect ?? null, margin: c.formFootprint?.margin ?? null, regions: JSON.parse(JSON.stringify(c.regions)),
       seat: g && { specKey: g.specKey, arrKey: g.arrKey, tenants: JSON.parse(JSON.stringify(g.tenants)), keep: g.keep ? JSON.parse(JSON.stringify(g.keep)) : null, pivot: g.pivot, mode: g.mode, seated: g.seated, refused: g.refused, strike: g.strike, check: g.check, lever: g.lever, wireR: g.wireR, wireD_m: g.wireD_m,
         zGong: g.zGong, postR: g.postR, postRAt: [10, 20, 30, 40, 50, 60, 70, 80].map((L) => [L, g.postRFor(L)]) } };
   });
   const swept = sweep && !out.bootError ? await hammerSweep(page) : null;
   await ctx.close();
+  // §317 — a fitted tonneau's re-fit moves its shape numbers too, so its box is no measure of whether the
+  // metal stands in the CUT: the box can come back the same while k and tau move (measured: the seated hammer
+  // moved them 0.5873 → 0.5796 inside an unchanged box). What is a measure is the build's own reading against
+  // the shape it cut (formFootprint.margin, the rim margin held), so `refit` says the cut does NOT hold and the
+  // fixed point carries the re-fit's shape numbers into its next round. The rect compared is four numbers
+  // either way, the shape numbers carried apart (EXTRA).
+  if (out.rect?.length === 6) {
+    out.rectFull = out.rect;
+    out.refit = /formrect=/.test(q) && !(out.margin >= PLATE_RIM_MARGIN - 1e-3);
+    out.rect = out.rect.slice(0, 4);
+  }
   return { ...out, warnings, swept };
 };
 const arcSweeps = {};   // per kind and fit: the arc build's own hammer rows, which a seat may carry but never add
@@ -120,11 +139,21 @@ const sameRect = (a, b) => a && b && a.every((v, i) => Math.abs(v - b[i]) < 0.00
 // own fit (the metal's fit never shrinks; the wire is not counted in it, so it may grow it). It grows LUG TO LUG
 // first: §307's 40 mm owner cap is on the width across the strap (x) and the length (y) is not capped, so a wire
 // the y growth alone can hold costs the case no width; only a wire it cannot hold grows both, by one scale.
-const holdWire = (kind, fit, curveRow, need) => {
+const holdWire = (kind, fit, curveRow, need, booted = null) => {
   const c = GS.seatCurve(curveRow), pts = []; for (let s = 0; s <= c.L + 1e-9; s += 0.25) { const q = c.at(Math.min(s, c.L)); pts.push([q.x, q.y]); }
+  // §317 — a FITTED cut is not a box to scale (at fixed shape numbers a taller box is a different, worse outline:
+  // measured, its −y end fell 1.700 u off the lug plane): it is RE-SOLVED about the seated metal's hull with the
+  // wire's stations as pins at their own need (layout.js fitFittedCase), six numbers rounded outward/to 1e-6 as
+  // the build's own spec is. Needs the booted build's hull; without one (the ranking's estimate) the box path.
+  if (kind === 'fitted' && booted?.fittedFit) {
+    const F = booted.fittedFit, r = fitFittedCase(F.hull, F.metal, { centre: F.centre, flatMin: F.flatMin, pins: pts.map(([x, y]) => [x, y, need]) });
+    const sh = r.shape, f = sh.fitted;
+    return [Math.floor(sh.xMin * 100) / 100, Math.ceil(sh.xMax * 100) / 100, Math.floor(sh.yMin * 100) / 100, Math.ceil(sh.yMax * 100) / 100,
+      Math.round(f.k * 1e6) / 1e6, Math.round(f.tau * 1e6) / 1e6];
+  }
   const cx = (fit[0] + fit[1]) / 2, cy = (fit[2] + fit[3]) / 2, hw = (fit[1] - fit[0]) / 2, hh = (fit[3] - fit[2]) / 2;
   const box = (kx, ky) => [cx - kx * hw, cx + kx * hw, cy - ky * hh, cy + ky * hh];
-  const holds = (kx, ky) => { const [xMin, xMax, yMin, yMax] = box(kx, ky), sh = caseShapeOf(kind, { xMin, xMax, yMin, yMax }); return pts.every(([x, y]) => sh.inset(x, y) >= need - 1e-9); };
+  const holds = (kx, ky) => { const [xMin, xMax, yMin, yMax] = box(kx, ky), sh = shapeAt(kind, [xMin, xMax, yMin, yMax]); return pts.every(([x, y]) => sh.inset(x, y) >= need - 1e-9); };
   const out = (b) => [Math.floor(b[0] * 100) / 100, Math.ceil(b[1] * 100) / 100, Math.floor(b[2] * 100) / 100, Math.ceil(b[3] * 100) / 100];   // outward, the URL's 0.01
   if (holds(1, 1)) return fit;
   const least = (ok) => { let lo = 1, hi = 1.05; while (!ok(hi)) { lo = hi; hi *= 1.05; if (hi > 2) return null; } while (hi - lo > 1e-6) { const m = (lo + hi) / 2; if (ok(m)) hi = m; else lo = m; } return hi; };
@@ -192,7 +221,7 @@ function rowOf(kind, mode, r, rect, lever, wireR, mapInfo, st) {
   return { kind, mode, fam: r.fam, label: r.label, curve, ...(r.blow === 'tangent' ? { blow: 'tangent' } : {}), sg: r.hammer.side, strikeS: r6(st.s), ...(st.alpha ? { alpha: r12(st.alpha) } : {}),
     f: r.f.map((v) => Math.round(v * 100) / 100), fo: r.fo.map((v) => Math.round(v * 100) / 100), band: BAND_HZ,
     pivot: r.hammer.pivot.map(r6), face: r.hammer.face.map(r6), pivotMoved: r6(r.pivotMoved),
-    formrect: rect, specKey: CUR_SPECKEY ?? configKey({ spec: { ...SPEC, caseShape: kind } }), wireR: r6(wireR), map: mapInfo };
+    formrect: [...rect.slice(0, 4), ...(EXTRA[kind] ?? [])], specKey: CUR_SPECKEY ?? configKey({ spec: { ...SPEC, caseShape: kind } }), wireR: r6(wireR), map: mapInfo };
 }
 
 FILE = loadFile(seatsText);
@@ -202,6 +231,7 @@ let failed = false;
 for (const kind of KINDS) {
   console.log(`== ${kind}`);
   const first = await boot(`case=${kind}&gong=arc`);
+  if (first.rectFull) EXTRA[kind] = first.rectFull.slice(4);
   if (first.bootError) { console.error(`  boot failed: ${first.bootError}`); failed = true; continue; }
   if (SPECQ) {
     if (!first.seat?.arrKey) { console.error('  the page publishes no arrangement key (gongSeat.arrKey)'); failed = true; break; }
@@ -228,9 +258,9 @@ for (const kind of KINDS) {
       // no seat for this kind while its band is read: the arc build is what the measure sees
       const others = JSON.parse(JSON.stringify(derived)); delete others[kind];
       seatsText = seatModuleText({ ...others, ...(Object.keys(rows).length ? { [kind]: rows } : {}) });
-      const arc = await boot(`case=${kind}&formrect=${rect.join(',')}&gong=arc`);
+      const arc = await boot(`case=${kind}&formrect=${FR(kind, rect)}&gong=arc`);
       if (arc.bootError) { console.error(`  arc boot failed: ${arc.bootError}`); break; }
-      const S = arc.seat, shape = caseShapeOf(kind, { xMin: rect[0], xMax: rect[1], yMin: rect[2], yMax: rect[3] });
+      const S = arc.seat, shape = shapeAt(kind, rect);
       const need = S.wireR + S.lever.margin;
       // the counted metal's hulls (the hammer excepted: it is the seat's own) and the plates' tenants in the band
       // TODO 272: nor the PILLARS — the gong sets them (the build's pillar scan yields to the row's `keep`)
@@ -280,13 +310,13 @@ for (const kind of KINDS) {
         // second boot, with the pillars yielding, is the one judged. The hammer does not depend on where the
         // pillars stand, so one measuring boot is the fixed point (the build holds that: declared vs cut).
         seatsText = seatModuleText({ ...others, [kind]: { ...rows, [mode]: r } });
-        const m = await boot(`case=${kind}&formrect=${rect.join(',')}&gong=${mode}`);
+        const m = await boot(`case=${kind}&formrect=${FR(kind, rect)}&gong=${mode}`);
         if (m.bootError || !m.seat?.keep) { console.log(`    refused: the seated build ${m.bootError ? `fails to boot (${m.bootError})` : 'measures no strike footprint'}`); continue; }
         r = { ...r, keep: m.seat.keep };
         // GONG_ROWS=dir writes each candidate row as judged, so a refused seat can be booted and read by hand
         if (process.env.GONG_ROWS) await writeFile(join(process.env.GONG_ROWS, `${kind}-${mode}-${round}-${pool.indexOf(cand)}.json`), JSON.stringify(r));
         seatsText = seatModuleText({ ...others, [kind]: { ...rows, [mode]: r } });
-        let b = await boot(`case=${kind}&formrect=${rect.join(',')}&gong=${mode}`);
+        let b = await boot(`case=${kind}&formrect=${FR(kind, rect)}&gong=${mode}`);
         if (b.bootError) { console.log(`    refused: the seated build fails to boot (${b.bootError})`); continue; }
         // THE SEAT AT ITS OWN FIT (TODO 269's second search change, owed since the case is fitted about the
         // hands): a seat is judged at the smallest case that holds BOTH its seated metal and its own wire, not at
@@ -298,14 +328,14 @@ for (const kind of KINDS) {
         // the outline, then booted with its own arc build beside it (the arc's warnings are what the seat may not
         // add, at the same fit), and taken only if the seated metal still fits it.
         let arcAt = arc;
-        const own = holdWire(kind, b.rect, rowCurve(cand), need);
+        const own = holdWire(kind, b.rect, rowCurve(cand), need, b);
         if (!sameRect(own, rect)) {
-          const r2 = { ...r, formrect: own };
+          const r2 = { ...r, formrect: own.length === 6 ? own : [...own.slice(0, 4), ...(EXTRA[kind] ?? [])] };
           seatsText = seatModuleText({ ...others, [kind]: { ...rows, [mode]: r2 } });
-          const c = await boot(`case=${kind}&formrect=${own.join(',')}&gong=${mode}`);
+          const c = await boot(`case=${kind}&formrect=${FR(kind, own)}&gong=${mode}`);
           if (!c.bootError && within(c.rect, own)) {
             seatsText = seatModuleText({ ...others });
-            arcAt = await boot(`case=${kind}&formrect=${own.join(',')}&gong=arc`);
+            arcAt = await boot(`case=${kind}&formrect=${FR(kind, own)}&gong=arc`);
             seatsText = seatModuleText({ ...others, [kind]: { ...rows, [mode]: r2 } });
             console.log(`    judged at its own fit [${own.join(', ')}] (the metal's [${b.rect.join(', ')}], the cut [${rect.join(', ')}])`);
             b = c; r = r2;
@@ -337,7 +367,7 @@ for (const kind of KINDS) {
         // the cut is kept as the round's fallback and the rest are still tried: taking the first clean seat sent
         // the tonneau's spiral to a 53.2 cut it then could not hold (41.25 mm, over the cap) while a later seat,
         // 18.02 u of hammer move and 48.92 of fit, closed inside the first cut unwidened.
-        const fits = within(b.rect, r.formrect);
+        const fits = within(b.rect, r.formrect) && !b.refit;
         if (fits && !b.warnings.some((w) => /§310/.test(w))) { seated = b; pick = cand; row = r; rect = r.formrect; break; }
         console.log(`    clean, but its fit [${b.rect.join(', ')}] widens the cut: kept as the round's fallback`);
         fallback ??= { b, cand, r };
@@ -349,21 +379,36 @@ for (const kind of KINDS) {
       // outline and the outline holds the seated movement. Otherwise the next round cuts the UNION of the two
       // (never smaller: a seat that moves the hammer out cannot shrink the case it moved out of, and a two-cycle
       // between a narrow cut and a wide fit is what taking either alone does — the first run of this tool).
-      const inside = seated.rect[0] >= rect[0] - 0.005 && seated.rect[1] <= rect[1] + 0.005 && seated.rect[2] >= rect[2] - 0.005 && seated.rect[3] <= rect[3] + 0.005;
+      const inside = !seated.refit && seated.rect[0] >= rect[0] - 0.005 && seated.rect[1] <= rect[1] + 0.005 && seated.rect[2] >= rect[2] - 0.005 && seated.rect[3] <= rect[3] + 0.005;
       const seatWarn = seated.warnings.some((w) => /§310/.test(w));
       if (inside && !seatWarn) { closed = true; console.log(`  ${mode} closed: the seated build fits [${seated.rect.join(', ')}] inside the cut [${rect.join(', ')}]`); }
       else {
         const u = [Math.min(rect[0], seated.rect[0]), Math.max(rect[1], seated.rect[1]), Math.min(rect[2], seated.rect[2]), Math.max(rect[3], seated.rect[3])];
         console.log(`  the seated build fits [${seated.rect.join(', ')}]${seatWarn ? ' and its seat check warns' : ''} — re-solving at the union [${u.join(', ')}]`);
-        if (sameRect(u, rect) && seatWarn) { console.log('  the union does not move and the seat still warns: refused'); break; }
+        if (sameRect(u, rect) && seatWarn && !seated.refit) { console.log('  the union does not move and the seat still warns: refused'); break; }
+        // §317 — a FITTED re-fit is not unioned: its box is meaningless apart from its shape numbers (a stretched
+        // cut's y with the re-fit's curvature is a shape no solve makes, and measured, it stood the case 40.59 mm
+        // wide), and the re-fit already HOLDS the seated metal by construction (the least outline about it). So the
+        // next cut IS the seated build's own re-fit, box and shape numbers together; the wire is held inside it by
+        // holdWire on the next round, as every kind's is.
+        if (seated.refit) {
+          EXTRA[kind] = seated.rectFull.slice(4);
+          console.log(`  the seated metal re-fits the ${kind} to [${seated.rect.join(', ')}] with shape numbers [${EXTRA[kind].join(', ')}] — its next cut`);
+          rect = seated.rect.slice(0, 4);
+          continue;
+        }
         rect = u;
       }
     }
     }
     if (closed) rows[mode] = row;
-    else { console.error(`  ${kind} ${mode}: the fit and the seat did not close`); if (mode === 'spiral') failed = true; }   // §314: the spiral is the default seat; a bar that does not close is reported
+    else console.error(`  ${kind} ${mode}: the fit and the seat did not close`);
   }
-  if (rows.spiral) derived[kind] = rows;
+  // §314: the spiral is the default seat; §317: a kind whose spiral does not close keeps its BAR, which the build
+  // and the case-shape reload then take as its default (case-shape.js defaultSeatMode). A kind with neither fails.
+  if (rows.spiral || rows.bar) derived[kind] = rows;
+  else failed = true;
+  if (!rows.spiral && rows.bar) console.log(`  ${kind}: no spiral seat closes — its default is the bar`);
 }
 await browser.close(); srv.close();
 const text = SPECQ ? (CUR_KEY ? seatModuleText(derived) : seatsText) : seatModuleText(derived);

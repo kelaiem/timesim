@@ -210,6 +210,7 @@
       <option value="rect">Rectangular</option>
       <option value="cushion">Cushion</option>
       <option value="tonneau">Tonneau</option>
+      <option value="fitted">Fitted tonneau</option>
     </select></label>
     <label><span>Case</span><input type="checkbox" data-view="case" checked></label>
     <label><span>Wireframe view</span><input type="checkbox" data-view="wireframe"></label>
@@ -268,8 +269,8 @@
       subdialr: 'subdialr',             // §97 — the shared sub-dial well radius, in movement units
       dialr: 'dialr',                   // §125 — the dial's radius, in movement units (null = the movement's own diameter)
       studr: 'studr',                   // §237 — the hairspring stud's radius, in movement units: where the overcoil's terminal lands, and so how far the cock's carrier arm reaches (null = one coil pitch inside the outer coil)
-      formrect: { field: 'formRectSpec', parse: String }, // §307 landing 2 / §308 — the FITTED form shape's BOUNDS, xMin,xMax,yMin,yMax in movement units, whatever its kind (__clock.formFootprint.rect after a first boot; tools/form-layout.mjs --dump prints it)
-      case: { field: 'caseShape', parse: String }, // §307/§308 — the case's outline, a kind of layout.js's shape library: 'rect' | 'cushion' | 'tonneau' cut plates, dial and case to that shape, fitted to the movement (absent or anything else = round, as designed)
+      formrect: { field: 'formRectSpec', parse: String }, // §307 landing 2 / §308 — the FITTED form shape's BOUNDS, xMin,xMax,yMin,yMax in movement units, whatever its kind (§317: and for 'fitted' its side curvature k and apex height tau after them) (__clock.formFootprint.rect after a first boot; tools/form-layout.mjs --dump prints it)
+      case: { field: 'caseShape', parse: String }, // §307/§308 — the case's outline, a kind of layout.js's shape library: 'rect' | 'cushion' | 'tonneau' | 'fitted' (§317) cut plates, dial and case to that shape, fitted to the movement (absent or anything else = round, as designed)
       gong: { field: 'gongSeat', parse: String }, // §310 landing 2 — the gong's seat on a form build: 'bar' (the default under ?case=), 'spiral', or 'arc' (the round build's arc); src/gong-seats.js, generated, says where each stands
       // §36 Apply — a committed route, and the bush stations frozen with it.
       // These are the tier's first NON-NUMERIC knobs, which is why the rows

@@ -11,6 +11,7 @@ import { readFile } from 'node:fs/promises';
 import { join, extname, normalize, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GONG_SEATS } from '../src/gong-seats.js';
+import { FORM_KINDS } from '../src/layout.js';
 import { solveVolume, VOLUME_INPUTS } from '../src/alarm-volume.js';
 const VOL = solveVolume();
 
@@ -30,7 +31,7 @@ for (const width of [1280, 390]) {
   await page.waitForFunction(() => window.__gongBench?.ready, null, { timeout: 60000 });
   await page.waitForFunction(() => !/computing/.test(document.getElementById('status').textContent), null, { timeout: 60000 });
   const kinds = await page.evaluate(() => [...document.getElementById('kind').options].map((o) => o.value));
-  ok(`${width}: every case kind is offered`, ['rect', 'cushion', 'tonneau'].every((k) => kinds.includes(k)), kinds.join(', '));
+  ok(`${width}: every case kind is offered`, FORM_KINDS.every((k) => kinds.includes(k)), kinds.join(', '));   // §317: the build's own list
   const wide = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   ok(`${width}: nothing scrolls sideways`, wide <= 0, `${wide} px`);
   if (width === 1280) for (const kind of kinds) for (const mode of ['bar', 'spiral']) {

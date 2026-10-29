@@ -47,9 +47,10 @@
 // hold on a straight side, or R is reading nothing.
 //
 // Run: node --import ./tools/three-node-loader.mjs tools/probe-form-track.mjs
-import { caseShapeOf, loopConvexity, PLATE_RIM_MARGIN } from '../src/layout.js';
+import { caseShapeOf, formShapeOf, formShapeOpts, loopConvexity, PLATE_RIM_MARGIN } from '../src/layout.js';
 import { dialTrack, DIAL_CANVAS_FILL_F, DIAL_RAIL_OUT_F, DIAL_RAIL_IN_F } from '../src/geometry.js';
 import { GONG_SEATS } from '../src/gong-seats.js';
+import { defaultSeatMode } from '../src/case-shape.js';
 
 const fails = [];
 const ok = (name, cond, detail = '') => { console.log(`${cond ? 'PASS' : 'FAIL'}  ${name}${detail ? ` — ${detail}` : ''}`); if (!cond) fails.push(name); };
@@ -59,8 +60,11 @@ const RADIUS = 41.51616090422663;   // the shipped dial's radius (= plateR; a sc
 // Y-flip about the hands' axis, as main.js carries it (P.dial = (0, 0) there).
 const builds = [{ name: 'round', shape: caseShapeOf('circle', { cx: 0, cy: 0, r: RADIUS }) }];
 for (const [kind, modes] of Object.entries(GONG_SEATS)) {
-  const [xMin, xMax, yMin, yMax] = modes.bar.formrect;
-  builds.push({ name: kind, shape: caseShapeOf(kind, { xMin: -xMax, xMax: -xMin, yMin, yMax }) });
+  // each kind at its DEFAULT seat's fit (§314: the spiral; §317: the bar where no spiral closes) — this read
+  // `modes.bar` until §314 left the other kinds spiral-only, and threw on every one of them since
+  const fr = modes[defaultSeatMode(GONG_SEATS, kind)].formrect, [xMin, xMax, yMin, yMax] = fr;
+  // (§317: a fitted tonneau's shape numbers ride the flip unchanged — main.js's FORM_DIAL)
+  builds.push({ name: kind, shape: caseShapeOf(kind, { xMin: -xMax, xMax: -xMin, yMin, yMax }, formShapeOpts(formShapeOf(kind, fr))) });
 }
 
 // The discrete radius of curvature at each vertex: the circumradius of the
@@ -112,7 +116,10 @@ for (const { name, shape } of builds) {
   // centred on the hands' axis) the outline is a straight or the apex of an
   // arc, the normal along the ray: the offset reads exactly g there
   const axisExact = [0, Math.PI / 2, Math.PI, 3 * Math.PI / 2].every((az) => {
-    const off = -shape.cx * Math.sin(az) + shape.cy * Math.cos(az);   // the base that puts the ray's line through (cx, cy)
+    // (§317: the fitted tonneau's sides peak at their APEX height yA, not the box's centre — its taper — so
+    // its two side rays run through (cx, yA); the end rays through cx as every kind's)
+    const yAx = shape.fitted ? shape.fitted.yA : shape.cy;
+    const off = -shape.cx * Math.sin(az) + yAx * Math.cos(az);   // the base that puts the ray's line through (cx, yAx)
     const o = t.outer.exit(az, off), i = t.inner.exit(az, off), s = shape.exit(az, off);
     return Math.abs(s - o - t.gOut) < tol + 1e-6 && Math.abs(s - i - t.gIn) < tol + 1e-6;
   });
