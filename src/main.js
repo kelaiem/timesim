@@ -11603,25 +11603,28 @@ FOURTH_BRIDGE = await (async () => {
   // alone closed every bearing — and LOW_LINKAGE_OBSTACLES is their one source,
   // rule 5, which carries them at their own plan half-width over the stroke.)
   const swept = new Set([hammerGroup, forkGroup, balanceGroup, hairspringGroup, backPlate, resetRod, hackRod]);
-  const keepsIn = (zLo, zHi, skipFramed) => {
-    const keeps = [], v = new THREE.Vector3();
+  // (§239's rule for a walk inside the build: the meshes are collected into a
+  // list and the thread handed back between them, the BACK_ENVELOPE precedent.)
+  const keepsIn = async (zLo, zHi, skipFramed) => {
+    const keeps = [], v = new THREE.Vector3(), walk = [];
     movement.updateMatrixWorld(true);
     for (const child of movement.children) {
       if (swept.has(child) || (skipFramed && (child === fourthArbor || child === escapeArbor || child === thirdArbor || child === secondsCamArbor))) continue;
-      child.traverse((o) => {
-        if (!o.isMesh || !o.geometry?.attributes?.position || o.userData?.schematic) return;
-        o.geometry.computeBoundingBox();
-        const b = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
-        if (b.max.z < zLo || b.min.z > zHi) return;
-        let cr = 0;
-        const cx = (b.min.x + b.max.x) / 2, cy = (b.min.y + b.max.y) / 2;
-        const pos = o.geometry.attributes.position;
-        for (let i = 0; i < pos.count; i++) {
-          v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
-          cr = Math.max(cr, Math.hypot(v.x - cx, v.y - cy));
-        }
-        keeps.push({ b, cx, cy, cr, unit: labelEntries.find((e) => e.obj === child)?.name ?? '(unlabeled)', mesh: o.name || o.geometry.type });
-      });
+      child.traverse((o) => { if (o.isMesh && o.geometry?.attributes?.position && !o.userData?.schematic) walk.push([child, o]); });
+    }
+    for (const [child, o] of walk) {
+      await breathe(371);
+      o.geometry.computeBoundingBox();
+      const b = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
+      if (b.max.z < zLo || b.min.z > zHi) continue;
+      let cr = 0;
+      const cx = (b.min.x + b.max.x) / 2, cy = (b.min.y + b.max.y) / 2;
+      const pos = o.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+        cr = Math.max(cr, Math.hypot(v.x - cx, v.y - cy));
+      }
+      keeps.push({ b, cx, cy, cr, unit: labelEntries.find((e) => e.obj === child)?.name ?? '(unlabeled)', mesh: o.name || o.geometry.type });
     }
     return keeps;
   };
@@ -11636,13 +11639,11 @@ FOURTH_BRIDGE = await (async () => {
     }
     return { c, who };
   };
-  await breathe(365);
-  const columnKeeps = keepsIn(BACK_PLATE_Z + BACK_PLATE_T / 2, BOT0, false);
-  await breathe(366);
+  const columnKeeps = await keepsIn(BACK_PLATE_Z + BACK_PLATE_T / 2, BOT0, false);
   // The slab's band, one margin wider each way: a part topping just under
   // the floor is cleared in z by the floor's derivation only where the plan
   // was measured, and the four framed arbors are that measurement.
-  const bandKeeps = keepsIn(BOT0 - CLEAR_MARGIN, BOT0 + T + CLEAR_MARGIN, true);
+  const bandKeeps = await keepsIn(BOT0 - CLEAR_MARGIN, BOT0 + T + CLEAR_MARGIN, true);
   // The hammer as a SWEPT SECTOR about its pivot (FORK_SWEEP's construction,
   // over the hammer's own travel), for the bar's view rule and the column.
   const hammerSweep = (() => {
@@ -11665,22 +11666,28 @@ FOURTH_BRIDGE = await (async () => {
       }
     });
     const TAU = 2 * Math.PI;
+    // The bins' edge directions, once (the scan asks this a million times).
+    const ux = new Float64Array(N + 1), uy = new Float64Array(N + 1);
+    for (let j = 0; j <= N; j++) { ux[j] = Math.cos(j * BIN); uy[j] = Math.sin(j * BIN); }
+    const maxReach = Math.max(...reach);
     const clear = (x, y) => {
       const px = x - hammerPivotPos.x, py = y - hammerPivotPos.y;
-      const rho = Math.hypot(px, py), phi = Math.atan2(py, px);
+      const rho = Math.hypot(px, py);
+      if (rho - maxReach > 4) return rho - maxReach;   // farther than any bin can reach: the disc bound is exact enough
+      const phi = Math.atan2(py, px);
       let c = Infinity;
       for (let j = 0; j < N; j++) {
         if (!(reach[j] > 0)) continue;
-        const a0 = j * BIN, d = (((phi - a0) % TAU) + TAU) % TAU;
+        const d = (((phi - j * BIN) % TAU) + TAU) % TAU;
         if (d <= BIN) { c = Math.min(c, rho - reach[j]); continue; }
-        for (const a of [a0, a0 + BIN]) {
-          const ux = Math.cos(a), uy = Math.sin(a), t = clamp(px * ux + py * uy, 0, reach[j]);
-          c = Math.min(c, Math.hypot(px - t * ux, py - t * uy));
+        for (const k of [j, j + 1]) {
+          const t = clamp(px * ux[k] + py * uy[k], 0, reach[j]);
+          c = Math.min(c, Math.hypot(px - t * ux[k], py - t * uy[k]));
         }
       }
       return c;
     };
-    return { clear, reach, maxReach: Math.max(...reach) };
+    return { clear, reach, maxReach };
   })();
   // The plate's remaining chaton sites: the counterbore and every seat the
   // plate must keep, as one disc each (the seats are lobes; a disc holds all
@@ -11751,12 +11758,17 @@ FOURTH_BRIDGE = await (async () => {
         // The bar is judged BEYOND its boss and short of its foot node: the
         // boss stands over its own wheel's hub, the cam and the hammer's
         // roller seated in the cam's notch (that is where the wheel's pivot
-        // is), and the node's column is judged on its own above.
+        // is), and the node's column is judged on its own above. And it is
+        // judged only where the column fits — the bar is the costly wall
+        // (sampled along its length), and a seat the leg cannot take needs no
+        // bar; held to every candidate it put 145 s on the boot.
         let mBar = Infinity;
-        for (let sb = bossR + CLEAR_MARGIN; sb <= reach - nodeR; sb += 0.5) {
-          const bx = host.x + cs * sb, by = host.y + sn * sb;
-          const bc = barClear(bx, by, own, other);
-          if (bc.c - (barHW + CLEAR_MARGIN) < mBar) { mBar = bc.c - (barHW + CLEAR_MARGIN); barWho = bc.who; }
+        if (mPlate >= 0 && mColumn >= 0) {
+          for (let sb = bossR + CLEAR_MARGIN; sb <= reach - nodeR; sb += 0.5) {
+            const bx = host.x + cs * sb, by = host.y + sn * sb;
+            const bc = barClear(bx, by, own, other);
+            if (bc.c - (barHW + CLEAR_MARGIN) < mBar) { mBar = bc.c - (barHW + CLEAR_MARGIN); barWho = bc.who; }
+          }
         }
         const mSpine = Math.min(latRay(x, y, nodeR), latRay(host.x + cs * reach * 0.5, host.y + sn * reach * 0.5, barHW));
         const short = Math.min(mPlate, mColumn, mBar, mSpine);
@@ -11807,24 +11819,23 @@ FOURTH_BRIDGE = await (async () => {
   };
   let tallest = -Infinity, tallestAt = null;
   {
-    const v = new THREE.Vector3();
-    await breathe(368);
+    const v = new THREE.Vector3(), walk = [];
     movement.updateMatrixWorld(true);
     for (const child of movement.children) {
-      if (child === backPlate) continue;
-      child.traverse((o) => {
-        if (!o.isMesh || !o.geometry?.attributes?.position || o.userData?.schematic) return;
-        o.geometry.computeBoundingBox();
-        const b = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
-        if (b.max.z < BOT0 - CLEAR_MARGIN - 1e-9 || b.min.z > BOT0 + T) return;   // cannot reach the floor
-        // the framed staffs are the bridge's own tenants: they run UP into its stones
-        if (child === fourthArbor || child === escapeArbor) return;
-        const pos = o.geometry.attributes.position;
-        for (let i = 0; i < pos.count; i++) {
-          v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
-          if (v.z > tallest && v.z <= BOT0 + T && underPlan(v.x, v.y)) { tallest = v.z; tallestAt = [v.x, v.y, labelEntries.find((e) => e.obj === child)?.name ?? '(unlabeled)']; }
-        }
-      });
+      // the base plate is the ground; the framed staffs are the bridge's own tenants, they run UP into its stones
+      if (child === backPlate || child === fourthArbor || child === escapeArbor) continue;
+      child.traverse((o) => { if (o.isMesh && o.geometry?.attributes?.position && !o.userData?.schematic) walk.push([child, o]); });
+    }
+    for (const [child, o] of walk) {
+      await breathe(372);
+      o.geometry.computeBoundingBox();
+      const b = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
+      if (b.max.z < BOT0 - CLEAR_MARGIN - 1e-9 || b.min.z > BOT0 + T) continue;   // cannot reach the floor
+      const pos = o.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+        if (v.z > tallest && v.z <= BOT0 + T && underPlan(v.x, v.y)) { tallest = v.z; tallestAt = [v.x, v.y, labelEntries.find((e) => e.obj === child)?.name ?? '(unlabeled)']; }
+      }
     }
   }
   const BOT = BOT0;
