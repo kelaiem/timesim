@@ -374,7 +374,17 @@ for (const kind of KINDS) {
         const u = [Math.min(rect[0], seated.rect[0]), Math.max(rect[1], seated.rect[1]), Math.min(rect[2], seated.rect[2]), Math.max(rect[3], seated.rect[3])];
         console.log(`  the seated build fits [${seated.rect.join(', ')}]${seatWarn ? ' and its seat check warns' : ''} — re-solving at the union [${u.join(', ')}]`);
         if (sameRect(u, rect) && seatWarn && !seated.refit) { console.log('  the union does not move and the seat still warns: refused'); break; }
-        if (seated.refit) { EXTRA[kind] = seated.rectFull.slice(4); console.log(`  the seated metal re-fits the ${kind}'s shape numbers to [${EXTRA[kind].join(', ')}]`); }
+        // §317 — a FITTED re-fit is not unioned: its box is meaningless apart from its shape numbers (a stretched
+        // cut's y with the re-fit's curvature is a shape no solve makes, and measured, it stood the case 40.59 mm
+        // wide), and the re-fit already HOLDS the seated metal by construction (the least outline about it). So the
+        // next cut IS the seated build's own re-fit, box and shape numbers together; the wire is held inside it by
+        // holdWire on the next round, as every kind's is.
+        if (seated.refit) {
+          EXTRA[kind] = seated.rectFull.slice(4);
+          console.log(`  the seated metal re-fits the ${kind} to [${seated.rect.join(', ')}] with shape numbers [${EXTRA[kind].join(', ')}] — its next cut`);
+          rect = seated.rect.slice(0, 4);
+          continue;
+        }
         rect = u;
       }
     }
