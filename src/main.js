@@ -11578,7 +11578,7 @@ const LOW_CORRIDOR_Z_BAND = [0.15, 1.9];
 // tapped holes join BACK_PLATE_LATE_HOLES for the late re-cut, the balance
 // cock's path.
 const FOURTH_BRIDGE_T = COCK_T;
-await breathe();
+await breathe(364);
 FOURTH_BRIDGE = await (async () => {
   const legR = COCK_LEG_BORE_R + STOCK_MIN_U;   // TODO 184 step 2 — the sleeve round the foot screw
   const nodeR = legR * 1.35, padR = legR * 1.5;  // makeEscapeBridge's foot boss and the pad it lands on
@@ -11636,9 +11636,9 @@ FOURTH_BRIDGE = await (async () => {
     }
     return { c, who };
   };
-  await breathe();
+  await breathe(365);
   const columnKeeps = keepsIn(BACK_PLATE_Z + BACK_PLATE_T / 2, BOT0, false);
-  await breathe();
+  await breathe(366);
   // The slab's band, one margin wider each way: a part topping just under
   // the floor is cleared in z by the floor's derivation only where the plan
   // was measured, and the four framed arbors are that measurement.
@@ -11735,7 +11735,7 @@ FOURTH_BRIDGE = await (async () => {
     let best = null, near = null;
     const rows = [], landscape = [];   // landscape: each bearing's least-short candidate, for the report
     for (let dd = 0; dd < 360; dd += 2) {
-      await breathe();
+      await breathe(367);
       const a = dd * DEG2RAD, cs = Math.cos(a), sn = Math.sin(a);
       let bearingNear = null;
       const series = [];
@@ -11808,7 +11808,7 @@ FOURTH_BRIDGE = await (async () => {
   let tallest = -Infinity, tallestAt = null;
   {
     const v = new THREE.Vector3();
-    await breathe();
+    await breathe(368);
     movement.updateMatrixWorld(true);
     for (const child of movement.children) {
       if (child === backPlate) continue;
@@ -11832,7 +11832,7 @@ FOURTH_BRIDGE = await (async () => {
     console.warn(`§322: the fourth wheel bridge's floor (${BOT.toFixed(3)}) stands ${(BOT - tallest).toFixed(3)} over ${tallestAt[2]} at `
       + `(${tallestAt[0].toFixed(2)}, ${tallestAt[1].toFixed(2)}), under ${CLEAR_MARGIN} — a part under the slab's plan the floor's derivation did not read`);
   // 5. The build.
-  await breathe();
+  await breathe(369);
   const g = G.makeEscapeBridge({
     chain, thickness: T,
     foot: { headR: COCK_SCREW_HEAD_R, engage: BACK_PLATE_T },
@@ -11891,7 +11891,7 @@ FOURTH_BRIDGE = await (async () => {
     const i = ((deg % 360) + 360) % 360;
     if (r > TQ_CUT.rawRadii[i]) TQ_CUT.rawRadii[i] = r;
   };
-  await breathe();
+  await breathe(370);
   openworkVotes(bump);
   TQ_CUT.radii = finishCutRadii(TQ_CUT.rawRadii);
 }
@@ -16623,15 +16623,20 @@ const TQ_WINDOW_INTENTS = [
     // window ONTO, not to the widest thing anywhere under it, or it stops
     // being a frame and becomes a hole.
     //
-    // §322 — AND THE CONE OUTGREW THE CHAIN. §62 sized this to the chain's
-    // edge on the largest wrap because that circle then contained the cone's
-    // crown and crest lands; after TODO 192/193 re-proportioned the ribbon the
-    // chain's edge measured 6.19 about the axis and the cone's own silhouette
-    // 7.55, so the window clipped the cone's base all round. The rule is
-    // §62's own — a window onto a stack is sized to the member it is a window
-    // ONTO — and the member is the cone: its silhouette is MEASURED off the
-    // built `fuseeCone` mesh (exact for a revolver), the chain's edge kept as
-    // the other term so a chain that outgrows the cone sizes it again.
+    // §322 — AND THE CONE IS MEASURED BESIDE IT. §62's claim that the chain's
+    // circle contains the cone was a number in a comment (crown 6.74 under a
+    // chain edge of 8.21, both since moved); it is read off the metal now:
+    // the cone's silhouette about its axis, measured off the built
+    // `fuseeCone` mesh (exact for a revolver), is the other term, and the
+    // window takes the larger. Today the chain's edge (6.186) still contains
+    // the cone (5.526), so the reveal is unchanged — §322 asked whether the
+    // window could show more of the cone, and the answer is that it frames
+    // all of it: what the plate still covers is the boss ring and the three
+    // webs, each one TQ_LAND_MIN wide, the plate's own land floor since
+    // TODO 69 thickened it. (A first reading of the cone off its world
+    // bounding box said 7.55 — the box of a clocked cone, inflated by its
+    // rotation; the instruments skill's trap, and why this is a vertex
+    // measurement.)
     at: () => P.barrel,
     reveal: () => {
       let r = 0;

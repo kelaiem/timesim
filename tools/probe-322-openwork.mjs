@@ -4,10 +4,11 @@
 // wheel bridge actually carry the two pivots it took out of the plate?
 //
 // ACCEPTANCE (exits non-zero). What it holds, each read off the built metal:
-//  · the fusee window's reveal is the CONE's own silhouette (every vertex of
-//    `fuseeCone` about the barrel axis) plus one CLEAR_MARGIN, not the
-//    chain's edge: the window is sized to the member it is a window ONTO, and
-//    the cone outgrew the chain's largest wrap when its proportioning moved;
+//  · the fusee window's reveal CONTAINS the cone's own silhouette (every
+//    vertex of `fuseeCone` about the barrel axis) plus one CLEAR_MARGIN — the
+//    intent takes the larger of the cone and the chain's edge, and today the
+//    chain's edge (6.19) still holds the cone (5.53), so the window frames the
+//    whole cone and only its boss ring and three webs cover any of it;
 //  · every cone vertex outside the window's boss that the plate still covers
 //    lies under one of the three webs — the webs are the only plate inside
 //    the reveal;
@@ -177,7 +178,7 @@ if (warns.length) fail(`boot is not silent: ${warns.length} warning(s)\n  ` + wa
 // the fusee window
 const f = out.fusee;
 console.log(`fusee window: wanted ${f.wanted.toFixed(4)}, cone silhouette ${f.coneR.toFixed(4)} + margin = ${(f.coneR + M).toFixed(4)}; boss r0 ${f.r0.toFixed(3)}, ${f.sectors} sectors, webs ${f.webW.toFixed(3)} wide; cone vertices clear of the plate ${(f.coneFree * 100).toFixed(1)}% of ${f.coneVerts}`);
-if (Math.abs(f.wanted - (f.coneR + M)) > 1e-6) fail(`the fusee window's reveal is not the cone's silhouette plus the margin (${f.wanted.toFixed(4)} vs ${(f.coneR + M).toFixed(4)})`); else ok('the fusee window is sized to the cone');
+if (f.wanted < f.coneR + M - 1e-6) fail(`the fusee window's reveal does not contain the cone's silhouette plus the margin (${f.wanted.toFixed(4)} vs ${(f.coneR + M).toFixed(4)})`); else ok(`the fusee window contains the cone (reveal ${f.wanted.toFixed(3)} ≥ silhouette ${f.coneR.toFixed(3)} + ${M}: the chain's edge still sizes it)`);
 if (f.coneCoveredOffWeb) fail(`${f.coneCoveredOffWeb} covered cone vertices lie under no web and no boss`); else ok('every covered cone vertex is under a web or the boss');
 // the cut's tenants
 const r = out.reveal;
