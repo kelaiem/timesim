@@ -449,7 +449,9 @@ try {
   await page.goto(`http://127.0.0.1:${relPort}/gong-bench.html`, NAV);
   await page.waitForFunction(() => window.__gongBench?.ready, null, { timeout: 60000 });
   const benchKinds = await page.evaluate(() => document.getElementById('kind').options.length);
-  check('OFFLINE: gong-bench.html loads its space from cache (the mis-listed-seed assert for the bench)', benchKinds === 3, `${benchKinds} case kinds`);
+  // the page offers one option per kind its generated space carries, so that file is the count (a typed 3 went stale at §317's fourth kind)
+  const wantKinds = Object.keys(JSON.parse(readFileSync(join(ROOT, 'src/gong-bench-data.json'), 'utf8')).kinds).length;
+  check('OFFLINE: gong-bench.html loads its space from cache (the mis-listed-seed assert for the bench)', benchKinds === wantKinds, `${benchKinds} of ${wantKinds} case kinds`);
   // §95 tier two — a LOCALIZED boot, offline. The locale tables arrive by
   // dynamic import, which is the one class of URL that reaches the precache
   // through the module walk rather than through a document's own markup; a
