@@ -1,7 +1,7 @@
-// §322 — THE OPENWORKED PLATE'S THREE VIEWS, measured off a real boot: does
-// the fusee window frame the whole cone, does the kidney cut show the escape
-// wheel round, the fourth wheel and the reset hammer, and does the fourth
-// wheel bridge actually carry the two pivots it took out of the plate?
+// §322 — THE OPENWORKED PLATE'S VIEWS, measured off a real boot: does the
+// fusee window frame the whole cone, does the kidney cut show the escape wheel
+// round, and does the escape cock actually carry the pivot it took out of the
+// plate — while the fourth wheel stays in its plate chaton, under the plate?
 //
 // ACCEPTANCE (exits non-zero). What it holds, each read off the built metal:
 //  · the fusee window's reveal CONTAINS the cone's own silhouette (every
@@ -13,22 +13,22 @@
 //    lies under one of the three webs — the webs are the only plate inside
 //    the reveal;
 //  · the ESCAPE WHEEL stands wholly in the opening (no chaton holds it to the
-//    plate any more), the HEART CAM too, and the RESET HAMMER at every pose
-//    of its travel (the crown axis drives it);
-//  · the FOURTH WHEEL's covered vertices all lie under the third wheel's
-//    chaton keep or in that keep's SHADOW about the balance axis — the cost
-//    of one star-shaped cut, named — and nothing outside both is covered;
-//  · the fourth wheel bridge seated both feet, its two stones hold the
-//    pivots cut for them (each `trainPivot` ends on its stone's top face,
-//    the staff shoulders CLEAR_MARGIN under its underside), both foot screws
-//    measure engaged, and at rest the bridge keeps CLEAR_MARGIN from the
-//    plate, both cocks and the hammer it was built to show.
+//    plate any more);
+//  · the FOURTH WHEEL keeps its upper bearing in the plate: a pivot collar
+//    stands at its station in the plate's own group. How much of its rim the
+//    escape wheel's rounding shows is REPORTED, as are the heart cam and the
+//    reset hammer, which stay under the plate;
+//  · the escape cock seated its foot, its stone holds the pivot cut for it
+//    (the `trainPivot` ends on the stone's top face, shouldered at least the
+//    margin under its underside), its foot screw measures engaged, and at
+//    rest the cock keeps CLEAR_MARGIN from the plate, both other cocks, the
+//    fork and the fourth wheel it passes over.
 // CONTROLS (fatal): the third wheel, which the plate still carries, reads
 // covered (a reveal test that cannot see plate passes everything); the
 // pallet fork, which the cut has shown since §62, reads clear.
 //
 // It is NOT probe-115-window: that reads the §62 windows' solve tables and
-// the governor's reveal; the kidney cut is not a window and the bridge is not
+// the governor's reveal; the kidney cut is not a window and the cock is not
 // in any window's report. Boot must be silent (rule 6).
 //
 //   cd tools && node probe-322-openwork.mjs
@@ -107,42 +107,16 @@ const out = await page.evaluate(async () => {
   // --- the kidney cut's tenants
   const escRows = verts('Escape wheel'), heartRows = verts('Heart cam (seconds reset)');
   const thirdRows = verts('Third wheel'), forkRows = verts('Pallet fork');
-  // the fourth wheel: covered ⇔ in the third chaton's keep or its shadow about the balance axis
   const fourthRows = verts('Fourth wheel');
-  const third = { x: P.third.x, y: P.third.y };
-  const keepR = (() => { const G = window.__clock.meshes ? null : null; return null; })();
-  // the keep: the third chaton's counterbore and seats, read through the plate's own cut — the plate's inner radius about P.third
-  // is measured here rather than typed: the nearest covered-to-open transition along rays from P.third
-  const keepReach = (() => {
-    let worst = 0;
-    for (let d = 0; d < 360; d += 3) {
-      const a = d * Math.PI / 180; let r = 0.3;
-      while (r < 9 && covered(third.x + Math.cos(a) * r, third.y + Math.sin(a) * r)) r += 0.05;
-      if (r < 9) worst = Math.max(worst, r);
-    }
-    return worst;
-  })();
-  const inKeepOrShadow = (x, y, grow) => {
-    // the ray from the balance axis to (x, y): does it meet the keep disc (grown) before (x, y)?
-    const bx = P.balance.x, by = P.balance.y, dx = x - bx, dy = y - by, L2 = dx * dx + dy * dy;
-    const t = Math.max(0, Math.min(1, ((third.x - bx) * dx + (third.y - by) * dy) / L2));
-    const px = bx + dx * t - third.x, py = by + dy * t - third.y;
-    return Math.hypot(px, py) <= keepReach + grow;
-  };
-  const fourthBad = fourthRows.filter((q) => q.covered !== inKeepOrShadow(q.x, q.y, q.covered ? 0.35 : -0.35) && (q.covered || !inKeepOrShadow(q.x, q.y, 0.35)) && (!q.covered || !inKeepOrShadow(q.x, q.y, 0.35)));
-  // --- the hammer over its travel (the crown axis)
-  const axis = I.AXES.find((a) => a.name === 'crown');
-  const hammer = [];
-  for (let k = 0; k <= 6; k++) {
-    I.enterAxis(clock); clock.setPose(axis.pose(k / 6, clock)); clock.scene.updateMatrixWorld(true);
-    hammer.push({ f: k / 6, free: frac(verts('Reset hammer')) });
-  }
-  I.enterAxis(clock); clock.scene.updateMatrixWorld(true);
-  // --- the bridge
-  const b = clock.fourthBridge;
-  const bridge = find('Fourth wheel bridge');
+  // the fourth wheel's upper bearing, read off the plate's own group: a pivot collar at its station
+  let fourthCollar = Infinity;
+  plate.obj.traverse((o) => { if (o.isMesh && o.name === 'pivotCollar') { const w = o.getWorldPosition(new THREE.Vector3()); fourthCollar = Math.min(fourthCollar, Math.hypot(w.x - P.fourth.x, w.y - P.fourth.y)); } });
+  const hammerRows = verts('Reset hammer');
+  // --- the cock
+  const b = clock.escapeCock;
+  const cock = find('Escape cock');
   const pivotEnds = {};
-  for (const [n, st] of [['Fourth wheel', P.fourth], ['Escape wheel', P.escape]]) {
+  for (const [n, st] of [['Escape wheel', P.escape]]) {
     const e = find(n); e.obj.updateWorldMatrix(true, true);
     let pivTop = -Infinity, staffTop = -Infinity;
     e.obj.traverse((o) => {
@@ -153,17 +127,15 @@ const out = await page.evaluate(async () => {
     });
     pivotEnds[n] = { pivTop, staffTop };
   }
-  const joints = clock.frameJoints().filter((j) => j.joint === 'Fourth wheel bridge ⇄ base plate');
+  const joints = clock.frameJoints().filter((j) => j.joint === 'Escape cock ⇄ base plate');
   const rest = {};
-  for (const n of ['Three-quarter plate', 'Fork cock', 'Balance cock', 'Reset hammer', 'Heart cam (seconds reset)', 'Third wheel']) rest[n] = I.clearanceAt(clock, 'Fourth wheel bridge', n);
+  for (const n of ['Three-quarter plate', 'Fork cock', 'Balance cock', 'Pallet fork', 'Fourth wheel']) rest[n] = I.clearanceAt(clock, 'Escape cock', n);
   return {
     CLEAR_MARGIN: L.CLEAR_MARGIN, zBot, zTop,
     fusee: { wanted: win.wanted, r0: win.r0, webW: win.webW, sectors: win.sectors.length, coneR, coneVerts: coneRows.length, coneFree: frac(coneRows), coneCoveredOffWeb },
-    reveal: { escape: frac(escRows), heart: frac(heartRows), fourth: frac(fourthRows), third: frac(thirdRows), fork: frac(forkRows), fourthBad: fourthBad.length, fourthN: fourthRows.length, keepReach },
-    hammer,
-    bridge: b && { footA: { x: b.footA.x, y: b.footA.y, reach: b.footA.reach, deg: b.footA.a * 180 / Math.PI, missed: !!b.footA.missed, short: b.footA.short },
-      footB: { x: b.footB.x, y: b.footB.y, reach: b.footB.reach, deg: b.footB.a * 180 / Math.PI, missed: !!b.footB.missed, short: b.footB.short },
-      bot: b.bot, T: b.T, bossR: b.bossR, nodeR: b.nodeR, stoneTopZ: b.stoneTopZ, stoneBotZ: b.stoneBotZ, stoneBore: b.stoneBore, meshes: (() => { let n = 0; bridge.obj.traverse((o) => { if (o.isMesh) n++; }); return n; })() },
+    reveal: { escape: frac(escRows), heart: frac(heartRows), fourth: frac(fourthRows), hammer: frac(hammerRows), third: frac(thirdRows), fork: frac(forkRows), fourthCollar },
+    cock: b && { foot: { x: b.foot.x, y: b.foot.y, reach: b.foot.reach, deg: b.foot.a * 180 / Math.PI, missed: !!b.foot.missed, short: b.foot.short },
+      bot: b.bot, T: b.T, bossR: b.bossR, nodeR: b.nodeR, stoneTopZ: b.stoneTopZ, stoneBotZ: b.stoneBotZ, stoneBore: b.stoneBore, meshes: (() => { let n = 0; cock.obj.traverse((o) => { if (o.isMesh) n++; }); return n; })() },
     pivotEnds, joints: joints.map((j) => ({ at: j.site, engagedMM: j.measuredMM, requiredMM: j.requiredMM })), rest,
   };
 });
@@ -182,32 +154,29 @@ if (f.wanted < f.coneR + M - 1e-6) fail(`the fusee window's reveal does not cont
 if (f.coneCoveredOffWeb) fail(`${f.coneCoveredOffWeb} covered cone vertices lie under no web and no boss`); else ok('every covered cone vertex is under a web or the boss');
 // the cut's tenants
 const r = out.reveal;
-console.log(`reveal, clear of the plate: escape wheel ${(r.escape * 100).toFixed(1)}%, heart cam ${(r.heart * 100).toFixed(1)}%, fourth wheel ${(r.fourth * 100).toFixed(1)}% (third chaton keep reaches ${r.keepReach.toFixed(2)} about its axis), third wheel ${(r.third * 100).toFixed(1)}% [control], pallet fork ${(r.fork * 100).toFixed(1)}% [control]`);
+console.log(`reveal, clear of the plate: escape wheel ${(r.escape * 100).toFixed(1)}%; under the plate (report): fourth wheel ${(r.fourth * 100).toFixed(1)}% clear (the lens of its rim the escape wheel's rounding shows), heart cam ${(r.heart * 100).toFixed(1)}%, reset hammer ${(r.hammer * 100).toFixed(1)}%; third wheel ${(r.third * 100).toFixed(1)}% [control], pallet fork ${(r.fork * 100).toFixed(1)}% [control]`);
 if (r.escape < 1) fail(`the escape wheel is not wholly in the opening (${(r.escape * 100).toFixed(1)}%)`); else ok('the escape wheel stands wholly in the opening');
-if (r.heart < 1) fail(`the heart cam is not wholly in the opening (${(r.heart * 100).toFixed(1)}%)`); else ok('the heart cam stands wholly in the opening');
-if (r.fourthBad) fail(`${r.fourthBad} of ${r.fourthN} fourth wheel vertices disagree with the third chaton's keep and shadow`); else ok("the fourth wheel's cover is exactly the third chaton's keep and its shadow");
+if (!(r.fourthCollar < 1e-6)) fail(`the fourth wheel has no pivot collar in the plate at its station (nearest ${r.fourthCollar.toFixed(3)} off) — its bearing left the plate`); else ok('the fourth wheel keeps its upper bearing in the plate');
 if (!(r.third < 0.5)) fail(`CONTROL: the third wheel reads ${(r.third * 100).toFixed(1)}% clear — the plate carries it; the cover test sees no plate`); else ok('control: the third wheel reads covered');
 if (r.fork < 1) fail(`CONTROL: the pallet fork reads ${(r.fork * 100).toFixed(1)}% clear — §62 showed it whole`); else ok('control: the pallet fork reads clear');
-for (const h of out.hammer) if (h.free < 1) fail(`the reset hammer is covered at crown f=${h.f.toFixed(2)} (${(h.free * 100).toFixed(1)}% clear)`);
-if (out.hammer.every((h) => h.free === 1)) ok(`the reset hammer stands in the opening at every sampled pose (${out.hammer.length})`);
-// the bridge
-const b = out.bridge;
-if (!b) fail('no fourth wheel bridge on the inspection surface');
+// the cock
+const b = out.cock;
+if (!b) fail('no escape cock on the inspection surface');
 else {
-  console.log(`bridge: slab ${b.bot.toFixed(3)}..${(b.bot + b.T).toFixed(3)}, bosses r ${b.bossR.toFixed(3)}, feet r ${b.nodeR.toFixed(3)}; foot A (${b.footA.x.toFixed(2)}, ${b.footA.y.toFixed(2)}) reach ${b.footA.reach.toFixed(2)} at ${b.footA.deg.toFixed(0)}° (margin ${b.footA.short.toFixed(3)}); foot B (${b.footB.x.toFixed(2)}, ${b.footB.y.toFixed(2)}) reach ${b.footB.reach.toFixed(2)} at ${b.footB.deg.toFixed(0)}° (margin ${b.footB.short.toFixed(3)}); ${b.meshes} meshes`);
-  if (b.footA.missed || b.footB.missed) fail('a foot found no seat'); else ok('both feet seated');
+  console.log(`escape cock: slab ${b.bot.toFixed(3)}..${(b.bot + b.T).toFixed(3)}, boss r ${b.bossR.toFixed(3)}, foot r ${b.nodeR.toFixed(3)}; foot (${b.foot.x.toFixed(2)}, ${b.foot.y.toFixed(2)}) reach ${b.foot.reach.toFixed(2)} at ${b.foot.deg.toFixed(0)}° (margin ${b.foot.short.toFixed(3)}); ${b.meshes} meshes`);
+  if (b.foot.missed) fail('the foot found no seat'); else ok('the foot seated');
   for (const [n, e] of Object.entries(out.pivotEnds)) {
-    // the staff shoulders CLEAR_MARGIN under the stone where a staff's worth of run exists, else on the hub's top face (the wheel's own top), which must then stand at least the margin under the stone
-    if (Math.abs(e.pivTop - b.stoneTopZ) > 1e-6) fail(`${n}: its upper pivot ends at ${e.pivTop.toFixed(4)}, the bridge's stone top is ${b.stoneTopZ.toFixed(4)}`);
+    // shouldered CLEAR_MARGIN under the stone where a staff's worth of run exists, else on the hub's top face, which must then stand at least the margin under the stone
+    if (Math.abs(e.pivTop - b.stoneTopZ) > 1e-6) fail(`${n}: its upper pivot ends at ${e.pivTop.toFixed(4)}, the cock's stone top is ${b.stoneTopZ.toFixed(4)}`);
     else if (!(e.staffTop <= b.stoneBotZ - M + 1e-6)) fail(`${n}: its staff shoulders at ${e.staffTop.toFixed(4)}, inside the margin under the stone's underside ${b.stoneBotZ.toFixed(4)}`);
     else ok(`${n}: pivot to the stone's top (${e.pivTop.toFixed(3)}), shouldered ${(b.stoneBotZ - e.staffTop).toFixed(3)} under the stone`);
   }
-  if (out.joints.length !== 2) fail(`${out.joints.length} bridge foot joints declared, 2 wanted`);
+  if (out.joints.length !== 1) fail(`${out.joints.length} escape cock foot joints declared, 1 wanted`);
   for (const j of out.joints) if (!(j.engagedMM != null && j.engagedMM >= j.requiredMM - 1e-4)) fail(`foot screw at (${j.at.x.toFixed(2)}, ${j.at.y.toFixed(2)}) engages ${j.engagedMM} mm of ${j.requiredMM.toFixed(4)}`);
-  if (out.joints.length === 2 && out.joints.every((j) => j.engagedMM >= j.requiredMM - 1e-4)) ok(`both foot screws engaged (${out.joints.map((j) => j.engagedMM.toFixed(4)).join(', ')} mm of ${out.joints[0].requiredMM.toFixed(4)})`);
+  if (out.joints.length === 1 && out.joints[0].engagedMM >= out.joints[0].requiredMM - 1e-4) ok(`the foot screw engaged (${out.joints[0].engagedMM.toFixed(4)} mm of ${out.joints[0].requiredMM.toFixed(4)})`);
   for (const [n, d] of Object.entries(out.rest)) {
     const dd = typeof d === 'number' ? d : d?.d ?? d?.min ?? NaN;
-    if (!(dd >= M - 1e-6)) fail(`at rest the bridge stands ${Number(dd).toFixed(4)} from ${n} (need ${M})`); else ok(`bridge ⇄ ${n}: ${dd.toFixed(3)} at rest`);
+    if (!(dd >= M - 1e-6)) fail(`at rest the cock stands ${Number(dd).toFixed(4)} from ${n} (need ${M})`); else ok(`cock ⇄ ${n}: ${dd.toFixed(3)} at rest`);
   }
 }
 console.log(failed ? `FAIL — ${failed} finding(s)` : 'PASS');

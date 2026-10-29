@@ -32,7 +32,7 @@ that band's swept footprint.
 
 | § | Title | Parts |
 |---|---|---|
-| [§322](built/0322.md) | Openworked windows enlarged: the fusee cone whole, and the fourth wheel, escape wheel and reset hammer under a fourth wheel bridge | 1 |
+| [§322](built/0322.md) | Openworked windows enlarged: the fusee cone whole, and the escape wheel round under its own cock | 1 |
 | [§320](built/0320.md) | A volume-adjustable alarm, designed in a line: the strike station as the volume, its line spec, the level law lifted pure | 1 |
 | [§319](built/0319.md) | Gong strike tolerance: the hammer rests anywhere the blow's tilt budget reaches | 1 |
 | [§318](built/0318.md) | The form cases' alarm pusher turns off the seated strike group (links yield) | 1 |

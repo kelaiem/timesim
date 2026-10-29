@@ -105,20 +105,19 @@ export const MECH_GRAPH = {
     ['Fusee & great wheel', 'Three-quarter plate'], // upper pivots, jewelled bores
     ['Center wheel', 'Three-quarter plate'],
     ['Third wheel', 'Three-quarter plate'],
-    // ...but NEITHER the fourth wheel, NOR the escape wheel, NOR the pallet
-    // fork. §322 — the fourth and escape wheels' upper pivots run in the
-    // FOURTH WHEEL BRIDGE, a bridge that stands on the BASE plate on its own
-    // legs and comes up through the opening cut in the three-quarter plate.
-    // That is Glashutte practice, and it buys two things — the escapement
-    // becomes a self-contained assembly that can be fitted and adjusted
-    // without disturbing the plate or any other train pivot, and it stays
-    // VISIBLE from the back instead of being buried under plate: the plate
-    // is cut ROUND both wheels and the reset hammer beside them. (§148 had
-    // put the escape wheel in a plate chaton; measured, that chaton's screw
-    // seats reached 4.16 of a 4.5 wheel, and the view was the price.)
-    ['Fourth wheel', 'Fourth wheel bridge'], // upper pivot in the bridge's stone
-    ['Escape wheel', 'Fourth wheel bridge'], // upper pivot in the bridge's stone
-    ['Fourth wheel bridge', 'plate'],        // its two legs land on the base plate
+    ['Fourth wheel', 'Three-quarter plate'],
+    // ...but NEITHER the escape wheel NOR the pallet fork. §322 — the escape
+    // wheel's upper pivot runs in the ESCAPE COCK, which stands on the BASE
+    // plate on its own leg and comes up through the opening cut in the
+    // three-quarter plate, as the fork cock does. That is Glashutte practice,
+    // and it buys two things — the escapement becomes a self-contained
+    // assembly that can be fitted and adjusted without disturbing the plate
+    // or any other train pivot, and it stays VISIBLE from the back instead of
+    // being buried under plate: the plate is cut ROUND the escape wheel. (§148
+    // had put the escape wheel in a plate chaton; measured, that chaton's
+    // screw seats reached 4.16 of a 4.5 wheel, and the view was the price.)
+    ['Escape wheel', 'Escape cock'],         // upper pivot in the cock's stone
+    ['Escape cock', 'plate'],                // its leg lands on the base plate
     ['Pallet fork', 'Fork cock'],            // its own standalone cap...
     ['Fork cock', 'plate'],                  // ...whose leg lands on the base plate
     ['Balance cock', 'plate'],               // its leg lands on the BASE plate: the whole
@@ -569,7 +568,7 @@ export const MECH_GRAPH = {
   bridges: [
     'Balance cock',
     'Fork cock',
-    'Fourth wheel bridge',   // §322
+    'Escape cock',   // §322
   ],
   // Every unit that carries a pinion or a staff must be grounded to the
   // plate — DIRECTLY OR INDIRECTLY (unlike `bridges` above, a chain through
@@ -707,10 +706,10 @@ const EXPECTED_PAIRS = [
   ['Set-up work', 'Three-quarter plate'],
   ['Center wheel', 'Three-quarter plate'],
   ['Third wheel', 'Three-quarter plate'],
-  // (§322: the fourth and escape wheels' upper pivots run in the fourth wheel
-  // bridge's stones now, and their staffs cross the plate's opening in air.)
-  ['Fourth wheel', 'Fourth wheel bridge'],   // staff's upper pivot in the bridge's jewel
-  ['Escape wheel', 'Fourth wheel bridge'],   // staff's upper pivot in the bridge's jewel
+  ['Fourth wheel', 'Three-quarter plate'],
+  // (§322: the escape wheel's upper pivot runs in the escape cock's stone now,
+  // and its staff crosses the plate's opening in air.)
+  ['Escape wheel', 'Escape cock'],           // staff's upper pivot in the cock's jewel
   ['Pallet fork', 'Fork cock'],              // the fork's, in its standalone cap
   // ('Balance cock' ⇄ 'Three-quarter plate' is NOT expected any more: the
   // cut is re-solved around the BUILT cock (the bridge-reveal pass in
@@ -2498,19 +2497,15 @@ const CLEARANCE_BUDGETS = [
   // touching it — the window is measured off the bridge's own footprint, so
   // this row is the check on that measurement.
   { a: 'Fork cock', b: 'Three-quarter plate', min: 0.15 },
-  // §322 — the fourth wheel bridge stands in the opening's air the way the
-  // two cocks do: the cut is voted off its every mesh by TQ_CUT_MARGIN, and
-  // these rows hold the margin against the plate, the neighbouring cocks,
-  // the wheels it bridges over (a staff runs in a stone; the rim and the
-  // spokes owe the slab the margin), and the hammer it was built to show.
-  { a: 'Fourth wheel bridge', b: 'Three-quarter plate', min: 0.15 },
-  { a: 'Fourth wheel bridge', b: 'Fork cock', min: 0.15 },
-  { a: 'Fourth wheel bridge', b: 'Balance cock', min: 0.15 },
-  { a: 'Fourth wheel bridge', b: 'Third wheel', min: 0.15 },
-  { a: 'Fourth wheel bridge', b: 'Center wheel', min: 0.15 },
-  { a: 'Fourth wheel bridge', b: 'Reset hammer', min: 0.15 },
-  { a: 'Fourth wheel bridge', b: 'Heart cam (seconds reset)', min: 0.15 },
-  { a: 'Fourth wheel bridge', b: 'Pallet fork', min: 0.15 },
+  // §322 — the escape cock stands in the opening's air the way the two other
+  // cocks do: the cut is voted off its every mesh by TQ_CUT_MARGIN, and these
+  // rows hold the margin against the plate, the neighbouring cocks, the fork,
+  // and the fourth wheel whose rim the slab passes over.
+  { a: 'Escape cock', b: 'Three-quarter plate', min: 0.15 },
+  { a: 'Escape cock', b: 'Fork cock', min: 0.15 },
+  { a: 'Escape cock', b: 'Balance cock', min: 0.15 },
+  { a: 'Escape cock', b: 'Fourth wheel', min: 0.15 },
+  { a: 'Escape cock', b: 'Pallet fork', min: 0.15 },
   // Dial-side keyless works (2026-07-19): the lever and yoke bodies now
   // hang in the plate→dial gap, their pivot-boss undersides solved to hold
   // exactly the margin over the dial's face — these rows pin that budget
@@ -4893,7 +4888,7 @@ const FASTENED_EDGES = {
   'Pillar ⇄ base plate': ['pillars', 'plate'],
   'Balance cock ⇄ base plate': ['Balance cock', 'plate'],
   'Fork cock ⇄ base plate': ['Fork cock', 'plate'],
-  'Fourth wheel bridge ⇄ base plate': ['Fourth wheel bridge', 'plate'],   // §322
+  'Escape cock ⇄ base plate': ['Escape cock', 'plate'],   // §322
 };
 const ENGAGE_TIE_MM = 1e-4;   // the probe's metal-vs-declaration tolerance; a cut short by a real amount reads 0.01+
 
@@ -4951,9 +4946,9 @@ export const PLATE_SEATS = [
   { unit: "Fork cock", mesh: "bridgeLeg", kind: "fastened", why: "a cock leg, bored for its screw (TODO 184; §322 named the builder's meshes — it was LatheGeometry#3)" },
   { unit: "Fork cock", mesh: "bridgeFoot", kind: "fastened", why: "the leg's foot, on the plate face (LatheGeometry#4 until §322)" },
   { unit: "Fork cock", mesh: "screwShanks", kind: "fastened", why: "the cock screws, tapped through the plate (TODO 184)" },
-  { unit: "Fourth wheel bridge", mesh: "bridgeLeg", kind: "fastened", why: "§322: a bridge leg, bored for its screw, on each foot" },
-  { unit: "Fourth wheel bridge", mesh: "bridgeFoot", kind: "fastened", why: "§322: each leg's foot, on the plate face" },
-  { unit: "Fourth wheel bridge", mesh: "screwShanks", kind: "fastened", why: "§322: the bridge's two foot screws, tapped through the plate" },
+  { unit: "Escape cock", mesh: "bridgeLeg", kind: "fastened", why: "§322: the cock's leg, bored for its screw" },
+  { unit: "Escape cock", mesh: "bridgeFoot", kind: "fastened", why: "§322: the leg's foot, on the plate face" },
+  { unit: "Escape cock", mesh: "screwShanks", kind: "fastened", why: "§322: the cock's foot screw, tapped through the plate" },
   { unit: "Keyless works", mesh: "TorusGeometry#30", kind: "housed", why: "the crown stem's bushing, in the plate rim's notch (§186)" },
   { unit: "Keyless works", mesh: "BoxGeometry#31", kind: "housed", why: "the crown-stem sleeve, standing in the plate rim's notch" },
   { unit: "Setting lever", mesh: "CylinderGeometry#8", kind: "pivot", why: "the lever's pivot, seated mid-plate (#7 until TODO 214's boss, lug and screw renumbered the unit)" },

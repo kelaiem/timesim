@@ -14,7 +14,7 @@
 //
 // Controls, fatal:
 //  · ROSTER — exactly the declared population per joint class (4 plate
-//    screws, 2 balance-cock, 1 fork-cock, 2 fourth-wheel-bridge, 4 pillar tenons). A site that
+//    screws, 2 balance-cock, 1 fork-cock, 1 escape-cock, 4 pillar tenons). A site that
 //    stops declaring its screw would otherwise read as a clean table of
 //    fewer rows.
 //  · METAL AGREES WITH THE DECLARATION — every row's shank (or tenon) is
@@ -36,7 +36,7 @@ const ROSTER = {
   'Three-quarter plate ⇄ pillar': 4,
   'Balance cock ⇄ base plate': 2,
   'Fork cock ⇄ base plate': 1,
-  'Fourth wheel bridge ⇄ base plate': 2,   // §322: a foot screw at each end of the bridge
+  'Escape cock ⇄ base plate': 1,   // §322: the escape cock's one foot screw
   'Pillar ⇄ base plate': 4,   // step 3: riveted tenons, measured on the pillar mesh itself
 };
 const TOL_MM = 1e-4;
