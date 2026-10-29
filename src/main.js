@@ -56141,6 +56141,19 @@ const SCRIPT_SET_MIN_S = 0.7;
 const SCRIPT_SET_RAD_PER_MIN = Math.abs((60 * MIN_HAND_RAD_PER_SEC) / HAND_RAD_PER_SET_RAD);
 const SCRIPT_SET_RATE = SCRIPT_SET_RAD_PER_MIN / SCRIPT_SET_MIN_S; // rad/s of crown, gentle
 const SCRIPT_EXPLODE_TAU = 0.35; // s — explode ease matches the caption fade so it reads as motion
+// A stop's dwell is the time to READ its caption once the camera has arrived: the
+// ease (CAM_TWEEN_DUR) plus the caption's words at SCRIPT_READ_WPS, 3.3 words/s =
+// 200 wpm, the comfortable silent-reading rate for technical prose. The authored
+// dwells (3.4–6 s) ran 6–7 words/s, faster than anyone reads a 25-word caption
+// while a camera is still moving. `paceByReading` only ever LENGTHENS a stop: an
+// authored dwell that already covers the reading stays, and a stop whose own action
+// sets its length (a crown turn, a wind) keeps that floor.
+const SCRIPT_READ_WPS = 3.3;
+const readDwell = (caption) => CAM_TWEEN_DUR + caption.trim().split(/\s+/).length / SCRIPT_READ_WPS;
+const paceByReading = (steps) => {
+  for (const s of steps) if (s.caption) s.dwell = Math.max(s.dwell ?? 0, Math.round(readDwell(s.caption) * 10) / 10);
+  return steps;
+};
 function settingTurnRad(minutes) {
   // Signed like §9's write: advances the minute hand forward by `minutes`.
   return (minutes * 60 * MIN_HAND_RAD_PER_SEC) / HAND_RAD_PER_SET_RAD;
@@ -56682,6 +56695,7 @@ const ALARM_LINK_STEPS = [
   { camera: linkShot(_colAt, ALARM_COL_BASE_R + 1.4, 0.4, -0.8), alarm: false, xray: true,
     caption: 'Press again and the whole run reverses — column, beak, rod, shaft, crank, ring. Pusher to arming, unbroken', dwell: 3.4 },
 ];
+paceByReading(ALARM_LINK_STEPS);
 
 // §17 — Guided tour: the same engine over more stops. The jumper stop reuses
 // the demo's own pull/turn/push vocabulary (not a second machine), and the sync
@@ -56727,6 +56741,7 @@ const TOUR_STEPS = [
   { preset: 'Free', alarm: false, sound: false, scale: 1, xray: false, explode: 0, labels: false, powerflow: false, links: true,
     caption: 'That’s the tour. Explore the controls yourself, or read how they work:', dwell: 6.0 },
 ];
+paceByReading(TOUR_STEPS);   // the Tour's stops, read at the same rate as the link tour's
 
 // ---------------------------------------------------------------------------
 // §55 — THE INSPECTION TOUR. A different animal from TOUR_STEPS above.
