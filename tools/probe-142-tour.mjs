@@ -55,10 +55,12 @@ if (!st || st.idx !== 0) F(`tour did not start at stop 0: ${JSON.stringify(st)}`
 // no fixed wait can stand for "past the dwell": tick until the stop changes, up to a cap
 // that a reading-paced stop cannot exceed (the longest caption reads in about 12 s).
 const DWELL_CAP_S = 20;
-const tickUntilAdvance = async (from) => {
-  for (let t = 0; t < DWELL_CAP_S; t += 0.1) { await tick(0.1); const s2 = await state(); if (!s2 || s2.idx !== from) return t; }
-  return DWELL_CAP_S;
-};
+// One in-page loop, not a round trip per tick: a software-GL page answers each evaluate in
+// seconds, and the stop's change is read from the same synchronous call that ticks it.
+const tickUntilAdvance = (from) => page.evaluate(({ from, cap }) => {
+  for (let t = 0; t < cap; t += 0.1) { window.__clock.scriptTick(0.1); const s2 = window.__clock.scriptState; if (!s2 || s2.idx !== from) return t; }
+  return cap;
+}, { from, cap: DWELL_CAP_S });
 // pacing is live: every stop's dwell covers its caption's reading time, read off the
 // engine's own table and the pace it declares (never retyped). Wall-clock cannot say this
 // here: the rAF loop also feeds the dwell clock while this probe ticks it.
@@ -92,7 +94,7 @@ const resumeVisible = await page.evaluate(() => { const b = document.getElementB
 if (!st || !st.paused) F(`a click on the movement did not pause: ${JSON.stringify(st)}`); else OK('a click on the movement pauses the run (it is not cancelled)');
 if (!resumeVisible) F('no visible Resume control while paused'); else OK('the banner shows a Resume control while paused');
 const idxAtPause = st ? st.idx : -1;
-for (let i = 0; i < DWELL_CAP_S * 10; i++) await tick(0.1); // the cap's worth of engine time, past any stop's dwell
+await page.evaluate((cap) => { for (let t = 0; t < cap; t += 0.1) window.__clock.scriptTick(0.1); }, DWELL_CAP_S); // the cap's worth of engine time, past any stop's dwell
 st = await state();
 if (!st || st.idx !== idxAtPause) F(`the step advanced while paused (${idxAtPause} → ${st && st.idx})`); else OK('the step index holds while paused, past the stop\'s dwell');
 await page.evaluate(() => document.getElementById('script-resume').click());
