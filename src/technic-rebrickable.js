@@ -1095,6 +1095,28 @@ export const REBRICKABLE = {
     "15": 1
    }
   },
+  "32014": {
+   "rb": [
+    "32014"
+   ],
+   "via": "LD mapping",
+   "names": [
+    "Technic Axle and Pin Connector Angled #6 - 90°"
+   ],
+   "candidates": [],
+   "abundance": {
+    "0": 211,
+    "1": 18,
+    "2": 2,
+    "4": 51,
+    "14": 43,
+    "15": 21,
+    "19": 2,
+    "25": 7,
+    "71": 75,
+    "72": 49
+   }
+  },
   "32062": {
    "rb": [
     "32062"

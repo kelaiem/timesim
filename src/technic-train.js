@@ -54,6 +54,7 @@ import { LEGO_DIM_MM, FRAME_PARTS, AXLE_PARTS, GEAR_TIP_MM, GEAR_WIDTH_MM, KEYLE
 import { flatSurfaceSamples, toothPhase } from './technic-ldraw.js';
 import { frameFusee, fuseeBuild, solveFusee, TECHNIC_FUSEE_SPRING, FUSEE_CENTRE, FUSEE_PARTS, goingSense, centreRatio, coneTurnTotal, loopAdvance, loopStart, loopPose } from './technic-fusee.js';
 import { frameEscapement, escapementBuild, cyclePose, TECHNIC_ESCAPEMENT, TECHNIC_BALANCE, ESC_SWING_DEG } from './technic-escapement.js';
+import { TECHNIC_DRIVE, DRIVEN_ESCAPEMENT } from './technic-drive.js';
 
 const D = LEGO_DIM_MM;
 const L = (mm) => mm / LDU_MM;
@@ -196,8 +197,9 @@ export function moduleShapes(build, lib, pick, { tag = build.key } = {}) {
 // balance at its centre distance either side (`driveLayer`, measured off the parts, never chosen), and its axle
 // from that gear's front face back through both escape columns.
 // (`drop`, the escape mesh's centre distance: whole plates, trainChain)
+// (§316: and the balance carries its rating nut, at TECHNIC_DRIVE's place)
 export function escapementFor(zE, drop, from = 'front') {
-  return frameEscapement(TECHNIC_ESCAPEMENT, TECHNIC_BALANCE, { x0: 0, zE, driveZ: r6(zE - drop), driveBrick: TRAIN_PARTS.driveBrick, driveFrom: from });
+  return frameEscapement(DRIVEN_ESCAPEMENT, TECHNIC_BALANCE, { x0: 0, zE, driveZ: r6(zE - drop), driveBrick: TRAIN_PARTS.driveBrick, driveFrom: from, rating: { nutV: TECHNIC_DRIVE.nutV } });
 }
 const lensUp = Object.keys(AXLE_PARTS).map(Number).sort((p, q) => p - q);
 const axleLen = (n) => n * D.stud - 0.4;

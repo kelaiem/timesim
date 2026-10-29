@@ -1043,7 +1043,7 @@ export const BOOKLET_FLAGS = {
   }
  },
  "technic_2026|train|run": {
-  "sig": "b9a0ef8e",
+  "sig": "e6b3eb14",
   "steps": {
    "12": {
     "d": "+z"
@@ -1208,6 +1208,9 @@ export const BOOKLET_FLAGS = {
    },
    "65": {
     "d": "+z"
+   },
+   "66": {
+    "d": "−z"
    }
   }
  },
@@ -1712,7 +1715,7 @@ export const BOOKLET_FLAGS = {
   }
  },
  "technic_classic|train|run": {
-  "sig": "b1d8b595",
+  "sig": "2f17c222",
   "steps": {
    "11": {
     "d": "+z"
@@ -1874,6 +1877,9 @@ export const BOOKLET_FLAGS = {
    },
    "64": {
     "d": "−z"
+   },
+   "65": {
+    "d": "+z"
    }
   }
  }
