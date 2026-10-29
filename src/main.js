@@ -11680,7 +11680,7 @@ FOURTH_BRIDGE = await (async () => {
       }
       return c;
     };
-    return { clear, maxReach: Math.max(...reach) };
+    return { clear, reach, maxReach: Math.max(...reach) };
   })();
   // The plate's remaining chaton sites: the counterbore and every seat the
   // plate must keep, as one disc each (the seats are lobes; a disc holds all
@@ -11713,18 +11713,25 @@ FOURTH_BRIDGE = await (async () => {
     for (const s of baseSlots) pairs.push([stadium(x, y, s) - STOCK_MIN_U, 'base plate slot']);
     return least(...pairs);
   };
-  // ...and a bar, in the slab's band.
-  const barClear = (x, y, other) => {
+  // ...and a bar, in the slab's band. The VIEW obstacles — the hammer's sweep
+  // and the other framed wheel — are judged only outside the bar's own
+  // wheel's disc: under that disc they are covered by the wheel the bar
+  // crosses anyway (the escape wheel's lens inside the fourth wheel's rim,
+  // the roller seated in the cam's notch), so a bar there hides nothing more.
+  const barClear = (x, y, own, other) => {
     const k = keepClear(bandKeeps, x, y);
-    const pairs = [[k.c, k.who], [FORK_SWEEP.clear(x, y), 'fork sweep'], [hammerSweep.clear(x, y), 'hammer sweep']];
+    const pairs = [[k.c, k.who], [FORK_SWEEP.clear(x, y), 'fork sweep']];
     pairs.push([Math.hypot(x - P.balance.x, y - P.balance.y) - Math.max(BAL_OUTER_R, HAIRSPRING_SWEPT_R), 'balance']);
     for (const d of chatonDiscs) pairs.push([Math.hypot(x - d.x, y - d.y) - d.r, 'chaton keep']);
-    pairs.push([Math.hypot(x - other.x, y - other.y) - other.r, 'the other wheel']);   // the bar stays off the OTHER framed wheel
+    if (Math.hypot(x - own.x, y - own.y) > own.r) {
+      pairs.push([hammerSweep.clear(x, y), 'hammer sweep']);
+      pairs.push([Math.hypot(x - other.x, y - other.y) - other.r, 'the other wheel']);
+    }
     return least(...pairs);
   };
   const rimR = plateR - 0.2 - TQ_CUT_MARGIN;   // the cut's edge is clamped inside plateR − 0.2, and stands TQ_CUT_MARGIN off the bridge
   // 3. The scan — every bearing, the nearest feasible reach; the whole table is kept for the report.
-  const footFor = async (host, other, name) => {
+  const footFor = async (host, own, other, name) => {
     let best = null, near = null;
     const rows = [], landscape = [];   // landscape: each bearing's least-short candidate, for the report
     for (let dd = 0; dd < 360; dd += 2) {
@@ -11748,7 +11755,7 @@ FOURTH_BRIDGE = await (async () => {
         let mBar = Infinity;
         for (let sb = bossR + CLEAR_MARGIN; sb <= reach - nodeR; sb += 0.5) {
           const bx = host.x + cs * sb, by = host.y + sn * sb;
-          const bc = barClear(bx, by, other);
+          const bc = barClear(bx, by, own, other);
           if (bc.c - (barHW + CLEAR_MARGIN) < mBar) { mBar = bc.c - (barHW + CLEAR_MARGIN); barWho = bc.who; }
         }
         const mSpine = Math.min(latRay(x, y, nodeR), latRay(host.x + cs * reach * 0.5, host.y + sn * reach * 0.5, barHW));
@@ -11780,8 +11787,8 @@ FOURTH_BRIDGE = await (async () => {
   };
   const discEscape = { x: P.escape.x, y: P.escape.y, r: xyRadiusAbout(escapeArbor, P.escape) };
   const discFourth = { x: P.fourth.x, y: P.fourth.y, r: xyRadiusAbout(fourthArbor, P.fourth) };
-  const footA = await footFor(P.escape, discFourth, 'escape-side');
-  const footB = await footFor(P.fourth, discEscape, 'hammer-side');
+  const footA = await footFor(P.escape, discEscape, discFourth, 'escape-side');
+  const footB = await footFor(P.fourth, discFourth, discEscape, 'hammer-side');
   // 4. The floor, re-measured against the whole plan: nothing under a boss, a
   //    bar or a foot may stand higher than the floor the wheels set.
   const chain = [
