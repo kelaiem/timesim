@@ -256,7 +256,7 @@ const measure = async (isForm) => {
 };
 
 const NOISE = /GPU stall|GL Driver Message|swiftshader|ReadPixels|Automatic fallback to software WebGL|Failed to load resource: the server responded with a status of 404/i;
-const FORM_KINDS = ['outer', 'bezel', 'opening', 'crystal', 'bore', 'aperture', 'glass', 'generator', 'tube', 'lug', 'lugHole', 'lugBar'];   // 'bezel': §289's flat's two edges, under a form too
+const FORM_KINDS = ['outer', 'backRound', 'bezel', 'opening', 'crystal', 'bore', 'aperture', 'glass', 'generator', 'tube', 'lug', 'lugHole', 'lugBar'];   // 'bezel': §289's flat's two edges, under a form too; 'backRound': §321's back round meeting its flat
 if (shotDir) await mkdir(shotDir, { recursive: true });
 for (const b of run) {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } }), page = await ctx.newPage();

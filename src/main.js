@@ -49339,7 +49339,9 @@ const CASE_DIMS = (() => {
   // the plate's shape grown formApertureGrow. The flat back is a candidate, so the
   // step is never worse than it. Interior volume is between the crystal's inner
   // face and the back's inner faces, over the BORE (the plate's shape grown
-  // CASE_CLEAR — the cavity's plan).
+  // CASE_CLEAR — the cavity's plan). §321: the raised step is METAL, not glass
+  // — each island a boss milled in the caseback and joined to its rim
+  // (form-case.js), its pocket the same clearance loop, so the volume is unchanged.
   const FITTED_BACK = FORM?.kind === 'fitted' && BACK_ENVELOPE.fittedGrid ? (() => {
     const FG = BACK_ENVELOPE.fittedGrid, lift = CLEAR_MARGIN + CASE_GLASS_FLOAT_GUARD, zLowMin = zPusherHi + CLEAR_MARGIN;
     const items = [];
@@ -49359,11 +49361,14 @@ const CASE_DIMS = (() => {
     for (const g of BACK_SWEPT_REGIONS) { const h = FG.unitPlans[g.unit]; if (h?.length) items.push({ z: g.z, pts: h }); }
     const aperture = FORM_SHAPE.grown(formApertureGrow);
     const zFront = handFront - CASE_CRYSTAL_CLEAR;   // zCrystInner, below
-    // an island's wall stands `grow` off its metal and is a glass thick; two
-    // islands closer than two walls and the margin between them are one
-    const grow = CLEAR_MARGIN + FG.cell * Math.SQRT1_2;
-    const sol = solveFittedBack({ items, zFront, boreArea: shapeArea(FORM_SHAPE.grown(CASE_CLEAR)), lift, grow, glassT: CASE_CRYSTAL_T,
-      join: 2 * (grow + CASE_CRYSTAL_T) + CLEAR_MARGIN, zLowMin,
+    // an island's wall stands `grow` off its metal. §321: the island is a METAL
+    // boss and the pane tucks under its pad by the lip's own land (one glass
+    // thickness: formGlassGrow − formApertureGrow), so the boss's wall is that
+    // land plus §50's floor — the metal left between its pocket and the glass.
+    // Two islands closer than two walls and the margin between them are one.
+    const grow = CLEAR_MARGIN + FG.cell * Math.SQRT1_2, bossWall = (formGlassGrow - formApertureGrow) + STOCK_MIN_U;
+    const sol = solveFittedBack({ items, zFront, boreArea: shapeArea(FORM_SHAPE.grown(CASE_CLEAR)), lift, grow, glassT: bossWall,
+      join: 2 * (grow + bossWall) + CLEAR_MARGIN, zLowMin,
       fits: (loop) => loop.every(([x, y]) => aperture.inset(x, y) >= CLEAR_MARGIN) });
     if (!(Math.abs(sol.zHigh - zFormBack) <= FG.cell))
       console.warn(`§317: the fitted back's grid reads the tallest metal at ${(sol.zHigh - lift).toFixed(3)} against the envelope's ${(zFormBack - lift).toFixed(3)} — the two readings of one walk have parted`);
@@ -49467,10 +49472,9 @@ const CASE_DIMS = (() => {
     skirtOD, skirtID, zSkirtBot,
     apertureR: RA, glassEdgeR: RA_EDGE,
     ...(FORM ? { formApertureGrow, formGlassGrow } : {}),   // §307 landing 2 — the form back's window, a grow of the plate's shape
-    // §317 — the fitted back's raised step: its inner wall (the clearance loop),
-    // its outer wall (one glass thickness out) and its two pane planes
-    ...(FITTED_BACK && !FITTED_BACK.flat ? { formStep: { islands: FITTED_BACK.islands,
-      zStepUnder: FITTED_BACK.zHigh, zStepTop: FITTED_BACK.zHigh + CASE_CRYSTAL_T } } : {}),
+    // §317/§321 — the fitted back's bosses: each pocket's wall (the clearance
+    // loop), the boss's outer wall (the boss wall out) and the pockets' ceiling
+    ...(FITTED_BACK && !FITTED_BACK.flat ? { formStep: { islands: FITTED_BACK.islands, zStepUnder: FITTED_BACK.zHigh } } : {}),
     fittedBack: FITTED_BACK,
     rStep, zStepUnder, zStepTop,
     // The bezel opening COVERS the dial/plate join (layout.js §125: "the
