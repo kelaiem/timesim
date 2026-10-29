@@ -33,7 +33,7 @@ import * as THREE from 'three';
 import {
   UNIT_MM, CLEAR_MARGIN, STOCK_MIN_U, CASE_CLEAR, CASE_BAND_T, CASE_WIDTH_MAX,
   CASE_LUG_T, CASE_LUG_EDGE_R, CASE_SPRING_BAR_D, CASE_SPRING_BAR_TIP_D,
-  caseLugPlan, convexHull2,
+  caseLugPlan,
 } from './layout.js';
 import { makeRoundedSlab, PLATE_BEVEL_F, COLLAR_PROUD, TUBE_WALL, cutEndOnPlane } from './geometry.js';
 import { CASE_POLISH_ATTR } from './materials.js';
@@ -203,68 +203,6 @@ function sweepRun(ring, run) {
   return g;
 }
 
-// §321 — THE FITTED BACK'S BOSSES are metal joined to the rim, so the back's
-// window and its glass are the form's loops with each boss's PAD bitten out of
-// them. Two polygon helpers do it, each for exactly the case it is used on.
-//
-// insetConvex: a closed CCW convex polygon offset inward by d — the polygon
-// clipped by each of its edges' half-planes moved d inward (Sutherland–Hodgman),
-// which is exact for a convex polygon and drops the vertices a sharp corner loses.
-export function insetConvex(P, d) {
-  let poly = P.slice();
-  const n = P.length;
-  for (let i = 0; i < n && poly.length; i++) {
-    const [ax, ay] = P[i], [bx, by] = P[(i + 1) % n], L = Math.hypot(bx - ax, by - ay);
-    if (!(L > 1e-12)) continue;
-    const nx = -(by - ay) / L, ny = (bx - ax) / L;   // the inward (left) normal of a CCW edge
-    const f = ([x, y]) => (x - ax) * nx + (y - ay) * ny - d;
-    const out = [];
-    for (let k = 0; k < poly.length; k++) {
-      const p = poly[k], q = poly[(k + 1) % poly.length], fp = f(p), fq = f(q);
-      if (fp >= 0) out.push(p);
-      if ((fp >= 0) !== (fq >= 0)) { const t = fp / (fp - fq); out.push([p[0] + t * (q[0] - p[0]), p[1] + t * (q[1] - p[1])]); }
-    }
-    poly = out;
-  }
-  return poly;
-}
-// biteConvex: A ∖ B for a simple CCW polygon A and a convex CCW polygon B whose
-// boundaries cross EXACTLY twice (B overhangs one stretch of A's edge) — A's
-// boundary outside B, then B's inside A reversed. Anything else (no crossing,
-// B inside A, B cutting A in two) returns null: the caller asked for a bite and
-// did not get one, which is a finding rather than a shape.
-export function biteConvex(A, B) {
-  const nB = B.length;
-  const inB = ([x, y]) => { for (let i = 0; i < nB; i++) { const [ax, ay] = B[i], [bx, by] = B[(i + 1) % nB]; if ((bx - ax) * (y - ay) - (by - ay) * (x - ax) < 0) return false; } return true; };
-  // every crossing of A's boundary with B's, in A's order: [A edge, t on it, point, B edge]
-  const n = A.length, xs = [];
-  for (let i = 0; i < n; i++) {
-    const p = A[i], q = A[(i + 1) % n], rx = q[0] - p[0], ry = q[1] - p[1];
-    const here = [];
-    for (let j = 0; j < nB; j++) {
-      const c = B[j], e = B[(j + 1) % nB], sx = e[0] - c[0], sy = e[1] - c[1], den = rx * sy - ry * sx;
-      if (Math.abs(den) < 1e-15) continue;
-      const t = ((c[0] - p[0]) * sy - (c[1] - p[1]) * sx) / den, u = ((c[0] - p[0]) * ry - (c[1] - p[1]) * rx) / den;
-      if (t >= 0 && t < 1 && u >= 0 && u < 1) here.push([i, t, [p[0] + t * rx, p[1] + t * ry], j]);
-    }
-    here.sort((a, b) => a[1] - b[1]);
-    xs.push(...here);
-  }
-  if (xs.length !== 2) return null;
-  // which crossing ENTERS B: just past it along A lies inside B
-  const past = ([i, t]) => { const p = A[i], q = A[(i + 1) % n], t1 = Math.min(1, t + 1e-6); return [p[0] + t1 * (q[0] - p[0]), p[1] + t1 * (q[1] - p[1])]; };
-  const [cIn, cOut] = inB(past(xs[0])) ? xs : [xs[1], xs[0]];
-  if (!inB(past(cIn)) || inB(past(cOut))) return null;
-  // A from the exit round to the entry (outside B), then B backwards from the entry's edge start to the exit's edge end
-  const out = [cOut[2]];
-  for (let i = (cOut[0] + 1) % n; ; i = (i + 1) % n) { out.push(A[i]); if (i === cIn[0]) break; }
-  out.push(cIn[2]);
-  for (let j = cIn[3]; j !== cOut[3]; j = (j + nB - 1) % nB) out.push(B[j]);
-  return out;
-}
-// The polygon's signed area (positive CCW).
-const loopArea = (pts) => { let A = 0; for (let i = 0; i < pts.length; i++) { const [ax, ay] = pts[i], [bx, by] = pts[(i + 1) % pts.length]; A += ax * by - ay * bx; } return A / 2; };
-
 // Every turn of a closed CCW loop left (a fold reads as a right turn).
 function loopConvex(pts) {
   const n = pts.length;
@@ -379,7 +317,7 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   const {
     UNIT_MM: U, z0, zMidBack, zStep, zBandFront, zCrystInner, zCrystOuter, zBezelOuter,
     crystT, tubeD, pusherD, stemAz, alarmAz, pusherAz, pusherOff, stemZ, alarmZ, pusherZ,
-    lugSpanInner, apertureR, glassEdgeR, formApertureGrow = null, formGlassGrow = null, formStep = null, bezelFlat,
+    lugSpanInner, apertureR, glassEdgeR, formApertureGrow = null, formGlassGrow = null, bezelFlat,
   } = dims;
   // §307 landing 2 — THE BACK'S WINDOW IS THE PLATE'S SHAPE: main.js derives
   // it as grows of the plate's outline (the three-quarter plate's measured
@@ -470,8 +408,7 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   // Prisms merged: the retaining LIP (z0 − LIP_T..z0, bored to the window)
   // and the glazing CHANNEL below it (zMidBack..z0 − LIP_T, bored to the
   // glass's edge: the glass locates on the wall directly, there being no
-  // gasket to locate it on) — since §321 inside the rounded rim, and on the
-  // fitted back cut in layers round the bosses (below).
+  // gasket to locate it on) — since §321 inside the rounded rim.
   const zCrystOut = z0 - LIP_T;              // the glass's outer face, under the lip
   const zCrystIn = zCrystOut - crystT;       // its inner face — the band's back plane when z0 = zMidBack + 1.2 mm (CASE_DIMS)
   if (!(zCrystIn >= zMidBack - 1e-9))
@@ -511,73 +448,13 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   if (backRound && (!(backRound.reach > 0) || !(backRound.minWall >= STOCK_MIN_U)))
     console.warn(`makeFormCase §321: the ${form.kind}'s back round reaches ${backRound.reach.toFixed(3)} u and leaves ${backRound.minWall.toFixed(3)} u `
       + `of metal over the glass's channel — needs a reach > 0 and §50's ${STOCK_MIN_U.toFixed(3)}`);
-  // §321 — THE FITTED BACK'S BOSSES (main.js FITTED_BACK, layout.js
-  // solveFittedBack). §317 raised GLASS over each island of tall metal; the
-  // owner's call is METAL: a boss milled in the caseback, its POCKET the island's
-  // clearance loop up to zStepUnder and its cap the back's own lip, LIP_T, over
-  // that — proud of the back only where the pocket leaves less than a lip under
-  // the face. A boss inside the window has to be carried, so each is JOINED to
-  // the rim by the shortest route: its PAD is the convex hull of the boss's
-  // outer wall and one point past the glass's edge on the line from the boss's
-  // nearest point to the window's (a wedge, as wide as the hull makes it, no
-  // width chosen). The window is the form's window with each pad bitten out; the
-  // glass is the form's pane with each pad, less the lip's own land, bitten out —
-  // so the pane tucks under a pad exactly as far as it does under the rim, and it
-  // stays ONE flat pane cut to an outline. The wall between a pocket and the
-  // glass is the boss wall less that land (main.js: §50's floor).
-  const islands = (formStep && glassLoop) ? formStep.islands : [];
-  const land = formGlassGrow === null || formApertureGrow === null ? 0 : formGlassGrow - formApertureGrow;
-  const winShape = formApertureGrow === null ? null : form.grown(formApertureGrow);
-  const glassShape = formGlassGrow === null ? null : form.grown(formGlassGrow);
-  const bosses = [];
-  let winLoop = Array.isArray(apHole) ? apHole : null, paneLoop = glassLoop;
-  for (const { inner, outer } of islands) {
-    if (!loopConvex(inner) || !loopConvex(outer))
-      console.warn('makeFormCase §317: a back island\'s loops are not convex — the hull it was grown from folded');
-    // the shortest route: the boss's vertex nearest the window, and the window's vertex nearest it
-    let v = outer[0], dv = Infinity;
-    for (const p of outer) { const d = winShape.inset(p[0], p[1]); if (d < dv) { dv = d; v = p; } }
-    let q = apHole[0], dq = Infinity;
-    for (const w of apHole) { const d = Math.hypot(w[0] - v[0], w[1] - v[1]); if (d < dq) { dq = d; q = w; } }
-    const n = [(q[0] - v[0]) / dq, (q[1] - v[1]) / dq];
-    // the pad's tip runs out from the window until the pad, less the land, leaves the glass by the margin
-    let pad = null, padIn = null, e = 0;
-    for (let k = 1; k <= 200; k++) {
-      e = k * CLEAR_MARGIN;
-      const tip = [q[0] + n[0] * e, q[1] + n[1] * e], pts = [...outer, tip];
-      const h = convexHull2(pts.map((p) => p[0]), pts.map((p) => p[1]), pts.length);
-      const hIn = insetConvex(h, land);
-      if (hIn.some(([x, y]) => glassShape.inset(x, y) <= -CLEAR_MARGIN)) { pad = h; padIn = hIn; break; }
-    }
-    const win2 = pad && biteConvex(winLoop, pad), pane2 = padIn && biteConvex(paneLoop, padIn);
-    if (!win2 || !pane2) {
-      console.warn(`makeFormCase §321: a boss at (${v[0].toFixed(2)}, ${v[1].toFixed(2)}) could not be joined to the rim — its pad does not cross the window and the glass's edge once each`);
-      continue;
-    }
-    winLoop = win2; paneLoop = pane2;
-    bosses.push({ inner, outer, pad, padIn, tipOut: e });
-  }
-  if (bosses.length && !(loopArea(paneLoop) > 0 && loopArea(winLoop) > 0))
-    console.warn('makeFormCase §321: the back\'s window or glass is wound inside-out or empty after the bosses were bitten out');
-  const zBossUnder = bosses.length ? formStep.zStepUnder : -Infinity;
-  const zBossTop = bosses.length ? Math.max(z0, zBossUnder + LIP_T) : z0;
-  // The back, cut in LAYERS between every plane a wall starts or stops at:
-  // under the glass's outer face the hole is the pane, over it the window, and
-  // under zBossUnder each boss's pocket; past z0 only the bosses' proud caps.
-  const pockets = bosses.map((b) => b.inner);
+  // The two prisms inside the rounded rim (§321): the channel under the
+  // glass's outer face, the lip over it (polished with the rim).
   const backOuter = backRound ? loops.ring(backRound.reach) : loops.outer;
-  const planes = [...new Set([zMidBack, zCrystOut, z0, ...(bosses.length ? [zBossUnder, zBossTop] : [])])]
-    .filter((z) => z >= zMidBack - 1e-12 && z <= zBossTop + 1e-12).sort((a, b) => a - b);
-  const backParts = [];   // [geometry, polished]
-  for (let i = 0; i + 1 < planes.length; i++) {
-    const a = planes[i], b = planes[i + 1];
-    if (!(b - a > 1e-9)) continue;
-    const pk = a < zBossUnder - 1e-12 ? pockets : [];
-    if (b <= z0 + 1e-12) {
-      const hole = a < zCrystOut - 1e-12 ? (paneLoop ?? { r: glassEdgeR }) : (winLoop ?? apHole);
-      backParts.push([prism(backOuter, [hole, ...pk], a, b), a >= zCrystOut - 1e-12]);
-    } else for (const bs of bosses) backParts.push([prism(bs.outer, a < zBossUnder - 1e-12 ? [bs.inner] : [], a, b), false]);
-  }
+  const backParts = [   // [geometry, polished]
+    [prism(backOuter, [glassLoop ?? { r: glassEdgeR }], zMidBack, zCrystOut), false],
+    [prism(backOuter, [apHole], zCrystOut, z0), true],
+  ];
   if (backRound) {
     const { reach, ell } = backRound;
     const rim = mergeGeos([[[reach, zMidBack], [0, zMidBack]], ell, [[reach, z0], [reach, zMidBack]]]
@@ -603,13 +480,13 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   backAsm.add(back);
   // The back glass: one flat pane, crystT thick, pressed SEAT_EMBED UNDER the
   // lip — the press idiom with the sign that presses (makeCase's back pane; the
-  // inspect.js row `caseBackCrystal ⇄ caseBack` declares exactly this). On the
-  // fitted back (§321) its outline is cut round the bosses' pads.
-  const glassGeo = paneLoop ? prism(paneLoop, [], zCrystIn, zCrystOut + SEAT_EMBED) : disc(glassEdgeR, zCrystIn, zCrystOut + SEAT_EMBED);
+  // inspect.js row `caseBackCrystal ⇄ caseBack` declares exactly this). Flat on
+  // every form case: §317's raised glass islands were retired by §321.
+  const glassGeo = glassLoop ? prism(glassLoop, [], zCrystIn, zCrystOut + SEAT_EMBED) : disc(glassEdgeR, zCrystIn, zCrystOut + SEAT_EMBED);
   const backCrystal = new THREE.Mesh(holdWound(glassGeo, 'the back glass'), crystalMaterial);
   backCrystal.name = 'caseBackCrystal';
   backAsm.add(backCrystal);
-  g.userData.formBack = { round: backRound, window: winLoop, pane: paneLoop, bosses, zBossUnder, zBossTop, zCrystOut, zCrystIn };
+  g.userData.formBack = { round: backRound };
 
   // THE TUBES — makeCase's `tubeAt` on the loops. A capped sleeve on each
   // stem's own line at the stem's own z: `az` the line's azimuth, `off` its
@@ -850,18 +727,11 @@ export function formCaseLines(g, dims) {
   ring('bore', loops.bore, zCrystInner); ring('bore', loops.bore, zMidBack);
   // The back (its two prisms and the glass), the same stations makeFormCase cut.
   const zCrystOut = z0 - LIP_T, zCrystIn = zCrystOut - crystT;
-  // (§321: on the fitted back the window and the pane are cut round the bosses' pads — the loops built)
-  const apLoop = FB.window ?? (formApertureGrow === null ? circle(apertureR) : form.loop({ grow: formApertureGrow }));
-  const glLoop = FB.pane ?? (formGlassGrow === null ? circle(glassEdgeR) : form.loop({ grow: formGlassGrow }));
+  const apLoop = formApertureGrow === null ? circle(apertureR) : form.loop({ grow: formApertureGrow });
+  const glLoop = formGlassGrow === null ? circle(glassEdgeR) : form.loop({ grow: formGlassGrow });
   ring('aperture', apLoop, z0); ring('aperture', apLoop, zCrystOut);
   ring('glass', glLoop, zCrystOut); ring('glass', glLoop, zCrystIn);
   if (zCrystIn - zMidBack > 1e-9) ring('glass', glLoop, zMidBack);
-  // §321: each boss's pocket (its mouth in the back's inner face, its ceiling)
-  // and, where it stands proud, its cap's two edges
-  for (const bs of FB.bosses ?? []) {
-    ring('boss', bs.inner, zMidBack); ring('boss', bs.inner, FB.zBossUnder);
-    if (FB.zBossTop > z0 + 1e-9) { ring('boss', bs.outer, z0); ring('boss', bs.outer, FB.zBossTop); }
-  }
   // Generators at the outer wall's four extremes.
   for (const [i, sgn] of [[0, 1], [0, -1], [1, 1], [1, -1]]) {
     let ext = -Infinity;

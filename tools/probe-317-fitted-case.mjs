@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // §317 — THE FITTED TONNEAU, held: the case archetype derived from the solved tonneau and form-fitted to the
-// least plan AREA (layout.js caseShapeOf 'fitted', fitFittedCase), and its back stepped to the least interior
-// VOLUME (solveFittedBack). Pure Node over layout.js, the measured hull read from tools/data/probe-317-hull.json
+// least plan AREA (layout.js caseShapeOf 'fitted', fitFittedCase). (§317's stepped back, the volume half, was
+// retired by §321 for a flat one, and its B tests with it.) Pure Node over layout.js, the measured hull read from tools/data/probe-317-hull.json
 // (`--refresh` re-measures it: one Chromium boot of ?case=fitted at the fixture's spec, through boot-form.mjs).
 //
 //   S  the shape law. S1 at the tonneau's own curvature and tau 0 the fitted shape IS the tonneau (every ray's
@@ -14,9 +14,6 @@
 //      every other kind's §308 fit (the ranking is printed — the owner's question, measured); F6 it is GLOBAL over a
 //      25 × 25 grid of (k, yA) — the landscape is a diagonal V-valley an axis search stalls in (it did, at 1074.19
 //      mm²), and the grid's best must beat that stalled answer, its control.
-//   B  the back, on synthetic metal whose answer is known. B1 a slab with two far posts: two islands, the pane
-//      one lift over the slab, the volume the formula's; B2 the control: posts nearer than `join` make one; B3 the flat back is a candidate (posts covering the slab: no step); B4
-//      zLowMin refuses a pane under it; B5 an island too wide for the window (`fits`) is refused.
 // An ACCEPTANCE test: exits non-zero on any failure.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -119,31 +116,6 @@ const NEED = (20 / U + 1 / U) / 2 + 0.5 / U;   // makeFormCase's lug reach: (CAS
   ok('F5 the fitted tonneau encloses less than the tonneau it started from and every other kind\'s §308 fit',
     rows.every(([, a]) => fit.area < a) && Math.abs(fit.tonneauArea - rows[2][1]) < 1e-9 && fit.area > bound,
     `${(fit.area * mm2).toFixed(1)} mm² against the tonneau's ${(fit.tonneauArea * mm2).toFixed(1)} (−${(100 * (1 - fit.area / fit.tonneauArea)).toFixed(1)}%)`);
-}
-
-// ── B: the back, on synthetic metal ─────────────────────────────────────────────────────────────────────────
-{
-  const cell = 0.5, items = [];
-  const slab = (x0, x1, y0, y1, z) => { for (let x = x0; x <= x1; x += cell) for (let y = y0; y <= y1; y += cell) items.push({ z, pts: [[x, y]] }); };
-  slab(-30, 30, -30, 30, 10);                 // the plate: 60 × 60 u at z 10
-  slab(-25, -23, -1, 1, 12); slab(23, 25, -1, 1, 12);   // two posts, 46 u apart, 2 u over it
-  const base = { zFront: 0, boreArea: 3600, lift: 0.15, grow: 0.3, glassT: 1.58, join: 2 * (0.3 + 1.58) + 0.15 };
-  const r = L.solveFittedBack({ ...base, items, res: cell });
-  const islA = r.islands.reduce((s, is) => s + Math.abs((() => { let a = 0; const p = is.inner; for (let i = 0; i < p.length; i++) a += p[i][0] * p[(i + 1) % p.length][1] - p[i][1] * p[(i + 1) % p.length][0]; return a / 2; })()), 0);
-  const Vf = 3600 * (r.zLow - 0) + islA * (r.zHigh - r.zLow);
-  ok('B1 two far posts make two islands, the pane one lift over the slab, V the formula\'s', r.islands.length === 2 && Math.abs(r.zLow - 10.15) < 1e-9 && Math.abs(r.V - Vf) < 1e-6 && r.V < r.Vflat,
-    `${r.islands.length} islands, pane ${r.zLow.toFixed(3)}, V ${r.V.toFixed(1)} against flat ${r.Vflat.toFixed(1)}`);
-  const near = []; for (const it of items) if (it.z === 10 || it.pts[0][0] < 0) near.push(it);
-  for (let x = -20; x <= -18; x += cell) for (let y = -1; y <= 1; y += cell) near.push({ z: 12, pts: [[x, y]] });
-  const one = L.solveFittedBack({ ...base, items: near, res: cell });
-  ok(`B2 control: posts 3 u apart (join ${base.join.toFixed(2)}) make ONE island`, one.islands.length === 1, `${one.islands.length} island(s)`);
-  const cover = []; for (let x = -30; x <= 30; x += 3) for (let y = -30; y <= 30; y += 3) cover.push({ z: 12, pts: [[x, y]] });
-  const fl = L.solveFittedBack({ ...base, res: cell, items: [...items.filter((it) => it.z === 10), ...cover], fits: (lp) => lp.every(([x, y]) => Math.abs(x) < 29 && Math.abs(y) < 29) });
-  ok('B3 the flat back is a candidate: posts covering the slab leave no step', fl.flat && fl.V === fl.Vflat, `flat ${fl.flat}`);
-  const lo = L.solveFittedBack({ ...base, items, res: cell, zLowMin: 11 });
-  ok('B4 zLowMin refuses a pane under it', lo.zLow >= 11 || lo.flat, `pane ${lo.zLow.toFixed(3)}`);
-  const narrow = L.solveFittedBack({ ...base, items, res: cell, fits: (lp) => lp.every(([x]) => Math.abs(x) < 20) });
-  ok('B5 an island outside the window is refused', narrow.flat, `flat ${narrow.flat}`);
 }
 
 console.log(fails ? `${fails} FAILED` : 'all PASS');
