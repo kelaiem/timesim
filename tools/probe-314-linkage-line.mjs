@@ -39,7 +39,7 @@
 //  C2 the law: the line the build carries, fed back through `at`, reproduces
 //     the built pivots (PA, PB) to 1e-9.
 //
-// Run: node tools/probe-314-linkage-line.mjs [--q QUERY] [--expect-conflict] [--top N]
+// Run: node tools/probe-314-linkage-line.mjs [--q QUERY] [--expect-conflict] [--top N] [--turn DEG]
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { join, extname, normalize, dirname } from 'node:path';
@@ -52,6 +52,7 @@ const argOf = (k, d = null) => (argv.includes(k) ? argv[argv.indexOf(k) + 1] : d
 const Q = argOf('--q', '');
 const EXPECT_CONFLICT = argv.includes('--expect-conflict');
 const TOP = +argOf('--top', 5);
+const TURN = argOf('--turn', null);   // §318: a trial turn of the pusher about the centre (degrees), as the build's ALARM_PUSH_ROT would carry it
 
 let chromium;
 try { ({ chromium } = await import(join(ROOT, 'tools/node_modules/playwright/index.mjs'))); }
@@ -67,6 +68,7 @@ const srv = createServer(async (req, res) => {
 await new Promise((r) => srv.listen(0, '127.0.0.1', r));
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--disable-background-timer-throttling', '--disable-renderer-backgrounding'] });
 const page = await (await browser.newContext()).newPage();
+if (TURN !== null) await page.addInitScript((d) => { globalThis.__PUSH_TURN_DEG = d; }, +TURN);
 page.on('console', (m) => { if (m.type() === 'info') console.log(`  ${m.text()}`); if (m.type() === 'warning' && !/GPU|GL Driver|swiftshader|ReadPixels|fallback/i.test(m.text())) console.log(`  boot warn: ${m.text().slice(0, 160)}`); });
 await page.goto(`http://127.0.0.1:${srv.address().port}/index.html?hud=0&sync=0&${Q}`);
 await page.waitForFunction(() => !!window.__clock || !!window.__bootError, null, { timeout: 900000, polling: 1000 });

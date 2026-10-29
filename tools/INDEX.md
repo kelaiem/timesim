@@ -4,7 +4,7 @@
 
 # The instruments
 
-371 scripts. **252 are ACCEPTANCE tests** — they decide and exit non-zero.
+373 scripts. **254 are ACCEPTANCE tests** — they decide and exit non-zero.
 **119 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -231,7 +231,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-274-surfaces.mjs` | §274 | acceptance | §274 — DO THE DECLARED-SURFACE GATES MEASURE ANYTHING? Pure Node, no browser. |
 | `probe-275-button-seat.mjs` | §275 | acceptance | DOES THE ALARM PUSHER'S BUTTON STAY OUT OF THE CASE WALL UNTIL ITS STOP — ON EVERY CASE SHAPE? Acceptance (TODO 275). The head is solved (TODO 241) to land on the wall at the end of the carry, and the battery excuses it against the band BY NAME for that stop (`Alarm switch ⇄ Case` floors row, probe-case-relief's STOP set) — so a head whose RIM buries in the band reads as the stop, and did, on every form case, for as long as the head's face was square to a press line that crosses a form wall obliquely. |
 | `probe-277-nav.mjs` | §277 | acceptance | §277 part E — navigation on the scripted-user engine, measured in a browser. |
-| `probe-277-route-i18n.mjs` | §277 | acceptance | §277 part F — does every locale carry the Inspect route's captions and stop titles, and does each keep what the English CLAIMS? |
+| `probe-277-route-i18n.mjs` | §277 | acceptance | §277 part F — does every locale carry the Inspect route's captions and stop titles (and, since TODO 276, the §37 link tour's seven captions), and does each keep what the English CLAIMS? |
 | `probe-278-dial-step.mjs` | §278 | acceptance | HOW FAR CAN THE DIAL SIDE COME DOWN, AND WHAT STOPS IT? — §278 landing 6's step study for the dial-side reclaim. Since landing 5 the detector stands on its satellite, so the centre column's dial-side band no longer has to carry it; `DIAL_RECLAIM` (layout.js) brings the dial plane plate-ward by that much and the chain below the sleeve rises in the dial frame by the same amount (main.js's ALARM_FEELER_TOP), so the satellite stack, i1b, the hour wheel and the motion works keep their world planes. This measures, on the tree under test, how much further it could go and which pair stops it. |
 | `probe-280-notch-ramp.mjs` | §280 | acceptance | §280 — does the pin ride CUT METAL out of the notch, or a law over nothing? |
 | `probe-293-weights.mjs` | §293 | acceptance | §293 — IS EACH SUB-DIAL LINE OF TYPE SET IN THE LIGHTEST WEIGHT THE EYE CAN STILL RESOLVE AT THE WRIST? Acceptance. |
@@ -241,6 +241,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-313-reserve-at-12.mjs` | §313 | acceptance | DOES THE ARRANGED MOVEMENT HOLD ITS POWER RESERVE AT 12 O'CLOCK — AND ONLY BECAUSE OF THE IDLERS AND THE MODULE'S TURN IT NAMES? Acceptance (§313): exits non-zero on any failure. |
 | `probe-314-linkage-line.mjs` | §314 | acceptance | WHERE DOES THE PUSHER LINKAGE'S ROD LINE RUN IN THIS ARRANGEMENT? — §314's re-run of §261 2c's linkage search, for a movement whose band the fold-site study can no longer site (its cluster already stands folded, so that study's rotation loop has nothing to search; its header says so under TODO 244). |
 | `probe-317-fitted-case.mjs` | §317 | acceptance | §317 — THE FITTED TONNEAU, held: the case archetype derived from the solved tonneau and form-fitted to the least plan AREA (layout.js caseShapeOf 'fitted', fitFittedCase), and its back stepped to the least interior VOLUME (solveFittedBack). Pure Node over layout.js, the measured hull read from tools/data/probe-317-hull.json (`--refresh` re-measures it: one Chromium boot of ?case=fitted at the fixture's spec, through boot-form.mjs). |
+| `probe-318-pusher-turn.mjs` | §318 | acceptance | WHERE CAN THE ALARM PUSHER TURN TO? — §318's scan. A form case's seated strike group stands on the column wheel's press line (the hammer's arm spans it from post to head), and under CLAUDE.md's P3 rule the pusher, a LINK since §261 2c (its pin drives crank A, not the wheel), is what yields. The build turns the whole pusher about the movement's centre by ALARM_PUSH_ROT; this scan boots the build at each trial turn (`globalThis.__PUSH_TURN_DEG`, the build's own probe hook) and measures the PUSHER's metal (every `alarmPusher*` mesh) against every other labelled mesh over the press and the strike, so a turn is judged on the metal as built at that turn rather than on a plan. |
 | `probe-36-apply.mjs` | §36 | acceptance | §36 Apply — the acceptance, and the only place the APPLIED tree is judged. |
 | `probe-50-clutch.mjs` | §50 | report | TODO 50 — the stem clutch, measured in the movement. |
 | `probe-50-coupling.mjs` | §50 | report | Boot test-geometry.html headless and report the build log + a lift-law sanity table. |
@@ -284,6 +285,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-alarm-relayout.mjs` |  | report | Relayout feasibility: if the BARREL SIDE (fusee cone, mainspring drum, chain, set-up work) vacated its sector, would a pocket open under the three-quarter plate big enough to take the alarm striking module? |
 | `probe-alarm-tier-split.mjs` |  | report | THE TIER-SPLIT GATE — §112 design (a): can the alarm's POWER TIERS live under the three-quarter plate while the strike group stays on top? |
 | `probe-alarm-under-plate.mjs` |  | report | Can the alarm striking module be LOWERED UNDER the three-quarter plate? |
+| `probe-alarm-volume.mjs` |  | acceptance | THE VOLUME-ADJUSTABLE ALARM'S LINE SPEC (BUILT §320) — acceptance, pure Node, a second. |
 | `probe-alarmr-handle.mjs` |  | acceptance | THE ALARM CORNER'S RADIUS — is a spec'd value one the movement can build? |
 | `probe-back-envelope.mjs` |  | acceptance | WHAT STANDS ABOVE THE THREE-QUARTER PLATE — the back envelope, per member and per station, SWEPT over the pose net. |
 | `probe-bearing-candidates.mjs` |  | report | TODO 109 step 1 — WHO HOLDS THESE PARTS? The scan that has to run before a single `userData.bearings` line is written. |

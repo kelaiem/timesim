@@ -12,6 +12,8 @@ import { join, extname, normalize, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GONG_SEATS } from '../src/gong-seats.js';
 import { FORM_KINDS } from '../src/layout.js';
+import { solveVolume, VOLUME_INPUTS } from '../src/alarm-volume.js';
+const VOL = solveVolume();
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { chromium } = await import(join(ROOT, 'tools/node_modules/playwright/index.mjs'));
@@ -50,6 +52,21 @@ for (const width of [1280, 390]) {
     // arrangement the lever stands on the top edge and no flat-edge bar reaches it, so the rect's bar seat is an arc
     ok('the solver (module worker, the hammer on its lever) returns bars for the rect', n > 0, `${n} rows`);
   }
+  // §320 — the volume prototype: the page offers the line spec's own settings (src/alarm-volume.js, solved here in
+  // Node too), selecting one moves the drawn hammer to its station and the readout to its level, and the spec
+  // table carries every input row
+  const vol = await page.evaluate(async () => { const B = window.__gongBench.volume, btns = [...document.querySelectorAll('#vol-set button')];
+    const hammerX = () => { const r = [...document.querySelectorAll('#vol-chain rect')].find((e) => e.getAttribute('fill') && !/none/.test(e.getAttribute('fill')) && +e.getAttribute('height') < 2); return r ? +r.getAttribute('x') + +r.getAttribute('width') / 2 : NaN; };
+    const x0 = hammerX(), db0 = document.getElementById('vol-db').textContent; btns.at(-1).click(); await new Promise((r) => setTimeout(r, 30));
+    const x1 = hammerX(), db1 = document.getElementById('vol-db').textContent, pressed = btns.at(-1).getAttribute('aria-pressed');
+    const rows = document.querySelectorAll('#vol-spec tr:not(.sub)').length, curvePts = document.querySelectorAll('#vol-curve polyline').length;
+    B.select(0); return { n: btns.length, N: B.V.N, L: B.V.wire.L_mm, x0, x1, db0, db1, pressed, rows, curvePts, inset0: B.V.stations[0].inset_mm, insetQ: B.V.stations.at(-1).inset_mm }; });
+  ok(`${width}: the volume prototype offers the line spec's settings`, vol.n === VOL.N && vol.N === VOL.N, `${vol.n} buttons, ${VOL.N} settings solved in Node`);
+  ok(`${width}: selecting the quietest moves the drawn hammer to its station and the readout to its level`,
+    Math.abs((vol.L - vol.x0) - VOL.stations[0].inset_mm) < 1e-6 && Math.abs((vol.L - vol.x1) - VOL.stations.at(-1).inset_mm) < 1e-6 && vol.pressed === 'true'
+    && vol.db1 === `${VOL.stations.at(-1).dB >= 0 ? '+' : '−'}${Math.abs(VOL.stations.at(-1).dB).toFixed(1)} dB` && vol.db0 !== vol.db1,
+    `hammer at ${(vol.L - vol.x0).toFixed(3)} → ${(vol.L - vol.x1).toFixed(3)} mm in, readout ${vol.db0} → ${vol.db1}`);
+  ok(`${width}: the spec table carries every input row and the curves are drawn`, vol.rows >= Object.keys(VOLUME_INPUTS).length + 10 && vol.curvePts === 3, `${vol.rows} rows, ${vol.curvePts} curves`);
   ok(`${width}: no page or console error`, errs.length === 0, errs.slice(0, 2).join(' | '));
 }
 await browser.close(); srv.close();

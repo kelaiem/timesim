@@ -408,7 +408,10 @@ try {
   // module, so it adds one.
   // §315 — 110: src/technic-train.js, the going train's cell, imported statically by technic.html (and reached by
   // booklet's page through src/technic-bom.js and src/technic-steps.js). One module, so it adds one.
-  check('release: precache complete', counts === 110, `${counts}/110`);
+  // §320 — 112: src/gong-level.js, the gong's level law's pure leaves, imported statically by main.js (and by the
+  // volume prototype), and src/alarm-volume.js, the volume prototype's line spec, imported statically by gong-bench.html.
+  // One module each, so they add two.
+  check('release: precache complete', counts === 112, `${counts}/112`);
 
   // ---- offline: the whole point ----
   mark('offline: booting the documents');

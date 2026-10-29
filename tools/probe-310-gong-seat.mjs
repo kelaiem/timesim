@@ -91,6 +91,40 @@ const ok = (name, cond, detail = '') => { console.log(`${cond ? 'PASS' : 'FAIL'}
     `|P − P₀| ${Math.hypot(st.P.x - px, st.P.y - py).toExponential(1)}, g ${st.g.toExponential(1)}`);
 }
 {
+  // §319 — THE STRIKE TOLERANCE. The lever circle, tanLen and gap stay exact; the blow may tilt off the
+  // wire's normal by at most STRIKE_ALPHA_MAX = acos(10^(−STRIKE_TOL_DB/20)), the 0.5 dB the transverse drive may give up.
+  const lever = { Q: { x: 31.457791620470847, y: 15.34299013761771 }, rho: Math.hypot(13, 0.5), tanLen: 7.279256431577741, side: 1, gap: 0.4 }, wireR = 1.4514;
+  const line = (dx) => GS.seatCurve({ type: 'line', sx: 44 + dx, sy: 30, th: -Math.PI / 2, L: 60 });
+  const deg = (a) => a * 180 / Math.PI;
+  ok('P6 the budget: alpha max costs exactly STRIKE_TOL_DB of drive', Math.abs(GS.strikeDriveDb(GS.STRIKE_ALPHA_MAX) + GS.STRIKE_TOL_DB) < 1e-12 && Math.abs(GS.strikeDriveDb(0)) === 0,
+    `${deg(GS.STRIKE_ALPHA_MAX).toFixed(3)}° for ${GS.STRIKE_TOL_DB} dB`);
+  // a seat with an exact root keeps it, bit for bit: the tolerance only ever searches when the untilted solve has nothing
+  const exact = GS.seatStrike(line(0), lever, wireR, -1, 12), t0 = GS.seatStrikeTol(line(0), lever, wireR, -1, 12);
+  ok('P7 tolerance 0: a seat with an exact root is returned untilted and unchanged', !!exact && t0.alpha === 0 && JSON.stringify({ ...exact, alpha: 0 }) === JSON.stringify(t0), `s ${t0.s.toFixed(6)}, alpha ${t0.alpha}`);
+  // the same bar 2 u from its exact placement: no untilted root, a tilted one inside the window
+  const off = line(2), none = GS.seatStrike(off, lever, wireR, -1, 12), tol = GS.seatStrikeTol(off, lever, wireR, -1, 12);
+  const gapOf = (st) => Math.hypot(st.F.x - st.S.x, st.F.y - st.S.y) - wireR;
+  ok('P8 a bar the lever misses untilted is reached tilted: pivot on the circle, face a gap off the wire, blow through the wire axis',
+    (!none || Math.abs(none.g) > 1e-3) && !!tol && Math.abs(tol.alpha) > 0 && Math.abs(tol.alpha) <= GS.STRIKE_ALPHA_MAX && Math.abs(tol.g) < 1e-9 && Math.abs(gapOf(tol) - lever.gap) < 1e-9
+    && Math.abs((tol.S.x - tol.F.x) * tol.b.y - (tol.S.y - tol.F.y) * tol.b.x) < 1e-9,
+    tol ? `alpha ${deg(tol.alpha).toFixed(2)}°, s ${tol.s.toFixed(4)}, g ${tol.g.toExponential(1)}, ${GS.strikeDriveDb(tol.alpha).toFixed(3)} dB` : 'no root');
+  // CONTROL: past the window is refused, not stretched to — a bar 4 u off needs more than STRIKE_ALPHA_MAX
+  ok('P9 control: a bar the window cannot reach is refused', GS.seatStrikeTol(line(4), lever, wireR, -1, 12) === null && GS.seatStrikeTol(off, lever, wireR, -1, 12, { alphaMax: 0.5 * Math.PI / 180 }) === null);
+  // the end strike: alpha is the root of g (one contact, no s to move). Lay a spiral whose end the exact solve misses by a little
+  const ph = 0.7, be = 2.1, px = lever.Q.x + lever.rho * Math.cos(ph), py = lever.Q.y + lever.rho * Math.sin(ph), bx = Math.cos(be), by = Math.sin(be);
+  const fx = px - lever.side * lever.tanLen * -by, fy = py - lever.side * lever.tanLen * bx, a = 0.12;   // placed for a blow tilted 0.12 rad ≈ 6.9°
+  const c = Math.cos(a), sn = Math.sin(a), tb = [bx * c - by * sn, bx * sn + by * c];
+  // the end that a TILTED blow tb strikes: the face for tb from the same pivot, the end one gap along tb
+  const fx2 = px - lever.side * lever.tanLen * -tb[1], fy2 = py - lever.side * lever.tanLen * tb[0], ex = fx2 + tb[0] * lever.gap, ey = fy2 + tb[1] * lever.gap;
+  // the wire leaves the end along the UNTILTED heading be, so the exact end strike misses the circle
+  const sp = GS.seatCurve({ type: 'spiral', sx: ex, sy: ey, th: be, r0: 11, p: 4.5, turn: 1, L: 60 });
+  const miss = GS.seatStrikeEnd(sp, lever), te = GS.seatStrikeTol(sp, lever, wireR, 0, 0, { end: true });
+  ok('P10 end strike: an end the untilted blow misses is struck by a tilted one, the pivot back on the circle to float noise',
+    Math.abs(miss.g) > 1e-3 && !!te && Math.abs(te.g) < 1e-9 && Math.abs(te.alpha) <= GS.STRIKE_ALPHA_MAX && Math.abs(gapOf({ F: te.F, S: te.S }) + wireR - lever.gap) < 1e-9,
+    te ? `untilted g ${miss.g.toFixed(4)} → alpha ${deg(te.alpha).toFixed(3)}°, g ${te.g.toExponential(1)}` : 'no root');
+  ok('P11 control: the end strike window is refused past its budget', GS.seatStrikeTol(sp, lever, wireR, 0, 0, { end: true, alphaMax: 1 * Math.PI / 180 }) === null);
+}
+{
   const sq = [[0, 0], [1, 0], [1, 1], [0, 1]];
   ok('P3 hullDist: inside 0, edge and corner distances', GS.hullDist(sq, 0.5, 0.5) === 0 && Math.abs(GS.hullDist(sq, 0.5, -2) - 2) < 1e-12
     && Math.abs(GS.hullDist(sq, 2, 2) - Math.SQRT2) < 1e-12 && GS.hullDist(sq.slice().reverse(), 0.5, 0.5) === 0);
@@ -263,6 +297,28 @@ for (const row of rows) {
     seatsOverride = `export const GONG_SEATS = Object.freeze(${JSON.stringify(moved)});\nexport const GONG_SEATS_ARRANGED = Object.freeze({});\n`;
     const m = await boot(fr, seatRead);
     seatsOverride = null;
+    // §319 — THE STRIKE TOLERANCE IN THE BUILD. A row's `alpha` tilts the blow off the wire's tangent about the struck end. Rotating
+    // the wire by −alpha about that end and tilting the blow by +alpha returns the SAME face, blow and pivot, so the lever's circle
+    // must still close to float noise with the tilt applied; the same tilt WITHOUT the matching heading leaves the pivot tanLen·alpha
+    // off the circle (the control that the tilt reaches the build at all); and a tilt past the budget is refused.
+    if (bar.curve.type === 'spiral') {
+      const withRow = async (patch) => { const t = JSON.parse(JSON.stringify(GONG_SEATS)); Object.assign(t[bar.kind][DEFAULT_MODE], patch(t[bar.kind][DEFAULT_MODE]));
+        seatsOverride = `export const GONG_SEATS = Object.freeze(${JSON.stringify(t)});\nexport const GONG_SEATS_ARRANGED = Object.freeze({});\n`;
+        const r = await boot(fr, seatRead); seatsOverride = null; return r; };
+      const al = 5 * Math.PI / 180, strikeW = /lever's circle|strike solved|tilted/;
+      const tilted = await withRow((r) => ({ alpha: al, curve: { ...r.curve, th: r.curve.th - al } }));
+      const base = await boot(fr, seatRead);
+      ok('B3 §319: a tilted blow on a re-headed wire holds the lever circle and the face gap, with no strike warning',
+        tilted.out.seated === true && Math.abs(tilted.out.check.leverResidual) < 1e-6 && Math.abs(tilted.out.check.faceGap - 0.4) < 1e-6 && !tilted.warnings.some((w) => strikeW.test(w)),
+        `seated ${tilted.out.seated}, residual ${tilted.out.check?.leverResidual?.toExponential(1)}, gap ${tilted.out.check?.faceGap?.toFixed(9)}, strike warnings ${tilted.warnings.filter((w) => strikeW.test(w)).length}`);
+      const loose = await withRow(() => ({ alpha: al }));
+      ok('B3 §319 control: the same tilt on the old heading leaves the pivot off the circle and is called out', loose.warnings.some((w) => /off the lifting lever's circle/.test(w)),
+        loose.warnings.filter((w) => /§310/.test(w)).slice(0, 1).join(''));
+      const over = await withRow(() => ({ alpha: GS.STRIKE_ALPHA_MAX + 0.02 }));
+      ok('B3 §319 control: a tilt past the 0.5 dB budget is refused', over.out.seated === false && /tilted/.test(over.out.refused ?? ''), over.out.refused ?? 'seated');
+      ok('B3 §319: the committed rows carry no tilt, so the shipped seats are the untilted solve', rows.every((r) => !r.alpha), `${rows.length} rows`);
+      void base;
+    }
     ok('B3 control: a seat whose strike moved 1 u is called out', m.warnings.some((w) => new RegExp(`§310: the ${DEFAULT_MODE} seat's strike solved at`).test(w)), m.warnings.filter((w) => /§310/.test(w)).slice(0, 1).join(''));
     // TODO 272 — the keep-out dropped, and shrunk to half about its own centre
     const dropped = JSON.parse(JSON.stringify(GONG_SEATS)); delete dropped[bar.kind][DEFAULT_MODE].keep;

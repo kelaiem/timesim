@@ -35,7 +35,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { modes, hz, sOf, transfer, shape, overtoneNode, solveGong, U_M } from '../src/gong-solve.js';
+import { modes, hz, sOf, transfer, shape, overtoneNode, solveGong, U_M, STRIKE_ALPHA_MAX, strikeDriveDb } from '../src/gong-solve.js';
 import { STEEL_NU, UNIT_MM, CLEAR_MARGIN } from '../src/layout.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -124,6 +124,20 @@ const right = reach1.results.filter((r) => r.fam === 'edge');
 // on a vertical side the perpendicular's foot is y = 0, so the face's azimuth is 0 or 180 deg
 check(right.length > 0 && right.every((r) => r.hammer && r.hammer.rFace >= REACH.rFaceMin && r.hammer.rFace <= REACH.rFaceMax && Math.abs(Math.sin(r.hammer.azDeg * Math.PI / 180)) < 0.01 && inBand(r)),
   'under a reach, the edge bar strikes on the perpendicular from the centre', right.map((r) => `face r ${r.hammer.rFace.toFixed(2)} at ${r.hammer.azDeg.toFixed(2)} deg, f1 ${r.f[0].toFixed(0)} Hz, struck at ${r.hit.toFixed(3)}`).join('; '));
+
+// ---- §319: the strike tolerance under the lifting lever ----
+// A lever whose circle crosses the right bar's line (exact roots), then the same lever shrunk (11.0 against a nearest approach of 11.45) so the circle falls short of the line:
+// no untilted strike exists, a blow tilted by a few degrees reaches it. The tolerance is only ever spent where the exact solve has nothing.
+const LEV = { Q: { x: 30, y: 12 }, tanLen: 7.279256431577741, side: 1, gap: GAP, headR: 1.5, headH: 3, postR: 1.7, margin: 0.15, inboard: 0, outward: false };
+const levOpts = (rho, extra = {}) => ({ ...base, strike: 'end', edge: true, lever: { ...LEV, rho }, ...extra });
+const rightBars = (res) => res.results.filter((r) => r.fam === 'edge' && r.pts[0][0] > 0 && Math.abs(r.pts[0][1]) < HALF.y / 2);
+const exactLev = solveGong(MAP, levOpts(12.8)), shortLev = solveGong(MAP, levOpts(11.0)), shortOff = solveGong(MAP, levOpts(11.0, { tol: false })), farLev = solveGong(MAP, levOpts(9.0));
+check(rightBars(exactLev).length > 0 && rightBars(exactLev).every((r) => !r.alpha && !r.hammer.alpha), 'tolerance: a lever with an exact root keeps the untilted strike', rightBars(exactLev).map((r) => `alpha ${r.alpha ?? 0}`).join(', '));
+const tilted = rightBars(shortLev);
+check(tilted.length > 0 && tilted.every((r) => r.hammer.alpha && Math.abs(r.hammer.alpha) <= STRIKE_ALPHA_MAX + 1e-12 && inBand(r)), 'tolerance: a lever that falls short of the bar is reached with the blow tilted, inside the 0.5 dB budget',
+  tilted.map((r) => `alpha ${(r.hammer.alpha * 180 / Math.PI).toFixed(1)} deg, ${strikeDriveDb(r.hammer.alpha).toFixed(3)} dB`).join('; '));
+check(rightBars(shortOff).length === 0, 'control: the same lever with the tolerance off reaches no right-side bar', `${rightBars(shortOff).length} bars`);
+check(rightBars(farLev).length === 0, 'control: a lever past the window (circle 3 u short) reaches no right-side bar either', `${rightBars(farLev).length} bars`);
 
 // ---- controls ----
 const lowBand = solveGong(MAP, { ...base, fLo: 60, fHi: 90, edge: true, column: true });
