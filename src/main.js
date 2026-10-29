@@ -11620,18 +11620,21 @@ FOURTH_BRIDGE = await (async () => {
           v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
           cr = Math.max(cr, Math.hypot(v.x - cx, v.y - cy));
         }
-        keeps.push({ b, cx, cy, cr });
+        keeps.push({ b, cx, cy, cr, unit: labelEntries.find((e) => e.obj === child)?.name ?? '(unlabeled)', mesh: o.name || o.geometry.type });
       });
     }
     return keeps;
   };
+  // The least distance to a keep, and WHICH keep: a scan that comes back
+  // empty names the wall that closed each bearing (the fork cock's rule).
   const keepClear = (keeps, x, y) => {
-    let c = Infinity;
+    let c = Infinity, who = null;
     for (const k of keeps) {
       const bx = clamp(x, k.b.min.x, k.b.max.x), by = clamp(y, k.b.min.y, k.b.max.y);
-      c = Math.min(c, Math.max(Math.hypot(x - bx, y - by), Math.hypot(x - k.cx, y - k.cy) - k.cr));
+      const d = Math.max(Math.hypot(x - bx, y - by), Math.hypot(x - k.cx, y - k.cy) - k.cr);
+      if (d < c) { c = d; who = k.unit + ':' + k.mesh; }
     }
-    return c;
+    return { c, who };
   };
   await breathe();
   const columnKeeps = keepsIn(BACK_PLATE_Z + BACK_PLATE_T / 2, BOT0, false);
@@ -11697,25 +11700,27 @@ FOURTH_BRIDGE = await (async () => {
   const baseOpenings = [...BACK_PLATE_CUT.holes, ...BACK_PLATE_LATE_HOLES];
   const baseSlots = [...BACK_PLATE_CUT.slots, ...BACK_PLATE_LATE_SLOTS];
   // What a leg's column has to clear, as a signed distance from (x, y).
+  const least = (...pairs) => { let c = Infinity, who = null; for (const [d, w] of pairs) if (d < c) { c = d; who = w; } return { c, who }; };
   const columnClear = (x, y) => {
-    let c = keepClear(columnKeeps, x, y);
-    for (const o of LOW_LINKAGE_OBSTACLES) c = Math.min(c, o.ax === undefined ? Math.hypot(x - o.x, y - o.y) - o.r : stadium(x, y, o));
-    c = Math.min(c, FORK_SWEEP.clear(x, y), hammerSweep.clear(x, y));
-    c = Math.min(c, Math.hypot(x - P.balance.x, y - P.balance.y) - Math.max(BAL_OUTER_R, HAIRSPRING_SWEPT_R));
-    for (const d of chatonDiscs) c = Math.min(c, Math.hypot(x - d.x, y - d.y) - d.r);
+    const k = keepClear(columnKeeps, x, y);
+    const pairs = [[k.c, k.who]];
+    for (const o of LOW_LINKAGE_OBSTACLES) pairs.push([o.ax === undefined ? Math.hypot(x - o.x, y - o.y) - o.r : stadium(x, y, o), 'low corridor']);
+    pairs.push([FORK_SWEEP.clear(x, y), 'fork sweep'], [hammerSweep.clear(x, y), 'hammer sweep']);
+    pairs.push([Math.hypot(x - P.balance.x, y - P.balance.y) - Math.max(BAL_OUTER_R, HAIRSPRING_SWEPT_R), 'balance']);
+    for (const d of chatonDiscs) pairs.push([Math.hypot(x - d.x, y - d.y) - d.r, 'chaton keep']);
     // the pad stands on base-plate metal: one stock floor of land to every opening cut in it
-    for (const h of baseOpenings) c = Math.min(c, Math.hypot(x - h.x, y - h.y) - h.r - STOCK_MIN_U);
-    for (const s of baseSlots) c = Math.min(c, stadium(x, y, s) - STOCK_MIN_U);
-    return c;
+    for (const h of baseOpenings) pairs.push([Math.hypot(x - h.x, y - h.y) - h.r - STOCK_MIN_U, 'base plate opening']);
+    for (const s of baseSlots) pairs.push([stadium(x, y, s) - STOCK_MIN_U, 'base plate slot']);
+    return least(...pairs);
   };
   // ...and a bar, in the slab's band.
   const barClear = (x, y, other) => {
-    let c = keepClear(bandKeeps, x, y);
-    c = Math.min(c, FORK_SWEEP.clear(x, y), hammerSweep.clear(x, y));
-    c = Math.min(c, Math.hypot(x - P.balance.x, y - P.balance.y) - Math.max(BAL_OUTER_R, HAIRSPRING_SWEPT_R));
-    for (const d of chatonDiscs) c = Math.min(c, Math.hypot(x - d.x, y - d.y) - d.r);
-    c = Math.min(c, Math.hypot(x - other.x, y - other.y) - other.r);   // the OTHER framed wheel: the bar stays off it
-    return c;
+    const k = keepClear(bandKeeps, x, y);
+    const pairs = [[k.c, k.who], [FORK_SWEEP.clear(x, y), 'fork sweep'], [hammerSweep.clear(x, y), 'hammer sweep']];
+    pairs.push([Math.hypot(x - P.balance.x, y - P.balance.y) - Math.max(BAL_OUTER_R, HAIRSPRING_SWEPT_R), 'balance']);
+    for (const d of chatonDiscs) pairs.push([Math.hypot(x - d.x, y - d.y) - d.r, 'chaton keep']);
+    pairs.push([Math.hypot(x - other.x, y - other.y) - other.r, 'the other wheel']);   // the bar stays off the OTHER framed wheel
+    return least(...pairs);
   };
   const rimR = plateR - 0.2 - TQ_CUT_MARGIN;   // the cut's edge is clamped inside plateR − 0.2, and stands TQ_CUT_MARGIN off the bridge
   // 3. The scan — every bearing, the nearest feasible reach; the whole table is kept for the report.
@@ -11733,7 +11738,9 @@ FOURTH_BRIDGE = await (async () => {
       for (let reach = bossR + nodeR + CLEAR_MARGIN; reach <= rimR; reach += 0.25) {
         const x = host.x + cs * reach, y = host.y + sn * reach;
         const mPlate = rimR - nodeR - Math.hypot(x, y);
-        const mColumn = columnClear(x, y) - (padR + CLEAR_MARGIN);
+        const col = columnClear(x, y);
+        const mColumn = col.c - (padR + CLEAR_MARGIN);
+        let barWho = null;
         // The bar is judged BEYOND its boss and short of its foot node: the
         // boss stands over its own wheel's hub, the cam and the hammer's
         // roller seated in the cam's notch (that is where the wheel's pivot
@@ -11741,12 +11748,13 @@ FOURTH_BRIDGE = await (async () => {
         let mBar = Infinity;
         for (let sb = bossR + CLEAR_MARGIN; sb <= reach - nodeR; sb += 0.5) {
           const bx = host.x + cs * sb, by = host.y + sn * sb;
-          mBar = Math.min(mBar, barClear(bx, by, other) - (barHW + CLEAR_MARGIN));
+          const bc = barClear(bx, by, other);
+          if (bc.c - (barHW + CLEAR_MARGIN) < mBar) { mBar = bc.c - (barHW + CLEAR_MARGIN); barWho = bc.who; }
         }
         const mSpine = Math.min(latRay(x, y, nodeR), latRay(host.x + cs * reach * 0.5, host.y + sn * reach * 0.5, barHW));
         const short = Math.min(mPlate, mColumn, mBar, mSpine);
-        const row = { x, y, reach, a, short, mPlate, mColumn, mBar, mSpine };
-        series.push([+reach.toFixed(2), +short.toFixed(2), +mColumn.toFixed(2), +mBar.toFixed(2), +mPlate.toFixed(2)]);
+        const row = { x, y, reach, a, short, mPlate, mColumn, mBar, mSpine, colWho: col.who, barWho };
+        series.push([+reach.toFixed(2), +short.toFixed(2), +mColumn.toFixed(2), +mBar.toFixed(2), +mPlate.toFixed(2), col.who, barWho]);
         if (mPlate < 0) break;   // past the rim, every farther reach is too
         if (!near || short > near.short) near = row;
         if (!bearingNear || short > bearingNear.short) bearingNear = row;
@@ -11861,7 +11869,7 @@ FOURTH_BRIDGE = await (async () => {
   };
   addBridgePivot(fourthArbor, P.fourth);
   addBridgePivot(escapeArbor, P.escape);
-  return { obj: g, chain, footA, footB, bossR, nodeR, barHW, T, bot: BOT, stoneTopZ, stoneBotZ, stoneBore, stoneCbR, hammerSweepReach: hammerSweep.maxReach };
+  return { obj: g, chain, footA, footB, bossR, nodeR, barHW, T, bot: BOT, stoneTopZ, stoneBotZ, stoneBore, stoneCbR, hammerSweepReach: hammerSweep.maxReach, hammerReach: hammerSweep.reach };
 })();
 // The bridge votes for the opening the moment it stands: the raw table takes
 // its silhouette and the hammer's whole swing (tail bar and arbor included
@@ -16607,11 +16615,25 @@ const TQ_WINDOW_INTENTS = [
     // the cone's flank: a window onto a stack is sized to the member it is a
     // window ONTO, not to the widest thing anywhere under it, or it stops
     // being a frame and becomes a hole.
+    //
+    // §322 — AND THE CONE OUTGREW THE CHAIN. §62 sized this to the chain's
+    // edge on the largest wrap because that circle then contained the cone's
+    // crown and crest lands; after TODO 192/193 re-proportioned the ribbon the
+    // chain's edge measured 6.19 about the axis and the cone's own silhouette
+    // 7.55, so the window clipped the cone's base all round. The rule is
+    // §62's own — a window onto a stack is sized to the member it is a window
+    // ONTO — and the member is the cone: its silhouette is MEASURED off the
+    // built `fuseeCone` mesh (exact for a revolver), the chain's edge kept as
+    // the other term so a chain that outgrows the cone sizes it again.
     at: () => P.barrel,
     reveal: () => {
       let r = 0;
       for (let i = 0; i <= 64; i++) r = Math.max(r, fuseeGrooveAt((i / 64) * FUSEE_F_ACTIVE).r);
-      return r + CHAIN_END_R_OUT + CLEAR_MARGIN;
+      const chainEdge = r + CHAIN_END_R_OUT;
+      const cone = fusee.getObjectByName('fuseeCone');
+      const coneEdge = cone ? xyRadiusAbout(cone, P.barrel) : 0;
+      if (!cone) console.warn('§322: the fusee window cannot see the cone mesh (fuseeCone) — sized to the chain alone');
+      return Math.max(chainEdge, coneEdge) + CLEAR_MARGIN;
     },
     // §308 landing 5 — THE WEBS TURN WITH THE FUSEE. A window open all the way
     // round takes its three webs by an even split that starts at bearing 0 of
