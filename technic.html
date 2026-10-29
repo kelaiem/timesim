@@ -411,7 +411,7 @@ import { frameAlarm, alarmStates, alarmBuild, TECHNIC_ALARM_STRIKE, strikesPerBa
 import { frameEscapement, escapementBuild, cycleModelSteps, cyclePose, balanceMoments, framedBalance, periodAt, partSolid, escSpec,
          ESC_SWING_DEG, BEAT_PERIOD_S, TECHNIC_ESCAPEMENT, TECHNIC_BALANCE, F2_PLAY_MM, ESC_DENSITY, G_MM_S2, RATE_BAND } from './src/technic-escapement.js';
 import { frameTrain, trainBuild, trainModel, trainPose, goingTime } from './src/technic-train.js';
-import { contactTablesSteps, driveDeclared, TECHNIC_DRIVE, TECHNIC_DRIVE_FRICTION, NMM, DAY_S } from './src/technic-drive.js';
+import { contactTablesSteps, driveDeclared, TECHNIC_DRIVE, DRIVEN_ESCAPEMENT, TECHNIC_DRIVE_FRICTION, NMM, DAY_S } from './src/technic-drive.js';
 import { describeCells, stopsOf, skipNote, indicator, step, resolveId, resolveFocus, initialTour, swipeDir, withCell, ease, TWEEN_S, CAROUSEL_WRAPS } from './src/technic-carousel.js';
 import { copyText } from './src/technic-clipboard.js';
 import { clockModules, clockLayout, clockBuild, TECHNIC_CLOCK } from './src/technic-clock.js';
@@ -1065,7 +1065,7 @@ const S8 = () => escFrame.spec.teeth;
 let trainFrame = null, trainView = null, trainBand = null, trainBuildNow = null, trainT = 0, trainRate = 1, trainCycleP = null;
 const TRAIN_RATES = [[1, 'real time'], [60, 'a minute a second'], [3600, 'an hour a second']];
 const trainCycle = (sense) => (sense === TECHNIC_ESCAPEMENT.sense && escFrame?.spec?.sense === sense
-  ? (escCycleP ??= measureEscCycle(escFrame)) : (trainCycleP ??= measureEscCycle({ spec: { ...TECHNIC_ESCAPEMENT, sense } })));
+  ? (escCycleP ??= measureEscCycle(escFrame)) : (trainCycleP ??= measureEscCycle({ spec: { ...DRIVEN_ESCAPEMENT, sense } })));
 function setTrainRate(r, btns) {
   trainRate = r;
   for (const b of btns ?? document.querySelectorAll('#trates button')) b.dataset.state = Number(b.dataset.rate) === r ? 'on' : 'off';
@@ -1104,6 +1104,7 @@ function writeDrive() {
   el.innerHTML = (d.ok ? `<span style="font-weight:600">the swing is SOLVED</span>: ` : `<span class="bad">the posed swing stays — ${d.why}</span>: `)
     + `the escape arbor's torque <code>${n(nom.band.lo)}–${n(nom.band.hi)} N·mm</code> over the run (nominal meshes ${Fr.mesh.nominal}), from a spring of <code>${(d.Munit * NMM).toFixed(2)} N·mm</code> at full wind at the barrel — the size SOLVED as the most that keeps the balance the timekeeper (its error inside ${(RATE_BAND * 100).toFixed(1)}% of the free pendulum's), on the POSED law's shape. `
     + `With the pallets' friction at its nominal ${Fr.pallet.nominal} the balance settles to ${sw('nominal')}${nom.mean.status === 'sustained' ? ` (${rate(nom.mean.T).toFixed(0)} s/day)` : ''}; at the adverse ${Fr.pallet.adverse}, ${sw('adverse')}; at the favourable ${Fr.pallet.favourable}, ${sw('favourable')}. `
+    + `The pallets stand at <code>${TECHNIC_DRIVE.palletDeg}°</code> on their pins (§287's cell keeps <code>${TECHNIC_ESCAPEMENT.phaseDeg}°</code>, the middle of the settings that escape): of the settings that still lock, the one whose WORSE margin is largest — the adverse swing over the farthest release, the favourable under the first slip. `
     + `The RATING NUT, a bush on a 4L axle rising from the bob, stands <code>${(-TECHNIC_DRIVE.nutV).toFixed(2)} mm</code> above the knife's apex: `
     + `a millimetre up the rod is <code>${d.sens.ratePerMm.toFixed(0)} s/day</code> slower, a stud <code>${d.sens.ratePerStud.toFixed(0)}</code> (DERIVED from its inertia). `
     + `The lock holds the train: with the balance at rest the escapement trips at <code>${n(d.lock.trip)} N·mm</code> at its arbor (frictionless), <code>${d.lock.margin.toFixed(0)}×</code> the most the drive delivers.`;

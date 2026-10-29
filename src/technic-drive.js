@@ -44,8 +44,8 @@
 // the swing's amplitude is set by the pallets' friction and NOT by the drive's size — the solve finds this and says
 // it); the wheel's and the train's inertia; the maintaining work's loss; the cord's stretch. Landing 3 integrates
 // the whole train in time and is where those enter.
-import { escapementModel, escSpec, traceCycle, traceCycleSteps, balanceMoments, framedBalance, frameEscapement, tripTorque, periodAt,
-  ESC_DENSITY, ESC_SWING_DEG, G_MM_S2, BEAT_PERIOD_S, RATE_BAND, TECHNIC_ESCAPEMENT, TECHNIC_BALANCE } from './technic-escapement.js';
+import { escapementModel, escSpec, traceCycle, traceCycleSteps, balanceMoments, framedBalance, frameEscapement, tripTorque, periodAt, beatMeasures,
+  ESC_DENSITY, ESC_SWING_DEG, G_MM_S2, BEAT_PERIOD_S, RATE_BAND, TECHNIC_ESCAPEMENT, TECHNIC_BALANCE, F2_PLAY_MM } from './technic-escapement.js';
 import { TECHNIC_FUSEE_SPRING, springTorque } from './technic-fusee.js';
 
 const TAU = 2 * Math.PI;
@@ -78,8 +78,15 @@ export const etaOf = (corner, F = TECHNIC_DRIVE_FRICTION) => ({ mesh: F.mesh[cor
 //   escapeTorqueHi — `solveScale`'s answer, N·mm at the escape arbor at the run's highest level product: the most the
 //               posed spring may deliver there (it rests on the posed law's shape and on the tabled frictions);
 //   nutV      — `solveNut`'s answer, mm (v down from the knife's apex): where the rating nut stands on its rod for
-//               the beat at the nominal corner and the run's mean torque; the rod is `solveRatingRod`'s.
-export const TECHNIC_DRIVE = Object.freeze({ tableDeg: 8.75, traceSteps: 1750, escapeTorqueHi: 3.198e-4, nutV: -16.96 });
+//               the beat at the nominal corner and the run's mean torque; the rod is `solveRatingRod`'s;
+//   palletDeg — `solveSetting`'s answer, degrees: the pallets' setting on their friction pins for the DRIVEN swing.
+//               §287 set them at the middle of the settings that escape (38.75°), which a builder can miss by most;
+//               driven, that setting's sustained swing at the favourable corner (8.45°) stands 0.27° under the first
+//               slip. Of the settings whose lock stands over F2's play, 38.5° has the largest WORSE margin: the
+//               adverse corner 0.97° over the release, the favourable 1.98° under the slip. §287's cell keeps 38.75°.
+export const TECHNIC_DRIVE = Object.freeze({ tableDeg: 8.75, traceSteps: 1750, escapeTorqueHi: 1.563e-4, nutV: -17.03, palletDeg: 38.5 });
+// the going train's escapement: §287's, its pallets at the driven setting
+export const DRIVEN_ESCAPEMENT = Object.freeze({ ...TECHNIC_ESCAPEMENT, phaseDeg: TECHNIC_DRIVE.palletDeg });
 
 // ── THE DRIVE: the spring law → the escape arbor ─────────────────────────────
 // τ_e = Munit · P / ρ_b · η_mesh^n / ratio, at the run's sample `s` (fuseeRun's samples: P = M × arm, in the
@@ -148,7 +155,7 @@ export const kindAt = (ct, dir, al) => ct.legs[dir].kind[idx(ct, al)];
 export function drive({ I, Mgd, ct, tau, eta = 1, A0, start = null, periods = 200, dt = null, record = false, settle = null, restoring = null }) {
   const T0 = TAU * Math.sqrt(I / Mgd), h = dt ?? T0 / 5000, Rmax = ct ? ct.R : Infinity;
   const grav = restoring ?? ((a) => Mgd * Math.sin(a));                // (a probe's control may stiffen it)
-  let al = start ? start.alpha : deg(A0), w = start ? start.omega : 0, t = 0, W = 0, Wideal = 0, peak = 0, lastDir = w > 0 ? 1 : -1, halfs = [], ups = [], status = 'running';
+  let al = start ? start.alpha : deg(A0), w = start ? start.omega : 0, t = 0, W = 0, Wideal = 0, dImp = 0, dRec = 0, peak = 0, lastDir = w > 0 ? 1 : -1, halfs = [], ups = [], status = 'running';
   const E = (a, v) => 0.5 * I * v * v + Mgd * (1 - Math.cos(a)), E0 = E(al, w);
   const Q = (a, v) => {
     if (!ct || tau === 0) return 0;
@@ -163,7 +170,11 @@ export function drive({ I, Mgd, ct, tau, eta = 1, A0, start = null, periods = 20
     w += (-grav(al) + q) / I * h;
     const al2 = al + w * h;
     W += q * h * (w1 + w) / 2;                                        // the escapement's work as the step counts it
-    if (ct && tau) Wideal += tau * slopeAt(ct, sdir, al) * h * (w1 + w) / 2;   // the same, the pallets frictionless
+    if (ct && tau) {
+      const dth = slopeAt(ct, sdir, al) * h * (w1 + w) / 2;           // the wheel's angle along the contact this step
+      Wideal += tau * dth;                                            // the escapement's work, the pallets frictionless
+      if (dth > 0) dImp += dth; else dRec -= dth;                     // forward with a pallet (impulse), pushed back (recoil)
+    }
     if (al < 0 && al2 >= 0) ups.push(t + h * (-al) / (al2 - al));
     peak = Math.max(peak, Math.abs(al2));
     const dir = w > 0 ? 1 : -1;
@@ -180,7 +191,7 @@ export function drive({ I, Mgd, ct, tau, eta = 1, A0, start = null, periods = 20
   for (let j = 1; j < ups.length; j++) cycles.push({ T: ups[j] - ups[j - 1], at: ups[j] });
   const amps = halfs.slice(1);
   cycles.forEach((c, j) => { const a = amps.slice(2 * j + 1, 2 * j + 3); c.A = a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN; });
-  return { status, cycles, halfs, t, W, Wideal, dE: E(al, w) - E0, alpha: al, omega: w, T0, h, trace };
+  return { status, cycles, halfs, t, W, Wideal, dImp, dRec, dE: E(al, w) - E0, alpha: al, omega: w, T0, h, trace };
 }
 // the swing the drive holds: run until the half-swings stop moving (every half-swing of the last twenty periods
 // within SETTLED_DEG of the one twenty periods before) or the escapement banks or stops
@@ -370,7 +381,7 @@ export function tableSwing(lib, spec = TECHNIC_ESCAPEMENT, { from = ESC_SWING_DE
 // Every axle the frame's lattice can stand in the connector: the rods whose nut, from the connector to the rod's
 // top, spans the beat at the nominal corner. (Shorter rods leave the balance fast whatever the nut does; longer
 // ones slow, because the rod itself stands above the knife.)
-export function solveRatingRod(lib, ct, tau, eta, { spec = TECHNIC_ESCAPEMENT, bal = TECHNIC_BALANCE, studs = [2, 3, 4, 5, 6, 7, 8] } = {}) {
+export function solveRatingRod(lib, ct, tau, eta, { spec = DRIVEN_ESCAPEMENT, bal = TECHNIC_BALANCE, studs = [2, 3, 4, 5, 6, 7, 8] } = {}) {
   return studs.map((k) => {
     const fr = frameEscapement(spec, bal, { rating: { nutV: null, rodStuds: k } });
     if (!fr.framed) return { rodStuds: k, ok: false, why: fr.reason };
@@ -389,4 +400,89 @@ export function periodAgainstAmplitude(dyn, ct, tau, eta, { starts = [1.5, 2, 2.
     for (const c of r.cycles.slice(0, cycles)) if (Number.isFinite(c.A)) rows.push({ A0, A: c.A, T: c.T, Tfree: periodAt(r.T0, c.A) });
   }
   return rows;
+}
+
+// ── THE ENERGY BUDGET, PER BEAT ──────────────────────────────────────────────
+// At the settled swing, over AVERAGE_PERIODS periods, per beat (half a period). The escape wheel advances one pitch a
+// period, so the spring delivers τ·pitch at the escape arbor and τ·pitch / η^n at the great wheel; where it goes:
+//   · the meshes take τ·pitch (1/η^n − 1);
+//   · along a pallet the wheel moves Δθ_imp forward (impulse: η τ Δθ_imp reaches the balance, (1 − η) τ Δθ_imp is the
+//     pallets' friction) and Δθ_rec back (recoil: the balance spends τ Δθ_rec / η, of which τ Δθ_rec goes back into
+//     the spring and the rest is the pallets' friction);
+//   · the rest of the pitch the wheel DROPS, τ Δθ_drop, lost in the catch;
+//   · the knife, the air: NOT MODELLED (0 here — the budget says so rather than hiding it).
+// The balance's net, η τ Δθ_imp − τ Δθ_rec / η, is zero at the settled swing (nothing else takes from it): the swing is
+// where the recoil's cost meets the impulse — a balance of two things that BOTH scale with τ, which is why neither
+// the drive's size, nor the train's efficiency, nor the balance's inertia moves the swing (`probe-technic-drive`
+// shows each). Joules (kg·mm²/s² × 1e-6).
+export const J = 1e-6;
+export function beatBudget(dyn, ct, tau, eta, etaMesh, meshes, { A0 = 3 } = {}) {
+  const sus = sustained({ ...dyn, ct, tau, eta, A0 });
+  if (sus.status !== 'sustained') return { ok: false, status: sus.status, A: sus.A };
+  const r = sus.run, periods = r.cycles.length, beats = 2 * periods, k = 1 / beats;
+  const imp = r.dImp * k, rec = r.dRec * k, pitchBeat = ct.pitch / 2, drop = pitchBeat - imp + rec;
+  const atEscape = tau * pitchBeat, spring = atEscape / etaMesh ** meshes;
+  const rows = {
+    spring, meshes: spring - atEscape,
+    impulseToBalance: eta * tau * imp, impulseFriction: (1 - eta) * tau * imp,
+    recoilFromBalance: tau * rec / eta, recoilFriction: tau * rec * (1 / eta - 1), recoilBack: tau * rec,
+    drop: tau * drop, knife: 0, air: 0,
+  };
+  rows.balanceNet = rows.impulseToBalance - rows.recoilFromBalance;
+  // the books: the spring's beat = meshes + the pallets' two frictions + the drop + the balance's net
+  rows.closure = spring - (rows.meshes + rows.impulseFriction + rows.recoilFriction + rows.drop + rows.balanceNet);
+  return { ok: true, A: sus.A, T: sus.T, dImp: imp, dRec: rec, dDrop: drop, rows, sus };
+}
+
+// ── THE SWING'S TWO MARGINS ──────────────────────────────────────────────────
+// Below: the swing must pass every release (the farthest drop of the posed swing's beat) or no tooth escapes —
+// MIN_SWING is that release angle. Above: the first SLIP, the drop a wider swing makes that the posed swing does not
+// (a trace at `probe` degrees, the widest that still escapes on the table grid), and past it the jam. The adverse
+// corner at the run's least torque must clear the first; the favourable at the run's most torque, the second.
+export function slipOf(lib, spec, { probe = null, perDeg = 100 } = {}) {
+  const model = escapementModel(lib, escSpec(lib, spec)), ref = traceCycle(model, ESC_SWING_DEG, { n: Math.round(ESC_SWING_DEG * perDeg) });
+  if (!ref.ok) return null;
+  const refDrops = ref.steps.filter((x) => x.kind === 'drop');
+  // the widest escaping swing on the table grid, from the posed swing up
+  let A = ESC_SWING_DEG, tr = ref;
+  for (let a = ESC_SWING_DEG + TABLE_STEP_DEG; a <= (probe ?? 20) + 1e-9; a += TABLE_STEP_DEG) { const t2 = traceCycle(model, a, { n: Math.round(a * perDeg) }); if (!t2.ok) break; A = a; tr = t2; }
+  const tol = 4 * deg(1 / perDeg);
+  const extra = tr.steps.filter((x) => x.kind === 'drop' && !refDrops.some((d) => d.dir === x.dir && Math.abs(d.alpha - x.alpha) <= tol));
+  const slip = extra.length ? Math.min(...extra.map((x) => Math.abs(x.alpha))) : deg(A);
+  return { widest: A, slip: toDeg(slip), release: Math.max(...refDrops.map((x) => toDeg(Math.abs(x.alpha)))), extra: extra.map((x) => toDeg(x.alpha)) };
+}
+export function swingMargins(dyn, ct, sl, { tauLo, tauHi, F = TECHNIC_DRIVE_FRICTION }) {
+  const adv = sustained({ ...dyn, ct, tau: tauLo, eta: F.pallet.adverse }), fav = sustained({ ...dyn, ct, tau: tauHi, eta: F.pallet.favourable });
+  const below = adv.status === 'sustained' ? adv.Amin - sl.release : -Infinity, above = fav.status === 'sustained' ? sl.slip - fav.Amax : -Infinity;
+  return { adverse: adv, favourable: fav, below, above, margin: Math.min(below, above) };
+}
+// ── THE PALLETS' SETTING, SOLVED FOR THE DRIVEN SWING ────────────────────────
+// §287 set each pallet at the MIDDLE of the settings that escape (the one a builder can miss by most). Driven, the
+// setting also decides how fast the recoil grows with the swing, and so how far the pallets' friction band moves it.
+// Every setting of the escaping run (`refineSetting`'s, on its half-degree grid … here a quarter) whose lock still
+// stands over F2's play is traced; the answer is the one whose WORSE margin (the adverse corner over the release,
+// the favourable under the slip) is largest.
+// one setting's two margins: its lock over F2's play, its slip and release, and each extreme corner's swing (the
+// adverse at the run's least torque, the favourable at its most) against them
+export function settingMargins(lib, frame, phaseDeg, { run, meshes, F = TECHNIC_DRIVE_FRICTION, tau = null } = {}) {
+  const spec = { ...frame.spec, phaseDeg: r6(phaseDeg) };
+  const model = escapementModel(lib, escSpec(lib, spec)), bm = beatMeasures(model, ESC_SWING_DEG);
+  if (!bm.ok || !(bm.lockMM > F2_PLAY_MM)) return { phaseDeg: r6(phaseDeg), ok: false, lockMM: bm.ok ? bm.lockMM : null, why: bm.ok ? `lock ${bm.lockMM.toFixed(3)} mm, under the play` : bm.why };
+  const sl = slipOf(lib, spec);
+  if (!sl) return { phaseDeg: r6(phaseDeg), ok: false, why: 'the posed swing does not escape' };
+  const tableA = Math.floor((sl.slip - 1e-9) / TABLE_STEP_DEG) * TABLE_STEP_DEG;
+  const ct = contactTables(lib, spec, { A: tableA, n: Math.round(tableA * 200) });
+  const dyn = balanceDynamics(lib, { ...frame, spec });
+  const tHi = tau ?? TECHNIC_DRIVE.escapeTorqueHi / NMM, tLo = tHi * run.lo / run.hi * (F.mesh.adverse / F.mesh.nominal) ** meshes;
+  const tFav = tHi * (F.mesh.favourable / F.mesh.nominal) ** meshes;
+  const m = swingMargins(dyn, ct, sl, { tauLo: tLo, tauHi: tFav, F });
+  return { phaseDeg: r6(phaseDeg), ok: true, lockMM: bm.lockMM, slip: sl.slip, release: sl.release, tableA, adverse: m.adverse.A, favourable: m.favourable.A,
+    advStatus: m.adverse.status, favStatus: m.favourable.status, below: m.below, above: m.above, margin: m.margin };
+}
+export function solveSetting(lib, frame, { run, meshes, F = TECHNIC_DRIVE_FRICTION, lo = 37, hi = 40.5, step = 0.25, tau = null } = {}) {
+  const rows = [];
+  for (let pd = lo; pd <= hi + 1e-9; pd += step) rows.push(settingMargins(lib, frame, pd, { run, meshes, F, tau }));
+  const ok = rows.filter((x) => x.ok && Number.isFinite(x.margin));
+  ok.sort((a, b) => b.margin - a.margin);
+  return { best: ok[0] ?? null, rows };
 }

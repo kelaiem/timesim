@@ -25,6 +25,14 @@
 //     TECHNIC_DRIVE's (to the solve's own round-to-round spread, doubled, at least 1% and 0.05 mm); the nominal corner
 //     holds a swing; every corner's swing, period and status reported; the lock against a hand reported, and held
 //     over 1 (the escapement must hold the train it is driven by).
+//   · BUDGET — a beat's energy at each corner's mean torque (`beatBudget`): the spring's work = the meshes' loss +
+//     the drop + the pallets' two frictions + the balance's net; the balance's net by the rows is the equation of
+//     motion's own work at float noise, and the drop the books infer is the anchor trace's own drops to 1%. The
+//     LEVERS: twice the torque moves the swing by under 2% (the swing is where recoil / impulse = η², the anchor's
+//     geometry and the pallets' friction, not the spring, the meshes, the drive point or the balance's inertia).
+//   · MARGINS — at TECHNIC_DRIVE.palletDeg (the train's pallets): the adverse corner's least swing over the run
+//     clears the release, and the favourable corner's greatest stands under the first slip, each by more than a
+//     table grid step; and the setting's worse margin beats its quarter-degree neighbours' (`settingMargins`).
 //   · RATING NUT — the rod is the only one whose nut's travel spans the beat (`solveRatingRod`); the nut's DERIVED
 //     sensitivity (`nutSensitivity`, from its volume and the balance's I and first moment) agrees with the free
 //     period's finite difference at its place to 1%, and moves the DRIVEN rate by within 5% of what it says; a nut
@@ -35,14 +43,17 @@
 // CONTROLS, each seen to fail: a typed torque that ignores the table (the doubling); a restoring torque 1% stiffer
 // (the pendulum's period); the escapement's work counted without the pallets' friction (the energy books); a
 // stiffening restoring torque (the period would FALL with the swing); a nut whose mass is ignored (the
-// sensitivity); the nut slid up its rod instead of along the bob's axle (the zero).
+// sensitivity); the nut slid up its rod instead of along the bob's axle (the zero); books with the recoil forgotten
+// (the drop); the pallets' adverse corner (the swing moves, where the torque's doubling does not); frictionless
+// pallets (the favourable margin); pallets a tenth under the adverse corner (the adverse margin); §287's middle
+// setting (a smaller worse margin).
 //
 //   node tools/probe-technic-drive.mjs [technic_classic|technic_2026]
 import { loadPack } from './technic-pack.mjs';
 import { placements, bounds, LDU_MM } from '../src/ldraw.js';
 import { CATALOGUES } from '../src/layout.js';
 import { solveFusee, fuseeRun, TECHNIC_FUSEE_SPRING } from '../src/technic-fusee.js';
-import { frameEscapement, framedBalance, balanceMoments, periodAt, TECHNIC_ESCAPEMENT, TECHNIC_BALANCE, BEAT_PERIOD_S, RATING_DIM_MM, RATING_PARTS } from '../src/technic-escapement.js';
+import { frameEscapement, framedBalance, balanceMoments, periodAt, TECHNIC_ESCAPEMENT, TECHNIC_BALANCE, BEAT_PERIOD_S, RATING_DIM_MM, RATING_PARTS, F2_PLAY_MM } from '../src/technic-escapement.js';
 import { frameTrain, trainChain, trainBuild, trainModel, trainPose } from '../src/technic-train.js';
 import * as D from '../src/technic-drive.js';
 
@@ -159,6 +170,84 @@ for (const gen of GENS) {
   if (nom.lo.T && nom.hi.T) console.log(`  RATE over the run (nominal): ${((1 - nom.lo.T / BEAT_PERIOD_S) * D.DAY_S).toFixed(0)} s/day at the least torque, ${((1 - nom.hi.T / BEAT_PERIOD_S) * D.DAY_S).toFixed(0)} at the most (the cone's ${(run.spread * 100).toFixed(1)}% residual spread, on the POSED law)`);
   if (!(r.lock.margin > 1)) fail(`${gen}: the drive (${N(r.lock.tauHi)} N·mm) is over the escapement's trip torque (${N(r.lock.trip)} N·mm): it would not hold the train`);
   console.log(`  LOCK the trip torque ${N(r.lock.trip)} N·mm at the escape arbor (frictionless) against the most the drive delivers, ${N(r.lock.tauHi)}: ${r.lock.margin.toFixed(0)}×; a hand on the great wheel trips it at ${(r.lock.trip * D.NMM * ratio / F.mesh.nominal ** meshes).toFixed(1)} N·mm there (nominal meshes)`);
+}
+
+// ── BUDGET: the energy a beat, from the spring to the balance, at each corner's mean torque
+// The rows (beatBudget): the spring's work a beat = the meshes' loss + the pallets' two frictions + the DROP (the wheel
+// turning free, its work spent as the tooth lands) + the balance's net (impulse in, recoil out). Identities held:
+// the balance's net counted by the rows is the equation of motion's own work W (the same sum, two ways) at float
+// noise; the drop the rows infer (half a pitch less the impulse plus the recoil) is the table's own drops, read off
+// the anchor's trace, to 1%. The swing turns on the pallets alone: doubling the torque (the meshes', the drive
+// point's, the train's lever) moves it by under 2%, while the pallets' corner moves it by far more.
+{
+  const r = solved.r, ef = solved.f.escapement.ef, dyn = r.dyn;
+  const tableDrop = ct.drops.reduce((q, d) => q + Math.abs(d.dth), 0) / 2;          // a beat's drop, the trace's
+  const uJ = (x) => (x * D.J * 1e6).toFixed(4);
+  const rows = {};
+  for (const c of F.corners) {
+    const v = r.corners[c], b = D.beatBudget(dyn, ct, v.band.mean, v.eta.pallet, v.eta.mesh, r.meshes);
+    if (!b.ok) { fail(`budget ${c}: ${b.status}`); continue; }
+    rows[c] = b;
+    const R = b.rows, run2 = b.sus.run;
+    const Wrun = v.eta.pallet * v.band.mean * run2.dImp - v.band.mean * run2.dRec / v.eta.pallet;
+    if (!near(Wrun, run2.W, 1e-9 * Math.abs(v.band.mean * run2.dImp))) fail(`budget ${c}: the balance's net work by the rows ${Wrun} is not the equation of motion's ${run2.W}`);
+    if (Math.abs(R.closure) > 1e-12 * R.spring) fail(`budget ${c}: the rows do not sum to the spring's beat (${R.closure})`);
+    if (!near(b.dDrop, tableDrop, 0.01 * tableDrop)) fail(`budget ${c}: the books' drop ${(b.dDrop * 180 / Math.PI).toFixed(3)}° a beat is not the trace's ${(tableDrop * 180 / Math.PI).toFixed(3)}°`);
+    const loss = [['meshes', R.meshes], ['drop', R.drop], ['impulse friction', R.impulseFriction], ['recoil friction', R.recoilFriction]].sort((p, q) => q[1] - p[1]);
+    console.log(`BUDGET ${c.padEnd(11)} ${b.A.toFixed(2)}°: a beat, µJ — spring ${uJ(R.spring)} = meshes ${uJ(R.meshes)} + drop ${uJ(R.drop)} + pallet friction ${uJ(R.impulseFriction)} (impulse) + ${uJ(R.recoilFriction)} (recoil) + balance net ${uJ(R.balanceNet)}; the balance takes ${uJ(R.impulseToBalance)} and gives back ${uJ(R.recoilFromBalance)}; largest loss ${loss[0][0]} (${(100 * loss[0][1] / R.spring).toFixed(0)}%); knife and air NOT MODELLED (0)`);
+  }
+  // control: books that count the impulse and forget the recoil infer a drop the trace does not make
+  const nb = rows.nominal;
+  if (nb) control('the books with the recoil forgotten (the drop would not be the trace\'s)', !near(ct.pitch / 2 - nb.dImp, tableDrop, 0.01 * tableDrop));
+  // which levers move the swing: the torque (everything upstream of the escape arbor) does not, the pallets do
+  const nom = r.corners.nominal, base = nom.mean.A;
+  const twice = D.sustained({ ...dyn, ct, tau: 2 * nom.band.mean, eta: nom.eta.pallet, A0: base }).A;
+  if (!(twice && Math.abs(twice - base) < 0.02 * base)) fail(`twice the torque moves the nominal swing from ${base.toFixed(3)}° to ${twice?.toFixed(3)}°: the swing is not the pallets'`);
+  const adv = r.corners.adverse.mean.A;
+  control('the pallets\' adverse corner (it must move the swing by more than the torque\'s doubling)', Math.abs(adv - base) > 10 * Math.abs((twice ?? base) - base));
+  console.log(`LEVERS twice the torque: the nominal swing ${base.toFixed(3)}° → ${twice?.toFixed(3)}°; the pallets 0.70 → 0.60: → ${adv.toFixed(3)}° — the swing is set where the recoil's cost meets the impulse (recoil / impulse = η²), by the anchor's geometry and the pallets' friction, not by the spring, the meshes, the drive point or the balance's inertia at its period`);
+}
+
+// ── MARGINS: the adverse corner over the release, the favourable under the slip, at the declared setting
+// Below: the least swing (adverse pallets and meshes, the run's least torque) must pass the farthest release of the
+// posed swing's beat, or no tooth escapes. Above: the greatest swing (favourable, the run's most) must stay under the
+// first SLIP, the extra drop a wider swing makes. Each margin held over a table grid step (TABLE_STEP_DEG: within one
+// step of its edge `sustained` already calls a swing BANKING) at every torque of the run, and the setting held the
+// one whose worse margin is largest among its quarter-degree neighbours whose lock stands over F2's play
+// (`settingMargins`; `solveSetting` scans the whole escaping run, 37°–40.5°).
+{
+  const r = solved.r, ef = solved.f.escapement.ef;
+  if (ef.spec.phaseDeg !== X.palletDeg) fail(`the train's pallets are set at ${ef.spec.phaseDeg}°, TECHNIC_DRIVE says ${X.palletDeg}°`);
+  const sl = D.slipOf(lib, ef.spec);
+  if (!sl) fail('the declared setting does not escape at the posed swing');
+  else {
+    const adv = r.corners.adverse, fav = r.corners.favourable;
+    const advMin = Math.min(...[adv.lo, adv.mean, adv.hi].map((s) => (s.status === 'sustained' ? s.Amin : -Infinity)));
+    const favMax = Math.max(...[fav.lo, fav.mean, fav.hi].map((s) => (s.status === 'sustained' ? s.Amax : Infinity)));
+    const below = advMin - sl.release, above = sl.slip - favMax;
+    if (!(below > D.TABLE_STEP_DEG)) fail(`the adverse corner's least swing ${advMin.toFixed(3)}° clears the release ${sl.release.toFixed(2)}° by ${below.toFixed(3)}°, not a grid step`);
+    if (!(above > D.TABLE_STEP_DEG)) fail(`the favourable corner's greatest swing ${favMax.toFixed(3)}° stands under the slip ${sl.slip.toFixed(2)}° by ${above.toFixed(3)}°, not a grid step`);
+    // controls: frictionless pallets have no swing short of the slip (recoil / impulse = η² = 1: the drive only
+    // grows it), and pallets a tenth worse than the adverse corner stop the balance or come under the release
+    const dyn = r.dyn, tHi = fav.band.hi;
+    const free = D.sustained({ ...dyn, ct, tau: tHi, eta: 1, A0: favMax });
+    control('frictionless pallets (the favourable margin must fail)', !(free.status === 'sustained' && sl.slip - free.Amax > D.TABLE_STEP_DEG));
+    const worse = D.sustained({ ...dyn, ct, tau: adv.band.lo, eta: F.pallet.adverse - 0.1, A0: advMin });
+    control(`pallets at ${(F.pallet.adverse - 0.1).toFixed(2)} (the adverse margin must fail)`, !(worse.status === 'sustained' && worse.Amin - sl.release > D.TABLE_STEP_DEG));
+    // the neighbours on the quarter grid, each read the same way as the setting itself (its own slip-bounded table)
+    const at = (pd) => D.settingMargins(lib, ef, pd, { run, meshes: r.meshes, tau: r.tauHi });
+    const mine = at(X.palletDeg);
+    console.log(`MARGINS at ${X.palletDeg}° (lock ${mine.lockMM?.toFixed(3)} mm over F2's ${F2_PLAY_MM} mm play): release ${sl.release.toFixed(2)}°, slip ${sl.slip.toFixed(2)}°; adverse least ${advMin.toFixed(3)}° — ${below.toFixed(2)}° over the release (${(advMin / sl.release).toFixed(2)}× it); favourable greatest ${favMax.toFixed(3)}° — ${above.toFixed(2)}° under the slip`);
+    if (!mine.ok || !Number.isFinite(mine.margin)) fail(`the declared setting reads no margins: ${mine.why ?? mine.favStatus}`);
+    const seen = new Map();
+    for (const pd of [X.palletDeg - 0.25, X.palletDeg + 0.25]) {
+      const n = at(pd); seen.set(pd, n);
+      if (n.ok && Number.isFinite(n.margin) && n.margin >= mine.margin) fail(`the setting ${pd}° has the larger worse margin (${n.margin.toFixed(3)}° against ${mine.margin.toFixed(3)}°)`);
+      console.log(`  neighbour ${pd}°: ${n.ok ? `lock ${n.lockMM.toFixed(3)} mm, adverse ${n.below.toFixed(2)}° over the release, favourable ${Number.isFinite(n.above) ? `${n.above.toFixed(2)}° under the slip` : n.favStatus}` : n.why}`);
+    }
+    const mid = seen.get(TECHNIC_ESCAPEMENT.phaseDeg) ?? at(TECHNIC_ESCAPEMENT.phaseDeg);
+    control(`§287's middle setting, ${TECHNIC_ESCAPEMENT.phaseDeg}° (its worse margin must be the smaller)`, mid.ok && mid.margin < mine.margin);
+  }
 }
 
 // ── RATING NUT's parts, measured: the connector's two axle holes (axl2hol* primitives) run from RATING_DIM_MM.holeIn
