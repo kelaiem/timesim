@@ -270,8 +270,11 @@ export function balanceParts(bal, esc) {
     const dir = k > 0 ? 0 : Math.PI;
     add('arm', slab, armAt(esc.palletArm, Aax, dir));
     const p = holeAt(Aax, dir, esc.s);
-    add('pin', 'pin', { part: ESCAPEMENT_PARTS.palletPin, m: [p[0], p[1], 0, ...X2Z] });
-    add('pallet', 'W', { part: ESCAPEMENT_PARTS.pallet, m: [p[0], p[1], 0, ...rz(palletAngle(esc, k))], k });
+    // the 8T is keyed on the pin's axle half, so the pin turns with it: the SETTING is the pin turned in the
+    // liftarm's round hole, friction holding it (§316: the pin had stood unturned, its cross across the 8T's)
+    const pa = palletAngle(esc, k);
+    add('pin', 'pin', { part: ESCAPEMENT_PARTS.palletPin, m: [p[0], p[1], 0, ...mul3(rz(pa), X2Z)] });
+    add('pallet', 'W', { part: ESCAPEMENT_PARTS.pallet, m: [p[0], p[1], 0, ...rz(pa)], k });
   }
   return out;
 }

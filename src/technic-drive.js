@@ -81,10 +81,11 @@ export const etaOf = (corner, F = TECHNIC_DRIVE_FRICTION) => ({ mesh: F.mesh[cor
 //               the beat at the nominal corner and the run's mean torque; the rod is `solveRatingRod`'s;
 //   palletDeg — `solveSetting`'s answer, degrees: the pallets' setting on their friction pins for the DRIVEN swing.
 //               §287 set them at the middle of the settings that escape (38.75°), which a builder can miss by most;
-//               driven, that setting's sustained swing at the favourable corner (8.45°) stands 0.27° under the first
-//               slip. Of the settings whose lock stands over F2's play, 38.5° has the largest WORSE margin: the
-//               adverse corner 0.97° over the release, the favourable 1.98° under the slip. §287's cell keeps 38.75°.
-export const TECHNIC_DRIVE = Object.freeze({ tableDeg: 8.75, traceSteps: 1750, escapeTorqueHi: 1.563e-4, nutV: -17.03, palletDeg: 38.5 });
+//               driven, that setting's favourable swing stands 0.37° under the first slip, and pallets a little
+//               freer than the band's 0.80 slip. Of the settings whose lock stands over F2's play, 37.25° keeps both
+//               swing margins over the widest range of pallet friction: 0.35 to 0.85 (the band is 0.60 to 0.80).
+//               §287's cell keeps 38.75°.
+export const TECHNIC_DRIVE = Object.freeze({ tableDeg: 8.75, traceSteps: 1750, escapeTorqueHi: 9.529e-5, nutV: -17.17, palletDeg: 37.25 });
 // the going train's escapement: §287's, its pallets at the driven setting
 export const DRIVEN_ESCAPEMENT = Object.freeze({ ...TECHNIC_ESCAPEMENT, phaseDeg: TECHNIC_DRIVE.palletDeg });
 
@@ -458,15 +459,28 @@ export function swingMargins(dyn, ct, sl, { tauLo, tauHi, F = TECHNIC_DRIVE_FRIC
   const below = adv.status === 'sustained' ? adv.Amin - sl.release : -Infinity, above = fav.status === 'sustained' ? sl.slip - fav.Amax : -Infinity;
   return { adverse: adv, favourable: fav, below, above, margin: Math.min(below, above) };
 }
+// THE SAME TWO MARGINS IN THE QUANTITY NOBODY HAS MEASURED: the pallets' friction. Bisected (to `tol`), the
+// lowest pallet efficiency at which the adverse swing (the run's least torque, adverse meshes) still clears the
+// release by a table grid step, and the highest at which the favourable swing (its most, favourable meshes) still
+// stands a grid step under the slip. The margins are how far the tabled band may be wrong, each way, before the
+// escapement stops or slips: a measured pallet friction inside [low, high] keeps both.
+export function frictionWindow(dyn, ct, sl, { tauLo, tauHi, F = TECHNIC_DRIVE_FRICTION, tol = 0.005 }) {
+  const lowOk = (eta) => { const s = sustained({ ...dyn, ct, tau: tauLo, eta }); return s.status === 'sustained' && s.Amin - sl.release > TABLE_STEP_DEG; };
+  const highOk = (eta) => { const s = sustained({ ...dyn, ct, tau: tauHi, eta, A0: 4 }); return s.status === 'sustained' && sl.slip - s.Amax > TABLE_STEP_DEG; };
+  let low = null, high = null;
+  if (lowOk(F.pallet.adverse)) { let a = 0.05, b = F.pallet.adverse; if (lowOk(a)) low = a; else { while (b - a > tol) { const m = (a + b) / 2; if (lowOk(m)) b = m; else a = m; } low = b; } }
+  if (highOk(F.pallet.favourable)) { let a = F.pallet.favourable, b = 1; if (highOk(b)) high = b; else { while (b - a > tol) { const m = (a + b) / 2; if (highOk(m)) a = m; else b = m; } high = a; } }
+  const below = low === null ? -Infinity : F.pallet.adverse - low, above = high === null ? -Infinity : high - F.pallet.favourable;
+  return { low, high, below, above, margin: Math.min(below, above) };
+}
 // ── THE PALLETS' SETTING, SOLVED FOR THE DRIVEN SWING ────────────────────────
 // §287 set each pallet at the MIDDLE of the settings that escape (the one a builder can miss by most). Driven, the
-// setting also decides how fast the recoil grows with the swing, and so how far the pallets' friction band moves it.
-// Every setting of the escaping run (`refineSetting`'s, on its half-degree grid … here a quarter) whose lock still
-// stands over F2's play is traced; the answer is the one whose WORSE margin (the adverse corner over the release,
-// the favourable under the slip) is largest.
-// one setting's two margins: its lock over F2's play, its slip and release, and each extreme corner's swing (the
-// adverse at the run's least torque, the favourable at its most) against them
-export function settingMargins(lib, frame, phaseDeg, { run, meshes, F = TECHNIC_DRIVE_FRICTION, tau = null } = {}) {
+// setting also decides how fast the recoil grows with the swing, and so how far the pallets' friction moves it.
+// The pallets' friction is the one band here that is a guess, so the setting is the one that survives the WIDEST
+// range of it: of the settings whose lock stands over F2's play and whose friction window holds the tabled band
+// (both swing margins kept at both of its ends), the one whose window is widest (`frictionWindow`). Every setting
+// of the escaping run on a quarter-degree grid is read (`settingMargins`).
+export function settingMargins(lib, frame, phaseDeg, { run, meshes, F = TECHNIC_DRIVE_FRICTION, tau = null, friction = false } = {}) {
   const spec = { ...frame.spec, phaseDeg: r6(phaseDeg) };
   const model = escapementModel(lib, escSpec(lib, spec)), bm = beatMeasures(model, ESC_SWING_DEG);
   if (!bm.ok || !(bm.lockMM > F2_PLAY_MM)) return { phaseDeg: r6(phaseDeg), ok: false, lockMM: bm.ok ? bm.lockMM : null, why: bm.ok ? `lock ${bm.lockMM.toFixed(3)} mm, under the play` : bm.why };
@@ -478,13 +492,14 @@ export function settingMargins(lib, frame, phaseDeg, { run, meshes, F = TECHNIC_
   const tHi = tau ?? TECHNIC_DRIVE.escapeTorqueHi / NMM, tLo = tHi * run.lo / run.hi * (F.mesh.adverse / F.mesh.nominal) ** meshes;
   const tFav = tHi * (F.mesh.favourable / F.mesh.nominal) ** meshes;
   const m = swingMargins(dyn, ct, sl, { tauLo: tLo, tauHi: tFav, F });
-  return { phaseDeg: r6(phaseDeg), ok: true, lockMM: bm.lockMM, slip: sl.slip, release: sl.release, tableA, adverse: m.adverse.A, favourable: m.favourable.A,
+  const fw = friction ? frictionWindow(dyn, ct, sl, { tauLo: tLo, tauHi: tFav, F }) : null;
+  return { phaseDeg: r6(phaseDeg), ok: true, friction: fw, lockMM: bm.lockMM, slip: sl.slip, release: sl.release, tableA, adverse: m.adverse.A, favourable: m.favourable.A,
     advStatus: m.adverse.status, favStatus: m.favourable.status, below: m.below, above: m.above, margin: m.margin };
 }
 export function solveSetting(lib, frame, { run, meshes, F = TECHNIC_DRIVE_FRICTION, lo = 37, hi = 40.5, step = 0.25, tau = null } = {}) {
   const rows = [];
-  for (let pd = lo; pd <= hi + 1e-9; pd += step) rows.push(settingMargins(lib, frame, pd, { run, meshes, F, tau }));
-  const ok = rows.filter((x) => x.ok && Number.isFinite(x.margin));
-  ok.sort((a, b) => b.margin - a.margin);
+  for (let pd = lo; pd <= hi + 1e-9; pd += step) rows.push(settingMargins(lib, frame, pd, { run, meshes, F, tau, friction: true }));
+  const ok = rows.filter((x) => x.ok && x.friction && x.friction.margin > 0);
+  ok.sort((a, b) => (b.friction.high - b.friction.low) - (a.friction.high - a.friction.low));
   return { best: ok[0] ?? null, rows };
 }

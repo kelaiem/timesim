@@ -50,7 +50,7 @@ import { frameEscapement, escapementBuild, cycleModel, beatMeasures, escapementM
   BEAT_PERIOD_S, ESC_SWING_DEG, F2_PLAY_MM } from '../src/technic-escapement.js';
 import { deriveSteps } from '../src/technic-steps.js';
 import * as SW from './technic-steps-sweep.mjs';
-import { TECHNIC_DRIVE } from '../src/technic-drive.js';
+import { TECHNIC_DRIVE, DRIVEN_ESCAPEMENT } from '../src/technic-drive.js';
 import { trainChain, frameTrain, trainBuild, trainFindings, trainContacts, solveTrain, trainModel, trainPose, goingTime, TECHNIC_TRAIN, TRAIN_CLEAR } from '../src/technic-train.js';
 
 const lib = loadPack();
@@ -103,7 +103,7 @@ function meshResidues(b, u = 0) {
 
 console.log('THE LEGO GOING TRAIN — the fusee\'s great wheel to the knife-edge balance, one build\n');
 // (§316: the train's balance carries the rating nut, so it is held to §287's balance with the same rating rod and nut)
-const standalone = balanceMoments(lib, framedBalance(frameEscapement(undefined, undefined, { rating: { nutV: TECHNIC_DRIVE.nutV } }), lib));
+const standalone = balanceMoments(lib, framedBalance(frameEscapement(DRIVEN_ESCAPEMENT, undefined, { rating: { nutV: TECHNIC_DRIVE.nutV } }), lib));   // §316: its pallets at the driven setting
 for (const gen of GENS) {
   console.log(`${gen}:`);
   // ── CHAIN
@@ -243,7 +243,7 @@ for (const gen of GENS) {
   if (!near(mo.T, standalone.T, 1e-9)) fail(`the train's balance swings ${mo.T} s, §287's with the same rating nut ${standalone.T}`);
   const model = escapementModel(lib, { ...escSpec(lib), sense: frame.sense }), bm = beatMeasures(model, ESC_SWING_DEG);
   if (!bm.ok || !(bm.lockMM > F2_PLAY_MM)) fail(`the escapement driven in sense ${frame.sense}: ${bm.ok ? `lock ${bm.lockMM} mm` : bm.why}`);
-  console.log(`  ESCAPEMENT §287's, the knife ${frame.escapement.ef.zK} mm up on ${frame.escapement.ef.plates} plates (jumpered: the knife line on a stud), period ${mo.T.toFixed(6)} s (§287's with the rating nut at ${TECHNIC_DRIVE.nutV} mm, §316: ${standalone.T.toFixed(6)}); driven in sense ${frame.sense} it advances ${bm.advance.toFixed(5)} teeth a period, its lock ${bm.lockMM.toFixed(3)} mm against ${F2_PLAY_MM} mm of play`);
+  console.log(`  ESCAPEMENT §287's, the knife ${frame.escapement.ef.zK} mm up on ${frame.escapement.ef.plates} plates (jumpered: the knife line on a stud), period ${mo.T.toFixed(6)} s (§287's with the rating nut at ${TECHNIC_DRIVE.nutV} mm and the pallets at ${TECHNIC_DRIVE.palletDeg}°, §316: ${standalone.T.toFixed(6)}); driven in sense ${frame.sense} it advances ${bm.advance.toFixed(5)} teeth a period, its lock ${bm.lockMM.toFixed(3)} mm against ${F2_PLAY_MM} mm of play`);
 
   // ── RATE
   const ratio = b.ratio, gt1 = goingTime(run, ratio, TECHNIC_ESCAPE_TEETH, BEAT_PERIOD_S), gtS = goingTime(run, ratio, TECHNIC_ESCAPE_TEETH, mo.T);

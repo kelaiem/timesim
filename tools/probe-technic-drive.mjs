@@ -32,7 +32,8 @@
 //     geometry and the pallets' friction, not the spring, the meshes, the drive point or the balance's inertia).
 //   · MARGINS — at TECHNIC_DRIVE.palletDeg (the train's pallets): the adverse corner's least swing over the run
 //     clears the release, and the favourable corner's greatest stands under the first slip, each by more than a
-//     table grid step; and the setting's worse margin beats its quarter-degree neighbours' (`settingMargins`).
+//     table grid step; the FRICTION WINDOW (the pallet efficiencies that keep both) holds the tabled band; and
+//     the setting's window is wider than its quarter-degree neighbours' (`settingMargins`, `frictionWindow`).
 //   · RATING NUT — the rod is the only one whose nut's travel spans the beat (`solveRatingRod`); the nut's DERIVED
 //     sensitivity (`nutSensitivity`, from its volume and the balance's I and first moment) agrees with the free
 //     period's finite difference at its place to 1%, and moves the DRIVEN rate by within 5% of what it says; a nut
@@ -45,8 +46,8 @@
 // stiffening restoring torque (the period would FALL with the swing); a nut whose mass is ignored (the
 // sensitivity); the nut slid up its rod instead of along the bob's axle (the zero); books with the recoil forgotten
 // (the drop); the pallets' adverse corner (the swing moves, where the torque's doubling does not); frictionless
-// pallets (the favourable margin); pallets a tenth under the adverse corner (the adverse margin); §287's middle
-// setting (a smaller worse margin).
+// pallets (the favourable margin); pallets a hundredth under the friction window (the adverse margin); §287's
+// middle setting (a narrower window).
 //
 //   node tools/probe-technic-drive.mjs [technic_classic|technic_2026]
 import { loadPack } from './technic-pack.mjs';
@@ -212,9 +213,10 @@ for (const gen of GENS) {
 // Below: the least swing (adverse pallets and meshes, the run's least torque) must pass the farthest release of the
 // posed swing's beat, or no tooth escapes. Above: the greatest swing (favourable, the run's most) must stay under the
 // first SLIP, the extra drop a wider swing makes. Each margin held over a table grid step (TABLE_STEP_DEG: within one
-// step of its edge `sustained` already calls a swing BANKING) at every torque of the run, and the setting held the
-// one whose worse margin is largest among its quarter-degree neighbours whose lock stands over F2's play
-// (`settingMargins`; `solveSetting` scans the whole escaping run, 37°–40.5°).
+// step of its edge `sustained` already calls a swing BANKING) at every torque of the run. The same two margins in
+// the pallets' friction (`frictionWindow`): the window of pallet efficiency that keeps both holds the tabled band,
+// and the setting's window is wider than its quarter-degree neighbours' whose lock stands over F2's play
+// (`settingMargins`; `solveSetting` reads the whole escaping run, 37°–40.5°).
 {
   const r = solved.r, ef = solved.f.escapement.ef;
   if (ef.spec.phaseDeg !== X.palletDeg) fail(`the train's pallets are set at ${ef.spec.phaseDeg}°, TECHNIC_DRIVE says ${X.palletDeg}°`);
@@ -227,26 +229,32 @@ for (const gen of GENS) {
     const below = advMin - sl.release, above = sl.slip - favMax;
     if (!(below > D.TABLE_STEP_DEG)) fail(`the adverse corner's least swing ${advMin.toFixed(3)}° clears the release ${sl.release.toFixed(2)}° by ${below.toFixed(3)}°, not a grid step`);
     if (!(above > D.TABLE_STEP_DEG)) fail(`the favourable corner's greatest swing ${favMax.toFixed(3)}° stands under the slip ${sl.slip.toFixed(2)}° by ${above.toFixed(3)}°, not a grid step`);
+    // the friction window, on the train's own table and torques
+    const fw = D.frictionWindow(r.dyn, ct, sl, { tauLo: adv.band.lo, tauHi: fav.band.hi });
+    if (!(fw.below > 0 && fw.above > 0)) fail(`the friction window ${fw.low}–${fw.high} does not hold the tabled band ${F.pallet.adverse}–${F.pallet.favourable}`);
     // controls: frictionless pallets have no swing short of the slip (recoil / impulse = η² = 1: the drive only
-    // grows it), and pallets a tenth worse than the adverse corner stop the balance or come under the release
-    const dyn = r.dyn, tHi = fav.band.hi;
-    const free = D.sustained({ ...dyn, ct, tau: tHi, eta: 1, A0: favMax });
+    // grows it); pallets a hundredth under the window's low end lose the adverse margin
+    const free = D.sustained({ ...r.dyn, ct, tau: fav.band.hi, eta: 1, A0: favMax });
     control('frictionless pallets (the favourable margin must fail)', !(free.status === 'sustained' && sl.slip - free.Amax > D.TABLE_STEP_DEG));
-    const worse = D.sustained({ ...dyn, ct, tau: adv.band.lo, eta: F.pallet.adverse - 0.1, A0: advMin });
-    control(`pallets at ${(F.pallet.adverse - 0.1).toFixed(2)} (the adverse margin must fail)`, !(worse.status === 'sustained' && worse.Amin - sl.release > D.TABLE_STEP_DEG));
+    const worse = fw.low === null ? null : D.sustained({ ...r.dyn, ct, tau: adv.band.lo, eta: fw.low - 0.01 });
+    control(`pallets at ${fw.low === null ? '—' : (fw.low - 0.01).toFixed(3)}, under the window (the adverse margin must fail)`, worse && !(worse.status === 'sustained' && worse.Amin - sl.release > D.TABLE_STEP_DEG));
+    console.log(`MARGINS at ${X.palletDeg}°: release ${sl.release.toFixed(2)}°, slip ${sl.slip.toFixed(2)}°; adverse least ${advMin.toFixed(3)}° — ${below.toFixed(2)}° over the release (${(advMin / sl.release).toFixed(2)}× it); favourable greatest ${favMax.toFixed(3)}° — ${above.toFixed(2)}° under the slip`);
+    console.log(`  FRICTION WINDOW the pallets may run from η ${fw.low?.toFixed(3)} to ${fw.high?.toFixed(3)} with both margins kept: ${fw.below.toFixed(3)} under the band's adverse ${F.pallet.adverse}, ${fw.above.toFixed(3)} over its favourable ${F.pallet.favourable}`);
     // the neighbours on the quarter grid, each read the same way as the setting itself (its own slip-bounded table)
-    const at = (pd) => D.settingMargins(lib, ef, pd, { run, meshes: r.meshes, tau: r.tauHi });
-    const mine = at(X.palletDeg);
-    console.log(`MARGINS at ${X.palletDeg}° (lock ${mine.lockMM?.toFixed(3)} mm over F2's ${F2_PLAY_MM} mm play): release ${sl.release.toFixed(2)}°, slip ${sl.slip.toFixed(2)}°; adverse least ${advMin.toFixed(3)}° — ${below.toFixed(2)}° over the release (${(advMin / sl.release).toFixed(2)}× it); favourable greatest ${favMax.toFixed(3)}° — ${above.toFixed(2)}° under the slip`);
-    if (!mine.ok || !Number.isFinite(mine.margin)) fail(`the declared setting reads no margins: ${mine.why ?? mine.favStatus}`);
+    const at = (pd) => D.settingMargins(lib, ef, pd, { run, meshes: r.meshes, tau: r.tauHi, friction: true });
+    const width = (n) => (n.ok && n.friction && n.friction.margin > 0 ? n.friction.high - n.friction.low : -Infinity);
+    const mine = at(X.palletDeg), wMine = width(mine);
+    if (!Number.isFinite(wMine)) fail(`the declared setting reads no friction window: ${mine.why ?? JSON.stringify(mine.friction)}`);
+    console.log(`  setting ${X.palletDeg}°: lock ${mine.lockMM?.toFixed(3)} mm over F2's ${F2_PLAY_MM} mm play; its window (on its own slip-bounded table) ${mine.friction?.low?.toFixed(3)}–${mine.friction?.high?.toFixed(3)}, ${wMine.toFixed(3)} wide`);
     const seen = new Map();
     for (const pd of [X.palletDeg - 0.25, X.palletDeg + 0.25]) {
       const n = at(pd); seen.set(pd, n);
-      if (n.ok && Number.isFinite(n.margin) && n.margin >= mine.margin) fail(`the setting ${pd}° has the larger worse margin (${n.margin.toFixed(3)}° against ${mine.margin.toFixed(3)}°)`);
-      console.log(`  neighbour ${pd}°: ${n.ok ? `lock ${n.lockMM.toFixed(3)} mm, adverse ${n.below.toFixed(2)}° over the release, favourable ${Number.isFinite(n.above) ? `${n.above.toFixed(2)}° under the slip` : n.favStatus}` : n.why}`);
+      if (width(n) >= wMine) fail(`the setting ${pd}° keeps both margins over the wider friction window (${width(n).toFixed(3)} against ${wMine.toFixed(3)})`);
+      console.log(`  neighbour ${pd}°: ${n.ok ? `lock ${n.lockMM.toFixed(3)} mm, adverse ${n.below.toFixed(2)}° over the release, favourable ${Number.isFinite(n.above) ? `${n.above.toFixed(2)}° under the slip` : n.favStatus}; window ${n.friction?.low?.toFixed(3) ?? '—'}–${n.friction?.high?.toFixed(3) ?? '—'}` : n.why}`);
     }
     const mid = seen.get(TECHNIC_ESCAPEMENT.phaseDeg) ?? at(TECHNIC_ESCAPEMENT.phaseDeg);
-    control(`§287's middle setting, ${TECHNIC_ESCAPEMENT.phaseDeg}° (its worse margin must be the smaller)`, mid.ok && mid.margin < mine.margin);
+    console.log(`  §287's middle setting ${TECHNIC_ESCAPEMENT.phaseDeg}°: ${mid.ok ? `adverse ${mid.below.toFixed(2)}° over the release, favourable ${Number.isFinite(mid.above) ? `${mid.above.toFixed(2)}° under the slip` : mid.favStatus}; window ${mid.friction?.low?.toFixed(3) ?? '—'}–${mid.friction?.high?.toFixed(3) ?? '—'}` : mid.why}`);
+    control(`§287's middle setting, ${TECHNIC_ESCAPEMENT.phaseDeg}° (its friction window must be the narrower)`, width(mid) < wMine);
   }
 }
 
