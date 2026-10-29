@@ -7739,6 +7739,7 @@ export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [], foot
       bossG.rotateX(Math.PI / 2); // lathe revolves about +Y; stand it along Z
       assertLatheOutward(bossG, 'the escape bridge\'s pivot boss');
       disc = new THREE.Mesh(bossG, slabMat);
+      disc.name = 'bridgeBoss';   // §322: NAMED, so a table can cite the part rather than an index into a traversal
     } else if (n.foot) {
       // A FOOT boss, and the foot screw runs down through it — so it is a
       // tube, bored one seat fit over the shank (TODO 27: the screw's shaft
@@ -7753,9 +7754,11 @@ export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [], foot
       tubeG.rotateX(Math.PI / 2);
       assertLatheOutward(tubeG, 'the escape bridge\'s foot tube');
       disc = new THREE.Mesh(tubeG, slabMat);
+      disc.name = 'bridgeFootBoss';
     } else {
       disc = new THREE.Mesh(new THREE.CylinderGeometry(n.r, n.r, thickness, 28), slabMat);
       disc.geometry.rotateX(Math.PI / 2);
+      disc.name = 'bridgeNode';
     }
     disc.position.set(n.x, n.y, 0);
     g.add(disc);
@@ -7767,6 +7770,7 @@ export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [], foot
     if (len < 1e-6) continue;
     const w = 2 * Math.min(a.r, b.r) * 0.8; // waisted between the bosses
     const bar = new THREE.Mesh(new THREE.BoxGeometry(len, w, thickness), slabMat);
+    bar.name = 'bridgeBar';
     bar.position.set((a.x + b.x) / 2, (a.y + b.y) / 2, 0);
     bar.rotation.z = Math.atan2(dy, dx);
     g.add(bar);
@@ -7777,6 +7781,7 @@ export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [], foot
     const legR = footLegR(n);
     const bore = screwBoreR(footHeadR(n));
     const leg = new THREE.Mesh(boredLegGeometry(legR, legR * 1.15, bore, footDrop, 20), slabMat);
+    leg.name = 'bridgeLeg';   // §322: named — PLATE_SEATS cites the leg and its pad by name now, not by lathe index
     leg.geometry.rotateX(Math.PI / 2);
     leg.position.set(n.x, n.y, -thickness / 2 - footDrop / 2);
     g.add(leg);
@@ -7786,6 +7791,7 @@ export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [], foot
     // the slab, leaving the bridge visually unfastened — the same pattern
     // as the balance cock's T-foot screws).
     const pad = new THREE.Mesh(boredLegGeometry(legR * 1.5, legR * 1.5, bore, thickness * 0.5, 20), slabMat);
+    pad.name = 'bridgeFoot';
     pad.geometry.rotateX(Math.PI / 2);
     pad.position.set(n.x, n.y, -thickness / 2 - footDrop + thickness * 0.25);
     g.add(pad);
@@ -7839,6 +7845,7 @@ export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [], foot
     const dishGeo = new THREE.LatheGeometry(pts, 40);
     dishGeo.rotateX(Math.PI / 2);
     const jewel = new THREE.Mesh(dishGeo, MATS.ruby);
+    jewel.name = 'bridgeJewel';
     jewel.position.set(j.x, j.y, thickness / 2 - seatGap - jd / 2);
     g.add(jewel);
   }

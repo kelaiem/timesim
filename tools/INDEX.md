@@ -4,7 +4,7 @@
 
 # The instruments
 
-374 scripts. **255 are ACCEPTANCE tests** — they decide and exit non-zero.
+375 scripts. **256 are ACCEPTANCE tests** — they decide and exit non-zero.
 **119 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -242,6 +242,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-314-linkage-line.mjs` | §314 | acceptance | WHERE DOES THE PUSHER LINKAGE'S ROD LINE RUN IN THIS ARRANGEMENT? — §314's re-run of §261 2c's linkage search, for a movement whose band the fold-site study can no longer site (its cluster already stands folded, so that study's rotation loop has nothing to search; its header says so under TODO 244). |
 | `probe-317-fitted-case.mjs` | §317 | acceptance | §317 — THE FITTED TONNEAU, held: the case archetype derived from the solved tonneau and form-fitted to the least plan AREA (layout.js caseShapeOf 'fitted', fitFittedCase). (§317's stepped back, the volume half, was retired by §321 for a flat one, and its B tests with it.) Pure Node over layout.js, the measured hull read from tools/data/probe-317-hull.json (`--refresh` re-measures it: one Chromium boot of ?case=fitted at the fixture's spec, through boot-form.mjs). |
 | `probe-318-pusher-turn.mjs` | §318 | acceptance | WHERE CAN THE ALARM PUSHER TURN TO? — §318's scan. A form case's seated strike group stands on the column wheel's press line (the hammer's arm spans it from post to head), and under CLAUDE.md's P3 rule the pusher, a LINK since §261 2c (its pin drives crank A, not the wheel), is what yields. The build turns the whole pusher about the movement's centre by ALARM_PUSH_ROT; this scan boots the build at each trial turn (`globalThis.__PUSH_TURN_DEG`, the build's own probe hook) and measures the PUSHER's metal (every `alarmPusher*` mesh) against every other labelled mesh over the press and the strike, so a turn is judged on the metal as built at that turn rather than on a plan. |
+| `probe-322-openwork.mjs` | §322 | acceptance | §322 — THE OPENWORKED PLATE'S VIEWS, measured off a real boot: does the fusee window frame the whole cone, does the kidney cut show the escape wheel round, and does the escape cock actually carry the pivot it took out of the plate — while the fourth wheel stays in its plate chaton, under the plate? |
 | `probe-36-apply.mjs` | §36 | acceptance | §36 Apply — the acceptance, and the only place the APPLIED tree is judged. |
 | `probe-50-clutch.mjs` | §50 | report | TODO 50 — the stem clutch, measured in the movement. |
 | `probe-50-coupling.mjs` | §50 | report | Boot test-geometry.html headless and report the build log + a lift-law sanity table. |
