@@ -47,6 +47,11 @@ const OK = (m) => console.log('OK  ', m);
 // engine is driven through scriptTick (real seconds), not the rAF loop: a
 // software-GL frame is seconds, so wall time would say nothing.
 const tick = (dt) => page.evaluate((d) => window.__clock.scriptTick(d), dt);
+// TODO 277 — the tour hides the panels it finds up and gives back exactly those, so End is held
+// to the state read BEFORE the run, never to "open": #clock-ui boots collapsed, and a row that
+// wanted it open after End asserted something that was never true.
+const panelsOf = () => page.evaluate(() => ({ ui: document.getElementById('clock-ui').style.display, view: document.getElementById('view-hud').style.display }));
+const panelsBefore = await panelsOf();
 await page.evaluate(() => document.getElementById('btn-tour').click());
 await wait(300);
 let st = await state();
@@ -122,10 +127,30 @@ if (!gate) F('the Tour button did not ask before ending'); else OK('the Tour but
 await page.evaluate(() => document.getElementById('tour-gate-go').click());
 await wait(600);
 st = await state();
-const panelBack = await page.evaluate(() => document.getElementById('clock-ui').style.display !== 'none');
+const panelsAfter = await panelsOf();
 const gateDefault = await page.evaluate(() => document.getElementById('tour-gate-go').textContent);
 if (st) F('End did not stop the run'); else OK('End stops the run');
-if (!panelBack) F('the panel did not come back after End'); else OK('the panel is restored after End');
+// the row is only a check if something was hidden to be restored: the view HUD is the panel that boots up
+if (panelsBefore.view === 'none') F('precondition: the view HUD started hidden, so End has nothing to restore');
+else if (JSON.stringify(panelsAfter) !== JSON.stringify(panelsBefore)) F(`the panels did not come back as they were after End: before ${JSON.stringify(panelsBefore)}, after ${JSON.stringify(panelsAfter)}`);
+else OK(`the panels are restored after End as they were (panel ${panelsBefore.ui || 'shown'}, view HUD ${panelsBefore.view || 'shown'})`);
+// control (TODO 277): a panel that WAS open is hidden for the run and open again after End. This is the
+// case the old row thought it was testing, and the one a restore that stopped working would fail.
+await page.evaluate(() => document.getElementById('chrome-t-ui').click());
+await wait(200);
+const openBefore = (await panelsOf()).ui !== 'none';
+await page.evaluate(() => document.getElementById('btn-tour').click());
+await wait(300);
+const hiddenDuring = (await panelsOf()).ui === 'none';
+await page.evaluate(() => document.getElementById('btn-tour').click());
+await wait(200);
+await page.evaluate(() => document.getElementById('tour-gate-go').click());
+await wait(600);
+const openAfter = (await panelsOf()).ui !== 'none';
+if (!openBefore) F('control: the panel did not open before the run');
+else if (!hiddenDuring) F('control: the tour did not hide the open panel, so the restore was not exercised');
+else if (!openAfter) F('control: the panel was open before the run and did not come back after End');
+else OK('control: an open panel is hidden for the run and restored after End');
 if (!/Start Tour|Tour/.test(gateDefault)) F(`the gate's default copy was not restored: ${gateDefault}`); else OK('the gate\'s own copy is restored');
 // 5 + 6 — the cross draws in the line tier; the closing stop links out
 await page.evaluate(() => document.getElementById('btn-tour').click());
