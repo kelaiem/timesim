@@ -47,6 +47,11 @@ const OK = (m) => console.log('OK  ', m);
 // engine is driven through scriptTick (real seconds), not the rAF loop: a
 // software-GL frame is seconds, so wall time would say nothing.
 const tick = (dt) => page.evaluate((d) => window.__clock.scriptTick(d), dt);
+// TODO 277 — the tour hides the panels it finds up and gives back exactly those, so End is held
+// to the state read BEFORE the run, never to "open": #clock-ui boots collapsed, and a row that
+// wanted it open after End asserted something that was never true.
+const panelsOf = () => page.evaluate(() => ({ ui: document.getElementById('clock-ui').style.display, view: document.getElementById('view-hud').style.display }));
+const panelsBefore = await panelsOf();
 await page.evaluate(() => document.getElementById('btn-tour').click());
 await wait(300);
 let st = await state();
@@ -55,12 +60,24 @@ if (!st || st.idx !== 0) F(`tour did not start at stop 0: ${JSON.stringify(st)}`
 // no fixed wait can stand for "past the dwell": tick until the stop changes, up to a cap
 // that a reading-paced stop cannot exceed (the longest caption reads in about 12 s).
 const DWELL_CAP_S = 20;
-// One in-page loop, not a round trip per tick: a software-GL page answers each evaluate in
-// seconds, and the stop's change is read from the same synchronous call that ticks it.
-const tickUntilAdvance = (from) => page.evaluate(({ from, cap }) => {
-  for (let t = 0; t < cap; t += 0.1) { window.__clock.scriptTick(0.1); const s2 = window.__clock.scriptState; if (!s2 || s2.idx !== from) return t; }
-  return cap;
-}, { from, cap: DWELL_CAP_S });
+// Ticked in short in-page chunks with a pause between them, not one long loop and not a round trip
+// per tick: a software-GL page answers each evaluate in seconds, but a stop's dwell clock starts only
+// once its actions have SETTLED (the crown eased in, a wind spent), and that easing runs in the live
+// frame loop, which cannot run during a synchronous in-page loop. One long loop therefore spends its
+// whole budget before the clock starts whenever the crown has not yet settled, and the run "did not
+// advance" on a slow host.
+const TICK_CHUNK_S = 0.5;
+const tickUntilAdvance = async (from) => {
+  for (let spent = 0; spent < DWELL_CAP_S * 6; spent += TICK_CHUNK_S) {
+    const moved = await page.evaluate(({ from, dt, n }) => {
+      for (let i = 0; i < n; i++) { window.__clock.scriptTick(dt); const s2 = window.__clock.scriptState; if (!s2 || s2.idx !== from) return true; }
+      return false;
+    }, { from, dt: 0.1, n: Math.round(TICK_CHUNK_S / 0.1) });
+    if (moved) return spent;
+    await wait(100); // let the frame loop run, so the step's actions can settle
+  }
+  return DWELL_CAP_S * 6;
+};
 // pacing is live: every stop's dwell covers its caption's reading time, read off the
 // engine's own table and the pace it declares (never retyped). Wall-clock cannot say this
 // here: the rAF loop also feeds the dwell clock while this probe ticks it.
@@ -122,10 +139,30 @@ if (!gate) F('the Tour button did not ask before ending'); else OK('the Tour but
 await page.evaluate(() => document.getElementById('tour-gate-go').click());
 await wait(600);
 st = await state();
-const panelBack = await page.evaluate(() => document.getElementById('clock-ui').style.display !== 'none');
+const panelsAfter = await panelsOf();
 const gateDefault = await page.evaluate(() => document.getElementById('tour-gate-go').textContent);
 if (st) F('End did not stop the run'); else OK('End stops the run');
-if (!panelBack) F('the panel did not come back after End'); else OK('the panel is restored after End');
+// the row is only a check if something was hidden to be restored: the view HUD is the panel that boots up
+if (panelsBefore.view === 'none') F('precondition: the view HUD started hidden, so End has nothing to restore');
+else if (JSON.stringify(panelsAfter) !== JSON.stringify(panelsBefore)) F(`the panels did not come back as they were after End: before ${JSON.stringify(panelsBefore)}, after ${JSON.stringify(panelsAfter)}`);
+else OK(`the panels are restored after End as they were (panel ${panelsBefore.ui || 'shown'}, view HUD ${panelsBefore.view || 'shown'})`);
+// control (TODO 277): a panel that WAS open is hidden for the run and open again after End. This is the
+// case the old row thought it was testing, and the one a restore that stopped working would fail.
+await page.evaluate(() => document.getElementById('chrome-t-ui').click());
+await wait(200);
+const openBefore = (await panelsOf()).ui !== 'none';
+await page.evaluate(() => document.getElementById('btn-tour').click());
+await wait(300);
+const hiddenDuring = (await panelsOf()).ui === 'none';
+await page.evaluate(() => document.getElementById('btn-tour').click());
+await wait(200);
+await page.evaluate(() => document.getElementById('tour-gate-go').click());
+await wait(600);
+const openAfter = (await panelsOf()).ui !== 'none';
+if (!openBefore) F('control: the panel did not open before the run');
+else if (!hiddenDuring) F('control: the tour did not hide the open panel, so the restore was not exercised');
+else if (!openAfter) F('control: the panel was open before the run and did not come back after End');
+else OK('control: an open panel is hidden for the run and restored after End');
 if (!/Start Tour|Tour/.test(gateDefault)) F(`the gate's default copy was not restored: ${gateDefault}`); else OK('the gate\'s own copy is restored');
 // 5 + 6 — the cross draws in the line tier; the closing stop links out
 await page.evaluate(() => document.getElementById('btn-tour').click());
