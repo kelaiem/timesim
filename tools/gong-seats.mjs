@@ -36,7 +36,7 @@ import { readFileSync } from 'node:fs';
 import { join, extname, normalize, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as GS from '../src/gong-solve.js';
-import { formShapeOf, configKey, SPEC, FORM_KINDS, PLATE_RIM_MARGIN } from '../src/layout.js';
+import { formShapeOf, configKey, SPEC, FORM_KINDS, PLATE_RIM_MARGIN, fitFittedCase } from '../src/layout.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'src/gong-seats.js');
@@ -52,8 +52,9 @@ const KINDS = _pos.length ? _pos : [...FORM_KINDS];
 // moves the bounds only; a kind's shape numbers are its FIRST fit's (the unfitted boot's solve), carried on every
 // URL, every shape this tool builds and the row it writes. Every other kind has none.
 const EXTRA = {};
-const FR = (kind, rect) => [...rect.slice(0, 4), ...(EXTRA[kind] ?? [])].join(',');
-const shapeAt = (kind, b) => formShapeOf(kind, [b[0], b[1], b[2], b[3], ...(EXTRA[kind] ?? [])]);
+// a rect carrying its own shape numbers (six: a fitted cut re-solved about a wire, below) keeps them
+const FR = (kind, rect) => (rect.length === 6 ? rect : [...rect.slice(0, 4), ...(EXTRA[kind] ?? [])]).join(',');
+const shapeAt = (kind, b) => formShapeOf(kind, b.length === 6 ? b : [b[0], b[1], b[2], b[3], ...(EXTRA[kind] ?? [])]);
 if (!MODES.every((m) => m === 'bar' || m === 'spiral')) { console.error(`--modes takes bar and/or spiral (got ${MODES.join(',')})`); process.exit(2); }
 if (WRITE === CHECK) { console.error('usage: node tools/gong-seats.mjs --write | --check [kind …]'); process.exit(2); }
 export const BAND_HZ = [1000, 4000];   // §197: a struck alarm gong's fundamental (GONG §197 assert, 1–4 kHz)
@@ -112,7 +113,8 @@ const boot = async (q, { sweep = false } = {}) => {
         for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld); z0 = Math.min(z0, v.z); z1 = Math.max(z1, v.z); }
         hz[o.name] = [z0, z1]; }); }
     const span = (...ns) => { const r = ns.map((n) => hz[n]).filter(Boolean); return r.length ? [Math.min(...r.map((q) => q[0])), Math.max(...r.map((q) => q[1]))] : null; };
-    return { hammerZ: { staff: span('alarmHammerPost'), arm: span('alarmHammerArm', 'alarmHammerHead') }, rect: c.formFootprint?.rect ?? null, margin: c.formFootprint?.margin ?? null, regions: JSON.parse(JSON.stringify(c.regions)),
+    const ff = c.formFootprint;
+    return { fittedFit: ff?.fitted ? { hull: ff.hull, metal: ff.metal, centre: ff.fitted.centre, flatMin: ff.fitted.flatMin } : null, hammerZ: { staff: span('alarmHammerPost'), arm: span('alarmHammerArm', 'alarmHammerHead') }, rect: c.formFootprint?.rect ?? null, margin: c.formFootprint?.margin ?? null, regions: JSON.parse(JSON.stringify(c.regions)),
       seat: g && { specKey: g.specKey, arrKey: g.arrKey, tenants: JSON.parse(JSON.stringify(g.tenants)), keep: g.keep ? JSON.parse(JSON.stringify(g.keep)) : null, pivot: g.pivot, mode: g.mode, seated: g.seated, refused: g.refused, strike: g.strike, check: g.check, lever: g.lever, wireR: g.wireR, wireD_m: g.wireD_m,
         zGong: g.zGong, postR: g.postR, postRAt: [10, 20, 30, 40, 50, 60, 70, 80].map((L) => [L, g.postRFor(L)]) } };
   });
@@ -137,8 +139,18 @@ const sameRect = (a, b) => a && b && a.every((v, i) => Math.abs(v - b[i]) < 0.00
 // own fit (the metal's fit never shrinks; the wire is not counted in it, so it may grow it). It grows LUG TO LUG
 // first: §307's 40 mm owner cap is on the width across the strap (x) and the length (y) is not capped, so a wire
 // the y growth alone can hold costs the case no width; only a wire it cannot hold grows both, by one scale.
-const holdWire = (kind, fit, curveRow, need) => {
+const holdWire = (kind, fit, curveRow, need, booted = null) => {
   const c = GS.seatCurve(curveRow), pts = []; for (let s = 0; s <= c.L + 1e-9; s += 0.25) { const q = c.at(Math.min(s, c.L)); pts.push([q.x, q.y]); }
+  // §317 — a FITTED cut is not a box to scale (at fixed shape numbers a taller box is a different, worse outline:
+  // measured, its −y end fell 1.700 u off the lug plane): it is RE-SOLVED about the seated metal's hull with the
+  // wire's stations as pins at their own need (layout.js fitFittedCase), six numbers rounded outward/to 1e-6 as
+  // the build's own spec is. Needs the booted build's hull; without one (the ranking's estimate) the box path.
+  if (kind === 'fitted' && booted?.fittedFit) {
+    const F = booted.fittedFit, r = fitFittedCase(F.hull, F.metal, { centre: F.centre, flatMin: F.flatMin, pins: pts.map(([x, y]) => [x, y, need]) });
+    const sh = r.shape, f = sh.fitted;
+    return [Math.floor(sh.xMin * 100) / 100, Math.ceil(sh.xMax * 100) / 100, Math.floor(sh.yMin * 100) / 100, Math.ceil(sh.yMax * 100) / 100,
+      Math.round(f.k * 1e6) / 1e6, Math.round(f.tau * 1e6) / 1e6];
+  }
   const cx = (fit[0] + fit[1]) / 2, cy = (fit[2] + fit[3]) / 2, hw = (fit[1] - fit[0]) / 2, hh = (fit[3] - fit[2]) / 2;
   const box = (kx, ky) => [cx - kx * hw, cx + kx * hw, cy - ky * hh, cy + ky * hh];
   const holds = (kx, ky) => { const [xMin, xMax, yMin, yMax] = box(kx, ky), sh = shapeAt(kind, [xMin, xMax, yMin, yMax]); return pts.every(([x, y]) => sh.inset(x, y) >= need - 1e-9); };
@@ -316,9 +328,9 @@ for (const kind of KINDS) {
         // the outline, then booted with its own arc build beside it (the arc's warnings are what the seat may not
         // add, at the same fit), and taken only if the seated metal still fits it.
         let arcAt = arc;
-        const own = holdWire(kind, b.rect, rowCurve(cand), need);
+        const own = holdWire(kind, b.rect, rowCurve(cand), need, b);
         if (!sameRect(own, rect)) {
-          const r2 = { ...r, formrect: [...own.slice(0, 4), ...(EXTRA[kind] ?? [])] };
+          const r2 = { ...r, formrect: own.length === 6 ? own : [...own.slice(0, 4), ...(EXTRA[kind] ?? [])] };
           seatsText = seatModuleText({ ...others, [kind]: { ...rows, [mode]: r2 } });
           const c = await boot(`case=${kind}&formrect=${FR(kind, own)}&gong=${mode}`);
           if (!c.bootError && within(c.rect, own)) {

@@ -49619,6 +49619,10 @@ const FORM_COUNTED = (() => {
   });
   return counted;
 })();
+// §317 — the fitted tonneau's straight ends run at least the lug pair's outboard reach (makeFormCase's `need`:
+// the strap's interior span plus one lug, halved, plus half a lug), so its flat lugs weld to straight metal —
+// one law for the build's fit and for tools/gong-seats.mjs, which reads it off formFootprint.fitted
+const FITTED_FLAT_MIN = (CASE_LUG_INNER + CASE_LUG_T) / 2 + CASE_LUG_T / 2;
 const FORM_FOOTPRINT = await (async () => {
   if (!FORM) return null;
   const v = new THREE.Vector3();
@@ -49660,7 +49664,7 @@ const FORM_FOOTPRINT = await (async () => {
   let fit;
   if (FORM.kind === 'fitted') {
     const gen = fitFittedCaseSteps(hull, [x0, x1, y0, y1], { margin: M, centre: [P.dial.x, P.dial.y],
-      flatMin: (CASE_LUG_INNER + CASE_LUG_T) / 2 + CASE_LUG_T / 2 });
+      flatMin: FITTED_FLAT_MIN });
     // Handed back on breathe()'s own budget but NOT through a numbered seam: the
     // boot bar's table (§267) is measured on the DEFAULT build, which never comes
     // here, so a seam would be a null row — and regenerating the table on this
@@ -49695,7 +49699,7 @@ const FORM_FOOTPRINT = await (async () => {
   return { kind: FORM.kind, metal: [x0, x1, y0, y1], rect, holds, margin, scale: fit.s ?? null, hullN: hull.length, counted: total,
     accuracy: fit.shape.accuracy, mm: [(rect[1] - rect[0]) * UNIT_MM, (rect[3] - rect[2]) * UNIT_MM],
     areaMm2: shapeArea(FORM) * mm2, fitAreaMm2: shapeArea(fit.shape) * mm2,
-    ...(FORM.kind === 'fitted' ? { fitted: { tonneauAreaMm2: fit.tonneauArea * mm2, tonneauMm: [fit.tonneau.hw * 2 * UNIT_MM, fit.tonneau.hh * 2 * UNIT_MM],
+    ...(FORM.kind === 'fitted' ? { fitted: { flatMin: FITTED_FLAT_MIN, centre: [P.dial.x, P.dial.y], tonneauAreaMm2: fit.tonneauArea * mm2, tonneauMm: [fit.tonneau.hw * 2 * UNIT_MM, fit.tonneau.hh * 2 * UNIT_MM],
       k: fit.shape.fitted.k, tau: fit.shape.fitted.tau, handOffMm: fit.handOff * UNIT_MM, flatMm: [fit.shape.flatTop * UNIT_MM, fit.shape.flatBot * UNIT_MM], evals: fit.evals,
       // the volume half (CASE_DIMS.fittedBack): the cavity flat and stepped, in mm³
       back: CASE_DIMS.fittedBack ? (({ V, Vflat, zLow, zHigh, stepArea, flat, islands }) => ({ volumeMm3: V * mm2 * UNIT_MM, flatVolumeMm3: Vflat * mm2 * UNIT_MM,

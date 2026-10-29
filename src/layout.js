@@ -3866,8 +3866,17 @@ function drainFit(gen) { for (;;) { const r = gen.next(); if (r.done) return r.v
 // budget: it yields once per compass evaluation, and main.js resumes it with
 // `await breathe()` between them (fitFittedCase drains it for every other caller).
 const KSCAN = 13;   // the curvature scan's steps: a factor 4^(1/6) ≈ 1.26 apart, finer than the valley's measured width in k
-export function* fitFittedCaseSteps(hull, metal, { margin = PLATE_RIM_MARGIN, centre, flatMin = 0, cornerR = PLATE_RIM_MARGIN } = {}) {
-  const tonneau = fitCaseShape('tonneau', hull, metal, { margin, centre, cornerR });
+// `pins` [[x, y, m]…] are points the outline must ALSO hold, each m inside — a gong wire's stations at its own
+// need (tools/gong-seats.mjs: a seat grows the cut to hold its wire by re-solving the fitted shape, never by
+// scaling a box at fixed shape numbers). The tonneau the solve starts from counts them at the rim margin, a
+// conservative start the search then relaxes.
+export function* fitFittedCaseSteps(hull, metal, { margin = PLATE_RIM_MARGIN, centre, flatMin = 0, cornerR = PLATE_RIM_MARGIN, pins = [] } = {}) {
+  const startHull = pins.length ? [...hull, ...pins.map(([x, y]) => [x, y])] : hull;
+  if (pins.length) {
+    const xs = startHull.map((q) => q[0]), ys = startHull.map((q) => q[1]);
+    metal = [Math.min(metal[0], ...xs), Math.max(metal[1], ...xs), Math.min(metal[2], ...ys), Math.max(metal[3], ...ys)];
+  }
+  const tonneau = fitCaseShape('tonneau', startHull, metal, { margin, centre, cornerR });
   const t = tonneau.shape, cx = centre ? centre[0] : t.cx, cyH = centre ? centre[1] : t.cy;
   const worst = (sh) => { let w = Infinity; for (const [x, y] of hull) w = Math.min(w, sh.inset(x, y)); return w; };
   const make = (p) => {
@@ -3885,6 +3894,7 @@ export function* fitFittedCaseSteps(hull, metal, { margin = PLATE_RIM_MARGIN, ce
   const holds = (sh) => {
     if (sh.inset(...hull[last]) < margin - 1e-9) return false;
     for (let i = 0; i < hull.length; i++) if (sh.inset(...hull[i]) < margin - 1e-9) { last = i; return false; }
+    for (const [x, y, m] of pins) if (sh.inset(x, y) < m - 1e-9) return false;
     return true;
   };
   const ok = (p) => quiet(() => { const sh = make(p); return !!sh && sh.flatTop >= flatMin - 1e-9 && sh.flatBot >= flatMin - 1e-9 && holds(sh); });
