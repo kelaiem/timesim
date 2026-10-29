@@ -727,6 +727,7 @@ export const SUBSTITUTE_VERDICTS = {
     }
    }
   ],
+  "32014": [],
   "32062": [
    {
     "candidate": "3704",
@@ -928,7 +929,7 @@ export const SUBSTITUTE_VERDICTS = {
       "why": [
        "✗ technic_2026 train: OVERLAP, not in the inventory: train|pulley3482|pulley55982 1.46 LDU",
        "✗ technic_2026 train",
-       "FAIL technic_2026 train 73 steps, 10 chapters, 4 sub-assemblies, 0 flagged {\"straight\":181,\"two-leg\":2,\"turn\":1} ",
+       "FAIL technic_2026 train 76 steps, 10 chapters, 4 sub-assemblies, 0 flagged {\"straight\":184,\"two-leg\":2,\"turn\":1} ",
        "✗ technic_classic train: OVERLAP, not in the inventory: train|pulley3482|pulley55982 1.46 LDU"
       ]
      },

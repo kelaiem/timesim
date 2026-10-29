@@ -693,9 +693,14 @@ export function deriveSteps(build, { lib, mode = build.modes?.[0], recipes = REC
           // balance's −u pallet arm went on after the +u arm's pin, which closed its way in from every side).
           // And the arms go on IN ORDER ALONG THE AXLES (the first axle's direction), so none is shut between two
           // already on (the balance's −u pallet arm sits between the anchor's drop and the +u pallet arm).
-          const axl = rest.filter((i) => parts[i].role === 'axle'), d = axl.length ? norm(axisX(parts[axl[0]].m)) : DOWN;
-          const arms = rest.filter((i) => parts[i].role === 'arm').sort((a, b) => dot(origin(parts[b].m), d) - dot(origin(parts[a].m), d));
-          const order = [...axl, ...arms, ...rest.filter((i) => parts[i].role !== 'axle' && parts[i].role !== 'arm')];
+          // (§316: and the RATING NUT's parts last, in the order they go on — the connector onto the bob axle's end,
+          // the rod into it, the nut onto the rod — for the rod stands across the way every arm comes along the
+          // crossbar, and the connector's arm across the bob gears')
+          const RATING = ['connector', 'rod', 'nut'], rated = rest.filter((i) => parts[i].rating).sort((a, b) => RATING.indexOf(parts[a].rating) - RATING.indexOf(parts[b].rating));
+          const plain = rest.filter((i) => !parts[i].rating);
+          const axl = plain.filter((i) => parts[i].role === 'axle'), d = axl.length ? norm(axisX(parts[axl[0]].m)) : DOWN;
+          const arms = plain.filter((i) => parts[i].role === 'arm').sort((a, b) => dot(origin(parts[b].m), d) - dot(origin(parts[a].m), d));
+          const order = [...axl, ...arms, ...plain.filter((i) => parts[i].role !== 'axle' && parts[i].role !== 'arm'), ...rated];
           emitUnit(`${build.key}-${String(keyOf(b)).replace(/\W+/g, '-')}-b${b}`, `${ch.title}: ${String(keyOf(b))}`, order, ch, b);
           continue;
         }

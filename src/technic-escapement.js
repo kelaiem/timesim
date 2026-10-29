@@ -95,6 +95,12 @@ export const ESCAPEMENT_PARTS = Object.freeze({
   massArm: '11478', bobArm: '11478', anchorDrop: '41677', palletArm: '6632', palletPin: '43093',
   pallet: '3647', wheel: '3647', mass: '3649',
 });
+// §316 — THE RATING NUT's parts (src/technic-drive.js derives what it does; the going train's balance carries it,
+// frameEscapement's `rating`): every axle on this balance is parallel to the knife, so a nut slid along one moves no
+// mass about it. A RADIAL member needs a part that turns an axle through a right angle — the angle connector #6
+// (32014, two axle holes at 90°) on the bob axle's front end — and a 4L axle rising from it, on which a bush with two
+// flanges (3713) slides and is held by its own friction.
+export const RATING_PARTS = Object.freeze({ connector: '32014', rod: '3705', nut: '3713' });
 // The thin liftarms, by the reach from their keyed end hole to their far AXLE
 // hole (mm), and where their ROUND holes stand on the way (mm from that end).
 export const ARM_PARTS = Object.freeze({
@@ -264,8 +270,11 @@ export function balanceParts(bal, esc) {
     const dir = k > 0 ? 0 : Math.PI;
     add('arm', slab, armAt(esc.palletArm, Aax, dir));
     const p = holeAt(Aax, dir, esc.s);
-    add('pin', 'pin', { part: ESCAPEMENT_PARTS.palletPin, m: [p[0], p[1], 0, ...X2Z] });
-    add('pallet', 'W', { part: ESCAPEMENT_PARTS.pallet, m: [p[0], p[1], 0, ...rz(palletAngle(esc, k))], k });
+    // the 8T is keyed on the pin's axle half, so the pin turns with it: the SETTING is the pin turned in the
+    // liftarm's round hole, friction holding it (§316: the pin had stood unturned, its cross across the 8T's)
+    const pa = palletAngle(esc, k);
+    add('pin', 'pin', { part: ESCAPEMENT_PARTS.palletPin, m: [p[0], p[1], 0, ...mul3(rz(pa), X2Z)] });
+    add('pallet', 'W', { part: ESCAPEMENT_PARTS.pallet, m: [p[0], p[1], 0, ...rz(pa)], k });
   }
   return out;
 }
@@ -659,7 +668,7 @@ const axleCovering = (need) => lens.find((n) => axleLen(n) >= need - 1e-9) ?? nu
 //     columns is shorter than the axle — the steps' swept insertion found it). `driveFrom: 'back'` turns that
 //     round: the 1×2 Technic brick in the BACK knife's stack and a hole in both escape columns, the axle threaded
 //     from behind through all three (the classic going train's line in front runs into its fusee).
-export function frameEscapement(spec = TECHNIC_ESCAPEMENT, bal = TECHNIC_BALANCE, { x0: X0 = ESC_X0, zE: zWant = null, driveZ = null, driveBrick = null, driveFrom = 'front' } = {}) {
+export function frameEscapement(spec = TECHNIC_ESCAPEMENT, bal = TECHNIC_BALANCE, { x0: X0 = ESC_X0, zE: zWant = null, driveZ = null, driveBrick = null, driveFrom = 'front', rating = null } = {}) {
   const ra = E.axleReach, tip40 = GEAR_TIP_MM[ESCAPEMENT_PARTS.mass];
   // ── heights: the lowest knife whose balance clears the baseplate's studs
   // (its lowest point, the bob's 40T or a mass 40T, at the posed swing's
@@ -731,8 +740,34 @@ export function frameEscapement(spec = TECHNIC_ESCAPEMENT, bal = TECHNIC_BALANCE
   let S = lay(HALF + AX_CLEAR);
   const reach = Math.min(...[reachesBar ? null : S.bobAxle, S.anchorAxle].filter(Boolean).map((a) => a.y0));
   if (reach < HALF + AX_CLEAR) S = lay(r6(HALF + AX_CLEAR + (HALF + AX_CLEAR - reach)));
-  const { G, B, M1, M2, D: Dp, P1, P2, W: Wp, wheel: Ww, Gb, bobAxle, anchorAxle } = S;
+  const { G, B, M1, M2, D: Dp, P1, P2, W: Wp, wheel: Ww, Gb, anchorAxle } = S;
+  let { bobAxle } = S;
   if (!anchorAxle || (B && !bobAxle)) return { framed: false, reason: 'an axle on the knife\'s line is past the longest axle' };
+  // §316 — THE RATING NUT (`rating`: { nutV }, the nut's height, mm in the balance's frame, v down): an angle
+  // connector #6 on the bob axle's FRONT end, its other arm up, a 4L axle standing in it, and a bush with two flanges
+  // held on that axle by its own friction (RATING_PARTS). The bob axle grows to the shortest that reaches into the
+  // connector's hole by at least half its depth (RATING_DIM_MM.holeIn … holeOut from the connector's centre), and the
+  // connector stands with its hole's bottom on the axle's tip, or with its arm's far face on the bob gears' front
+  // face when the tip stops short of the bottom. The rod stands to its hole's bottom; the nut travels from the
+  // connector's arm to the rod's top. (src/technic-drive.js derives what the nut does and solves where it stands.)
+  let ratingFrame = null, R = null;
+  if (rating) {
+    if (!B || !bobAxle) return { framed: false, reason: 'a rating nut needs the bob on its own arm' };
+    const RD = RATING_DIM_MM, depth = RD.holeOut - RD.holeIn;
+    const k = lens.find((n) => B.y1 - axleLen(n) <= G.y0 - depth / 2 + 1e-9);
+    if (k === undefined) return { framed: false, reason: 'no axle carries the bob gears into the rating connector' };
+    const tip = r6(B.y1 - axleLen(k));
+    bobAxle = { y0: tip, y1: B.y1, part: AXLE_PARTS[k], lenStuds: k };
+    const wc = r6(Math.min(G.y0 - RD.holeOut, tip - RD.holeIn));
+    const rodStuds = rating.rodStuds ?? RD.rodStuds, vBob = r6(-ra + ARM_PARTS[bal.bobArm].reach), rodLen = axleLen(rodStuds);
+    if (!AXLE_PARTS[rodStuds]) return { framed: false, reason: `no ${rodStuds}L axle` };
+    const rod = { part: AXLE_PARTS[rodStuds], lenStuds: rodStuds, v0: r6(vBob - RD.holeIn - rodLen), v1: r6(vBob - RD.holeIn) };
+    const travel = [r6(vBob - RD.holeOut - RD.nutHalf), r6(rod.v0 + RD.nutHalf)];
+    const nutV = rating.nutV ?? null;
+    if (nutV !== null && !(nutV <= travel[0] + 1e-9 && nutV >= travel[1] - 1e-9)) return { framed: false, reason: `the rating nut at ${nutV} mm is off its rod (${travel[0]} … ${travel[1]})` };
+    R = { name: 'rating', y0: r6(wc - RD.halfWidth), y1: r6(G.y0) };
+    ratingFrame = { wc, vBob, rod, travel, nutV, connector: RATING_PARTS.connector, nut: RATING_PARTS.nut };
+  }
   // the escape columns on the stud grid behind the wheel
   const e1 = Math.ceil((Ww.y1 + AX_CLEAR + HALF) / D.stud) * D.stud, e2 = e1 + D.stud;
   // the escape arbor: from the wheel's front face back through both columns
@@ -787,8 +822,8 @@ export function frameEscapement(spec = TECHNIC_ESCAPEMENT, bal = TECHNIC_BALANCE
   const columns = [knifeCol('front', 0), arborCol('front', e1), arborCol('back', e2), knifeCol('back', r2)];
   const frame = {
     key: 'escapement', gen: 'technic_classic', spec, bal, x0: X0, zK, zE, plates: n, columnPlates: m, ...(driveZ !== null ? { driveZ: r6(driveZ), driveFrom } : {}),
-    slabs: { G, B, M1, M2, D: Dp, P1, P2, W: Wp, wheel: Ww, Gb }, behind, shareFront,
-    crossbar, massAxles, bobAxle, anchorAxle, escAxle, columns,
+    slabs: { G, B, M1, M2, D: Dp, P1, P2, W: Wp, wheel: Ww, Gb, ...(R ? { R } : {}) }, behind, shareFront,
+    crossbar, massAxles, bobAxle, anchorAxle, escAxle, columns, ...(ratingFrame ? { rating: ratingFrame } : {}),
   };
   const xs = columns.flatMap((c) => c.boxes.flatMap((b) => [b.x0, b.x1])), ys = columns.flatMap((c) => c.boxes.flatMap((b) => [b.y0, b.y1]));
   frame.base = { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
@@ -800,11 +835,11 @@ export function frameEscapement(spec = TECHNIC_ESCAPEMENT, bal = TECHNIC_BALANCE
 // The balance's parts with their slabs (w, mm along the crossbar from the
 // knife's station y = 0) and their real axles: the FRAMED body, which is what
 // the period is read off (solveBalance frames every candidate).
-export function framedBalance(frame, lib) {
+export function framedBalance(frame, lib, { nutV = frame.rating?.nutV ?? null } = {}) {
   const { bal, slabs: S } = frame, ra = E.axleReach, esc = escSpec(lib, frame.spec);
   const mid = (s) => (s.y0 + s.y1) / 2;
   const axles = { crossbar: frame.crossbar, 'mass+': frame.massAxles[1], 'mass-': frame.massAxles[0], bob: frame.bobAxle, anchor: frame.anchorAxle };
-  return balanceParts(bal, esc).map((p) => {
+  return [...balanceParts(bal, esc).map((p) => {
     const q = { ...p, m: [...p.m] };
     if (p.role === 'crossbar' || p.role === 'axle') { const a = axles[p.slab]; q.part = a.part; q.m[2] = mid(a); }
     else if (p.role === 'arm' || p.role === 'pallet') q.m[2] = mid(S[p.slab]);
@@ -812,7 +847,27 @@ export function framedBalance(frame, lib) {
     else if (p.role === 'mass') { const idx = p.bob ? p.gear : (frame.shareFront ? 0 : bal.bob.length) + p.gear; q.m[2] = r6(S.G.y1 - E.gearHalf - 2 * E.gearHalf * idx); }
     else if (p.role === 'pin') q.m[2] = S.P2.y1;                       // its pin/axle junction at the pallet arms' back face
     return q;
-  });
+  }), ...(frame.rating ? ratingParts(frame.rating, nutV) : [])];
+}
+// §316: the rating nut's parts in the balance's frame — the connector (its one arm back along w onto the bob axle,
+// the other up), the rod standing in it, and the nut at `nutV` (none when null: the bare rod, for the solve).
+export const RATING_DIM_MM = Object.freeze({
+  holeIn: 4, holeOut: 12,   // 32014: each axle hole runs 10 → 30 LDU from the connector's centre (axl2hol*, MEASURED: the probe reads them)
+  halfWidth: 4,             // 32014: its body ±10 LDU about its centre across the arms
+  nutHalf: 4,               // 3713: ±10 LDU along its axis
+  rodStuds: 4,              // the rod: a 4L axle, the one whose nut's travel spans the beat (solveRatingRod, technic-drive, re-solves it)
+});
+const RY180 = Object.freeze([-1, 0, 0, 0, 1, 0, 0, 0, -1]);   // the connector turned half round about v: its axle arm along +w, the other up (−v)
+const X2V = Object.freeze([0, -1, 0, 1, 0, 0, 0, 0, 1]);      // an axle's own X up the rod (LDraw Y)
+const Z2V = Object.freeze([1, 0, 0, 0, 0, 1, 0, -1, 0]);      // the bush's own Z (its axis) along the rod
+export function ratingParts(rt, nutV) {
+  const out = [
+    { role: 'joiner', rating: 'connector', slab: 'rating', part: rt.connector, m: [0, rt.vBob, rt.wc, ...RY180] },
+    { role: 'axle', rating: 'rod', slab: 'rating', part: rt.rod.part, m: [0, r6((rt.rod.v0 + rt.rod.v1) / 2), rt.wc, ...X2V] },
+  ];
+  // (the nut is a COLLAR in the parts list's words: a bush its own friction holds on an axle, as the alarm pusher's is)
+  if (nutV !== null && nutV !== undefined) out.push({ role: 'collar', rating: 'nut', slab: 'rating', part: rt.nut, m: [0, nutV, rt.wc, ...Z2V] });
+  return out;
 }
 
 // ── THE BUILD (LDraw placements; landing B's conventions) ────────────────────
@@ -831,7 +886,7 @@ export function escapementBuild(frame, lib, { alpha = 0, theta = 0 } = {}) {
     statics.push({ role: roleOf(b.part, b), part: b.part, m: at(L((b.x0 + b.x1) / 2), -L(b.z1), L((b.y0 + b.y1) / 2), b.knife ? KNIFE : I3) });
   // the balance: origin on the knife's apex line (y = 0 there), each part at
   // its body-frame place — (u, v, w) mm is LDraw (X, Y, Z)/0.4 about the origin
-  const body = framedBalance(frame, lib).map((p) => ({ role: p.role === 'crossbar' ? 'axle' : p.role, part: p.part, m: [L(p.m[0]), L(p.m[1]), L(p.m[2]), ...p.m.slice(3)] }));
+  const body = framedBalance(frame, lib).map((p) => ({ role: p.role === 'crossbar' ? 'axle' : p.role, part: p.part, ...(p.rating ? { rating: p.rating } : {}), m: [L(p.m[0]), L(p.m[1]), L(p.m[2]), ...p.m.slice(3)] }));
   const balance = { shaft: 'balance', origin: fr(frame.x0, 0, frame.zK), phi: alpha, speed: 0, parts: body };
   const ea = frame.escAxle;
   const arbor = { shaft: 'escape', origin: fr(frame.x0, 0, frame.zE), phi: theta, speed: 0, parts: [
@@ -880,6 +935,7 @@ export function cycleModel(lib, frame, opts) {
 // cycle (two legs, −A → A → −A, n steps each); α is the swing's own sine, the
 // wheel's angle the step's, plus one pitch per period already run.
 export function cyclePose(cm, t) {
+  if (cm.poseAt) return cm.poseAt(t);                                  // §316: a driven cycle carries its own pose (technic-drive's drivenCycle)
   const N = cm.steps.length, per = cm.T;
   const cyc = Math.floor(t / per), f = t / per - cyc;            // phase in [0, 1)
   // α = −A cos(2π f): −A at f = 0, A at f = ½ — the legs' own order

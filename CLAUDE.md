@@ -186,9 +186,8 @@ slip is L2's). `tools/probe-technic-clock.mjs` holds the lifts, the lines, every
 keyed part CARRIED on an axle, every mesh in phase, the ratios and CLEAR over the
 alarm's three × the keyless works' three
 states. The frame, ldraw, build,
-keyless, motion, fusee, fusee-loop, alarm, column-wheel, pusher, escapement, train and
-clock
-probes are pure Node. **Since §294 a CAROUSEL walks the cells** (display only): its stops
+keyless, motion, fusee, fusee-loop, alarm, column-wheel, pusher, escapement, train,
+drive and clock probes are pure Node. **Since §294 a CAROUSEL walks the cells** (display only): its stops
 are DERIVED from the cells `build()` made (`src/technic-carousel.js`, held by
 `probe-technic-carousel.mjs`; an unframed cell is skipped aloud), `?cell=<id>`
 opens one, and the page writes the URL only inside the tour. **Since §298 the page OPENS in the tour** at stop 1 (`initialTour`'s table: `?tour=0` or an explicit `?focus=` opens the overview as before, `?cell=` its stop); the browser half is
@@ -221,11 +220,33 @@ whose derived steps the swept insertion clears, and the probe re-derives that.
 ONE STATE drives every angle: the balance's posed swing sets the escape wheel's
 recoil-included angle and every arbor, the great wheel and §282's fusee loop
 follow it through the tooth counts (`trainPose`). The going time per wind is
-~6.6 h, read through the fusee's cone run under the POSED spring law. The swing
-is POSED (landing 2 drives it; landing 3 integrates the dynamics).
+~6.6 h, read through the fusee's cone run under the POSED spring law. Landing 1's
+swing was POSED.
 `tools/probe-technic-train.mjs` holds the chain, the solve, the frame, the
 build (seated, through, meshed, phased), the rate, the state and the clearance,
-each with a control.
+each with a control. **Since §316 the escapement is DRIVEN** (`src/technic-drive.js`):
+the balance's equation of motion is stepped in time, gravity against the anchor's
+push τ dθ/dα off §287's traced contact (one trace over the widest swing whose drops
+are the posed swing's, 8.75°; the wheel and train massless), the torque the spring
+law's (the ONLY source) through the cone and the train, every mesh's and the pallets'
+friction a TABLED band of three corners (`TECHNIC_DRIVE_FRICTION`). The posed law has
+a shape and no size, so the size is SOLVED: the most escape torque that keeps the
+driven period inside RATE_BAND of the free pendulum's (`TECHNIC_DRIVE`). With no
+knife or air loss the swing is set where recoil / impulse = η², by the pallets'
+friction and the anchor, not the drive's size (`beatBudget` books a beat: twice the
+torque moves it 0.2%). So the pallets' SETTING is solved for the driven swing
+(`TECHNIC_DRIVE.palletDeg`, 37.25°; §287's cell keeps 38.75°): the one whose FRICTION
+WINDOW (`frictionWindow`: the pallet efficiencies keeping the adverse swing over the
+release and the favourable under the slip) is widest, 0.35–0.85 against the tabled
+0.60–0.80 (2.17° nominal, 1.51° adverse, 4.65° favourable). A RATING NUT — a
+bush on a 4L axle standing in an angle connector #6 (32014) on the bob axle, the only
+radial member: every axle on the balance is parallel to the knife — sets the beat; its
+rate sensitivity is DERIVED from the inertias. The train cell follows the driven
+cycle when the solve converges and says when it does not. `tools/probe-technic-drive.mjs`
+holds the torque identities, the pendulum limit, the energy books, the period rising
+with the swing, the solve, the beat's budget, both margins and the friction window,
+the nut and the cycle, each with a control. Landing 3
+(the whole train's run-down integrated, its losses and inertias) is scoped in §316.
 **Since §300 each build has a PARTS LIST** (`src/technic-bom.js`) **and since
 §302 a STEP ORDER** (`src/technic-steps.js`, pure): the placements partitioned
 into steps by rules read off the placements (columns bottom-up, a part held in
@@ -1383,7 +1404,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 373 measuring scripts and this file names 74. The rest are named for the
+`tools/` holds 374 measuring scripts and this file names 75. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -1400,7 +1421,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **254 of
+The index also carries the split that decides how to read a result: **255 of
 them are ACCEPTANCE tests** that exit non-zero, and **119 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
