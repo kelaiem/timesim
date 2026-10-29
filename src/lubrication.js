@@ -65,8 +65,8 @@ export const LUBRICATION = Object.freeze({
   'Fourth wheel > Escape wheel':        L('dry', 'train teeth run dry (as the first stage)', { mu: 'muTooth', src: 'roadmap §247 seed table' }),
   'Center wheel :: bearing':            L('oil-medium', 'chaton rubies; the centre arbor carries the barrel reaction and is the thickest pivot (sized to its load, TODO 193), so it takes the heavier oil', { mu: 'muJewel', sink: 'chaton', src: 'roadmap §247 seed table' }),
   'Third wheel :: bearing':             L('oil-fine', 'chaton rubies; a light, faster pivot', { mu: 'muJewel', sink: 'chaton', src: 'roadmap §247 seed table' }),
-  'Fourth wheel :: bearing':            L('oil-fine', 'chaton rubies; fast and light, so the oil is kept where it was put', { mu: 'muJewel', sink: 'chaton', epilame: true, src: 'roadmap §247 seed table' }),
-  'Escape wheel :: bearing':            L('oil-fine', 'chaton rubies; the fastest and lightest pivot in the train', { mu: 'muJewel', sink: 'chaton', epilame: true, src: 'roadmap §247 seed table' }),
+  'Fourth wheel :: bearing':            L('oil-fine', 'rubies — a chaton below, the fourth wheel bridge\'s rubbed-in stone above (§322); fast and light, so the oil is kept where it was put', { mu: 'muJewel', sink: 'chaton', epilame: true, src: 'roadmap §247 seed table' }),
+  'Escape wheel :: bearing':            L('oil-fine', 'rubies — a chaton below, the fourth wheel bridge\'s rubbed-in stone above (§322); the fastest and lightest pivot in the train', { mu: 'muJewel', sink: 'chaton', epilame: true, src: 'roadmap §247 seed table' }),
   // ---- the barrel, chain and fusee ----
   'mainspring > Mainspring drum':       L('grease', 'a mainspring is greased: coil-on-coil friction is the ribbon\'s hysteresis (FRICTION.springInt), and this ribbon works near coil bind', { mu: 'springInt', src: 'roadmap §247 seed table' }),
   'Mainspring drum :: bearing':         L('oil-medium', 'the drum runs on its fixed arbor, a plain bore, under the chain\'s full tension and slowly', { mu: 'muPlain', sink: 'plain-bush', src: 'roadmap §247 seed table' }),

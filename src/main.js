@@ -5075,13 +5075,24 @@ function addUpperPivot(arbor, { staffR = TRAIN_STAFF_R, pivotR = staffR, jewelR 
 // its 0.80 bore would have forked a spec every dimension of which was a
 // proportion of the bore. §148 removes that reason — the screw is solved out
 // of the stock floors and does not scale with the chaton — so the exclusions
-// have nothing left holding them up and the plate's five jewelled pivots
-// carry one family: one screw, one ring turned to two bores.
-for (const arbor of [centerArbor, thirdArbor, fourthArbor]) {
+// have nothing left holding them up and the plate's jewelled pivots carry
+// one family: one screw, one ring turned to two bores. (§322 took the fourth
+// and escape wheels out of this plate and into their own bridge — three
+// chatons stay: the centre, the third and the strike arbor.)
+for (const arbor of [centerArbor, thirdArbor]) {
   await breathe(35);
   addUpperPivot(arbor, { pivotR: TRAIN_PIVOT_R, chaton: true });
 }
-addUpperPivot(escapeArbor, { pivotR: TRAIN_PIVOT_R, chaton: true });
+// §322 — THE FOURTH AND ESCAPE ARBORS NO LONGER END IN THIS PLATE. Their
+// upper pivots run in the FOURTH WHEEL BRIDGE's stones (addBridgePivot, at the
+// bridge's build, once its stone heights exist), so the plate carries no
+// chaton, collar or bore at either station and the opening is cut ROUND both
+// wheels. §148 put the escape chaton here because the plate "gives way to a
+// bearing"; measured, that bearing's screw seats reached 4.16 of a 4.5 wheel,
+// so no rounding of the opening could show the wheel while the plate was its
+// bearing. The bearing moved instead — the Glashütte escape-and-fourth cock
+// this file's MECH_GRAPH comment has described since the three train
+// bridges went.
 // The FUSEE arbor is the exception: it does not END in the plate — it
 // passes THROUGH it and finishes in a short LET-DOWN square standing
 // proud of the top face. There is deliberately NO ratchet or click on
@@ -6083,14 +6094,17 @@ await breathe(41);
 //     centre → balance line, open all the way to the rim, so the balance
 //     hangs in the clear under its cock (~96° of rim removed);
 //   · the ESCAPEMENT WINDOW — the opening then runs on inland to expose the
-//     pallet fork and the cap cock holding it. The ESCAPE WHEEL now pivots
-//     in this plate (its bore in the tongue the window leaves around it), so
-//     it no longer votes for the opening — what the window frames is the
-//     fork's action, with the wheel's rim showing at the window's edge.
+//     pallet fork and the cap cock holding it, and (§322) ROUND the escape
+//     wheel, which pivots in the fourth wheel bridge again rather than in
+//     this plate;
+//   · the FOURTH WHEEL AND THE RESET HAMMER (§322) — the opening runs on
+//     over the fourth wheel's disc and the hammer's whole swing beside it,
+//     with the bridge's bosses, bars and feet standing in its air.
 // They are adjacent — the escapement sits ~103° off the balance's outward
-// bearing — so they merge into one kidney-shaped opening running from the rim
-// around the balance and out over the escapement, which is also how these
-// plates are actually shaped.
+// bearing, the fourth wheel beyond it — so they merge into one openworked
+// cutaway running from the rim around the balance, over the escapement and
+// on over the fourth wheel to the hammer, which is also how these plates
+// are actually shaped.
 //
 // The window is MEASURED, not drawn: the edge radius is tabulated per degree
 // about the balance axis as the furthest any revealed part reaches on that
@@ -6117,6 +6131,72 @@ function finishCutRadii(raw) {
     }
   }
   return spread;
+}
+// §322 — THE OPENING RUNS ON OVER THE FOURTH WHEEL AND THE RESET HAMMER, and
+// the escape wheel votes again. Every part the kidney cut frames votes its
+// SWEPT silhouette into the same per-degree table the fork does, so the
+// opening stays ONE star-shaped cut about the balance axis — the one shape
+// `inCutClearance`, the pillar seats, the chaton seating and the stop-work
+// solve all read. A second window would have owed this cut a TQ_LAND_MIN
+// strip between them, and the fourth wheel's disc and the escape wheel's
+// overlap (8.63 + 4.5 across a 9.24 centre distance): no strip fits.
+//  · the ESCAPE WHEEL — a revolver, so its silhouette is exactly its tip
+//    circle (TODO 7's class, answered by construction). It pivots in the
+//    fourth wheel bridge since §322, not in this plate, so the plate keeps no
+//    boss at its axis and the cut is ROUND about it at the wheel's radius
+//    plus the margin — the rounding asked for, which §148's chaton (seats
+//    reaching 4.16 of the wheel's 4.5) could never have let it have.
+//  · the FOURTH WHEEL — the same, about its axis; the heart cam under it
+//    votes too, though its disc lies inside the wheel's.
+//  · the RESET HAMMER — banks HAMMER_SWING_RAD about its own pivot, from the
+//    seated pose (hammerBaseAngle) to the retracted one, so every vertex of
+//    the hammer group is read in the group's own frame and swung over that
+//    travel: the group stands at rotation 0 until the first tick writes it,
+//    the fork's trap above, not repeated. Its tail bar and arbor are built
+//    after this first solve and vote on the second pass.
+//  · the FOURTH WHEEL BRIDGE — static, voted the moment it is built (its
+//    feet are solved against the low corridor, which does not exist here)
+//    and again on the bridge-reveal pass, exactly as the balance cock is.
+// A star-shaped table casts a SHADOW: where clampCutToKeeps pushes a ray back
+// out of a chaton the plate still carries (the third wheel's, whose seats
+// reach into the fourth wheel's disc), the plate along the rest of that ray
+// stays too. tools/probe-322-openwork.mjs measures what that costs the fourth
+// wheel's reveal; it is the price of one cut that every consumer reads as one.
+let FOURTH_BRIDGE = null;   // §322 — filled in at the bridge's build (after the low corridor); the second pass reads it
+function openworkVotes(bump) {
+  const v = new THREE.Vector3();
+  const ring = (c, r) => { for (let i = 0; i < 360; i++) { const a = i * DEG2RAD; bump(c.x + Math.cos(a) * r, c.y + Math.sin(a) * r); } };
+  ring(P.escape, xyRadiusAbout(escapeArbor, P.escape));
+  ring(P.fourth, xyRadiusAbout(fourthArbor, P.fourth));
+  ring(P.fourth, xyRadiusAbout(secondsCamArbor, P.fourth));
+  // The hammer, swung about its pivot over its declared travel (declareTravel
+  // below reads the same constant): hammer-local polar coordinates, the
+  // group's own rotation taken out through its inverse world matrix.
+  hammerGroup.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(hammerGroup.matrixWorld).invert();
+  const m = new THREE.Matrix4();
+  const STEPS = 4;
+  hammerGroup.traverse((o) => {
+    if (!o.isMesh || !o.geometry?.attributes?.position) return;
+    m.multiplyMatrices(inv, o.matrixWorld);
+    const pos = o.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(m);
+      const rho = Math.hypot(v.x, v.y), th = Math.atan2(v.y, v.x);
+      for (let k = 0; k <= STEPS; k++) {
+        const a = th + hammerBaseAngle + (k / STEPS) * HAMMER_SWING_RAD;
+        bump(hammerPivotPos.x + Math.cos(a) * rho, hammerPivotPos.y + Math.sin(a) * rho);
+      }
+    }
+  });
+  if (FOURTH_BRIDGE) {
+    FOURTH_BRIDGE.obj.updateMatrixWorld(true);
+    FOURTH_BRIDGE.obj.traverse((o) => {
+      if (!o.isMesh || !o.geometry?.attributes?.position) return;
+      const pos = o.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld); bump(v.x, v.y); }
+    });
+  }
 }
 const TQ_CUT = (() => {
   const aim = Math.atan2(P.balance.y, P.balance.x);
@@ -6149,7 +6229,8 @@ const TQ_CUT = (() => {
   //    cut a shorter one at 295–305° (out to 14.9) where it stands now, and
   //    the stop work's bearing, pivot, rod and mast read bit-identical;
   //  · the fork cock — static.
-  // (The escape wheel no longer contributes: it pivots in this plate.)
+  //  · since §322, the escape wheel, the fourth wheel, the heart cam and the
+  //    reset hammer — openworkVotes above says how each is swept.
   const bankRad = FORK_BANK_DEG * DEG2RAD;
   forkGroup.updateMatrixWorld(true);
   forkGroup.traverse((o) => {
@@ -6174,6 +6255,7 @@ const TQ_CUT = (() => {
       bump(v.x, v.y);
     }
   });
+  openworkVotes(bump);
   // The RAW table is kept alongside the finished one: the balance-cock
   // reveal (further down, once the cock exists) bumps the raw table and
   // re-finishes ONCE — finishing twice would over-widen every original
@@ -11442,6 +11524,364 @@ const LOW_LINKAGE_OBSTACLES = (() => {
 const LOW_CORRIDOR_Z_BAND = [0.15, 1.9];
 
 // ---------------------------------------------------------------------------
+// §322 — THE FOURTH WHEEL BRIDGE: the fourth and escape wheels' upper pivots in
+// a separate bridge standing on the BASE plate, so the three-quarter plate can
+// be cut round both wheels and the reset hammer beside them.
+//
+// Glashütte practice, and this file's own: the MECH_GRAPH comment has
+// described "a combined pallet-and-escape bridge that stands on the BASE
+// plate on its own legs and comes up through a window cut in the
+// three-quarter plate" since the three train bridges went, and both cocks the
+// movement already has stand that way (TODO 184 — the frame's one rule for a
+// cock). Two feet, two bosses, three bars, built by makeEscapeBridge exactly
+// as the fork cock is, with the fork cock's leg (a sleeve round its screw,
+// TODO 184 step 2), its screw (COCK_THREAD_D, set by the plate it grips) and
+// its rubbed-in stone. What is derived here, and from what:
+//
+//  · THE STONE is the plate's (§148: one stone — jewelOuterFor at the staff's
+//    bore), dished 0.1 inside its counterbore as the fork cock's is, with the
+//    PIVOT's hole through it (TODO 192 step 2: the pivot is the friction arm
+//    and the stone is what bears). The boss keeps the fork cock's 0.55 ring of
+//    nickel outside the recess, and its own bore is opened one more running
+//    clearance than the staff needs, so of the two bores the staff passes the
+//    stone is the one that bears — addUpperPivot's rule, in the bridge.
+//  · THE SLAB is the balance cock's section (COCK_T), and its FLOOR is one
+//    CLEAR_MARGIN above the tallest metal under its own plan — the two wheels
+//    the bosses stand over bind (the fourth wheel's top), and the whole plan
+//    is re-measured once the feet are placed, with a warning if anything
+//    under it stands higher. That puts the slab's top inside the plate's
+//    z-band, which is where a Glashütte cock sits: the plate is cut round it
+//    (the bridge votes for the opening, below) and the cock stands in the
+//    opening's air, as the balance cock does.
+//  · THE FEET are SCANNED, each about the boss its bar leaves, over every
+//    bearing and the reach from 3 to 20, and the nearest feasible seat wins —
+//    the fork cock's policy. A seat is feasible when the leg's column clears
+//    everything standing between the base plate and the slab's floor (every
+//    mesh in that z-band, swept with the keep visitor's two footprints, and
+//    the swept parts by their sweeps: the low corridor's rods, posts and the
+//    hammer by LOW_LINKAGE_OBSTACLES — rule 5 — the fork by FORK_SWEEP, the
+//    balance by its rim and its breathing spring), stands on base-plate
+//    metal clear of every opening cut in it, keeps the balance cock's spine
+//    corridor, and when its BAR, in the slab's own band, clears what crosses
+//    that band and the plate's remaining chaton seats (metal the plate must
+//    keep, and the cut would otherwise be clamped back into the bar). AND A
+//    BAR IS ROUTED OFF THE ACTION IT FRAMES: the hammer's swept footprint and
+//    the other wheel's disc are obstacles to the bar as well as to the leg —
+//    a bridge drawn across the lever it was built to show is the fork cock's
+//    "least possible metal in the view" rule broken, and the opening's whole
+//    reason. The bar over its own boss's wheel is the bridge's member and is
+//    allowed.
+//
+// Built here, after LOW_LINKAGE_OBSTACLES exists (the feet consume it) and
+// before the chaton seats are phased against the cut (the bridge votes for the
+// cut the moment it stands). The base plate is already cut, so the feet's
+// tapped holes join BACK_PLATE_LATE_HOLES for the late re-cut, the balance
+// cock's path.
+const FOURTH_BRIDGE_T = COCK_T;
+await breathe();
+FOURTH_BRIDGE = await (async () => {
+  const legR = COCK_LEG_BORE_R + STOCK_MIN_U;   // TODO 184 step 2 — the sleeve round the foot screw
+  const nodeR = legR * 1.35, padR = legR * 1.5;  // makeEscapeBridge's foot boss and the pad it lands on
+  const stoneBore = TRAIN_PIVOT_R + PIVOT_BORE_CLEAR;
+  const stoneCbR = jewelOuterFor(TRAIN_STAFF_R + PIVOT_BORE_CLEAR) + 0.1;   // the stone dished 0.1 inside
+  const bossR = stoneCbR + 0.55;
+  const bossBore = TRAIN_STAFF_R + 2 * PIVOT_BORE_CLEAR;
+  const cbDepth = FOURTH_BRIDGE_T * 0.65;
+  const barHW = Math.min(bossR, nodeR) * 0.8;
+  const T = FOURTH_BRIDGE_T;
+  // 1. The slab's floor, from the wheels the bosses stand over (the whole
+  //    plan is re-measured against it at the end).
+  const BOT0 = Math.max(boxOf(fourthArbor).max.z, boxOf(escapeArbor).max.z,
+    zTopOfAnnulus(thirdArbor, P.third, 3), boxOf(secondsCamArbor).max.z, boxOf(hammerGroup).max.z) + CLEAR_MARGIN;
+  // 2. The keeps, measured: every mesh standing in a z-band, by the keep
+  //    visitor's two footprints (an AABB and a bounding circle, the larger
+  //    distance taken — each is conservative, and the larger is tight where
+  //    either fits). The parts that MOVE are excluded here and enter by their
+  //    sweeps below; the base plate is the ground and not an obstacle.
+  // (The two rods are excluded as well: a long cranked link's box and bounding
+  // circle claim the whole quadrant it crosses — measured, the hack rod's
+  // alone closed every bearing — and LOW_LINKAGE_OBSTACLES is their one source,
+  // rule 5, which carries them at their own plan half-width over the stroke.)
+  const swept = new Set([hammerGroup, forkGroup, balanceGroup, hairspringGroup, backPlate, resetRod, hackRod]);
+  const keepsIn = (zLo, zHi, skipFramed) => {
+    const keeps = [], v = new THREE.Vector3();
+    movement.updateMatrixWorld(true);
+    for (const child of movement.children) {
+      if (swept.has(child) || (skipFramed && (child === fourthArbor || child === escapeArbor || child === thirdArbor || child === secondsCamArbor))) continue;
+      child.traverse((o) => {
+        if (!o.isMesh || !o.geometry?.attributes?.position || o.userData?.schematic) return;
+        o.geometry.computeBoundingBox();
+        const b = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
+        if (b.max.z < zLo || b.min.z > zHi) return;
+        let cr = 0;
+        const cx = (b.min.x + b.max.x) / 2, cy = (b.min.y + b.max.y) / 2;
+        const pos = o.geometry.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+          v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+          cr = Math.max(cr, Math.hypot(v.x - cx, v.y - cy));
+        }
+        keeps.push({ b, cx, cy, cr });
+      });
+    }
+    return keeps;
+  };
+  const keepClear = (keeps, x, y) => {
+    let c = Infinity;
+    for (const k of keeps) {
+      const bx = clamp(x, k.b.min.x, k.b.max.x), by = clamp(y, k.b.min.y, k.b.max.y);
+      c = Math.min(c, Math.max(Math.hypot(x - bx, y - by), Math.hypot(x - k.cx, y - k.cy) - k.cr));
+    }
+    return c;
+  };
+  await breathe();
+  const columnKeeps = keepsIn(BACK_PLATE_Z + BACK_PLATE_T / 2, BOT0, false);
+  await breathe();
+  // The slab's band, one margin wider each way: a part topping just under
+  // the floor is cleared in z by the floor's derivation only where the plan
+  // was measured, and the four framed arbors are that measurement.
+  const bandKeeps = keepsIn(BOT0 - CLEAR_MARGIN, BOT0 + T + CLEAR_MARGIN, true);
+  // The hammer as a SWEPT SECTOR about its pivot (FORK_SWEEP's construction,
+  // over the hammer's own travel), for the bar's view rule and the column.
+  const hammerSweep = (() => {
+    const BIN = 0.5 * DEG2RAD, N = Math.round((2 * Math.PI) / BIN), STEPS = 16;
+    const reach = new Array(N).fill(0), v = new THREE.Vector3();
+    hammerGroup.updateMatrixWorld(true);
+    const inv = new THREE.Matrix4().copy(hammerGroup.matrixWorld).invert(), m = new THREE.Matrix4();
+    hammerGroup.traverse((o) => {
+      if (!o.isMesh || !o.geometry?.attributes?.position) return;
+      m.multiplyMatrices(inv, o.matrixWorld);
+      const pos = o.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i).applyMatrix4(m);
+        const rho = Math.hypot(v.x, v.y), th = Math.atan2(v.y, v.x) + hammerBaseAngle;
+        for (let k = 0; k <= STEPS; k++) {
+          const a = th + (k / STEPS) * HAMMER_SWING_RAD;
+          const j = ((Math.floor(a / BIN) % N) + N) % N;
+          if (rho > reach[j]) reach[j] = rho;
+        }
+      }
+    });
+    const TAU = 2 * Math.PI;
+    const clear = (x, y) => {
+      const px = x - hammerPivotPos.x, py = y - hammerPivotPos.y;
+      const rho = Math.hypot(px, py), phi = Math.atan2(py, px);
+      let c = Infinity;
+      for (let j = 0; j < N; j++) {
+        if (!(reach[j] > 0)) continue;
+        const a0 = j * BIN, d = (((phi - a0) % TAU) + TAU) % TAU;
+        if (d <= BIN) { c = Math.min(c, rho - reach[j]); continue; }
+        for (const a of [a0, a0 + BIN]) {
+          const ux = Math.cos(a), uy = Math.sin(a), t = clamp(px * ux + py * uy, 0, reach[j]);
+          c = Math.min(c, Math.hypot(px - t * ux, py - t * uy));
+        }
+      }
+      return c;
+    };
+    return { clear, maxReach: Math.max(...reach) };
+  })();
+  // The plate's remaining chaton sites: the counterbore and every seat the
+  // plate must keep, as one disc each (the seats are lobes; a disc holds all
+  // of them whichever phase the seating solve picks for them later).
+  const chatonDiscs = tqPivots.map((p) => ({ x: p.x, y: p.y,
+    r: (p.chaton ? G.chatonScrewR(p.boreR) + CHATON_SEAT_R : p.jewelR * 1.7) + CLEAR_MARGIN }));
+  const stadium = (x, y, s) => {
+    const vx = s.bx - s.ax, vy = s.by - s.ay, L2 = vx * vx + vy * vy || 1e-9;
+    const t = clamp(((x - s.ax) * vx + (y - s.ay) * vy) / L2, 0, 1);
+    return Math.hypot(x - s.ax - t * vx, y - s.ay - t * vy) - s.r;
+  };
+  const latRay = (px, py, rad) => {   // the balance cock's spine corridor (§125 Tier B), the fork cock's own wall
+    const rx = px - P.balance.x, ry = py - P.balance.y;
+    const tt = clamp(rx * COCK_SPINE.dir.x + ry * COCK_SPINE.dir.y, 0, COCK_SPINE.len);
+    return Math.hypot(rx - tt * COCK_SPINE.dir.x, ry - tt * COCK_SPINE.dir.y) - COCK_SPINE.half - rad;
+  };
+  const baseOpenings = [...BACK_PLATE_CUT.holes, ...BACK_PLATE_LATE_HOLES];
+  const baseSlots = [...BACK_PLATE_CUT.slots, ...BACK_PLATE_LATE_SLOTS];
+  // What a leg's column has to clear, as a signed distance from (x, y).
+  const columnClear = (x, y) => {
+    let c = keepClear(columnKeeps, x, y);
+    for (const o of LOW_LINKAGE_OBSTACLES) c = Math.min(c, o.ax === undefined ? Math.hypot(x - o.x, y - o.y) - o.r : stadium(x, y, o));
+    c = Math.min(c, FORK_SWEEP.clear(x, y), hammerSweep.clear(x, y));
+    c = Math.min(c, Math.hypot(x - P.balance.x, y - P.balance.y) - Math.max(BAL_OUTER_R, HAIRSPRING_SWEPT_R));
+    for (const d of chatonDiscs) c = Math.min(c, Math.hypot(x - d.x, y - d.y) - d.r);
+    // the pad stands on base-plate metal: one stock floor of land to every opening cut in it
+    for (const h of baseOpenings) c = Math.min(c, Math.hypot(x - h.x, y - h.y) - h.r - STOCK_MIN_U);
+    for (const s of baseSlots) c = Math.min(c, stadium(x, y, s) - STOCK_MIN_U);
+    return c;
+  };
+  // ...and a bar, in the slab's band.
+  const barClear = (x, y, other) => {
+    let c = keepClear(bandKeeps, x, y);
+    c = Math.min(c, FORK_SWEEP.clear(x, y), hammerSweep.clear(x, y));
+    c = Math.min(c, Math.hypot(x - P.balance.x, y - P.balance.y) - Math.max(BAL_OUTER_R, HAIRSPRING_SWEPT_R));
+    for (const d of chatonDiscs) c = Math.min(c, Math.hypot(x - d.x, y - d.y) - d.r);
+    c = Math.min(c, Math.hypot(x - other.x, y - other.y) - other.r);   // the OTHER framed wheel: the bar stays off it
+    return c;
+  };
+  const rimR = plateR - 0.2 - TQ_CUT_MARGIN;   // the cut's edge is clamped inside plateR − 0.2, and stands TQ_CUT_MARGIN off the bridge
+  // 3. The scan — every bearing, the nearest feasible reach; the whole table is kept for the report.
+  const footFor = async (host, other, name) => {
+    let best = null, near = null;
+    const rows = [], landscape = [];   // landscape: each bearing's least-short candidate, for the report
+    for (let dd = 0; dd < 360; dd += 2) {
+      await breathe();
+      const a = dd * DEG2RAD, cs = Math.cos(a), sn = Math.sin(a);
+      let bearingNear = null;
+      const series = [];
+      // ...out to where the plate ends on this bearing (a foot beyond the
+      // opening's tenants is a long bar, not a bad one), and never past the
+      // plate's own radius: a bar that long would cross the movement.
+      for (let reach = bossR + nodeR + CLEAR_MARGIN; reach <= rimR; reach += 0.25) {
+        const x = host.x + cs * reach, y = host.y + sn * reach;
+        const mPlate = rimR - nodeR - Math.hypot(x, y);
+        const mColumn = columnClear(x, y) - (padR + CLEAR_MARGIN);
+        // The bar is judged BEYOND its boss and short of its foot node: the
+        // boss stands over its own wheel's hub, the cam and the hammer's
+        // roller seated in the cam's notch (that is where the wheel's pivot
+        // is), and the node's column is judged on its own above.
+        let mBar = Infinity;
+        for (let sb = bossR + CLEAR_MARGIN; sb <= reach - nodeR; sb += 0.5) {
+          const bx = host.x + cs * sb, by = host.y + sn * sb;
+          mBar = Math.min(mBar, barClear(bx, by, other) - (barHW + CLEAR_MARGIN));
+        }
+        const mSpine = Math.min(latRay(x, y, nodeR), latRay(host.x + cs * reach * 0.5, host.y + sn * reach * 0.5, barHW));
+        const short = Math.min(mPlate, mColumn, mBar, mSpine);
+        const row = { x, y, reach, a, short, mPlate, mColumn, mBar, mSpine };
+        series.push([+reach.toFixed(2), +short.toFixed(2), +mColumn.toFixed(2), +mBar.toFixed(2), +mPlate.toFixed(2)]);
+        if (mPlate < 0) break;   // past the rim, every farther reach is too
+        if (!near || short > near.short) near = row;
+        if (!bearingNear || short > bearingNear.short) bearingNear = row;
+        if (short < 0) continue;
+        rows.push(row);
+        if (!best || reach < best.reach - 1e-9) best = row;
+        break;   // the first feasible reach on this bearing is its shortest
+      }
+      if (bearingNear) bearingNear.series = series;
+      landscape.push(bearingNear);
+    }
+    if (!best) {
+      const walls = [[near.mPlate, 'the plate runs out'], [near.mColumn, 'the leg column against what stands between the plates'],
+        [near.mBar, 'the bar against the slab band, a chaton seat or the action it frames'], [near.mSpine, "the balance cock's spine corridor"]]
+        .sort((p, q) => p[0] - q[0]);
+      console.warn(`§322: no clear footing for the fourth wheel bridge's ${name} foot — best near-miss is short by ${(-near.short).toFixed(3)} `
+        + `at (${near.x.toFixed(2)}, ${near.y.toFixed(2)}), reach ${near.reach.toFixed(2)}, bearing ${(near.a / DEG2RAD).toFixed(1)}°; bound by ${walls[0][1]} `
+        + `[margins: plate ${near.mPlate.toFixed(3)}, column ${near.mColumn.toFixed(3)}, bar ${near.mBar.toFixed(3)}, spine ${near.mSpine.toFixed(3)}]. `
+        + 'Seated there anyway so the rest of the boot reports — the bridge is KNOWN BAD.');
+      return { ...near, missed: true, rows, landscape };
+    }
+    return { ...best, rows, landscape };
+  };
+  const discEscape = { x: P.escape.x, y: P.escape.y, r: xyRadiusAbout(escapeArbor, P.escape) };
+  const discFourth = { x: P.fourth.x, y: P.fourth.y, r: xyRadiusAbout(fourthArbor, P.fourth) };
+  const footA = await footFor(P.escape, discFourth, 'escape-side');
+  const footB = await footFor(P.fourth, discEscape, 'hammer-side');
+  // 4. The floor, re-measured against the whole plan: nothing under a boss, a
+  //    bar or a foot may stand higher than the floor the wheels set.
+  const chain = [
+    { x: footA.x, y: footA.y, r: nodeR, foot: true, legR },
+    { x: P.escape.x, y: P.escape.y, r: bossR, bore: bossBore, cbR: stoneCbR, cbDepth },
+    { x: P.fourth.x, y: P.fourth.y, r: bossR, bore: bossBore, cbR: stoneCbR, cbDepth },
+    { x: footB.x, y: footB.y, r: nodeR, foot: true, legR },
+  ];
+  const underPlan = (x, y) => {
+    for (const n of chain) if (Math.hypot(x - n.x, y - n.y) <= n.r + CLEAR_MARGIN) return true;
+    for (let i = 0; i + 1 < chain.length; i++) {
+      const a = chain[i], b = chain[i + 1];
+      if (stadium(x, y, { ax: a.x, ay: a.y, bx: b.x, by: b.y, r: Math.min(a.r, b.r) * 0.8 + CLEAR_MARGIN }) <= 0) return true;
+    }
+    return false;
+  };
+  let tallest = -Infinity, tallestAt = null;
+  {
+    const v = new THREE.Vector3();
+    await breathe();
+    movement.updateMatrixWorld(true);
+    for (const child of movement.children) {
+      if (child === backPlate) continue;
+      child.traverse((o) => {
+        if (!o.isMesh || !o.geometry?.attributes?.position || o.userData?.schematic) return;
+        o.geometry.computeBoundingBox();
+        const b = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
+        if (b.max.z < BOT0 - CLEAR_MARGIN - 1e-9 || b.min.z > BOT0 + T) return;   // cannot reach the floor
+        // the framed staffs are the bridge's own tenants: they run UP into its stones
+        if (child === fourthArbor || child === escapeArbor) return;
+        const pos = o.geometry.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+          v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+          if (v.z > tallest && v.z <= BOT0 + T && underPlan(v.x, v.y)) { tallest = v.z; tallestAt = [v.x, v.y, labelEntries.find((e) => e.obj === child)?.name ?? '(unlabeled)']; }
+        }
+      });
+    }
+  }
+  const BOT = BOT0;
+  if (tallest > BOT - CLEAR_MARGIN + 1e-9)
+    console.warn(`§322: the fourth wheel bridge's floor (${BOT.toFixed(3)}) stands ${(BOT - tallest).toFixed(3)} over ${tallestAt[2]} at `
+      + `(${tallestAt[0].toFixed(2)}, ${tallestAt[1].toFixed(2)}), under ${CLEAR_MARGIN} — a part under the slab's plan the floor's derivation did not read`);
+  // 5. The build.
+  await breathe();
+  const g = G.makeEscapeBridge({
+    chain, thickness: T,
+    foot: { headR: COCK_SCREW_HEAD_R, engage: BACK_PLATE_T },
+    footDrop: BOT - (BACK_PLATE_Z + BACK_PLATE_T / 2),
+    jewels: [
+      { x: P.escape.x, y: P.escape.y, boreR: stoneBore, cbR: stoneCbR, depth: cbDepth },
+      { x: P.fourth.x, y: P.fourth.y, boreR: stoneBore, cbR: stoneCbR, depth: cbDepth },
+    ],
+  });
+  g.position.set(0, 0, BOT + T / 2);
+  movement.add(g);
+  for (const f of g.userData.footScrews)
+    declareFrameJoint({ joint: 'Fourth wheel bridge ⇄ base plate', clamped: 'fourth wheel bridge slab and leg', host: 'base plate',
+      frame: g, x: f.x, y: f.y, top: f.z, headR: f.headR, headT: f.headT, shank: f.shank, clamp: f.clamp });
+  for (const n of chain) if (n.foot) BACK_PLATE_LATE_HOLES.push({ x: n.x, y: n.y, r: COCK_PLATE_TAP_R });
+  registerExplode(g, BOT + T / 2, 7);
+  registerLabel('Fourth wheel bridge', g);
+  // 6. The pivots: the staff shoulders CLEAR_MARGIN under the stone (endshake),
+  //    the pivot runs through the stone's hole to its top — addUpperPivot's
+  //    construction with the bridge's stone heights in place of the chaton's.
+  const stoneTopZ = BOT + T - G.SEAT_FIT;                          // makeEscapeBridge seats the dish one fit under the face
+  const stoneBotZ = stoneTopZ - Math.max(cbDepth - G.SEAT_FIT, cbDepth * 0.6);
+  const addBridgePivot = (arbor, station) => {
+    const worldTop = boxOf(arbor).max.z;
+    const staffEnd = stoneBotZ - CLEAR_MARGIN;
+    const len = staffEnd - worldTop;
+    if (len > 0.05) {
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(TRAIN_STAFF_R, TRAIN_STAFF_R, len, PIVOT_SEGMENTS), MATS.steel);
+      shaft.rotation.x = Math.PI / 2;
+      shaft.position.z = (worldTop - arbor.position.z) + len / 2;
+      arbor.add(shaft);
+    }
+    const from = Math.max(worldTop, staffEnd), pLen = stoneTopZ - from;
+    const pivot = new THREE.Mesh(new THREE.CylinderGeometry(TRAIN_PIVOT_R, TRAIN_PIVOT_R, pLen, PIVOT_SEGMENTS), MATS.steel);
+    pivot.name = 'trainPivot';
+    pivot.rotation.x = Math.PI / 2;
+    pivot.position.z = (from - arbor.position.z) + pLen / 2;
+    arbor.add(pivot);
+    arbor.userData.pivotUpper = pivot;
+    arbor.userData.pivotUpperTq = { x: station.x, y: station.y, holeR: stoneBore, bridge: 'Fourth wheel bridge' };
+  };
+  addBridgePivot(fourthArbor, P.fourth);
+  addBridgePivot(escapeArbor, P.escape);
+  return { obj: g, chain, footA, footB, bossR, nodeR, barHW, T, bot: BOT, stoneTopZ, stoneBotZ, stoneBore, stoneCbR, hammerSweepReach: hammerSweep.maxReach };
+})();
+// The bridge votes for the opening the moment it stands: the raw table takes
+// its silhouette and the hammer's whole swing (tail bar and arbor included
+// now), and the finished table is rebuilt from the raw one — the only
+// finishing the raw table ever gets is this rebuild, so nothing is finished
+// twice (the bridge-reveal pass does the same, and its clamp runs after).
+{
+  const bump = (x, y) => {
+    const dx = x - P.balance.x, dy = y - P.balance.y;
+    const r = Math.hypot(dx, dy) + TQ_CUT_MARGIN;
+    const deg = Math.round(((Math.atan2(dy, dx) - TQ_CUT.aim) * 180) / Math.PI);
+    const i = ((deg % 360) + 360) % 360;
+    if (r > TQ_CUT.rawRadii[i]) TQ_CUT.rawRadii[i] = r;
+  };
+  await breathe();
+  openworkVotes(bump);
+  TQ_CUT.radii = finishCutRadii(TQ_CUT.rawRadii);
+}
+
+// ---------------------------------------------------------------------------
 // Fusee & chain — torque equalisation. The spring DRUM sits beside the fusee;
 // the chain leaves the drum, crosses on an external tangent, and wraps the
 // cone helically. Fully wound: the chain pulls at the cone's SMALL radius
@@ -11643,6 +12083,7 @@ for (const row of TRAIN_PIVOT_SIZES) {
     m.geometry.dispose();
     m.geometry = new THREE.CylinderGeometry(row.rU, row.rU, h, PIVOT_SEGMENTS);
   }
+  if (tq.bridge) console.warn(`TODO 193: the ${row.arbor} arbor's upper pivot runs in the ${tq.bridge}'s stone, which this re-cut does not re-bore — the stone's hole is cut at the build`);
   tq.holeR = row.rU + PIVOT_BORE_CLEAR;
   const jewel = G.makeJewelSetting({ r: lo.jewelR, holeR: row.rU + PIVOT_BORE_CLEAR });
   jewel.position.copy(lo.jewel.position);
@@ -15398,6 +15839,12 @@ const BALANCE_COCK = (() => {
     const a = forkCock.chain[i], b = forkCock.chain[i + 1];
     obstacles.push({ ax: a.x, ay: a.y, bx: b.x, by: b.y, r: Math.min(a.r, b.r) * 0.8 });
   }
+  // §322 — and the fourth wheel bridge's, the same way: its bosses, feet and bars.
+  for (const n of FOURTH_BRIDGE.chain) obstacles.push({ x: n.x, y: n.y, r: n.r });
+  for (let i = 0; i + 1 < FOURTH_BRIDGE.chain.length; i++) {
+    const a = FOURTH_BRIDGE.chain[i], b = FOURTH_BRIDGE.chain[i + 1];
+    obstacles.push({ ax: a.x, ay: a.y, bx: b.x, by: b.y, r: Math.min(a.r, b.r) * 0.8 });
+  }
   // The FULL train: the cock's pedestal spans from the base plate to the
   // slab, crossing every wheel band on the way, so each disc's whole
   // footprint is off-limits to the foot. The old hack blade's obstacle
@@ -15898,6 +16345,16 @@ registerLabel('Balance cock', balanceCock);
       const idx = ((deg % 360) + 360) % 360;
       if (r > TQ_CUT.rawRadii[idx]) TQ_CUT.rawRadii[idx] = r;
     }
+  });
+  // §322 — and the openwork votes once more on this pass (the hammer's tail
+  // bar and arbor, built after the first solve, and the bridge): the same
+  // raw table, the same single re-finish.
+  openworkVotes((x, y) => {
+    const dx = x - P.balance.x, dy = y - P.balance.y;
+    const r = Math.hypot(dx, dy) + TQ_CUT_MARGIN;
+    const deg = Math.round(((Math.atan2(dy, dx) - TQ_CUT.aim) * 180) / Math.PI);
+    const idx = ((deg % 360) + 360) % 360;
+    if (r > TQ_CUT.rawRadii[idx]) TQ_CUT.rawRadii[idx] = r;
   });
   TQ_CUT.radii = finishCutRadii(TQ_CUT.rawRadii);
   // A cut-edge point pushed past the plate's rim would self-intersect the
@@ -55400,6 +55857,7 @@ const UNIT_GROUPS = new Map([
   ['Escapement', new Map([
     ['Escape wheel', null], ['Pallet fork', null], ['Balance', null],
     ['Hairspring', null], ['Balance cock', null], ['Fork cock', null],
+    ['Fourth wheel bridge', null],   // §322 — the escape wheel's upper bearing is in it
   ])],
   ['Going train', new Map([
     ['Center wheel', null], ['Third wheel', null], ['Fourth wheel', null],
@@ -62052,6 +62510,14 @@ window.__clock = {
   // it left behind — the solve's own numbers, so a reader (or a check) can
   // measure the plate against what it was told rather than against a picture.
   get tqWindows() { return TQ_WINDOWS.report; },
+  // §322 — the fourth wheel bridge's solve: its feet (and each scan's whole
+  // landscape, every bearing's least-short candidate), the bosses, the floor
+  // and the stone heights. tools/probe-322-openwork.mjs reads it.
+  get fourthBridge() {
+    if (!FOURTH_BRIDGE) return null;
+    const { obj, ...rest } = FOURTH_BRIDGE;
+    return rest;
+  },
   declaredTravels,   // §36 job A: the pose laws sampling cannot recover
   declaredRestoring, // §48: what brings each reciprocating part back
   // §36 part three: the routing spec's own frame. A sketched polyline arrives
