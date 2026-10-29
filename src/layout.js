@@ -100,6 +100,11 @@ export const FOURTH_MODULE_DEFAULT = 0.21; // the fourth⇄escape mesh's cut, th
 // the round build, never named): one list, read by SPEC and by every tool that
 // walks the kinds.
 export const FORM_KINDS = Object.freeze(['rect', 'cushion', 'tonneau', 'fitted']);
+// §325 — the FREE outline is a case kind too, but not one of FORM_KINDS: its outline is no box a ?formrect=
+// carries (it is the metal's own plan, GENERATED into src/free-outlines.js by tools/free-outline.mjs), and it
+// takes the fitted tonneau's gong seat rather than a seat of its own (main.js SEAT_KIND_OF), so the tools that
+// walk FORM_KINDS (the seats, the bench) do not walk it. SPEC accepts every CASE_KINDS entry.
+export const CASE_KINDS = Object.freeze([...FORM_KINDS, 'free']);
 // THE MOVEMENT'S ARRANGEMENT (§308 landing 5, §313, §314): the barrel stepped −20° off the centre, the alarm
 // module turned 50°, the power reserve held at 12 o'clock on two idlers. A fitted form case needs the module turned
 // — the designed train's alarm hammer sets the case's width on the crown's far side (x 43.2), over the owner's 40 mm
@@ -309,7 +314,7 @@ export const SPEC = (() => {
   // §308 — the kinds of layout.js's shape library (caseShapeOf) a case may
   // take: FORM_KINDS ('rect', 'cushion', 'tonneau', and §317's 'fitted').
   // Anything else is round.
-  const caseShape = FORM_KINDS.includes(raw.caseShape) ? raw.caseShape : null;
+  const caseShape = CASE_KINDS.includes(raw.caseShape) ? raw.caseShape : null;   // §325: and the free outline
   // §307 landing 2 — THE MEASURED FORM RECTANGLE, `xMin,xMax,yMin,yMax` in
   // movement units: the footprint of the whole built movement (every part the
   // build placed inside the round case's bore, the case-path gong excepted)
@@ -321,6 +326,7 @@ export const SPEC = (() => {
   // Absent: ?case=rect falls back to the solvers' `formPlate`. Malformed: null.
   const formRectSpec = (() => {
     if (raw.formRectSpec === undefined) return null;
+    if (caseShape === 'free') return null;   // §325: the free outline is generated, never carried
     // §317 — six numbers for the fitted tonneau: the bounds, then its side
     // curvature k (> 0) and apex height tau (caseShapeOf's opts.fitted)
     const v = String(raw.formRectSpec).split(',').map(Number);
@@ -3982,6 +3988,520 @@ export function convexHull2(xs, ys, n) {
   for (let i = pts.length - 1; i >= 0; i--) { const p = pts[i]; while (upper.length >= 2 && cr(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop(); upper.push(p); }
   return lower.slice(0, -1).concat(upper.slice(0, -1));
 }
+
+// §325 — THE FREE OUTLINE: a form case with no construction at all — no
+// mirror, no barrel, no box — fitted to the movement's metal and allowed to
+// follow it inward. Every other kind is a few numbers (a box, a curvature, an
+// apex) that the metal is fitted INSIDE; this one is the metal's own plan,
+// grown, closed and given its lug ends. The construction, on the counted metal
+// X (the convex hull of each counted mesh, unioned), in this order:
+//
+//   1. the lug ENDS: on each end a flat of the strap's need either side of the
+//      strap axis x = c, on the line through the metal's topmost (bottommost)
+//      reach, as a block down to the metal (a case's flat lugs weld to a straight
+//      end — §317's law, FITTED_FLAT_MIN, kept);
+//   2. GROWN by the rim margin M (every vertex of the metal stands ≥ M inside,
+//      the rule every kind keeps, now read on the metal's edges as well as its
+//      vertices, because a concave outline can come closer between them);
+//   3. CLOSED by a disk of radius rc — the dilation by rc, then the erosion by
+//      rc — which fills every inlet narrower than 2·rc and rounds every
+//      re-entrant turn no tighter than rc. rc is the caller's (main.js derives it:
+//      the band's outer wall is this outline grown G, and a re-entrant turn of
+//      radius rc becomes rc − G there, so rc ≥ G keeps the band's outside a
+//      true offset with no cusp).
+//
+// It is computed on a FIELD: the sets are rasterised at FREE_H a cell, their
+// distance transforms are exact on the cell centres (Felzenszwalb's lower
+// envelope, squared, O(cells)), and each step's set is a level of one; the
+// outline is the final level set, contoured by marching squares between cell
+// centres and simplified to FREE_SIMPLIFY. Raster error is taken on the SAFE
+// side at each step (the margin read FREE_H larger, the contour a cell plus the
+// simplification outward), and the outline that comes out is then held to the
+// metal EXACTLY — every metal edge against every outline edge — so the raster is
+// a way of finding the outline, never the evidence that it holds.
+//
+// A free shape is a closed CCW polyline; its inset, foot and exit are exact on
+// that polyline (shapeFrom over its segments). Its OFFSETS (`grown`) are the
+// same field machinery on the polyline itself: an exact signed distance to the
+// polyline in a band about the level, contoured — so an offset of an offset is
+// a fresh offset of the drawn curve, within `accuracy`.
+export const FREE_H = 0.1;             // the field's cell, u (0.038 mm)
+export const FREE_SIMPLIFY = 0.004;    // the contour's simplification tolerance, u — taken outward
+const FREE_INF = 1e20;
+function edt1(f, n, d, v, z) {
+  let k = 0; v[0] = 0; z[0] = -FREE_INF; z[1] = FREE_INF;
+  for (let q = 1; q < n; q++) {
+    let s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]);
+    while (s <= z[k]) { k--; s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]); }
+    k++; v[k] = q; z[k] = s; z[k + 1] = FREE_INF;
+  }
+  k = 0;
+  for (let q = 0; q < n; q++) { while (z[k + 1] < q) k++; const dq = q - v[k]; d[q] = dq * dq + f[v[k]]; }
+}
+// The Euclidean distance, in u, from every cell centre to the nearest cell
+// centre where mask is `on` (1 by default): rows then columns of the squared
+// 1-D transform. A grid with no such cell reads FREE_INF everywhere.
+export function fieldEdt(mask, W, H, h, on = 1) {
+  const N = Math.max(W, H), f = new Float64Array(N), d = new Float64Array(N), v = new Int32Array(N), z = new Float64Array(N + 1);
+  const g = new Float64Array(W * H);
+  for (let i = 0; i < W * H; i++) g[i] = mask[i] === on ? 0 : FREE_INF;
+  for (let y = 0; y < H; y++) {
+    const o = y * W;
+    for (let x = 0; x < W; x++) f[x] = g[o + x];
+    edt1(f, W, d, v, z);
+    for (let x = 0; x < W; x++) g[o + x] = d[x];
+  }
+  for (let x = 0; x < W; x++) {
+    for (let y = 0; y < H; y++) f[y] = g[y * W + x];
+    edt1(f, H, d, v, z);
+    for (let y = 0; y < H; y++) g[y * W + x] = d[y];
+  }
+  for (let i = 0; i < W * H; i++) g[i] = g[i] >= FREE_INF / 2 ? Infinity : Math.sqrt(g[i]) * h;
+  return g;
+}
+// A grid over a box, `pad` u wider every way: cell (i, j)'s centre is
+// (x0 + (i + ½)h, y0 + (j + ½)h).
+export function fieldGrid(xMin, xMax, yMin, yMax, pad, h = FREE_H) {
+  const x0 = xMin - pad, y0 = yMin - pad;
+  const W = Math.ceil((xMax - xMin + 2 * pad) / h), H = Math.ceil((yMax - yMin + 2 * pad) / h);
+  return { x0, y0, h, W, H, cx: (i) => x0 + (i + 0.5) * h, cy: (j) => y0 + (j + 0.5) * h };
+}
+// Fill a closed polygon into mask (even–odd at the cell centres, OR'd in).
+export function fieldFill(mask, grid, pts, val = 1) {
+  const { x0, y0, h, W, H } = grid, n = pts.length, xs = [];
+  let ya = Infinity, yb = -Infinity;
+  for (const [, y] of pts) { ya = Math.min(ya, y); yb = Math.max(yb, y); }
+  const j0 = Math.max(0, Math.floor((ya - y0) / h - 0.5)), j1 = Math.min(H - 1, Math.ceil((yb - y0) / h - 0.5));
+  for (let j = j0; j <= j1; j++) {
+    const y = y0 + (j + 0.5) * h;
+    xs.length = 0;
+    for (let i = 0, k = n - 1; i < n; k = i++) {
+      const [ax, ay] = pts[k], [bx, by] = pts[i];
+      if ((ay > y) !== (by > y)) xs.push(ax + ((y - ay) * (bx - ax)) / (by - ay));
+    }
+    xs.sort((p, q) => p - q);
+    for (let t = 0; t + 1 < xs.length; t += 2) {
+      const i0 = Math.max(0, Math.ceil((xs[t] - x0) / h - 0.5)), i1 = Math.min(W - 1, Math.floor((xs[t + 1] - x0) / h - 0.5));
+      for (let i = i0; i <= i1; i++) mask[j * W + i] = val;
+    }
+  }
+}
+// MARCHING SQUARES: the boundary of {f ≤ level} through the cell centres, the
+// crossing on each edge linearly interpolated; a saddle is split by the mean of
+// its four corners. Returns closed loops, CCW (the region on the left).
+export function fieldContour(f, grid, level) {
+  const { W, H } = grid, X = grid.cx, Y = grid.cy;
+  const inn = (i, j) => f[j * W + i] <= level;
+  const lerp = (a, b) => { const fa = a - level, fb = b - level; return fa === fb ? 0.5 : fa / (fa - fb); };
+  // an edge id: horizontal edge (i, j)→(i+1, j) is 2·(j·W + i), vertical (i, j)→(i, j+1) is 2·(j·W + i) + 1
+  const pt = new Map(), next = new Map();
+  const P = (e) => {
+    if (!pt.has(e)) {
+      const c = e >> 1, i = c % W, j = (c - i) / W;
+      if (e & 1) { const t = lerp(f[j * W + i], f[(j + 1) * W + i]); pt.set(e, [X(i), Y(j) + t * grid.h]); }
+      else { const t = lerp(f[j * W + i], f[j * W + i + 1]); pt.set(e, [X(i) + t * grid.h, Y(j)]); }
+    }
+    return e;
+  };
+  for (let j = 0; j + 1 < H; j++) for (let i = 0; i + 1 < W; i++) {
+    const a = inn(i, j), b = inn(i + 1, j), c = inn(i + 1, j + 1), d = inn(i, j + 1);
+    const code = (a ? 1 : 0) | (b ? 2 : 0) | (c ? 4 : 0) | (d ? 8 : 0);
+    if (code === 0 || code === 15) continue;
+    const eB = 2 * (j * W + i), eR = 2 * (j * W + i + 1) + 1, eT = 2 * ((j + 1) * W + i), eL = 2 * (j * W + i) + 1;
+    // the table lists each segment with the inside on its right; it is stored reversed, so a loop runs CCW
+    const seg = (p, q) => next.set(P(q), P(p));
+    switch (code) {
+      case 1: seg(eL, eB); break;          case 2: seg(eB, eR); break;
+      case 3: seg(eL, eR); break;          case 4: seg(eR, eT); break;
+      case 6: seg(eB, eT); break;          case 7: seg(eL, eT); break;
+      case 8: seg(eT, eL); break;          case 9: seg(eT, eB); break;
+      case 11: seg(eT, eR); break;         case 12: seg(eR, eL); break;
+      case 13: seg(eR, eB); break;         case 14: seg(eB, eL); break;
+      case 5: case 10: {
+        const m = (f[j * W + i] + f[j * W + i + 1] + f[(j + 1) * W + i + 1] + f[(j + 1) * W + i]) / 4 <= level;
+        if (code === 5) { if (m) { seg(eL, eT); seg(eR, eB); } else { seg(eL, eB); seg(eR, eT); } }
+        else { if (m) { seg(eB, eL); seg(eT, eR); } else { seg(eB, eR); seg(eT, eL); } }
+        break;
+      }
+    }
+  }
+  const loops = [], seen = new Set();
+  for (const s of next.keys()) {
+    if (seen.has(s)) continue;
+    const loop = [];
+    for (let e = s; e !== undefined && !seen.has(e); e = next.get(e)) { seen.add(e); loop.push(pt.get(e)); }
+    if (loop.length >= 3) loops.push(loop);
+  }
+  return loops;
+}
+export function polyArea(pts) {
+  let A = 0;
+  for (let i = 0, k = pts.length - 1; i < pts.length; k = i++) A += pts[k][0] * pts[i][1] - pts[i][0] * pts[k][1];
+  return A / 2;
+}
+// Douglas–Peucker on a closed loop, every dropped vertex within tol of its chord.
+export function simplifyLoop(pts, tol) {
+  const n = pts.length;
+  if (n < 8) return pts.slice();
+  // anchor at the vertex farthest from vertex 0, so the closed loop splits in two open runs
+  let far = 0, fd = -1;
+  for (let i = 1; i < n; i++) { const d = Math.hypot(pts[i][0] - pts[0][0], pts[i][1] - pts[0][1]); if (d > fd) { fd = d; far = i; } }
+  const keep = new Uint8Array(n);
+  keep[0] = keep[far] = 1;
+  const run = (a, b) => {   // indices along the loop from a to b (b may wrap)
+    const stack = [[a, b]];
+    while (stack.length) {
+      const [s, e] = stack.pop();
+      const len = (e - s + n) % n;
+      if (len < 2) continue;
+      const [ax, ay] = pts[s], [bx, by] = pts[e % n], ex = bx - ax, ey = by - ay, L = Math.hypot(ex, ey) || 1e-12;
+      let dm = -1, im = -1;
+      for (let k = 1; k < len; k++) {
+        const i = (s + k) % n, [px, py] = pts[i];
+        const t = Math.max(0, Math.min(1, ((px - ax) * ex + (py - ay) * ey) / (L * L)));
+        const d = Math.hypot(px - ax - t * ex, py - ay - t * ey);
+        if (d > dm) { dm = d; im = i; }
+      }
+      if (dm > tol) { keep[im] = 1; stack.push([s, im], [im, e]); }
+    }
+  };
+  run(0, far); run(far, n);
+  return pts.filter((_, i) => keep[i]);
+}
+// SEGMENT INDEX: a polyline's edges bucketed on a grid of `cell` u, for the
+// exact distance from a point (or a segment) to the nearest edge.
+function segDist(px, py, ax, ay, bx, by) {
+  const ex = bx - ax, ey = by - ay, L2 = ex * ex + ey * ey;
+  const t = L2 > 0 ? Math.max(0, Math.min(1, ((px - ax) * ex + (py - ay) * ey) / L2)) : 0;
+  return Math.hypot(px - ax - t * ex, py - ay - t * ey);
+}
+function segSegDist(a, b, c, d) {
+  const o = (p, q, r) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
+  const d1 = o(a, b, c), d2 = o(a, b, d), d3 = o(c, d, a), d4 = o(c, d, b);
+  if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return 0;
+  return Math.min(segDist(a[0], a[1], c[0], c[1], d[0], d[1]), segDist(b[0], b[1], c[0], c[1], d[0], d[1]),
+    segDist(c[0], c[1], a[0], a[1], b[0], b[1]), segDist(d[0], d[1], a[0], a[1], b[0], b[1]));
+}
+function segIndex(pts, cell) {
+  const n = pts.length, buckets = new Map();
+  const key = (i, j) => i * 100003 + j;
+  for (let s = 0; s < n; s++) {
+    const [ax, ay] = pts[s], [bx, by] = pts[(s + 1) % n];
+    const i0 = Math.floor(Math.min(ax, bx) / cell), i1 = Math.floor(Math.max(ax, bx) / cell);
+    const j0 = Math.floor(Math.min(ay, by) / cell), j1 = Math.floor(Math.max(ay, by) / cell);
+    for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) {
+      const k = key(i, j); let b = buckets.get(k); if (!b) buckets.set(k, b = []); b.push(s);
+    }
+  }
+  // the nearest edge to (x, y) within rMax (Infinity past it): rings of buckets until the ring is farther than the best
+  const near = (x, y, rMax = Infinity) => {
+    const i = Math.floor(x / cell), j = Math.floor(y / cell);
+    let best = Infinity;
+    const R = Number.isFinite(rMax) ? Math.ceil(rMax / cell) + 1 : 1e6;
+    for (let r = 0; r <= R; r++) {
+      if ((r - 1) * cell > best) break;
+      for (let di = -r; di <= r; di++) for (let dj = -r; dj <= r; dj++) {
+        if (Math.max(Math.abs(di), Math.abs(dj)) !== r) continue;
+        const b = buckets.get(key(i + di, j + dj));
+        if (!b) continue;
+        for (const s of b) { const [ax, ay] = pts[s], [bx, by] = pts[(s + 1) % n]; best = Math.min(best, segDist(x, y, ax, ay, bx, by)); }
+      }
+      if (r > 4 && buckets.size && best === Infinity && r * cell > 1e4) break;
+    }
+    return best;
+  };
+  // the edges whose buckets a box touches
+  const inBox = (x0, y0, x1, y1) => {
+    const out = new Set();
+    for (let i = Math.floor(x0 / cell); i <= Math.floor(x1 / cell); i++) for (let j = Math.floor(y0 / cell); j <= Math.floor(y1 / cell); j++) {
+      const b = buckets.get(key(i, j)); if (b) for (const s of b) out.add(s);
+    }
+    return out;
+  };
+  return { near, inBox };
+}
+// Each point of `src` carried to its nearest point on the closed polyline `dst` (exact, bucketed): how a ring the
+// sweep needs at another depth keeps the outer loop's vertex count and order. Between two exact offsets of one curve
+// the nearest point never runs backwards along the curve; at a corner of the deeper one several land on the corner.
+export function projectLoop(src, dst) {
+  const n = dst.length, cell = 2, buckets = new Map(), key = (i, j) => i * 100003 + j;
+  for (let s = 0; s < n; s++) {
+    const [ax, ay] = dst[s], [bx, by] = dst[(s + 1) % n];
+    for (let i = Math.floor(Math.min(ax, bx) / cell); i <= Math.floor(Math.max(ax, bx) / cell); i++)
+      for (let j = Math.floor(Math.min(ay, by) / cell); j <= Math.floor(Math.max(ay, by) / cell); j++) {
+        const k = key(i, j); let b = buckets.get(k); if (!b) buckets.set(k, b = []); b.push(s);
+      }
+  }
+  return src.map(([x, y]) => {
+    const i0 = Math.floor(x / cell), j0 = Math.floor(y / cell);
+    let best = Infinity, fx = x, fy = y;
+    for (let r = 0; r < 1e4; r++) {
+      if ((r - 1) * cell > best) break;
+      for (let di = -r; di <= r; di++) for (let dj = -r; dj <= r; dj++) {
+        if (Math.max(Math.abs(di), Math.abs(dj)) !== r) continue;
+        const b = buckets.get(key(i0 + di, j0 + dj)); if (!b) continue;
+        for (const s of b) {
+          const [ax, ay] = dst[s], [bx, by] = dst[(s + 1) % n], ex = bx - ax, ey = by - ay, L2 = ex * ex + ey * ey;
+          const t = L2 > 0 ? Math.max(0, Math.min(1, ((x - ax) * ex + (y - ay) * ey) / L2)) : 0;
+          const qx = ax + t * ex, qy = ay + t * ey, d = Math.hypot(x - qx, y - qy);
+          if (d < best) { best = d; fx = qx; fy = qy; }
+        }
+      }
+    }
+    return [fx, fy];
+  });
+}
+function pointInPoly(pts, x, y) {
+  let inside = false;
+  for (let i = 0, k = pts.length - 1; i < pts.length; k = i++) {
+    const [ax, ay] = pts[k], [bx, by] = pts[i];
+    if ((ay > y) !== (by > y) && x < ax + ((y - ay) * (bx - ax)) / (by - ay)) inside = !inside;
+  }
+  return inside;
+}
+// The SIGNED distance field of a closed polygon (negative inside) on a grid:
+// the transform of its rasterised inside and outside everywhere, and EXACT —
+// the distance to the polyline itself — on every cell within `band` of `level`,
+// which is where the level's contour is drawn from.
+function polyField(pts, grid, level, band) {
+  const { W, H } = grid, mask = new Uint8Array(W * H);
+  fieldFill(mask, grid, pts);
+  const dOut = fieldEdt(mask, W, H, grid.h, 1), dIn = fieldEdt(mask, W, H, grid.h, 0);
+  const f = new Float64Array(W * H);
+  for (let i = 0; i < W * H; i++) f[i] = mask[i] ? -dIn[i] : dOut[i];
+  const idx = segIndex(pts, 2);
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+    const k = j * W + i;
+    if (Math.abs(f[k] - level) > band) continue;
+    const d = idx.near(grid.cx(i), grid.cy(j), Math.abs(level) + band + 2 * grid.h);
+    f[k] = mask[k] ? -d : d;
+  }
+  return f;
+}
+// THE OFFSET of a closed CCW polygon by g (outward > 0): the level g of its
+// signed field, the largest loop, simplified. An inward offset that splits the
+// polygon keeps its largest piece and says so (`pieces`).
+export function freeOffset(pts, g, h = FREE_H, tol = FREE_SIMPLIFY) {
+  let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
+  for (const [x, y] of pts) { xMin = Math.min(xMin, x); xMax = Math.max(xMax, x); yMin = Math.min(yMin, y); yMax = Math.max(yMax, y); }
+  const grid = fieldGrid(xMin, xMax, yMin, yMax, Math.max(0, g) + 4 * h, h);
+  const f = polyField(pts, grid, g, 6 * h);
+  const loops = fieldContour(f, grid, g).map((l) => ({ l, A: polyArea(l) })).filter((o) => o.A > 0).sort((a, b) => b.A - a.A);
+  if (!loops.length) return { pts: null, pieces: 0 };
+  return { pts: simplifyLoop(loops[0].l, tol), pieces: loops.length };
+}
+// A closed loop is SIMPLE when no two non-adjacent edges meet.
+export function loopSimple(pts) {
+  const n = pts.length, idx = segIndex(pts, 1);
+  for (let s = 0; s < n; s++) {
+    const a = pts[s], b = pts[(s + 1) % n];
+    for (const t of idx.inBox(Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[0], b[0]), Math.max(a[1], b[1]))) {
+      if (t === s || t === (s + 1) % n || (t + 1) % n === s) continue;
+      if (segSegDist(a, b, pts[t], pts[(t + 1) % n]) === 0) return false;
+    }
+  }
+  return true;
+}
+// THE SHAPE: a closed CCW polyline as a caseShapeOf shape. `free` carries what
+// built it ({ c, rc, … }); `cx` is the STRAP AXIS (the lugs read it — §317's
+// form.cx, which on every symmetric kind is the box's centre).
+export function freeShapeOf(pts, free = {}) {
+  const loopPts = polyArea(pts) < 0 ? pts.slice().reverse() : pts.slice();
+  const cache = new Map();
+  const grown = (g, { cornerR: hold } = {}) => {
+    if (g === 0) return shape;
+    const key = `${g}|${hold ?? ''}`;
+    if (!cache.has(key)) {
+      // an inward offset with its corner HELD at r (dialTrack's rail, §311): eroded r further, then grown back r —
+      // the opening, which is what holding a corner round means on a curve with no corner primitive
+      let o;
+      if (g < 0 && hold > 0) { const e = freeOffset(loopPts, g - hold); o = e.pts ? freeOffset(e.pts, hold) : e; }
+      else o = freeOffset(loopPts, g);
+      if (!o.pts) throw new Error(`§325: the free outline offset by ${g} has no area left`);
+      if (o.pieces > 1) console.warn(`§325: the free outline offset by ${g.toFixed(3)} u splits into ${o.pieces} pieces — the largest is kept`);
+      cache.set(key, freeShapeOf(o.pts, { ...free, grownBy: (free.grownBy ?? 0) + g }));
+    }
+    return cache.get(key);
+  };
+  // its convex turns are the rim margin's round (the metal grown by M), so that is the corner a rail offset holds (§311)
+  const s = shapeFrom('free', polyPrims(loopPts), { segs: 48, accuracy: FREE_SIMPLIFY + FREE_H / 2, grown, cornerR: free.margin ?? null });
+  let flatTop = null, flatBot = null;
+  if (free.flat) { flatTop = free.flat.top; flatBot = free.flat.bot; }
+  // THE FIELD over a range of offsets, once: the polyline's signed distance, exact on every cell within [lo, hi] (and
+  // a few cells past), so every level between is a contour of ONE field — the case's rings at each depth of the
+  // bezel's profile (form-case.js) cost a contour each, not a field each
+  let fieldAt = null;
+  const levelLoop = (level, { lo = level, hi = level } = {}) => {
+    if (!fieldAt || level < fieldAt.lo || level > fieldAt.hi) {
+      const a = Math.min(lo, level), b = Math.max(hi, level);
+      let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
+      for (const [x, y] of loopPts) { xMin = Math.min(xMin, x); xMax = Math.max(xMax, x); yMin = Math.min(yMin, y); yMax = Math.max(yMax, y); }
+      const grid = fieldGrid(xMin, xMax, yMin, yMax, Math.max(0, b) + 4 * FREE_H, FREE_H);
+      fieldAt = { lo: a, hi: b, grid, f: polyField(loopPts, grid, (a + b) / 2, (b - a) / 2 + 6 * FREE_H), loops: new Map() };
+    }
+    if (!fieldAt.loops.has(level)) {
+      const L = fieldContour(fieldAt.f, fieldAt.grid, level).map((l) => ({ l, A: polyArea(l) })).filter((o) => o.A > 0).sort((p, q) => q.A - p.A);
+      fieldAt.loops.set(level, L.length ? simplifyLoop(L[0].l, FREE_SIMPLIFY) : null);
+    }
+    return fieldAt.loops.get(level)?.map((p) => p.slice()) ?? null;
+  };
+  const shape = Object.freeze({ ...s, cx: free.c ?? s.cx, pts: Object.freeze(loopPts.map((p) => Object.freeze(p.slice()))), levelLoop,
+    flatHalf: free.flat ? Math.min(free.flat.halfTop, free.flat.halfBot) : null, flatTop, flatBot, free: Object.freeze({ ...free }),
+    loop: ({ grow = 0 } = {}) => (grow === 0 ? loopPts : grown(grow).pts).map((p) => p.slice()) });
+  return shape;
+}
+// THE FIT. `polys`: the counted metal as convex polygons (each mesh's plan
+// hull); `margin` M; `rc` the closing radius; `need` the lug flat's half-run;
+// `c` the strap axis; `pins` [[x, y, need]…] points held at their own need.
+// Returns the outline, its area and the measured margin (exact).
+export function fitFreeCase(polys, { margin = PLATE_RIM_MARGIN, rc, need, c, pins = [], h = FREE_H } = {}) {
+  let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
+  for (const P of polys) for (const [x, y] of P) { if (x < xMin) xMin = x; if (x > xMax) xMax = x; if (y > yMax) yMax = y; if (y < yMin) yMin = y; }
+  for (const [x, y, n] of pins) { xMin = Math.min(xMin, x - n); xMax = Math.max(xMax, x + n); yMax = Math.max(yMax, y + n); yMin = Math.min(yMin, y - n); }
+  const pad = margin + rc + 6 * h;
+  const grid = fieldGrid(Math.min(xMin, c - need - rc), Math.max(xMax, c + need + rc), yMin, yMax, pad, h);
+  const { W, H } = grid, X = new Uint8Array(W * H), PIN = new Uint8Array(W * H);
+  for (const P of polys) fieldFill(X, grid, P);
+  // PINS: each point held at its OWN need (a plate opening's radius and land, a wire's margin…), which may be less than
+  // the rim margin — so a pin is a disk of radius need joined to the GROWN set, never grown again; a 24-gon,
+  // circumscribed, read a cell wider (the safe side)
+  for (const [x, y, n] of pins) {
+    const r = (n + h) / Math.cos(Math.PI / 24);
+    fieldFill(PIN, grid, Array.from({ length: 24 }, (_, k) => [x + r * Math.cos((k * TAU) / 24), y + r * Math.sin((k * TAU) / 24)]));
+  }
+  // the grown set S = (X ⊕ M) ∪ pins, read FREE_H wide (the cell-centre transform's worst miss)
+  const grownOf = (Xm) => { const d = fieldEdt(Xm, W, H, h, 1), S = new Uint8Array(W * H); for (let i = 0; i < W * H; i++) S[i] = d[i] <= margin + h || PIN[i] ? 1 : 0; return S; };
+  // 1. THE LUG ENDS. Each end is a straight flat of `need` either side of the strap axis, at the grown metal's reach
+  //    ACROSS THE STRIP the flat and its fillets occupy — |x − c| ≤ need + rc, the closing's fillet into whatever
+  //    rises beside it starting no nearer the axis than `need` — and nowhere else: beyond the strip the case may rise
+  //    past the flat into SHOULDERS beside the lugs, the integrated-lug case's form. A block from the flat's line down
+  //    to the strip's extreme (so it always reaches metal) carries it into the closing.
+  let S = grownOf(X);
+  let T = -Infinity, B = Infinity, xT = c, xB = c;
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+    if (!S[j * W + i]) continue;
+    const x = grid.cx(i), y = grid.cy(j);
+    if (Math.abs(x - c) > need + rc) continue;
+    if (y > T) { T = y; xT = x; } if (y < B) { B = y; xB = x; }
+  }
+  T += h / 2; B -= h / 2;   // the cell's own half-height: the grown set's reach in the strip, on the safe side
+  const dep = Math.max(rc, 4 * h);
+  const blocks = [
+    [[Math.min(c - need, xT), T - margin - dep], [Math.max(c + need, xT), T - margin - dep], [Math.max(c + need, xT), T - margin], [Math.min(c - need, xT), T - margin]],
+    [[Math.min(c - need, xB), B + margin], [Math.max(c + need, xB), B + margin], [Math.max(c + need, xB), B + margin + dep], [Math.min(c - need, xB), B + margin + dep]],
+  ];
+  for (const Bk of blocks) fieldFill(X, grid, Bk);
+  S = grownOf(X);
+  // 2–3. closed by rc: U = S ⊕ rc (a cell wider), C = U ⊖ rc
+  const dS = fieldEdt(S, W, H, h, 1);
+  const U = new Uint8Array(W * H);
+  for (let i = 0; i < W * H; i++) U[i] = dS[i] <= rc + h ? 1 : 0;
+  const d2 = fieldEdt(U, W, H, h, 0);    // distance to the outside of U
+  const f = new Float64Array(W * H);
+  for (let i = 0; i < W * H; i++) f[i] = -d2[i];
+  // C = {d2 ≥ rc}: the contour of −d2 at −rc, taken a cell and the simplification wider (the safe side)
+  const loops = fieldContour(f, grid, -(rc - h - FREE_SIMPLIFY)).map((l) => ({ l, A: polyArea(l) })).filter((o) => o.A > 0).sort((p, q) => q.A - p.A);
+  if (!loops.length) throw new Error('fitFreeCase: no outline (an empty metal?)');
+  // one outline: the metal closed must be ONE piece (a second positive loop is metal the case would leave outside)
+  if (loops.length > 1 && loops[1].A > (h * h) * 4)
+    throw new Error(`fitFreeCase: the metal closed by rc ${rc.toFixed(3)} is ${loops.length} pieces (the second ${loops[1].A.toFixed(2)} u²) — a case is one outline`);
+  // the FLATS: on each end, the loop's reach inside the strip, and every strip vertex within float noise of it set ON
+  // it, so the straight end the lugs weld to is exactly straight; collinear runs collapse to their ends. The contour
+  // of a straight run IS straight (the transform below a flat edge is the vertical distance alone), so nothing more is
+  // snapped: a vertex moved up onto the line from the corner's arc would leave a KINK there, a corner of no radius,
+  // which the band's outside rounds only by its own grow and the bezel's deeper offset then folds (§289)
+  const snap = (loop) => {
+    let q = loop.map((p) => p.slice()), top = -Infinity, bot = Infinity;
+    const inStrip = (x) => Math.abs(x - c) <= need + rc;
+    for (const [x, y] of q) if (inStrip(x)) { top = Math.max(top, y); bot = Math.min(bot, y); }
+    for (const p of q) if (inStrip(p[0])) { if (top - p[1] <= 1e-7) p[1] = top; else if (p[1] - bot <= 1e-7) p[1] = bot; }
+    q = q.filter((p, i) => {
+      const u = q[(i + q.length - 1) % q.length], v = q[(i + 1) % q.length];
+      return !(u[1] === p[1] && v[1] === p[1] && (p[1] === top || p[1] === bot));
+    });
+    // the run ON each line that carries the strap axis: its ends, and the half-run either side of c
+    const runOn = (yLine) => {
+      for (let i = 0; i < q.length; i++) {
+        const u = q[i], v = q[(i + 1) % q.length];
+        if (u[1] === yLine && v[1] === yLine && Math.min(u[0], v[0]) <= c && c <= Math.max(u[0], v[0])) return [Math.min(u[0], v[0]), Math.max(u[0], v[0])];
+      }
+      return null;
+    };
+    const rt = runOn(top), rb = runOn(bot);
+    return { pts: q, flat: { top: rt, bot: rb, yTop: top, yBot: bot,
+      halfTop: rt ? Math.min(c - rt[0], rt[1] - c) : -Infinity, halfBot: rb ? Math.min(c - rb[0], rb[1] - c) : -Infinity } };
+  };
+  let { pts, flat } = snap(simplifyLoop(loops[0].l, FREE_SIMPLIFY));
+  // OPENED by the rim margin's round — eroded M, grown back M. The closing's contour is the boundary of a union of
+  // disks about the outside's cells, so where the raster stair-steps it carries small convex CUSPS; the outline's
+  // convex turns are meant to be the margin's round (the metal grown by M), and nothing in the construction asks
+  // for a sharper one. Kept only while it holds the metal: the opening can only take area away.
+  {
+    const e = freeOffset(pts, -margin, h);
+    if (e.pts && e.pieces === 1) {
+      const o = freeOffset(e.pts, margin, h);
+      if (o.pts) { const t = snap(o.pts); if (freeWorst(t.pts, polys, pins, margin).d >= margin && Math.min(t.flat.halfTop, t.flat.halfBot) >= need) ({ pts, flat } = t); }
+    }
+  }
+  // TIGHTENED: the raster's safe side leaves the metal a little more than M (a cell, the contour's reading of a
+  // cell-centre transform, the simplification); the outline is pulled in by that excess — an exact inward offset
+  // of the drawn loop, re-snapped — while the EXACT margin holds and the flats keep their run, so the fit is tight
+  // to its own law
+  let worst = freeWorst(pts, polys, pins, margin);
+  for (let it = 0; it < 3 && worst.d > margin + 2 * FREE_SIMPLIFY; it++) {
+    const o = freeOffset(pts, -(worst.d - margin - FREE_SIMPLIFY), h);   // short of the excess by the offset's own accuracy
+    if (!o.pts || o.pieces > 1) break;
+    const t = snap(o.pts), w = freeWorst(t.pts, polys, pins, margin);
+    if (!(w.d >= margin) || !(Math.min(t.flat.halfTop, t.flat.halfBot) >= need)) break;
+    ({ pts, flat } = t); worst = w;
+  }
+  const shape = freeShapeOf(pts, { c, rc, margin, need, flat });
+  return { shape, pts: shape.pts, area: polyArea(shape.pts), worst, flat, grid: { W, H, h } };
+}
+// THE MARGIN, EXACT: the least distance from the counted metal to the outline,
+// every metal polygon's edges against every outline edge (and every metal vertex
+// inside the loop), each pin's need subtracted. ≥ margin is the fit holding.
+export function freeWorst(outline, polys, pins = [], margin = PLATE_RIM_MARGIN) {
+  const idx = segIndex(outline, 2), reach = margin + 1;
+  let worst = Infinity, where = null;
+  for (const P of polys) {
+    // a polygon none of whose edges meets the outline is wholly inside or wholly out: one vertex says which
+    if (!pointInPoly(outline, P[0][0], P[0][1])) return { d: -Infinity, where: P[0] };
+    for (let i = 0; i < P.length; i++) {
+      const a = P[i], b = P[(i + 1) % P.length];
+      // only the outline's edges within `reach` of this edge can set a distance under the margin; with none, the edge
+      // stands farther than reach, which is all the margin asks
+      let d = reach;
+      for (const s of idx.inBox(Math.min(a[0], b[0]) - reach, Math.min(a[1], b[1]) - reach, Math.max(a[0], b[0]) + reach, Math.max(a[1], b[1]) + reach))
+        d = Math.min(d, segSegDist(a, b, outline[s], outline[(s + 1) % outline.length]));
+      if (d === 0) return { d: -Infinity, where: a };
+      if (d < worst) { worst = d; where = a; }
+    }
+  }
+  for (const [x, y, n] of pins) {
+    if (!pointInPoly(outline, x, y)) return { d: -Infinity, where: [x, y] };
+    const d = idx.near(x, y) - (n - margin);
+    if (d < worst) { worst = d; where = [x, y]; }
+  }
+  return { d: worst, where };
+}
+// THE STRAP AXIS, searched: the least-area fit over c in [lo, hi] (golden
+// section to tol). A generator, so a boot can hand the thread back between
+// fits (§266); `fitFreeCaseAxis` drains it.
+export function* fitFreeCaseAxisSteps(polys, opts, lo, hi, tol = 0.05) {
+  const g = (Math.sqrt(5) - 1) / 2;
+  const at = function* (c) { yield c; return fitFreeCase(polys, { ...opts, c }); };
+  let a = lo, b = hi, x1 = b - g * (b - a), x2 = a + g * (b - a);
+  let f1 = yield* at(x1), f2 = yield* at(x2), evals = 2;
+  while (b - a > tol) {
+    if (f1.area <= f2.area) { b = x2; x2 = x1; f2 = f1; x1 = b - g * (b - a); f1 = yield* at(x1); }
+    else { a = x1; x1 = x2; f1 = f2; x2 = a + g * (b - a); f2 = yield* at(x2); }
+    evals++;
+  }
+  const best = f1.area <= f2.area ? f1 : f2;
+  return { ...best, c: best.shape.cx, evals };
+}
+export function fitFreeCaseAxis(polys, opts, lo, hi, tol) { return drainFit(fitFreeCaseAxisSteps(polys, opts, lo, hi, tol)); }
 
 // §308 landing 2 — THE ACTION GROUPS, the region model's one table. A group is
 // the set of registered units that carry one input to one output through
