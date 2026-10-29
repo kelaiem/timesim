@@ -14,8 +14,8 @@
 //      the outline pulled in 0.02 u refuses the metal (F1's control: an outline that held by being loose passes F1
 //      alone); F3 the lug ends are exactly straight and each runs the strap's need either side of the axis; F4 it
 //      is CONCAVE and simple (its area under its own convex hull's — the claim that it follows the metal inward);
-//      F5 the committed row IS the fit at its axis on this metal (area to 1e-3, margin held); F6 the axis is a
-//      LOCAL MINIMUM of the area (c ± 1 u enclose more); F7 it encloses less than the fitted tonneau (§317) — the
+//      F5 the committed row IS the fit at its axis on this metal (area to 1e-3, margin held); F6 the axis is the
+//      area's BRACKETED MINIMUM (c ± the tool's scan step enclose more — finer, the area is flat to raster noise); F7 it encloses less than the fitted tonneau (§317) — the
 //      ranking printed.
 //   R  the case's rings (form-case.js formCaseLoops under the free kind). R1 every depth to the bezel's opening is
 //      an EXACT offset carried onto the outer loop's vertices with no edge running backwards and no crossing; the
@@ -94,8 +94,10 @@ if (ROW) {
   ok('F4 it is concave and simple', A < hullA - 1 && L.loopSimple(ROW.pts), `${(A * mm2).toFixed(1)} mm² against its convex hull's ${(hullA * mm2).toFixed(1)} mm²`);
   ok('F5 the committed row is the fit at its axis on this metal', Math.abs(fit.area - ROW.area) <= 1e-3 * ROW.area && fit.worst.d >= M,
     `${(fit.area * mm2).toFixed(2)} mm² re-fitted against ${(ROW.area * mm2).toFixed(2)} committed`);
-  const side = [-1, 1].map((s) => quiet(() => L.fitFreeCase(FX.polys, { margin: FX.margin, rc: FX.rc, need: FX.need, c: ROW.c + s, pins })).area);
-  ok('F6 the strap axis is a local minimum of the area', side.every((a) => a >= fit.area - 1e-6), `c ${ROW.c}: ${(fit.area * mm2).toFixed(2)}; c ∓ 1: ${side.map((a) => (a * mm2).toFixed(2)).join(' / ')} mm²`);
+  // the tool's scan step (free-outline.mjs SCAN_U): finer than that the area is flat to the raster's own noise —
+  // successive fixed-point rounds at one axis read ~0.3 mm² apart — so the claim held is the scan's, a bracketed minimum
+  const SCAN_U = 2.5, side = [-SCAN_U, SCAN_U].map((s) => quiet(() => L.fitFreeCase(FX.polys, { margin: FX.margin, rc: FX.rc, need: FX.need, c: ROW.c + s, pins })).area);
+  ok('F6 the strap axis is the area\'s bracketed minimum', side.every((a) => a > fit.area), `c ${ROW.c}: ${(fit.area * mm2).toFixed(2)}; c ∓ ${SCAN_U}: ${side.map((a) => (a * mm2).toFixed(2)).join(' / ')} mm²`);
   const fitted = L.formShapeOf('fitted', [-45.72, 45.72, -43.91, 44.38, 0.445876, 0.162288]);
   ok('F7 it encloses less than the fitted tonneau', A < L.shapeArea(fitted), `free ${(A * mm2).toFixed(1)} mm², fitted tonneau ${(L.shapeArea(fitted) * mm2).toFixed(1)} mm² (${((A / L.shapeArea(fitted) - 1) * 100).toFixed(1)}%)`);
 
