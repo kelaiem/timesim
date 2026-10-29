@@ -317,7 +317,7 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   const {
     UNIT_MM: U, z0, zMidBack, zStep, zBandFront, zCrystInner, zCrystOuter, zBezelOuter,
     crystT, tubeD, pusherD, stemAz, alarmAz, pusherAz, pusherOff, stemZ, alarmZ, pusherZ,
-    lugSpanInner, apertureR, glassEdgeR, formApertureGrow = null, formGlassGrow = null, formStep = null,
+    lugSpanInner, apertureR, glassEdgeR, formApertureGrow = null, formGlassGrow = null, bezelFlat,
   } = dims;
   // §307 landing 2 — THE BACK'S WINDOW IS THE PLATE'S SHAPE: main.js derives
   // it as grows of the plate's outline (the three-quarter plate's measured
@@ -370,7 +370,7 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   }
   const sweep = mergeGeos(bezel.runs.map((run) => { const r = sweepRun(loops.ring, run); r.computeVertexNormals(); return r; }));
   if (signedVolume(sweep) < 0) flipWinding(sweep);
-  const middleGeo = mergeGeos([sweep, prism(loops.outer, [loops.bore], zBandFront, z0)]);
+  const middleGeo = mergeGeos([sweep, prism(loops.outer, [loops.bore], zBandFront, formApertureGrow === null ? z0 : zMidBack)]);   // §321: the band ends where the back's round begins
   holdWound(middleGeo, 'the case middle');
   // §289 — the bezel's metal is the part in front of the seat plane
   // zBandFront, and the brush shader (materials.js, CASE_POLISH_ATTR) polishes
@@ -405,10 +405,10 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   // zMidBack, with the display aperture; no thread and no gasket (the round
   // case's threaded ring, its skirt and its I-ring are not built here, so
   // the §187 claims — a back that unscrews, a sealed face — are NOT made).
-  // Two prisms merged: the retaining LIP (z0 − LIP_T..z0, bored to the
-  // aperture) and the glazing CHANNEL below it (zMidBack..z0 − LIP_T, bored
-  // to the glass's edge: the glass locates on the wall directly, there being
-  // no gasket to locate it on).
+  // Prisms merged: the retaining LIP (z0 − LIP_T..z0, bored to the window)
+  // and the glazing CHANNEL below it (zMidBack..z0 − LIP_T, bored to the
+  // glass's edge: the glass locates on the wall directly, there being no
+  // gasket to locate it on) — since §321 inside the rounded rim.
   const zCrystOut = z0 - LIP_T;              // the glass's outer face, under the lip
   const zCrystIn = zCrystOut - crystT;       // its inner face — the band's back plane when z0 = zMidBack + 1.2 mm (CASE_DIMS)
   if (!(zCrystIn >= zMidBack - 1e-9))
@@ -416,43 +416,77 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
       + `below the plate's inner face ${zMidBack.toFixed(3)} — into the back envelope's margin`);
   if (formGlassGrow === null && !(glassEdgeR > apertureR + STOCK_MIN_U))
     console.warn(`makeFormCase: the lip over the back glass is ${(glassEdgeR - apertureR).toFixed(3)} u wide, under §50's ${STOCK_MIN_U.toFixed(3)}`);
-  const backGeo = mergeGeos([
-    prism(loops.outer, [apHole], zCrystOut, z0),
-    prism(loops.outer, [glassLoop ?? { r: glassEdgeR }], zMidBack, zCrystOut),
-  ]);
+  // §321 — THE BACK'S ROUNDED RIM, the bezel's finish at the other end of the
+  // case. The bezel's quarter ellipse cannot be copied: its reach (the front
+  // face less its lip round and flat) is wider than the whole back face, which
+  // runs from the outer wall to the window, G − formApertureGrow. So the round is
+  // DERIVED the bezel's way on the back's own face:
+  //   · its REACH is that face less the bezel's own flat (dims.bezelFlat, the
+  //     owner's 0.8 mm), so the same flat stands round the window;
+  //   · its HEIGHT is the back's own thickness z0 − zMidBack, so it ends tangent
+  //     to the band's flank exactly at the band's back face, where the band now
+  //     ends (the bezel's round ends on its seat plane by the same rule).
+  // The window's edge keeps its square bore: it is the lip that holds the glass.
+  // The round takes metal away; the thinnest section it leaves over the glass's
+  // channel is measured and held to §50's floor. The rim and the lip layer
+  // carry the bezel's polish (CASE_POLISH_ATTR), the rest of the back the
+  // slider's brush.
+  const backRound = formApertureGrow === null ? null : (() => {
+    const reach = (G - formApertureGrow) - bezelFlat, H = z0 - zMidBack;
+    const ell = [];
+    for (let i = 0; i <= 12; i++) { const a = (Math.PI / 2) * (i / 12); ell.push([reach - reach * Math.cos(a), zMidBack + H * Math.sin(a)]); }
+    // the nearest the round comes to the glass's channel (its wall at the glass's
+    // grow and the lip's underside over it)
+    const tGl = G - (formGlassGrow ?? formApertureGrow), zCO = z0 - LIP_T;
+    let minWall = Infinity;
+    for (let i = 0; i <= 400; i++) {
+      const a = (Math.PI / 2) * (i / 400), t = reach - reach * Math.cos(a), z = zMidBack + H * Math.sin(a);
+      minWall = Math.min(minWall, Math.hypot(Math.max(0, tGl - t), Math.max(0, z - zCO)));
+    }
+    return { reach, H, ell, minWall };
+  })();
+  if (backRound && (!(backRound.reach > 0) || !(backRound.minWall >= STOCK_MIN_U)))
+    console.warn(`makeFormCase §321: the ${form.kind}'s back round reaches ${backRound.reach.toFixed(3)} u and leaves ${backRound.minWall.toFixed(3)} u `
+      + `of metal over the glass's channel — needs a reach > 0 and §50's ${STOCK_MIN_U.toFixed(3)}`);
+  // The two prisms inside the rounded rim (§321): the channel under the
+  // glass's outer face, the lip over it (polished with the rim).
+  const backOuter = backRound ? loops.ring(backRound.reach) : loops.outer;
+  const backParts = [   // [geometry, polished]
+    [prism(backOuter, [glassLoop ?? { r: glassEdgeR }], zMidBack, zCrystOut), false],
+    [prism(backOuter, [apHole], zCrystOut, z0), true],
+  ];
+  if (backRound) {
+    const { reach, ell } = backRound;
+    const rim = mergeGeos([[[reach, zMidBack], [0, zMidBack]], ell, [[reach, z0], [reach, zMidBack]]]
+      .map((run) => { const r = sweepRun(loops.ring, run); r.computeVertexNormals(); return r; }));
+    if (signedVolume(rim) < 0) flipWinding(rim);
+    backParts.push([rim, true]);
+  }
+  const backGeo = mergeGeos(backParts.map(([geo]) => geo));
+  {
+    // the polish flag per part, in mergeGeos' own order (each part non-indexed, concatenated)
+    const a = new Float32Array(backGeo.attributes.position.count * 2);
+    let w = 0;
+    for (const [geo, pol] of backParts) {
+      const c = geo.index ? geo.index.count : geo.attributes.position.count;
+      if (pol) for (let k = 0; k < c; k++) { a[2 * (w + k)] = 1; a[2 * (w + k) + 1] = 1; }
+      w += c;
+    }
+    backGeo.setAttribute(CASE_POLISH_ATTR, new THREE.BufferAttribute(a, 2));
+  }
   holdWound(backGeo, 'the case back');
   const back = new THREE.Mesh(backGeo, material);
   back.name = 'caseBack';
   backAsm.add(back);
-  // The back glass: a disc of the channel's radius, crystT thick, pressed
-  // SEAT_EMBED UNDER the lip — the press idiom with the sign that presses
-  // (makeCase's back pane; the inspect.js row `caseBackCrystal ⇄ caseBack`
-  // declares exactly this). Flat: the round case's raised step over the alarm
-  // tower is not built (prototype — the plate stands at zMidBack everywhere).
-  //
-  // §317 — THE FITTED BACK'S ISLANDS (main.js FITTED_BACK, layout.js
-  // solveFittedBack): the round case's box-stepped glass on the form, once per
-  // island of tall metal. The pane as before, holed by each island's OUTER wall;
-  // each island's wall, one glass thickness, from the pane's inner face up to the
-  // raised pane's; and the raised pane over the outer loop, zStepUnder up to
-  // zStepTop or the pane's own outer face, whichever is higher (a step lower than
-  // the glass is thick is a pocket under a flush face) — closed prisms merged
-  // into one glass, sharing faces inside it (the back's own lip-and-channel
-  // precedent above).
-  let glassGeo;
-  if (formStep && glassLoop) {
-    const { islands, zStepUnder, zStepTop } = formStep, top = Math.max(zStepTop, zCrystOut + SEAT_EMBED);
-    const parts = [prism(glassLoop, islands.map((is) => is.outer), zCrystIn, zCrystOut + SEAT_EMBED)];
-    for (const { inner, outer } of islands) {
-      if (!loopConvex(inner) || !loopConvex(outer))
-        console.warn('makeFormCase §317: a back island\'s loops are not convex — the hull it was grown from folded');
-      parts.push(prism(outer, [inner], zCrystIn, zStepUnder), prism(outer, [], zStepUnder, top));
-    }
-    glassGeo = mergeGeos(parts);
-  } else glassGeo = glassLoop ? prism(glassLoop, [], zCrystIn, zCrystOut + SEAT_EMBED) : disc(glassEdgeR, zCrystIn, zCrystOut + SEAT_EMBED);
+  // The back glass: one flat pane, crystT thick, pressed SEAT_EMBED UNDER the
+  // lip — the press idiom with the sign that presses (makeCase's back pane; the
+  // inspect.js row `caseBackCrystal ⇄ caseBack` declares exactly this). Flat on
+  // every form case: §317's raised glass islands were retired by §321.
+  const glassGeo = glassLoop ? prism(glassLoop, [], zCrystIn, zCrystOut + SEAT_EMBED) : disc(glassEdgeR, zCrystIn, zCrystOut + SEAT_EMBED);
   const backCrystal = new THREE.Mesh(holdWound(glassGeo, 'the back glass'), crystalMaterial);
   backCrystal.name = 'caseBackCrystal';
   backAsm.add(backCrystal);
+  g.userData.formBack = { round: backRound };
 
   // THE TUBES — makeCase's `tubeAt` on the loops. A capped sleeve on each
   // stem's own line at the stem's own z: `az` the line's azimuth, `off` its
@@ -680,8 +714,12 @@ export function formCaseLines(g, dims) {
   // (§289 — the round drawing's three bezel rings: where the outer round meets
   // the flat, where the flat meets the lip's round, where that round meets the
   // bore; the outer wall's ring stands where the round ends on it, the seat plane).
-  const { zBandFront } = dims, B = g.userData.bezel;
-  ring('outer', loops.outer, zBandFront); ring('outer', loops.outer, z0);
+  const { zBandFront } = dims, B = g.userData.bezel, FB = g.userData.formBack ?? {};
+  // §321: the outer wall ends where the back's round begins (the band's back
+  // face), and the round meets the back's flat at its reach
+  const zWallEnd = FB.round ? zMidBack : z0;
+  ring('outer', loops.outer, zBandFront); ring('outer', loops.outer, zWallEnd);
+  if (FB.round) ring('backRound', loops.ring(FB.round.reach), z0);
   ring('bezel', loops.ring(B.roundW), zBezelOuter);
   ring('bezel', loops.ring(B.tOpen - B.lipR), zBezelOuter);
   ring('opening', loops.opening, zBezelOuter + B.lipR); ring('opening', loops.opening, zCrystOuter);
@@ -700,7 +738,7 @@ export function formCaseLines(g, dims) {
     for (const p of loops.outer) ext = Math.max(ext, sgn * p[i]);
     const at = loops.outer.filter((p) => sgn * p[i] >= ext - 1e-9);
     const x = at.reduce((a, p) => a + p[0], 0) / at.length, y = at.reduce((a, p) => a + p[1], 0) / at.length;
-    seg('generator', [x, y, zBandFront], [x, y, z0]);
+    seg('generator', [x, y, zBandFront], [x, y, zWallEnd]);
   }
   // The tubes, as built.
   g.traverse((o) => {
