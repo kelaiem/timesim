@@ -166,14 +166,16 @@ export function drive({ I, Mgd, ct, tau, eta = 1, A0, start = null, periods = 20
   const trace = record ? { t: [], a: [] } : null;
   const steps = Math.ceil(periods * T0 / h);
   for (let k = 0; k < steps; k++) {
-    const q = Q(al, w), w1 = w, sdir = w > 0 ? 1 : -1;
+    const q = Q(al, w), w1 = w, sdir = w > 0 ? 1 : w < 0 ? -1 : (Math.sin(al) > 0 ? -1 : 1);   // Q's own leg
     w += (-grav(al) + q) / I * h;
     const al2 = al + w * h;
     W += q * h * (w1 + w) / 2;                                        // the escapement's work as the step counts it
     if (ct && tau) {
       const dth = slopeAt(ct, sdir, al) * h * (w1 + w) / 2;           // the wheel's angle along the contact this step
       Wideal += tau * dth;                                            // the escapement's work, the pallets frictionless
-      if (dth > 0) dImp += dth; else dRec -= dth;                     // forward with a pallet (impulse), pushed back (recoil)
+      // forward with a pallet (impulse) or pushed back (recoil), by the SAME branch Q took this step (the sign of
+      // s·ω at the step's start), so W = η τ dImp − τ dRec / η holds step for step, reversals included
+      if (slopeAt(ct, sdir, al) * w1 >= 0) dImp += dth; else dRec -= dth;
     }
     if (al < 0 && al2 >= 0) ups.push(t + h * (-al) / (al2 - al));
     peak = Math.max(peak, Math.abs(al2));
