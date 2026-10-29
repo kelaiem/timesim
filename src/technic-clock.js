@@ -874,7 +874,7 @@ export function clockBuild(lib, Mods, layout, state = TECHNIC_CLOCK.rest) {
 // when either differs, so this cannot go stale against the modules; the page
 // reads it through layoutFrom, the solve's own judge.
 export const CLOCK_PLACEMENT = Object.freeze({
-  technic_2026: Object.freeze({ train: [0, 0, 0], keyless: [0, 160, 720], 'adapter:minute': [0, 80, 1020], alarm: [1, 300, 1340] }),
+  technic_2026: Object.freeze({ train: [0, 0, 0], keyless: [0, 160, 760], 'adapter:minute': [0, 80, 1060], alarm: [1, 300, 1380] }),
   technic_classic: Object.freeze({ train: [0, 0, 0], keyless: [0, 20, 880], 'adapter:minute': [0, -60, 1180], alarm: [1, 160, 1500] }),
 });
 export function clockLayout(lib, Mods, placement = CLOCK_PLACEMENT[Mods.gen]) {
