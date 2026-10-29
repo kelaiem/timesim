@@ -51,8 +51,27 @@ await page.evaluate(() => document.getElementById('btn-tour').click());
 await wait(300);
 let st = await state();
 if (!st || st.idx !== 0) F(`tour did not start at stop 0: ${JSON.stringify(st)}`); else OK(`tour running at stop 0 of ${st.of}`);
-// control: the run advances on its own — 4 s of engine time past a 3.6 s dwell
-for (let i = 0; i < 40; i++) await tick(0.1);
+// A stop's dwell is its caption's READING time since the pacing landing (paceByReading), so
+// no fixed wait can stand for "past the dwell": tick until the stop changes, up to a cap
+// that a reading-paced stop cannot exceed (the longest caption reads in about 12 s).
+const DWELL_CAP_S = 20;
+// One in-page loop, not a round trip per tick: a software-GL page answers each evaluate in
+// seconds, and the stop's change is read from the same synchronous call that ticks it.
+const tickUntilAdvance = (from) => page.evaluate(({ from, cap }) => {
+  for (let t = 0; t < cap; t += 0.1) { window.__clock.scriptTick(0.1); const s2 = window.__clock.scriptState; if (!s2 || s2.idx !== from) return t; }
+  return cap;
+}, { from, cap: DWELL_CAP_S });
+// pacing is live: every stop's dwell covers its caption's reading time, read off the
+// engine's own table and the pace it declares (never retyped). Wall-clock cannot say this
+// here: the rAF loop also feeds the dwell clock while this probe ticks it.
+st = await state();
+const slow = st.captions.map((c, i) => ({ i, need: st.readPace.tween + c.trim().split(/\s+/).length / st.readPace.wps, got: st.dwells[i] }))
+  .filter((x) => !(x.got >= x.need - 0.05));
+if (slow.length) F(`${slow.length} stop(s) dwell less than their caption reads: ${slow.map((x) => `#${x.i} ${x.got}s < ${x.need.toFixed(1)}s`).join(', ')}`);
+else OK(`all ${st.dwells.length} stops dwell at least their caption's reading time at ${st.readPace.wps} words/s (longest ${Math.max(...st.dwells).toFixed(1)} s)`);
+if (Math.max(...st.dwells) >= DWELL_CAP_S) F(`the longest dwell ${Math.max(...st.dwells)} s reaches the probe's ${DWELL_CAP_S} s cap`);
+// control: the run advances on its own, within the cap
+await tickUntilAdvance(0);
 st = await state();
 if (!st || st.idx !== 1) F(`control: the run did not advance to stop 1 on its own: ${JSON.stringify(st && st.idx)}`); else OK('control: the run advances to stop 1 after its dwell');
 // 1 + 2 — captions and their locales
@@ -75,14 +94,14 @@ const resumeVisible = await page.evaluate(() => { const b = document.getElementB
 if (!st || !st.paused) F(`a click on the movement did not pause: ${JSON.stringify(st)}`); else OK('a click on the movement pauses the run (it is not cancelled)');
 if (!resumeVisible) F('no visible Resume control while paused'); else OK('the banner shows a Resume control while paused');
 const idxAtPause = st ? st.idx : -1;
-for (let i = 0; i < 100; i++) await tick(0.1); // 10 s of engine time, past any stop's dwell
+await page.evaluate((cap) => { for (let t = 0; t < cap; t += 0.1) window.__clock.scriptTick(0.1); }, DWELL_CAP_S); // the cap's worth of engine time, past any stop's dwell
 st = await state();
 if (!st || st.idx !== idxAtPause) F(`the step advanced while paused (${idxAtPause} → ${st && st.idx})`); else OK('the step index holds while paused, past the stop\'s dwell');
 await page.evaluate(() => document.getElementById('script-resume').click());
 await wait(200);
 st = await state();
 if (!st || st.paused || st.idx !== idxAtPause) F(`resume did not re-enter the same stop: ${JSON.stringify(st)}`); else OK('Resume re-enters the same stop, unpaused');
-for (let i = 0; i < 80; i++) await tick(0.1); // 8 s of engine time: stop 1's dwell is 6 s
+await tickUntilAdvance(idxAtPause); // the paused stop's dwell restarts on Resume, then the run goes on
 st = await state();
 if (!st || st.idx <= idxAtPause) F(`the run did not go on after resume: ${JSON.stringify(st)}`); else OK(`after resume the run went on to stop ${st.idx}`);
 // 4 — the explicit exits confirm

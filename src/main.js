@@ -56674,6 +56674,19 @@ const SCRIPT_SET_MIN_S = 0.7;
 const SCRIPT_SET_RAD_PER_MIN = Math.abs((60 * MIN_HAND_RAD_PER_SEC) / HAND_RAD_PER_SET_RAD);
 const SCRIPT_SET_RATE = SCRIPT_SET_RAD_PER_MIN / SCRIPT_SET_MIN_S; // rad/s of crown, gentle
 const SCRIPT_EXPLODE_TAU = 0.35; // s — explode ease matches the caption fade so it reads as motion
+// A stop's dwell is the time to READ its caption once the camera has arrived: the
+// ease (CAM_TWEEN_DUR) plus the caption's words at SCRIPT_READ_WPS, 3.3 words/s =
+// 200 wpm, the comfortable silent-reading rate for technical prose. The authored
+// dwells (3.4–6 s) ran 6–7 words/s, faster than anyone reads a 25-word caption
+// while a camera is still moving. `paceByReading` only ever LENGTHENS a stop: an
+// authored dwell that already covers the reading stays, and a stop whose own action
+// sets its length (a crown turn, a wind) keeps that floor.
+const SCRIPT_READ_WPS = 3.3;
+const readDwell = (caption) => CAM_TWEEN_DUR + caption.trim().split(/\s+/).length / SCRIPT_READ_WPS;
+const paceByReading = (steps) => {
+  for (const s of steps) if (s.caption) s.dwell = Math.max(s.dwell ?? 0, Math.round(readDwell(s.caption) * 10) / 10);
+  return steps;
+};
 function settingTurnRad(minutes) {
   // Signed like §9's write: advances the minute hand forward by `minutes`.
   return (minutes * 60 * MIN_HAND_RAD_PER_SEC) / HAND_RAD_PER_SET_RAD;
@@ -57215,6 +57228,7 @@ const ALARM_LINK_STEPS = [
   { camera: linkShot(_colAt, ALARM_COL_BASE_R + 1.4, 0.4, -0.8), alarm: false, xray: true,
     caption: 'Press again and the whole run reverses — column, beak, rod, shaft, crank, ring. Pusher to arming, unbroken', dwell: 3.4 },
 ];
+paceByReading(ALARM_LINK_STEPS);
 
 // §17 — Guided tour: the same engine over more stops. The jumper stop reuses
 // the demo's own pull/turn/push vocabulary (not a second machine), and the sync
@@ -57255,11 +57269,15 @@ const TOUR_STEPS = [
   { get camera() { return frameOn('Alarm winding arrest', [0.35, -0.5, 0.75], 4.6); },
     sound: false, xray: true, schematic: true,
     caption: 'The alarm barrel has a stop-work of its own: a Maltese cross counts its turns, and the last one lands on a solid limb', dwell: 5.0 },
-  { preset: 'Dial', schematic: false, xray: true, alarm: true,
+  // The Dial preset frames the whole face, so the column wheel, beak and rod this caption
+  // names are a few pixels each. Since §261 they stand under the dial; the link tour's own
+  // derived beak shot frames them, read through the fold (TODO 276's retarget).
+  { camera: linkShot(_beakAt, _rodRun / 2 + 5.0, 0.3, -0.9), schematic: false, xray: true, alarm: true,
     caption: 'Press the pusher and the alarm arms: a column wheel indexes, a beak reads it, and a long link carries the arming to the selector ring', dwell: 4.6 },
   { preset: 'Free', alarm: false, sound: false, scale: 1, xray: false, explode: 0, labels: false, powerflow: false, links: true,
     caption: 'That’s the tour. Explore the controls yourself, or read how they work:', dwell: 6.0 },
 ];
+paceByReading(TOUR_STEPS);   // the Tour's stops, read at the same rate as the link tour's
 
 // ---------------------------------------------------------------------------
 // §55 — THE INSPECTION TOUR. A different animal from TOUR_STEPS above.
@@ -62429,7 +62447,7 @@ window.__clock = {
   startInspect() { scriptStart(INSPECT_STEPS, document.getElementById('btn-inspect')); },  // §277
   get scriptRoute() { return scriptSteps ? scriptSteps.map((st) => ({ wind: st.wind || 0, sync: !!st.sync, turn: (st.turnMinutes || 0) + (st.turnAlarmHours || 0), alarm: st.alarm, cam: ('camera' in st) ? (st.camera ? 'ok' : 'unresolved') : 'none' })) : null; }, // §277
   startBench() { scriptStart(BENCH_STEPS, document.getElementById('btn-bench')); },   // §161 — the watchmaker's route
-  get scriptState() { return scriptSteps ? { idx: scriptIdx, of: scriptSteps.length, caption: captionTextEl.textContent, paused: scriptPaused, captions: scriptSteps.map((s) => s.caption), links: captionActionsEl.querySelectorAll('a').length } : null; }, // §142: paused, the step list and the banner's links, for the probe
+  get scriptState() { return scriptSteps ? { idx: scriptIdx, of: scriptSteps.length, caption: captionTextEl.textContent, paused: scriptPaused, captions: scriptSteps.map((s) => s.caption), dwells: scriptSteps.map((s) => s.dwell), readPace: { wps: SCRIPT_READ_WPS, tween: CAM_TWEEN_DUR }, links: captionActionsEl.querySelectorAll('a').length } : null; }, // §142: paused, the step list and the banner's links, for the probe (dwells and the reading pace: the pacing landing)
   scriptGoto(i) { scriptGoto(i); },
   scriptStop() { scriptStop(); },
   get scriptAlarmDebug() { return { want: scriptAlarmWant, tries: scriptAlarmTries, stroke: alarmPusherStroke, T: alarmPusherT, parity: alarmColSteps % 2, held: alarmPusherHeld, released: alarmReleased }; }, // §277 — for the probe
