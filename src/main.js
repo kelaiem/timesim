@@ -61914,7 +61914,7 @@ window.__clock = {
   startInspect() { scriptStart(INSPECT_STEPS, document.getElementById('btn-inspect')); },  // §277
   get scriptRoute() { return scriptSteps ? scriptSteps.map((st) => ({ wind: st.wind || 0, sync: !!st.sync, turn: (st.turnMinutes || 0) + (st.turnAlarmHours || 0), alarm: st.alarm, cam: ('camera' in st) ? (st.camera ? 'ok' : 'unresolved') : 'none' })) : null; }, // §277
   startBench() { scriptStart(BENCH_STEPS, document.getElementById('btn-bench')); },   // §161 — the watchmaker's route
-  get scriptState() { return scriptSteps ? { idx: scriptIdx, of: scriptSteps.length, caption: captionTextEl.textContent, paused: scriptPaused, captions: scriptSteps.map((s) => s.caption), links: captionActionsEl.querySelectorAll('a').length } : null; }, // §142: paused, the step list and the banner's links, for the probe
+  get scriptState() { return scriptSteps ? { idx: scriptIdx, of: scriptSteps.length, caption: captionTextEl.textContent, paused: scriptPaused, captions: scriptSteps.map((s) => s.caption), dwells: scriptSteps.map((s) => s.dwell), readPace: { wps: SCRIPT_READ_WPS, tween: CAM_TWEEN_DUR }, links: captionActionsEl.querySelectorAll('a').length } : null; }, // §142: paused, the step list and the banner's links, for the probe (dwells and the reading pace: the pacing landing)
   scriptGoto(i) { scriptGoto(i); },
   scriptStop() { scriptStop(); },
   get scriptAlarmDebug() { return { want: scriptAlarmWant, tries: scriptAlarmTries, stroke: alarmPusherStroke, T: alarmPusherT, parity: alarmColSteps % 2, held: alarmPusherHeld, released: alarmReleased }; }, // §277 — for the probe

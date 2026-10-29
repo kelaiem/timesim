@@ -59,11 +59,15 @@ const tickUntilAdvance = async (from) => {
   for (let t = 0; t < DWELL_CAP_S; t += 0.1) { await tick(0.1); const s2 = await state(); if (!s2 || s2.idx !== from) return t; }
   return DWELL_CAP_S;
 };
-// pacing is live: stop 0's authored dwell was 3.6 s, but its caption now reads for about
-// 5 s, so the old dwell must NOT carry the run on (control: the next check does)
-for (let i = 0; i < 37; i++) await tick(0.1);
+// pacing is live: every stop's dwell covers its caption's reading time, read off the
+// engine's own table and the pace it declares (never retyped). Wall-clock cannot say this
+// here: the rAF loop also feeds the dwell clock while this probe ticks it.
 st = await state();
-if (!st || st.idx !== 0) F(`stop 0 advanced at its authored 3.6 s: the reading pace is not applied (${JSON.stringify(st && st.idx)})`); else OK('stop 0 holds past its authored 3.6 s dwell (reading pace applied)');
+const slow = st.captions.map((c, i) => ({ i, need: st.readPace.tween + c.trim().split(/\s+/).length / st.readPace.wps, got: st.dwells[i] }))
+  .filter((x) => !(x.got >= x.need - 0.05));
+if (slow.length) F(`${slow.length} stop(s) dwell less than their caption reads: ${slow.map((x) => `#${x.i} ${x.got}s < ${x.need.toFixed(1)}s`).join(', ')}`);
+else OK(`all ${st.dwells.length} stops dwell at least their caption's reading time at ${st.readPace.wps} words/s (longest ${Math.max(...st.dwells).toFixed(1)} s)`);
+if (Math.max(...st.dwells) >= DWELL_CAP_S) F(`the longest dwell ${Math.max(...st.dwells)} s reaches the probe's ${DWELL_CAP_S} s cap`);
 // control: the run advances on its own, within the cap
 await tickUntilAdvance(0);
 st = await state();
