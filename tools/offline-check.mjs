@@ -411,7 +411,9 @@ try {
   // §320 — 112: src/gong-level.js, the gong's level law's pure leaves, imported statically by main.js (and by the
   // volume prototype), and src/alarm-volume.js, the volume prototype's line spec, imported statically by gong-bench.html.
   // One module each, so they add two.
-  check('release: precache complete', counts === 112, `${counts}/112`);
+  // §316 — 113: src/technic-drive.js, the going train's escapement driven, imported statically by technic.html (and
+  // by src/technic-train.js, which the booklet's page reaches). One module, so it adds one.
+  check('release: precache complete', counts === 113, `${counts}/113`);
 
   // ---- offline: the whole point ----
   mark('offline: booting the documents');
