@@ -45461,6 +45461,7 @@ panel.innerHTML = `
           <option value="cushion">Cushion</option>
           <option value="tonneau">Tonneau</option>
           <option value="fitted">Fitted tonneau</option>
+          <option value="free">Free outline</option>
         </select>
       </div>
       <!-- §23: ADVANCED — every control below is GENERATED from

@@ -33,7 +33,7 @@ import * as THREE from 'three';
 import {
   UNIT_MM, CLEAR_MARGIN, STOCK_MIN_U, CASE_CLEAR, CASE_BAND_T, CASE_WIDTH_MAX,
   CASE_LUG_T, CASE_LUG_EDGE_R, CASE_SPRING_BAR_D, CASE_SPRING_BAR_TIP_D,
-  caseLugPlan, loopSimple,
+  caseLugPlan, loopSimple, projectLoop,
 } from './layout.js';
 import { makeRoundedSlab, PLATE_BEVEL_F, COLLAR_PROUD, TUBE_WALL, cutEndOnPlane } from './geometry.js';
 import { CASE_POLISH_ATTR } from './materials.js';
@@ -117,6 +117,21 @@ export function rayExitNormal(loop, dir, base = [0, 0]) {
 // hairlines (formCaseLines) lie on the metal's own vertices.
 export function formCaseLoops(form) {
   const G = CASE_CLEAR + CASE_BAND_T;
+  // §325 — the FREE outline is a polyline, and a polyline grown G turns at every vertex on an arc of radius G: the
+  // mitre offset of that loop folds past a depth G (the bezel's opening is G + 1 mm), whatever the curve's own
+  // curvature. Its rings are its own EXACT offsets instead — one field of the outline, a contour per depth — each
+  // carried onto the outer loop's vertices by nearest point, so every ring keeps the outer's count and order.
+  if (form.kind === 'free') {
+    const lo = G - (G + 1.5 / UNIT_MM), hi = G;
+    const outer = form.levelLoop(G, { lo, hi });
+    const memo = new Map();
+    const ring = (t) => {
+      if (t === 0) return outer.map((p) => p.slice());
+      if (!memo.has(t)) memo.set(t, projectLoop(outer, form.levelLoop(G - t, { lo, hi })));
+      return memo.get(t).map((p) => p.slice());
+    };
+    return { plate: form.loop({ grow: 0 }), bore: ring(CASE_BAND_T), outer, opening: ring(G + 1 / UNIT_MM), crystal: ring(G + 0.5 / UNIT_MM), ring };
+  }
   const outer = form.loop({ grow: G });
   const ring = (t) => inward(outer, t);
   return {
@@ -207,12 +222,14 @@ function sweepRun(ring, run) {
 // an edge comes out running BACKWARDS (its direction against the edge it was offset from) or where the offset loop
 // meets itself. On a convex outline every turn left is the same test (loopConvex), and stays the one it reads.
 function offsetUnfolded(orig, off) {
-  const n = orig.length;
+  const n = orig.length, kept = [];
   for (let i = 0; i < n; i++) {
-    const j = (i + 1) % n;
-    if ((orig[j][0] - orig[i][0]) * (off[j][0] - off[i][0]) + (orig[j][1] - orig[i][1]) * (off[j][1] - off[i][1]) <= 0) return false;
+    const j = (i + 1) % n, ex = off[j][0] - off[i][0], ey = off[j][1] - off[i][1];
+    if (Math.hypot(ex, ey) < 1e-9) continue;   // points the projection landed on one corner: no edge, no direction
+    if ((orig[j][0] - orig[i][0]) * ex + (orig[j][1] - orig[i][1]) * ey < 0) return false;
+    kept.push(off[i]);
   }
-  return loopSimple(off);
+  return loopSimple(kept);
 }
 // Every turn of a closed CCW loop left (a fold reads as a right turn).
 function loopConvex(pts) {

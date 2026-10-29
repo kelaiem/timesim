@@ -4220,6 +4220,37 @@ function segIndex(pts, cell) {
   };
   return { near, inBox };
 }
+// Each point of `src` carried to its nearest point on the closed polyline `dst` (exact, bucketed): how a ring the
+// sweep needs at another depth keeps the outer loop's vertex count and order. Between two exact offsets of one curve
+// the nearest point never runs backwards along the curve; at a corner of the deeper one several land on the corner.
+export function projectLoop(src, dst) {
+  const n = dst.length, cell = 2, buckets = new Map(), key = (i, j) => i * 100003 + j;
+  for (let s = 0; s < n; s++) {
+    const [ax, ay] = dst[s], [bx, by] = dst[(s + 1) % n];
+    for (let i = Math.floor(Math.min(ax, bx) / cell); i <= Math.floor(Math.max(ax, bx) / cell); i++)
+      for (let j = Math.floor(Math.min(ay, by) / cell); j <= Math.floor(Math.max(ay, by) / cell); j++) {
+        const k = key(i, j); let b = buckets.get(k); if (!b) buckets.set(k, b = []); b.push(s);
+      }
+  }
+  return src.map(([x, y]) => {
+    const i0 = Math.floor(x / cell), j0 = Math.floor(y / cell);
+    let best = Infinity, fx = x, fy = y;
+    for (let r = 0; r < 1e4; r++) {
+      if ((r - 1) * cell > best) break;
+      for (let di = -r; di <= r; di++) for (let dj = -r; dj <= r; dj++) {
+        if (Math.max(Math.abs(di), Math.abs(dj)) !== r) continue;
+        const b = buckets.get(key(i0 + di, j0 + dj)); if (!b) continue;
+        for (const s of b) {
+          const [ax, ay] = dst[s], [bx, by] = dst[(s + 1) % n], ex = bx - ax, ey = by - ay, L2 = ex * ex + ey * ey;
+          const t = L2 > 0 ? Math.max(0, Math.min(1, ((x - ax) * ex + (y - ay) * ey) / L2)) : 0;
+          const qx = ax + t * ex, qy = ay + t * ey, d = Math.hypot(x - qx, y - qy);
+          if (d < best) { best = d; fx = qx; fy = qy; }
+        }
+      }
+    }
+    return [fx, fy];
+  });
+}
 function pointInPoly(pts, x, y) {
   let inside = false;
   for (let i = 0, k = pts.length - 1; i < pts.length; k = i++) {
@@ -4250,14 +4281,14 @@ function polyField(pts, grid, level, band) {
 // THE OFFSET of a closed CCW polygon by g (outward > 0): the level g of its
 // signed field, the largest loop, simplified. An inward offset that splits the
 // polygon keeps its largest piece and says so (`pieces`).
-export function freeOffset(pts, g, h = FREE_H) {
+export function freeOffset(pts, g, h = FREE_H, tol = FREE_SIMPLIFY) {
   let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
   for (const [x, y] of pts) { xMin = Math.min(xMin, x); xMax = Math.max(xMax, x); yMin = Math.min(yMin, y); yMax = Math.max(yMax, y); }
   const grid = fieldGrid(xMin, xMax, yMin, yMax, Math.max(0, g) + 4 * h, h);
-  const f = polyField(pts, grid, g, 2.5 * h);
+  const f = polyField(pts, grid, g, 6 * h);
   const loops = fieldContour(f, grid, g).map((l) => ({ l, A: polyArea(l) })).filter((o) => o.A > 0).sort((a, b) => b.A - a.A);
   if (!loops.length) return { pts: null, pieces: 0 };
-  return { pts: simplifyLoop(loops[0].l, FREE_SIMPLIFY), pieces: loops.length };
+  return { pts: simplifyLoop(loops[0].l, tol), pieces: loops.length };
 }
 // A closed loop is SIMPLE when no two non-adjacent edges meet.
 export function loopSimple(pts) {
@@ -4296,7 +4327,25 @@ export function freeShapeOf(pts, free = {}) {
   const s = shapeFrom('free', polyPrims(loopPts), { segs: 48, accuracy: FREE_SIMPLIFY + FREE_H / 2, grown, cornerR: free.margin ?? null });
   let flatTop = null, flatBot = null;
   if (free.flat) { flatTop = free.flat.top; flatBot = free.flat.bot; }
-  const shape = Object.freeze({ ...s, cx: free.c ?? s.cx, pts: Object.freeze(loopPts.map((p) => Object.freeze(p.slice()))),
+  // THE FIELD over a range of offsets, once: the polyline's signed distance, exact on every cell within [lo, hi] (and
+  // a few cells past), so every level between is a contour of ONE field — the case's rings at each depth of the
+  // bezel's profile (form-case.js) cost a contour each, not a field each
+  let fieldAt = null;
+  const levelLoop = (level, { lo = level, hi = level } = {}) => {
+    if (!fieldAt || level < fieldAt.lo || level > fieldAt.hi) {
+      const a = Math.min(lo, level), b = Math.max(hi, level);
+      let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
+      for (const [x, y] of loopPts) { xMin = Math.min(xMin, x); xMax = Math.max(xMax, x); yMin = Math.min(yMin, y); yMax = Math.max(yMax, y); }
+      const grid = fieldGrid(xMin, xMax, yMin, yMax, Math.max(0, b) + 4 * FREE_H, FREE_H);
+      fieldAt = { lo: a, hi: b, grid, f: polyField(loopPts, grid, (a + b) / 2, (b - a) / 2 + 6 * FREE_H), loops: new Map() };
+    }
+    if (!fieldAt.loops.has(level)) {
+      const L = fieldContour(fieldAt.f, fieldAt.grid, level).map((l) => ({ l, A: polyArea(l) })).filter((o) => o.A > 0).sort((p, q) => q.A - p.A);
+      fieldAt.loops.set(level, L.length ? simplifyLoop(L[0].l, FREE_SIMPLIFY) : null);
+    }
+    return fieldAt.loops.get(level)?.map((p) => p.slice()) ?? null;
+  };
+  const shape = Object.freeze({ ...s, cx: free.c ?? s.cx, pts: Object.freeze(loopPts.map((p) => Object.freeze(p.slice()))), levelLoop,
     flatHalf: free.flat ? Math.min(free.flat.halfTop, free.flat.halfBot) : null, flatTop, flatBot, free: Object.freeze({ ...free }),
     loop: ({ grow = 0 } = {}) => (grow === 0 ? loopPts : grown(grow).pts).map((p) => p.slice()) });
   return shape;
@@ -4383,6 +4432,17 @@ export function fitFreeCase(polys, { margin = PLATE_RIM_MARGIN, rc, need, c, pin
       halfTop: rt ? Math.min(c - rt[0], rt[1] - c) : -Infinity, halfBot: rb ? Math.min(c - rb[0], rb[1] - c) : -Infinity } };
   };
   let { pts, flat } = snap(simplifyLoop(loops[0].l, FREE_SIMPLIFY));
+  // OPENED by the rim margin's round — eroded M, grown back M. The closing's contour is the boundary of a union of
+  // disks about the outside's cells, so where the raster stair-steps it carries small convex CUSPS; the outline's
+  // convex turns are meant to be the margin's round (the metal grown by M), and nothing in the construction asks
+  // for a sharper one. Kept only while it holds the metal: the opening can only take area away.
+  {
+    const e = freeOffset(pts, -margin, h);
+    if (e.pts && e.pieces === 1) {
+      const o = freeOffset(e.pts, margin, h);
+      if (o.pts) { const t = snap(o.pts); if (freeWorst(t.pts, polys, pins, margin).d >= margin && Math.min(t.flat.halfTop, t.flat.halfBot) >= need) ({ pts, flat } = t); }
+    }
+  }
   // TIGHTENED: the raster's safe side leaves the metal a little more than M (a cell, the contour's reading of a
   // cell-centre transform, the simplification); the outline is pulled in by that excess — an exact inward offset
   // of the drawn loop, re-snapped — while the EXACT margin holds and the flats keep their run, so the fit is tight
