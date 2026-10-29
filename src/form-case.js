@@ -33,7 +33,7 @@ import * as THREE from 'three';
 import {
   UNIT_MM, CLEAR_MARGIN, STOCK_MIN_U, CASE_CLEAR, CASE_BAND_T, CASE_WIDTH_MAX,
   CASE_LUG_T, CASE_LUG_EDGE_R, CASE_SPRING_BAR_D, CASE_SPRING_BAR_TIP_D,
-  caseLugPlan,
+  caseLugPlan, loopSimple,
 } from './layout.js';
 import { makeRoundedSlab, PLATE_BEVEL_F, COLLAR_PROUD, TUBE_WALL, cutEndOnPlane } from './geometry.js';
 import { CASE_POLISH_ATTR } from './materials.js';
@@ -203,6 +203,17 @@ function sweepRun(ring, run) {
   return g;
 }
 
+// §325 — A FOLD, on an outline that may turn right (the free outline is concave): the parallel offset folds where
+// an edge comes out running BACKWARDS (its direction against the edge it was offset from) or where the offset loop
+// meets itself. On a convex outline every turn left is the same test (loopConvex), and stays the one it reads.
+function offsetUnfolded(orig, off) {
+  const n = orig.length;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    if ((orig[j][0] - orig[i][0]) * (off[j][0] - off[i][0]) + (orig[j][1] - orig[i][1]) * (off[j][1] - off[i][1]) <= 0) return false;
+  }
+  return loopSimple(off);
+}
 // Every turn of a closed CCW loop left (a fold reads as a right turn).
 function loopConvex(pts) {
   const n = pts.length;
@@ -365,7 +376,7 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
     console.warn(`makeFormCase §292: the ${form.kind}'s bezel round leaves ${bezel.minWall.toFixed(3)} u of metal over the crystal seat, under §50's floor ${STOCK_MIN_U.toFixed(3)}`);
   {
     const deepest = loops.ring(bezel.tOpen);
-    if (!(loopConvex(deepest)))
+    if (!(form.kind === 'free' ? offsetUnfolded(loops.outer, deepest) : loopConvex(deepest)))
       console.warn(`makeFormCase §289: the ${form.kind}'s outer loop offset ${bezel.tOpen.toFixed(3)} inward folds over — the bezel's opening is deeper than the outline's tightest curvature`);
   }
   const sweep = mergeGeos(bezel.runs.map((run) => { const r = sweepRun(loops.ring, run); r.computeVertexNormals(); return r; }));
