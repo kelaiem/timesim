@@ -56736,7 +56736,10 @@ const TOUR_STEPS = [
   { get camera() { return frameOn('Alarm winding arrest', [0.35, -0.5, 0.75], 4.6); },
     sound: false, xray: true, schematic: true,
     caption: 'The alarm barrel has a stop-work of its own: a Maltese cross counts its turns, and the last one lands on a solid limb', dwell: 5.0 },
-  { preset: 'Dial', schematic: false, xray: true, alarm: true,
+  // The Dial preset frames the whole face, so the column wheel, beak and rod this caption
+  // names are a few pixels each. Since §261 they stand under the dial; the link tour's own
+  // derived beak shot frames them, read through the fold (TODO 276's retarget).
+  { camera: linkShot(_beakAt, _rodRun / 2 + 5.0, 0.3, -0.9), schematic: false, xray: true, alarm: true,
     caption: 'Press the pusher and the alarm arms: a column wheel indexes, a beak reads it, and a long link carries the arming to the selector ring', dwell: 4.6 },
   { preset: 'Free', alarm: false, sound: false, scale: 1, xray: false, explode: 0, labels: false, powerflow: false, links: true,
     caption: 'That’s the tour. Explore the controls yourself, or read how they work:', dwell: 6.0 },
