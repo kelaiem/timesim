@@ -232,14 +232,20 @@ law's (the ONLY source) through the cone and the train, every mesh's and the pal
 friction a TABLED band of three corners (`TECHNIC_DRIVE_FRICTION`). The posed law has
 a shape and no size, so the size is SOLVED: the most escape torque that keeps the
 driven period inside RATE_BAND of the free pendulum's (`TECHNIC_DRIVE`). With no
-knife or air loss the swing is set by the pallets' friction, not the drive's size
-(3.93° nominal, 2.30° adverse, the favourable corner at the slip). A RATING NUT — a
+knife or air loss the swing is set where recoil / impulse = η², by the pallets'
+friction and the anchor, not the drive's size (`beatBudget` books a beat: twice the
+torque moves it 0.2%). So the pallets' SETTING is solved for the driven swing
+(`TECHNIC_DRIVE.palletDeg`, 37.25°; §287's cell keeps 38.75°): the one whose FRICTION
+WINDOW (`frictionWindow`: the pallet efficiencies keeping the adverse swing over the
+release and the favourable under the slip) is widest, 0.35–0.85 against the tabled
+0.60–0.80 (2.17° nominal, 1.51° adverse, 4.65° favourable). A RATING NUT — a
 bush on a 4L axle standing in an angle connector #6 (32014) on the bob axle, the only
 radial member: every axle on the balance is parallel to the knife — sets the beat; its
 rate sensitivity is DERIVED from the inertias. The train cell follows the driven
 cycle when the solve converges and says when it does not. `tools/probe-technic-drive.mjs`
 holds the torque identities, the pendulum limit, the energy books, the period rising
-with the swing, the solve, the nut and the cycle, each with a control. Landing 3
+with the swing, the solve, the beat's budget, both margins and the friction window,
+the nut and the cycle, each with a control. Landing 3
 (the whole train's run-down integrated, its losses and inertias) is scoped in §316.
 **Since §300 each build has a PARTS LIST** (`src/technic-bom.js`) **and since
 §302 a STEP ORDER** (`src/technic-steps.js`, pure): the placements partitioned
