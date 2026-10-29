@@ -15379,20 +15379,27 @@ for (const p of tqPivots) {
 // square to the ray. One pass landed 0.143 against a 0.15 margin for exactly
 // that reason. So each pass grows the keeps that are still short by what they
 // are short, and it settles in two or three.
+// Only the CUT's share of a shortfall grows a keep: the clamp moves the cut and
+// nothing else, so growing a keep for the rim's share inflates its disc without
+// buying a hundredth back — §322's pillar keeps on the rect form case (corner
+// pillars past plateR, read on the round rim) grew to clamp the balance's own
+// opening into the chatons. The rim is the plate's EDGE, which under FORM is
+// the outline (TODO 271, as the pillar scan's seatClearance reads it).
+const keepRimRoom = (x, y) => (FORM ? formInset(x, y) : plateR - Math.hypot(x, y));
 function seatCut() {
   for (const k of CHATON_CUT_KEEPS) k.r = k.need + CLEAR_MARGIN;
   for (let pass = 0; pass < 8; pass++) {
     clampCutToKeeps(CHATON_CUT_KEEPS);
     let short = 0;
     for (const k of CHATON_CUT_KEEPS) {
-      const c = Math.min(inCutClearance(k.x, k.y), plateR - Math.hypot(k.x, k.y)) - k.need;
+      const c = inCutClearance(k.x, k.y) - k.need;
       if (c < CLEAR_MARGIN) { k.r += CLEAR_MARGIN - c; short = Math.max(short, CLEAR_MARGIN - c); }
     }
-    if (short < 1e-6) return;
+    if (short < 1e-6) break;
   }
   for (const k of CHATON_CUT_KEEPS) {
-    const c = Math.min(inCutClearance(k.x, k.y), plateR - Math.hypot(k.x, k.y)) - k.need;
-    if (c < CLEAR_MARGIN)
+    const c = Math.min(inCutClearance(k.x, k.y), keepRimRoom(k.x, k.y)) - k.need;
+    if (c < CLEAR_MARGIN - 1e-6) // the convergence test's own tolerance
       console.warn(`§148: the plate cannot carry a ${k.st?.pillar ? 'pillar screw seat (§322)' : `chaton ${k.st ? 'screw seat' : 'counterbore'}`} — pivot `
         + `(${k.p.x.toFixed(2)}, ${k.p.y.toFixed(2)}), ${k.p.screws} screws, at (${k.x.toFixed(2)}, `
         + `${k.y.toFixed(2)}) leaves ${c.toFixed(3)}, needs ${CLEAR_MARGIN} — the clamp is against the `
