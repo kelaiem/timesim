@@ -32,6 +32,7 @@
 // in any window's report. Boot must be silent (rule 6).
 //
 //   cd tools && node probe-322-openwork.mjs
+//   QUERY='arrangement=designed' node probe-322-openwork.mjs   (a spec point)
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { dirname, join } from 'node:path';
@@ -54,7 +55,7 @@ page.on('console', (m) => {
   if (m.type() === 'warning' || m.type() === 'error') warns.push(t);
 });
 page.on('pageerror', (e) => warns.push('PAGEERROR ' + String(e)));
-await page.goto(`http://127.0.0.1:${port}/index.html`, { waitUntil: 'load', timeout: 180000 });
+await page.goto(`http://127.0.0.1:${port}/index.html${process.env.QUERY ? `?${process.env.QUERY}` : ''}`, { waitUntil: 'load', timeout: 180000 });
 await page.waitForFunction(() => !!window.__clock && (!window.__clock.boot || window.__clock.boot.done !== false), null, { timeout: 240000 });
 await page.waitForTimeout(1000);
 

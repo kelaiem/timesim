@@ -6320,6 +6320,13 @@ function clampCutToKeeps(keeps) {
         const b = ux * cx + uy * cy;                       // where the ray passes the keep
         const disc = b * b - (cx * cx + cy * cy) + k.r * k.r;
         if (disc <= 0) continue;                           // the ray misses it entirely
+        // ...or only its LINE meets it, behind the cut's centre: a ray cannot
+        // enter a keep it points away from. Read as a line, a keep across the
+        // balance floored every ray aimed opposite it — §322's escape cock
+        // voted those rays open and the floor put a tongue of plate over its
+        // foot (designed point, 0 from the plate); with nothing voting them
+        // the floor had been invisible.
+        if (b + Math.sqrt(disc) <= 0) continue;
         const rIn = b - Math.sqrt(disc);                   // ...enters the keep here
         if (table[i] <= rIn) continue;
         set(i, Math.max(rIn, cutFloorR()));
