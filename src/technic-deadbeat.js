@@ -491,18 +491,20 @@ export function solveA1Prime(lib, { wheels = { '3647': 8 }, ns = [1, 2, 3], uRan
 
 // ── A1′, AS FOUND ────────────────────────────────────────────────────────────
 // `solveA1Prime` on the going train's 8T: of 16,222 geometries (77,056 placements judged), 4,792 let the wheel rest
-// and 124 escape. The one declared here escapes over the widest window with a contact table the drive can read
-// (2.5°–6.5°, the table to 6.5°), and is the one the probe holds: a 2×2 quarter circle plate (convex, r 16) on a
-// friction axle pin in the round hole 8 mm UP the crossbar (10.4 mm above the pivot), a 3×3-cutout plate (concave,
-// r 24) on a pin in the round hole 8 mm along the +u mass arm (8.35 mm from the pivot), the 8T at (−12, 4) mm, driven
-// in sense +1, the locks 3.5 pitches apart. Each pallet's ANGLE is its friction pin's setting (the solve's answer,
-// to a hundredth of a degree), its centre the pin. A1′'s eccentricities (10.4 and 8.35 mm) are what its free angle
-// costs: 4.3 and 3.5 times A1's 2.4.
+// and 124 escape. Each escape was then driven at all five friction corners (§316's calibrated law, contact tables off
+// this model): 48 sustain at every one, and the one declared here has the LARGEST WORSE-CASE MARGIN — min(the adverse
+// swing over the release, the favourable swing under the table's edge), 0.207° and 0.586° (the runner-up family, the
+// 8T at (−12, 4), reads 0.106° and 1.915°). A 2×2 quarter circle plate (convex, r 16) on a friction axle pin in the
+// round hole 8 mm along the −u mass arm (8.35 mm from the pivot), a 3×3-cutout plate face down (concave, r 24) on a
+// pin in the round hole 8 mm DOWN the crossbar (5.6 mm below the pivot, the nearest lattice point), the 8T at
+// (8, −15.2) mm, driven in sense −1, the locks 3.5 pitches apart. Each pallet's ANGLE is its friction pin's setting
+// (the solve's answer, to a hundredth of a degree; the convex one's −403.44° written once round), its centre the pin.
+// A1′'s eccentricities (8.35 and 5.6 mm) are what its free angle costs: 3.5 and 2.3 times A1's 2.4.
 export const A1_PRIME = Object.freeze({
-  wheelPart: '3647', teeth: 8, W: Object.freeze([-12, 4]), sense: 1, n: 3,
+  wheelPart: '3647', teeth: 8, W: Object.freeze([8, -15.2]), sense: -1, n: 3,
   pallets: Object.freeze([
-    Object.freeze({ part: '7904', pin: Object.freeze([0, -10.4]), angleDeg: -128.4, flip: false }),
-    Object.freeze({ part: '35044', pin: Object.freeze([8, -2.4]), angleDeg: 243.2, flip: true }),
+    Object.freeze({ part: '7904', pin: Object.freeze([-8, -2.4]), angleDeg: -43.44, flip: false }),
+    Object.freeze({ part: '35044', pin: Object.freeze([0, 5.6]), angleDeg: 121.25, flip: true }),
   ]),
 });
 export function a1PrimeSpec(c = A1_PRIME, { res } = {}) {

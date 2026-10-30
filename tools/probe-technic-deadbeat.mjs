@@ -166,7 +166,7 @@ const run = solveFusee(TECHNIC_FUSEE_SPRING).best, Fr = D.TECHNIC_DRIVE_FRICTION
 const efTrain = frameTrain('technic_classic').escapement.ef, dynTrain = D.balanceDynamics(lib, efTrain, { nutV: D.TECHNIC_DRIVE.nutV });
 const Munit = D.barrelScale(D.TECHNIC_DRIVE.escapeTorqueHi / D.NMM, run, 2250, 7, Fr.mesh.nominal);
 const tauOf = (c) => D.torqueBand(run, { Munit, etaMesh: Fr.mesh[c], meshes: 7, ratio: 2250 }).mean;
-export function corners(ct, A0, { release = ct.release, table = ct.A } = {}) {
+function corners(ct, A0, { release = ct.release, table = ct.A } = {}) {
   const S = (pc, mc) => D.sustained({ ...dynTrain, ct, tau: tauOf(mc), eta: Fr.pallet[pc], A0 });
   const adv = S('adverse', 'adverse'), nom = S('nominal', 'nominal'), fav = S('favourable', 'favourable'), favAdv = S('favourable', 'adverse'), advFav = S('adverse', 'favourable');
   const all = [adv, nom, fav, favAdv, advFav];

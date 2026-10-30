@@ -6,6 +6,8 @@ import * as T from '../gt/src/technic-train.js';
 import { solveFusee, TECHNIC_FUSEE_SPRING } from '../gt/src/technic-fusee.js';
 const lib = loadPack(), deg = (d) => d * Math.PI / 180, toDeg = (r) => r * 180 / Math.PI;
 const WK = Number(process.argv[2]), NW = Number(process.argv[3]);
+import { existsSync } from 'node:fs';
+const done = new Set(); for (const f of ['am-0.log', 'am-1.log', 'am-2.log', 'am2-0.log', 'am2-1.log', 'am2-2.log', 'am3-0.log', 'am3-1.log', 'am3-2.log']) if (existsSync(f)) for (const l of readFileSync(f, 'utf8').split('\n')) { const m = /"i":(\d+)/.exec(l); if (m) done.add(Number(m[1])); }
 const cases = []; const seen = new Set();
 for (const f of ['a1p--32-12.log', 'a1p--88.log', 'a1p-1232.log']) for (const l of readFileSync(f, 'utf8').split('\n')) if (l.startsWith('ESCAPES ')) { const c = JSON.parse(l.slice(8)); const k = JSON.stringify([c.W, c.n, c.sense, c.pallets.map((p) => [p[0], p[1], p[2].toFixed(1), p[3]])]); if (seen.has(k)) continue; seen.add(k); cases.push(c); }
 const run = solveFusee(TECHNIC_FUSEE_SPRING).best, F = D.TECHNIC_DRIVE_FRICTION;
@@ -13,7 +15,7 @@ const f = T.frameTrain('technic_classic'), dyn = D.balanceDynamics(lib, f.escape
 const tHi = D.TECHNIC_DRIVE.escapeTorqueHi / D.NMM, Munit = D.barrelScale(tHi, run, 2250, 7, F.mesh.nominal);
 const tauOf = (c) => D.torqueBand(run, { Munit, etaMesh: F.mesh[c], meshes: 7, ratio: 2250 }).mean;
 cases.forEach((c, i) => {
-  if (i % NW !== WK) return;
+  if (done.has(i) || i % NW !== WK) return;
   const spec = { wheelPart: '3647', teeth: 8, W: c.W, sense: c.sense, pallets: c.pallets.map(([part, at, a, flip]) => ({ part, at, angle: deg(a), flip, centre: DB.DEADBEAT_PALLETS[part].centre, normal: DB.DEADBEAT_PALLETS[part].normal })) };
   const m = DB.deadbeatModel(lib, spec), ts = DB.tableSwingOf(m);
   if (!ts) return;
