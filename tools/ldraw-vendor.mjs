@@ -54,6 +54,7 @@ import { FUSEE_PULLEYS, FUSEE_STRINGS, FUSEE_PARTS } from '../src/technic-fusee.
 import { ALARM_PARTS } from '../src/technic-alarm.js';
 import { ESCAPEMENT_PARTS, RATING_PARTS } from '../src/technic-escapement.js';
 import { TRAIN_PARTS } from '../src/technic-train.js';
+import { DEADBEAT_PALLETS, DEADBEAT_PARTS } from '../src/technic-deadbeat.js';
 import { fetchParts } from './ldraw-fetch.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -66,6 +67,7 @@ export const PACK_PARTS = [...new Set([
   ...Object.values(KEYLESS_PARTS),
   ...FUSEE_PULLEYS, ...Object.values(FUSEE_STRINGS), ...Object.values(FUSEE_PARTS),
   ...Object.values(ALARM_PARTS), ...Object.values(ESCAPEMENT_PARTS), ...Object.values(RATING_PARTS), ...Object.values(TRAIN_PARTS),
+  ...Object.keys(DEADBEAT_PALLETS), ...Object.values(DEADBEAT_PARTS),   // §323: the dead-beat's pallet candidates, mount and survey controls
 ])].sort();
 
 const CAND_OUT = join(ROOT, 'tools/data/technic-candidates.mpd');

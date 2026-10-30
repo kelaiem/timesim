@@ -247,6 +247,14 @@ holds the torque identities, the pendulum limit, the energy books, the period ri
 with the swing, the solve, the beat's budget, both margins and the friction window,
 the nut and the cycle, each with a control. Landing 3
 (the whole train's run-down integrated, its losses and inertias) is scoped in §316.
+**Since §323 a DEAD-BEAT has been measured for it, and refused** (landing 1, `src/technic-deadbeat.js`): the
+owner's "reduce friction" chose A1, a half dead-beat on the shipped knife, its lock arcs centred on the crossbar (2.4 mm
+from the pivot: the nearest LEGO's lattice reaches). `tools/ldraw-arc-survey.mjs` reads the whole library for usable
+arcs (559 on 345 parts: partial, round to F2's play, a real wall, the material behind each face measured); a contact
+model whose pallets are parts' SILHOUETTES (`deadbeatModel`, §287's quasi-static law and interface) reads §287's anchor
+back to the grids' resolution and lets a drawn textbook Graham escape; and `solveA1`, every candidate pair at every
+quarter-turn keying and lattice point on the 8T, finds no placement that even lets the wheel rest (2,541,000 tried,
+closest 0.55 mm). `tools/probe-technic-deadbeat.mjs` holds it; the recoil anchor stays.
 **Since §300 each build has a PARTS LIST** (`src/technic-bom.js`) **and since
 §302 a STEP ORDER** (`src/technic-steps.js`, pure): the placements partitioned
 into steps by rules read off the placements (columns bottom-up, a part held in
@@ -1404,7 +1412,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 377 measuring scripts and this file names 75. The rest are named for the
+`tools/` holds 379 measuring scripts and this file names 77. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -1421,7 +1429,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **258 of
+The index also carries the split that decides how to read a result: **260 of
 them are ACCEPTANCE tests** that exit non-zero, and **119 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
