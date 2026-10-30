@@ -113,8 +113,9 @@ export function balanceDynamics(lib, frame, { nutV = frame.rating?.nutV ?? null,
 // One trace (§287's settle law, two full swings, the second kept) over the swing `A` (deg), n steps a leg. Per
 // direction: the anchor angles in that direction's order, the wheel's angle after each, and what each step was.
 // `slope(dir, α)` is dθ/dα of the wheel FOLLOWING a pallet (0 across a drop); `thetaAt(dir, α)` the wheel's angle.
-export function* contactTablesSteps(lib, spec, { A, n = 1600 } = {}) {
-  const model = escapementModel(lib, escSpec(lib, spec));
+export function* contactTablesSteps(lib, spec, { A, n = 1600, model: given = null } = {}) {
+  // (§323: a contact model built elsewhere — the dead-beat's silhouette pallets — is traced by the same law)
+  const model = given ?? escapementModel(lib, escSpec(lib, spec));
   const tr = yield* traceCycleSteps(model, A, { n });
   if (!tr.ok) return { ok: false, why: tr.why, A };
   const R = deg(A), da = 2 * R / n, legs = {};

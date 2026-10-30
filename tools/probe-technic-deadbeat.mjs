@@ -18,6 +18,12 @@
 //     is one radius when its arc is centred there, and spreads by the eccentricity's projection about the crossbar.
 //   · SLENDERNESS (a report) — the widest drawn pallet (material behind its face) that still escapes on the going
 //     train's 8T, at 1.5, 2.5 and 3.5 pitches between the locks.
+//   · A1′ — the lock arcs on friction axle pins, their angle free (A1_PRIME, `solveA1Prime`'s answer): it escapes, its
+//     lock stands over F2's play, and driven as §316 drives the recoil anchor (the knife's loss and the lock's rest
+//     friction unmodelled: UPPER bounds) it sustains at every corner with both margins positive and a rate spread under
+//     the recoil anchor's, read by the same function off §316's own table; its recoil on the lock beside the anchor's (a
+//     report). Controls: a forged release a degree later (the adverse margin must go); the convex pallet set a quarter
+//     turn round (it must not escape).
 //   · A1 — `solveA1` over every candidate pair, every quarter-turn placement face up or down, every escape-arbor
 //     lattice point the pallets' radii reach, both senses, on the 8T: the number that escape, and the CLOSEST (the
 //     least overlap the best wheel angle leaves at the worst of −2°, 0, +2°). The VERDICT is this solve's.
@@ -32,6 +38,9 @@ import { placements, LDU_MM } from '../src/ldraw.js';
 import { escapementModel, escSpec, traceCycle, palletAngle, TECHNIC_ESCAPEMENT, ESC_DIM_MM, F2_PLAY_MM, ESCAPEMENT_PARTS } from '../src/technic-escapement.js';
 import { LEGO_DIM_MM } from '../src/technic-frame.js';
 import * as DB from '../src/technic-deadbeat.js';
+import * as D from '../src/technic-drive.js';
+import { frameTrain } from '../src/technic-train.js';
+import { solveFusee, TECHNIC_FUSEE_SPRING } from '../src/technic-fusee.js';
 
 const lib = loadPack();
 const quick = process.argv.includes('--quick');
@@ -147,6 +156,62 @@ const slender = {};
   console.log(`  WHY (a report): ${[...new Set(quarter)].length} of ${Object.keys(DB.DEADBEAT_PALLETS).length} candidates end their arcs on quarter turns (${off.map((x) => `${x.p} ${x.kind} ${x.off.toFixed(1)}° off`).join(', ')}); the 8T's textbook locks stand ${apart.map((x) => `${x}°`).join(', ')} apart about the arcs' centre at 1.5, 2.5, 3.5 pitches; material behind the faces ${Object.entries(behind).map(([p, k]) => `${p} ${Object.values(k).map((v) => v.toFixed(1)).join('/')}`).join(', ')} mm against the ${slender[1]}/${slender[2]}/${slender[3]} mm the 8T admits`);
   if (r.escapes.length) console.log(`  ESCAPES: ${JSON.stringify(r.escapes.slice(0, 3).map((e) => ({ W: e.W, sense: e.sense, swings: e.swings, pallets: e.pallets.map((p) => `${p.part} r${p.rot}${p.flip ? 'f' : ''}`) })))}`);
   console.log(`  VERDICT: ${r.escapes.length ? 'A1 has a geometry on the 8T' : 'A1 is IMPOSSIBLE on the going train\'s 8T with these parts: no keyed placement of any candidate pair, at any lattice point, lets the wheel rest within ±2° of the swing\'s centre'}`);
+}
+
+// ── A1′: the lock arcs on friction axle pins, their angle free (A1_PRIME, solveA1Prime's answer)
+// Driven exactly as §316 drives the recoil anchor: its torques (TECHNIC_DRIVE on the fusee's run and the classic
+// train), the train's balance, the tabled pallet and mesh bands — and NOTHING for the knife's loss or the lock's rest
+// friction (unmodelled: every swing an UPPER bound). The rate spread is read across the matched corners and the box
+// (each band at the other's opposite end), against the recoil anchor's read by the same function off §316's own table.
+const run = solveFusee(TECHNIC_FUSEE_SPRING).best, Fr = D.TECHNIC_DRIVE_FRICTION;
+const efTrain = frameTrain('technic_classic').escapement.ef, dynTrain = D.balanceDynamics(lib, efTrain, { nutV: D.TECHNIC_DRIVE.nutV });
+const Munit = D.barrelScale(D.TECHNIC_DRIVE.escapeTorqueHi / D.NMM, run, 2250, 7, Fr.mesh.nominal);
+const tauOf = (c) => D.torqueBand(run, { Munit, etaMesh: Fr.mesh[c], meshes: 7, ratio: 2250 }).mean;
+function corners(ct, A0, { release = ct.release, table = ct.A } = {}) {
+  const S = (pc, mc) => D.sustained({ ...dynTrain, ct, tau: tauOf(mc), eta: Fr.pallet[pc], A0 });
+  const adv = S('adverse', 'adverse'), nom = S('nominal', 'nominal'), fav = S('favourable', 'favourable'), favAdv = S('favourable', 'adverse'), advFav = S('adverse', 'favourable');
+  const all = [adv, nom, fav, favAdv, advFav];
+  if (!all.every((x) => x.status === 'sustained')) return { ok: false, status: all.map((x) => x.status) };
+  const rate = (x) => (1 - x.T / nom.T) * 86400, m3 = [adv, nom, fav].map(rate), bx = all.map(rate);
+  return { ok: true, A: [adv.A, nom.A, fav.A], below: Math.min(adv.Amin, advFav.Amin) - toDeg(release), above: table - Math.max(fav.Amax, favAdv.Amax),
+    matched: Math.max(...m3) - Math.min(...m3), box: Math.max(...bx) - Math.min(...bx), rates: m3 };
+}
+{
+  const spec = DB.a1PrimeSpec(), m = DB.deadbeatModel(lib, spec), ts = DB.tableSwingOf(m);
+  if (!ts) fail('A1′ as declared does not escape');
+  else {
+    const ct = D.contactTables(lib, null, { A: ts.A, n: Math.round(ts.A * 200), model: m });
+    const e = spec.pallets.map((p) => Math.hypot(p.at[0], p.at[1]));
+    // the lock: the balance must turn through the release to free a tooth; at each pallet the lock face's point nearest
+    // the wheel stands this far from the pivot, so the lock is that arc length
+    const near = spec.pallets.map((p, k) => { const a = DB.DEADBEAT_PALLETS[p.part]; const arc = DB.arcsAbout(lib, DB.silhouette(lib, p.part, { normal: a.normal, res: 0.25 }), a.centre).filter((x) => x.kind !== 'thin')[0]; const R = arc.r * LDU_MM, d = Math.hypot(spec.W[0] - p.at[0], spec.W[1] - p.at[1]); return Math.hypot(p.at[0] + R * (spec.W[0] - p.at[0]) / d, p.at[1] + R * (spec.W[1] - p.at[1]) / d); });
+    const lockMM = ct.release * Math.min(...near);
+    if (!(lockMM > F2_PLAY_MM)) fail(`A1′'s lock (${lockMM.toFixed(3)} mm) is not over F2's ${F2_PLAY_MM} mm play`);
+    // the beat off the table: lift (the swing of each leg's impulse) and the recoil on the lock (wheel per balance)
+    const legsOf = (ct) => [1, -1].map((dir) => { const L = ct.legs[dir]; let imp = 0, rec = 0, recN = 0; for (let i = 0; i < ct.n; i++) { const s = L.slope[i]; if (L.kind[i] === 'drop') continue; if (s * dir > 0) imp += ct.da; else if (s * dir < 0) { rec += Math.abs(s); recN++; } } return { lift: toDeg(imp), recoil: recN ? rec / recN : 0 }; });
+    const legs = legsOf(ct);
+    const dr = corners(ct, ts.from + 0.5);
+    // the recoil anchor, read by the same function off §316's own table
+    const spec316 = { ...efTrain.spec, sense: frameTrain('technic_classic').sense }, ct316 = D.contactTables(lib, spec316, { A: D.TECHNIC_DRIVE.tableDeg, n: D.TECHNIC_DRIVE.traceSteps });
+    const ref = corners(ct316, 3);
+    console.log(`\nA1′ (declared: ${spec.pallets.map((p) => `${p.part} on a pin at (${p.at.join(', ')}) mm, set ${toDeg(p.angle).toFixed(2)}°${p.flip ? ' face down' : ''}`).join('; ')}; the 8T at (${spec.W.join(', ')}) mm, sense ${spec.sense})`);
+    console.log(`  ESCAPES from ${ts.from}°; its table holds to ${ts.A}° (at ${ts.next?.A}°: ${ts.next?.why}); drops ${ct.drops.map((d) => `${toDeg(d.alpha).toFixed(2)}°/${toDeg(d.dth).toFixed(1)}°`).join(', ')}; release ${toDeg(ct.release).toFixed(2)}°, so ${lockMM.toFixed(2)} mm of lock (${(lockMM - F2_PLAY_MM).toFixed(2)} mm over F2's play)`);
+    console.log(`  the arcs' centres ${e.map((x) => x.toFixed(2)).join(' and ')} mm from the pivot (A1's 2.4); lift ${legs.map((l) => l.lift.toFixed(2)).join('° / ')}° a leg; recoil on the lock ${legs.map((l) => l.recoil.toFixed(2)).join(' / ')} wheel per balance`);
+    if (!dr.ok) fail(`A1′ does not sustain at every corner: ${dr.status.join(', ')}`);
+    else {
+      if (!(dr.below > 0 && dr.above > 0)) fail(`A1′'s margins: ${dr.below.toFixed(3)}° over the release, ${dr.above.toFixed(3)}° under the table's edge`);
+      console.log(`  DRIVEN (UPPER BOUNDS: knife loss and lock rest friction unmodelled) swing ${dr.A.map((x) => x.toFixed(2)).join('° / ')}° adverse / nominal / favourable; ${dr.below.toFixed(2)}° over the release at the worst adverse corner, ${dr.above.toFixed(2)}° under the table's edge at the worst favourable; rate spread ${dr.matched.toFixed(0)} s/day matched, ${dr.box.toFixed(0)} s/day box`);
+      if (ref.ok) console.log(`  the recoil anchor by the same reading: rate spread ${ref.matched.toFixed(0)} s/day matched, ${ref.box.toFixed(0)} s/day box${dr.box < ref.box ? ` — A1′ ${(ref.box / dr.box).toFixed(1)}× less` : ''}; its recoil on the lock ${legsOf(ct316).map((l) => l.recoil.toFixed(2)).join(' / ')} wheel per balance (a report: A1′ is not dead on its lock)`);
+      if (!(ref.ok && dr.box < ref.box)) fail('A1′ is not less friction-sensitive than the recoil anchor');
+      console.log(`  VERDICT: A1′ escapes and drives; ${dr.below < D.TABLE_STEP_DEG ? `MARGINAL at the adverse corner — ${dr.below.toFixed(2)}° over the release, under a table grid step (${D.TABLE_STEP_DEG}°), before the knife's loss and the lock's rest friction take their share` : `its adverse margin ${dr.below.toFixed(2)}° clears a table grid step`}`);
+      // controls: a forged margin (the release read a degree later) must lose the adverse margin; the same pallets with
+      // the convex one set a quarter turn round (A1's keying) must not escape
+      const forged = corners(ct, ts.from + 0.5, { release: ct.release + deg(1) });
+      control('a forged release a degree later (the adverse margin must go)', forged.ok && !(forged.below > 0));
+    }
+    const off = { ...spec, pallets: spec.pallets.map((p, k) => (k ? p : { ...p, angle: p.angle + Math.PI / 2 })) };
+    control('A1′ with its convex pallet set a quarter turn round (it must not escape)', DB.judgeA1(DB.deadbeatModel(lib, off), { swings: [3, 6, 10] }).swings.length === 0);
+  }
 }
 
 console.log('\ncontrols:');

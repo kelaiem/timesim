@@ -411,3 +411,118 @@ export function drawnGraham(lib, wheelPart, teeth, n, { w = 1, dip = 0.6, len = 
   });
   return { wheelPart, teeth, W, sense, pallets, R, D, beta };
 }
+
+// ── A1′: THE LOCK ARC ON A FRICTION AXLE PIN, ITS ANGLE FREE ─────────────────
+// §287 sets each pallet on a friction axle pin (43093) in a liftarm's ROUND hole: the pin's axle half keys the part,
+// its pin half turns in the hole, friction holds it — so its angle is FREE (a setting, not a quarter turn). A1′ carries
+// each lock arc that way: the part keyed on the pin's axle half (32249 directly; a plate through a 4032a), its arc's
+// centre on the pin. The pins stand in the round holes of arms keyed on the crossbar (6632 and 11478, §287's ARM_PARTS:
+// their round holes at 8, 16, 24 mm from the keyed end, at each quarter turn), so the arc's centre stands on one of
+// those holes: the nearest is 8 mm straight down the crossbar, 5.6 mm from the pivot. Two parts need two pins (one
+// slab, one part a pin); a part carrying both arcs (a quarter ring) is one pallet on one pin.
+export function a1PrimeHoles(arms = { '6632': [8], '11478': [8, 16, 24] }, { maxE = 12 } = {}) {
+  const out = new Map();
+  for (const ds of Object.values(arms)) for (const d of ds) for (let k = 0; k < 4; k++) {
+    const q = k * Math.PI / 2, Q = [r6(CROSSBAR[0] + d * Math.cos(q)), r6(CROSSBAR[1] + d * Math.sin(q))], e = Math.hypot(Q[0], Q[1]);
+    if (e <= maxE) out.set(`${Q}`, { Q, e: r6(e) });
+  }
+  return [...out.values()].sort((a, b) => a.e - b.e);
+}
+// THE SOLVE. A Graham's two locks stand (n + ½) pitches apart on the tip circle. For each wheel position on the
+// lattice, each straddle n, each pair of pins, the convex arc's circle meets the tip circle at up to two points P1; the
+// point (n + ½) pitches round from it is P2, and the concave arc must pass within `tol` of it (the lock depth the dip
+// can take up). Each pallet is then turned — its angle is free — so an END of its arc stands at its lock point, set
+// `dip` into the wheel's side, face up or down: every such placement is judged (`judgeA1`: a free place at the swing's
+// centre and ±2°, then §287's trace).
+export function solveA1Prime(lib, { wheels = { '3647': 8 }, ns = [1, 2, 3], uRange = [-32, 32], vRange = [-8, 14], tol = 0.6, dips = [0.5], holes = a1PrimeHoles(), swings = [3, 6, 10], onCase = null } = {}) {
+  const { arcs } = a1Pallets(lib);
+  const parts = Object.keys(arcs), convexOf = (p) => arcs[p].filter((a) => a.kind === 'convex'), concaveOf = (p) => arcs[p].filter((a) => a.kind === 'concave');
+  const out = { geometries: 0, judged: 0, rests: 0, escapes: [] };
+  for (const [wp, teeth] of Object.entries(wheels)) {
+    const rt = starProfile(lib, wp).tip, pitch = TAU / teeth;
+    for (let u = uRange[0]; u <= uRange[1] + 1e-9; u += LEGO_DIM_MM.stud / 2) for (let j = vRange[0]; j <= vRange[1]; j++) {
+      const W = [u, r6(LEGO_DIM_MM.plateH * j + (ESC_DIM_MM.knifeH - LEGO_DIM_MM.holeZ))];
+      for (const pc of parts) for (const ac of convexOf(pc)) for (const pk of parts) for (const ak of concaveOf(pk)) for (const h1 of holes) for (const h2 of holes) {
+        if ((pc === pk) !== (h1 === h2)) continue;                       // one part, one pin; two parts, two pins
+        const R1 = ac.r * LDU_MM, R2 = ak.r * LDU_MM, dx = W[0] - h1.Q[0], dy = W[1] - h1.Q[1], d = Math.hypot(dx, dy);
+        if (d > R1 + rt || d < Math.abs(R1 - rt)) continue;
+        const base = Math.atan2(h1.Q[1] - W[1], h1.Q[0] - W[0]), half = Math.acos((rt * rt + d * d - R1 * R1) / (2 * rt * d));
+        for (const phi1 of [base - half, base + half]) for (const n of ns) for (const s of [1, -1]) {
+          const P1 = [W[0] + rt * Math.cos(phi1), W[1] + rt * Math.sin(phi1)], phi2 = phi1 + s * (n + 0.5) * pitch;
+          const P2 = [W[0] + rt * Math.cos(phi2), W[1] + rt * Math.sin(phi2)];
+          if (Math.abs(Math.hypot(P2[0] - h2.Q[0], P2[1] - h2.Q[1]) - R2) > tol) continue;
+          // the wheel's sense: a tooth presses INTO each lock face — toward the convex arc's centre at P1, away from the
+          // concave arc's at P2 (the velocity of a tip, sense σ, is σ·(−sin φ, cos φ)); the two must agree
+          const tangent = (phi) => [-Math.sin(phi), Math.cos(phi)];
+          const into1 = Math.sign(tangent(phi1)[0] * (h1.Q[0] - P1[0]) + tangent(phi1)[1] * (h1.Q[1] - P1[1]));
+          const into2 = -Math.sign(tangent(phi2)[0] * (h2.Q[0] - P2[0]) + tangent(phi2)[1] * (h2.Q[1] - P2[1]));
+          if (!into1 || into1 !== into2) continue;
+          const sense = into1;
+          out.geometries++;
+          const T1 = Math.atan2(P1[1] - h1.Q[1], P1[0] - h1.Q[0]), T2 = Math.atan2(P2[1] - h2.Q[1], P2[0] - h2.Q[0]);
+          // each pallet turned so an END of its arc stands at its lock point and the arc runs on OUT of the tip circle
+          // (the lock face a tooth slides along as the swing goes on), its end set `dip` back into the wheel
+          const placements = (part, a, Q, T, R) => {
+            const res = [];
+            for (const end of [false, true]) for (const flip of [false, true]) {
+              const f = flip ? -1 : 1, at = end ? a.from + a.span : a.from, runs = (end ? -1 : 1) * f;     // the arc runs this way from its end
+              const probe = [Q[0] + R * Math.cos(T + runs * 3 / R), Q[1] + R * Math.sin(T + runs * 3 / R)];
+              if (Math.hypot(probe[0] - W[0], probe[1] - W[1]) <= rt) continue;   // it would run into the wheel
+              for (const dip of dips) res.push({ part, centre: DEADBEAT_PALLETS[part].centre, normal: DEADBEAT_PALLETS[part].normal, at: Q, angle: T - runs * dip / R - f * at, flip });
+            }
+            return res;
+          };
+          const A = placements(pc, ac, h1.Q, T1, R1), B = pc === pk ? [null] : placements(pk, ak, h2.Q, T2, R2);
+          for (const p1 of A) for (const p2 of B) {
+            const pals = p2 ? [p1, p2] : [p1];
+            const m = deadbeatModel(lib, { wheelPart: wp, teeth, W, sense, pallets: pals });
+            const jd = judgeA1(m, { swings });
+            out.judged++;
+            if (jd.free) out.rests++;
+            onCase?.({ wp, W, n, sense, pallets: pals, ...jd });
+            if (jd.swings.length) out.escapes.push({ wheel: wp, W, n, sense, pallets: pals, holes: [h1, h2], swings: jd.swings });
+          }
+        }
+      }
+    }
+  }
+  return out;
+}
+
+// ── A1′, AS FOUND ────────────────────────────────────────────────────────────
+// `solveA1Prime` on the going train's 8T: of 16,222 geometries (77,056 placements judged), 4,792 let the wheel rest
+// and 124 escape. Each escape was then driven at all five friction corners (§316's calibrated law, contact tables off
+// this model): 48 sustain at every one, and the one declared here has the LARGEST WORSE-CASE MARGIN — min(the adverse
+// swing over the release, the favourable swing under the table's edge), 0.207° and 0.586° (the runner-up family, the
+// 8T at (−12, 4), reads 0.106° and 1.915°). A 2×2 quarter circle plate (convex, r 16) on a friction axle pin in the
+// round hole 8 mm along the −u mass arm (8.35 mm from the pivot), a 3×3-cutout plate face down (concave, r 24) on a
+// pin in the round hole 8 mm DOWN the crossbar (5.6 mm below the pivot, the nearest lattice point), the 8T at
+// (8, −15.2) mm, driven in sense −1, the locks 3.5 pitches apart. Each pallet's ANGLE is its friction pin's setting
+// (the solve's answer, to a hundredth of a degree; the convex one's −403.44° written once round), its centre the pin.
+// A1′'s eccentricities (8.35 and 5.6 mm) are what its free angle costs: 3.5 and 2.3 times A1's 2.4.
+export const A1_PRIME = Object.freeze({
+  wheelPart: '3647', teeth: 8, W: Object.freeze([8, -15.2]), sense: -1, n: 3,
+  pallets: Object.freeze([
+    Object.freeze({ part: '7904', pin: Object.freeze([-8, -2.4]), angleDeg: -43.44, flip: false }),
+    Object.freeze({ part: '35044', pin: Object.freeze([0, 5.6]), angleDeg: 121.25, flip: true }),
+  ]),
+});
+export function a1PrimeSpec(c = A1_PRIME, { res } = {}) {
+  return { wheelPart: c.wheelPart, teeth: c.teeth, W: [...c.W], sense: c.sense, res,
+    pallets: c.pallets.map((p) => ({ part: p.part, centre: DEADBEAT_PALLETS[p.part].centre, normal: DEADBEAT_PALLETS[p.part].normal, at: [...p.pin], angle: deg(p.angleDeg), flip: p.flip })) };
+}
+// the widest swing whose drops are those of the narrowest that escapes (the contact table the drive reads)
+export function tableSwingOf(m, { from = [2, 2.5, 3, 4, 5, 6], step = 0.25, cap = 20, perDeg = 100 } = {}) {
+  let start = null;
+  for (const A of from) { const t = traceCycle(m, A, { n: Math.round(A * perDeg) }); if (t.ok) { start = { A, t }; break; } }
+  if (!start) return null;
+  const ref = start.t.drops.map((d) => ({ dir: d.dir, a: d.alpha })), tol = 2 * 2 * deg(1 / perDeg);
+  let A = start.A, next = null;
+  for (let a = start.A + step; a <= cap + 1e-9; a += step) {
+    const t = traceCycle(m, a, { n: Math.round(a * perDeg) });
+    const same = t.ok && t.drops.length === ref.length && t.drops.every((d, i) => d.dir === ref[i].dir && Math.abs(d.alpha - ref[i].a) <= tol);
+    if (!same) { next = { A: r6(a), why: t.ok ? 'other drops' : t.why }; break; }
+    A = a;
+  }
+  return { from: start.A, A: r6(A), next };
+}

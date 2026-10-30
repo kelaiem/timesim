@@ -33,7 +33,7 @@ that band's swept footprint.
 | § | Title | Parts |
 |---|---|---|
 | [§325](built/0325.md) | The free outline: an asymmetric, concave form case fitted to the movement's metal | 1 |
-| [§323](built/0323.md) | A dead-beat escapement for the LEGO going train, landing 1: measured, and A1 refused on the going train's 8T | 1 |
+| [§323](built/0323.md) | A dead-beat escapement for the LEGO going train: A1 refused on the 8T, and A1′ measured | 1 |
 | [§322](built/0322.md) | Openworked windows enlarged: the fusee cone whole, and the escape wheel round under its own cock | 1 |
 | [§321](built/0321.md) | The rounded, polished caseback, and the fitted back made flat | 1 |
 | [§320](built/0320.md) | A volume-adjustable alarm, designed in a line: the strike station as the volume, its line spec, the level law lifted pure | 1 |
