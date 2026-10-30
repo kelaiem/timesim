@@ -26,6 +26,8 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const arg = (f, d) => { const i = process.argv.indexOf(f); return i > 0 ? process.argv[i + 1] : d; };
 const FROM = Number(arg('--from', -180)), TO = Number(arg('--to', 180)), STEP = Number(arg('--step', 20)), PAR = Number(arg('--par', 2));
 const EXTRA = arg('--extra', '');
+// the reserve's idler PAIRS (§313: 0, 2, 4 or 6 idlers) — a free choice of the layout, so each bearing tries each count
+const IDLERS = arg('--idlers', '2').split(',').map(Number);
 const EXPECTED = /^§186: the rim-to-bore fit|^§261: cased assembly|^§325: no free outline is generated/;
 const mm2 = UNIT_MM * UNIT_MM, SCAN_U = 2.5, TOL_U = 0.05;
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.json': 'application/json', '.css': 'text/css' };
@@ -74,20 +76,21 @@ const solveAxis = (F) => {
 const bearings = [];
 for (let d = FROM; d <= TO + 1e-9; d += STEP) bearings.push(d);
 const rows = [];
-const run = async (d) => {
-  const q = `case=free&alarm=0&barrelstep=${d}&rsvaz=0&rsvidl=2${EXTRA ? `&${EXTRA}` : ''}`;
+const run = async ([d, idl]) => {
+  const q = `case=free&alarm=0&barrelstep=${d}&rsvaz=0&rsvidl=${idl}${EXTRA ? `&${EXTRA}` : ''}`;
   let b;
   try { b = await boot(q); } catch (e) { b = { bootError: `${e.name}: ${e.message.split('\n')[0]}` }; }   // a boot that never finishes is refused, not the scan's end
-  if (b.bootError) { rows.push({ d, refused: `boot failed: ${b.bootError}` }); console.log(`${d}°  BOOT FAILED ${b.bootError.slice(0, 160)}`); return; }
+  if (b.bootError) { rows.push({ d, idl, refused: `boot failed: ${b.bootError}` }); console.log(`${d}° idl ${idl}  BOOT FAILED ${b.bootError.slice(0, 160)}`); return; }
   const extra = b.warnings.filter((w) => !EXPECTED.test(w));
   const ax = solveAxis(b.free);
-  const row = { d, area: ax.area * mm2, c: ax.c, depth: b.depth, warns: extra };
+  const row = { d, idl, area: ax.area * mm2, c: ax.c, depth: b.depth, warns: extra };
   rows.push(row);
-  console.log(`${String(d).padStart(5)}°  ${Number.isFinite(row.area) ? row.area.toFixed(1) : '—'} mm² (c ${ax.c.toFixed(2)}), depth ${b.depth?.toFixed(3)} mm`
+  console.log(`${String(d).padStart(5)}° idl ${idl}  ${Number.isFinite(row.area) ? row.area.toFixed(1) : '—'} mm² (c ${ax.c.toFixed(2)}), depth ${b.depth?.toFixed(3)} mm`
     + (extra.length ? `  REFUSED: ${extra.length} warning(s): ${extra.map((w) => w.slice(0, 110)).join(' | ')}` : ''));
 };
-for (let i = 0; i < bearings.length; i += PAR) await Promise.all(bearings.slice(i, i + PAR).map(run));
+const jobs = bearings.flatMap((d) => IDLERS.map((idl) => [d, idl]));
+for (let i = 0; i < jobs.length; i += PAR) await Promise.all(jobs.slice(i, i + PAR).map(run));
 await browser.close(); srv.close();
 const ok = rows.filter((r) => Number.isFinite(r.area) && !r.warns?.length).sort((a, b) => a.area - b.area);
-console.log(`\nranked (closed layouts, round-1 area): ${ok.map((r) => `${r.d}° ${r.area.toFixed(1)}`).join(', ')}`);
-console.log(`refused: ${rows.filter((r) => !ok.includes(r)).map((r) => `${r.d}°`).join(', ') || 'none'}`);
+console.log(`\nranked (closed layouts, round-1 area): ${ok.map((r) => `${r.d}°/${r.idl} ${r.area.toFixed(1)}`).join(', ')}`);
+console.log(`refused: ${rows.filter((r) => !ok.includes(r)).map((r) => `${r.d}°/${r.idl}`).join(', ') || 'none'}`);
