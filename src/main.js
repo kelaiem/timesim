@@ -50293,7 +50293,11 @@ const FORM_FOOTPRINT = await (async () => {
     await handBack();
     const c = FREE_ROW ? FREE_ROW.c : P.dial.x;
     let fit = null;
-    try { fit = fitFreeCase(polys, { margin: M, rc: FREE_RC, need: FITTED_FLAT_MIN, c, pins }); }
+    // the PORTS: the alarm pusher's button seats flat on the wall (TODO 275), so the wall faces its line square across
+    // the button's reach — the reach TODO 275's own check reads (PUSHER_HEAD_R / PUSHER_SEAT_COS + CLEAR_MARGIN)
+    const ports = typeof _pushU !== 'undefined' && _pushU ? [{ o: [-_pushU.y * _pushOffAxis, _pushU.x * _pushOffAxis], u: [_pushU.x, _pushU.y],
+      half: PUSHER_HEAD_R / PUSHER_SEAT_COS + CLEAR_MARGIN }] : [];
+    try { fit = fitFreeCase(polys, { margin: M, rc: FREE_RC, need: FITTED_FLAT_MIN, c, pins, ports }); }
     catch (e) { console.warn(`§325: the free fit failed — ${e.message}`); }
     await handBack();
     const held = freeWorst(FORM.pts, polys, pins, M);
@@ -50320,6 +50324,7 @@ const FORM_FOOTPRINT = await (async () => {
         feet: FREE_DIAL_FEET,
         polys: polys.map((q) => q.map(([x, y]) => [r4(x), r4(y)])),
         pins: FREE_PINS.map(([x, y, n, what]) => [r4(x), r4(y), n, what]),
+        ports,
         fit: fit ? { area: fit.area, pts: fit.pts.map(([x, y]) => [r4(x), r4(y)]), flat: fit.flat, worst: fit.worst.d } : null },
       hull: hull.map(([hx, hy]) => [r4(hx), r4(hy)]) };
   }

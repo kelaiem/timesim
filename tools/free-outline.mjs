@@ -81,7 +81,7 @@ const solveAxis = (F) => {
   let lo = Infinity, hi = -Infinity;
   for (const P of F.polys) for (const [x] of P) { lo = Math.min(lo, x); hi = Math.max(hi, x); }
   const mid = (lo + hi) / 2, half = Math.max(SCAN_U, (hi - lo) / 2 - F.need);
-  const fit = (c) => { try { return fitFreeCase(F.polys, { margin: F.margin, rc: F.rc, need: F.need, c, pins: F.pins.map(([x, y, n]) => [x, y, n]) }); } catch (e) { return { area: Infinity, error: e.message }; } };
+  const fit = (c) => { try { return fitFreeCase(F.polys, { margin: F.margin, rc: F.rc, need: F.need, c, pins: F.pins.map(([x, y, n]) => [x, y, n]), ports: F.ports ?? [] }); } catch (e) { return { area: Infinity, error: e.message }; } };
   const scan = [];
   for (let c = mid - half; c <= mid + half + 1e-9; c += SCAN_U) scan.push({ c, r: fit(c) });
   let k = 0; for (let i = 1; i < scan.length; i++) if (scan[i].r.area < scan[k].r.area) k = i;

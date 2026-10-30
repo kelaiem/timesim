@@ -39,8 +39,8 @@ if (process.argv.includes('--refresh') || !existsSync(FIX)) {
   const { bootForm } = await import('./boot-form.mjs');
   const r = await bootForm('case=free');
   if (!r.ff?.free?.polys) { console.error('refresh: the boot published no plan hulls', r.bootError ?? ''); process.exit(1); }
-  const { key, polys, pins, rc, need, margin } = r.ff.free;
-  writeFileSync(FIX, JSON.stringify({ query: 'case=free', key, rc, need, margin, polys, pins }));
+  const { key, polys, pins, ports, rc, need, margin } = r.ff.free;
+  writeFileSync(FIX, JSON.stringify({ query: 'case=free', key, rc, need, margin, polys, pins, ports: ports ?? [] }));
   console.log(`refreshed ${FIX}: ${polys.length} plan hulls, ${pins.length} pins`);
 }
 const FX = JSON.parse(readFileSync(FIX, 'utf8'));
@@ -72,7 +72,7 @@ const pins = FX.pins.map(([x, y, n]) => [x, y, n]);
 // ── F: the fit on the measured metal ─────────────────────────────────────────────────────────────────────────
 ok('F0 the committed table carries this movement', !!ROW, ROW ? `${FX.key}` : `no row for ${FX.key} — run node tools/free-outline.mjs --write`);
 if (ROW) {
-  const fit = quiet(() => L.fitFreeCase(FX.polys, { margin: FX.margin, rc: FX.rc, need: FX.need, c: ROW.c, pins }));
+  const fit = quiet(() => L.fitFreeCase(FX.polys, { margin: FX.margin, rc: FX.rc, need: FX.need, c: ROW.c, pins, ports: FX.ports ?? [] }));
   const sh = L.freeShapeOf(ROW.pts, { c: ROW.c, rc: ROW.rc, margin: ROW.margin, need: ROW.need, flat: ROW.flat });
   {
     let seed = 11, bad = 0; const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
@@ -96,7 +96,7 @@ if (ROW) {
     `${(fit.area * mm2).toFixed(2)} mm² re-fitted against ${(ROW.area * mm2).toFixed(2)} committed`);
   // the tool's scan step (free-outline.mjs SCAN_U): finer than that the area is flat to the raster's own noise —
   // successive fixed-point rounds at one axis read ~0.3 mm² apart — so the claim held is the scan's, a bracketed minimum
-  const SCAN_U = 2.5, side = [-SCAN_U, SCAN_U].map((s) => quiet(() => L.fitFreeCase(FX.polys, { margin: FX.margin, rc: FX.rc, need: FX.need, c: ROW.c + s, pins })).area);
+  const SCAN_U = 2.5, side = [-SCAN_U, SCAN_U].map((s) => quiet(() => L.fitFreeCase(FX.polys, { margin: FX.margin, rc: FX.rc, need: FX.need, c: ROW.c + s, pins, ports: FX.ports ?? [] })).area);
   ok('F6 the strap axis is the area\'s bracketed minimum', side.every((a) => a > fit.area), `c ${ROW.c}: ${(fit.area * mm2).toFixed(2)}; c ∓ ${SCAN_U}: ${side.map((a) => (a * mm2).toFixed(2)).join(' / ')} mm²`);
   const fitted = L.formShapeOf('fitted', [-45.72, 45.72, -43.91, 44.38, 0.445876, 0.162288]);
   ok('F7 it encloses less than the fitted tonneau', A < L.shapeArea(fitted), `free ${(A * mm2).toFixed(1)} mm², fitted tonneau ${(L.shapeArea(fitted) * mm2).toFixed(1)} mm² (${((A / L.shapeArea(fitted) - 1) * 100).toFixed(1)}%)`);
