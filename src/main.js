@@ -20066,11 +20066,44 @@ registerLabel('Dial', dialGroup);
   // axis (wheel radius 4.5) — squarely inside its disc. 108° keeps the foot
   // ≥ ~15 from every keyless part, the setting traverse and the reserve
   // train while staying near the rim.
+  // §325 landing 2 — ON THE FREE OUTLINE the feet follow the outline they support, the plates' and the gong wire's
+  // rule: the round rim above is a radius the free case does not have, and measured it held three corners of the
+  // outline out at the round size (the feet were counted metal, so the fit grew to give each its rim margin — 92 mm²
+  // of the free outline's 934 with the alarm left out). So on the free kind each foot stands on its own azimuth
+  // from the hands, as far out as it can while wholly under the face and on the plate — its outer surface one
+  // CLEAR_MARGIN inside the outline, the same derivation read on the shape actually cut (the outermost point of the
+  // ray where the outline's inset is FOOT_R + CLEAR_MARGIN) — and it is NOT counted metal (FORM_COUNTED skips
+  // `followsOutline`). The fit holds every counted part ≥ the rim margin inside the outline, so a foot there clears
+  // them by ≥ PLATE_RIM_MARGIN − FOOT_R − CLEAR_MARGIN; what it may still meet is an opening in the plate it lands on,
+  // which a foot slides off by whole degrees (§62's land, STOCK_MIN_U, between them), and warns when none is clear.
+  const freeFoot = FORM?.kind === 'free' ? (deg) => {
+    const need = FOOT_R + CLEAR_MARGIN;
+    const openings = [...BACK_PLATE_CUT.holes, ...BACK_PLATE_CUT.pockets, ...BACK_PLATE_LATE_HOLES,
+      ...BACK_PLATE_CUT.slots.flatMap((sl) => [{ x: sl.ax, y: sl.ay, r: sl.r }, { x: sl.bx, y: sl.by, r: sl.r }])];
+    const at = (d) => {
+      const a = d * DEG2RAD, ux = Math.cos(a), uy = Math.sin(a), wx = (t) => P.dial.x + ux * t, wy = (t) => P.dial.y + uy * t;
+      let t = FORM.exit(a, 0);   // the outline along the ray from the movement's origin, then walked in to the need
+      t = Number.isFinite(t) ? t : plateR;
+      let lo = 0, hi = t;
+      for (let k = 0; k < 60; k++) { const m = (lo + hi) / 2; if (FORM.inset(wx(m), wy(m)) >= need) lo = m; else hi = m; }
+      const x = wx(lo), y = wy(lo);
+      const land = openings.reduce((w, o) => Math.min(w, Math.hypot(x - o.x, y - o.y) - o.r - FOOT_R), Infinity);
+      return { x, y, land };
+    };
+    for (let k = 0; k <= 20; k++) for (const s of k ? [1, -1] : [1]) { const f = at(deg + s * k); if (f.land >= STOCK_MIN_U) return f; }
+    const f = at(deg);
+    console.warn(`§325: the dial foot at ${deg}° lands ${f.land.toFixed(3)} from a base-plate opening (need §62's ${STOCK_MIN_U.toFixed(3)}) at every azimuth within 20° — it has no clear seat on the free plate`);
+    return f;
+  } : null;
   for (const deg of [10, 108, 250]) {
     const a = deg * DEG2RAD;
     const foot = new THREE.Mesh(new THREE.CylinderGeometry(FOOT_R, FOOT_R, footLen, 10), MATS.steel);
     foot.rotation.x = Math.PI / 2;
-    foot.position.set(Math.cos(a) * footR, Math.sin(a) * footR, footLen / 2);
+    if (freeFoot) {
+      const f = freeFoot(deg);
+      foot.position.set(f.x - P.dial.x, f.y - P.dial.y, footLen / 2);   // dialGroup sits at P.dial
+      foot.userData.followsOutline = true;
+    } else foot.position.set(Math.cos(a) * footR, Math.sin(a) * footR, footLen / 2);
     dialGroup.add(foot);
   }
 }
@@ -50120,7 +50153,7 @@ const FORM_COUNTED = (() => {
   const cutToShape = (o) => CUT_TO_SHAPE.some((r) => under(o, r));
   const counted = [];
   movement.traverse((o) => {
-    if (!o.isMesh || !o.geometry?.attributes?.position || skip(o) || (gong && under(o, gong)) || through(o) || cutToShape(o)) return;
+    if (!o.isMesh || !o.geometry?.attributes?.position || skip(o) || (gong && under(o, gong)) || through(o) || cutToShape(o) || o.userData.followsOutline) return;
     counted.push(o);
   });
   return counted;
