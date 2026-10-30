@@ -17329,7 +17329,7 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
     let nearest = null;
     if (!best && FORM?.kind === 'free') {
       for (let dA = 0; dA <= 45; dA += 1) {
-        await breathe();
+        await breathe(373);
         for (const sgn of dA === 0 ? [1] : [1, -1]) {
           const a = (base + sgn * dA) * DEG2RAD;
           for (let r = plateR - 16.5; r >= 0; r -= 0.5) {
