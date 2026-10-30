@@ -340,8 +340,15 @@ export const SPEC = (() => {
   // fitted case's measured free space and the lever the hammer hangs off.
   // Ignored on the round build, where the arc is the design.
   const gongSeat = ['bar', 'spiral', 'arc'].includes(raw.gongSeat) ? raw.gongSeat : null;
-  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, rsvIdlers, alarmr, subdialr, dialr, studr, caseShape, formRectSpec, gongSeat });
+  // §325 landing 3 — ?alarm=0 builds the movement WITHOUT the alarm complication: the going train, the keyless and
+  // motion works, the dial and its hands, and nothing of the alarm (no module, gong, pusher or alarm hand, and none of
+  // their plate openings). false, or null — the alarm, as designed — so every configuration that names no `alarm`
+  // keeps the configKey it was validated under.
+  const alarm = raw.alarm === 0 ? false : null;
+  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, rsvIdlers, alarmr, subdialr, dialr, studr, caseShape, formRectSpec, gongSeat, alarm });
 })();
+// §325 landing 3 — whether this build carries the alarm complication (SPEC.alarm above)
+export const ALARM_BUILT = SPEC.alarm !== false;
 
 // §36 APPLY — THE ROUTE IS A DOCUMENT. Part three shipped routing as a SPEC:
 // the sketch surface refuses to place a refused leg, so a committed polyline is
