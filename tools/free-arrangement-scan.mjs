@@ -32,7 +32,8 @@ const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/jav
 const srv = createServer(async (req, res) => {
   try {
     const p = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname)).replace(/^(\.\.[/\\])+/, '');
-    res.writeHead(200, { 'content-type': MIME[extname(p)] ?? 'application/octet-stream' }).end(await readFile(join(ROOT, p === '/' ? 'index.html' : p)));
+    const body = await readFile(join(ROOT, p === '/' ? 'index.html' : p));
+    res.writeHead(200, { 'content-type': MIME[extname(p)] ?? 'application/octet-stream' }).end(body);
   } catch { res.writeHead(404).end(); }
 });
 await new Promise((r) => srv.listen(0, '127.0.0.1', r));
