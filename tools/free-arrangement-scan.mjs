@@ -66,7 +66,7 @@ const solveAxis = (F) => {
   let lo = Infinity, hi = -Infinity;
   for (const P of F.polys) for (const [x] of P) { lo = Math.min(lo, x); hi = Math.max(hi, x); }
   const mid = (lo + hi) / 2, half = Math.max(SCAN_U, (hi - lo) / 2 - F.need);
-  const fit = (c) => { try { return fitFreeCase(F.polys, { margin: F.margin, rc: F.rc, need: F.need, c, pins: F.pins.map(([x, y, n]) => [x, y, n]), ports: F.ports }).area; } catch { return Infinity; } };
+  const fit = (c) => { try { const r = fitFreeCase(F.polys, { margin: F.margin, rc: F.rc, need: F.need, c, pins: F.pins.map(([x, y, n]) => [x, y, n]), ports: F.ports }); return r.flat.top && r.flat.bot ? r.area : Infinity; } catch { return Infinity; } };   // no straight end, no lug: as tools/free-outline.mjs
   const scan = [];
   for (let c = mid - half; c <= mid + half + 1e-9; c += SCAN_U) scan.push([c, fit(c)]);
   let k = 0; for (let i = 1; i < scan.length; i++) if (scan[i][1] < scan[k][1]) k = i;
