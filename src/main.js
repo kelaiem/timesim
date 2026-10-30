@@ -17320,6 +17320,22 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
       if (best && FORM?.kind !== 'free') break;
       if (FORM?.kind === 'free' && dA >= 45) break;
     }
+    // §325 landing 3 — the ring's inner bound (plateR − 16) is the round build's; on the free outline a quadrant whose
+    // ring holds no seat (measured without the alarm: none at 315°) takes the deepest seat further in, on the same
+    // clearance law, the plate's open interior being where landing 2 sent the frame
+    if (!best && FORM?.kind === 'free') {
+      for (let dA = 0; dA <= 45; dA += 1) {
+        await breathe();
+        for (const sgn of dA === 0 ? [1] : [1, -1]) {
+          const a = (base + sgn * dA) * DEG2RAD;
+          for (let r = plateR - 16.5; r >= 0; r -= 0.5) {
+            const x = Math.cos(a) * r, y = Math.sin(a) * r;
+            const c = seatClearance(x, y);
+            if (c >= CLEAR_MARGIN && (!best || c > best.c + 1e-9)) best = { x, y, c, dA };
+          }
+        }
+      }
+    }
     if (!best) { console.warn('pillar: no seat found near', base); continue; }
     const pillarH = TQ_BOT_Z - PILLAR_BASE_Z;
     const pillar = G.makePillar({ height: pillarH, bodyR: PILLAR_BODY_R, tapR: PILLAR_TAP_R, tapDepth: PILLAR_TAP_DEPTH,
