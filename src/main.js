@@ -17323,6 +17323,7 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
     // §325 landing 3 — the ring's inner bound (plateR − 16) is the round build's; on the free outline a quadrant whose
     // ring holds no seat (measured without the alarm: none at 315°) takes the deepest seat further in, on the same
     // clearance law, the plate's open interior being where landing 2 sent the frame
+    let nearest = null;
     if (!best && FORM?.kind === 'free') {
       for (let dA = 0; dA <= 45; dA += 1) {
         await breathe();
@@ -17332,11 +17333,15 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
             const x = Math.cos(a) * r, y = Math.sin(a) * r;
             const c = seatClearance(x, y);
             if (c >= CLEAR_MARGIN && (!best || c > best.c + 1e-9)) best = { x, y, c, dA };
+            if (!nearest || c > nearest.c) nearest = { x, y, c };
           }
         }
       }
     }
-    if (!best) { console.warn('pillar: no seat found near', base); continue; }
+    if (!best) {
+      console.warn('pillar: no seat found near', base, ...(nearest ? [`— the quadrant's best clearance is ${nearest.c.toFixed(3)} at (${nearest.x.toFixed(2)}, ${nearest.y.toFixed(2)}), need CLEAR_MARGIN ${CLEAR_MARGIN}`] : []));
+      continue;
+    }
     const pillarH = TQ_BOT_Z - PILLAR_BASE_Z;
     const pillar = G.makePillar({ height: pillarH, bodyR: PILLAR_BODY_R, tapR: PILLAR_TAP_R, tapDepth: PILLAR_TAP_DEPTH,
       tenonR: PILLAR_TENON_R, tenonLen: PILLAR_TENON_LEN, rivetC: PILLAR_RIVET_C });

@@ -115,14 +115,14 @@ for (let round = 1; round <= ROUNDS; round++) {
   const prev = rows[key];
   rows = { ...rows, [key]: row };
   const settled = prev && Math.abs(prev.c - row.c) <= TOL_U && Math.abs(prev.area - row.area) <= 1e-3 * row.area
-    && b.margin >= PLATE_RIM_MARGIN - 1e-3 && !b.warnings.some((w) => /§325/.test(w));
+    && b.margin >= PLATE_RIM_MARGIN - 1e-3 && !b.warnings.some((w) => /§325|^pillar: no seat/.test(w));   // §325 landing 3: a frame that lost a pillar is no fixed point
   if (settled) { rows = { ...rows, [key]: prev }; last = b; break; }   // the row the settled boot stood on
   last = null;
 }
 if (!last) {
   const b = await boot();
   last = b;
-  if (!(b.margin >= PLATE_RIM_MARGIN - 1e-3) || b.warnings.some((w) => /§325/.test(w)))
+  if (!(b.margin >= PLATE_RIM_MARGIN - 1e-3) || b.warnings.some((w) => /§325|^pillar: no seat/.test(w)))
     throw new Error(`the free outline did not settle in ${ROUNDS} rounds: the last boot held the metal at ${b.margin} with ${b.warnings.filter((w) => /§325/.test(w)).join(' | ')}`);
 }
 console.log(`settled: ${key}\n  ${(rows[key].area * mm2).toFixed(2)} mm² (the build reads ${last.areaMm2.toFixed(2)} mm²), the metal held at ${last.margin.toFixed(4)} u; other boot warnings: ${last.warnings.length}`);
