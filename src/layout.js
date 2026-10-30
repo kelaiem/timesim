@@ -1205,7 +1205,7 @@ export function caseLugPlan({ rOut, rBore, off, zWallLo, zWallHi, zBack, arcSegs
   if (!(dz <= armU)) warn.push(`the drop ${dz.toFixed(3)} outgrew the radial arm ${armU.toFixed(3)} — the section was solved on the wrong arm`);
   if (!(bearing <= CASE_LUG_SIGMA_Y_PA)) warn.push(`the tip pin bears ${(bearing / 1e6).toFixed(1)} MPa on its hole, over the yield`);
   return {
-    W, T, R, rf, alpha: al, zR, zB, uBar, uTip, uC, surfOut, surfIn, rootU,
+    W, T, R, rf, alpha: al, zR, zB, footTopZ, uBar, uTip, uC, surfOut, surfIn, rootU,
     outline: out, hole: { u: uBar, z: zB, r: CASE_LUG_HOLE_D / 2 },
     rows: {
       armU, drop: dz, sigma, sigmaY: CASE_LUG_SIGMA_Y_PA, governs: CASE_LUG_YIELD_GOVERNS,

@@ -49225,8 +49225,11 @@ if (FORM && ALARM_BUILT) {   // §325 landing 3: no strike group to open the pla
 // bore window, so both crown sleeves live entirely in the thick back band —
 // the step's position is a consequence of where the stems are, not a styling
 // choice. (The pusher sits far above both crowns and never binds this.)
+// That is the STEMS' rule; the lug's weld foot is a second duty and needs the
+// band's back face, which CASE_DIMS derives — it takes the min there, as zStep
+// (TODO 278). Nothing below reads the step before that.
 await breathe(301);
-const CASE_Z_STEP = Math.min(Z_KEYLESS, ALARM_BUILT ? alarmSpinner.position.z : Infinity) - CASE_TUBE_AP - CLEAR_MARGIN;
+const CASE_Z_STEP_STEMS = Math.min(Z_KEYLESS, ALARM_BUILT ? alarmSpinner.position.z : Infinity) - CASE_TUBE_AP - CLEAR_MARGIN;
 
 await breathe(302);
 const CASE_SECTORS = (() => {
@@ -49273,7 +49276,10 @@ const CASE_SECTORS = (() => {
   // way, so this walk samples each edge's endpoints, its exact crossings of
   // the two wall radii (the quadratic in t), and its in-band midpoint.
   {
-    const zLo = CASE_Z_STEP, zHi = PLATE_RIM.back + 1 / UNIT_MM;
+    // TODO 278: the step is two duties' minimum and the second needs the back face
+    // (CASE_DIMS, below), so the scan runs down through the front: the annulus is
+    // case metal there too (R_IN out), and the wall radius stays the true one.
+    const zLo = -Infinity, zHi = PLATE_RIM.back + 1 / UNIT_MM;
     // §198 — the wall the sectors stand at is a function of z: the ledge
     // and the front band start at CASE_R_IN up to the rim's front face, and
     // above the ledge the back band's bore is R_BORE_BACK — the annulus over
@@ -50065,6 +50071,17 @@ const CASE_DIMS = (() => {
   // identity: the glass's outer pane's INNER face is flush with the band's
   // back face).
   const z0 = zMidBack + 1.2 / UNIT_MM;           // the ring's outer face at the rim
+  // THE MIDCASE STEP answers to two duties (TODO 278). §186: one CLEAR_MARGIN in
+  // front of the lowest crown bore (CASE_Z_STEP_STEMS). §280: the round case's lug
+  // welds to the thick band, its upper foot one STOCK_MIN_U inside the band's wall
+  // (caseLugPlan's own law), so the step sits no higher than the foot less that
+  // floor. With the alarm built the stems' rule is the lower and the step does not
+  // move; without it the winding stem alone rose the step 3.73 u past the foot. The
+  // foot depends on the back face and the lug section, never on the step. A form
+  // case welds to flat ends (`flat`) and reads no step.
+  const CASE_Z_STEP = FORM ? CASE_Z_STEP_STEMS : Math.min(CASE_Z_STEP_STEMS, caseLugPlan({
+    rOut: CASE_R_OUT, rBore: R_BORE_BACK, off: (CASE_LUG_INNER + CASE_LUG_T) / 2,
+    zWallLo: -Infinity, zWallHi: zMidBack, zBack: z0 }).footTopZ - STOCK_MIN_U);
   let formApertureGrow = null, formGlassGrow = null;   // §307 landing 2 — set under FORM below
   // (The glazing channel and the APERTURE it leaves are derived above the
   // band's back face now — TODO 69: the back face reads the aperture.) The
