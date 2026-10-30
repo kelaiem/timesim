@@ -100,10 +100,12 @@ const solveAxis = (F) => {
 
 let key = null, row = null, last = null;
 for (let round = 1; round <= ROUNDS; round++) {
-  if (round === 1 && FRESH) rows = Object.fromEntries(Object.entries(rows).filter(([k]) => !k.includes('"caseShape":"free"') || (SPECQ && !k)));
   const b = await boot();
   if (b.bootError) throw new Error(`boot failed: ${b.bootError}`);
   key = b.free.key;
+  // --fresh drops THIS movement's row only (§325 landing 3: with --spec the old filter dropped every free row,
+  // the default movement's included) — the key is the build's own, so it is known after the first boot
+  if (round === 1 && FRESH && rows[key]) { const { [key]: _gone, ...rest } = rows; rows = rest; round--; continue; }
   const s = solveAxis(b.free);
   const r = s.r;
   const flat = { top: r.flat.top.map(r4), bot: r.flat.bot.map(r4), yTop: r4(r.flat.yTop), yBot: r4(r.flat.yBot), halfTop: r4(r.flat.halfTop), halfBot: r4(r.flat.halfBot) };
@@ -113,14 +115,14 @@ for (let round = 1; round <= ROUNDS; round++) {
   const prev = rows[key];
   rows = { ...rows, [key]: row };
   const settled = prev && Math.abs(prev.c - row.c) <= TOL_U && Math.abs(prev.area - row.area) <= 1e-3 * row.area
-    && b.margin >= PLATE_RIM_MARGIN - 1e-3 && !b.warnings.some((w) => /§325/.test(w));
+    && b.margin >= PLATE_RIM_MARGIN - 1e-3 && !b.warnings.some((w) => /§325|^pillar: no seat/.test(w));   // §325 landing 3: a frame that lost a pillar is no fixed point
   if (settled) { rows = { ...rows, [key]: prev }; last = b; break; }   // the row the settled boot stood on
   last = null;
 }
 if (!last) {
   const b = await boot();
   last = b;
-  if (!(b.margin >= PLATE_RIM_MARGIN - 1e-3) || b.warnings.some((w) => /§325/.test(w)))
+  if (!(b.margin >= PLATE_RIM_MARGIN - 1e-3) || b.warnings.some((w) => /§325|^pillar: no seat/.test(w)))
     throw new Error(`the free outline did not settle in ${ROUNDS} rounds: the last boot held the metal at ${b.margin} with ${b.warnings.filter((w) => /§325/.test(w)).join(' | ')}`);
 }
 console.log(`settled: ${key}\n  ${(rows[key].area * mm2).toFixed(2)} mm² (the build reads ${last.areaMm2.toFixed(2)} mm²), the metal held at ${last.margin.toFixed(4)} u; other boot warnings: ${last.warnings.length}`);

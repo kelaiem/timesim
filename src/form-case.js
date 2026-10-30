@@ -593,8 +593,8 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
     return grp;
   };
   tubeAt(stemAz, tubeD, stemZ, 'caseCrownTube');
-  tubeAt(alarmAz, tubeD, alarmZ, 'caseAlarmTube');
-  tubeAt(pusherAz, pusherD, pusherZ, 'casePusherBore', true, pusherOff);
+  if (alarmAz !== null) tubeAt(alarmAz, tubeD, alarmZ, 'caseAlarmTube');   // §325 landing 3: null on a movement built without the alarm
+  if (pusherAz !== null) tubeAt(pusherAz, pusherD, pusherZ, 'casePusherBore', true, pusherOff);
 
   // THE LUGS, at the shape's ±y extremes (12–6 o'clock): the
   // round case's §280 lug block, each lug ONE OUTLINE from caseLugPlan on

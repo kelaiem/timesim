@@ -12011,7 +12011,7 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     return grp;
   };
   tubeAt(stemAz, tubeD, stemZ, 'caseCrownTube');
-  tubeAt(alarmAz, tubeD, alarmZ, 'caseAlarmTube');
+  if (alarmAz !== null) tubeAt(alarmAz, tubeD, alarmZ, 'caseAlarmTube');   // §325 landing 3: null on a movement built without the alarm
   // §187 — the pusher's sleeve lines the BAND'S OWN HOLE and nothing more:
   // its inboard end lands on the bore wall (pressed — SEAT_EMBED), not on
   // the plate-derived standoff the crowns keep. The §186 inheritance left
@@ -12019,7 +12019,7 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   // and measured (probe-187-casing-path) standing 2.52 mm across the rim's
   // casing path. The crowns' sleeves sit below the rim's back face, where
   // the notches negotiate them; the pusher's z-band is INSIDE the path.
-  tubeAt(pusherAz, pusherD, pusherZ, 'casePusherBore', true, pusherOff,
+  if (pusherAz !== null) tubeAt(pusherAz, pusherD, pusherZ, 'casePusherBore', true, pusherOff,
     R_BORE_BACK - SEAT_EMBED - CLEAR_MARGIN);  // flush, and OFF the radius — a bore, not a tube
 
   // §186 — THE CLAMP SCREWS: what actually fastens the movement. Heads bear

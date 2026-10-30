@@ -20,7 +20,7 @@ import { UI_LANG, setUiLang, LOCALES, fillLanguagePicker, t, fmtNum, fmtInt, fmt
 // consumed unchanged below; the geometry fingerprint proves the move changed
 // no part's position.
 import {
-  SPEC, SPEC_RATES,
+  SPEC, SPEC_RATES, ALARM_BUILT,
   F_BALANCE, BEAT_DEG, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_STEP, BALANCE_R_REF, BAL_R_STEP, balanceWheelDims, BALANCE_R_SPEC, AMPLITUDE_POSED_DEG, LIFT_DEG, IMPULSE_WIDTH,
   CLEAR_MARGIN, HANDOFF_TRACK_TOL, ZERO_AREA_MAX, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK, FORK_HALF_Z,
   BAL_T, BAL_RIM_F, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T,
@@ -3923,7 +3923,7 @@ const CASE_NOTCH_HALFW = CASE_TUBE_AP + CLEAR_MARGIN + plateR * G.PLATE_BEVEL_F;
 // 0.15 clearance at the rim's radius.
 const CASE_NOTCHES = [
   { az: stemAngle, halfW: CASE_NOTCH_HALFW },
-  { az: ALARM_CORNER_W_AZ, halfW: CASE_NOTCH_HALFW },
+  ...(ALARM_BUILT ? [{ az: ALARM_CORNER_W_AZ, halfW: CASE_NOTCH_HALFW }] : []),   // §325 landing 3: the alarm stem's, when built
 ];
 // The rim's clearance bores for the clamp screws: a screw that PASSES
 // THROUGH a member wants a clearance hole at the screw-through fit (§148's
@@ -4393,47 +4393,6 @@ const SEAT_LAND_LAP = 0.15;
 // wherever something turns inside the hour tube its bore is read at the flats.
 const RING_GEO_SEG = 40;
 const RING_GEO_FLATS = Math.cos(Math.PI / RING_GEO_SEG);
-// The disc's RAISED TRACK with the notch as its one gap (no CSG: the notch is
-// the ABSENCE of track), and the notch's two ramps (TODO 259/260). The pin rides
-// the track's top; at coincidence the gap arrives under it and it drops
-// ALARM_PIN_DROP — banked by the feeler's stop, one CLEAR_MARGIN short of the
-// body (TODO 179). Called once, by the seat's build, after it has solved
-// ALARM_NOTCH_RAMP.
-function buildAlarmDiscTrack() {
-  if (!(ALARM_NOTCH_RAMP > 0 && ALARM_NOTCH_RAMP_IN > 0)) throw new Error('buildAlarmDiscTrack before the seat solved the ramps');
-  // §280 — the full-height track stops where the RAMPS begin: the notch's floor
-  // (ALARM_NOTCH_W) plus a ramp's run each side. The two ramps below close the gap.
-  // TODO 261 — the floor stands ALARM_NOTCH_AHEAD of the disc's zero (the alarm
-  // hand), along the pin's travel, and its two ramps are different lengths: the
-  // ENTRY ramp is on the side the pin arrives from, which is the negative side of
-  // the floor along the travel. In the disc's own angle that is −SENSE.
-  const c = ALARM_NOTCH_AHEAD, S = ALARM_READER_SENSE;
-  const runNeg = S > 0 ? ALARM_NOTCH_RAMP_IN : ALARM_NOTCH_RAMP, runPos = S > 0 ? ALARM_NOTCH_RAMP : ALARM_NOTCH_RAMP_IN;
-  const a0 = c + ALARM_NOTCH_W / 2 + runPos, a1 = Math.PI * 2 + c - ALARM_NOTCH_W / 2 - runNeg;
-  const shape = new THREE.Shape();
-  shape.absarc(0, 0, ALARM_TRACK_RMID + ALARM_TRACK_HALFW, a0, a1, false);
-  shape.absarc(0, 0, ALARM_TRACK_RMID - ALARM_TRACK_HALFW, a1, a0, true);
-  const trackGeo = new THREE.ExtrudeGeometry(shape, { depth: ALARM_TRACK_H, bevelEnabled: false });
-  const track = new THREE.Mesh(trackGeo, MATS.steel);
-  track.name = 'alarmDiscTrack';
-  track.position.z = ALARM_DISC_TOP;
-  alarmDiscGroup.add(track);
-  // §280 — the notch's two ramps (see ALARM_NOTCH_RAMP). Each is a sector wedge
-  // on the body's face: its low end stands the notch's depth less the drop
-  // (the dropped pin's tip level — CLEAR_MARGIN over the floor), its high end
-  // the track's own top, flush with the track's end face. One mesh name for
-  // both, as the stem collar's three; the rows that name it are by label pair.
-  const rampLow = ALARM_TRACK_H - ALARM_PIN_DROP;
-  for (const [side, run] of [[1, runPos], [-1, runNeg]]) {
-    const ramp = new THREE.Mesh(
-      notchRampGeo(ALARM_TRACK_RMID - ALARM_TRACK_HALFW, ALARM_TRACK_RMID + ALARM_TRACK_HALFW,
-        Math.hypot(ALARM_TRACK_RMID, ALARM_PIN_R),   // the pin's tangential extreme (its rim vertex at the track's tangent) — where it touches
-        c, ALARM_NOTCH_W / 2, ALARM_NOTCH_W / 2 + run, rampLow, ALARM_TRACK_H, Math.ceil(run / ALARM_NOTCH_RAMP_STEP), side), MATS.steel);
-    ramp.name = 'alarmDiscNotchRamp';
-    ramp.position.z = ALARM_DISC_TOP;
-    alarmDiscGroup.add(ramp);
-  }
-}
 // §280 — a SECTOR WEDGE whose top descends linearly in ANGLE: from height hHigh at
 // th1 down to hLow at th0 (th0 < th1, from the notch's centre `centre`, side +1; side −1
 // is its mirror about it). The top is a helicoid — the same height along every radius at
@@ -16450,7 +16409,7 @@ const TQ_WINDOW_INTENTS = [
       return null;
     },
   },
-];
+].filter((w) => ALARM_BUILT || (w.name !== 'governor' && w.name !== 'arrest'));   // §325 landing 3: those two windows show the alarm's governor and winding arrest
 // §314 — the pusher linkage's studs (planted in this plate), filled in once the linkage is solved
 let ALARM_LINKAGE_STUDS = null;
 // §201 — the late intent's centre. null until the arrest block has placed the
@@ -17052,14 +17011,14 @@ function checkPlateWindows(stage) {
 // the seated gong included (the gong is counted metal), so the seat a box-fitted case solved stands inside it by
 // construction; its row is read under the fitted kind's spec key.
 const SEAT_KIND = FORM ? (FORM.kind === 'free' ? 'fitted' : FORM.kind) : null;
-const GONG_SEAT_MODE = FORM ? (SPEC.gongSeat ?? defaultSeatMode(GONG_SEATS_ARRANGED[ALARM_ARR_KEY] ?? GONG_SEATS, SEAT_KIND)) : null;   // §317: the bar where no spiral seat closes
+const GONG_SEAT_MODE = FORM && ALARM_BUILT ? (SPEC.gongSeat ?? defaultSeatMode(GONG_SEATS_ARRANGED[ALARM_ARR_KEY] ?? GONG_SEATS, SEAT_KIND)) : null;   // §317: the bar where no spiral seat closes
 // the seat's spec key, and the ARRANGEMENT's (the spec without the case shape, its fit or the seat mode): an
 // arranged movement (spec knobs that move stations — §308 landing 5's barrel swing and module turn) reads its seats
 // from GONG_SEATS_ARRANGED under that key; the designed movement's are GONG_SEATS
 const GONG_SPEC_KEY = configKey({ spec: { ...SPEC, ...(SEAT_KIND ? { caseShape: SEAT_KIND } : {}), formRectSpec: null, gongSeat: null } });
 const GONG_ARR_KEY = ALARM_ARR_KEY;   // the one arrangement key (§313 reads it first, for the arming fixed point)
 const GONG_SEAT_LOOKUP = (() => {
-  if (!FORM || GONG_SEAT_MODE === 'arc') return null;
+  if (!FORM || !ALARM_BUILT || GONG_SEAT_MODE === 'arc') return null;
   const specKey = GONG_SPEC_KEY;
   const row = (GONG_SEATS_ARRANGED[GONG_ARR_KEY] ?? GONG_SEATS)[SEAT_KIND]?.[GONG_SEAT_MODE];
   if (!row) return { refused: `no ${GONG_SEAT_MODE} seat is generated for the ${SEAT_KIND} case (tools/gong-seats.mjs)` };
@@ -17206,7 +17165,10 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
   // round it — the frame paying for the gong with the case's size.
   const PILLAR_RIM_LAND = Math.max(TQ_LAND_MIN, PLATE_RIM_MARGIN);
   const seatClearance = (x, y) => {
-    let c = Math.min(inCutClearance(x, y), FORM ? formInset(x, y) - PILLAR_RIM_LAND : plateR - Math.hypot(x, y));
+    // §325 landing 3 — on the FREE outline the rim is the fit to this very metal, which holds the cap exactly the rim
+    // margin inside it: the land owed there IS that margin, so the CLEAR_MARGIN every obstacle below adds is handed
+    // back (asked of a pillar the fit stood at its margin, it was refused the next round and the frame lost it)
+    let c = Math.min(inCutClearance(x, y), FORM ? formInset(x, y) - PILLAR_RIM_LAND + (FORM.kind === 'free' ? CLEAR_MARGIN : 0) : plateR - Math.hypot(x, y));
     for (const h of tqHoles) c = Math.min(c, Math.hypot(x - h.x, y - h.y) - h.r);
     const stadium = (s) => {
       const vx = s.bx - s.ax, vy = s.by - s.ay, L2 = vx * vx + vy * vy || 1e-9;
@@ -17294,6 +17256,13 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
       // §261 2c): the free outline's table carries them from the boot that measured it (`keep`, TODO 272's precedent for
       // the strike group), and FREE_KEEP_CHECK below holds the carried list to the plate actually cut
       for (const sl of FREE_ROW?.keep?.slots ?? []) c = Math.min(c, stadium(sl) - owed);
+      // §325 landing 3 — and the pillars already seated: the quadrants' ±45° searches share their boundary bearings,
+      // and two deepest seats can be one point (measured without the alarm: two rivet bores at (0, 27)). A seated
+      // pillar is its rivet's opening, owed the same land, and its cap, owed the running clearance
+      for (const ps of pillarSeats) {
+        const d = Math.hypot(x - ps.x, y - ps.y);
+        c = Math.min(c, d - PILLAR_RIVET_MOUTH_R - owed, d - capR);
+      }
     }
     // §112 — the alarm corner's DECLARED under-plate footprint: its metal
     // builds after this plate is cut, so the pillar solve cannot read it as
@@ -17354,7 +17323,28 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
       if (best && FORM?.kind !== 'free') break;
       if (FORM?.kind === 'free' && dA >= 45) break;
     }
-    if (!best) { console.warn('pillar: no seat found near', base); continue; }
+    // §325 landing 3 — the ring's inner bound (plateR − 16) is the round build's; on the free outline a quadrant whose
+    // ring holds no seat (measured without the alarm: none at 315°) takes the deepest seat further in, on the same
+    // clearance law, the plate's open interior being where landing 2 sent the frame
+    let nearest = null;
+    if (!best && FORM?.kind === 'free') {
+      for (let dA = 0; dA <= 45; dA += 1) {
+        await breathe(373);
+        for (const sgn of dA === 0 ? [1] : [1, -1]) {
+          const a = (base + sgn * dA) * DEG2RAD;
+          for (let r = plateR - 16.5; r >= 0; r -= 0.5) {
+            const x = Math.cos(a) * r, y = Math.sin(a) * r;
+            const c = seatClearance(x, y);
+            if (c >= CLEAR_MARGIN && (!best || c > best.c + 1e-9)) best = { x, y, c, dA };
+            if (!nearest || c > nearest.c) nearest = { x, y, c };
+          }
+        }
+      }
+    }
+    if (!best) {
+      console.warn('pillar: no seat found near', base, ...(nearest ? [`— the quadrant's best clearance is ${nearest.c.toFixed(3)} at (${nearest.x.toFixed(2)}, ${nearest.y.toFixed(2)}), need CLEAR_MARGIN ${CLEAR_MARGIN}`] : []));
+      continue;
+    }
     const pillarH = TQ_BOT_Z - PILLAR_BASE_Z;
     const pillar = G.makePillar({ height: pillarH, bodyR: PILLAR_BODY_R, tapR: PILLAR_TAP_R, tapDepth: PILLAR_TAP_DEPTH,
       tenonR: PILLAR_TENON_R, tenonLen: PILLAR_TENON_LEN, rivetC: PILLAR_RIVET_C });
@@ -21889,8 +21879,832 @@ if (RSV_IDLERS > 0) {
   }
 }
 
+// §325 landing 3 — the non-alarm residents of the alarm's build region, moved out of it unchanged (they are
+// read by the keyless works, the case and the hands, which a build without the alarm still has)
+// TODO 138 Landing 2 — AND THE INDEX IS DERIVED TOO, from the corner rather
+// than assumed. `bevelOutline` centres tooth i at azimuth i·2π/z in the gear's
+// OWN frame, so "half a tooth" only interleaves a pair if both gears' tooth 0
+// already lies on the contact ray. It does not: each mount carries whatever
+// azimuth reference `setFromUnitVectors` happened to produce, and for the alarm
+// corner that put the clearing index at 0.875 of a pitch, not 0.5 — measured,
+// 0.1080 of burial still standing after the sense was corrected.
+//
+// The condition is the one probe-138-bevel-roll derives: one member presents a
+// TOOTH on the contact ray, the other a GAP. So each gear's spin is the ray's
+// azimuth READ IN ITS OWN MOUNT FRAME, less half a pitch for the member that
+// must gap. The ray bisects the two axes for ANY shaft angle when the counts
+// are equal (γ = Σ/2 each, the pitch cones meeting on the bisector), which is
+// why it is simply their normalised sum — §234's fold corner at Σ ≈ 162°
+// (TODO 162, was ≈ 150°) is the first non-mitre through here and rides the
+// same line.
+function bevelCornerRay(axisA, axisB) {
+  return axisA.clone().add(axisB).normalize();
+}
+
+// A member's axis, MEASURED off the object whose +Z it is — a mount, or the
+// gear itself, which carries the same +Z because only `rotation.z` is ever
+// written on it — rather than restated at the call site. TODO 136 turned the crown wheel's and the setting bevel's mounts
+// through PI, which made the literal `(0, 0, 1)` both keyless sites passed a
+// claim about the metal that had stopped being true. It survived only because
+// the azimuth about either axis is the same for every vector in the plane the
+// two axes span, and the two candidate rays differ there by exactly PI — four
+// pitches of an 8-tooth pinion, ten of a 20-tooth wheel, integers both. A
+// right answer standing on a false premise is a defect waiting for the next
+// count. `updateWorldMatrix(true, false)` walks UP; see bevelCornerSpin.
+function bevelCornerAxis(mount) {
+  mount.updateWorldMatrix(true, false);
+  return new THREE.Vector3(0, 0, 1).transformDirection(mount.matrixWorld).normalize();
+}
+
+// TODO 139 — IT READS THE GEAR, NOT A MOUNT, AND IT WALKS UP.
+//
+// `Object3D.updateMatrixWorld(force)` recomputes this object and its
+// DESCENDANTS from `this.parent.matrixWorld` AS IT STANDS. It never walks UP.
+// At build time nothing has updated the keyless or alarm groups, so their
+// `matrixWorld` is still the identity a fresh Object3D carries, and a mount
+// read through it comes back MISSING every ancestor rotation. Both stem-side
+// mounts hang under a group that carries the stem's own azimuth —
+// `windPinionGroup` and `windClutch` at `stemAngle - PI/2` = 0.95993,
+// `alarmSpinner` at `alarmStemAngle - PI/2` = -1.57080 — and that is exactly
+// what was dropped. The plate-side mounts hang off `keyless`, whose world
+// transform IS the identity, so they were computed correctly: hence ONE
+// member of each corner wrong, by a different amount per corner, which is why
+// no single systematic offset described it.
+//
+// Measured on the tree that shipped it, in pitch fractions off the METAL
+// (tools/probe-bevel-corner-index.mjs):
+//
+//   windingPinion   shipped 0.49179   a stale read gives 0.49190   want 0.39270
+//   clutchRim       shipped 0.29361   a stale read gives 0.29350   want 0.39770
+//
+// `getWorldQuaternion` calls `updateWorldMatrix(true, false)`, which does walk
+// up. And the argument is the GEAR now: the caller cannot pass one object's
+// frame while writing `rotation.z` on another's — the setting corner did
+// exactly that (`bevelCornerSpin(settingBevel, …)` against every other site's
+// mount) and was right only because that gear's `rotation.z` was still 0.
+function bevelCornerSpin(gear, ray, teeth, gap) {
+  const q = gear.parent.getWorldQuaternion(new THREE.Quaternion());
+  const local = ray.clone().applyQuaternion(q.invert());
+  const pitch = (Math.PI * 2) / teeth;
+  const r = Math.atan2(local.y, local.x) - (gap ? pitch / 2 : 0);
+  return ((r % pitch) + pitch) % pitch;
+}
+
+// --- TODO 15 — MESH PHASE IS NOT FREE, AND IS SOLVED AS A CHAIN ------------
+//
+// Reported by eye, twice: the winding idlers interlocked tooth-on-tooth, and
+// then so did the setting wheel. The cause was in plain sight — every wheel in
+// the dogleg got `rotation.z = Math.PI / teeth`, half of its OWN angular
+// pitch, with no reference to the line of centres to its neighbour. Half a
+// pitch from a wheel's local zero says nothing about where its teeth fall
+// relative to the wheel it meshes; they are anti-phase only by luck.
+//
+// A gear's phase is NOT a free parameter, and that is why pairs cannot be
+// fixed independently: i1 meshes both the setting wheel and i2, so it cannot
+// carry two chosen phases. The train is solved as a CHAIN from one datum —
+// setting wheel → i1 → i2 — each wheel's phase determined by its mesh with the
+// one before, which is what a real train does when you drop the wheels in.
+//
+// MEASURED, NOT ASSUMED. The setting wheel is a `dialFace` child and the
+// idlers are `movement` children — different frames — and dialFace is
+// Y-FLIPPED, which MIRRORS the gear and reverses the direction its tooth
+// pattern advances. Reasoning about that sign by hand is how this gets a fix
+// that looks derived and is still half a pitch out. So instead every wheel's
+// tooth direction is read from its own WORLD MATRIX after it is built, and the
+// sign of its response to `rotation.z` is measured by bumping it. Mirroring,
+// frame and flip all come out in the wash.
+//
+// The battery cannot see any of this and never could: two gears meshing out of
+// phase sweep exactly the same volumes as two meshing correctly. This is the
+// fourth kinematic lie caught by eye, which is the argument for the asserts
+// below rather than for trusting a clean run.
+const _frac = (x) => x - Math.floor(x);
+
+const _gearOrig = new THREE.Vector3(), _gearV = new THREE.Vector3();
+
+const _gearTx = new Float64Array(3), _gearTy = new Float64Array(3), _gearTa = new Float64Array(3);
+
+// A tooth-centre azimuth, MEASURED FROM THE VERTICES. Reading `local +x` and
+// trusting gearOutlineShape's convention is not good enough here: the winding
+// train's climb wheel comes from makePinion, not makeGear, and nothing
+// guarantees the two put a tooth at the same local angle. Vertices cannot lie
+// about where the teeth are.
+//
+// Tip vertices are folded into ONE pitch (multiply the angle by N) and
+// circular-averaged, which is the honest way to average angles modulo a pitch
+// — a plain mean would be wrecked by the branch cut. Traversing the whole
+// subtree also fixes the thing that produced two confidently wrong
+// measurements earlier: makeGear returns a GROUP, and more than one extruded
+// mesh can sit under a single wheel.
+// THE GAP GAUGE — the fourth instrument, and the one whose self-tests pass.
+// Its three predecessors each failed differently and each is worth a line:
+// `local +x` assumed the convention on both sides and could never fail; the
+// tip-vertex circular average selected a beveled ring and returned a
+// zero-length resultant (noise); the Fourier spectrum was sound but its
+// sweep capped at N=48 while these wheels have 51 teeth — a check that
+// searches for less than the thing it verifies, in its purest form yet.
+//
+// This one asserts nothing it can measure instead. Build the silhouette
+// R(θ) by walking every triangle edge across the azimuth bins it spans (raw
+// vertices leave two thirds of the bins empty and alias), threshold at the
+// midpoint, and take the contiguous LOW runs: those are the tooth GAPS.
+// Their count must equal the declared tooth count and their folded circular
+// mean must have near-unit resultant — both checked by the caller, so a bad
+// reading is refused rather than propagated. Verified against the winding
+// idlers: 51/51 gaps found, confidence 0.9997, and the measured 35.8%-of-a-
+// pitch misphase matches what the eye reported in the screenshots.
+// Returns the TOOTH-centre phase (gap phase + half a pitch), same contract
+// as the reader it replaces.
+let _mtpMemo = null;   // solveGearChain's per-solve readings — see there
+
+const _mtpSnap = (obj, N) => {
+  obj.updateWorldMatrix(true, true);   // what the walk does first; idempotent
+  const a = [N, ...obj.matrixWorld.elements];
+  obj.traverse((m) => {
+    if (!m.isMesh || !m.geometry?.attributes?.position) return;
+    const g = m.geometry;
+    a.push(g.id, g.attributes.position.version, g.attributes.position.count, g.index ? g.index.version : -1, g.index ? g.index.count : -1, ...m.matrixWorld.elements);
+  });
+  return a;
+};
+
+const _sameSnap = (x, y) => { if (x.length !== y.length) return false; for (let i = 0; i < x.length; i++) if (!Object.is(x[i], y[i])) return false; return true; };
+
+const measuredToothPhase = (obj, N) => {
+  if (!_mtpMemo) return measuredToothPhaseWalk(obj, N);
+  const snap = _mtpSnap(obj, N);
+  let rows = _mtpMemo.get(obj);
+  if (!rows) _mtpMemo.set(obj, rows = []);
+  for (const r of rows) if (_sameSnap(r.snap, snap)) return { ...r.res };
+  const res = measuredToothPhaseWalk(obj, N);
+  rows.push({ snap, res });
+  return { ...res };
+};
+
+const measuredToothPhaseWalk = (obj, N) => {
+  // (true, TRUE): parents AND children. This runs at BUILD time, before any
+  // render — with (true, false) the handle's own matrix was fresh but every
+  // child mesh still carried the identity it was born with, so the gauge
+  // transformed vertices through nothing and read an off-centre blob. The
+  // one wheel that passed was the setting wheel, which sits on the centre
+  // axis, where identity happens to be nearly correct in xy — a stale check
+  // passing for a reason that has nothing to do with being right.
+  obj.updateWorldMatrix(true, true);
+  _gearOrig.set(0, 0, 0).applyMatrix4(obj.matrixWorld);
+  const ox = _gearOrig.x, oy = _gearOrig.y;
+  const BINS = 2048, R = new Float64Array(BINS);
+  const put = (x, y) => {
+    const r = Math.hypot(x, y);
+    let th = Math.atan2(y, x); if (th < 0) th += Math.PI * 2;
+    const k = Math.min(BINS - 1, (th / (Math.PI * 2) * BINS) | 0);
+    if (r > R[k]) R[k] = r;
+  };
+  obj.traverse((m) => {
+    if (!m.isMesh || !m.geometry?.attributes?.position) return;
+    const pos = m.geometry.attributes.position;
+    const idx = m.geometry.index ? m.geometry.index.array : null;
+    const n = idx ? idx.length : pos.count;
+    // Each corner is carried and its azimuth taken ONCE per triangle, then read
+    // by both edges that share it (the same applyMatrix4 and atan2 on the same
+    // inputs the per-edge reads made), edges in the same order.
+    const mw = m.matrixWorld;
+    for (let i = 0; i + 2 < n; i += 3) {
+      for (let e = 0; e < 3; e++) {
+        _gearV.fromBufferAttribute(pos, idx ? idx[i + e] : i + e).applyMatrix4(mw);
+        _gearTx[e] = _gearV.x - ox; _gearTy[e] = _gearV.y - oy; _gearTa[e] = Math.atan2(_gearTy[e], _gearTx[e]);
+      }
+      for (let p = 0; p < 3; p++) {
+        const q = p === 2 ? 0 : p + 1;
+        const ax = _gearTx[p], ay = _gearTy[p], bx = _gearTx[q], by = _gearTy[q];
+        let d = _gearTa[q] - _gearTa[p];
+        while (d > Math.PI) d -= Math.PI * 2;
+        while (d < -Math.PI) d += Math.PI * 2;
+        // OUTLINE EDGES ONLY. The extrude's face triangulation connects tooth
+        // tip to tooth tip with chords spanning a full pitch, and those chords
+        // sit just under tip radius — in a max-per-bin silhouette they MASK
+        // the gaps entirely (a crisp bevel-less gear read as one gap). True
+        // outline edges are short; anything spanning half a pitch or more of
+        // azimuth cannot be outline and is skipped.
+        if (Math.abs(d) > Math.PI / N) continue;
+        const steps = Math.max(1, Math.ceil(Math.abs(d) / (Math.PI * 2 / BINS)) + 1);
+        for (let t = 0; t <= steps; t++) put(ax + (bx - ax) * t / steps, ay + (by - ay) * t / steps);
+      }
+    }
+  });
+  // PERCENTILE THRESHOLD, not min-to-max (TODO 48's instrument finding,
+  // ported from tools/probe-reserve-mesh.mjs): the midpoint between the
+  // smallest and largest populated bin is fine for a 51-tooth idler and
+  // wrong for an 8-leaf pinion — a handful of bins there see only bore
+  // geometry, the floor collapses from the root radius to the bore, the
+  // threshold lands INSIDE the root land, and the gauge returned 56 gaps
+  // for 8 teeth at 0.94 confidence: a bad reading wearing a credible
+  // confidence, the one failure mode the four-gauge history was supposed
+  // to have retired (and the conf > 0.9 half of the credibility test
+  // would have passed it — only the gap count caught it). The 10th/90th
+  // percentiles of the populated bins put the threshold back on the
+  // pitch circle for every wheel measured.
+  const pop = [];
+  for (const r of R) if (r > 0) pop.push(r);
+  pop.sort((a, b) => a - b);
+  if (pop.length < BINS / 4) return { phase: 0, gaps: -1, conf: 0, depth: 0 };
+  const pct = (q) => pop[Math.min(pop.length - 1, Math.floor(q * pop.length))];
+  const lo = pct(0.10), hi = pct(0.90);
+  const mid = (lo + hi) / 2;
+  for (let k = 0; k < BINS; k++) if (R[k] === 0) R[k] = lo;   // unsampled bin: treat as valley
+  const centres = [];
+  for (let k = 0; k < BINS; k++) {
+    const prev = R[(k + BINS - 1) % BINS] < mid;
+    if (R[k] < mid && !prev) {
+      let len = 0, j = k;
+      while (R[j % BINS] < mid && len < BINS) { j++; len++; }
+      centres.push((k + len / 2) / BINS * Math.PI * 2);
+    }
+  }
+  let sx = 0, sy = 0;
+  for (const g of centres) { sx += Math.cos(g * N); sy += Math.sin(g * N); }
+  return {
+    phase: Math.atan2(sy, sx) / N + Math.PI / N,   // gap phase + half a pitch = tooth phase
+    gaps: centres.length,
+    conf: centres.length ? Math.hypot(sx, sy) / centres.length : 0,
+    depth: (hi - lo) / ((hi + lo) / 2 || 1),
+  };
+};
+
+const worldCentreOf = (obj) => {
+  obj.updateWorldMatrix(true, false);
+  _gearOrig.set(0, 0, 0).applyMatrix4(obj.matrixWorld);
+  return { x: _gearOrig.x, y: _gearOrig.y };
+};
+
+// §291 — the contrast remedy's hand half (makeDial's contrast block has the
+// rule). Only blued hands take part; the alarm hand is steel already. The
+// default remedy turns all four to the case's metal. Panda turns only the
+// sub-dial pair, whose wells it paints black. It runs again after a recut
+// (new meshes come back blued) and after a live face recolour, so the hands
+// always match the dial's current answer.
+function applyHandContrast() {
+  const c = dial.userData.contrast ? dial.userData.contrast() : { active: false };
+  const swap = (hand, on) => hand.traverse((o) => {
+    if (o.isMesh && (o.material === MATS.bluedHand || o.material === MATS.steelHand))
+      o.material = on ? MATS.steelHand : MATS.bluedHand;
+  });
+  const mainOn = c.active && c.style === 'hands';
+  const subOn = c.active && (c.style === 'hands' || c.style === 'panda');
+  swap(hourHand, mainOn); swap(minuteHand, mainOn);
+  swap(smallSecondsHand, subOn); swap(reserveHand, subOn);
+}
+
+applyHandContrast();
+
+// THE ANNULUS, as walls. Inner: the three-quarter plate's rim plus the one
+// margin (the plate's extrude bevel swells INWARD from plateR, measured —
+// the survey that sited this read the plate's reach at plateR exactly).
+// Outer: the case middle's back bore (§186's R_BORE_BACK — the wall the base
+// plate's rim locates against) less the margin — AS CUT, since §262: the
+// band is a sector lathe of G.CASE_LATHE_SEG facets per turn, each lying
+// inside the authored circle by up to R·(1 − cos(π/96)) = 0.027 u, and the
+// gong block's own vertices reach its full radius. Held to the circle, the
+// block at C7's foot azimuth measured 0.1446 from a facet — under the one
+// margin by exactly the sag at that azimuth — while the 55.8° foot had
+// happened to face a facet's end. The wall is the inscribed circle, which is
+// the facets' minimum over every azimuth, so the margin holds wherever the
+// foot lands. Ceiling: see GONG_BAND_TOP. Floor: measured below, once the
+// arc's azimuths are known.
+const R_ANNULUS_IN = plateR + CLEAR_MARGIN;
+
+const PLATE_RIM = (() => {
+  const rSeat = plateR - 1 / UNIT_MM;
+  const v = new THREE.Vector3();
+  const bevelSize = plateR * G.PLATE_BEVEL_F;
+  let front = Infinity, back = -Infinity, reach = 0;
+  // §186 — the notch FLOORS, measured per notch: the widest metal on each
+  // stem's own line, which is what that crown's tube must stop short of.
+  // Wall vertices are excluded by their perpendicular offset (the finished
+  // wall stands at halfW − bevelSize; anything inboard of that by a hair is
+  // floor), so the number is the floor's swell and not the rim's.
+  const floors = CASE_NOTCHES.map(() => 0);
+  // §307 landing 2 — UNDER FORM THERE IS NO RIM: the outline is the plate's
+  // edge (the builder skips the rim and its notches under an outline), so the
+  // same walk reads the FORM plate's own edge through the plate's shape law —
+  // the seat band is the metal within 1 mm of the outline (inset ≤ 1 mm, the
+  // round rSeat's plateR − 1 mm), `formOut` is how far the metal swells PAST
+  // the outline (max −inset: the extrude bevel's own swell, TODO 84's rule),
+  // and each stem's floor is the widest metal ALONG its own line inside the
+  // tube's sleeve section (no notch is cut, so the sleeve, not a notch wall,
+  // bounds the strip). The round walk is untouched.
+  let formOut = -Infinity;
+  backPlate.updateMatrixWorld(true);
+  backPlate.traverse((o) => {
+    if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
+    const p = o.geometry.attributes.position;
+    const _mw = p.count > 0 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
+    for (let i = 0; i < p.count; i++) {
+      v.fromBufferAttribute(p, i).applyMatrix4(_mw);
+      const r = Math.hypot(v.x, v.y);
+      if (r > reach) reach = r;
+      if (FORM) {
+        const ins = FORM_SHAPE.inset(v.x, v.y);
+        if (-ins > formOut) formOut = -ins;
+        if (ins <= 1 / UNIT_MM && v.z < front) front = v.z;
+        if (ins <= 1 / UNIT_MM && v.z > back) back = v.z;
+        for (let n = 0; n < CASE_NOTCHES.length; n++) {
+          const { az } = CASE_NOTCHES[n];
+          const along = v.x * Math.cos(az) + v.y * Math.sin(az);
+          const perp = Math.abs(-v.x * Math.sin(az) + v.y * Math.cos(az));
+          if (along > 0 && perp <= CASE_TUBE_AP && along > floors[n]) floors[n] = along;
+        }
+        continue;
+      }
+      if (r >= rSeat && v.z < front) front = v.z;
+      if (r >= rSeat && v.z > back) back = v.z;   // §186 — the rim's BACK face: what a clamp head seats on
+      for (let n = 0; n < CASE_NOTCHES.length; n++) {
+        const { az, halfW } = CASE_NOTCHES[n];
+        const along = v.x * Math.cos(az) + v.y * Math.sin(az);
+        const perp = Math.abs(-v.x * Math.sin(az) + v.y * Math.cos(az));
+        if (along > 0 && perp < halfW - bevelSize - 0.02 && r > floors[n]) floors[n] = r;
+      }
+    }
+  });
+  if (!(front < Infinity) || !(reach > plateR - 1e-9))
+    console.warn(`case: the plate's rim measured front ${front} / reach ${reach.toFixed(4)} against an `
+      + `authored ${plateR.toFixed(4)} — the case's seat and tube standoffs are derived from this and cannot be`);
+  // §186 — the LOCATING FIT, re-verified off the metal: the rim's measured
+  // widest reach against the back band's bore wall must land on SEAT_FIT
+  // (BASE_RIM_R subtracts the bevel swell out, so the two should agree to
+  // float noise; a tenth of the fit is the drift alarm).
+  // §307 landing 2 — under FORM the fit is the FORM case's: its bore is the
+  // plate's shape grown CASE_CLEAR (form-case.js formCaseLoops), so the fit is
+  // that grow less the metal's measured swell past the outline, held to the
+  // same SEAT_FIT and the same tenth.
+  const fit = FORM ? CASE_CLEAR - formOut : R_BORE_BACK - reach;
+  if (Math.abs(fit - G.SEAT_FIT) > G.SEAT_FIT * 0.1)
+    console.warn(`§186: the rim-to-bore fit measures ${fit.toFixed(4)} u against the SEAT_FIT `
+      + `${G.SEAT_FIT.toFixed(4)} it was derived to — ${FORM ? 'the form case\'s bore (plate + CASE_CLEAR) does not locate the form plate' : 'the rim no longer locates the movement'}`);
+  // ...and the notch floors against the standoff the tubes are cut to
+  // (tubeClearR = plateR · (1 + PLATE_BEVEL_F), the floor's own swell rule):
+  // a floor past that number is metal a crown tube runs into.
+  // §307 landing 2 — under FORM no notch is cut and the tubes are cut to the
+  // FORM case's own standoff (form-case.js tubeAt: the plate loop's exit,
+  // swelled, plus CLEAR_MARGIN), which exists only once the case is built —
+  // so the floors are carried out and held to each tube's built inboard end
+  // there (search `§307 landing 2 — THE FLOORS`), not to the round tubeClearR.
+  const tubeClearR = plateR * (1 + G.PLATE_BEVEL_F);
+  for (let n = 0; n < CASE_NOTCHES.length && !FORM; n++) {
+    if (floors[n] > tubeClearR + 1e-3)
+      console.warn(`§186: notch ${n} (az ${(CASE_NOTCHES[n].az * 180 / Math.PI).toFixed(1)}°) measures its floor `
+        + `at r ${floors[n].toFixed(4)} — past the ${tubeClearR.toFixed(4)} the crown tubes are cut to clear`);
+  }
+  return FORM ? { front, back, reach, floors, formOut } : { front, back, reach, floors };
+})();
+
+const CASE_SKIRT_OD = R_BORE_BACK - G.SEAT_FIT;                 // §187: the skirt runs the bore at the rim's own fit
+
+const CASE_SKIRT_ID = CASE_SKIRT_OD - 0.8 / UNIT_MM;           // …and its wall carries the declared thread
+
+const CASE_BCG_T = (0.3 / UNIT_MM) * 0.8;                      // §187: the glass's I-ring wall, compressed as drawn
+
+const CASE_APERTURE_R = (CASE_SKIRT_ID - CASE_BCG_T) - CASE_CRYSTAL_T;   // RA, the lip's bore
+
+const CASE_GLASS_FLOAT_GUARD = 1e-4;                           // §261 2c (its derivation stands in CASE_DIMS)
+
+const BACK_ENV_NBIN = Math.ceil(CASE_R_OUT / CLEAR_MARGIN);    // §234: the back envelope's bins, no wider than the one margin
+
+// §269 — the air, and the ear's weighting, named once: GONG_ACOUSTICS (the
+// wire) and GONG_CASE_PATH (the case) radiate into the same room.
+const AIR_RHO = GL.AIR_RHO, AIR_C = GL.AIR_C;        // 20 °C, 1 atm — §320: src/gong-level.js
+
 // ---------------------------------------------------------------------------
 // Alarm (BUILT §24) — a second, independent crown sets a small alarm disc.
+// §325 landing 3 — the mesh-phase solve and the going train's, the reserve's, the motion works' and the keyless
+// works' chains, moved out of the alarm's build region unchanged (the alarm setting's own chain stays in it)
+// Turn Q until its measured world tooth phase hits the target, to the nearest
+// equivalent tooth. The response of `rotation.z` is MEASURED, not assumed:
+// under a mirroring parent a positive local turn moves the teeth the other
+// way, and that sign is exactly what the dialFace flip changes.
+// `gauge` (§153) — the object whose silhouette is READ, defaulting to the one
+// being turned: a rigid pair whose smaller member no longer owns the outline
+// (the 300° re-gear made the reserve p1 outgrow its w1) aligns by its named
+// wheel's own mesh while the whole pair turns as the knob.
+const alignGear = (mesh, target, N, gauge = mesh) => {
+  const pitch = (Math.PI * 2) / N;
+  const before = mesh.rotation.z;
+  const cur = measuredToothPhase(gauge, N).phase;
+  // The bump must clear the gauge's own resolution: the silhouette is binned
+  // at 2π/2048 ≈ 3.1e-3 rad, so the 1e-3 bump this used before was UNDER the
+  // quantisation and the measured slope was noise. 0.02 rad is a sixth of the
+  // finest pitch here and forty times the bin width.
+  mesh.rotation.z = before + 0.02;
+  let d = measuredToothPhase(gauge, N).phase - cur;
+  mesh.rotation.z = before;
+  while (d > Math.PI / N) d -= (Math.PI * 2) / N;   // phase lives modulo a pitch
+  while (d < -Math.PI / N) d += (Math.PI * 2) / N;
+  const slope = Math.sign(d) || 1;
+  let need = target - cur;
+  need -= Math.round(need / pitch) * pitch;      // nearest tooth, not a whole turn
+  mesh.rotation.z = before + need / slope;
+};
+// THE CHAIN SOLVE, reusable. Each wheel after the datum is turned until its
+// measured tooth phase puts a GAP against the previous wheel's TOOTH across
+// their line of centres. Two tripwires per mesh: anti-phase, and centre
+// distance against the pitch-circle sum — a perfectly phased pair that does
+// not reach each other is not a mesh either, and that second check is
+// independent of the phase solve.
+const solveGearChainBody = (label, chain, module, inputs = []) => {
+  // GAUGE VALIDATION FIRST. A reading whose gap count disagrees with the
+  // declared tooth count, or whose folded resultant is weak, is refused —
+  // solving on it would drag every wheel downstream of the bad reading to a
+  // wrong place with full confidence. Refusal is loud; boot is meant to be
+  // silent, so a skipped chain is itself a finding.
+  for (const g of chain) {
+    if (!g.obj) { console.warn(`TODO 15: ${label} — no handle for the ${g.name}; chain solve skipped`); return; }
+    g.gauge = g.gauge || g.obj;   // §153 — see alignGear: read this, turn obj
+    g.c = worldCentreOf(g.obj);
+    const m = measuredToothPhase(g.gauge, g.teeth);
+    if (m.gaps !== g.teeth || m.conf < 0.9) {
+      console.warn(`TODO 15: ${label} the ${g.name} gauge is not credible `
+        + `(found ${m.gaps} gaps for ${g.teeth} teeth, confidence ${m.conf.toFixed(3)}) — chain solve skipped`);
+      return;
+    }
+  }
+  // THE INVARIANT IS THE SUM, NOT THE DIFFERENCE — and getting this wrong is
+  // why the wheels looked meshed at rest and drifted apart as they turned.
+  //
+  // Let uP = where P's tooth pattern sits on the centre line, as a fraction of
+  // its pitch, and uQ the same for Q measured from the opposite direction.
+  // Meshing gears COUNTER-rotate: turn P by +θ and Q goes −θ·(NP/NQ). Under
+  // that, uP DECREASES by θ/pP while uQ INCREASES by the same amount. So
+  // `uQ − uP` changes continuously as the train runs — it is not a property of
+  // the mesh at all — while `uP + uQ` is invariant. The condition is
+  //
+  //     frac(uP + uQ) = 0.5
+  //
+  // (when P puts a tooth on the line, uP = 0, Q must put a GAP there, uQ = 0.5).
+  //
+  // The previous version solved for uQ = uP + 0.5, which satisfies the
+  // DIFFERENCE. That is true at exactly one rotational instant and false
+  // everywhere else, which is precisely the reported symptom: correct in the
+  // built pose, visibly tooth-on-tooth in the running sim. Verified by the
+  // only test that can tell them apart — measuring at the build pose AND after
+  // runtime rotation, and requiring both to agree.
+  for (let i = 1; i < chain.length; i++) {
+    const P = chain[i - 1], Q = chain[i];
+    const psi = Math.atan2(Q.c.y - P.c.y, Q.c.x - P.c.x);
+    const uP = _frac(((psi - measuredToothPhase(P.gauge, P.teeth).phase) * P.teeth) / (Math.PI * 2));
+    const uQ = _frac(0.5 - uP);
+    alignGear(Q.obj, psi + Math.PI - uQ * ((Math.PI * 2) / Q.teeth), Q.teeth, Q.gauge);
+  }
+  // The residual tolerance is set by the INSTRUMENT, not by hope: gap centres
+  // are quantised to 2π/2048, averaged over N gaps — comfortably inside 2% of
+  // a pitch. The old 0.1% bar was tighter than the gauge can even read.
+  for (let i = 1; i < chain.length; i++) {
+    const P = chain[i - 1], Q = chain[i];
+    const psi = Math.atan2(Q.c.y - P.c.y, Q.c.x - P.c.x);
+    const a = _frac(((psi - measuredToothPhase(P.gauge, P.teeth).phase) * P.teeth) / (Math.PI * 2));
+    const b = _frac(((psi + Math.PI - measuredToothPhase(Q.gauge, Q.teeth).phase) * Q.teeth) / (Math.PI * 2));
+    const off = Math.min(_frac(a + b - 0.5), 1 - _frac(a + b - 0.5));   // SUM: see above
+    if (off > 0.02)
+      console.warn(`TODO 15: ${label} ${P.name} ⇄ ${Q.name} sit ${(off * 100).toFixed(1)}% of a pitch `
+        + `off anti-phase — tooth meets tooth at the centre line, not tooth into gap`);
+    const d = Math.hypot(Q.c.x - P.c.x, Q.c.y - P.c.y);
+    const want = module * (P.teeth + Q.teeth) / 2;
+    if (Math.abs(d - want) > 0.05)
+      console.warn(`TODO 15: ${label} ${P.name} ⇄ ${Q.name} centre distance ${d.toFixed(3)} is not the `
+        + `pitch-circle sum ${want.toFixed(3)} — the phase solve is meaningless if they do not mesh`);
+    // §194 — this pair is a declared mesh by construction: the solve just
+    // phased it, so the registry cannot describe a pair the solve does not.
+    const an = rotorNameFor(P.obj, P.teeth, P.gauge), bn = rotorNameFor(Q.obj, Q.teeth, Q.gauge);
+    if (!an || !bn) console.warn(`§194: ${label} ${P.name} ⇄ ${Q.name} — no NAMED rotor for ${!an ? P.name : Q.name}, so no row`);
+    else declareMesh(`${label.replace(/:$/, '')} ${P.name} ⇄ ${Q.name}`, { a: an, b: bn, inputs, chain: label.split(/[\s:]/)[0] });
+  }
+};
+// A chain solve reads each gauge again at poses it has already read: the datum
+// at its build pose (validated, then read as the first mesh's P, then
+// verified), each turned wheel at its pre-turn pose (validated, then read by
+// alignGear) and at its final pose (read as the next mesh's P, then verified)
+// — about half of its silhouette walks repeat one exactly. So for the solve's
+// duration a reading is kept per gauge against a snapshot of everything it
+// reads: every mesh's geometry (id and attribute versions) and world matrix
+// under the gauge, compared bit for bit (Object.is, so −0 ≠ 0). Nothing in the
+// solve re-cuts a wheel, and a turned wheel's matrices differ, so a hit is a
+// reading of exactly the metal the walk would read. The memo dies with the
+// solve; outside it every call walks. (`_mtpMemo` is declared beside the gauge.)
+const solveGearChain = (label, chain, module, inputs = []) => {
+  const outer = _mtpMemo;
+  _mtpMemo = new Map();
+  try { return solveGearChainBody(label, chain, module, inputs); } finally { _mtpMemo = outer; }
+};
+await (async () => {
+  await breathe(177);
+  solveGearChain('reserve stage one:', [
+    { obj: reservePinion0, teeth: rsvTeethP0, name: 'p0' },
+    { obj: rsvPair1, gauge: rsvWheel1, teeth: rsvTeethW1, name: 'w1 (+p1 held)' },
+  ], rsvModule0, ['wind', 'train']);
+  await breathe(178);
+  solveGearChain('reserve stage two:', [
+    { obj: reservePinion1, teeth: rsvTeethP1, name: 'p1' },
+    ...rsvIdlers.map((q, k) => ({ obj: q.wheel, teeth: RSV_IDLER_T, name: `idler ${k + 1}` })),   // §308 L4 option B (none off the sector path)
+    { obj: rsvWheel2, teeth: rsvTeethW2, name: 'w2' },
+  ], rsvModule1, ['wind', 'train']);
+  // TODO 124 — THE MOTION WORKS, the movement's 12:1, and the last chain with
+  // no phase solve of its own. It read a CONSTANT 50.00% of a pitch: tooth
+  // meeting tooth on the line of centres, the worst value the measure can
+  // take, at every pose. That is TODO 15's idiom one more time and it is
+  // solved the same way TODO 48 solved the reserve train — two runs with the
+  // rigid pair held, because this is four wheels and THREE links:
+  //  · stage one, MW_MODULE_1: the cannon pinion is the datum (friction-fit
+  //    on the centre arbor, no upstream mesh to answer to); `mwPair` aligns
+  //    as one knob and the minute pinion rides, GAUGED by the minute wheel —
+  //    both modules are 0.3, so the wheel's 4.5 pitch radius owns the pair's
+  //    combined silhouette against the pinion's 1.2 and the gauge has one
+  //    unambiguous owner (the §153 failure mode, avoided by arithmetic rather
+  //    than by luck);
+  //  · stage two, MW_MODULE_2: the minute pinion's phase is READ — stage one
+  //    fixed it — and the hour WHEEL aligns to it on its own rotation.
+  //
+  // Stage two turns `mwHourWheel`, never `hourWheelGroup`, and that distinction
+  // is load-bearing: the group also carries the hour HAND, the tube and the
+  // alarm release HEART, all of which are clocked to the hour the watch shows,
+  // not to this mesh. Turning the group would clock the teeth by silently
+  // re-setting the time and mis-timing the alarm. Turning the wheel inside it
+  // is what a watchmaker does — the hand is pressed onto the tube at whatever
+  // index reads 12:00, so the wheel's teeth are free.
+  //
+  // This solve is only meaningful because the sense was fixed first: the
+  // arbors' tick() rotations are proper mesh counter-rotations now, so the SUM
+  // invariant it establishes rides every pose. Run it against a co-rotating
+  // pair and it would be true at the build pose and false everywhere else,
+  // which is the exact failure the solver's own comment above describes.
+  await breathe(179);
+  solveGearChain('motion works:', [
+    { obj: cannonPinion, teeth: cannonPinionTeeth, name: 'cannon pinion' },
+    { obj: mwPair, gauge: mwMinuteWheel, teeth: MW_MINUTE_TEETH, name: 'minute wheel (+pinion held)' },
+  ], MW_MODULE_1, ['train', 'handSet']);
+  await breathe(180);
+  solveGearChain('motion works:', [
+    { obj: mwMinutePinion, teeth: MW_PINION_TEETH, name: 'minute pinion' },
+    { obj: mwHourWheel, teeth: MW_HOUR_TEETH, name: 'hour wheel' },
+  ], MW_MODULE_2, ['train', 'handSet']);
+  // TODO 62 — THE GOING TRAIN, which had no phase of any kind: not one
+  // rotation.z was ever assigned to its seven gears, so all four meshes
+  // were phased by wherever gearOutlineShape happened to put a tooth — at
+  // two DIFFERENT tipFrac conventions between makeGear and makePinion,
+  // exactly the condition the gauge's own header warns about. Solved
+  // BACKWARD from the escapement, because that is where the freedoms are:
+  // the escape wheel's phase belongs to the pallets (its own convention,
+  // never touched), so the escape PINION is the datum; each arbor's
+  // pinion+wheel is one blank (a pair group, TODO 48's structure), giving
+  // exactly one knob per mesh — fourth pair to the escape pinion, third
+  // pair to the fourth pinion, center pair to the third pinion, and the
+  // great wheel (its own knob on the fusee arbor) to the center pinion.
+  // Four runs because the train has four modules; one run per mesh keeps
+  // every centre-distance tripwire honest.
+  //
+  // TODO 116 — AND THEY MUST BE SOLVED AT THE POSE THE TRAIN RUNS IN, not
+  // at zero. The reserve solves above are entitled to ignore this and say
+  // why: their arbors' tick rotations are pure counter-rotations
+  // (`rsvArbor1 = -rsvArbor0 · ratio`), so the SUM invariant a solve
+  // establishes at ANY pose rides every other one. THE GOING ARBORS ARE NOT
+  // LIKE THAT. Each carries an ADDITIVE constant from `meshOffset` —
+  // `fourthAngle = offFourth − ratio·escapeAngle`, and so on up the chain —
+  // a second and older phasing system that phases ARBORS where these solves
+  // phase BLANKS, and neither knows about the other. A blank aligned with
+  // its arbor at 0 is turned by that constant the instant tick() runs, and
+  // `off*` is not a whole number of pitches.
+  //
+  // The tripwires below cannot see it, by construction: the error is a
+  // CONSTANT, so it is exactly zero at the one pose they read and exactly
+  // wrong at every pose the movement occupies. Measured over a full turn of
+  // the fourth arbor before this fix — 38.2% of a pitch on great ⇄ centre,
+  // 30.9% on centre ⇄ third, 8.7% on third ⇄ fourth, 36.8% on fourth ⇄
+  // escape, against 0.02–0.21% at the arbors' zero. Tooth meeting tooth,
+  // reported by eye and then measured (`tools/probe-train-mesh-phase.mjs`,
+  // which holds all four to the 2% bar below at every pose it sweeps).
+  //
+  // So enter the arbors' own tau = 0 angles, solve there, and restore. Any
+  // single RUNNING pose fixes all of them — that much of the reserve's
+  // reasoning does carry, once the constants sit inside the pose rather
+  // than being added after it. Zero is the one pose that is not one.
+  await breathe(181);
+  const goingRest = [
+    [barrelArbor, barrelMeshAngle(0)], [centerArbor, centerAt0],
+    [thirdArbor, thirdAt0], [fourthArbor, fourthAt0], [escapeArbor, escAt0],
+  ];
+  for (const [arbor, a] of goingRest) arbor.rotation.z = a;
+  await breathe(182);
+  solveGearChain('going fourth ⇄ escape:', [
+    { obj: escapePinion, teeth: TRAIN.fourth.pinion, name: 'escape pinion' },
+    { obj: fourthPair, teeth: TRAIN.fourth.teeth, name: 'fourth wheel (+pinion held)' },
+  ], TRAIN.fourth.module, ['train']);
+  await breathe(183);
+  solveGearChain('going third ⇄ fourth:', [
+    { obj: fourthPinion, teeth: TRAIN.third.pinion, name: 'fourth pinion' },
+    { obj: thirdPair, teeth: TRAIN.third.teeth, name: 'third wheel (+pinion held)' },
+  ], TRAIN.third.module, ['train']);
+  await breathe(184);
+  solveGearChain('going center ⇄ third:', [
+    { obj: thirdPinion, teeth: TRAIN.center.pinion, name: 'third pinion' },
+    { obj: centerPair, teeth: TRAIN.center.teeth, name: 'center wheel (+pinion held)' },
+  ], TRAIN.center.module, ['train']);
+  await breathe(185);
+  solveGearChain('going great ⇄ center:', [
+    { obj: centerPinion, teeth: TRAIN.barrel.pinion, name: 'center pinion' },
+    { obj: greatWheel, teeth: TRAIN.barrel.teeth, name: 'great wheel' },
+  ], TRAIN.barrel.module, ['train']);
+  // TODO 219 — the maintaining spring's pin, into the ring's frame. The
+  // crossing it works in turned with the great wheel's phase just now; the ring
+  // (maintWheel) carries none, so the pin's ring-frame position is its
+  // wheel-frame one turned by that phase.
+  await breathe(186);
+  {
+    const gm = MAINT_SPRING.geom, q = MAINT_SPRING.toGw(gm.xc, gm.yPin), a = greatWheel.rotation.z;
+    MAINT_SPRING_PIN.position.x = q.x * Math.cos(a) - q.y * Math.sin(a);
+    MAINT_SPRING_PIN.position.y = q.x * Math.sin(a) + q.y * Math.cos(a);
+    if (maintWheel.rotation.z !== 0) console.warn(`TODO 219: the maintaining wheel carries a rotation ${maintWheel.rotation.z} the pin's placement assumed zero`);
+  }
+  // TODO 219 GUARD (§115's class) — THE SPRING MUST DRIVE THE TRAIN, AND ITS
+  // STOP MUST CATCH THE RELAXING PIN. The blade's side and the stop flank are
+  // chosen from MOVEMENT_SENSE (MAINT_SPRING.SENSE_REL); what that declaration
+  // cannot see is which way the train actually runs. Read here off the CUT
+  // metal in the arbor's frame, against barrelMeshAngle's own law: (1) the face
+  // load the pin puts on the blade — along the line from the pin's centre to
+  // the blade's nearest point — turns the great wheel the way the train runs;
+  // (2) relaxing, the wheel runs on ahead of the held ring, so in the wheel's
+  // frame the pin moves AGAINST the run: the stop flank must lie on that side
+  // of it. Either wrong and the spring winds the train backward, or relaxes
+  // into nothing.
+  {
+    const runS = Math.sign(barrelMeshAngle(3600) - barrelMeshAngle(0));
+    let blade = null; greatWheel.traverse((o) => { if (o.name === 'maintSpring') blade = o; });
+    const a = greatWheel.rotation.z, P = MAINT_SPRING_PIN.position;
+    const pos = blade.geometry.attributes.position;
+    let best = Infinity, C = null;
+    for (let i = 0; i < pos.count; i++) {
+      const x0 = pos.getX(i), y0 = pos.getY(i);
+      const x = x0 * Math.cos(a) - y0 * Math.sin(a), y = x0 * Math.sin(a) + y0 * Math.cos(a);
+      const d = Math.hypot(x - P.x, y - P.y);
+      if (d < best) { best = d; C = { x, y }; }
+    }
+    // the nearest VERTEX is a corner of the pin-side face; its direction from the
+    // pin is the face load's to within the face's own length, and only its SIGN
+    // about the arbor is read.
+    const dx = C.x - P.x, dy = C.y - P.y;
+    const torque = Math.sign(P.x * dy - P.y * dx);
+    const azFlank = MAINT_SPRING.azStop + a;
+    const side = Math.sign(wrapPi(Math.atan2(P.y, P.x) - azFlank));
+    if (torque !== runS || side !== runS)
+      console.warn(`TODO 219 maintaining spring: ${torque !== runS ? 'the blade drives the great wheel AGAINST the train' : ''}${torque !== runS && side !== runS ? ' and ' : ''}${side !== runS ? 'the stop flank stands on the run side of the pin, where the relaxing pin never reaches it' : ''} (MOVEMENT_SENSE ${MOVEMENT_SENSE}, train ${runS}, SENSE_REL ${MAINT_SPRING.SENSE_REL})`);
+    // TODO 224 — and the hold's recoil must be the way the blade's REACTION
+    // drives the ring: the same face load, read on the ring, turns it against
+    // the torque it puts on the wheel. MAINT_HOLD.REC declares it; this reads it
+    // off the cut blade and pin.
+    if (MAINT_HOLD.REC !== -torque)
+      console.warn(`TODO 224 maintaining hold: the recoil turns the ring ${MAINT_HOLD.REC > 0 ? '+' : '−'} but the blade's reaction on the pin drives it ${-torque > 0 ? '+' : '−'} — the posed hold would back the ring the way nothing pushes it`);
+  }
+  // TODO 132 — THE KEYLESS WORKS, the movement's last two unphased spur
+  // meshes. Both carried TODO 15's half-pitch idiom and nothing else, and both
+  // measured a CONSTANT error over the pose net: 22.222% of a pitch on the
+  // setting mesh, 34.345% on the winding one — tooth riding tooth, stable at
+  // every pose because a static build-phase error reads the same everywhere.
+  // §194 declared the pairs anyway (the registry's job is to make a mesh
+  // visible, not to flatter it) and waived them, because the underived `+ 0.1`
+  // in their centre distances exceeded this solver's own 0.05 tripwire: it
+  // would have refused the chain aloud, and rightly, since phasing a pair that
+  // does not reach is meaningless. TODO 125 deleted that constant and both
+  // pairs stand at module·(P+Q)/2 exactly, so the solve can finally run.
+  //
+  // THE KNOB IS A BASE CONSTANT, NOT A ROTATION, which is the one thing this
+  // chain does differently from every solve above. tick() writes all of these
+  // rotors each frame as `base + spin`, so a phase left on the object is
+  // erased by the first frame; each solve reads its result back into the base
+  // the tick adds to. The objects are then put back where they stood, for the
+  // same reason the going arbors are below.
+  //
+  // WHICH POSE, and why it is not zero. The going arbors carry ADDITIVE
+  // constants from meshOffset, so for them a solve at zero is exactly wrong at
+  // every pose the movement occupies (TODO 116). These two pairs are pure
+  // counter-rotations at their tooth ratios — `minuteArborSpin` is
+  // −settingWheelSpin·(setting/minute), and the crown wheel is
+  // −(spur/crown)·spurWorldDelta off the spur's own world delta — so
+  // frac(uP + uQ) established at ANY REACHABLE pose rides every other one,
+  // which is the reserve train's entitlement. Reachable is the load-bearing
+  // word: the spur rides barrelArbor, and its world angle is
+  // `windSpurBase + barrelMeshAngle(0)` at full wind (windLocalAt cancels the
+  // tau term), so it needs the rest pose entered above. Solve with that arbor
+  // anywhere else and the transfer wheel is indexed to a spur position the
+  // watch never puts it in.
+  await breathe(187);
+  {
+    const keylessRest = [settingWheel, minuteArbor, windSpur, crownWheel, transferWheel,
+      ...(windIdlerWheel ? [windIdlerWheel] : [])].map((o) => [o, o.rotation.z]);
+    settingWheel.rotation.z = settingWheelBase;                 // settingWheelSpin = 0 at rest
+    settingBevel.rotation.z = settingBevelBase;                 // …and its bevel half, same arbor
+    minuteArbor.rotation.z = minuteWheelBase;                   // the knob, solved just below
+    windSpur.rotation.z = windSpurBase;                         // windBack = 0 at full wind
+    crownWheel.rotation.z = crownWheelBase;                     // crownWheelSpin = 0 with it
+    transferWheel.rotation.z = transferWheelClock;               // …and the arbor's world angle is 0 there (TODO 136: the wheel's own base is LOCAL to its flipped mount)
+    if (windIdlerWheel) windIdlerWheel.rotation.z = windIdlerClock;
+    // The SETTING mesh. The setting wheel is the datum: its own teeth answer
+    // to the sliding clutch, whose axis lies along the stem — a crossed-axis
+    // mesh no parallel-axis solve can phase — so the one freedom here is the
+    // minute arbor (TODO 150 item 1: no pinion rides with it any more, the
+    // arbor turns the fold directly).
+    await breathe(188);
+    solveGearChain('keyless:', [
+      { obj: settingWheel, teeth: settingWheelTeeth, name: 'setting wheel' },
+      { obj: minuteArbor, gauge: minuteWheel, teeth: minuteWheelTeeth, name: 'minute wheel' },
+    ], KW_MODULE, ['train', 'handSet']);
+    await breathe(189);
+    minuteWheelBase = minuteArbor.rotation.z;
+    // The WINDING mesh, spur to transfer wheel — through the idler when the
+    // stem's azimuth parks one (§33 step 2), which is two links and two knobs
+    // rather than one, and the chain follows the routing instead of asserting
+    // a topology the layout may not have built.
+    await breathe(190);
+    solveGearChain('keyless:', [
+      { obj: windSpur, teeth: WIND_SPUR_TEETH, name: 'wind spur' },
+      ...(windIdlerWheel ? [{ obj: windIdlerWheel, teeth: windIdler.teeth, name: 'wind idler' }] : []),
+      { obj: transferWheel, teeth: crownWheelTeeth, name: 'transfer wheel' },
+    ], KW_MODULE, ['wind', 'reserve']);
+    await breathe(191);
+    if (windIdlerWheel) windIdlerClock = windIdlerWheel.rotation.z;   // the arbor's world angle is 0 at this pose
+    transferWheelClock = transferWheel.rotation.z;
+    // TODO 151's (d) landing — THE SETTING FOLD's own mesh, cap ⇄ minute
+    // wheel, solved the same way every other declared mesh in this movement
+    // is: `mwArbor` posed to tick's own rest value at tau 0, handSetOffset 0
+    // (minuteA there is DIAL_EPOCH_ANGLE, so mwMinuteA is DIAL_EPOCH_ANGLE ×
+    // MW_RATIO_1 and mwArbor carries the NEGATED movement-frame angle — TODO
+    // 124/115's rule, applied here rather than re-derived), `settingCap` at
+    // its own seed. `mwPair` is the chain's fixed reference (already solved
+    // against cannonPinion above) — the one freedom is the cap.
+    {
+      const mwArborZ0 = mwArbor.rotation.z, settingCapZ0 = settingCap.rotation.z;
+      mwArbor.rotation.z = -MW_MINUTE_A_REST;
+      settingCap.rotation.z = SETTING_CAP_PHASE;
+      await breathe(192);
+      solveGearChain('setting fold:', [
+        { obj: mwPair, gauge: mwMinuteWheel, teeth: MW_MINUTE_TEETH, name: 'minute wheel' },
+        { obj: settingCap, teeth: SETTING_CAP_TEETH, name: 'setting cap' },
+      ], MW_MODULE_1, ['train', 'handSet']);
+      await breathe(193);
+      SETTING_CAP_PHASE = settingCap.rotation.z;
+      mwArbor.rotation.z = mwArborZ0;
+      settingCap.rotation.z = settingCapZ0;
+    }
+    for (const [o, z] of keylessRest) o.rotation.z = z;
+  }
+  // tick() owns these every frame; put them back so nothing built after this
+  // block reads a world matrix off a pose that only existed for the solve.
+  for (const [arbor] of goingRest) arbor.rotation.z = 0;
+})();
+
+// §325 landing 3 — THE ALARM'S BUILD is one function, run only when the movement carries the complication
+// (ALARM_BUILT, layout.js: ?alarm=0 builds without it). Its body is the alarm's build exactly as it stood at the
+// top level, in the same order, so a build with the alarm cuts the same metal; what the rest of the movement reads
+// of it comes back through the return below (and through these, which code outside the function reassigns).
+let ALARM_CORRIDOR_BAND_FLOOR, ALARM_LINK_ARMING_SPRING, ALARM_NOTCH_RAMP, ALARM_NOTCH_RAMP_IN, ALARM_PUSH_ABUT_S, GONG_A0, GONG_WIRE_R, alarmColDriverGroup, alarmColPawlGroup, alarmColPawlSpringBlade, alarmFeelerBearPoint, alarmFeelerSpringBlade, alarmPawlSeatPhi, alarmPusherGuideMesh, alarmPusherReturnFrames, alarmPusherReturnSpring, alarmPusherStemMesh, alarmSilBladeMesh, alarmSpring, arrestCrossMesh, arrestCrossSpin, arrestFingerSpin, arrestPinionSpin, gongF, gongFoot, subDiff, subIdlerSpin, subPinBSpin;
+async function buildAlarm() {
+// The disc's RAISED TRACK with the notch as its one gap (no CSG: the notch is
+// the ABSENCE of track), and the notch's two ramps (TODO 259/260). The pin rides
+// the track's top; at coincidence the gap arrives under it and it drops
+// ALARM_PIN_DROP — banked by the feeler's stop, one CLEAR_MARGIN short of the
+// body (TODO 179). Called once, by the seat's build, after it has solved
+// ALARM_NOTCH_RAMP.
+function buildAlarmDiscTrack() {
+  if (!(ALARM_NOTCH_RAMP > 0 && ALARM_NOTCH_RAMP_IN > 0)) throw new Error('buildAlarmDiscTrack before the seat solved the ramps');
+  // §280 — the full-height track stops where the RAMPS begin: the notch's floor
+  // (ALARM_NOTCH_W) plus a ramp's run each side. The two ramps below close the gap.
+  // TODO 261 — the floor stands ALARM_NOTCH_AHEAD of the disc's zero (the alarm
+  // hand), along the pin's travel, and its two ramps are different lengths: the
+  // ENTRY ramp is on the side the pin arrives from, which is the negative side of
+  // the floor along the travel. In the disc's own angle that is −SENSE.
+  const c = ALARM_NOTCH_AHEAD, S = ALARM_READER_SENSE;
+  const runNeg = S > 0 ? ALARM_NOTCH_RAMP_IN : ALARM_NOTCH_RAMP, runPos = S > 0 ? ALARM_NOTCH_RAMP : ALARM_NOTCH_RAMP_IN;
+  const a0 = c + ALARM_NOTCH_W / 2 + runPos, a1 = Math.PI * 2 + c - ALARM_NOTCH_W / 2 - runNeg;
+  const shape = new THREE.Shape();
+  shape.absarc(0, 0, ALARM_TRACK_RMID + ALARM_TRACK_HALFW, a0, a1, false);
+  shape.absarc(0, 0, ALARM_TRACK_RMID - ALARM_TRACK_HALFW, a1, a0, true);
+  const trackGeo = new THREE.ExtrudeGeometry(shape, { depth: ALARM_TRACK_H, bevelEnabled: false });
+  const track = new THREE.Mesh(trackGeo, MATS.steel);
+  track.name = 'alarmDiscTrack';
+  track.position.z = ALARM_DISC_TOP;
+  alarmDiscGroup.add(track);
+  // §280 — the notch's two ramps (see ALARM_NOTCH_RAMP). Each is a sector wedge
+  // on the body's face: its low end stands the notch's depth less the drop
+  // (the dropped pin's tip level — CLEAR_MARGIN over the floor), its high end
+  // the track's own top, flush with the track's end face. One mesh name for
+  // both, as the stem collar's three; the rows that name it are by label pair.
+  const rampLow = ALARM_TRACK_H - ALARM_PIN_DROP;
+  for (const [side, run] of [[1, runPos], [-1, runNeg]]) {
+    const ramp = new THREE.Mesh(
+      notchRampGeo(ALARM_TRACK_RMID - ALARM_TRACK_HALFW, ALARM_TRACK_RMID + ALARM_TRACK_HALFW,
+        Math.hypot(ALARM_TRACK_RMID, ALARM_PIN_R),   // the pin's tangential extreme (its rim vertex at the track's tangent) — where it touches
+        c, ALARM_NOTCH_W / 2, ALARM_NOTCH_W / 2 + run, rampLow, ALARM_TRACK_H, Math.ceil(run / ALARM_NOTCH_RAMP_STEP), side), MATS.steel);
+    ramp.name = 'alarmDiscNotchRamp';
+    ramp.position.z = ALARM_DISC_TOP;
+    alarmDiscGroup.add(ramp);
+  }
+}
+
 // Three units, decomposed the way the power reserve is (hand on the dialFace,
 // its drive train on the movement side):
 //   'Alarm disc'         — the pointer, riding in the alarm well like the
@@ -22112,72 +22926,6 @@ const Z_ALARM_CORNER = PLATE_DIAL_FACE - CLEAR_MARGIN - ALARM_CORNER_REACH_UP;
 // bases differ per member since TODO 140 solved them; the SENSE this relies on
 // is the −/+ on the spin, which is untouched by that.
 const ALARM_CORNER_SENSE = -1;
-// TODO 138 Landing 2 — AND THE INDEX IS DERIVED TOO, from the corner rather
-// than assumed. `bevelOutline` centres tooth i at azimuth i·2π/z in the gear's
-// OWN frame, so "half a tooth" only interleaves a pair if both gears' tooth 0
-// already lies on the contact ray. It does not: each mount carries whatever
-// azimuth reference `setFromUnitVectors` happened to produce, and for the alarm
-// corner that put the clearing index at 0.875 of a pitch, not 0.5 — measured,
-// 0.1080 of burial still standing after the sense was corrected.
-//
-// The condition is the one probe-138-bevel-roll derives: one member presents a
-// TOOTH on the contact ray, the other a GAP. So each gear's spin is the ray's
-// azimuth READ IN ITS OWN MOUNT FRAME, less half a pitch for the member that
-// must gap. The ray bisects the two axes for ANY shaft angle when the counts
-// are equal (γ = Σ/2 each, the pitch cones meeting on the bisector), which is
-// why it is simply their normalised sum — §234's fold corner at Σ ≈ 162°
-// (TODO 162, was ≈ 150°) is the first non-mitre through here and rides the
-// same line.
-function bevelCornerRay(axisA, axisB) {
-  return axisA.clone().add(axisB).normalize();
-}
-// A member's axis, MEASURED off the object whose +Z it is — a mount, or the
-// gear itself, which carries the same +Z because only `rotation.z` is ever
-// written on it — rather than restated at the call site. TODO 136 turned the crown wheel's and the setting bevel's mounts
-// through PI, which made the literal `(0, 0, 1)` both keyless sites passed a
-// claim about the metal that had stopped being true. It survived only because
-// the azimuth about either axis is the same for every vector in the plane the
-// two axes span, and the two candidate rays differ there by exactly PI — four
-// pitches of an 8-tooth pinion, ten of a 20-tooth wheel, integers both. A
-// right answer standing on a false premise is a defect waiting for the next
-// count. `updateWorldMatrix(true, false)` walks UP; see bevelCornerSpin.
-function bevelCornerAxis(mount) {
-  mount.updateWorldMatrix(true, false);
-  return new THREE.Vector3(0, 0, 1).transformDirection(mount.matrixWorld).normalize();
-}
-// TODO 139 — IT READS THE GEAR, NOT A MOUNT, AND IT WALKS UP.
-//
-// `Object3D.updateMatrixWorld(force)` recomputes this object and its
-// DESCENDANTS from `this.parent.matrixWorld` AS IT STANDS. It never walks UP.
-// At build time nothing has updated the keyless or alarm groups, so their
-// `matrixWorld` is still the identity a fresh Object3D carries, and a mount
-// read through it comes back MISSING every ancestor rotation. Both stem-side
-// mounts hang under a group that carries the stem's own azimuth —
-// `windPinionGroup` and `windClutch` at `stemAngle - PI/2` = 0.95993,
-// `alarmSpinner` at `alarmStemAngle - PI/2` = -1.57080 — and that is exactly
-// what was dropped. The plate-side mounts hang off `keyless`, whose world
-// transform IS the identity, so they were computed correctly: hence ONE
-// member of each corner wrong, by a different amount per corner, which is why
-// no single systematic offset described it.
-//
-// Measured on the tree that shipped it, in pitch fractions off the METAL
-// (tools/probe-bevel-corner-index.mjs):
-//
-//   windingPinion   shipped 0.49179   a stale read gives 0.49190   want 0.39270
-//   clutchRim       shipped 0.29361   a stale read gives 0.29350   want 0.39770
-//
-// `getWorldQuaternion` calls `updateWorldMatrix(true, false)`, which does walk
-// up. And the argument is the GEAR now: the caller cannot pass one object's
-// frame while writing `rotation.z` on another's — the setting corner did
-// exactly that (`bevelCornerSpin(settingBevel, …)` against every other site's
-// mount) and was right only because that gear's `rotation.z` was still 0.
-function bevelCornerSpin(gear, ray, teeth, gap) {
-  const q = gear.parent.getWorldQuaternion(new THREE.Quaternion());
-  const local = ray.clone().applyQuaternion(q.invert());
-  const pitch = (Math.PI * 2) / teeth;
-  const r = Math.atan2(local.y, local.x) - (gap ? pitch / 2 : 0);
-  return ((r % pitch) + pitch) % pitch;
-}
 // TODO 138 Landing 2 — DERIVED, not chosen. A bevel's face width is bounded by
 // the classical blank proportion coneR/3: an apex-ruled tooth scales with cone
 // distance, so at F = coneR the small end has no section left to be metal. The
@@ -24417,215 +25165,12 @@ const ALARM_FEELER_LUG_L = 0.22;   // along the lever
 const ALARM_FEELER_LUG_W = 0.18;   // across it
 const ALARM_FEELER_LUG_Y = 0.25;   // lever-local |y| of each lug's centre
 const alarmDetectorDl = (r) => ({ x: ALARM_DETECTOR_AT.x + _uF.x * r, y: ALARM_DETECTOR_AT.y + _uF.y * r });   // a station on the lever's line, r from the detector's axis
-// --- TODO 15 — MESH PHASE IS NOT FREE, AND IS SOLVED AS A CHAIN ------------
-//
-// Reported by eye, twice: the winding idlers interlocked tooth-on-tooth, and
-// then so did the setting wheel. The cause was in plain sight — every wheel in
-// the dogleg got `rotation.z = Math.PI / teeth`, half of its OWN angular
-// pitch, with no reference to the line of centres to its neighbour. Half a
-// pitch from a wheel's local zero says nothing about where its teeth fall
-// relative to the wheel it meshes; they are anti-phase only by luck.
-//
-// A gear's phase is NOT a free parameter, and that is why pairs cannot be
-// fixed independently: i1 meshes both the setting wheel and i2, so it cannot
-// carry two chosen phases. The train is solved as a CHAIN from one datum —
-// setting wheel → i1 → i2 — each wheel's phase determined by its mesh with the
-// one before, which is what a real train does when you drop the wheels in.
-//
-// MEASURED, NOT ASSUMED. The setting wheel is a `dialFace` child and the
-// idlers are `movement` children — different frames — and dialFace is
-// Y-FLIPPED, which MIRRORS the gear and reverses the direction its tooth
-// pattern advances. Reasoning about that sign by hand is how this gets a fix
-// that looks derived and is still half a pitch out. So instead every wheel's
-// tooth direction is read from its own WORLD MATRIX after it is built, and the
-// sign of its response to `rotation.z` is measured by bumping it. Mirroring,
-// frame and flip all come out in the wash.
-//
-// The battery cannot see any of this and never could: two gears meshing out of
-// phase sweep exactly the same volumes as two meshing correctly. This is the
-// fourth kinematic lie caught by eye, which is the argument for the asserts
-// below rather than for trusting a clean run.
-const _frac = (x) => x - Math.floor(x);
-const _gearOrig = new THREE.Vector3(), _gearV = new THREE.Vector3();
-const _gearTx = new Float64Array(3), _gearTy = new Float64Array(3), _gearTa = new Float64Array(3);
-// A tooth-centre azimuth, MEASURED FROM THE VERTICES. Reading `local +x` and
-// trusting gearOutlineShape's convention is not good enough here: the winding
-// train's climb wheel comes from makePinion, not makeGear, and nothing
-// guarantees the two put a tooth at the same local angle. Vertices cannot lie
-// about where the teeth are.
-//
-// Tip vertices are folded into ONE pitch (multiply the angle by N) and
-// circular-averaged, which is the honest way to average angles modulo a pitch
-// — a plain mean would be wrecked by the branch cut. Traversing the whole
-// subtree also fixes the thing that produced two confidently wrong
-// measurements earlier: makeGear returns a GROUP, and more than one extruded
-// mesh can sit under a single wheel.
-// THE GAP GAUGE — the fourth instrument, and the one whose self-tests pass.
-// Its three predecessors each failed differently and each is worth a line:
-// `local +x` assumed the convention on both sides and could never fail; the
-// tip-vertex circular average selected a beveled ring and returned a
-// zero-length resultant (noise); the Fourier spectrum was sound but its
-// sweep capped at N=48 while these wheels have 51 teeth — a check that
-// searches for less than the thing it verifies, in its purest form yet.
-//
-// This one asserts nothing it can measure instead. Build the silhouette
-// R(θ) by walking every triangle edge across the azimuth bins it spans (raw
-// vertices leave two thirds of the bins empty and alias), threshold at the
-// midpoint, and take the contiguous LOW runs: those are the tooth GAPS.
-// Their count must equal the declared tooth count and their folded circular
-// mean must have near-unit resultant — both checked by the caller, so a bad
-// reading is refused rather than propagated. Verified against the winding
-// idlers: 51/51 gaps found, confidence 0.9997, and the measured 35.8%-of-a-
-// pitch misphase matches what the eye reported in the screenshots.
-// Returns the TOOTH-centre phase (gap phase + half a pitch), same contract
-// as the reader it replaces.
-let _mtpMemo = null;   // solveGearChain's per-solve readings — see there
-const _mtpSnap = (obj, N) => {
-  obj.updateWorldMatrix(true, true);   // what the walk does first; idempotent
-  const a = [N, ...obj.matrixWorld.elements];
-  obj.traverse((m) => {
-    if (!m.isMesh || !m.geometry?.attributes?.position) return;
-    const g = m.geometry;
-    a.push(g.id, g.attributes.position.version, g.attributes.position.count, g.index ? g.index.version : -1, g.index ? g.index.count : -1, ...m.matrixWorld.elements);
-  });
-  return a;
-};
-const _sameSnap = (x, y) => { if (x.length !== y.length) return false; for (let i = 0; i < x.length; i++) if (!Object.is(x[i], y[i])) return false; return true; };
-const measuredToothPhase = (obj, N) => {
-  if (!_mtpMemo) return measuredToothPhaseWalk(obj, N);
-  const snap = _mtpSnap(obj, N);
-  let rows = _mtpMemo.get(obj);
-  if (!rows) _mtpMemo.set(obj, rows = []);
-  for (const r of rows) if (_sameSnap(r.snap, snap)) return { ...r.res };
-  const res = measuredToothPhaseWalk(obj, N);
-  rows.push({ snap, res });
-  return { ...res };
-};
-const measuredToothPhaseWalk = (obj, N) => {
-  // (true, TRUE): parents AND children. This runs at BUILD time, before any
-  // render — with (true, false) the handle's own matrix was fresh but every
-  // child mesh still carried the identity it was born with, so the gauge
-  // transformed vertices through nothing and read an off-centre blob. The
-  // one wheel that passed was the setting wheel, which sits on the centre
-  // axis, where identity happens to be nearly correct in xy — a stale check
-  // passing for a reason that has nothing to do with being right.
-  obj.updateWorldMatrix(true, true);
-  _gearOrig.set(0, 0, 0).applyMatrix4(obj.matrixWorld);
-  const ox = _gearOrig.x, oy = _gearOrig.y;
-  const BINS = 2048, R = new Float64Array(BINS);
-  const put = (x, y) => {
-    const r = Math.hypot(x, y);
-    let th = Math.atan2(y, x); if (th < 0) th += Math.PI * 2;
-    const k = Math.min(BINS - 1, (th / (Math.PI * 2) * BINS) | 0);
-    if (r > R[k]) R[k] = r;
-  };
-  obj.traverse((m) => {
-    if (!m.isMesh || !m.geometry?.attributes?.position) return;
-    const pos = m.geometry.attributes.position;
-    const idx = m.geometry.index ? m.geometry.index.array : null;
-    const n = idx ? idx.length : pos.count;
-    // Each corner is carried and its azimuth taken ONCE per triangle, then read
-    // by both edges that share it (the same applyMatrix4 and atan2 on the same
-    // inputs the per-edge reads made), edges in the same order.
-    const mw = m.matrixWorld;
-    for (let i = 0; i + 2 < n; i += 3) {
-      for (let e = 0; e < 3; e++) {
-        _gearV.fromBufferAttribute(pos, idx ? idx[i + e] : i + e).applyMatrix4(mw);
-        _gearTx[e] = _gearV.x - ox; _gearTy[e] = _gearV.y - oy; _gearTa[e] = Math.atan2(_gearTy[e], _gearTx[e]);
-      }
-      for (let p = 0; p < 3; p++) {
-        const q = p === 2 ? 0 : p + 1;
-        const ax = _gearTx[p], ay = _gearTy[p], bx = _gearTx[q], by = _gearTy[q];
-        let d = _gearTa[q] - _gearTa[p];
-        while (d > Math.PI) d -= Math.PI * 2;
-        while (d < -Math.PI) d += Math.PI * 2;
-        // OUTLINE EDGES ONLY. The extrude's face triangulation connects tooth
-        // tip to tooth tip with chords spanning a full pitch, and those chords
-        // sit just under tip radius — in a max-per-bin silhouette they MASK
-        // the gaps entirely (a crisp bevel-less gear read as one gap). True
-        // outline edges are short; anything spanning half a pitch or more of
-        // azimuth cannot be outline and is skipped.
-        if (Math.abs(d) > Math.PI / N) continue;
-        const steps = Math.max(1, Math.ceil(Math.abs(d) / (Math.PI * 2 / BINS)) + 1);
-        for (let t = 0; t <= steps; t++) put(ax + (bx - ax) * t / steps, ay + (by - ay) * t / steps);
-      }
-    }
-  });
-  // PERCENTILE THRESHOLD, not min-to-max (TODO 48's instrument finding,
-  // ported from tools/probe-reserve-mesh.mjs): the midpoint between the
-  // smallest and largest populated bin is fine for a 51-tooth idler and
-  // wrong for an 8-leaf pinion — a handful of bins there see only bore
-  // geometry, the floor collapses from the root radius to the bore, the
-  // threshold lands INSIDE the root land, and the gauge returned 56 gaps
-  // for 8 teeth at 0.94 confidence: a bad reading wearing a credible
-  // confidence, the one failure mode the four-gauge history was supposed
-  // to have retired (and the conf > 0.9 half of the credibility test
-  // would have passed it — only the gap count caught it). The 10th/90th
-  // percentiles of the populated bins put the threshold back on the
-  // pitch circle for every wheel measured.
-  const pop = [];
-  for (const r of R) if (r > 0) pop.push(r);
-  pop.sort((a, b) => a - b);
-  if (pop.length < BINS / 4) return { phase: 0, gaps: -1, conf: 0, depth: 0 };
-  const pct = (q) => pop[Math.min(pop.length - 1, Math.floor(q * pop.length))];
-  const lo = pct(0.10), hi = pct(0.90);
-  const mid = (lo + hi) / 2;
-  for (let k = 0; k < BINS; k++) if (R[k] === 0) R[k] = lo;   // unsampled bin: treat as valley
-  const centres = [];
-  for (let k = 0; k < BINS; k++) {
-    const prev = R[(k + BINS - 1) % BINS] < mid;
-    if (R[k] < mid && !prev) {
-      let len = 0, j = k;
-      while (R[j % BINS] < mid && len < BINS) { j++; len++; }
-      centres.push((k + len / 2) / BINS * Math.PI * 2);
-    }
-  }
-  let sx = 0, sy = 0;
-  for (const g of centres) { sx += Math.cos(g * N); sy += Math.sin(g * N); }
-  return {
-    phase: Math.atan2(sy, sx) / N + Math.PI / N,   // gap phase + half a pitch = tooth phase
-    gaps: centres.length,
-    conf: centres.length ? Math.hypot(sx, sy) / centres.length : 0,
-    depth: (hi - lo) / ((hi + lo) / 2 || 1),
-  };
-};
-const worldCentreOf = (obj) => {
-  obj.updateWorldMatrix(true, false);
-  _gearOrig.set(0, 0, 0).applyMatrix4(obj.matrixWorld);
-  return { x: _gearOrig.x, y: _gearOrig.y };
-};
 // Where Q's tooth centre must point so that a GAP of Q faces a TOOTH of P
 // across the line of centres.
 const meshPhaseTarget = (pC, pPhase, pN, qC, qN) => {
   const psi = Math.atan2(qC.y - pC.y, qC.x - pC.x);
   const tP = _frac(((psi - pPhase) * pN) / (Math.PI * 2));
   return psi + Math.PI - (tP + 0.5) * ((Math.PI * 2) / qN);
-};
-// Turn Q until its measured world tooth phase hits the target, to the nearest
-// equivalent tooth. The response of `rotation.z` is MEASURED, not assumed:
-// under a mirroring parent a positive local turn moves the teeth the other
-// way, and that sign is exactly what the dialFace flip changes.
-// `gauge` (§153) — the object whose silhouette is READ, defaulting to the one
-// being turned: a rigid pair whose smaller member no longer owns the outline
-// (the 300° re-gear made the reserve p1 outgrow its w1) aligns by its named
-// wheel's own mesh while the whole pair turns as the knob.
-const alignGear = (mesh, target, N, gauge = mesh) => {
-  const pitch = (Math.PI * 2) / N;
-  const before = mesh.rotation.z;
-  const cur = measuredToothPhase(gauge, N).phase;
-  // The bump must clear the gauge's own resolution: the silhouette is binned
-  // at 2π/2048 ≈ 3.1e-3 rad, so the 1e-3 bump this used before was UNDER the
-  // quantisation and the measured slope was noise. 0.02 rad is a sixth of the
-  // finest pitch here and forty times the bin width.
-  mesh.rotation.z = before + 0.02;
-  let d = measuredToothPhase(gauge, N).phase - cur;
-  mesh.rotation.z = before;
-  while (d > Math.PI / N) d -= (Math.PI * 2) / N;   // phase lives modulo a pitch
-  while (d < -Math.PI / N) d += (Math.PI * 2) / N;
-  const slope = Math.sign(d) || 1;
-  let need = target - cur;
-  need -= Math.round(need / pitch) * pitch;      // nearest tooth, not a whole turn
-  mesh.rotation.z = before + need / slope;
 };
 const alarmSetI1Spin = new THREE.Group();
 const alarmSetI2Spin = new THREE.Group();
@@ -24671,96 +25216,6 @@ declareTransfer('alarm setting: lane dogleg (setting wheel → arbor pinion)', {
   quantities: { armIn_u: 1, armOut_u: 1, ratio: 1 },
   why: 'idlers drop out of the ratio whatever their counts (ALARM_SET_RATIO is endpoint teeth alone); the corner spends position space across the probed-empty lane, nothing else',
 });
-// THE CHAIN SOLVE, reusable. Each wheel after the datum is turned until its
-// measured tooth phase puts a GAP against the previous wheel's TOOTH across
-// their line of centres. Two tripwires per mesh: anti-phase, and centre
-// distance against the pitch-circle sum — a perfectly phased pair that does
-// not reach each other is not a mesh either, and that second check is
-// independent of the phase solve.
-const solveGearChainBody = (label, chain, module, inputs = []) => {
-  // GAUGE VALIDATION FIRST. A reading whose gap count disagrees with the
-  // declared tooth count, or whose folded resultant is weak, is refused —
-  // solving on it would drag every wheel downstream of the bad reading to a
-  // wrong place with full confidence. Refusal is loud; boot is meant to be
-  // silent, so a skipped chain is itself a finding.
-  for (const g of chain) {
-    if (!g.obj) { console.warn(`TODO 15: ${label} — no handle for the ${g.name}; chain solve skipped`); return; }
-    g.gauge = g.gauge || g.obj;   // §153 — see alignGear: read this, turn obj
-    g.c = worldCentreOf(g.obj);
-    const m = measuredToothPhase(g.gauge, g.teeth);
-    if (m.gaps !== g.teeth || m.conf < 0.9) {
-      console.warn(`TODO 15: ${label} the ${g.name} gauge is not credible `
-        + `(found ${m.gaps} gaps for ${g.teeth} teeth, confidence ${m.conf.toFixed(3)}) — chain solve skipped`);
-      return;
-    }
-  }
-  // THE INVARIANT IS THE SUM, NOT THE DIFFERENCE — and getting this wrong is
-  // why the wheels looked meshed at rest and drifted apart as they turned.
-  //
-  // Let uP = where P's tooth pattern sits on the centre line, as a fraction of
-  // its pitch, and uQ the same for Q measured from the opposite direction.
-  // Meshing gears COUNTER-rotate: turn P by +θ and Q goes −θ·(NP/NQ). Under
-  // that, uP DECREASES by θ/pP while uQ INCREASES by the same amount. So
-  // `uQ − uP` changes continuously as the train runs — it is not a property of
-  // the mesh at all — while `uP + uQ` is invariant. The condition is
-  //
-  //     frac(uP + uQ) = 0.5
-  //
-  // (when P puts a tooth on the line, uP = 0, Q must put a GAP there, uQ = 0.5).
-  //
-  // The previous version solved for uQ = uP + 0.5, which satisfies the
-  // DIFFERENCE. That is true at exactly one rotational instant and false
-  // everywhere else, which is precisely the reported symptom: correct in the
-  // built pose, visibly tooth-on-tooth in the running sim. Verified by the
-  // only test that can tell them apart — measuring at the build pose AND after
-  // runtime rotation, and requiring both to agree.
-  for (let i = 1; i < chain.length; i++) {
-    const P = chain[i - 1], Q = chain[i];
-    const psi = Math.atan2(Q.c.y - P.c.y, Q.c.x - P.c.x);
-    const uP = _frac(((psi - measuredToothPhase(P.gauge, P.teeth).phase) * P.teeth) / (Math.PI * 2));
-    const uQ = _frac(0.5 - uP);
-    alignGear(Q.obj, psi + Math.PI - uQ * ((Math.PI * 2) / Q.teeth), Q.teeth, Q.gauge);
-  }
-  // The residual tolerance is set by the INSTRUMENT, not by hope: gap centres
-  // are quantised to 2π/2048, averaged over N gaps — comfortably inside 2% of
-  // a pitch. The old 0.1% bar was tighter than the gauge can even read.
-  for (let i = 1; i < chain.length; i++) {
-    const P = chain[i - 1], Q = chain[i];
-    const psi = Math.atan2(Q.c.y - P.c.y, Q.c.x - P.c.x);
-    const a = _frac(((psi - measuredToothPhase(P.gauge, P.teeth).phase) * P.teeth) / (Math.PI * 2));
-    const b = _frac(((psi + Math.PI - measuredToothPhase(Q.gauge, Q.teeth).phase) * Q.teeth) / (Math.PI * 2));
-    const off = Math.min(_frac(a + b - 0.5), 1 - _frac(a + b - 0.5));   // SUM: see above
-    if (off > 0.02)
-      console.warn(`TODO 15: ${label} ${P.name} ⇄ ${Q.name} sit ${(off * 100).toFixed(1)}% of a pitch `
-        + `off anti-phase — tooth meets tooth at the centre line, not tooth into gap`);
-    const d = Math.hypot(Q.c.x - P.c.x, Q.c.y - P.c.y);
-    const want = module * (P.teeth + Q.teeth) / 2;
-    if (Math.abs(d - want) > 0.05)
-      console.warn(`TODO 15: ${label} ${P.name} ⇄ ${Q.name} centre distance ${d.toFixed(3)} is not the `
-        + `pitch-circle sum ${want.toFixed(3)} — the phase solve is meaningless if they do not mesh`);
-    // §194 — this pair is a declared mesh by construction: the solve just
-    // phased it, so the registry cannot describe a pair the solve does not.
-    const an = rotorNameFor(P.obj, P.teeth, P.gauge), bn = rotorNameFor(Q.obj, Q.teeth, Q.gauge);
-    if (!an || !bn) console.warn(`§194: ${label} ${P.name} ⇄ ${Q.name} — no NAMED rotor for ${!an ? P.name : Q.name}, so no row`);
-    else declareMesh(`${label.replace(/:$/, '')} ${P.name} ⇄ ${Q.name}`, { a: an, b: bn, inputs, chain: label.split(/[\s:]/)[0] });
-  }
-};
-// A chain solve reads each gauge again at poses it has already read: the datum
-// at its build pose (validated, then read as the first mesh's P, then
-// verified), each turned wheel at its pre-turn pose (validated, then read by
-// alignGear) and at its final pose (read as the next mesh's P, then verified)
-// — about half of its silhouette walks repeat one exactly. So for the solve's
-// duration a reading is kept per gauge against a snapshot of everything it
-// reads: every mesh's geometry (id and attribute versions) and world matrix
-// under the gauge, compared bit for bit (Object.is, so −0 ≠ 0). Nothing in the
-// solve re-cuts a wheel, and a turned wheel's matrices differ, so a hit is a
-// reading of exactly the metal the walk would read. The memo dies with the
-// solve; outside it every call walks. (`_mtpMemo` is declared beside the gauge.)
-const solveGearChain = (label, chain, module, inputs = []) => {
-  const outer = _mtpMemo;
-  _mtpMemo = new Map();
-  try { return solveGearChainBody(label, chain, module, inputs); } finally { _mtpMemo = outer; }
-};
 await (async () => {
   const gearOf = (spin) => spin.children.find((o) => o.isGroup || o.isMesh);
   await breathe(176);
@@ -24786,267 +25241,6 @@ await (async () => {
   //    by stage one) and w2 aligns to it on its own rotation.
   // The arbors' tick() rotations are proper mesh counter-rotations, so the
   // SUM invariant these solves establish rides every pose.
-  await breathe(177);
-  solveGearChain('reserve stage one:', [
-    { obj: reservePinion0, teeth: rsvTeethP0, name: 'p0' },
-    { obj: rsvPair1, gauge: rsvWheel1, teeth: rsvTeethW1, name: 'w1 (+p1 held)' },
-  ], rsvModule0, ['wind', 'train']);
-  await breathe(178);
-  solveGearChain('reserve stage two:', [
-    { obj: reservePinion1, teeth: rsvTeethP1, name: 'p1' },
-    ...rsvIdlers.map((q, k) => ({ obj: q.wheel, teeth: RSV_IDLER_T, name: `idler ${k + 1}` })),   // §308 L4 option B (none off the sector path)
-    { obj: rsvWheel2, teeth: rsvTeethW2, name: 'w2' },
-  ], rsvModule1, ['wind', 'train']);
-  // TODO 124 — THE MOTION WORKS, the movement's 12:1, and the last chain with
-  // no phase solve of its own. It read a CONSTANT 50.00% of a pitch: tooth
-  // meeting tooth on the line of centres, the worst value the measure can
-  // take, at every pose. That is TODO 15's idiom one more time and it is
-  // solved the same way TODO 48 solved the reserve train — two runs with the
-  // rigid pair held, because this is four wheels and THREE links:
-  //  · stage one, MW_MODULE_1: the cannon pinion is the datum (friction-fit
-  //    on the centre arbor, no upstream mesh to answer to); `mwPair` aligns
-  //    as one knob and the minute pinion rides, GAUGED by the minute wheel —
-  //    both modules are 0.3, so the wheel's 4.5 pitch radius owns the pair's
-  //    combined silhouette against the pinion's 1.2 and the gauge has one
-  //    unambiguous owner (the §153 failure mode, avoided by arithmetic rather
-  //    than by luck);
-  //  · stage two, MW_MODULE_2: the minute pinion's phase is READ — stage one
-  //    fixed it — and the hour WHEEL aligns to it on its own rotation.
-  //
-  // Stage two turns `mwHourWheel`, never `hourWheelGroup`, and that distinction
-  // is load-bearing: the group also carries the hour HAND, the tube and the
-  // alarm release HEART, all of which are clocked to the hour the watch shows,
-  // not to this mesh. Turning the group would clock the teeth by silently
-  // re-setting the time and mis-timing the alarm. Turning the wheel inside it
-  // is what a watchmaker does — the hand is pressed onto the tube at whatever
-  // index reads 12:00, so the wheel's teeth are free.
-  //
-  // This solve is only meaningful because the sense was fixed first: the
-  // arbors' tick() rotations are proper mesh counter-rotations now, so the SUM
-  // invariant it establishes rides every pose. Run it against a co-rotating
-  // pair and it would be true at the build pose and false everywhere else,
-  // which is the exact failure the solver's own comment above describes.
-  await breathe(179);
-  solveGearChain('motion works:', [
-    { obj: cannonPinion, teeth: cannonPinionTeeth, name: 'cannon pinion' },
-    { obj: mwPair, gauge: mwMinuteWheel, teeth: MW_MINUTE_TEETH, name: 'minute wheel (+pinion held)' },
-  ], MW_MODULE_1, ['train', 'handSet']);
-  await breathe(180);
-  solveGearChain('motion works:', [
-    { obj: mwMinutePinion, teeth: MW_PINION_TEETH, name: 'minute pinion' },
-    { obj: mwHourWheel, teeth: MW_HOUR_TEETH, name: 'hour wheel' },
-  ], MW_MODULE_2, ['train', 'handSet']);
-  // TODO 62 — THE GOING TRAIN, which had no phase of any kind: not one
-  // rotation.z was ever assigned to its seven gears, so all four meshes
-  // were phased by wherever gearOutlineShape happened to put a tooth — at
-  // two DIFFERENT tipFrac conventions between makeGear and makePinion,
-  // exactly the condition the gauge's own header warns about. Solved
-  // BACKWARD from the escapement, because that is where the freedoms are:
-  // the escape wheel's phase belongs to the pallets (its own convention,
-  // never touched), so the escape PINION is the datum; each arbor's
-  // pinion+wheel is one blank (a pair group, TODO 48's structure), giving
-  // exactly one knob per mesh — fourth pair to the escape pinion, third
-  // pair to the fourth pinion, center pair to the third pinion, and the
-  // great wheel (its own knob on the fusee arbor) to the center pinion.
-  // Four runs because the train has four modules; one run per mesh keeps
-  // every centre-distance tripwire honest.
-  //
-  // TODO 116 — AND THEY MUST BE SOLVED AT THE POSE THE TRAIN RUNS IN, not
-  // at zero. The reserve solves above are entitled to ignore this and say
-  // why: their arbors' tick rotations are pure counter-rotations
-  // (`rsvArbor1 = -rsvArbor0 · ratio`), so the SUM invariant a solve
-  // establishes at ANY pose rides every other one. THE GOING ARBORS ARE NOT
-  // LIKE THAT. Each carries an ADDITIVE constant from `meshOffset` —
-  // `fourthAngle = offFourth − ratio·escapeAngle`, and so on up the chain —
-  // a second and older phasing system that phases ARBORS where these solves
-  // phase BLANKS, and neither knows about the other. A blank aligned with
-  // its arbor at 0 is turned by that constant the instant tick() runs, and
-  // `off*` is not a whole number of pitches.
-  //
-  // The tripwires below cannot see it, by construction: the error is a
-  // CONSTANT, so it is exactly zero at the one pose they read and exactly
-  // wrong at every pose the movement occupies. Measured over a full turn of
-  // the fourth arbor before this fix — 38.2% of a pitch on great ⇄ centre,
-  // 30.9% on centre ⇄ third, 8.7% on third ⇄ fourth, 36.8% on fourth ⇄
-  // escape, against 0.02–0.21% at the arbors' zero. Tooth meeting tooth,
-  // reported by eye and then measured (`tools/probe-train-mesh-phase.mjs`,
-  // which holds all four to the 2% bar below at every pose it sweeps).
-  //
-  // So enter the arbors' own tau = 0 angles, solve there, and restore. Any
-  // single RUNNING pose fixes all of them — that much of the reserve's
-  // reasoning does carry, once the constants sit inside the pose rather
-  // than being added after it. Zero is the one pose that is not one.
-  await breathe(181);
-  const goingRest = [
-    [barrelArbor, barrelMeshAngle(0)], [centerArbor, centerAt0],
-    [thirdArbor, thirdAt0], [fourthArbor, fourthAt0], [escapeArbor, escAt0],
-  ];
-  for (const [arbor, a] of goingRest) arbor.rotation.z = a;
-  await breathe(182);
-  solveGearChain('going fourth ⇄ escape:', [
-    { obj: escapePinion, teeth: TRAIN.fourth.pinion, name: 'escape pinion' },
-    { obj: fourthPair, teeth: TRAIN.fourth.teeth, name: 'fourth wheel (+pinion held)' },
-  ], TRAIN.fourth.module, ['train']);
-  await breathe(183);
-  solveGearChain('going third ⇄ fourth:', [
-    { obj: fourthPinion, teeth: TRAIN.third.pinion, name: 'fourth pinion' },
-    { obj: thirdPair, teeth: TRAIN.third.teeth, name: 'third wheel (+pinion held)' },
-  ], TRAIN.third.module, ['train']);
-  await breathe(184);
-  solveGearChain('going center ⇄ third:', [
-    { obj: thirdPinion, teeth: TRAIN.center.pinion, name: 'third pinion' },
-    { obj: centerPair, teeth: TRAIN.center.teeth, name: 'center wheel (+pinion held)' },
-  ], TRAIN.center.module, ['train']);
-  await breathe(185);
-  solveGearChain('going great ⇄ center:', [
-    { obj: centerPinion, teeth: TRAIN.barrel.pinion, name: 'center pinion' },
-    { obj: greatWheel, teeth: TRAIN.barrel.teeth, name: 'great wheel' },
-  ], TRAIN.barrel.module, ['train']);
-  // TODO 219 — the maintaining spring's pin, into the ring's frame. The
-  // crossing it works in turned with the great wheel's phase just now; the ring
-  // (maintWheel) carries none, so the pin's ring-frame position is its
-  // wheel-frame one turned by that phase.
-  await breathe(186);
-  {
-    const gm = MAINT_SPRING.geom, q = MAINT_SPRING.toGw(gm.xc, gm.yPin), a = greatWheel.rotation.z;
-    MAINT_SPRING_PIN.position.x = q.x * Math.cos(a) - q.y * Math.sin(a);
-    MAINT_SPRING_PIN.position.y = q.x * Math.sin(a) + q.y * Math.cos(a);
-    if (maintWheel.rotation.z !== 0) console.warn(`TODO 219: the maintaining wheel carries a rotation ${maintWheel.rotation.z} the pin's placement assumed zero`);
-  }
-  // TODO 219 GUARD (§115's class) — THE SPRING MUST DRIVE THE TRAIN, AND ITS
-  // STOP MUST CATCH THE RELAXING PIN. The blade's side and the stop flank are
-  // chosen from MOVEMENT_SENSE (MAINT_SPRING.SENSE_REL); what that declaration
-  // cannot see is which way the train actually runs. Read here off the CUT
-  // metal in the arbor's frame, against barrelMeshAngle's own law: (1) the face
-  // load the pin puts on the blade — along the line from the pin's centre to
-  // the blade's nearest point — turns the great wheel the way the train runs;
-  // (2) relaxing, the wheel runs on ahead of the held ring, so in the wheel's
-  // frame the pin moves AGAINST the run: the stop flank must lie on that side
-  // of it. Either wrong and the spring winds the train backward, or relaxes
-  // into nothing.
-  {
-    const runS = Math.sign(barrelMeshAngle(3600) - barrelMeshAngle(0));
-    let blade = null; greatWheel.traverse((o) => { if (o.name === 'maintSpring') blade = o; });
-    const a = greatWheel.rotation.z, P = MAINT_SPRING_PIN.position;
-    const pos = blade.geometry.attributes.position;
-    let best = Infinity, C = null;
-    for (let i = 0; i < pos.count; i++) {
-      const x0 = pos.getX(i), y0 = pos.getY(i);
-      const x = x0 * Math.cos(a) - y0 * Math.sin(a), y = x0 * Math.sin(a) + y0 * Math.cos(a);
-      const d = Math.hypot(x - P.x, y - P.y);
-      if (d < best) { best = d; C = { x, y }; }
-    }
-    // the nearest VERTEX is a corner of the pin-side face; its direction from the
-    // pin is the face load's to within the face's own length, and only its SIGN
-    // about the arbor is read.
-    const dx = C.x - P.x, dy = C.y - P.y;
-    const torque = Math.sign(P.x * dy - P.y * dx);
-    const azFlank = MAINT_SPRING.azStop + a;
-    const side = Math.sign(wrapPi(Math.atan2(P.y, P.x) - azFlank));
-    if (torque !== runS || side !== runS)
-      console.warn(`TODO 219 maintaining spring: ${torque !== runS ? 'the blade drives the great wheel AGAINST the train' : ''}${torque !== runS && side !== runS ? ' and ' : ''}${side !== runS ? 'the stop flank stands on the run side of the pin, where the relaxing pin never reaches it' : ''} (MOVEMENT_SENSE ${MOVEMENT_SENSE}, train ${runS}, SENSE_REL ${MAINT_SPRING.SENSE_REL})`);
-    // TODO 224 — and the hold's recoil must be the way the blade's REACTION
-    // drives the ring: the same face load, read on the ring, turns it against
-    // the torque it puts on the wheel. MAINT_HOLD.REC declares it; this reads it
-    // off the cut blade and pin.
-    if (MAINT_HOLD.REC !== -torque)
-      console.warn(`TODO 224 maintaining hold: the recoil turns the ring ${MAINT_HOLD.REC > 0 ? '+' : '−'} but the blade's reaction on the pin drives it ${-torque > 0 ? '+' : '−'} — the posed hold would back the ring the way nothing pushes it`);
-  }
-  // TODO 132 — THE KEYLESS WORKS, the movement's last two unphased spur
-  // meshes. Both carried TODO 15's half-pitch idiom and nothing else, and both
-  // measured a CONSTANT error over the pose net: 22.222% of a pitch on the
-  // setting mesh, 34.345% on the winding one — tooth riding tooth, stable at
-  // every pose because a static build-phase error reads the same everywhere.
-  // §194 declared the pairs anyway (the registry's job is to make a mesh
-  // visible, not to flatter it) and waived them, because the underived `+ 0.1`
-  // in their centre distances exceeded this solver's own 0.05 tripwire: it
-  // would have refused the chain aloud, and rightly, since phasing a pair that
-  // does not reach is meaningless. TODO 125 deleted that constant and both
-  // pairs stand at module·(P+Q)/2 exactly, so the solve can finally run.
-  //
-  // THE KNOB IS A BASE CONSTANT, NOT A ROTATION, which is the one thing this
-  // chain does differently from every solve above. tick() writes all of these
-  // rotors each frame as `base + spin`, so a phase left on the object is
-  // erased by the first frame; each solve reads its result back into the base
-  // the tick adds to. The objects are then put back where they stood, for the
-  // same reason the going arbors are below.
-  //
-  // WHICH POSE, and why it is not zero. The going arbors carry ADDITIVE
-  // constants from meshOffset, so for them a solve at zero is exactly wrong at
-  // every pose the movement occupies (TODO 116). These two pairs are pure
-  // counter-rotations at their tooth ratios — `minuteArborSpin` is
-  // −settingWheelSpin·(setting/minute), and the crown wheel is
-  // −(spur/crown)·spurWorldDelta off the spur's own world delta — so
-  // frac(uP + uQ) established at ANY REACHABLE pose rides every other one,
-  // which is the reserve train's entitlement. Reachable is the load-bearing
-  // word: the spur rides barrelArbor, and its world angle is
-  // `windSpurBase + barrelMeshAngle(0)` at full wind (windLocalAt cancels the
-  // tau term), so it needs the rest pose entered above. Solve with that arbor
-  // anywhere else and the transfer wheel is indexed to a spur position the
-  // watch never puts it in.
-  await breathe(187);
-  {
-    const keylessRest = [settingWheel, minuteArbor, windSpur, crownWheel, transferWheel,
-      ...(windIdlerWheel ? [windIdlerWheel] : [])].map((o) => [o, o.rotation.z]);
-    settingWheel.rotation.z = settingWheelBase;                 // settingWheelSpin = 0 at rest
-    settingBevel.rotation.z = settingBevelBase;                 // …and its bevel half, same arbor
-    minuteArbor.rotation.z = minuteWheelBase;                   // the knob, solved just below
-    windSpur.rotation.z = windSpurBase;                         // windBack = 0 at full wind
-    crownWheel.rotation.z = crownWheelBase;                     // crownWheelSpin = 0 with it
-    transferWheel.rotation.z = transferWheelClock;               // …and the arbor's world angle is 0 there (TODO 136: the wheel's own base is LOCAL to its flipped mount)
-    if (windIdlerWheel) windIdlerWheel.rotation.z = windIdlerClock;
-    // The SETTING mesh. The setting wheel is the datum: its own teeth answer
-    // to the sliding clutch, whose axis lies along the stem — a crossed-axis
-    // mesh no parallel-axis solve can phase — so the one freedom here is the
-    // minute arbor (TODO 150 item 1: no pinion rides with it any more, the
-    // arbor turns the fold directly).
-    await breathe(188);
-    solveGearChain('keyless:', [
-      { obj: settingWheel, teeth: settingWheelTeeth, name: 'setting wheel' },
-      { obj: minuteArbor, gauge: minuteWheel, teeth: minuteWheelTeeth, name: 'minute wheel' },
-    ], KW_MODULE, ['train', 'handSet']);
-    await breathe(189);
-    minuteWheelBase = minuteArbor.rotation.z;
-    // The WINDING mesh, spur to transfer wheel — through the idler when the
-    // stem's azimuth parks one (§33 step 2), which is two links and two knobs
-    // rather than one, and the chain follows the routing instead of asserting
-    // a topology the layout may not have built.
-    await breathe(190);
-    solveGearChain('keyless:', [
-      { obj: windSpur, teeth: WIND_SPUR_TEETH, name: 'wind spur' },
-      ...(windIdlerWheel ? [{ obj: windIdlerWheel, teeth: windIdler.teeth, name: 'wind idler' }] : []),
-      { obj: transferWheel, teeth: crownWheelTeeth, name: 'transfer wheel' },
-    ], KW_MODULE, ['wind', 'reserve']);
-    await breathe(191);
-    if (windIdlerWheel) windIdlerClock = windIdlerWheel.rotation.z;   // the arbor's world angle is 0 at this pose
-    transferWheelClock = transferWheel.rotation.z;
-    // TODO 151's (d) landing — THE SETTING FOLD's own mesh, cap ⇄ minute
-    // wheel, solved the same way every other declared mesh in this movement
-    // is: `mwArbor` posed to tick's own rest value at tau 0, handSetOffset 0
-    // (minuteA there is DIAL_EPOCH_ANGLE, so mwMinuteA is DIAL_EPOCH_ANGLE ×
-    // MW_RATIO_1 and mwArbor carries the NEGATED movement-frame angle — TODO
-    // 124/115's rule, applied here rather than re-derived), `settingCap` at
-    // its own seed. `mwPair` is the chain's fixed reference (already solved
-    // against cannonPinion above) — the one freedom is the cap.
-    {
-      const mwArborZ0 = mwArbor.rotation.z, settingCapZ0 = settingCap.rotation.z;
-      mwArbor.rotation.z = -MW_MINUTE_A_REST;
-      settingCap.rotation.z = SETTING_CAP_PHASE;
-      await breathe(192);
-      solveGearChain('setting fold:', [
-        { obj: mwPair, gauge: mwMinuteWheel, teeth: MW_MINUTE_TEETH, name: 'minute wheel' },
-        { obj: settingCap, teeth: SETTING_CAP_TEETH, name: 'setting cap' },
-      ], MW_MODULE_1, ['train', 'handSet']);
-      await breathe(193);
-      SETTING_CAP_PHASE = settingCap.rotation.z;
-      mwArbor.rotation.z = mwArborZ0;
-      settingCap.rotation.z = settingCapZ0;
-    }
-    for (const [o, z] of keylessRest) o.rotation.z = z;
-  }
-  // tick() owns these every frame; put them back so nothing built after this
-  // block reads a world matrix off a pose that only existed for the solve.
-  for (const [arbor] of goingRest) arbor.rotation.z = 0;
 })();
 
 // --- '(§29 step 2) Alarm release disc' — the Memovox differential ----------
@@ -25155,7 +25349,7 @@ const ALARM_DETECTOR_LAWS = Object.freeze({
 // hold, not a chosen angle. It is solved where the seat is (below), the only
 // place its inputs exist, and the track and its ramps are cut there with it.
 // The tick's law and the line spec read it through ALARM_DETECTOR_LAWS.
-let ALARM_NOTCH_RAMP = NaN;   // rad — the EXIT ramp's angular run, from the floor's edge; solved by the seat's build
+ALARM_NOTCH_RAMP = NaN;   // rad — the EXIT ramp's angular run, from the floor's edge; solved by the seat's build
 // TODO 261 — AND THE ENTRY RAMP IS NOT THE EXIT'S. The pin leaves the notch
 // CLIMBING (the hour train pushes it up against the bias blade: the load above)
 // but enters it FALLING, and a falling pin is pushed down the flank by the blade
@@ -25169,7 +25363,7 @@ let ALARM_NOTCH_RAMP = NaN;   // rad — the EXIT ramp's angular run, from the f
 // the angle between the two is the entry's run, which is the spread a real
 // part's friction and lash would smear the trip over. Solved with the exit, in
 // the seat's build, from the same inputs.
-let ALARM_NOTCH_RAMP_IN = NaN;   // rad — the ENTRY ramp's angular run, from the floor's edge
+ALARM_NOTCH_RAMP_IN = NaN;   // rad — the ENTRY ramp's angular run, from the floor's edge
 // The ramp's top is a helicoid sampled in this many angular steps. Each step's
 // quad is split into two triangles, so the metal sits under the true surface by
 // at most the sag of a chord on the pin's own radius (the mid-radius node row,
@@ -25637,7 +25831,7 @@ const _armMidZ = (ALARM_FEELER_TOP + (ALARM_FEELER_TOP - ALARM_FEELER_T)) / 2; /
 // blade's azimuth is solved against the −y lug, so the lug and that solve read
 // one number. Inherited literals — §29 step 3's bracket, unchanged.
 // (ALARM_FEELER_LUG_L 0.22 / _W 0.18 / _Y 0.25 — hoisted to the satellite's station by §278 landing 5: the hour's idler is solved against the bracket.)
-let alarmFeelerSpringBlade = null, alarmFeelerBearPoint = null, alarmFeelerSprAnchorL = null;
+alarmFeelerSpringBlade = null; alarmFeelerBearPoint = null; let alarmFeelerSprAnchorL = null;
 const _feelerBearW = new THREE.Vector3();   // §48/TODO 13 scratch
 {
   // Bracket: two lugs from the BASE PLATE's dial-side face to just past the
@@ -26423,24 +26617,6 @@ const ALARM_HAND_SPEC = { length: HOUR_HAND_LEN - 1.2, kind: 'hour', namePrefix:
 const ALARM_HAND_FINISH = (h) => h.traverse((o) => { if (o.isMesh) o.material = MATS.steel; });
 const alarmHand = G.makeHand(ALARM_HAND_SPEC);
 ALARM_HAND_FINISH(alarmHand);
-// §291 — the contrast remedy's hand half (makeDial's contrast block has the
-// rule). Only blued hands take part; the alarm hand is steel already. The
-// default remedy turns all four to the case's metal. Panda turns only the
-// sub-dial pair, whose wells it paints black. It runs again after a recut
-// (new meshes come back blued) and after a live face recolour, so the hands
-// always match the dial's current answer.
-function applyHandContrast() {
-  const c = dial.userData.contrast ? dial.userData.contrast() : { active: false };
-  const swap = (hand, on) => hand.traverse((o) => {
-    if (o.isMesh && (o.material === MATS.bluedHand || o.material === MATS.steelHand))
-      o.material = on ? MATS.steelHand : MATS.bluedHand;
-  });
-  const mainOn = c.active && c.style === 'hands';
-  const subOn = c.active && (c.style === 'hands' || c.style === 'panda');
-  swap(hourHand, mainOn); swap(minuteHand, mainOn);
-  swap(smallSecondsHand, subOn); swap(reserveHand, subOn);
-}
-applyHandContrast();
 // §188 — the 0.5 z-scale is GONE: it existed to fake a rattrapante leaf out
 // of a section five times real stock, and at HAND_STOCK_MM the leaf IS the
 // section. Full scale also retires TODO 113's open question (a morph frame
@@ -28037,7 +28213,7 @@ dialFace.add(alarmSilenceUnit);
 registerLabel('Alarm silence rocker', alarmSilenceUnit);
 registerExplode(alarmSilenceUnit, 0, 3, 1);
 const alarmSilRocker = new THREE.Group();
-let alarmSilBladeMesh = null;
+alarmSilBladeMesh = null;
 let alarmSilPivotFrac = 0; // pivot's fraction along the chord from the finger end (read by tick)
 {
   // ends in dial-local xy (world → dial-local mirror, the _uF convention)
@@ -28440,21 +28616,6 @@ const STRIKE_REF = (() => {
     camBaseR: camR(-ALARM_STRIKE_AMP) - CLEAR_MARGIN, camPickupR: camR(0), camTipR: camR(ALARM_DRAW_RAD),
   };
 })();
-// THE ANNULUS, as walls. Inner: the three-quarter plate's rim plus the one
-// margin (the plate's extrude bevel swells INWARD from plateR, measured —
-// the survey that sited this read the plate's reach at plateR exactly).
-// Outer: the case middle's back bore (§186's R_BORE_BACK — the wall the base
-// plate's rim locates against) less the margin — AS CUT, since §262: the
-// band is a sector lathe of G.CASE_LATHE_SEG facets per turn, each lying
-// inside the authored circle by up to R·(1 − cos(π/96)) = 0.027 u, and the
-// gong block's own vertices reach its full radius. Held to the circle, the
-// block at C7's foot azimuth measured 0.1446 from a facet — under the one
-// margin by exactly the sag at that azimuth — while the 55.8° foot had
-// happened to face a facet's end. The wall is the inscribed circle, which is
-// the facets' minimum over every azimuth, so the margin holds wherever the
-// foot lands. Ceiling: see GONG_BAND_TOP. Floor: measured below, once the
-// arc's azimuths are known.
-const R_ANNULUS_IN = plateR + CLEAR_MARGIN;
 const R_BORE_BACK_CUT = R_BORE_BACK * Math.cos(Math.PI / G.CASE_LATHE_SEG);   // the facets' inscribed circle
 const R_ANNULUS_OUT = R_BORE_BACK_CUT - CLEAR_MARGIN;
 // §186 — the base plate's mounting rim, measured off the built plate: the
@@ -28462,90 +28623,6 @@ const R_ANNULUS_OUT = R_BORE_BACK_CUT - CLEAR_MARGIN;
 // what a clamp head seats on. Hoisted here from the case block because the
 // strike group needs the rim's back face before the case exists.
 await breathe(199);
-const PLATE_RIM = (() => {
-  const rSeat = plateR - 1 / UNIT_MM;
-  const v = new THREE.Vector3();
-  const bevelSize = plateR * G.PLATE_BEVEL_F;
-  let front = Infinity, back = -Infinity, reach = 0;
-  // §186 — the notch FLOORS, measured per notch: the widest metal on each
-  // stem's own line, which is what that crown's tube must stop short of.
-  // Wall vertices are excluded by their perpendicular offset (the finished
-  // wall stands at halfW − bevelSize; anything inboard of that by a hair is
-  // floor), so the number is the floor's swell and not the rim's.
-  const floors = CASE_NOTCHES.map(() => 0);
-  // §307 landing 2 — UNDER FORM THERE IS NO RIM: the outline is the plate's
-  // edge (the builder skips the rim and its notches under an outline), so the
-  // same walk reads the FORM plate's own edge through the plate's shape law —
-  // the seat band is the metal within 1 mm of the outline (inset ≤ 1 mm, the
-  // round rSeat's plateR − 1 mm), `formOut` is how far the metal swells PAST
-  // the outline (max −inset: the extrude bevel's own swell, TODO 84's rule),
-  // and each stem's floor is the widest metal ALONG its own line inside the
-  // tube's sleeve section (no notch is cut, so the sleeve, not a notch wall,
-  // bounds the strip). The round walk is untouched.
-  let formOut = -Infinity;
-  backPlate.updateMatrixWorld(true);
-  backPlate.traverse((o) => {
-    if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
-    const p = o.geometry.attributes.position;
-    const _mw = p.count > 0 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
-    for (let i = 0; i < p.count; i++) {
-      v.fromBufferAttribute(p, i).applyMatrix4(_mw);
-      const r = Math.hypot(v.x, v.y);
-      if (r > reach) reach = r;
-      if (FORM) {
-        const ins = FORM_SHAPE.inset(v.x, v.y);
-        if (-ins > formOut) formOut = -ins;
-        if (ins <= 1 / UNIT_MM && v.z < front) front = v.z;
-        if (ins <= 1 / UNIT_MM && v.z > back) back = v.z;
-        for (let n = 0; n < CASE_NOTCHES.length; n++) {
-          const { az } = CASE_NOTCHES[n];
-          const along = v.x * Math.cos(az) + v.y * Math.sin(az);
-          const perp = Math.abs(-v.x * Math.sin(az) + v.y * Math.cos(az));
-          if (along > 0 && perp <= CASE_TUBE_AP && along > floors[n]) floors[n] = along;
-        }
-        continue;
-      }
-      if (r >= rSeat && v.z < front) front = v.z;
-      if (r >= rSeat && v.z > back) back = v.z;   // §186 — the rim's BACK face: what a clamp head seats on
-      for (let n = 0; n < CASE_NOTCHES.length; n++) {
-        const { az, halfW } = CASE_NOTCHES[n];
-        const along = v.x * Math.cos(az) + v.y * Math.sin(az);
-        const perp = Math.abs(-v.x * Math.sin(az) + v.y * Math.cos(az));
-        if (along > 0 && perp < halfW - bevelSize - 0.02 && r > floors[n]) floors[n] = r;
-      }
-    }
-  });
-  if (!(front < Infinity) || !(reach > plateR - 1e-9))
-    console.warn(`case: the plate's rim measured front ${front} / reach ${reach.toFixed(4)} against an `
-      + `authored ${plateR.toFixed(4)} — the case's seat and tube standoffs are derived from this and cannot be`);
-  // §186 — the LOCATING FIT, re-verified off the metal: the rim's measured
-  // widest reach against the back band's bore wall must land on SEAT_FIT
-  // (BASE_RIM_R subtracts the bevel swell out, so the two should agree to
-  // float noise; a tenth of the fit is the drift alarm).
-  // §307 landing 2 — under FORM the fit is the FORM case's: its bore is the
-  // plate's shape grown CASE_CLEAR (form-case.js formCaseLoops), so the fit is
-  // that grow less the metal's measured swell past the outline, held to the
-  // same SEAT_FIT and the same tenth.
-  const fit = FORM ? CASE_CLEAR - formOut : R_BORE_BACK - reach;
-  if (Math.abs(fit - G.SEAT_FIT) > G.SEAT_FIT * 0.1)
-    console.warn(`§186: the rim-to-bore fit measures ${fit.toFixed(4)} u against the SEAT_FIT `
-      + `${G.SEAT_FIT.toFixed(4)} it was derived to — ${FORM ? 'the form case\'s bore (plate + CASE_CLEAR) does not locate the form plate' : 'the rim no longer locates the movement'}`);
-  // ...and the notch floors against the standoff the tubes are cut to
-  // (tubeClearR = plateR · (1 + PLATE_BEVEL_F), the floor's own swell rule):
-  // a floor past that number is metal a crown tube runs into.
-  // §307 landing 2 — under FORM no notch is cut and the tubes are cut to the
-  // FORM case's own standoff (form-case.js tubeAt: the plate loop's exit,
-  // swelled, plus CLEAR_MARGIN), which exists only once the case is built —
-  // so the floors are carried out and held to each tube's built inboard end
-  // there (search `§307 landing 2 — THE FLOORS`), not to the round tubeClearR.
-  const tubeClearR = plateR * (1 + G.PLATE_BEVEL_F);
-  for (let n = 0; n < CASE_NOTCHES.length && !FORM; n++) {
-    if (floors[n] > tubeClearR + 1e-3)
-      console.warn(`§186: notch ${n} (az ${(CASE_NOTCHES[n].az * 180 / Math.PI).toFixed(1)}°) measures its floor `
-        + `at r ${floors[n].toFixed(4)} — past the ${tubeClearR.toFixed(4)} the crown tubes are cut to clear`);
-  }
-  return FORM ? { front, back, reach, floors, formOut } : { front, back, reach, floors };
-})();
 await breathe(200);
 // ============================================================================
 // §234 (§308 landing 5's residue) — THE ALARM PUSHER'S BAR, DERIVED BEFORE ITS
@@ -29032,12 +29109,6 @@ const GONG_BAND_TOP = (ALARM_PUSH_AXIS_Z - ALARM_PUSH_STEM_R) - CLEAR_MARGIN - 0
 // case block's own expression, which now reads these (one copy), and the
 // case block asserts that the skirt it measures is the one assumed here.
 const ALARM_SWITCH_SKIRT_ROW_Z = 8.62;   // BACK_SWEPT_REGIONS' 'Alarm switch' row (its derivation is there)
-const CASE_SKIRT_OD = R_BORE_BACK - G.SEAT_FIT;                 // §187: the skirt runs the bore at the rim's own fit
-const CASE_SKIRT_ID = CASE_SKIRT_OD - 0.8 / UNIT_MM;           // …and its wall carries the declared thread
-const CASE_BCG_T = (0.3 / UNIT_MM) * 0.8;                      // §187: the glass's I-ring wall, compressed as drawn
-const CASE_APERTURE_R = (CASE_SKIRT_ID - CASE_BCG_T) - CASE_CRYSTAL_T;   // RA, the lip's bore
-const CASE_GLASS_FLOAT_GUARD = 1e-4;                           // §261 2c (its derivation stands in CASE_DIMS)
-const BACK_ENV_NBIN = Math.ceil(CASE_R_OUT / CLEAR_MARGIN);    // §234: the back envelope's bins, no wider than the one margin
 const BACK_ENV_BIN_W = CASE_R_OUT / BACK_ENV_NBIN;
 const STRIKE_SKIRT_BAND = Math.max(ALARM_SWITCH_SKIRT_ROW_Z, PLATE_RIM.back + 0.4 / UNIT_MM);
 const STRIKE_SKIRT_ARM = (STRIKE_SKIRT_BAND + CLEAR_MARGIN) + CASE_CLAMP_ENG;
@@ -29064,7 +29135,7 @@ if (Math.abs(aesthetics.gong.wireDiaUnits - GONG_WIRE_DIA) > 5e-3)
 if (aesthetics.gong._bounds.wireDiaUnits[1] > GONG_WIRE_DIA + 5e-3)
   console.warn(`§198: the wire knob's ceiling ${aesthetics.gong._bounds.wireDiaUnits[1]} lets a live edit push the `
     + `wire past real gong stock (${GONG_WIRE_DIA.toFixed(4)} u = ${GONG_STOCK_MM[1]} mm)`);
-let GONG_WIRE_R = aesthetics.gong.wireDiaUnits / 2;
+GONG_WIRE_R = aesthetics.gong.wireDiaUnits / 2;
 // The ring rides as HIGH in its band as the skirt allows: the tail rides the
 // lever at Z_STRIKE, so every unit the ring drops is a unit of crank in the
 // hammer's staff (the §197 idiom, taller), and nothing below wants the room.
@@ -29494,7 +29565,7 @@ if (Math.abs(Math.hypot(headRest.x - hammerPiv.x, headRest.y - hammerPiv.y) - AL
 // annulus solve keeps that topology, so the wire runs CW from the free end,
 // under the pusher's stem and on round the rim.)
 const GONG_HAND = Math.sign(Math.atan2(Math.sin(GONG_A1 - HAMMER_PIV_AZ), Math.cos(GONG_A1 - HAMMER_PIV_AZ))) || 1;
-let GONG_A0 = GONG_A1 + GONG_HAND * aesthetics.gong.arcDeg * DEG2RAD;   // fixed (foot) end
+GONG_A0 = GONG_A1 + GONG_HAND * aesthetics.gong.arcDeg * DEG2RAD;   // fixed (foot) end
 // §310 landing 2 — A SEAT'S WIRE as samples, FOOT first (the arch solve's own
 // order, θ from the foot), a quarter unit apart along its analytic centreline:
 // what the mesh is swept along, what the band floor's swath is read off, and
@@ -29688,7 +29759,7 @@ if (GONG_SEATED) gongArc.userData.gongWire = Object.freeze({ strike: { x: GONG_S
 alarmGongUnit.add(gongArc);
 // The block: from the arc's fixed end down into the base plate's rim — the
 // gong's ONLY fixing (the far end rings free); its route to the plate.
-let gongFoot = GONG_SEATED ? { x: GONG_SEAT_FOOT[0], y: GONG_SEAT_FOOT[1] } : { x: Math.cos(GONG_A0) * GONG_R, y: Math.sin(GONG_A0) * GONG_R };
+gongFoot = GONG_SEATED ? { x: GONG_SEAT_FOOT[0], y: GONG_SEAT_FOOT[1] } : { x: Math.cos(GONG_A0) * GONG_R, y: Math.sin(GONG_A0) * GONG_R };
 const gongPost = new THREE.Mesh(new THREE.CylinderGeometry(GONG_POST_R_BUILT, GONG_POST_R_BUILT, GONG_POST_LEN, 16), MATS.steel);
 gongPost.name = 'alarmGongPost';
 gongPost.rotation.x = Math.PI / 2;               // §197 — IT STANDS UP (CylinderGeometry is built along +Y)
@@ -29772,7 +29843,7 @@ function gongArchModes() {
 }
 function gongModes() { return gongArchModes().map((m) => m.f); }
 await breathe(209);
-let gongF = gongModes();
+gongF = gongModes();
 
 // Emitter for the bell voice — an empty at the strike point (the gong unit's
 // own origin is the movement axis, which would mis-spatialize the sound to the
@@ -31552,7 +31623,7 @@ const ARREST_WIND_CEILING = (ARREST_STATIONS - 1) / SUB_GAIN;
 // ceiling. The equalisation gate holds the quantisation and the ceiling.
 const ALARM_SETUP_CLICKS = 80;   // integer detents of pre-tension on the §99 arbor ratchet
 const ALARM_SETUP_SWEEP = (ALARM_SETUP_CLICKS * Math.PI * 2) / ALARM_RATCHET_N; // 2.5 turns, 15.70796 rad
-let alarmSpring = null;   // the ribbon's wind morph — set below, driven in tick()
+alarmSpring = null;   // the ribbon's wind morph — set below, driven in tick()
 {
   // A going barrel: the toothed wall IS the wheel that drives the pinion and
   // the lid's cutaway shows the spring inside. The body turns ON the arbor —
@@ -32358,9 +32429,6 @@ for (const [end, M, w] of [['drawn', ALARM_HSPIRAL.Mdraw_Nm, ALARM_DRAW_RAD], ['
 // the case is the soundboard. Nothing here models that path, so every figure
 // below is the wire radiating ON ITS OWN. TODO 126 carries it.
 await breathe(223);
-// §269 — the air, and the ear's weighting, named once: GONG_ACOUSTICS (the
-// wire) and GONG_CASE_PATH (the case) radiate into the same room.
-const AIR_RHO = GL.AIR_RHO, AIR_C = GL.AIR_C;        // 20 °C, 1 atm — §320: src/gong-level.js
 const gongAWeight = GL.aWeight;                      // IEC 61672 A-weighting, dB (§320: src/gong-level.js)
 const GONG_ACOUSTICS = (() => {
   const U = OSC_U;                                     // m per unit
@@ -35492,7 +35560,7 @@ const SUB_IDLER_P_Z = SUB_PIN_B_Z;
 // floor, in z, because a band that starts lower than that has no obstacle
 // row to answer it. Read by JMP_SITE's derivation block at the end of the
 // build (grep it) rather than re-measured there.
-let ALARM_CORRIDOR_BAND_FLOOR = Infinity;
+ALARM_CORRIDOR_BAND_FLOOR = Infinity;
 
 // (TODO 184's hoist — ALARM_LOCK_D … ALARM_COL_POS, the lock lever's triangle,
 // pivot and engaged azimuth and the column wheel's station off it — stood here,
@@ -36303,8 +36371,8 @@ const alarmArrestUnit = new THREE.Group();
 movement.add(alarmArrestUnit);
 registerLabel('Alarm winding arrest', alarmArrestUnit);
 registerExplode(alarmArrestUnit, 0, 9); // rides with the back stack, like the winding train
-let arrestPinionSpin = null, arrestFingerSpin = null, arrestCrossSpin = null, arrestCrossMesh = null;
-let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
+arrestPinionSpin = null; arrestFingerSpin = null; arrestCrossSpin = null; arrestCrossMesh = null;
+subIdlerSpin = null; subPinBSpin = null; subDiff = null;
 {
   const PLATE_Z = ARREST_STACK.columnBase;   // §234: the same base the column radius was derived against
   const column = (x, y, r, top, name) => {
@@ -39805,7 +39873,7 @@ function alarmLinkReadClean(colX, colY, lockEngaged) {
 // TODO 206 — the arming spring's solved line spec, published by the link's
 // registration solve (where its inputs live) and read by the tick and the
 // pusher's force rows below it.
-let ALARM_LINK_ARMING_SPRING = null;
+ALARM_LINK_ARMING_SPRING = null;
 let ALARM_PINB_LIFT_AT_NOSE = null;   // TODO 222 — follower-B's lift, reflected to the column's nose (solved beside the arming spring)
 const alarmLinkUnit = new THREE.Group();
 movement.add(alarmLinkUnit);
@@ -42889,7 +42957,7 @@ const ALARM_PRESS_S = 0.12;
 // disguised timeout of 0.15·ln(1e6) = 2.07 s: every re-press inside two
 // seconds of the last one was swallowed with the head visibly back home.
 const ALARM_RETURN_S = ALARM_PRESS_S;
-let alarmPusherGuideMesh = null;            // §230: seated after the return collar it must clear
+alarmPusherGuideMesh = null;            // §230: seated after the return collar it must clear
 await breathe(282);
 const alarmPusherGroup = new THREE.Group(); // slides along −_pushU on press
 // §43 postscript: the pawl must be able to PUSH the wheel the way it indexes.
@@ -42922,8 +42990,8 @@ if (Math.sign(ALARM_PUSH_CHORD) !== alarmColumnWheel.userData.ratchetDrive)
 // §202 — the stem mesh and the abutment's station, exposed for the bearings
 // declaration made after the case is built (the case's bore is the third
 // station, and the case builds last).
-let alarmPusherStemMesh = null;
-let ALARM_PUSH_ABUT_S = null;
+alarmPusherStemMesh = null;
+ALARM_PUSH_ABUT_S = null;
 // TODO 87 finding 3 — THE BORE FOLLOWS THE STEM NOW. The guide was a torus of
 // ring radius 0.36 and tube 0.12, so its hole measured 0.24 against a 0.32
 // stem: a 0.08 u = 0.030 mm INTERFERENCE at every pose, in the one joint whose
@@ -43641,8 +43709,8 @@ const alarmDriverAngleAt = (T) => ALARM_DRIVER_REST_A + alarmColumnWheel.userDat
 // travel rather than being retyped: the post's radius is derived here from the
 // same constraint the probe used, and the pawl's centreline is the one mapped
 // through the swept free region at that radius.
-let alarmColDriverGroup = null, alarmColPawlGroup = null, alarmColPawlSpringBlade = null;
-let alarmPawlSeatPhi = null;
+alarmColDriverGroup = null; alarmColPawlGroup = null; alarmColPawlSpringBlade = null;
+alarmPawlSeatPhi = null;
 let ALARM_DRIVER_REST_A = 0, ALARM_PAWL_PHI_FREE = 0, ALARM_PAWL_L = 0, ALARM_DRIVER_BRANCH_CLEAR = 0;
 let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLen_u, noseArm_u, …}
 {
@@ -44403,7 +44471,7 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
 // clearance. A helix stores the same stroke in its pitch instead of in one
 // beam's curvature, which is why every real case pusher has one.
 let ALARM_RETURN_SPRING = null;   // §137/§48: the return's own arithmetic, published from where it is solved
-let alarmPusherReturnSpring = null, alarmPusherReturnFrames = null;
+alarmPusherReturnSpring = null; alarmPusherReturnFrames = null;
 {
   const U = UNIT_MM / 1000;                       // m per model unit
   // ---- WHAT THE RETURN MUST OVERCOME.
@@ -44789,6 +44857,113 @@ let alarmPusherReturnSpring = null, alarmPusherReturnFrames = null;
   if (gap > ALARM_SAW_PITCH / 2) gap -= ALARM_SAW_PITCH;
   if (Math.abs(gap) > 1e-9) console.warn(`§173 jumper phase: the tip's azimuth is ${gap.toFixed(6)} off a whole saw pitch from the seat's own phase — it would rest part-way up a flank at every stop`);
 }
+return {
+  ALARM_ARBOR_BUSH_R, ALARM_ARM_LEN, ALARM_BARREL_TURNS, ALARM_BEVEL_TEETH, ALARM_CAM_RISE_FRAC, ALARM_COL_BASE_H,
+  ALARM_COL_BASE_R, ALARM_COL_BORE_R, ALARM_COL_COLUMNS, ALARM_COL_H, ALARM_COL_INNER, ALARM_COL_POS,
+  ALARM_COL_SPIN_REL, ALARM_COL_STEP, ALARM_CORNER_SENSE, ALARM_DETECTOR_LAWS, ALARM_DISC_SIGN, ALARM_DRAW_RAD,
+  ALARM_FEELER_ARM_LEN, ALARM_FEELER_SEAT_DROP, ALARM_FEELER_TAIL, ALARM_FOLD_PHI, ALARM_FOLD_PITCHES,
+  ALARM_FOLD_Z_SUM, ALARM_GOV_ANCHOR_BOT, ALARM_GOV_ANCHOR_TOP, ALARM_GOV_RING_BOT, ALARM_GOV_RING_S,
+  ALARM_HAM_LIFT_SIGN, ALARM_HAND_FINISH, ALARM_HAND_SPEC, ALARM_HEAD_FACE_R, ALARM_HEAD_H, ALARM_HEAD_L,
+  ALARM_HEAD_R, ALARM_JUMPER_CREST_R, ALARM_JUMPER_CREST_RAY_R, ALARM_JUMPER_DETENT_NMM, ALARM_JUMPER_F_CREST_MN,
+  ALARM_JUMPER_F_SEAT_MN, ALARM_JUMPER_K, ALARM_JUMPER_L, ALARM_JUMPER_OFF, ALARM_JUMPER_PRELOAD,
+  ALARM_JUMPER_SEAT_PHI, ALARM_JUMPER_SEAT_R, ALARM_JUMPER_T, ALARM_JUMPER_THROW, ALARM_JUMPER_TIP_R,
+  ALARM_JUMPER_W, ALARM_LIFT_ARM, ALARM_LIFT_POST_R, ALARM_LIFT_REST_AZ, ALARM_LIFT_S, ALARM_LIFT_SIDE,
+  ALARM_LIFT_STUD_R, ALARM_LINKAGE, ALARM_LINKAGE_ARM_Z, ALARM_LINKAGE_STUD_R, ALARM_LINK_BEAK_OFF,
+  ALARM_LINK_CHORD_LEN, ALARM_LINK_CRANK_OFF, ALARM_LINK_INNER_XY, ALARM_LINK_LAWS, ALARM_LINK_ROD_XY,
+  ALARM_LINK_SHAFT_TIP_XY, ALARM_LINK_SHAFT_Z, ALARM_LOCK_ENGAGED, ALARM_LOCK_L, ALARM_LOCK_Z, ALARM_NOTCH_AHEAD,
+  ALARM_NOTCH_W, ALARM_PHASE_REST, ALARM_PRESS_S, ALARM_PUSH_AXIS_REL, ALARM_PUSH_AZ, ALARM_PUSH_GUIDE_BORE,
+  ALARM_PUSH_TRAVEL, ALARM_RATCHET_N, ALARM_READER_SENSE, ALARM_RELEASE, ALARM_RELEASE_CRANK_Z, ALARM_RELEASE_HELIX,
+  ALARM_RELEASE_LAWS, ALARM_RELEASE_STUD_L, ALARM_RELEASE_STUD_R, ALARM_RETURN_S, ALARM_RING_SECONDS,
+  ALARM_SAW_FLANKS_DEG, ALARM_SAW_PITCH, ALARM_SELR, ALARM_SEL_GUIDE_PIN_R, ALARM_SEL_GUIDE_R0, ALARM_SEL_GUIDE_T,
+  ALARM_SEL_HELIX, ALARM_SET_D12, ALARM_SET_D2P, ALARM_SET_DW1, ALARM_SET_I1_TEETH, ALARM_SET_I2_TEETH,
+  ALARM_SET_PINION_TEETH, ALARM_SET_RATIO, ALARM_SIL_GAP, ALARM_SLEEVE_DRIVE_AZ, ALARM_SLEEVE_DRIVE_R,
+  ALARM_SLEEVE_GUIDE_AZ, ALARM_SLEEVE_GUIDE_PIN_R, ALARM_SLEEVE_HELIX, ALARM_SLEEVE_HELIX_R, ALARM_SLEEVE_HELIX_RS,
+  ALARM_SLEEVE_ROLLER_R, ALARM_SLEEVE_ROLL_Z, ALARM_SLEEVE_Z_REST, ALARM_STEM_R, ALARM_STOP_TEETH,
+  ALARM_STRIKES_PER_BARREL_TURN, ALARM_STRIKES_PER_WIND, ALARM_SWITCH_SKIRT_ROW_Z, ALARM_TAIL_DROP, ALARM_TAIL_LEN,
+  ALARM_TAIL_REST_AZ, ALARM_TAIL_RISER, ALARM_TAIL_T, ALARM_TIER_DISCS, ALARM_TIER_MESHED, ALARM_TIER_VARIES,
+  ALARM_TRACK_RMID, ALARM_WIND_IDLER_TEETH, ALARM_WIND_PINION_TEETH, ALARM_WIND_RATIO, ARREST_AZ, ARREST_BLANK_AT,
+  ARREST_BOUND_BY, ARREST_CD, ARREST_CLICKS, ARREST_CROSS_AZ, ARREST_FINGER_AZ, ARREST_PINION_TEETH, ARREST_SLACK,
+  ARREST_SPEC, ARREST_WIND_CEILING, ARREST_Z, EQUALISATION, GONG_A1, GONG_ACOUSTICS, GONG_ARCH, GONG_BAND_TOP,
+  GONG_BLOW, GONG_BLOW_AZ, GONG_HAND, GONG_MODE_BL, GONG_POST_R, GONG_POST_R_BUILT, GONG_POST_TOP, GONG_R,
+  GONG_RIM_PLANT, GONG_RIM_Z, GONG_SEAT, GONG_SEATED, GONG_SEAT_PTS, HAMMER_HEAD_GAP, HAMMER_POST_R, LIFT_PIV,
+  PUSHER_HEAD_R, PUSHER_SEAT_COS, PUSHER_SEAT_SLOPE, STRIKE_SKIRT_ARM, SUB_BESIDE_R, SUB_BEVEL_MODULE,
+  SUB_BEVEL_TEETH, SUB_CAGE_Z, SUB_FINGER_TEETH, SUB_GAIN, SUB_IDLER_GEOM, SUB_IDLER_SIDE, SUB_IDLER_SOLVED,
+  SUB_LEG_TEETH, SUB_OUT_CD, SUB_OUT_MODULE, SUB_OUT_TEETH, SUB_OUT_Z, Z_ALARM_CORNER, Z_GONG, Z_STRIKE,
+  _feelerBearW, _govArmPoly, _govPalletA, _govPalletB, _govPalletPoly, _jFold, _linkageLine, _lockAzAxis, _pushBase,
+  _pushOffAxis, _pushPerp, _pushU, _pushWallN, alarmArborRotor, alarmBarrelRotor, alarmClickUnit, alarmColumnWheel,
+  alarmConeContact, alarmCornerWarnsAt, alarmCrownKnob, alarmCrownUnit, alarmDetHourSpin, alarmDetIdlerSpin,
+  alarmDetWheel, alarmDetectorHourA, alarmDetectorIdlerA, alarmDir, alarmDiscGroup, alarmDriverAngleAt,
+  alarmDriverCarry, alarmFeelerLever, alarmFeelerUnit, alarmFoldPoint, alarmFollowerArm, alarmFollowerSpiral,
+  alarmGongUnit, alarmGovAnchorAngle, alarmGovAnchorPivot, alarmGovRotor, alarmGovWheelAngle, alarmHammerAngle,
+  alarmHammerPivot, alarmHammerSpiral, alarmHammerUnit, alarmHand, alarmJumperAngle, alarmJumperArm,
+  alarmJumperSeatR, alarmLiftFromHam, alarmLiftPivot, alarmLiftUnit, alarmLifter, alarmLifterBladeGroups,
+  alarmLinkNoseTheta, alarmLinkParts, alarmLinkReadClean, alarmLinkageFor, alarmLinkageParts, alarmLinkageSweptOf,
+  alarmLockArmAt, alarmLockBeakAzAt, alarmLockLever, alarmLockRocker, alarmPhiCapAt, alarmPinArmB,
+  alarmPinBBladeAimAt, alarmPinBBladeFrame, alarmPinDropCapAt, alarmPusherGroup, alarmReaderLift, alarmReaderUnit,
+  alarmReleaseChainAt, alarmReleaseCrank, alarmReleaseLink, alarmReleasePeak, alarmRocker, alarmRotor, alarmSelRing,
+  alarmSelRingRotAt, alarmSelRingZAt, alarmSetHoldRecord, alarmSetI1Spin, alarmSetI2Spin, alarmSetWheelGroup,
+  alarmSilFingerDropAt, alarmSilRocker, alarmSleeve, alarmSleeveRingWork, alarmSpinner, alarmStem, alarmStemAngle,
+  alarmStemLen, alarmStopClearAt, alarmStrikeGapAt, alarmStrikeLineLaws, alarmStrikePt, alarmStrikeRotor,
+  alarmStrikeUNow, alarmStrikeUnit, alarmStrikeWheelAngle, alarmSwitchUnit, alarmTierWarnsAt, alarmTubeGroup,
+  alarmWindUnit, alarmWorld, arrestAngles, arrestFingerPos, arrestStud, feelerRockAt, gongAWeight, gongArc,
+  gongArchModes, gongBesselJ, gongFootClearAt, gongModes, gongPost, gongPostRFor, gongRadiationFactors,
+  gongRadiationFactorsPath, gongWireFrame, hammerPiv, headFace, headRest, poseAlarmReleaseRun, poseAlarmSelRing,
+};
+}
+const {
+  ALARM_ARBOR_BUSH_R, ALARM_ARM_LEN, ALARM_BARREL_TURNS, ALARM_BEVEL_TEETH, ALARM_CAM_RISE_FRAC, ALARM_COL_BASE_H,
+  ALARM_COL_BASE_R, ALARM_COL_BORE_R, ALARM_COL_COLUMNS, ALARM_COL_H, ALARM_COL_INNER, ALARM_COL_POS,
+  ALARM_COL_SPIN_REL, ALARM_COL_STEP, ALARM_CORNER_SENSE, ALARM_DETECTOR_LAWS, ALARM_DISC_SIGN, ALARM_DRAW_RAD,
+  ALARM_FEELER_ARM_LEN, ALARM_FEELER_SEAT_DROP, ALARM_FEELER_TAIL, ALARM_FOLD_PHI, ALARM_FOLD_PITCHES,
+  ALARM_FOLD_Z_SUM, ALARM_GOV_ANCHOR_BOT, ALARM_GOV_ANCHOR_TOP, ALARM_GOV_RING_BOT, ALARM_GOV_RING_S,
+  ALARM_HAM_LIFT_SIGN, ALARM_HAND_FINISH, ALARM_HAND_SPEC, ALARM_HEAD_FACE_R, ALARM_HEAD_H, ALARM_HEAD_L,
+  ALARM_HEAD_R, ALARM_JUMPER_CREST_R, ALARM_JUMPER_CREST_RAY_R, ALARM_JUMPER_DETENT_NMM, ALARM_JUMPER_F_CREST_MN,
+  ALARM_JUMPER_F_SEAT_MN, ALARM_JUMPER_K, ALARM_JUMPER_L, ALARM_JUMPER_OFF, ALARM_JUMPER_PRELOAD,
+  ALARM_JUMPER_SEAT_PHI, ALARM_JUMPER_SEAT_R, ALARM_JUMPER_T, ALARM_JUMPER_THROW, ALARM_JUMPER_TIP_R,
+  ALARM_JUMPER_W, ALARM_LIFT_ARM, ALARM_LIFT_POST_R, ALARM_LIFT_REST_AZ, ALARM_LIFT_S, ALARM_LIFT_SIDE,
+  ALARM_LIFT_STUD_R, ALARM_LINKAGE, ALARM_LINKAGE_ARM_Z, ALARM_LINKAGE_STUD_R, ALARM_LINK_BEAK_OFF,
+  ALARM_LINK_CHORD_LEN, ALARM_LINK_CRANK_OFF, ALARM_LINK_INNER_XY, ALARM_LINK_LAWS, ALARM_LINK_ROD_XY,
+  ALARM_LINK_SHAFT_TIP_XY, ALARM_LINK_SHAFT_Z, ALARM_LOCK_ENGAGED, ALARM_LOCK_L, ALARM_LOCK_Z, ALARM_NOTCH_AHEAD,
+  ALARM_NOTCH_W, ALARM_PHASE_REST, ALARM_PRESS_S, ALARM_PUSH_AXIS_REL, ALARM_PUSH_AZ, ALARM_PUSH_GUIDE_BORE,
+  ALARM_PUSH_TRAVEL, ALARM_RATCHET_N, ALARM_READER_SENSE, ALARM_RELEASE, ALARM_RELEASE_CRANK_Z, ALARM_RELEASE_HELIX,
+  ALARM_RELEASE_LAWS, ALARM_RELEASE_STUD_L, ALARM_RELEASE_STUD_R, ALARM_RETURN_S, ALARM_RING_SECONDS,
+  ALARM_SAW_FLANKS_DEG, ALARM_SAW_PITCH, ALARM_SELR, ALARM_SEL_GUIDE_PIN_R, ALARM_SEL_GUIDE_R0, ALARM_SEL_GUIDE_T,
+  ALARM_SEL_HELIX, ALARM_SET_D12, ALARM_SET_D2P, ALARM_SET_DW1, ALARM_SET_I1_TEETH, ALARM_SET_I2_TEETH,
+  ALARM_SET_PINION_TEETH, ALARM_SET_RATIO, ALARM_SIL_GAP, ALARM_SLEEVE_DRIVE_AZ, ALARM_SLEEVE_DRIVE_R,
+  ALARM_SLEEVE_GUIDE_AZ, ALARM_SLEEVE_GUIDE_PIN_R, ALARM_SLEEVE_HELIX, ALARM_SLEEVE_HELIX_R, ALARM_SLEEVE_HELIX_RS,
+  ALARM_SLEEVE_ROLLER_R, ALARM_SLEEVE_ROLL_Z, ALARM_SLEEVE_Z_REST, ALARM_STEM_R, ALARM_STOP_TEETH,
+  ALARM_STRIKES_PER_BARREL_TURN, ALARM_STRIKES_PER_WIND, ALARM_SWITCH_SKIRT_ROW_Z, ALARM_TAIL_DROP, ALARM_TAIL_LEN,
+  ALARM_TAIL_REST_AZ, ALARM_TAIL_RISER, ALARM_TAIL_T, ALARM_TIER_DISCS, ALARM_TIER_MESHED, ALARM_TIER_VARIES,
+  ALARM_TRACK_RMID, ALARM_WIND_IDLER_TEETH, ALARM_WIND_PINION_TEETH, ALARM_WIND_RATIO, ARREST_AZ, ARREST_BLANK_AT,
+  ARREST_BOUND_BY, ARREST_CD, ARREST_CLICKS, ARREST_CROSS_AZ, ARREST_FINGER_AZ, ARREST_PINION_TEETH, ARREST_SLACK,
+  ARREST_SPEC, ARREST_WIND_CEILING, ARREST_Z, EQUALISATION, GONG_A1, GONG_ACOUSTICS, GONG_ARCH, GONG_BAND_TOP,
+  GONG_BLOW, GONG_BLOW_AZ, GONG_HAND, GONG_MODE_BL, GONG_POST_R, GONG_POST_R_BUILT, GONG_POST_TOP, GONG_R,
+  GONG_RIM_PLANT, GONG_RIM_Z, GONG_SEAT, GONG_SEATED, GONG_SEAT_PTS, HAMMER_HEAD_GAP, HAMMER_POST_R, LIFT_PIV,
+  PUSHER_HEAD_R, PUSHER_SEAT_COS, PUSHER_SEAT_SLOPE, STRIKE_SKIRT_ARM, SUB_BESIDE_R, SUB_BEVEL_MODULE,
+  SUB_BEVEL_TEETH, SUB_CAGE_Z, SUB_FINGER_TEETH, SUB_GAIN, SUB_IDLER_GEOM, SUB_IDLER_SIDE, SUB_IDLER_SOLVED,
+  SUB_LEG_TEETH, SUB_OUT_CD, SUB_OUT_MODULE, SUB_OUT_TEETH, SUB_OUT_Z, Z_ALARM_CORNER, Z_GONG, Z_STRIKE,
+  _feelerBearW, _govArmPoly, _govPalletA, _govPalletB, _govPalletPoly, _jFold, _linkageLine, _lockAzAxis, _pushBase,
+  _pushOffAxis, _pushPerp, _pushU, _pushWallN, alarmArborRotor, alarmBarrelRotor, alarmClickUnit, alarmColumnWheel,
+  alarmConeContact, alarmCornerWarnsAt, alarmCrownKnob, alarmCrownUnit, alarmDetHourSpin, alarmDetIdlerSpin,
+  alarmDetWheel, alarmDetectorHourA, alarmDetectorIdlerA, alarmDir, alarmDiscGroup, alarmDriverAngleAt,
+  alarmDriverCarry, alarmFeelerLever, alarmFeelerUnit, alarmFoldPoint, alarmFollowerArm, alarmFollowerSpiral,
+  alarmGongUnit, alarmGovAnchorAngle, alarmGovAnchorPivot, alarmGovRotor, alarmGovWheelAngle, alarmHammerAngle,
+  alarmHammerPivot, alarmHammerSpiral, alarmHammerUnit, alarmHand, alarmJumperAngle, alarmJumperArm,
+  alarmJumperSeatR, alarmLiftFromHam, alarmLiftPivot, alarmLiftUnit, alarmLifter, alarmLifterBladeGroups,
+  alarmLinkNoseTheta, alarmLinkParts, alarmLinkReadClean, alarmLinkageFor, alarmLinkageParts, alarmLinkageSweptOf,
+  alarmLockArmAt, alarmLockBeakAzAt, alarmLockLever, alarmLockRocker, alarmPhiCapAt, alarmPinArmB,
+  alarmPinBBladeAimAt, alarmPinBBladeFrame, alarmPinDropCapAt, alarmPusherGroup, alarmReaderLift, alarmReaderUnit,
+  alarmReleaseChainAt, alarmReleaseCrank, alarmReleaseLink, alarmReleasePeak, alarmRocker, alarmRotor, alarmSelRing,
+  alarmSelRingRotAt, alarmSelRingZAt, alarmSetHoldRecord, alarmSetI1Spin, alarmSetI2Spin, alarmSetWheelGroup,
+  alarmSilFingerDropAt, alarmSilRocker, alarmSleeve, alarmSleeveRingWork, alarmSpinner, alarmStem, alarmStemAngle,
+  alarmStemLen, alarmStopClearAt, alarmStrikeGapAt, alarmStrikeLineLaws, alarmStrikePt, alarmStrikeRotor,
+  alarmStrikeUNow, alarmStrikeUnit, alarmStrikeWheelAngle, alarmSwitchUnit, alarmTierWarnsAt, alarmTubeGroup,
+  alarmWindUnit, alarmWorld, arrestAngles, arrestFingerPos, arrestStud, feelerRockAt, gongAWeight, gongArc,
+  gongArchModes, gongBesselJ, gongFootClearAt, gongModes, gongPost, gongPostRFor, gongRadiationFactors,
+  gongRadiationFactorsPath, gongWireFrame, hammerPiv, headFace, headRest, poseAlarmReleaseRun, poseAlarmSelRing,
+} = ALARM_BUILT ? await buildAlarm() : {};
+// §325 landing 3 — rows that name the alarm's parts, built only when the movement carries it
+const alarmRows = (f) => (ALARM_BUILT ? f() : []);
 // §171 — THE TAIL BEAK THAT WAS ALREADY REPLACED, deleted rather than moved.
 //
 // A BoxGeometry(1.0, 0.4, 0.4) in MATS.steel stood here on the lock lever, and
@@ -45262,11 +45437,11 @@ let alarmSetRot = 0;              // crown rotation banked into the SETTING path
 let lastAlarmCrownRotation = 0;   // for routing per-tick crown deltas to whichever path the clutch engages
 let alarmCrownRotation = 0;       // radians, raw alarm-crown drag input, unbounded
 let alarmEmitter = null;          // the bell voice spatializes to the gong's ringing end
-alarmEmitter = alarmStrikePt;     // the strike-point empty built with the gong geometry
+alarmEmitter = ALARM_BUILT ? alarmStrikePt : null;     // the strike-point empty built with the gong geometry
 // The alarm's own power loop (mirrors the going-train barrel — see tick()):
 let alarmBarrelWind = 0;          // alarm-spring energy, in turns — §25 C: ships EMPTY; the alarm must be WOUND to ring (drains while ringing)
-let alarmStrikePhase = ALARM_PHASE_REST; // striking-train phase, in strikes (each whole strike = one pin releasing the hammer)
-let alarmStrikeIdx = Math.floor(ALARM_PHASE_REST - alarmStrikeUNow()); // last strike SOUNDED — the ding's edge source (§104: the wire-meeting fraction rides the governed gap; wind is 0 here)
+let alarmStrikePhase = ALARM_BUILT ? ALARM_PHASE_REST : 0; // striking-train phase, in strikes (each whole strike = one pin releasing the hammer)
+let alarmStrikeIdx = ALARM_BUILT ? Math.floor(ALARM_PHASE_REST - alarmStrikeUNow()) : 0; // last strike SOUNDED — the ding's edge source (§104: the wire-meeting fraction rides the governed gap; wind is 0 here)
 let alarmReleased = false;        // the trip has fired: the striking train is free to run (set at the trip). Until then THIS FLAG is the hold — no metal holds an armed train (TODO 189/199)
 let restoredAlarmOn = false;      // persisted toggle, applied once the UI exists
 let restoredQualityMode = 'Auto'; // §14 quality select, applied once the tier plumbing exists
@@ -45338,8 +45513,8 @@ let mmPerPxCal = null;
   // §25 re-derived ALARM_BARREL_TURNS from the striking train, so a state
   // saved under §24's free value (8) would restore an over-wound barrel that
   // rings for minutes. Clamp to what the barrel can actually hold.
-  alarmBarrelWind = clamp(savedState.alarmBarrelWind ?? 0, 0, ALARM_BARREL_TURNS); // §25 C: unsaved wind means UNWOUND (the crown exists now)
-  restoredAlarmOn = !!savedState.alarmOn;
+  alarmBarrelWind = ALARM_BUILT ? clamp(savedState.alarmBarrelWind ?? 0, 0, ALARM_BARREL_TURNS) : 0; // §25 C: unsaved wind means UNWOUND (the crown exists now)
+  restoredAlarmOn = ALARM_BUILT && !!savedState.alarmOn;   // §325 landing 3: no alarm to arm without the complication
   alarmSetRot = savedState.alarmSetRot ?? savedState.alarmCrownRotation ?? 0; // pre-winding saves: crown WAS the set path
   lastAlarmCrownRotation = savedState.alarmCrownRotation ?? 0;
   alarmCrownOut = !!savedState.alarmCrownOut;
@@ -45363,6 +45538,7 @@ let alarmWindIdleT = 0;
 // is between samples" from "the hand left the crown".
 const ALARM_SETTLE_IDLE_S = 0.25;
 function settleAlarmClick() {
+  if (!ALARM_BUILT) return;
   const rd = alarmClickUnit.userData.ride;
   if (!rd || alarmBarrelWind <= 0) return;
   const bodyA = alarmStrikePhase * Math.PI * 2 / ALARM_STRIKES_PER_BARREL_TURN;
@@ -45963,7 +46139,7 @@ panel.innerHTML = `
       <div class="row label-small"><span>Train torque</span><span class="tq"><i id="bar-train" class="flat"></i></span></div>
     </div>
   </details>
-  <details class="ui-section">
+  <details class="ui-section" id="ui-alarm-section">
     <summary>Alarm</summary>
     <div class="ui-section-body">
       <div class="row">
@@ -47311,7 +47487,7 @@ function askTour(onProceed) {
     [minuteHand, MINUTE_HAND_SPEC],
     [smallSecondsHand, SMALL_SECONDS_HAND_SPEC],
     [reserveHand, RESERVE_HAND_SPEC],
-    [alarmHand, ALARM_HAND_SPEC, ALARM_HAND_FINISH],
+    ...(ALARM_BUILT ? [[alarmHand, ALARM_HAND_SPEC, ALARM_HAND_FINISH]] : []),
   ];
   const recutHands = () => {
     for (const [hand, spec, finish] of HAND_SPECS) {
@@ -47398,7 +47574,7 @@ function askTour(onProceed) {
       // strike the lever's root on it, both read at boot: an edit applies on
       // reload (false falls through to the ⟳ label), never as a live re-cut
       // that would leave the hammer's face off its gap.
-      if (GONG_SEATED) return false;
+      if (!ALARM_BUILT || GONG_SEATED) return false;   // §325 landing 3: no gong without the alarm
       // §198: the foot walks the annulus's rim by the same clear-station rule
       // the boot applied, live edits included (§197's applier never re-ran
       // the walk — that residue is closed here, since the rule is a function).
@@ -47855,7 +48031,7 @@ const labelEls = labelEntries.map(({ name }) => {
 // table rather than a prettifier over `mesh.name`. The values are English
 // source strings like every other display string: t() resolves them at the
 // display site, and a missing translation falls back visibly (§73).
-const SCHEMATIC_CALLOUTS = {
+const SCHEMATIC_CALLOUTS = !ALARM_BUILT ? {} : {   // §325 landing 3: every callout is the alarm's
   // the striking arbor's own column, top down
   alarmGovWheel: 'Governor wheel', alarmGovSleeve: 'Governor wheel sleeve',
   alarmStrikeSleeve: 'Strike arbor sleeve', alarmCam: 'Lifting cam',
@@ -48614,7 +48790,7 @@ function crownRollFrame(knob, hitPoint, stateSign) {
 // lands on the far side of its own spinner. That spec already warns five times
 // over that its alarm layout does not close; a sixth warning about an axis
 // which is in fact correct would be noise on top of a real signal.
-for (const [name, knob, spinner] of [['crown', crown, windSpinner], ['alarm crown', alarmCrownKnob, alarmSpinner]]) {
+for (const [name, knob, spinner] of [['crown', crown, windSpinner], ...(ALARM_BUILT ? [['alarm crown', alarmCrownKnob, alarmSpinner]] : [])]) {
   knob.updateMatrixWorld(true);
   spinner.updateMatrixWorld(true);
   const a = new THREE.Vector3(0, 0, 1).transformDirection(knob.matrixWorld).normalize();
@@ -48679,7 +48855,7 @@ renderer.domElement.addEventListener('click', (e) => {
 // the RAW alarmCrownRotation only; the pointer follows it 1:1 and the set time
 // is derived from the disc (Rule 2 — nothing here writes the target). The disc
 // is friction-set, so turning it is smooth and silent — no detent click.
-const alarmCrownHitMeshes = [alarmCrownKnob];
+const alarmCrownHitMeshes = ALARM_BUILT ? [alarmCrownKnob] : [];   // §325 landing 3: no alarm crown to hit
 function alarmCrownHitTest(e) {
   setCrownPointerFromEvent(e);
   crownRaycaster.setFromCamera(crownPointerNDC, camera);
@@ -48725,6 +48901,7 @@ renderer.domElement.addEventListener('click', (e) => {
 });
 // §25 D: tapping the COLUMN WHEEL is an actuation — same entry as the button.
 function alarmColumnHitTest(e) {
+  if (!ALARM_BUILT) return false;
   setCrownPointerFromEvent(e);
   crownRaycaster.setFromCamera(crownPointerNDC, camera);
   return crownRaycaster.intersectObject(alarmSwitchUnit, true).length > 0; // wheel, click arm, or pusher — one control
@@ -48795,7 +48972,7 @@ let STRIKE_PLATE_VERTS = 0;
 // (one margin either side) and the opening, with the post at the wire's foot.
 // tools/gong-seats.mjs writes it into the seat row as `keep`.
 let STRIKE_KEEP_MEASURED = null;
-if (FORM) {
+if (FORM && ALARM_BUILT) {   // §325 landing 3: no strike group to open the plate for without the alarm
   const z0 = TQ_BOT_Z - CLEAR_MARGIN, z1 = TQ_TOP_Z + CLEAR_MARGIN, xs = [], ys = [], v = new THREE.Vector3();
   const pz0 = PLATE_BACK_FACE - CLEAR_MARGIN, pz1 = TQ_BOT_Z + CLEAR_MARGIN, pxs = [], pys = [];
   const keepRot = alarmHammerPivot.rotation.z, N = 12;
@@ -49043,7 +49220,7 @@ if (FORM) {
 // the step's position is a consequence of where the stems are, not a styling
 // choice. (The pusher sits far above both crowns and never binds this.)
 await breathe(301);
-const CASE_Z_STEP = Math.min(Z_KEYLESS, alarmSpinner.position.z) - CASE_TUBE_AP - CLEAR_MARGIN;
+const CASE_Z_STEP = Math.min(Z_KEYLESS, ALARM_BUILT ? alarmSpinner.position.z : Infinity) - CASE_TUBE_AP - CLEAR_MARGIN;
 
 await breathe(302);
 const CASE_SECTORS = (() => {
@@ -49108,7 +49285,7 @@ const CASE_SECTORS = (() => {
       return false;
     };
     const exempt = (q) => {
-      for (const b of [{ az: stemAngle, z: Z_KEYLESS }, { az: ALARM_CORNER_W_AZ, z: alarmSpinner.position.z }]) {
+      for (const b of [{ az: stemAngle, z: Z_KEYLESS }, ...(ALARM_BUILT ? [{ az: ALARM_CORNER_W_AZ, z: alarmSpinner.position.z }] : [])]) {
         const perp = Math.abs(-q.x * Math.sin(b.az) + q.y * Math.cos(b.az));
         const along = q.x * Math.cos(b.az) + q.y * Math.sin(b.az);
         if (along > 0 && perp < CASE_TUBE_AP + CLEAR_MARGIN && Math.abs(q.z - b.z) < CASE_TUBE_AP + CLEAR_MARGIN) return true;
@@ -49206,11 +49383,13 @@ const CASE_SECTORS = (() => {
   // wrong the moment the two stop agreeing. Aps from the same expressions
   // tubeAt builds the sleeves with (bore + G.TUBE_WALL).
   const pusherAp = CASE_PUSHER_D / 2 + G.TUBE_WALL;
-  const pushOff = _pushBase.x * _pushPerp.x + _pushBase.y * _pushPerp.y;
+  const pushOff = ALARM_BUILT ? _pushBase.x * _pushPerp.x + _pushBase.y * _pushPerp.y : 0;
   const bores = [
     { az: norm(stemAngle), ap: CASE_TUBE_AP, z: Z_KEYLESS, off: 0, walls: [CASE_R_IN, CASE_R_OUT] },
-    { az: norm(alarmStemAngle), ap: CASE_TUBE_AP, z: alarmSpinner.position.z, off: 0, walls: [CASE_R_IN, CASE_R_OUT] },
-    { az: norm(ALARM_PUSH_AZ), ap: pusherAp, z: alarmPusherGroup.position.z, off: pushOff, walls: [R_BORE_BACK, CASE_R_OUT] },
+    ...(ALARM_BUILT ? [   // §325 landing 3: the alarm crown's stem and the pusher pass the wall only when built
+      { az: norm(alarmStemAngle), ap: CASE_TUBE_AP, z: alarmSpinner.position.z, off: 0, walls: [CASE_R_IN, CASE_R_OUT] },
+      { az: norm(ALARM_PUSH_AZ), ap: pusherAp, z: alarmPusherGroup.position.z, off: pushOff, walls: [R_BORE_BACK, CASE_R_OUT] },
+    ] : []),
   ];
   // Group overlapping windows into regions. Two windows a full turn apart in
   // representation are the same metal on two branches (the alarm opening
@@ -49400,7 +49579,7 @@ const BACK_SWEPT_REGIONS = [
   // TODO 69 keys it to the plate top for the reason the row above gives: the
   // wheel stands on the plate. Its measured rise is 1.4366 (10.982 over the
   // 9.5454 top), kept as the 1.4446 the last re-authoring rounded to.
-  { unit: 'Alarm striking wheel', r0: 31.3, r1: 34.6, z: TQ_TOP_Z + 1.4446 },
+  ...alarmRows(() => [{ unit: 'Alarm striking wheel', r0: 31.3, r1: 34.6, z: TQ_TOP_Z + 1.4446 }]),
   // The pusher-side linkage outboard at the band: measured swept (and
   // canonical-reset) 10.063 over r 48.5–49.4 against a CONSTRUCTION pose
   // that parks it at 7.744 — the one member found so far for which
@@ -49439,7 +49618,7 @@ const BACK_SWEPT_REGIONS = [
   // annulus below the plate top too (the skirt descends there now), and that
   // is what read the liner 0.650 over the bin's build-pose 7.964. The skirt
   // drops 10.23 → 8.77, and the pane floor (the hammer's plane) takes the band.
-  { unit: 'Alarm switch', r0: 48.3, r1: 50.1, z: ALARM_SWITCH_SKIRT_ROW_Z },
+  ...(ALARM_BUILT ? [{ unit: 'Alarm switch', r0: 48.3, r1: 50.1, z: ALARM_SWITCH_SKIRT_ROW_Z }] : []),
   // §314 — THE LET-DOWN SQUARE turns with the fusee, so its corners sweep the
   // annulus its half-diagonal reaches about the fusee's axis, and at the
   // arrangement's −20° barrel step the axis stands where the build pose's
@@ -49458,7 +49637,7 @@ const BACK_SWEPT_REGIONS = [
   // centi-unit, so the rest pose's own float32 vertex is inside it) to its
   // reach over the swing, both read off the riser's own station solve.
   // (§310: a riser solve that found no window has already warned, and carries no reach to declare)
-  ...(ALARM_TAIL_DROP > 0 && ALARM_TAIL_RISER.tallR ? [{ unit: 'Alarm hammer', r0: ALARM_TAIL_RISER.tallR.build - 0.01, r1: ALARM_TAIL_RISER.tallR.swept,
+  ...(ALARM_BUILT && ALARM_TAIL_DROP > 0 && ALARM_TAIL_RISER.tallR ? [{ unit: 'Alarm hammer', r0: ALARM_TAIL_RISER.tallR.build - 0.01, r1: ALARM_TAIL_RISER.tallR.swept,
     z: Z_STRIKE + ALARM_TAIL_T / 2 }] : []),
 ];
 const BACK_ENVELOPE = await (async () => {
@@ -49663,7 +49842,7 @@ const BACK_ENVELOPE = await (async () => {
         console.warn(`§197: ${name} reaches ${z.toFixed(3)}, above the ${govern.toFixed(3)} the movement's back `
           + 'envelope already stands at — the strike group is now paying for case thickness of its own');
     }
-    {
+    if (ALARM_BUILT) {
       const z = zOf('Alarm gong');
       if (z > GONG_BAND_TOP + 1e-6)
         console.warn(`§198: the gong reaches ${z.toFixed(3)}, past the declared band ceiling ${GONG_BAND_TOP.toFixed(3)} — `
@@ -49781,7 +49960,7 @@ const CASE_DIMS = (() => {
   // a centi-unit under the pusher-side row that governs here, and this is
   // that claim turned into a test: the band's governing bin must not be gong
   // metal, and the ring's declared top must clear the skirt by the margin.
-  {
+  if (ALARM_BUILT) {
     let top = -Infinity, owner = null;
     for (const b of envBins) if (b.z !== null && b.r1 > skirtID && b.r0 < R_BORE_BACK && b.z > top) { top = b.z; owner = b.owner; }
     if (owner && /^Alarm (gong|hammer)/.test(owner) && top >= clampHeadTop)
@@ -49870,7 +50049,7 @@ const CASE_DIMS = (() => {
   // (§186's boredProfiles carries the degenerate-piece assert; this is the
   // same constraint stated where the number is born).
   const pusherApD = CASE_PUSHER_D / 2 + G.TUBE_WALL;
-  const zPusherHi = alarmPusherGroup.position.z + pusherApD;
+  const zPusherHi = ALARM_BUILT ? alarmPusherGroup.position.z + pusherApD : -Infinity;   // §325 landing 3: no pusher, no window
   if (zMidBack < zPusherHi + CLEAR_MARGIN)
     console.warn(`§187: the band's back face ${zMidBack.toFixed(3)} sits within CLEAR_MARGIN of the pusher `
       + `window's top ${zPusherHi.toFixed(3)} — the bored piece above the window is degenerate`);
@@ -50036,16 +50215,16 @@ const CASE_DIMS = (() => {
     // caseback screws died with the flange.
     screwShaftD: CASE_SCREW_SHAFT_D, screwHeadD: CASE_SCREW_HEAD_D,
     tubeD: CASE_TUBE_D, pusherD: CASE_PUSHER_D,
-    stemAz: stemAngle, alarmAz: alarmStemAngle, pusherAz: ALARM_PUSH_AZ,
+    stemAz: stemAngle, alarmAz: ALARM_BUILT ? alarmStemAngle : null, pusherAz: ALARM_BUILT ? ALARM_PUSH_AZ : null,   // §325 landing 3: null = not built, no bore
     // An azimuth locates a RADIUS; the pusher runs on a line PARALLEL to one.
     // ALARM_PUSH_CHORD steps its base off the movement's centre to give the
     // pawl a moment arm, so the case has to be told the offset or it drills
     // the hole beside the pusher — which it did, by 4.37 u. Both crowns ARE
     // radial and pass 0 by omission.
-    pusherOff: _pushBase.x * _pushPerp.x + _pushBase.y * _pushPerp.y,
+    pusherOff: ALARM_BUILT ? _pushBase.x * _pushPerp.x + _pushBase.y * _pushPerp.y : 0,
     // The tubes sleeve their stems at the stems' OWN z — a tube at mid-band
     // would sleeve nothing.
-    stemZ: Z_KEYLESS, alarmZ: alarmSpinner.position.z, pusherZ: alarmPusherGroup.position.z,
+    stemZ: Z_KEYLESS, alarmZ: ALARM_BUILT ? alarmSpinner.position.z : null, pusherZ: ALARM_BUILT ? alarmPusherGroup.position.z : null,
     lugSpanInner: CASE_LUG_INNER,
     sectors: CASE_SECTORS,
     // §187 — the measured back envelope (build-pose scan + declared swept
@@ -50096,8 +50275,8 @@ const DIAL_SPEC = (() => {
     subdials: Object.freeze({ reserve: st(RESERVE_LOCAL, reserveWellR), seconds: st(SECONDS_LOCAL, secondsWellR) }),
     ports: Object.freeze({
       stem: port(CASE_DIMS.stemAz, CASE_DIMS.stemZ),
-      alarmCrown: port(CASE_DIMS.alarmAz, CASE_DIMS.alarmZ),
-      pusher: port(CASE_DIMS.pusherAz, CASE_DIMS.pusherZ, CASE_DIMS.pusherOff),
+      alarmCrown: ALARM_BUILT ? port(CASE_DIMS.alarmAz, CASE_DIMS.alarmZ) : null,   // §325 landing 3: null when not built
+      pusher: ALARM_BUILT ? port(CASE_DIMS.pusherAz, CASE_DIMS.pusherZ, CASE_DIMS.pusherOff) : null,
     }),
   });
 })();
@@ -50219,7 +50398,7 @@ const FORM_COUNTED = (() => {
   // pushed past the round bore was DROPPED from the footprint rather than
   // counted, so the optimiser could shrink the rectangle by moving metal out
   // of it. Every other mesh counts wherever it stands.
-  const THROUGH_OBJS = [stem, crown, alarmStem, alarmCrownKnob];
+  const THROUGH_OBJS = [stem, crown, ...(ALARM_BUILT ? [alarmStem, alarmCrownKnob] : [])];
   const THROUGH_NAMES = new Set(['alarmPusherStem', 'alarmPusherCap']);
   const through = (o) => THROUGH_NAMES.has(o.name) || THROUGH_OBJS.some((r) => under(o, r));
   // §308 — THE PARTS CUT TO THE SHAPE do not count either: the base plate, the
@@ -50302,7 +50481,7 @@ const FORM_FOOTPRINT = await (async () => {
       breatheCount++; await yieldToEventLoop(); breatheMark = performance.now();
     };
     // the seated gong's own holds (GONG_SEAT_CHECK below reads them: the wire its margin inside, the block on the plate)
-    if (GONG_SEATED) {
+    if (ALARM_BUILT && GONG_SEATED) {
       for (const [x, y] of GONG_SEAT_PTS) freePin(x, y, GONG_WIRE_R + CLEAR_MARGIN, 'the gong\'s wire');
       freePin(gongFoot.x, gongFoot.y, GONG_POST_R_BUILT, 'the gong\'s block');
     }
@@ -50315,8 +50494,8 @@ const FORM_FOOTPRINT = await (async () => {
     // — and each crown STEM's tube (§186): the floor holds the plate's widest metal across the sleeve's section short
     // of the tube's inboard end, which an oblique free wall reaches past on the stem's line; a wall square to the stem
     // across the notch's half-width plus the margin is the round case's own geometry there
-    const ports = [{ o: [-_pushU.y * _pushOffAxis, _pushU.x * _pushOffAxis], u: [_pushU.x, _pushU.y],
-      half: PUSHER_HEAD_R / PUSHER_SEAT_COS + CLEAR_MARGIN },
+    const ports = [...(ALARM_BUILT ? [{ o: [-_pushU.y * _pushOffAxis, _pushU.x * _pushOffAxis], u: [_pushU.x, _pushU.y],
+      half: PUSHER_HEAD_R / PUSHER_SEAT_COS + CLEAR_MARGIN }] : []),   // §325 landing 3: the pusher's, when built
       ...CASE_NOTCHES.map(({ az, halfW }) => ({ o: [0, 0], u: [Math.cos(az), Math.sin(az)], half: halfW + CLEAR_MARGIN }))];
     try { fit = fitFreeCase(polys, { margin: M, rc: FREE_RC, need: FITTED_FLAT_MIN, c, pins, ports }); }
     catch (e) { console.warn(`§325: the free fit failed — ${e.message}`); }
@@ -50491,7 +50670,7 @@ const FORM_REGIONS = (() => {
 // base plate's screw shanks reach 5.90 against the band's top 5.96 — so they
 // are added here, every mesh under those three whose z span meets the band
 // but the slabs themselves, as one more unit of hulls in FORM_REGIONS' shape.
-const GONG_BAND_TENANTS = FORM ? (() => {
+const GONG_BAND_TENANTS = FORM && ALARM_BUILT ? (() => {
   const z0 = Z_GONG - GONG_WIRE_R - CLEAR_MARGIN, z1 = Z_GONG + GONG_WIRE_R + CLEAR_MARGIN, v = new THREE.Vector3(), parts = [];
   movement.updateWorldMatrix(true, true);
   for (const root of [backPlate, threeQuarterPlate, dial]) root.traverse((o) => {
@@ -50503,7 +50682,7 @@ const GONG_BAND_TENANTS = FORM ? (() => {
   });
   return { units: { 'plate tenants': { parts } } };
 })() : null;
-const GONG_SEAT_CHECK = GONG_SEATED ? (() => {
+const GONG_SEAT_CHECK = ALARM_BUILT && GONG_SEATED ? (() => {
   const parts = [...GS.bandParts(FORM_REGIONS, Z_GONG - GONG_WIRE_R, Z_GONG + GONG_WIRE_R, CLEAR_MARGIN, new Set(['Alarm hammer'])),
     ...GS.bandParts(GONG_BAND_TENANTS, Z_GONG - GONG_WIRE_R, Z_GONG + GONG_WIRE_R, CLEAR_MARGIN)];
   const need = GONG_WIRE_R + CLEAR_MARGIN;
@@ -50576,7 +50755,7 @@ registerLabel('Case', caseSolid);
 // pusher's declaration is made whole here (its rim guide and its return
 // abutment were real bores with no declaration); the alarm stem's gains its
 // third station (its rim bush was declared under TODO 109).
-{
+if (ALARM_BUILT) {   // §325 landing 3: both liners are the alarm's (the pusher's bore, the alarm crown's tube)
   const box = new THREE.Box3();
   const along = (mesh, origin, dir) => {
     box.setFromObject(mesh);
@@ -51080,8 +51259,10 @@ const SCHEMATIC = { proxies: [], on: false };
           u.clone().multiplyScalar(along(R_OUT)).addScaledVector(p, off + s * d / 2).setZ(z)), rim)).userData.what = 'tube';
     };
     tube(stemAngle, CASE_TUBE_D, CASE_DIMS.stemZ);
-    tube(alarmStemAngle, CASE_TUBE_D, CASE_DIMS.alarmZ);
-    tube(ALARM_PUSH_AZ, CASE_PUSHER_D, CASE_DIMS.pusherZ, CASE_DIMS.pusherOff);
+    if (ALARM_BUILT) {   // §325 landing 3
+      tube(alarmStemAngle, CASE_TUBE_D, CASE_DIMS.alarmZ);
+      tube(ALARM_PUSH_AZ, CASE_PUSHER_D, CASE_DIMS.pusherZ, CASE_DIMS.pusherOff);
+    }
 
     // Lugs at 12 and 6 — the interior span is the shared derivation (20 mm,
     // asserted against the cap where it is derived, beside BACK_PLATE_Z).
@@ -51174,11 +51355,13 @@ document.getElementById('btn-case').addEventListener('click', () => setCaseLines
   };
   const V = (x, y, z) => new THREE.Vector3(x, y, z);
   // the alarm group's levers — spans are the members' own solved reaches
+  if (ALARM_BUILT) {   // §325 landing 3: the alarm group's levers, when built
   addLine(alarmFeelerLever, [V(-ALARM_FEELER_TAIL, 0, 0), V(ALARM_FEELER_ARM_LEN, 0, 0)]); // §29 feeler: tail → pivot → pin arm
   addLine(alarmFeelerLever, [V(ALARM_FEELER_ARM_LEN, 0, 0), V(ALARM_FEELER_ARM_LEN, 0, ALARM_PIN_DROP + ALARM_PIN_SHANK + 0.3)]); // the pin's drop leg
   addLine(alarmSilRocker, [V(-alarmSilRocker.userData.aF, 0, 0), V(alarmSilRocker.userData.aP, 0, 0)]); // §45 seesaw: finger arm ← pivot → paddle arm
   addLine(alarmJumperArm, [V(0, 0, 0), V(ALARM_JUMPER_L, 0, 0)]); // §173 sautoir: anchor → tip, the blade's own free length
   addLine(alarmLockLever, [V(-2.0, 0, 0), V(ALARM_LOCK_L, 0, 0)]); // §25 D lock: tail beak ← pivot → brake pad
+  }
   // §163/§192 — the column wheel's driver: ONE SPOKE PER ARM THE HULL WAS CUT
   // FROM, read off `makeColumnDriver`'s own record rather than restated here,
   // plus the pawl's centreline, which IS the shape the free-region map
@@ -51193,7 +51376,7 @@ document.getElementById('btn-case').addEventListener('click', () => setCaseLines
   // Nothing was wrong with either spoke it drew; the arm set was simply
   // written down twice and only one copy learned. It is one source now, so
   // a fourth arm draws itself.
-  {
+  if (ALARM_BUILT) {
     for (const a of alarmColDriverGroup.userData.drive.arms)
       addLine(alarmColDriverGroup, [V(0, 0, 0), V(a.reach * Math.cos(a.az), a.reach * Math.sin(a.az), 0)]);
     addLine(alarmColPawlGroup, alarmColPawlGroup.userData.pawlNodes.map(([u, v]) => V(u, v, 0)));
@@ -51205,7 +51388,7 @@ document.getElementById('btn-case').addEventListener('click', () => setCaseLines
   // its userData.profile opts it out of the pitch-circle pass (§83: a saw
   // drawn as a smooth circle is a false glyph) — and the winding wheel
   // beside it keeps the pitch circle makeGear's userData.r earns it.
-  {
+  if (ALARM_BUILT) {
     const rd = alarmClickUnit.userData.ride;
     addLine(rd.click, [V(0, 0, 0), V(rd.elbowLocal.x, rd.elbowLocal.y, 0), V(rd.noseLocal.x, rd.noseLocal.y, 0)]); // pivot → elbow → nose, the hook's own span
   }
@@ -51280,7 +51463,7 @@ document.getElementById('btn-case').addEventListener('click', () => setCaseLines
     addHand(minuteHand, MINUTE_HAND_LEN, 'minute');
     addHand(smallSecondsHand, secondsSubR * 0.8, 'second');
     addHand(reserveHand, reserveR * 0.8, 'minute');
-    addHand(alarmHand, HOUR_HAND_LEN - 1.2, 'hour');
+    if (ALARM_BUILT) addHand(alarmHand, HOUR_HAND_LEN - 1.2, 'hour');
     // subdial bezels — rings at the wells' own radii, on the hands' plane
     // (quoted from the hands themselves, so the TODO 41 derivation cannot
     // go stale here)
@@ -51291,7 +51474,9 @@ document.getElementById('btn-case').addEventListener('click', () => setCaseLines
     // block down to the base plate's rim. Drawn at the BOOT arc: a live
     // aesthetics edit re-voices gongF but leaves this line stale until
     // reload — the same residue class as the contact dots' re-measure-on-entry.
-    if (GONG_SEATED) {
+    if (!ALARM_BUILT) {
+      // §325 landing 3: no gong
+    } else if (GONG_SEATED) {
       // §310 landing 2 — a seat's wire, drawn on the stations it was swept on
       addLine(alarmGongUnit, GONG_SEAT_PTS.map(([x, y]) => V(x, y, Z_GONG)));
       addLine(alarmGongUnit, [V(gongFoot.x, gongFoot.y, Z_GONG), V(gongFoot.x, gongFoot.y, GONG_RIM_Z - GONG_RIM_PLANT)]);
@@ -51311,7 +51496,7 @@ document.getElementById('btn-case').addEventListener('click', () => setCaseLines
     // arm to the tip that bears on the tail. Two lines and one corner, which
     // is what the part is; the contact dots on both ends come from the
     // strikeHandoff rows.
-    {
+    if (ALARM_BUILT) {
       addLine(alarmLiftPivot, [V(0, 0, 0),
         V(Math.cos(ALARM_LIFT_REST_AZ) * ALARM_LIFT_ARM, Math.sin(ALARM_LIFT_REST_AZ) * ALARM_LIFT_ARM, 0)]);
       addLine(alarmLiftPivot, [V(0, 0, 0),
@@ -51328,7 +51513,7 @@ document.getElementById('btn-case').addEventListener('click', () => setCaseLines
     // lobes (drawn from their §83 profile) sweep past nothing and the
     // hammer reads as lifted by magic — the glyph and its follower are one
     // contact, so they draw together.
-    {
+    if (ALARM_BUILT) {
       // §197 — the arm is CRANKED: the tail rides the lever at Z_STRIKE and
       // the head rings the wire in its own plane (§198: below it, in the
       // annulus), so the line is drawn to the head's own plane. A flat line
@@ -51385,7 +51570,7 @@ document.getElementById('btn-case').addEventListener('click', () => setCaseLines
     // the pusher — stem, cap, and the riser-to-pawl run, all group-local
     // from the spans the build recorded (userData.stem), so the whole
     // drawing slides on press exactly as the metal does
-    {
+    if (ALARM_BUILT) {
       const s = alarmPusherGroup.userData.stem;
       const U = (d, z = 0) => V(s.ux * d, s.uy * d, z);
       addLine(alarmPusherGroup, [U(s.inner), U(s.capS + s.capLen)]);
@@ -51422,6 +51607,7 @@ document.getElementById('btn-case').addEventListener('click', () => setCaseLines
         a[axis] = bb.min[axis]; b[axis] = bb.max[axis];
         addLine(m, [a, b]);
       };
+      if (ALARM_BUILT) {   // §325 landing 3: the alarm link, when built
       addLine(alarmLinkParts.beakArm, [V(0, 0, 0), V(alarmLinkParts.beakLen, 0, 0), V(alarmLinkParts.beakLen, alarmLinkParts.noseY, 0)]);   // TODO 240: the bar, then the stub to the nose
       addAxisLine(byName('alarmLinkRod'));
       addAxisLine(byName('alarmLinkShaft'));
@@ -51430,6 +51616,7 @@ document.getElementById('btn-case').addEventListener('click', () => setCaseLines
         const ck = alarmLinkParts.centreKey;
         const pin = ck.children.find((o) => o.name === 'alarmLinkCentrePin');
         addLine(ck, [V(0, 0, 0), V(0, 0, pin.position.z), V(pin.position.x * 2, 0, pin.position.z)]);
+      }
       }
       // the zero-reset hammer — lever line inside makeHammerLever's own
       // group (pad at +Y·hammerArmLen), tail bar as its axis line; both
@@ -51488,7 +51675,7 @@ document.getElementById('btn-case').addEventListener('click', () => setCaseLines
           }
         };
         const byLabel = (n) => labelEntries.find((e) => e.name === n).obj;
-        for (const name of ['Pallet fork', 'Alarm selector', 'Setting lever', 'Yoke',
+        for (const name of ['Pallet fork', ...(ALARM_BUILT ? ['Alarm selector'] : []), 'Setting lever', 'Yoke',
           'Stop lever', 'Maintaining detent', 'Reset rod', 'Hack rod']) {
           byLabel(name).traverse((o) => {
             if (o.isMesh && o.geometry.attributes.position && !o.userData.schematic) discOrAxis(o);
@@ -51565,7 +51752,7 @@ document.getElementById('btn-case').addEventListener('click', () => setCaseLines
         // invariant, extended to the tier). Face-on it reads as six blocks
         // with six gaps between them and turns with the parity; from the side
         // the flats and the chamfers read as the pillars they are.
-        {
+        if (ALARM_BUILT) {
           const cw = alarmColumnWheel.userData;
           const pitch = (Math.PI * 2) / ALARM_COL_COLUMNS;
           const edge = cw.colFlatHalf + cw.colFlank;   // the column's half-arc, recomposed from the two derived pieces the builder exports
@@ -51660,7 +51847,8 @@ document.getElementById('btn-case').addEventListener('click', () => setCaseLines
           // rotor-site assert, same shape): the movement's four wound springs
           // are the hairspring, the going and alarm barrels' ribbons and (TODO
           // 194) the alarm follower's return spiral, and a fifth would simply draw.
-          if (wound.length < 4)
+          // §325 landing 3: without the alarm, two (the hairspring and the going ribbon)
+          if (wound.length < (ALARM_BUILT ? 4 : 2))
             console.warn(`§78: only ${wound.length} spiral springs export a plan — the movement has 4 (hairspring, going-barrel ribbon, alarm-barrel ribbon, alarm follower's return spiral); the rest have fallen back to the gear or blade glyph`);
         }
 
@@ -51746,7 +51934,7 @@ document.getElementById('btn-case').addEventListener('click', () => setCaseLines
           movement.traverse((o) => { if (o.userData && o.userData.profile) carriers.push(o); });
           // §78's tripwire shape — a FLOOR, never an equality: a part that
           // stops exporting its plan must warn, not fall back to silence.
-          if (carriers.length < 4)
+          if (carriers.length < (ALARM_BUILT ? 4 : 1))   // §325 landing 3: without the alarm, the escape wheel alone
             console.warn(`§107: only ${carriers.length} parts export a cut profile — a wheel that stopped exporting its plan is now drawn by nothing`);
           for (const o of carriers) {
             const p = o.userData.profile, W = SCHEMATIC.matWheel;
@@ -51789,7 +51977,7 @@ document.getElementById('btn-case').addEventListener('click', () => setCaseLines
         // would turn invisibly, which is the one thing this part DOES.
         {
           addLine(windSpinner, [V(0, 0, 0), V(0, stemLen, 0)]);
-          addLine(alarmSpinner, [V(0, 0, 0), V(0, alarmStemLen, 0)]);
+          if (ALARM_BUILT) addLine(alarmSpinner, [V(0, 0, 0), V(0, alarmStemLen, 0)]);
           const knobs = [];
           movement.traverse((o) => { if (o.userData && o.userData.crown) knobs.push(o); });
           for (const k of knobs) {
@@ -51810,7 +51998,7 @@ document.getElementById('btn-case').addEventListener('click', () => setCaseLines
           // two crowns — winding and alarm — and a third would simply draw. A
           // knob that stops exporting its plan does not go undrawn, it falls
           // back to the gear glyph this part exists to retire.
-          if (knobs.length < 2)
+          if (knobs.length < (ALARM_BUILT ? 2 : 1))   // §325 landing 3: without the alarm, the winding crown alone
             console.warn(`§83: only ${knobs.length} crowns export a knob plan — the movement has 2 (winding, alarm); the rest have fallen back to the rotor glyph`);
         }
 
@@ -51846,7 +52034,7 @@ document.getElementById('btn-case').addEventListener('click', () => setCaseLines
   // recoil anchor is precisely the part that has no spring. So the anchor gets
   // its own word, drawn from the SAME constants and the SAME polygon the solid
   // is cut from — mesh, law and glyph cannot drift because there is one source.
-  {
+  if (ALARM_BUILT) {
     // Both units of the group — §107 promoted the anchor out of 'Alarm
     // governor', so the parts this block draws now live either side of that
     // boundary and the lookup spans it.
@@ -52025,7 +52213,7 @@ document.getElementById('btn-case').addEventListener('click', () => setCaseLines
     }
     // The tripwire is a FLOOR, never an equality — the same idiom as the rotor,
     // spiral, profile and crown words beside it.
-    if (crosses.length < 1 || fingers.length < 1 || banked < 1)
+    if (ALARM_BUILT && (crosses.length < 1 || fingers.length < 1 || banked < 1))   // §325 landing 3: the crosses are the alarm's stop-work
       console.warn(`§134: the Geneva pass drew ${crosses.length} cross(es), ${fingers.length} finger(s) `
         + `and ${banked} bank(s) — the movement carries a stop-work this tier is not saying`);
   }
@@ -52704,7 +52892,7 @@ function beatEventCount(t) {
 // path is the one that does not pay it, which is the whole reason an alarm
 // watch drives its case. tools/probe-268-case-path.mjs re-derives every row.
 let gongCaseTally = null;   // assigned inside the block below; __clock.casePathTally calls it at the posed movement
-const GONG_CASE_PATH = await (async () => {
+const GONG_CASE_PATH = !ALARM_BUILT ? null : await (async () => {   // §325 landing 3: no gong, no path
   const U = OSC_U, D = CASE_DIMS, rec = GONG_ACOUSTICS;
   const notes = [], timings_ms = {}; let t0 = performance.now();
   const lap = (k) => { const t = performance.now(); timings_ms[k] = (timings_ms[k] || 0) + (t - t0); t0 = t; };
@@ -53028,7 +53216,7 @@ const GONG_CASE_PATH = await (async () => {
     notes, timings_ms,
   };
 })();
-GONG_ACOUSTICS.casePath = GONG_CASE_PATH;
+if (ALARM_BUILT) GONG_ACOUSTICS.casePath = GONG_CASE_PATH;
 await breathe(322);
 // §197 — the ding's partials, DERIVED from GONG_ACOUSTICS. Audible modes only
 // (the wire's 3rd is 24 kHz and inaudible — the law computes it, the speaker
@@ -53037,7 +53225,7 @@ await breathe(322);
 // modes' own T60s clipped to one strike gap so the ring cannot outlive its
 // own cadence. `0.30` — §56's chosen gain for the loudest partial — is kept
 // as the overall LEVEL so this changes the balance and not the volume.
-const SND_GONG_PARTIALS = (() => {
+const SND_GONG_PARTIALS = !ALARM_BUILT ? [] : (() => {
   const heard = GONG_ACOUSTICS.modes.filter((m) => m.audible && m.W_W > 0);
   const wMax = Math.max(...heard.map((m) => m.W_W + m.caseW_W));   // §269 — wire AND case: the mix hears both paths
   return heard.map((m) => ({
@@ -53083,6 +53271,7 @@ const SND = {
   // Spatialized to the gong's ringing end; the gong + hammer glow on each hit.
   // Two-partial timbre (a low strike body under a bright fundamental).
   alarmStrike: () => {
+    if (!ALARM_BUILT) return;   // §325 landing 3
     // Light the whole power chain, not just the noisy end: the pin wheel did
     // the work, the hammer carried it, the gong turned it into sound (§25).
     sndFlash(alarmGongUnit); sndFlash(alarmHammerUnit); sndFlash(alarmLiftUnit); sndFlash(alarmStrikeUnit);
@@ -53124,7 +53313,7 @@ const SND = {
     const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat);
     l.userData.schematic = true; l.layers.set(1); em.add(l); SCHEMATIC.proxies.push(l);
   };
-  for (const em of new Set([forkGroup, maintDetent, jumperUnit, hammerGroup, crown, alarmEmitter, WIND_ARREST.unit])) {
+  for (const em of new Set([forkGroup, maintDetent, jumperUnit, hammerGroup, crown, ...(alarmEmitter ? [alarmEmitter] : []), WIND_ARREST.unit])) {
     await breathe(323);
     ring(em, 'xy', 0.45); ring(em, 'xy', 0.85); ring(em, 'xz', 0.65);
   }
@@ -53146,7 +53335,7 @@ const SND_FLASH_COLOR = new THREE.Color(0xffe6a0); // warm, low-key -- a glint, 
 const SND_FLASH_PEAK = 0.55; // emissiveIntensity at the instant of the click -- tuned by eye
 const sndFlashMeshes = new Map(); // target Object3D -> [mesh, ...]
 const sndFlashLevel = new Map(); // target Object3D -> current 0..1
-for (const target of [forkGroup, maintDetent, jumperUnit, hammerGroup, crown, alarmGongUnit, alarmHammerUnit, alarmStrikeUnit, WIND_ARREST.unit]) {
+for (const target of [forkGroup, maintDetent, jumperUnit, hammerGroup, crown, ...(ALARM_BUILT ? [alarmGongUnit, alarmHammerUnit, alarmStrikeUnit] : []), WIND_ARREST.unit]) {
   const meshes = [];
   target.traverse((o) => { if (o.isMesh && o.material && 'emissive' in o.material) meshes.push(o); });
   sndFlashMeshes.set(target, meshes);
@@ -53289,6 +53478,7 @@ function alarmParityLatched() {
   b.classList.toggle('active', alarmOn);
 }
 function pressAlarmPusher() {
+  if (!ALARM_BUILT) return;   // §325 landing 3: no pusher to press
   // A finger cannot start a second press while the head is still down or
   // springing back — and neither can the pawl re-engage before it has
   // retracted over the next tooth's back. The test means exactly that now:
@@ -53349,6 +53539,7 @@ function alarmCrownSyncLabel() {
   b.classList.toggle('active', alarmCrownOut);
 }
 function toggleAlarmCrown() {
+  if (!ALARM_BUILT) return;   // §325 landing 3: no alarm crown
   alarmCrownOut = !alarmCrownOut;
   alarmCrownSyncLabel();
 }
@@ -53388,7 +53579,7 @@ const HUD_RIM = 58;                         // the plate rim, in viewBox units
 const HUD_FACE_R = HUD_RIM * 0.72;
 const HUD_U = HUD_RIM / plateR;             // model units → viewBox units, for everything below
 const HUD_PULL = CROWN_PULL_DIST * HUD_U;   // a crown's stem slide, to scale
-const HUD_PRESS = ALARM_PUSH_TRAVEL * HUD_U;
+const HUD_PRESS = ALARM_BUILT ? ALARM_PUSH_TRAVEL * HUD_U : 0;
 const HUD_CLASSIFY = 5;   // viewBox units of travel before a drag is called a slide or a turn
 const HUD_ACT = 11;       // …and of RADIAL travel that counts as a pull, a push or a press
 const HUD_TURNS_PER_LAP = 2; // dragging a crown's head once around the ring turns it twice
@@ -53412,8 +53603,10 @@ function hudPlace(obj) {
 await breathe(324);
 const HUD_CTLS = [
   { id: 'crown',  kind: 'crown',  ...hudPlace(crown) },
-  { id: 'alarm',  kind: 'crown',  ...hudPlace(alarmCrownKnob) },
-  { id: 'pusher', kind: 'pusher', ...hudPlace(alarmPusherGroup.getObjectByName('alarmPusherCap')) },
+  ...(ALARM_BUILT ? [   // §325 landing 3: the alarm's crown and pusher, when built
+    { id: 'alarm',  kind: 'crown',  ...hudPlace(alarmCrownKnob) },
+    { id: 'pusher', kind: 'pusher', ...hudPlace(alarmPusherGroup.getObjectByName('alarmPusherCap')) },
+  ] : []),
 ];
 // ERGONOMIC SPREAD — the one place this map is deliberately not to scale.
 // Two controls on a 32 mm case can sit 16° apart and still take a fingertip
@@ -53460,7 +53653,7 @@ const HUD_MIN_SEP = 46 * DEG2RAD;
   // spread's assumption stops holding, and the pad still LOOKS right while
   // one control cannot be touched at all.
   const order = [...HUD_CTLS].sort((a, b) => a.az - b.az);
-  for (let i = 0; i < order.length; i++) {
+  for (let i = 0; i < order.length && order.length > 1; i++) {   // §325 landing 3: one control has no neighbour
     const a = order[i], b = order[(i + 1) % order.length];
     const d = Math.abs(wrapPi(b.az - a.az));
     if (d < HUD_MIN_SEP - 1e-6)
@@ -53639,6 +53832,12 @@ const hudPvAl = hudEl.querySelector('.hud-hand-al');
 const hudInHint = Object.fromEntries(HUD_CTLS.map((c) => [c.id, hudEl.querySelector(`.hud-g-${c.id} .hud-in`)]));
 const hudRoTime = hudEl.querySelector('#hud-ro-time');
 const hudRoAlarm = hudEl.querySelector('#hud-ro-alarm');
+// §325 landing 3 — a movement built without the alarm shows none of its controls or readouts
+if (!ALARM_BUILT) {
+  hudPvAl.style.display = 'none';
+  hudRoAlarm.closest('.hud-ro-row').style.display = 'none';
+  document.getElementById('ui-alarm-section').style.display = 'none';
+}
 
 // THE TRACKBALL. The dial face is an arcball: a drag across the middle tumbles
 // the watch, a drag around the edge rolls it on its own axis, which is what a
@@ -53776,12 +53975,14 @@ function hudUpdate() {
   // snapping ahead of it.
   const at = (id, d) => hudHeadG[id].setAttribute('transform', `translate(${(HUD_BY_ID.get(id).r + d).toFixed(2)},0)`);
   at('crown', crownPullT * HUD_PULL);
-  at('alarm', alarmCrownPullT * HUD_PULL);
-  at('pusher', -alarmPusherT * HUD_PRESS);
   hudOutHint.crown.classList.toggle('dim', crownOut);
   hudInHint.crown.classList.toggle('dim', !crownOut);
-  hudOutHint.alarm.classList.toggle('dim', alarmCrownOut);
-  hudInHint.alarm.classList.toggle('dim', !alarmCrownOut);
+  if (ALARM_BUILT) {
+    at('alarm', alarmCrownPullT * HUD_PULL);
+    at('pusher', -alarmPusherT * HUD_PRESS);
+    hudOutHint.alarm.classList.toggle('dim', alarmCrownOut);
+    hudInHint.alarm.classList.toggle('dim', !alarmCrownOut);
+  }
   hudEl.classList.toggle('crown-out', crownOut);
   hudEl.classList.toggle('alarm-crown-out', alarmCrownOut);
   hudEl.classList.toggle('alarm-on', alarmOn);
@@ -53821,7 +54022,7 @@ function hudUpdate() {
     // multiply to 1/12 by construction. The readout leans on that, the
     // same way the panel clock's hh:mm already does.
     hudPvHr.setAttribute('transform', `rotate(${(wrap(s, DIAL_PERIOD_S) / DIAL_PERIOD_S * 360).toFixed(2)})`);
-    hudPvAl.setAttribute('transform', `rotate(${(alarmDiscAngle() * 180 / Math.PI).toFixed(2)})`);
+    if (ALARM_BUILT) hudPvAl.setAttribute('transform', `rotate(${(alarmDiscAngle() * 180 / Math.PI).toFixed(2)})`);
   }
   // §90 — the same two quantities in figures, unconditionally. Not a second
   // derivation of either: the strings are the panel's, through the same
@@ -53831,7 +54032,7 @@ function hudUpdate() {
   // Written every frame like the panel's clock — the value changes at least
   // once a second at 1× and every frame under fast-forward.
   hudRoTime.textContent = formatTime(displayedSeconds());
-  hudRoAlarm.textContent = '≈' + fmtHM(alarmRingsAtSeconds());
+  if (ALARM_BUILT) hudRoAlarm.textContent = '≈' + fmtHM(alarmRingsAtSeconds());
 }
 
 function setHud(on) {
@@ -54390,7 +54591,7 @@ let reconfSchematicWas = null; // §93 the view tier this mode interrupted, null
 const _rcNDC = new THREE.Vector2(), _rcHit = new THREE.Vector3();
 const _rcPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0); // the train plane z ≈ 0
 const RECONF_ROT_DEG = rotAppliedRad * 180 / Math.PI; // pointer az (rotated world) → solver frame
-const reconfWindows = (() => {
+const reconfWindows = !ALARM_BUILT ? [] : (() => {   // §325 landing 3: no alarm crown or pusher to keep clear of
   const crownHalf = Math.atan2(5.425 + CLEAR_MARGIN, plateR);          // main crown body r (its own build constant)
   const alarmAz = Math.atan2(alarmDir.y, alarmDir.x);
   return [
@@ -54557,7 +54758,7 @@ const RECONF_HANDLES = [
   //    already. They build — loudly — so they are amber, not refused;
   //    refusing a movement that boots is the over-strict half of the same
   //    dishonesty, and `probe-alarmr-handle.mjs` checks both directions.
-  { kind: 'alarmr', specKeyName: 'alarmr', urlKey: 'alarmr', def: ALARM_CORNER_R, radial: true,
+  ...(ALARM_BUILT ? [{ kind: 'alarmr', specKeyName: 'alarmr', urlKey: 'alarmr', def: ALARM_CORNER_R, radial: true,
     // The ring circles the corner's OWN bearing bush, +2 like every other
     // radial row rings its wheel — the reserve's w2 arbor is the template.
     anchor: () => ({ x: 0, y: 0 }), grabAt: () => alarmWorld, grabR: () => ALARM_ARBOR_BUSH_R + 2,
@@ -54579,7 +54780,7 @@ const RECONF_HANDLES = [
     },
     // The shipped function, called — not a re-implementation of it (TODO 59).
     shadow: (v) => ({ warns: alarmCornerWarnsAt(v), refuse: null }),
-  },
+  }] : []),
   // ————— §184: THE TIER-SPLIT TRIPLE — THREE ROWS, ONE JOINT REFUSAL —————
   //
   // θ_b, θ_g and θ_a are one solved triple, so the design question was whether
@@ -54599,7 +54800,7 @@ const RECONF_HANDLES = [
   // nothing to stand on. Every triple BUILDS; the bad ones interpenetrate. So
   // these are amber, never refused, and refusing a movement that builds would
   // be the over-strict half of the same dishonesty.
-  ...[
+  ...(!ALARM_BUILT ? [] : [   // §325 landing 3: the alarm module's bearings, when built
     { kind: 'alarmbarrelaz', specKeyName: 'alarmBarrelAzDeg', urlKey: 'alarmbarrelaz',
       def: ALARM_BARREL_BEARING_DEG, leg: 'thB',
       anchor: () => alarmSwPos, grabAt: () => alarmBarrelPos, grabR: () => ALARM_BARREL_TIP_R + 2,
@@ -54633,7 +54834,7 @@ const RECONF_HANDLES = [
       warns: alarmTierWarnsAt({ ...ALARM_TIER_TRIPLE, [r.leg]: v * DEG2RAD + ALARM_MOD_ROT }),
       refuse: null,
     }),
-  })),
+  }))),
   // §97 — the WELL RADIUS row, and its one honest concession stated: a
   // radius has no arbor. The ring sits on the SECONDS well (whose centre IS
   // the fourth wheel's real arbor) at the well's own radius, so what is
@@ -54880,8 +55081,10 @@ const RECONF_HINT_IDLE = 'Thirteen rings — each one is a handle';
 // test generously accepts the whole switch unit.
 const reconfRimTargets = () => [
   { kind: 'crown', obj: crown },
-  { kind: 'alarmcrown', obj: alarmCrownKnob },
-  { kind: 'pusher', obj: scene.getObjectByName('alarmPusherCap') },
+  ...(ALARM_BUILT ? [   // §325 landing 3
+    { kind: 'alarmcrown', obj: alarmCrownKnob },
+    { kind: 'pusher', obj: scene.getObjectByName('alarmPusherCap') },
+  ] : []),
 ];
 function ensureReconfRings() {
   if (reconfRings) return;
@@ -55816,9 +56019,10 @@ function pfBuildGroups() {
     anchor: pfCollect([setupWork]),
     // §25 D: the alarm's own torque path — input (crown-side winding train),
     // store (the alarm barrel), strike (barrel → cam → hammer → gong).
-    alarmInput: pfCollect([alarmWindUnit, alarmCrownUnit]),
-    alarmStore: pfCollect([alarmBarrelRotor, alarmArborRotor]), // §99: the store is the ribbon between the two rotors — both glow with it
-    alarmStrike: pfCollect([alarmStrikeRotor, alarmLiftPivot, alarmHammerPivot, gongArc]), // §198: the lever is a link of the strike path
+    // §325 landing 3: empty when the movement is built without the alarm
+    alarmInput: ALARM_BUILT ? pfCollect([alarmWindUnit, alarmCrownUnit]) : [],
+    alarmStore: ALARM_BUILT ? pfCollect([alarmBarrelRotor, alarmArborRotor]) : [], // §99: the store is the ribbon between the two rotors — both glow with it
+    alarmStrike: ALARM_BUILT ? pfCollect([alarmStrikeRotor, alarmLiftPivot, alarmHammerPivot, gongArc]) : [], // §198: the lever is a link of the strike path
   };
 }
 let pfLastAlarmWind = 0, pfAlarmHotUntil = 0;
@@ -56112,7 +56316,7 @@ const UNIT_GROUPS = new Map([
     ['Base plate', null], ['pillars', null], ['Three-quarter plate', null],
     ['Case', null], // backlog: the housing — band, screw back, crystal, lugs, tubes
   ])],
-  ['Alarm complication', new Map([
+  ...(ALARM_BUILT ? [['Alarm complication', new Map([   // §325 landing 3: the group, when the movement carries it
     // dial side, unfolding toward the viewer in drive order: crown outermost
     ['Alarm crown', 6], ['Alarm setting arbor', 5], ['Alarm setting idler', 4],
     ['Alarm setting wheel', 3], ['Alarm disc', 2],
@@ -56138,7 +56342,7 @@ const UNIT_GROUPS = new Map([
     ['Alarm release sleeve', null], ['Alarm release lifter', null], // §45 — level-2 offsets are that story's to assign
     ['Alarm release crank', null], ['Alarm release link', null], // TODO 236 — the release run's fold-added crank and its tie link
     ['Alarm silence rocker', null], // §45 stage 2
-  ])],
+  ])]] : []),
 ]);
 // §299: the case's back and crystal assemblies are explode entries with no label
 // of their own (the label is on the whole case), so they fell through to
@@ -57370,6 +57574,8 @@ const linkShot = (at, R, out = 0.45, up = 0.75) => {
     look: [at.x, at.y, at.z],
   };
 };
+// §325 landing 3 — the link tour's sites are the alarm's, so they exist only when it is built
+const { ALARM_LINK_STEPS, _beakAt, _rodRun } = !ALARM_BUILT ? { ALARM_LINK_STEPS: null } : (() => {
 // §261 FOLDED THE DIAL-SIDE CLUSTER, so the sites are read through the fold, not off
 // the unfolded constants: the column, its beak, the rod and the lay shaft stand UNDER
 // THE DIAL (z < 0) and only the pusher and its two-crank linkage stay between the
@@ -57461,6 +57667,8 @@ const ALARM_LINK_STEPS = [
     caption: 'Press again and the whole run reverses — column, beak, rod, shaft, crank, ring. Pusher to arming, unbroken', dwell: 3.4 },
 ];
 paceByReading(ALARM_LINK_STEPS);
+return { ALARM_LINK_STEPS, _beakAt, _rodRun };
+})();
 
 // §17 — Guided tour: the same engine over more stops. The jumper stop reuses
 // the demo's own pull/turn/push vocabulary (not a second machine), and the sync
@@ -57498,6 +57706,7 @@ const TOUR_STEPS = [
   // stop-work, drawn in the line tier since §134 — framed by the same lazy
   // getter idiom stop 4 uses) and the alarm's arming, which is the one thing
   // an owner presses.
+  ...(ALARM_BUILT ? [   // §325 landing 3: the alarm's two stops, when it is built
   { get camera() { return frameOn('Alarm winding arrest', [0.35, -0.5, 0.75], 4.6); },
     sound: false, xray: true, schematic: true,
     caption: 'The alarm barrel has a stop-work of its own: a Maltese cross counts its turns, and the last one lands on a solid limb', dwell: 5.0 },
@@ -57506,6 +57715,7 @@ const TOUR_STEPS = [
   // derived beak shot frames them, read through the fold (TODO 276's retarget).
   { camera: linkShot(_beakAt, _rodRun / 2 + 5.0, 0.3, -0.9), schematic: false, xray: true, alarm: true,
     caption: 'Press the pusher and the alarm arms: a column wheel indexes, a beak reads it, and a long link carries the arming to the selector ring', dwell: 4.6 },
+  ] : []),
   { preset: 'Free', alarm: false, sound: false, scale: 1, xray: false, explode: 0, labels: false, powerflow: false, links: true,
     caption: 'That’s the tour. Explore the controls yourself, or read how they work:', dwell: 6.0 },
 ];
@@ -57633,6 +57843,7 @@ const INSPECT_STEPS = [
   // The nine this replaces asked tooth-into-gap and hand-off questions that
   // `meshPhase`, `transmits` and `alarmHandoffs` now gate, and one taught an
   // "inverted lever" check on a link §229/§261 rebuilt.
+  ...(ALARM_BUILT ? [   // §325 landing 3: the alarm's stops, when it is built
   { title: 'Arming run', crown: 'in', scale: 0.25, alarm: true, labels: false, xray: false, schematic: true,
     camera: frameOn('Alarm switch', [0.35, -0.3, 0.9], 1.2),
     caption: 'The pusher, the pawl and the column wheel, drawn in lines with the contact dots lit by the same rows the battery gates, measured at this pose. What no gate samples is the press itself: every sweep takes the pawl parked, because the stroke is not a pose any axis varies (TODO 87).', dwell: 7.5 },
@@ -57653,6 +57864,7 @@ const INSPECT_STEPS = [
     camera: frameOn('Alarm hammer', [-0.8, -0.45, 0.7], 3.6),
     caption: 'The hammer. After the wire it rebounds on a posed envelope, a 198 Hz cosine decaying over 31 cycles that nothing in the metal produces and nothing banks, so the double strike a serviced watch must not have is neither drawn nor prevented (TODO 228). Its strike ribbon works at 3096 to 5264 MPa, past its alloy’s tensile strength, and is waived by name (TODO 201).', dwell: 8.0 },
 
+  ] : []),
   { title: 'End', preset: 'Free', scale: 1, alarm: false, focus: null, labels: false, xray: false, schematic: false, explode: 0, links: true,
     caption: 'That is the route. Every stop named the open item it is the edge of, and the list is TODO.md; where a stop said modelled, the part is described and not driven. Read how it works:', dwell: 6.0 },
 ];
@@ -58771,8 +58983,10 @@ function tick(t) {
   const hourDialA = hourWheelGroup.rotation.z;
   // §278 landing 5 — the hour, carried to the satellite through its teeth (rule
   // 2): the idler off the hour wheel, the twin off the idler, one law each.
-  alarmDetIdlerSpin.rotation.z = alarmDetectorIdlerA(hourDialA);
-  alarmDetHourSpin.rotation.z = alarmDetectorHourA(hourDialA);
+  if (ALARM_BUILT) {
+    alarmDetIdlerSpin.rotation.z = alarmDetectorIdlerA(hourDialA);
+    alarmDetHourSpin.rotation.z = alarmDetectorHourA(hourDialA);
+  }
   // Small seconds at 6: same expression the old central hand used (−2π per
   // minute, re-referenced on reset). TODO 115 — dial-side, so negated: the hand
   // and the fourth wheel it rides are one rigid body rather than mirror images
@@ -59090,7 +59304,7 @@ function tick(t) {
   // it is the only control that reaches an alarm time at all (the time-scale
   // slider spans 0.001×..1× and cannot speed the movement up), so a viewer
   // fast-forwarding is deliberately travelling TO the alarm.
-  if (syncPhase !== 'catchup') {
+  if (ALARM_BUILT && syncPhase !== 'catchup') {   // §325 landing 3: no trip without the alarm
     // Trip (§25 B): the feeler IS the rattrapante follower — armed, its nose
     // drops into the heart's notch exactly when the hour wheel's angle
     // reaches the held tube's, and that PHYSICAL alignment (rel crossing 0)
@@ -59412,6 +59626,7 @@ function tick(t) {
   // barrel and the striking cam stay one mesh through winding too.
   // TODO 236: a POSED pull is held where setPose put it (the 'alarm pull' axis
   // sweeps the stroke between the two plateaus); a live step eases as before.
+  if (ALARM_BUILT) {   // §325 landing 3: the alarm's pose, when the movement carries it
   if (rawDt > 0) alarmCrownPullPosed = null;
   alarmCrownPullT = rawDt > 0
     ? lerp(alarmCrownPullT, alarmCrownOut ? 1 : 0, 1 - Math.exp(-rawDt * 10))
@@ -60121,6 +60336,7 @@ function tick(t) {
   // the stud, and the elastica between them is what the lift works against
   // and what drives the fall (a consequence of the pose, never a pose).
   alarmHammerSpiral.userData.setWind(alarmHammerPivot.rotation.z);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -60322,6 +60538,7 @@ const JMP_SITE_MOVERS = [
   // ---- lawed (TODO 161): the laws tick itself poses them through
   // TODO 236: the run is a chain of turning members, so its stroke is MEASURED
   // off the law (jmpStrokeOf, below) like the link run's
+  ...alarmRows(() => [   // §325 landing 3: the alarm's, when built
   { name: 'release run', kind: 'lawed', roots: [alarmSleeve, alarmLifter, ...alarmLifterBladeGroups, alarmReleaseCrank, alarmReleaseLink, alarmSilRocker, alarmSilBladeMesh].filter(Boolean),
     pose: (u) => poseAlarmReleaseRun(u) },
   // TODO 222: the ring TURNS as it rises (its helix), so its fastest point is
@@ -60329,17 +60546,21 @@ const JMP_SITE_MOVERS = [
   { name: 'selector ring', kind: 'lawed', roots: [alarmSelRing],
     stroke: Math.hypot(ALARM_SEL_TRAVEL, ALARM_SEL_HELIX.turn * (ALARM_SEL_GUIDE_R0 + ALARM_SEL_GUIDE_T + ALARM_FORK_CLEAR + ALARM_SEL_GUIDE_PIN_R)),
     pose: (u) => poseAlarmSelRing(u) },
+  ]),
   // judged at every pull of the solve's own crown grid (settingLeverAngleAt)
   { name: 'setting lever', kind: 'lawed', roots: [settingLeverGroup], grid: 'pull' },
   // ---- revolve: the dial-centre groups, onto the entries already turning there
   { name: 'hour group', kind: 'revolve', roots: [hourWheelGroup], onto: mwHourWheel, slack: 0 },
   // the reader drops on its lift by at most ALARM_PIN_DROP (tick's clamp) — and
   // since §278 landing 5 it revolves about the SATELLITE, on the twin's rotor
+  ...alarmRows(() => [   // §325 landing 3: the alarm's, when built
   { name: 'release reader', kind: 'revolve', roots: [alarmReaderUnit], onto: alarmDetWheel, slack: ALARM_PIN_DROP },
   // §278 landing 5 — the satellite's tube turns with its twin (the idler and the
   // twin are rotors, each its own entry)
   { name: 'detector arbor', kind: 'revolve', roots: [alarmDetHourSpin], onto: alarmDetWheel, slack: 0 },
+  ]),
   { name: 'cannon nose', kind: 'revolve', roots: [cannonNose], onto: cannonPinion, slack: 0 },
+  ...alarmRows(() => [   // §325 landing 3: the alarm's, when built
   { name: 'alarm tube', kind: 'revolve', roots: [alarmTubeGroup], onto: jmpRotorNamed(dialFace, 'alarmSettingWheel'), slack: 0 },
   // the pin arm rocks on its face cam and the selector rocker see-saws: slack
   // MEASURED by the census (0.0647, 0.3229) and rounded up. TODO 222 moved the
@@ -60371,6 +60592,7 @@ const JMP_SITE_MOVERS = [
     })() },
   { name: 'alarm disc', kind: 'revolve', roots: [alarmDiscGroup], onto: jmpRotorNamed(alarmDiscGroup, 'alarmDiscBody'), slack: 0 },
   { name: 'alarm setting wheel', kind: 'revolve', roots: [alarmSetWheelGroup], onto: jmpRotorNamed(alarmSetWheelGroup, 'alarmSettingWheel'), slack: 0 },
+  ]),
   // ---- bounded: each bound is the census's measured minimum over the pose
   // net, rounded down to 0.01 (trailing: the reading and the mesh that sets it)
   { name: 'going-train bodies', kind: 'bounded', units: ['Fusee & great wheel', 'Center wheel', 'Third wheel'], bound: 0.84 },   // 0.8401, the fusee's lower pivot at beat 0/193 — TODO 202: the pivot seats mid-plate (was 0.8554 before §314's barrel step of −20° moved the fusee)
@@ -60380,7 +60602,8 @@ const JMP_SITE_MOVERS = [
   { name: 'winding clutch', kind: 'bounded', units: ['Winding clutch'], bound: 1.02 },   // 1.0264, clutchSaw at wind 95/720 — §314's arrangement swung the stem toward the jumper (was 5.9672)
   { name: 'reset rod', kind: 'bounded', roots: [resetRod], bound: 2.38 },               // 2.3818
   { name: 'hack rod', kind: 'bounded', roots: [hackRod], bound: 2.72 },                 // 2.7278
-  { name: 'hands', kind: 'bounded', roots: [hourHand, minuteHand, smallSecondsHand, reserveHand, alarmHand], bound: 0.81 },   // 0.8124, the small-seconds body
+  { name: 'hands', kind: 'bounded', roots: [hourHand, minuteHand, smallSecondsHand, reserveHand, ...alarmRows(() => [alarmHand])], bound: 0.81 },   // 0.8124, the small-seconds body
+  ...alarmRows(() => [   // §325 landing 3: the alarm's, when built
   { name: 'alarm feeler', kind: 'bounded', roots: [alarmFeelerUnit], bound: 0.33 },     // 0.3344, alarmFeelerTip
   // §261 2c — the link's run and the column driver are LAWED: the fold sited
   // the lay shaft and the driver inside the jumper's region (the link's old
@@ -60392,6 +60615,7 @@ const JMP_SITE_MOVERS = [
     pose: (u) => poseAlarmLinkRun(u * alarmLinkParts.forward.seatNoseDrop, false) },
   { name: 'column driver', kind: 'lawed', roots: [alarmColDriverGroup, alarmColPawlGroup, alarmColPawlSpringBlade],
     pose: poseAlarmDriverCycle },
+  ]),
   // TODO 214 moved the yoke to the lever's side of the stem, into the census's
   // view, and §314's arrangement swung the stem far enough round that the yoke
   // reaches the jumper's region (0 against the 0.8147 it was bounded at): so it
@@ -61409,12 +61633,12 @@ const JMP_SITE_WALKS = (() => {
   const zHi = Math.max(JMP_SITE.reachZ[1], Z_JMP_LIFTER + JMP_LIFTER_T / 2);
   const rows = [
     { walk: 'GONG_BAND_FLOOR', limit: R_ANNULUS_IN, margin: R_ANNULUS_IN - reachR },
-    { walk: 'GONG_FOOT_OBSTACLES', limit: GONG_R - GONG_POST_R - CLEAR_MARGIN, margin: (GONG_R - GONG_POST_R - CLEAR_MARGIN) - reachR },
+    ...alarmRows(() => [{ walk: 'GONG_FOOT_OBSTACLES', limit: GONG_R - GONG_POST_R - CLEAR_MARGIN, margin: (GONG_R - GONG_POST_R - CLEAR_MARGIN) - reachR }]),
     { walk: 'Case walk', limit: CASE_R_IN, margin: CASE_R_IN - reachR },
     // the corridor's solids stand at z ≥ ALARM_CORRIDOR_BAND_FLOOR, so the
     // jumper (which reaches UP to zHi, the less-negative end) clears it by
     // the floor less its own reach — the jumper's zLo plays no part here.
-    { walk: 'Alarm corridor', limit: ALARM_CORRIDOR_BAND_FLOOR, margin: ALARM_CORRIDOR_BAND_FLOOR - zHi },
+    ...alarmRows(() => [{ walk: 'Alarm corridor', limit: ALARM_CORRIDOR_BAND_FLOOR, margin: ALARM_CORRIDOR_BAND_FLOOR - zHi }]),
   ];
   let beMin = Infinity, jumperBins = 0;
   for (const b of BACK_ENVELOPE.bins) {
@@ -61456,7 +61680,7 @@ if (JMP_SITE.best && !(JMP_SITE.bSlack >= JMP_SITE.best.clr - 1e-9))
 // build. Runs HERE, with the whole tree assembled and matrices current,
 // because measured at the build site it read a stale matrixWorld and passed a
 // genuine violation. Nothing in the battery covers this pair.
-{
+if (ALARM_BUILT) {
   scene.updateMatrixWorld(true);
   const markerInnerR = dialRadius * G.DIAL_MARKER_INNER_F;
   // TRUE vertex radius, not the bounding box's corner. The hand is a thin
@@ -61751,8 +61975,10 @@ function advanceFrame(realDt, wallDt = realDt, budgetMs = Infinity) {
   // the same quantity the trip reads — not from the rounded mark, which the
   // mechanism ignores. §90 moved the conversion into alarmRingsAtSeconds()
   // so the HUD's copy of this row cannot drift from it.
-  document.getElementById('readout-alarm').textContent = '≈' + fmtHM(alarmRingsAtSeconds());
-  document.getElementById('readout-alarm-wind').textContent = fmtNum(Math.round((alarmBarrelWind / ALARM_BARREL_TURNS) * 100), 0) + '%';
+  if (ALARM_BUILT) {   // §325 landing 3: no alarm readouts without the alarm
+    document.getElementById('readout-alarm').textContent = '≈' + fmtHM(alarmRingsAtSeconds());
+    document.getElementById('readout-alarm-wind').textContent = fmtNum(Math.round((alarmBarrelWind / ALARM_BARREL_TURNS) * 100), 0) + '%';
+  }
   paintScale();
   updateSyncUI();
   document.getElementById('readout-beats').textContent = String(beatPhase(tauNow).n);
@@ -62151,7 +62377,7 @@ window.__clock = {
   // §253 — the arch solve and the arc's radiation integral THEMSELVES, for
   // probe-253-arch-modes to hold their controls on (the straight limit, the
   // brute-force sphere): plain data out, so a page.evaluate can carry it.
-  gongArch: {
+  gongArch: ALARM_BUILT ? {
     modes: (S, alpha, gMax, nMax) => GONG_ARCH.modes(S, alpha, gMax, nMax)
       .map((m) => ({ g: m.g, Om: m.Om, mFrac: m.mFrac, tanShare: m.tanShare, uTip: m.uTip, w: Array.from(m.w), u: Array.from(m.u) })),
     radiation: (shape, alpha, R_m, kAc) => gongRadiationFactors(Float64Array.from(shape), alpha, R_m, kAc),
@@ -62159,7 +62385,7 @@ window.__clock = {
     // round build), so probe-310-gong-seat holds it to the series above on the arc it was derived for
     radiationPath: (shape, kAc) => gongRadiationFactorsPath(Float64Array.from(shape), gongWireFrame(), kAc),
     straightRoots: GONG_MODE_BL.slice(),
-  },
+  } : null,
   get armingSpring() { return ALARM_LINK_ARMING_SPRING; }, // TODO 206 — the alarm link's arming spring, its solved line spec
   get beakLever() { return alarmLinkParts.lever; }, // TODO 240 — the re-aimed beak lever: its run, arms, stub, bar line, seat tilt and the site's ray
   get beakPivot() { return alarmLinkParts.pivot; }, // TODO 204 — the beak lever's pin, eye, web, post and head: stations, sections and the stresses that sized them
@@ -62169,7 +62395,7 @@ window.__clock = {
   // staff, in whole stop pitches, and the z reflection's sum. Read-only, for
   // probe-261-fold-site's K9 once its own search no longer finds the fold.
   // §314 — the pusher linkage's law and its swept plan, for the rod line's search
-  alarmLinkage: { line: _linkageLine, modRotDeg: ALARM_MOD_ROT / DEG2RAD, key: ALARM_ARR_KEY,
+  alarmLinkage: ALARM_BUILT ? { line: _linkageLine, modRotDeg: ALARM_MOD_ROT / DEG2RAD, key: ALARM_ARR_KEY,
     at: (dirDeg, c) => { const L = alarmLinkageFor(dirDeg * DEG2RAD + ALARM_MOD_ROT, c, true); return L && Math.abs(L.closure) < 1e-9 ? { PA: L.PA, PB: L.PB, EA: L.EA, EB: L.EB, p0: L.p0, p1: L.p1, q0: L.q0, q1: L.q1, rod: L.rod, armA: L.armA, armBin: L.armBin, armBout: L.armBout, swept: () => alarmLinkageSweptOf(L) } : null; },
     swept: () => alarmLinkageSweptOf(ALARM_LINKAGE),
     // the three-quarter plate's window intents (what each opening wants to reveal): a stud planted in the plate
@@ -62178,13 +62404,13 @@ window.__clock = {
       if (w.discs) { const d = w.discs(); return d.filter(Boolean).map((q) => ({ x: q.x, y: q.y, r: q.r, name: w.name })); }
       const a = w.at(); return a ? [{ x: a.x, y: a.y, r: w.reveal(), name: w.name }] : [];
     }),
-    studR: ALARM_LINKAGE_STUD_R, landMin: TQ_LAND_MIN },
+    studR: ALARM_LINKAGE_STUD_R, landMin: TQ_LAND_MIN } : null,
   get alarmFold() { return { phi: ALARM_FOLD_PHI, pitches: ALARM_FOLD_PITCHES, stopTeeth: ALARM_STOP_TEETH, zSum: ALARM_FOLD_Z_SUM, axis: { x: alarmSwPos.x, y: alarmSwPos.y } }; },
   // TODO 236 — the release run's laws and solved record, read-only, for
   // tools/probe-236-release-run.mjs: the sleeve's law (the helix solve's own
   // peak function, the cone's contact, the ring's work), the chain, and the
   // numbers the build sized every member to.
-  releaseRun: Object.freeze({
+  releaseRun: ALARM_BUILT ? Object.freeze({
     peak: alarmReleasePeak, coneContact: alarmConeContact, ringWork: alarmSleeveRingWork, chainAt: alarmReleaseChainAt,
     helix: ALARM_RELEASE_HELIX, sized: ALARM_RELEASE, cut: ALARM_SLEEVE_HELIX,
     driveAzDeg: ALARM_SLEEVE_DRIVE_AZ / DEG2RAD, stationsDeg: ALARM_SLEEVE_GUIDE_AZ.map((a) => a / DEG2RAD),
@@ -62196,7 +62422,7 @@ window.__clock = {
     crankZ: ALARM_RELEASE_CRANK_Z - ALARM_SLEEVE_Z_REST,
     sigmaY_Pa: SPRING_SIGMA_Y_PA, unitMM: UNIT_MM,
     stud: { lifterR: ALARM_LIFT_STUD_R, crankR: ALARM_RELEASE_STUD_R, crankL: ALARM_RELEASE_STUD_L },
-  }),
+  }) : null,
   get lineLaws() { return Object.assign(Object.create(ALARM_LINK_LAWS), { release: ALARM_RELEASE_LAWS, strike: alarmStrikeLineLaws(), detector: ALARM_DETECTOR_LAWS }); }, // §70 step 3 — the alarm link's own laws (seat solve, pin arm, rim top), for its line spec to evaluate at the reference's inputs; TODO 236 — and the release run's (`release`); §278 — and the strike corner's (`strike`); §278 landing 4 — and the detector's (`detector`)
   get alarmSetHold() { return alarmSetHoldRecord(); }, // TODO 144 — the release disc's drag and what holds it (null until a hold is cut), for probe-144-set-hold
   get meshes() { return meshAudit(); },        // §194 — every declared gear mesh, its two named members and the inputs that drive it
@@ -62314,7 +62540,7 @@ window.__clock = {
   // `pitch` stays the CASTELLATION pitch the click published, because the
   // press probe reads it to place a half-step and that geometry is unchanged;
   // `sawPitch` beside it is the jumper's own, and they are not the same angle.
-  jumperLaw: {
+  jumperLaw: ALARM_BUILT ? {
     seatR: (colA) => alarmJumperSeatR(colA),
     armAngle: (colA) => alarmJumperAngle(colA),
     seat: ALARM_JUMPER_SEAT_R, crestRay: ALARM_JUMPER_CREST_RAY_R, tipR: ALARM_JUMPER_TIP_R,
@@ -62329,7 +62555,7 @@ window.__clock = {
       alarmColumnWheel.rotation.z = -colA;
       alarmJumperArm.rotation.z = alarmJumperAngle(colA);
     },
-  },
+  } : null,
   get fourthAngle() { return fourthAngle(tauIntegrated); },
   get barrelWindTurns() { return barrelWindTurns; },
   get windStemSlip() { return windStemSlip; },        // TODO 50: the coupling's relative index
@@ -62459,7 +62685,7 @@ window.__clock = {
     autoWindRemaining = 0;
     jumpCorr = 0; jumpDisp = null;
     alarmCrownRotation = 0;
-    alarmBarrelWind = 0; alarmStrikePhase = ALARM_PHASE_REST; alarmReleased = false; // §25 C: as-booted = UNWOUND
+    alarmBarrelWind = 0; alarmStrikePhase = ALARM_BUILT ? ALARM_PHASE_REST : 0; alarmReleased = false; // §25 C: as-booted = UNWOUND
     alarmOn = false; alarmTubeShownA = 0; // §25 C: disarmed, tube seated (the pose path re-derives both exactly)
     alarmCrownOut = false; alarmCrownPullT = 0; alarmCrownPullPosed = null; alarmSetRot = 0; lastAlarmCrownRotation = 0;
     alarmDropSpent = false; alarmPinDropNow = 0; alarmColSteps = 0; alarmColShownA = 0; alarmColHeldA = 0; alarmColLatched = false; alarmPusherStroke = false; alarmPusherT = 0; alarmPusherHeld = false; alarmSelShownT = 0; // §25 B+D (steps parity = alarmOn = false ✓); §29: pin re-derives; §34: selector home
@@ -62519,6 +62745,7 @@ window.__clock = {
     // `jumpDisp === null` initialiser lands it on the detent's target, a pure function
     // of (tau, setPathRot, jumpCorr); the ease is a live-loop transient. `jumperEngage`
     // names no setPathRot and keeps the carried star by design.
+    if (ALARM_BUILT) {   // §325 landing 3: the alarm's inputs, accepted and ignored when it is not built (AXES is one table)
     if (p.alarmCrownRotation !== undefined) { // §24 alarm axis — poses "crown wound to here in SET mode"
       alarmCrownRotation = p.alarmCrownRotation;
       // THE SAME CROSSING AS tick()'S, and it has to carry the same sense.
@@ -62639,6 +62866,7 @@ window.__clock = {
       alarmStrikePhase = p.alarmStrikePhase;
       if (p.alarmBarrelWind === undefined)
         alarmBarrelWind = clamp(ALARM_BARREL_TURNS - alarmStrikePhase / ALARM_STRIKES_PER_BARREL_TURN, 0, ALARM_BARREL_TURNS);
+    }
     }
     // TODO 224 — A HELD WIND, AS A PURE FUNCTION OF ITS INPUT. `maintHold` is
     // the fraction h ∈ [0, 1] of the run the great wheel has advanced on the
@@ -62812,13 +63040,13 @@ window.__clock = {
   dialSpec: DIAL_SPEC,
   regions: FORM_REGIONS,
   get strikePlateOpening() { return STRIKE_PLATE_OPENING; },   // TODO 266 — the strike group's opening in a form plate (null round)
-  gongSeat: FORM ? Object.freeze({ specKey: GONG_SPEC_KEY, arrKey: GONG_ARR_KEY, pivot: { x: hammerPiv.x, y: hammerPiv.y }, mode: GONG_SEAT_MODE, seated: GONG_SEATED, refused: GONG_SEAT?.refused ?? null,
+  gongSeat: ALARM_BUILT ? FORM ? Object.freeze({ specKey: GONG_SPEC_KEY, arrKey: GONG_ARR_KEY, pivot: { x: hammerPiv.x, y: hammerPiv.y }, mode: GONG_SEAT_MODE, seated: GONG_SEATED, refused: GONG_SEAT?.refused ?? null,
     row: GONG_SEAT?.row ?? null, strike: GONG_SEATED ? { s: GONG_SEAT.st.s, S: GONG_SEAT.st.S, F: GONG_SEAT.st.F, b: GONG_SEAT.st.b, P: { x: hammerPiv.x, y: hammerPiv.y }, psi: hammerPiv.psi } : null,
     check: GONG_SEAT_CHECK, lever: { Q: LIFT_PIV, rho: Math.hypot(ALARM_LIFT_ARM + ALARM_TAIL_LEN, ALARM_LIFT_S), tanLen: Math.sqrt(ALARM_ARM_LEN ** 2 - ALARM_HEAD_R ** 2),
       side: ALARM_LIFT_SIDE, gap: HAMMER_HEAD_GAP, headR: ALARM_HEAD_R, headH: ALARM_HEAD_H, postR: HAMMER_POST_R, margin: CLEAR_MARGIN },
     keep: STRIKE_KEEP_MEASURED,   // TODO 272 — what tools/gong-seats.mjs writes into the row as the pillars' keep-out
     tenants: GONG_BAND_TENANTS, wireR: GONG_WIRE_R, wireD_m: 2 * GONG_WIRE_R * OSC_U, zGong: Z_GONG, postR: GONG_POST_R_BUILT,
-    postRFor: (L_u) => gongPostRFor(L_u * OSC_U) }) : null,   // §310 landing 2 — the seat this build stands its gong on, and what tools/gong-seats.mjs solves against   // §308 landing 2 — the region model (null on the round build)   // §308 — the dial spec, a readout in landing 1
+    postRFor: (L_u) => gongPostRFor(L_u * OSC_U) }) : null : null,   // §310 landing 2 — the seat this build stands its gong on, and what tools/gong-seats.mjs solves against   // §308 landing 2 — the region model (null on the round build)   // §308 — the dial spec, a readout in landing 1
   // §81 tranche A: what the weld pass found and removed, so the reduction is
   // a number the battery can read rather than a claim in a comment.
   get weldCensus() { return WELD_CENSUS; },
