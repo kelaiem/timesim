@@ -21,7 +21,8 @@
 //   · A1′ — the lock arcs on friction axle pins, their angle free (A1_PRIME, `solveA1Prime`'s answer): it escapes, its
 //     lock stands over F2's play, and driven as §316 drives the recoil anchor (the knife's loss and the lock's rest
 //     friction unmodelled: UPPER bounds) it sustains at every corner with both margins positive and a rate spread under
-//     the recoil anchor's, read by the same function off §316's own table. Controls: a forged release a degree later
+//     the recoil anchor's, read by the same function off §316's own table; its recoil on the lock beside the anchor's (a
+//     report). Controls: a forged release a degree later
 //     (the adverse margin must go); the convex pallet set a quarter turn round (it must not escape).
 //   · A1 — `solveA1` over every candidate pair, every quarter-turn placement face up or down, every escape-arbor
 //     lattice point the pallets' radii reach, both senses, on the 8T: the number that escape, and the CLOSEST (the
@@ -187,7 +188,8 @@ function corners(ct, A0, { release = ct.release, table = ct.A } = {}) {
     const lockMM = ct.release * Math.min(...near);
     if (!(lockMM > F2_PLAY_MM)) fail(`A1′'s lock (${lockMM.toFixed(3)} mm) is not over F2's ${F2_PLAY_MM} mm play`);
     // the beat off the table: lift (the swing of each leg's impulse) and the recoil on the lock (wheel per balance)
-    const legs = [1, -1].map((dir) => { const L = ct.legs[dir]; let imp = 0, rec = 0, recN = 0; for (let i = 0; i < ct.n; i++) { const s = L.slope[i]; if (L.kind[i] === 'drop') continue; if (s * dir > 0) imp += ct.da; else if (s * dir < 0) { rec += Math.abs(s); recN++; } } return { lift: toDeg(imp), recoil: recN ? rec / recN : 0 }; });
+    const legsOf = (ct) => [1, -1].map((dir) => { const L = ct.legs[dir]; let imp = 0, rec = 0, recN = 0; for (let i = 0; i < ct.n; i++) { const s = L.slope[i]; if (L.kind[i] === 'drop') continue; if (s * dir > 0) imp += ct.da; else if (s * dir < 0) { rec += Math.abs(s); recN++; } } return { lift: toDeg(imp), recoil: recN ? rec / recN : 0 }; });
+    const legs = legsOf(ct);
     const dr = corners(ct, ts.from + 0.5);
     // the recoil anchor, read by the same function off §316's own table
     const spec316 = { ...efTrain.spec, sense: frameTrain('technic_classic').sense }, ct316 = D.contactTables(lib, spec316, { A: D.TECHNIC_DRIVE.tableDeg, n: D.TECHNIC_DRIVE.traceSteps });
@@ -199,7 +201,7 @@ function corners(ct, A0, { release = ct.release, table = ct.A } = {}) {
     else {
       if (!(dr.below > 0 && dr.above > 0)) fail(`A1′'s margins: ${dr.below.toFixed(3)}° over the release, ${dr.above.toFixed(3)}° under the table's edge`);
       console.log(`  DRIVEN (UPPER BOUNDS: knife loss and lock rest friction unmodelled) swing ${dr.A.map((x) => x.toFixed(2)).join('° / ')}° adverse / nominal / favourable; ${dr.below.toFixed(2)}° over the release at the worst adverse corner, ${dr.above.toFixed(2)}° under the table's edge at the worst favourable; rate spread ${dr.matched.toFixed(0)} s/day matched, ${dr.box.toFixed(0)} s/day box`);
-      if (ref.ok) console.log(`  the recoil anchor by the same reading: rate spread ${ref.matched.toFixed(0)} s/day matched, ${ref.box.toFixed(0)} s/day box${dr.box < ref.box ? ` — A1′ ${(ref.box / dr.box).toFixed(1)}× less` : ''}`);
+      if (ref.ok) console.log(`  the recoil anchor by the same reading: rate spread ${ref.matched.toFixed(0)} s/day matched, ${ref.box.toFixed(0)} s/day box${dr.box < ref.box ? ` — A1′ ${(ref.box / dr.box).toFixed(1)}× less` : ''}; its recoil on the lock ${legsOf(ct316).map((l) => l.recoil.toFixed(2)).join(' / ')} wheel per balance (a report: A1′ is not dead on its lock)`);
       if (!(ref.ok && dr.box < ref.box)) fail('A1′ is not less friction-sensitive than the recoil anchor');
       console.log(`  VERDICT: A1′ escapes and drives; ${dr.below < D.TABLE_STEP_DEG ? `MARGINAL at the adverse corner — ${dr.below.toFixed(2)}° over the release, under a table grid step (${D.TABLE_STEP_DEG}°), before the knife's loss and the lock's rest friction take their share` : `its adverse margin ${dr.below.toFixed(2)}° clears a table grid step`}`);
       // controls: a forged margin (the release read a degree later) must lose the adverse margin; the same pallets with
