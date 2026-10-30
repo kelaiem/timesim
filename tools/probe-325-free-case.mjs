@@ -23,6 +23,10 @@
 //   P  the dial's feet: three, each the rim margin plus its radius inside the outline (so none sets it), their
 //      triangle enclosing the hands (so they carry the dial).
 //   D  the dial frame: the outline carried through the Y-flip is the same area, simple, CCW.
+//   A  the movement WITHOUT the alarm (landing 3, ?alarm=0; a second fixture, probe-325-metal-alarm0.json):
+//      A1 its committed row holds that metal at the rim margin and IS the fit at its axis; A2 the metal it was
+//      fitted to carries no alarm — no pusher port, no gong, hammer-stud or strike-opening pin; A3 it encloses less
+//      than the with-alarm row, which is the reason the landing exists.
 // An ACCEPTANCE test: exits non-zero on any failure.
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -32,6 +36,7 @@ import { FREE_OUTLINES } from '../src/free-outlines.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FIX = join(ROOT, 'tools/data/probe-325-metal.json');
+const FIX0 = join(ROOT, 'tools/data/probe-325-metal-alarm0.json');   // landing 3: ?alarm=0
 let fails = 0;
 const ok = (name, cond, detail = '') => { console.log(`${cond ? 'PASS' : 'FAIL'}  ${name}${detail ? ` — ${detail}` : ''}`); if (!cond) fails++; };
 const quiet = (fn) => { const w = console.warn; console.warn = () => {}; try { return fn(); } finally { console.warn = w; } };
@@ -44,6 +49,14 @@ if (process.argv.includes('--refresh') || !existsSync(FIX)) {
   const { key, polys, pins, ports, rc, need, margin, feet } = r.ff.free;
   writeFileSync(FIX, JSON.stringify({ query: 'case=free', key, rc, need, margin, polys, pins, ports: ports ?? [], feet: feet ?? [], dial: r.extra.dial }));
   console.log(`refreshed ${FIX}: ${polys.length} plan hulls, ${pins.length} pins`);
+}
+if (process.argv.includes('--refresh') || !existsSync(FIX0)) {
+  const { bootForm } = await import('./boot-form.mjs');
+  const r = await bootForm('case=free&alarm=0');
+  if (!r.ff?.free?.polys) { console.error('refresh: the ?alarm=0 boot published no plan hulls', r.bootError ?? ''); process.exit(1); }
+  const { key, polys, pins, ports, rc, need, margin } = r.ff.free;
+  writeFileSync(FIX0, JSON.stringify({ query: 'case=free&alarm=0', key, rc, need, margin, polys, pins, ports: ports ?? [] }));
+  console.log(`refreshed ${FIX0}: ${polys.length} plan hulls, ${pins.length} pins`);
 }
 const FX = JSON.parse(readFileSync(FIX, 'utf8'));
 const ROW = FREE_OUTLINES[FX.key];
@@ -138,6 +151,24 @@ if (ROW) {
   const dial = L.freeShapeOf(ROW.pts.map(([X, Y]) => [-X, Y]).reverse(), { c: -ROW.c });
   ok('D1 the outline through the dial\'s Y-flip is the same outline', Math.abs(L.polyArea(dial.pts) - A) < 1e-9 && L.polyArea(dial.pts) > 0 && L.loopSimple(dial.pts),
     `${(L.polyArea(dial.pts) * mm2).toFixed(3)} mm², CCW, simple`);
+}
+
+// ── A: the movement without the alarm (§325 landing 3) ──────────────────────────────────────
+{
+  const F0 = JSON.parse(readFileSync(FIX0, 'utf8')), R0 = FREE_OUTLINES[F0.key];
+  const pins0 = F0.pins.map(([x, y, n]) => [x, y, n]);
+  if (!R0) ok('A1 the ?alarm=0 movement has a generated row', false, `no row for ${F0.key}`);
+  else {
+    const held = L.freeWorst(R0.pts, F0.polys, pins0, M);
+    const fit = quiet(() => L.fitFreeCase(F0.polys, { margin: F0.margin, rc: F0.rc, need: F0.need, c: R0.c, pins: pins0, ports: F0.ports }));
+    ok('A1 the ?alarm=0 row holds its metal and is the fit at its axis', held.d >= M - 1e-3 && Math.abs(fit.area - R0.area) <= 1e-3 * R0.area,
+      `held at ${held.d.toFixed(4)} u (need ${M}); the fit at c ${R0.c} reads ${(fit.area * mm2).toFixed(2)} mm² against the row's ${(R0.area * mm2).toFixed(2)}`);
+    const alarmPins = F0.pins.filter((p) => /gong|hammer|strike/.test(p[3] ?? ''));
+    ok('A2 the metal it was fitted to carries no alarm', alarmPins.length === 0 && F0.ports.length === 1,
+      `${alarmPins.length} gong/hammer/strike pin(s); ${F0.ports.length} port(s) — the winding stem's alone (no pusher, no alarm stem)`);
+    ok('A3 it encloses less than the movement with the alarm', R0.area < ROW.area,
+      `${(R0.area * mm2).toFixed(2)} mm² against ${(ROW.area * mm2).toFixed(2)} (${((R0.area / ROW.area - 1) * 100).toFixed(1)}%)`);
+  }
 }
 console.log(fails ? `${fails} FAILED` : 'all PASS');
 process.exit(fails ? 1 : 0);
