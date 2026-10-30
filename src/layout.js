@@ -1751,7 +1751,8 @@ export const DIAL_RECLAIM = 0.58;
 // measured the §278 landing 6 way (tools/probe-278-dial-step.mjs, QUERY=alarm=0 RECLAIM=DIAL_RECLAIM_NO_ALARM) and
 // rounded DOWN to the fund's 0.01 grid.
 export const DIAL_RECLAIM_NO_ALARM = 0.58;
-export const Z_DIAL = -9.54 + (ALARM_BUILT ? DIAL_RECLAIM : DIAL_RECLAIM_NO_ALARM);
+export const Z_DIAL_WITH_ALARM = -9.54 + DIAL_RECLAIM;   // the dial plane the alarm's strata were solved against
+export const Z_DIAL = ALARM_BUILT ? Z_DIAL_WITH_ALARM : -9.54 + DIAL_RECLAIM_NO_ALARM;
 // The dial as MATTER. Real watch dials are brass sheet ~0.35–0.5 mm; 0.4 mm is
 // mid-stock and the figure §50's own citations use for plate-like sheet. In
 // §39's pin that is 0.4 / 0.379 = 1.06 units. The floor under it: a dial must

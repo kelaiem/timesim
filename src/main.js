@@ -24,7 +24,7 @@ import {
   F_BALANCE, BEAT_DEG, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_STEP, BALANCE_R_REF, BAL_R_STEP, balanceWheelDims, BALANCE_R_SPEC, AMPLITUDE_POSED_DEG, LIFT_DEG, IMPULSE_WIDTH,
   CLEAR_MARGIN, HANDOFF_TRACK_TOL, ZERO_AREA_MAX, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK, FORK_HALF_Z,
   BAL_T, BAL_RIM_F, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T,
-  SPRING_TOP_Z, TRAIN_CEILING_Z, HAIRSPRING_OVERCOIL_RAISE, COCK_SLAB_BOT, COCK_SLAB_TOP, COCK_MID_Z, Z_DIAL, DIAL_RECLAIM, DIAL_T, DIAL_EDGE_BREAK, Z_KEYLESS,
+  SPRING_TOP_Z, TRAIN_CEILING_Z, HAIRSPRING_OVERCOIL_RAISE, COCK_SLAB_BOT, COCK_SLAB_TOP, COCK_MID_Z, Z_DIAL, Z_DIAL_WITH_ALARM, DIAL_RECLAIM, DIAL_T, DIAL_EDGE_BREAK, Z_KEYLESS,
   // Train ratios (§13 steps 2 + 3c): TRAIN is the ONE table — module, wheel
   // teeth and pinion teeth per mesh. Builders and tick()'s ratio chain
   // (meshOffset / the going-train ratios) both read it; the flat teeth
@@ -8488,6 +8488,11 @@ const MW_CANNON_FLOOR_LOCAL = Z_DIAL - MW_SINK_FLOOR;   // TODO 172: the cannon 
 const MW_BEVEL = (T, m) => Math.min(T * 0.18, m * 0.22);   // the gear builder's bevel, the term every plane here spelled out by hand
 const MW_COVER = 0.1;   // a pinion's leaves overreach the wheel's bevelled face by this — TODO 21's coverage floor, one name for its uses
 const MW_PINION_BEVEL = (T, m) => Math.min(T * 0.15, m * 0.2);   // makePinion's bevel (geometry.js pinionBevel), held to gearFaceReach at the build
+// §325 landing 4 — THE MOTION WORKS' CEILING. With the alarm built it is the seat's underside (the stack is solved up to
+// it, below). Without it nothing stands there, and the dial comes plate-ward past the band; the motion works keep the
+// WORLD planes the alarm's build cuts them at — the same plane, read in a dial frame that has moved by the reclaim — so
+// their wheels are the same metal and the dial's reclaim is bounded by what stands over them instead.
+const MW_CEIL_LOCAL = ALARM_SEAT_BOT + (ALARM_BUILT ? 0 : Z_DIAL - Z_DIAL_WITH_ALARM);
 const MW_WHEEL_T = (() => {
   // From the seat's underside down to the plate's margin, every term a margin,
   // a thickness or a bevelled half-thickness:
@@ -8502,14 +8507,14 @@ const MW_WHEEL_T = (() => {
   // below) it is a constant and T falls out linearly:
   const bev = MW_BEVEL(Infinity, MW_MODULE_1) + MW_BEVEL(Infinity, MW_MODULE_2);
   const bevC = MW_PINION_BEVEL(Infinity, MW_MODULE_1);   // TODO 153: the cannon pinion's own bevel, standing proud of ITS far face too
-  const T = (ALARM_SEAT_BOT - 4 * CLEAR_MARGIN - ALARM_SEAT_SINK - STAR_T - MW_COVER - 2 * bev - bevC - MW_CANNON_FLOOR_LOCAL) / 2;
+  const T = (MW_CEIL_LOCAL - 4 * CLEAR_MARGIN - ALARM_SEAT_SINK - STAR_T - MW_COVER - 2 * bev - bevC - MW_CANNON_FLOOR_LOCAL) / 2;
   if (T < 1.22 * Math.max(MW_MODULE_1, MW_MODULE_2))
     console.warn(`TODO 144: motion-works wheel thickness ${T.toFixed(4)} is under the bevel's module bound ${(1.22 * Math.max(MW_MODULE_1, MW_MODULE_2)).toFixed(4)} — the linear solve does not hold`);
   if (T < STOCK_MIN_U)
     console.warn(`TODO 144: motion-works wheel thickness ${T.toFixed(4)} is under §50's floor ${STOCK_MIN_U.toFixed(4)} — the seat's stratum cannot be paid for here`);
   return T;
 })();
-const MW_Z2 = ALARM_SEAT_BOT - CLEAR_MARGIN - ALARM_SEAT_SINK - (MW_WHEEL_T / 2 + MW_BEVEL(MW_WHEEL_T, MW_MODULE_2)); // hour wheel + minute pinion — DIAL-most; the seat's sink rides on the margin so the sweep never meets it at an exact tie
+const MW_Z2 = MW_CEIL_LOCAL - CLEAR_MARGIN - ALARM_SEAT_SINK - (MW_WHEEL_T / 2 + MW_BEVEL(MW_WHEEL_T, MW_MODULE_2)); // hour wheel + minute pinion — DIAL-most; the seat's sink rides on the margin so the sweep never meets it at an exact tie
 // The star slice is DERIVED between the two wheels' faces — its thickness plus
 // one margin each side — rather than the 1.5 the stack carried by literal.
 const MW_SLICE = (MW_WHEEL_T / 2 + MW_BEVEL(MW_WHEEL_T, MW_MODULE_2)) + CLEAR_MARGIN + STAR_T + CLEAR_MARGIN + (MW_WHEEL_T / 2 + MW_BEVEL(MW_WHEEL_T, MW_MODULE_1));
