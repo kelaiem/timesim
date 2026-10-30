@@ -17165,7 +17165,10 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
   // round it — the frame paying for the gong with the case's size.
   const PILLAR_RIM_LAND = Math.max(TQ_LAND_MIN, PLATE_RIM_MARGIN);
   const seatClearance = (x, y) => {
-    let c = Math.min(inCutClearance(x, y), FORM ? formInset(x, y) - PILLAR_RIM_LAND : plateR - Math.hypot(x, y));
+    // §325 landing 3 — on the FREE outline the rim is the fit to this very metal, which holds the cap exactly the rim
+    // margin inside it: the land owed there IS that margin, so the CLEAR_MARGIN every obstacle below adds is handed
+    // back (asked of a pillar the fit stood at its margin, it was refused the next round and the frame lost it)
+    let c = Math.min(inCutClearance(x, y), FORM ? formInset(x, y) - PILLAR_RIM_LAND + (FORM.kind === 'free' ? CLEAR_MARGIN : 0) : plateR - Math.hypot(x, y));
     for (const h of tqHoles) c = Math.min(c, Math.hypot(x - h.x, y - h.y) - h.r);
     const stadium = (s) => {
       const vx = s.bx - s.ax, vy = s.by - s.ay, L2 = vx * vx + vy * vy || 1e-9;
