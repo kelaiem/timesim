@@ -50126,9 +50126,9 @@ const DIAL_SPEC = (() => {
 //   · on metal of the plate it lands on (§62's land, STOCK_MIN_U, off every base-plate opening);
 //   · far enough inside the outline that it never SETS it: the rim margin plus its own radius, the fit's law for any
 //     counted part, so the feet stand in space the movement's other metal already holds open.
-// Of the seats that hold, each foot takes, in its own 120° sector about the hands (centred on its rim azimuth), the
-// one FARTHEST from the hands — the widest triangle the sectors allow, the dial carried as near its edge as the
-// open space reaches. A sector with no seat warns.
+// Of the seats that hold, one per 120° sector about the hands (centred on each foot's rim azimuth), the three whose
+// triangle holds the hands DEEPEST — the dial's margin against tipping, its weight at the hands. No triple that holds
+// the hands warns, and the feet stay at the rim rule.
 const FREE_DIAL_FEET = FORM?.kind === 'free' ? await (async () => {
   const lo = Z_DIAL - CLEAR_MARGIN, hi = backPlate.position.z + CLEAR_MARGIN, v = new THREE.Vector3();
   // handed back on breathe()'s budget through no NUMBERED seam (§317's rule: the boot bar's table is the default build's)
@@ -50168,22 +50168,36 @@ const FREE_DIAL_FEET = FORM?.kind === 'free' ? await (async () => {
     }
     return d;
   };
-  const step = 0.5, out = [];
-  for (const foot of DIAL_FEET) {
-    const mid = foot.userData.dialFootDeg * DEG2RAD;
-    let best = null;
-    for (let x = FORM.xMin; x <= FORM.xMax; x += step) for (let y = FORM.yMin; y <= FORM.yMax; y += step) {
-      const dx = x - P.dial.x, dy = y - P.dial.y, da = Math.atan2(Math.sin(Math.atan2(dy, dx) - mid), Math.cos(Math.atan2(dy, dx) - mid));
+  // THE TRIPLE. A dial resting on three feet tips unless its weight — at the hands — stands inside their triangle, and
+  // it is steadiest when the hands stand farthest from the triangle's nearest edge; the first cut took each sector's
+  // farthest seat alone and left the hands outside (probe-325 P1). So each sector keeps, per 4° of azimuth, its
+  // farthest free seat, and of every triple (one per sector) the one whose triangle holds the hands deepest wins.
+  const step = 0.5, BIN = 4 * DEG2RAD, cands = DIAL_FEET.map(() => new Map());
+  for (let x = FORM.xMin; x <= FORM.xMax; x += step) for (let y = FORM.yMin; y <= FORM.yMax; y += step) {
+    const dx = x - P.dial.x, dy = y - P.dial.y, az = Math.atan2(dy, dx), r = Math.hypot(dx, dy);
+    for (let k = 0; k < DIAL_FEET.length; k++) {
+      const mid = DIAL_FEET[k].userData.dialFootDeg * DEG2RAD, da = Math.atan2(Math.sin(az - mid), Math.cos(az - mid));
       if (Math.abs(da) > Math.PI / 3) continue;
-      const r = Math.hypot(dx, dy);
-      if (best && r <= best.r) continue;
-      if (clearOf(x, y) >= 0) best = { x, y, r };
+      const bin = Math.floor((da + Math.PI / 3) / BIN), cur = cands[k].get(bin);
+      if (cur && r <= cur.r) continue;
+      if (clearOf(x, y) >= 0) cands[k].set(bin, { x, y, r });
     }
-    await handBack();
-    if (!best) { console.warn(`§325: no open seat for the dial foot in the sector about ${foot.userData.dialFootDeg}° — it stays at the rim rule`); continue; }
-    foot.position.set(best.x - P.dial.x, best.y - P.dial.y, foot.position.z);   // dialGroup sits at P.dial
-    out.push({ deg: foot.userData.dialFootDeg, x: best.x, y: best.y, r: best.r });
   }
+  await handBack();
+  const edgeD = (a, b) => ((b.x - a.x) * (P.dial.y - a.y) - (b.y - a.y) * (P.dial.x - a.x)) / (Math.hypot(b.x - a.x, b.y - a.y) || 1e-12);
+  let best = null;
+  const [A, B, C] = cands.map((m) => [...m.values()]);
+  if (A?.length && B?.length && C?.length) for (const a of A) for (const b of B) for (const c of C) {
+    const s = Math.sign(edgeD(a, b)), m = Math.min(s * edgeD(a, b), s * edgeD(b, c), s * edgeD(c, a));
+    if (!best || m > best.m) best = { m, feet: [a, b, c] };
+  }
+  const out = [];
+  if (!best || !(best.m > 0)) console.warn(`§325: no three open seats for the dial's feet hold the hands inside their triangle (best margin ${best ? best.m.toFixed(3) : 'none'}) — they stay at the rim rule`);
+  else DIAL_FEET.forEach((foot, k) => {
+    const f = best.feet[k];
+    foot.position.set(f.x - P.dial.x, f.y - P.dial.y, foot.position.z);   // dialGroup sits at P.dial
+    out.push({ deg: foot.userData.dialFootDeg, x: f.x, y: f.y, r: f.r, tipMargin: best.m });
+  });
   movement.updateWorldMatrix(true, true);
   return out;
 })() : null;

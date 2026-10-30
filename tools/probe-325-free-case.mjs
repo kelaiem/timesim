@@ -20,6 +20,8 @@
 //   R  the case's rings (form-case.js formCaseLoops under the free kind). R1 every depth to the bezel's opening is
 //      an EXACT offset carried onto the outer loop's vertices with no edge running backwards and no crossing; the
 //      control: the mitre offset §289 reads on every other kind folds on this outline at the opening's depth.
+//   P  the dial's feet: three, each the rim margin plus its radius inside the outline (so none sets it), their
+//      triangle enclosing the hands (so they carry the dial).
 //   D  the dial frame: the outline carried through the Y-flip is the same area, simple, CCW.
 // An ACCEPTANCE test: exits non-zero on any failure.
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
@@ -37,10 +39,10 @@ const M = L.PLATE_RIM_MARGIN, mm2 = L.UNIT_MM * L.UNIT_MM;
 
 if (process.argv.includes('--refresh') || !existsSync(FIX)) {
   const { bootForm } = await import('./boot-form.mjs');
-  const r = await bootForm('case=free');
+  const r = await bootForm('case=free', '({ dial: [__clock.P.dial.x, __clock.P.dial.y] })');
   if (!r.ff?.free?.polys) { console.error('refresh: the boot published no plan hulls', r.bootError ?? ''); process.exit(1); }
-  const { key, polys, pins, ports, rc, need, margin } = r.ff.free;
-  writeFileSync(FIX, JSON.stringify({ query: 'case=free', key, rc, need, margin, polys, pins, ports: ports ?? [] }));
+  const { key, polys, pins, ports, rc, need, margin, feet } = r.ff.free;
+  writeFileSync(FIX, JSON.stringify({ query: 'case=free', key, rc, need, margin, polys, pins, ports: ports ?? [], feet: feet ?? [], dial: r.extra.dial }));
   console.log(`refreshed ${FIX}: ${polys.length} plan hulls, ${pins.length} pins`);
 }
 const FX = JSON.parse(readFileSync(FIX, 'utf8'));
@@ -120,6 +122,17 @@ if (ROW) {
   const ctl = judge(mitre(outer, tOpen));
   ok('R1 every ring to the bezel\'s opening is an exact offset that does not fold', !worstRing.rev && worstRing.simple && off <= 0.01 && (ctl.rev > 0 || !ctl.simple),
     `0 reversed edges, simple, within ${off.toFixed(4)} u of the exact offset; the control (§289's mitre at ${tOpen.toFixed(3)}) reads ${ctl.rev} reversed${ctl.simple ? '' : ', crossing'}`);
+
+  // ── P: the dial's feet (§325 landing 2) ─────────────────────────────────────────────────────────────────────
+  {
+    const feet = FX.feet ?? [], need = M + 0.6, [hx, hy] = FX.dial ?? [0, 0];
+    const deep = feet.map(({ x, y }) => sh.inset(x, y));
+    const cr = (a, b) => (b.x - a.x) * (hy - a.y) - (b.y - a.y) * (hx - a.x);
+    const inside = feet.length === 3 && [cr(feet[0], feet[1]), cr(feet[1], feet[2]), cr(feet[2], feet[0])].every((v, i, a) => Math.sign(v) === Math.sign(a[0]));
+    ok('P1 the dial\'s three feet stand in the open interior and carry the dial', feet.length === 3 && deep.every((d) => d >= need - 1e-6) && inside,
+      `${feet.length} feet, each ${deep.map((d) => d.toFixed(2)).join(' / ')} u inside the outline (need the rim margin plus the foot, ${need.toFixed(2)}, so none sets it); `
+      + `the hands ${inside ? 'inside' : 'OUTSIDE'} their triangle`);
+  }
 
   // ── D: the dial frame ──────────────────────────────────────────────────────────────────────────────────────
   const dial = L.freeShapeOf(ROW.pts.map(([X, Y]) => [-X, Y]).reverse(), { c: -ROW.c });
