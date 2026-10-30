@@ -50196,6 +50196,9 @@ const FREE_DIAL_FEET = FORM?.kind === 'free' ? await (async () => {
   else DIAL_FEET.forEach((foot, k) => {
     const f = best.feet[k];
     foot.position.set(f.x - P.dial.x, f.y - P.dial.y, foot.position.z);   // dialGroup sits at P.dial
+    // sited BY the outline (every seat is held inside it), so it cannot also set it — the plates' and the gong wire's
+    // rule (FORM_COUNTED skips it): counted, the fit and the feet moved each other and the fixed point drifted
+    foot.userData.followsOutline = true;
     out.push({ deg: foot.userData.dialFootDeg, x: f.x, y: f.y, r: f.r, tipMargin: best.m });
   });
   movement.updateWorldMatrix(true, true);
@@ -50230,7 +50233,7 @@ const FORM_COUNTED = (() => {
   const cutToShape = (o) => CUT_TO_SHAPE.some((r) => under(o, r));
   const counted = [];
   movement.traverse((o) => {
-    if (!o.isMesh || !o.geometry?.attributes?.position || skip(o) || (gong && under(o, gong)) || through(o) || cutToShape(o)) return;
+    if (!o.isMesh || !o.geometry?.attributes?.position || skip(o) || (gong && under(o, gong)) || through(o) || cutToShape(o) || o.userData.followsOutline) return;
     counted.push(o);
   });
   return counted;
