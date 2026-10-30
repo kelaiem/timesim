@@ -76,7 +76,8 @@ for (let d = FROM; d <= TO + 1e-9; d += STEP) bearings.push(d);
 const rows = [];
 const run = async (d) => {
   const q = `case=free&alarm=0&barrelstep=${d}&rsvaz=0&rsvidl=2${EXTRA ? `&${EXTRA}` : ''}`;
-  const b = await boot(q);
+  let b;
+  try { b = await boot(q); } catch (e) { b = { bootError: `${e.name}: ${e.message.split('\n')[0]}` }; }   // a boot that never finishes is refused, not the scan's end
   if (b.bootError) { rows.push({ d, refused: `boot failed: ${b.bootError}` }); console.log(`${d}°  BOOT FAILED ${b.bootError.slice(0, 160)}`); return; }
   const extra = b.warnings.filter((w) => !EXPECTED.test(w));
   const ax = solveAxis(b.free);
