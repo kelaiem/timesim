@@ -4395,21 +4395,37 @@ export function fitFreeCase(polys, { margin = PLATE_RIM_MARGIN, rc, need, c, pin
   // proud of the seat and buries the button's rim. The lug ends' law along any line: a port is a line (o, u) and a
   // half-width; the grown set's reach along u across the strip ±(half + rc) about the line sets a block whose face
   // stands square to u across ±half, so the closing leaves the outline flat there.
-  for (const { o: [ox, oy], u: [ux, uy], half } of ports) {
+  // Two ports whose strips overlap (the alarm stem and the pusher stand ~11° apart) must not leave one face RECESSED
+  // behind the other's block, or the closing fillets concavely into the recessed one — so a port's reach counts the
+  // other ports' blocks too, iterated to a fixed point (each face only moves out): every face then stands at least as
+  // far out as anything in its strip, and neighbouring flats meet at a convex corner.
+  const portBlock = ({ o: [ox, oy], u: [ux, uy], half }, R, tR) => {
+    const vx = -uy, vy = ux, t0 = Math.min(-half, tR), t1 = Math.max(half, tR), s0 = R - margin - dep, s1 = R - margin;
+    const at = (sA, t) => [ox + sA * ux + t * vx, oy + sA * uy + t * vy];
+    return [at(s0, t0), at(s0, t1), at(s1, t1), at(s1, t0)];
+  };
+  const reachOf = (Sm, { o: [ox, oy], u: [ux, uy], half }) => {
     const vx = -uy, vy = ux;
     let R = -Infinity, tR = 0;
     for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
-      if (!S[j * W + i]) continue;
+      if (!Sm[j * W + i]) continue;
       const dx = grid.cx(i) - ox, dy = grid.cy(j) - oy, t = dx * vx + dy * vy, sAl = dx * ux + dy * uy;
       if (Math.abs(t) > half + rc || sAl <= 0) continue;
       if (sAl > R) { R = sAl; tR = t; }
     }
-    if (!Number.isFinite(R)) continue;
-    R += h * (Math.abs(ux) + Math.abs(uy)) / 2;   // the cell's own half-extent along u, the safe side
-    const t0 = Math.min(-half, tR), t1 = Math.max(half, tR), s0 = R - margin - dep, s1 = R - margin;
-    const at = (sA, t) => [ox + sA * ux + t * vx, oy + sA * uy + t * vy];
-    fieldFill(X, grid, [at(s0, t0), at(s0, t1), at(s1, t1), at(s1, t0)]);
+    return Number.isFinite(R) ? { R: R + h * (Math.abs(ux) + Math.abs(uy)) / 2, tR } : null;   // the cell's half-extent along u: the safe side
+  };
+  let reach = ports.map((pt) => reachOf(S, pt));
+  for (let it = 0; it < 6 && ports.length > 1; it++) {
+    const Xp = X.slice();
+    ports.forEach((pt, k) => { if (reach[k]) fieldFill(Xp, grid, portBlock(pt, reach[k].R, reach[k].tR)); });
+    const Sp = grownOf(Xp);
+    const next = ports.map((pt, k) => { const r = reachOf(Sp, pt); return r && reach[k] && r.R < reach[k].R ? reach[k] : r; });
+    const moved = next.some((r, k) => r && reach[k] && r.R > reach[k].R + 1e-9);
+    reach = next;
+    if (!moved) break;
   }
+  ports.forEach((pt, k) => { if (reach[k]) fieldFill(X, grid, portBlock(pt, reach[k].R, reach[k].tR)); });
   for (const Bk of blocks) fieldFill(X, grid, Bk);
   S = grownOf(X);
   // 2–3. closed by rc: U = S ⊕ rc (a cell wider), C = U ⊖ rc
