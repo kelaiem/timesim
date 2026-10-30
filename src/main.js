@@ -7152,6 +7152,12 @@ const MW_FOLD_LEG1_HEADING_DEG = -46.87;   // the scan at 0.25°: this ray reads
 // because −46.87 + 0 is −46.87 and the fingerprint holds the identity.
 const STEM_TURN_DEG = TRAIN_ARRANGED ? wrapDeg(stemAngle / DEG2RAD - (180 + BARREL_STEP_DEG)) : 0;
 const MW_FOLD_LEG1_HEADING_W_DEG = MW_FOLD_LEG1_HEADING_DEG + STEM_TURN_DEG;
+// §325 landing 5 — AND IT RE-SOLVES WITH THE TRAIN. The bound the heading recorded is slack since TODO 214 (above),
+// so it is HELD only where it opens a fold: a train swung round its barrel (?barrelstep=) can carry the run to the
+// far side of the held heading from the barrel, where leg 2 would have to swing away from the column it passes and
+// the rays never meet (measured at −60° and −120°: leg 2 −35.2°). There CAP_SOLVE walks the heading out from the held
+// one, nearest first, and the fold is built on the first heading whose cap bearing opens (CAP_SOLVE below).
+let MW_FOLD_LEG1_HEADING_USED_DEG = MW_FOLD_LEG1_HEADING_W_DEG;
 // (§234 Landing 2 step 3a measured that no SECTION closes the straight run —
 // the ceiling wanted r 0.687 in a 1.38 u window, and moving Z_RSV, swinging
 // CAP_BEARING, shrinking the corner and necking the rod were each tried and
@@ -7849,7 +7855,7 @@ function solveSettingFold(B) {
   // barrel's side of the run, which flips when B carries the run across the
   // barrel's axis (it does, within 6° of the short way in), and the fold's
   // whole frame flipped with it while the heading stood still.
-  let turn = MW_FOLD_LEG1_HEADING_W_DEG - Math.atan2(u.y, u.x) / DEG2RAD;
+  let turn = MW_FOLD_LEG1_HEADING_USED_DEG - Math.atan2(u.y, u.x) / DEG2RAD;
   turn = ((turn + 540) % 360) - 180;
   const side = turn >= 0 ? 1 : -1;
   const alphaDeg = side * turn;                                  // leg 1's swing off THIS run, toward K's side
@@ -9046,16 +9052,34 @@ const CAP_SOLVE = await (async () => {
   // the step: the same sampling law as the reserve's swing (RSV_SWING_STEP_DEG),
   // at the cap's own station — half a margin's arc at capMeshD, to the quarter-degree
   const STEP = Math.floor((CLEAR_MARGIN / 2 / capMeshD) / (0.25 * DEG2RAD)) * 0.25;   // 0.75 at capMeshD 5.7
-  let nearest = { d: 0, ...tried(0, await window(0)) };
-  if (nearest.m >= 0) return { bearing: 0, swing: nearest.swing, scan };   // the a+(b−a)≠b rule: no swing keeps every original expression
-  for (let d = STEP; d <= 60 + 1e-9; d += STEP)
+  const searchBearings = async () => {
+    let nearest = { d: 0, ...tried(0, await window(0)) };
+    if (nearest.m >= 0) return { open: { bearing: 0, swing: nearest.swing, scan } };   // the a+(b−a)≠b rule: no swing keeps every original expression
+    for (let d = STEP; d <= 60 + 1e-9; d += STEP)
+      for (const sgn of [1, -1]) {
+        await breathe(80);
+        const w = tried(sgn * d, await window(sgn * d * DEG2RAD));
+        await breathe(81);
+        if (w.m >= 0) return { open: { bearing: sgn * d * DEG2RAD, swing: w.swing, scan } };
+        if (w.m > nearest.m) nearest = { d: sgn * d, ...w };
+      }
+    return { nearest };
+  };
+  let found = await searchBearings();
+  // §325 landing 5 — the held heading opened nothing: walk leg 1's heading out from it, nearest first, a degree at a
+  // time to a quarter turn either way (MW_FOLD_LEG1_HEADING_USED_DEG above), each heading's whole bearing scan the one
+  // above. The identity train opens at the held heading and never comes here.
+  const heldNearest = found.nearest;
+  for (let k = 1; !found.open && k <= 90; k++)
     for (const sgn of [1, -1]) {
-      await breathe(80);
-      const w = tried(sgn * d, await window(sgn * d * DEG2RAD));
-      await breathe(81);
-      if (w.m >= 0) return { bearing: sgn * d * DEG2RAD, swing: w.swing, scan };
-      if (w.m > nearest.m) nearest = { d: sgn * d, ...w };
+      MW_FOLD_LEG1_HEADING_USED_DEG = MW_FOLD_LEG1_HEADING_W_DEG + sgn * k;
+      scan.length = 0;
+      found = await searchBearings();
+      if (found.open) break;
     }
+  if (found.open) return found.open;
+  MW_FOLD_LEG1_HEADING_USED_DEG = MW_FOLD_LEG1_HEADING_W_DEG;
+  const nearest = heldNearest;
   console.warn(`setting traverse: no cap bearing within ±60° leaves the reserve a swing that clears the fold, this corner, the cap and the transfer arbor `
     + `at once — keeping the short way in; the battery judges it. Nearest: ${nearest.d > 0 ? '+' : ''}${nearest.d}° at swing ${nearest.s}°, ${nearest.clause} ${nearest.m.toFixed(3)}`);
   return { bearing: 0, swing: null, scan };
@@ -62260,7 +62284,7 @@ window.__clock = {
     bearingDeg: CAP_BEARING / DEG2RAD, swingDeg: rsvSwing / DEG2RAD,
     rsvLineDeg: Math.atan2(rsvU.y, rsvU.x) / DEG2RAD,
     A: { x: settingA.x, y: settingA.y }, K: { x: MW_FOLD.K.x, y: MW_FOLD.K.y }, B: { x: settingB.x, y: settingB.y },
-    runHeadingDeg: Math.atan2(settingU.y, settingU.x) / DEG2RAD, leg1HeadingDeg: MW_FOLD_LEG1_HEADING_W_DEG,
+    runHeadingDeg: Math.atan2(settingU.y, settingU.x) / DEG2RAD, leg1HeadingDeg: MW_FOLD_LEG1_HEADING_USED_DEG, leg1HeadingHeldDeg: MW_FOLD_LEG1_HEADING_W_DEG,   // §325 landing 5: as used, and as held
     leg1HeadingMeasuredDeg: MW_FOLD_LEG1_HEADING_DEG, stemTurnDeg: STEM_TURN_DEG,   // §308 landing 5 — the heading as used is the measured one turned with the stem
     alphaDeg: MW_FOLD.alphaDeg, side: MW_FOLD.side, beta2Deg: MW_FOLD.beta2 / DEG2RAD, phiDeg: MW_FOLD.phi / DEG2RAD, needCol: MW_FOLD.needCol,
     shaftAngleDeg: MW_FOLD.shaftAngleDeg, module: MW_FOLD_MODULE, templateModule: BEVEL_MODULE,
