@@ -1749,7 +1749,10 @@ export const DIAL_RECLAIM = 0.58;
 // own bands, and with the complication unbuilt none of their tenants stands between the plate-side works and the
 // dial: the dial comes plate-ward until the first dial-hung member meets held metal of another unit at CLEAR_MARGIN,
 // measured the §278 landing 6 way (tools/probe-278-dial-step.mjs, QUERY=alarm=0 RECLAIM=DIAL_RECLAIM_NO_ALARM) and
-// rounded DOWN to the fund's 0.01 grid.
+// rounded DOWN to the fund's 0.01 grid. The motion works hold their world planes (main.js MW_CEIL_LOCAL), so what
+// stops the dial is the keyless works' setting wheel on the winding stem's plane, met at +0.997 past the alarm's
+// 0.58 (the yoke's boss next, at +1.394): 0.58 + 0.99. The cased depth falls 0.375 mm with it (round 11.045 → 10.670,
+// the free outline 11.645 → 11.270).
 export const DIAL_RECLAIM_NO_ALARM = 1.57;
 export const Z_DIAL_WITH_ALARM = -9.54 + DIAL_RECLAIM;   // the dial plane the alarm's strata were solved against
 export const Z_DIAL = ALARM_BUILT ? Z_DIAL_WITH_ALARM : -9.54 + DIAL_RECLAIM_NO_ALARM;
