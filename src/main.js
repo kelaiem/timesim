@@ -17280,6 +17280,21 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
     // already obstacles above as the cock's footprint.)
     for (const h of BACK_PLATE_CUT.holes) c = Math.min(c, Math.hypot(x - h.x, y - h.y) - h.r);
     for (const sl of BACK_PLATE_CUT.slots) c = Math.min(c, stadium({ ax: sl.ax, ay: sl.ay, bx: sl.bx, by: sl.by, r: sl.r }));
+    // §325 landing 2 — and the tenon's own bore through that plate is an OPENING beside them, owed §62's land
+    // (STOCK_MIN_U) to each: the rim seats never came near another base-plate opening, the free kind's interior seats
+    // do (the first put the rivet mouth 1.656 into the hack stud's slot). Written as the clearance c is judged on
+    // (c − capR ≥ CLEAR_MARGIN), so the seat holds exactly when mouth + land fits.
+    if (FORM?.kind === 'free') {
+      const owed = PILLAR_RIVET_MOUTH_R + STOCK_MIN_U - capR - CLEAR_MARGIN;
+      for (const h of BACK_PLATE_CUT.holes) c = Math.min(c, Math.hypot(x - h.x, y - h.y) - h.r - owed);
+      for (const sl of BACK_PLATE_CUT.slots) c = Math.min(c, stadium({ ax: sl.ax, ay: sl.ay, bx: sl.bx, by: sl.by, r: sl.r }) - owed);
+      for (const sc of BACK_PLATE_CUT.sectors) c = Math.min(c, Math.hypot(x - sc.cx, y - sc.cy) - sc.r1 - sc.pad - owed);
+      for (const pk of BACK_PLATE_CUT.pockets) c = Math.min(c, Math.hypot(x - pk.x, y - pk.y) - pk.r - owed);
+      // ...and the plate's LATE openings, cut by parts solved long after the pillars (the alarm linkage's crank-B track,
+      // §261 2c): the free outline's table carries them from the boot that measured it (`keep`, TODO 272's precedent for
+      // the strike group), and FREE_KEEP_CHECK below holds the carried list to the plate actually cut
+      for (const sl of FREE_ROW?.keep?.slots ?? []) c = Math.min(c, stadium(sl) - owed);
+    }
     // §112 — the alarm corner's DECLARED under-plate footprint: its metal
     // builds after this plate is cut, so the pillar solve cannot read it as
     // boxes the way it reads the train below; the battery's sweptOverlap
@@ -17329,11 +17344,15 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
         for (let r = rTop; r >= plateR - 16; r -= 0.5) {
           const x = Math.cos(a) * r, y = Math.sin(a) * r;
           const c = seatClearance(x, y);
-          if (c >= CLEAR_MARGIN && (!best || c > best.c + 0.5)) best = { x, y, c, dA };
+          if (c >= CLEAR_MARGIN && (!best || c > best.c + (FORM?.kind === 'free' ? 1e-9 : 0.5))) best = { x, y, c, dA };
         }
       }
       await breathe(126);
-      if (best) break; // nearest feasible bearing to the quadrant's ideal wins
+      // nearest feasible bearing to the quadrant's ideal wins — except on the FREE outline (§325 landing 2), where the
+      // outline is fitted to the counted metal and a pillar held at the rim land would hold it there every round; there
+      // the quadrant's DEEPEST seat (the most clearance within ±45°) wins, a pillar in the plate's open interior
+      if (best && FORM?.kind !== 'free') break;
+      if (FORM?.kind === 'free' && dA >= 45) break;
     }
     if (!best) { console.warn('pillar: no seat found near', base); continue; }
     const pillarH = TQ_BOT_Z - PILLAR_BASE_Z;
@@ -20035,6 +20054,8 @@ movement.add(dialGroup);
 registerExplode(dialGroup, Z_DIAL, 1, -1);
 registerLabel('Dial', dialGroup);
 
+const DIAL_FOOT_R = 0.6;
+const DIAL_FEET = [];   // §325 landing 2: the free kind re-sites them late (FREE_DIAL_FEET)
 // Dial feet — the dial otherwise just sits at (P.dial, Z_DIAL) with nothing
 // visibly connecting it to the rest of the movement (the 4 structural
 // pillars span the OPPOSITE direction, back plate to cocks, and never reach
@@ -20058,20 +20079,27 @@ registerLabel('Dial', dialGroup);
   // nearest foreign metal in the plate→dial gap is the two stems' azimuth
   // sectors (~0° and 142–162°), ≥8° of arc ≈ 5.5 units from the closest
   // foot, so the move re-derives the radius without renegotiating a station.
-  const FOOT_R = 0.6;
-  const footR = Math.min(dialRadius, plateR) - FOOT_R - CLEAR_MARGIN;
+  const footR = Math.min(dialRadius, plateR) - DIAL_FOOT_R - CLEAR_MARGIN;
+  const FOOT_R = DIAL_FOOT_R;
   const footLen = backPlate.position.z - Z_DIAL; // reach from the dial's plane to the back plate
   // 130° moved to 108°: the keyless works lives in this same plate→dial gap
   // now, and the old 130° foot landed ~2.5 from the folded minute wheel's
   // axis (wheel radius 4.5) — squarely inside its disc. 108° keeps the foot
   // ≥ ~15 from every keyless part, the setting traverse and the reserve
   // train while staying near the rim.
+  // §325 landing 2 — ON THE FREE OUTLINE the feet stand in the plate's OPEN INTERIOR, not on a rim: the round rim
+  // above is a radius the free case does not have, and measured, feet there held three corners of the outline out at
+  // the round size (they are counted metal, so the fit grew to give each its rim margin). Their seats need the metal of
+  // the plate→dial gap, built well below this line, so on the free kind they are built here at the rim rule and
+  // RE-SITED late (FREE_DIAL_FEET, before the footprint is measured).
   for (const deg of [10, 108, 250]) {
     const a = deg * DEG2RAD;
     const foot = new THREE.Mesh(new THREE.CylinderGeometry(FOOT_R, FOOT_R, footLen, 10), MATS.steel);
     foot.rotation.x = Math.PI / 2;
     foot.position.set(Math.cos(a) * footR, Math.sin(a) * footR, footLen / 2);
+    foot.userData.dialFootDeg = deg;
     dialGroup.add(foot);
+    DIAL_FEET.push(foot);
   }
 }
 
@@ -50091,6 +50119,91 @@ const DIAL_SPEC = (() => {
 // §308 landing 2 — the COUNTED METAL is one predicate, read by the fit below and
 // by the region model after it (FORM_REGIONS), so the outline and the regions
 // that set it cannot disagree about which meshes stand in the movement.
+// §325 landing 2 — THE FREE CASE'S DIAL FEET, sited in the plate's open interior once everything in the plate→dial
+// gap is built. A foot is a post from the dial's back to the base plate, so a seat must be:
+//   · clear of every mesh standing in that gap (its plan hull, FOOT_R + CLEAR_MARGIN off — the keyless and motion
+//     works, the reserve train, everything the gap carries), read off the built metal;
+//   · on metal of the plate it lands on (§62's land, STOCK_MIN_U, off every base-plate opening);
+//   · far enough inside the outline that it never SETS it: the rim margin plus its own radius, the fit's law for any
+//     counted part, so the feet stand in space the movement's other metal already holds open.
+// Of the seats that hold, one per 120° sector about the hands (centred on each foot's rim azimuth), the three whose
+// triangle holds the hands DEEPEST — the dial's margin against tipping, its weight at the hands. No triple that holds
+// the hands warns, and the feet stay at the rim rule.
+const FREE_DIAL_FEET = FORM?.kind === 'free' ? await (async () => {
+  const lo = Z_DIAL - CLEAR_MARGIN, hi = backPlate.position.z + CLEAR_MARGIN, v = new THREE.Vector3();
+  // handed back on breathe()'s budget through no NUMBERED seam (§317's rule: the boot bar's table is the default build's)
+  const handBack = async () => {
+    const held = performance.now() - breatheMark;
+    if (held > breatheWorstHeld) breatheWorstHeld = held;
+    breatheCount++; await yieldToEventLoop(); breatheMark = performance.now();
+  };
+  const skipRoot = [dialGroup, backPlate, threeQuarterPlate];
+  const under = (o, r) => { for (let q = o; q; q = q.parent) if (q === r) return true; return false; };
+  movement.updateWorldMatrix(true, true);
+  const hulls = [];
+  movement.traverse((o) => {
+    if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position || skipRoot.some((r) => under(o, r))) return;
+    for (let q = o; q && q !== movement; q = q.parent) if (/^case|CaseLiner$|TubeLiner$/.test(q.name)) return;
+    const pa = o.geometry.attributes.position, xs = [], ys = [];
+    let z0 = Infinity, z1 = -Infinity;
+    for (let i = 0; i < pa.count; i++) { v.fromBufferAttribute(pa, i).applyMatrix4(o.matrixWorld); z0 = Math.min(z0, v.z); z1 = Math.max(z1, v.z); xs.push(v.x); ys.push(v.y); }
+    if (z1 < lo || z0 > hi || xs.length < 3) return;
+    const h = convexHull2(xs, ys, xs.length);
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (const [hx, hy] of h) { x0 = Math.min(x0, hx); x1 = Math.max(x1, hx); y0 = Math.min(y0, hy); y1 = Math.max(y1, hy); }
+    hulls.push({ h, x0, x1, y0, y1 });
+  });
+  await handBack();
+  const openings = [...BACK_PLATE_CUT.holes, ...BACK_PLATE_CUT.pockets, ...BACK_PLATE_LATE_HOLES,
+    ...BACK_PLATE_CUT.slots.flatMap((sl) => [{ x: sl.ax, y: sl.ay, r: sl.r }, { x: sl.bx, y: sl.by, r: sl.r }])];
+  const clearOf = (x, y) => {
+    let d = FORM.inset(x, y) - PLATE_RIM_MARGIN - DIAL_FOOT_R;
+    if (d < 0) return d;
+    for (const o of openings) d = Math.min(d, Math.hypot(x - o.x, y - o.y) - o.r - DIAL_FOOT_R - STOCK_MIN_U);
+    const need = DIAL_FOOT_R + CLEAR_MARGIN;
+    for (const H of hulls) {
+      if (x < H.x0 - need - d || x > H.x1 + need + d || y < H.y0 - need - d || y > H.y1 + need + d) continue;   // its box is farther than the clearance in hand
+      d = Math.min(d, polySignedDist(H.h, x, y) - need);
+      if (d < 0) return d;
+    }
+    return d;
+  };
+  // THE TRIPLE. A dial resting on three feet tips unless its weight — at the hands — stands inside their triangle, and
+  // it is steadiest when the hands stand farthest from the triangle's nearest edge; the first cut took each sector's
+  // farthest seat alone and left the hands outside (probe-325 P1). So each sector keeps, per 4° of azimuth, its
+  // farthest free seat, and of every triple (one per sector) the one whose triangle holds the hands deepest wins.
+  const step = 0.5, BIN = 4 * DEG2RAD, cands = DIAL_FEET.map(() => new Map());
+  for (let x = FORM.xMin; x <= FORM.xMax; x += step) for (let y = FORM.yMin; y <= FORM.yMax; y += step) {
+    const dx = x - P.dial.x, dy = y - P.dial.y, az = Math.atan2(dy, dx), r = Math.hypot(dx, dy);
+    for (let k = 0; k < DIAL_FEET.length; k++) {
+      const mid = DIAL_FEET[k].userData.dialFootDeg * DEG2RAD, da = Math.atan2(Math.sin(az - mid), Math.cos(az - mid));
+      if (Math.abs(da) > Math.PI / 3) continue;
+      const bin = Math.floor((da + Math.PI / 3) / BIN), cur = cands[k].get(bin);
+      if (cur && r <= cur.r) continue;
+      if (clearOf(x, y) >= 0) cands[k].set(bin, { x, y, r });
+    }
+  }
+  await handBack();
+  const edgeD = (a, b) => ((b.x - a.x) * (P.dial.y - a.y) - (b.y - a.y) * (P.dial.x - a.x)) / (Math.hypot(b.x - a.x, b.y - a.y) || 1e-12);
+  let best = null;
+  const [A, B, C] = cands.map((m) => [...m.values()]);
+  if (A?.length && B?.length && C?.length) for (const a of A) for (const b of B) for (const c of C) {
+    const s = Math.sign(edgeD(a, b)), m = Math.min(s * edgeD(a, b), s * edgeD(b, c), s * edgeD(c, a));
+    if (!best || m > best.m) best = { m, feet: [a, b, c] };
+  }
+  const out = [];
+  if (!best || !(best.m > 0)) console.warn(`§325: no three open seats for the dial's feet hold the hands inside their triangle (best margin ${best ? best.m.toFixed(3) : 'none'}) — they stay at the rim rule`);
+  else DIAL_FEET.forEach((foot, k) => {
+    const f = best.feet[k];
+    foot.position.set(f.x - P.dial.x, f.y - P.dial.y, foot.position.z);   // dialGroup sits at P.dial
+    // sited BY the outline (every seat is held inside it), so it cannot also set it — the plates' and the gong wire's
+    // rule (FORM_COUNTED skips it): counted, the fit and the feet moved each other and the fixed point drifted
+    foot.userData.followsOutline = true;
+    out.push({ deg: foot.userData.dialFootDeg, x: f.x, y: f.y, r: f.r, tipMargin: best.m });
+  });
+  movement.updateWorldMatrix(true, true);
+  return out;
+})() : null;
 const FORM_COUNTED = (() => {
   if (!FORM) return null;
   movement.updateWorldMatrix(true, true);
@@ -50120,7 +50233,7 @@ const FORM_COUNTED = (() => {
   const cutToShape = (o) => CUT_TO_SHAPE.some((r) => under(o, r));
   const counted = [];
   movement.traverse((o) => {
-    if (!o.isMesh || !o.geometry?.attributes?.position || skip(o) || (gong && under(o, gong)) || through(o) || cutToShape(o)) return;
+    if (!o.isMesh || !o.geometry?.attributes?.position || skip(o) || (gong && under(o, gong)) || through(o) || cutToShape(o) || o.userData.followsOutline) return;
     counted.push(o);
   });
   return counted;
@@ -50197,25 +50310,42 @@ const FORM_FOOTPRINT = await (async () => {
     await handBack();
     const c = FREE_ROW ? FREE_ROW.c : P.dial.x;
     let fit = null;
-    try { fit = fitFreeCase(polys, { margin: M, rc: FREE_RC, need: FITTED_FLAT_MIN, c, pins }); }
+    // the PORTS: the alarm pusher's button seats flat on the wall (TODO 275), so the wall faces its line square across
+    // the button's reach — the reach TODO 275's own check reads (PUSHER_HEAD_R / PUSHER_SEAT_COS + CLEAR_MARGIN)
+    // — and each crown STEM's tube (§186): the floor holds the plate's widest metal across the sleeve's section short
+    // of the tube's inboard end, which an oblique free wall reaches past on the stem's line; a wall square to the stem
+    // across the notch's half-width plus the margin is the round case's own geometry there
+    const ports = [{ o: [-_pushU.y * _pushOffAxis, _pushU.x * _pushOffAxis], u: [_pushU.x, _pushU.y],
+      half: PUSHER_HEAD_R / PUSHER_SEAT_COS + CLEAR_MARGIN },
+      ...CASE_NOTCHES.map(({ az, halfW }) => ({ o: [0, 0], u: [Math.cos(az), Math.sin(az)], half: halfW + CLEAR_MARGIN }))];
+    try { fit = fitFreeCase(polys, { margin: M, rc: FREE_RC, need: FITTED_FLAT_MIN, c, pins, ports }); }
     catch (e) { console.warn(`§325: the free fit failed — ${e.message}`); }
     await handBack();
     const held = freeWorst(FORM.pts, polys, pins, M);
-    const mm2 = UNIT_MM * UNIT_MM;
+    const mm2 = UNIT_MM * UNIT_MM, r4 = (q) => Math.round(q * 1e4) / 1e4;
+    // the late openings the pillars were sited against (FREE_ROW.keep) are the ones this plate was cut with
+    if (FREE_ROW) {
+      const have = JSON.stringify(BACK_PLATE_LATE_SLOTS.map(({ ax, ay, bx, by, r }) => [ax, ay, bx, by, r].map(r4)));
+      const kept = JSON.stringify((FREE_ROW.keep?.slots ?? []).map(({ ax, ay, bx, by, r }) => [ax, ay, bx, by, r]));
+      if (have !== kept)
+        console.warn(`§325: the base plate's late openings are not the ones the free outline's pillars were sited against (src/free-outlines.js keep) — re-run node tools/free-outline.mjs`);
+    }
     if (!FREE_ROW)
       console.warn(`§325: no free outline is generated for this movement (${FREE_KEY}) — it was cut to the solvers' box; run node tools/free-outline.mjs`);
     else if (!(held.d >= M - 1e-3))
       console.warn(`§325: the movement's counted metal stands ${held.d.toFixed(4)} u inside the free outline it was cut to (required ≥ the rim margin ${M}), at (${held.where.map((q) => q.toFixed(3)).join(', ')}) — re-run node tools/free-outline.mjs`);
     else if (fit && Math.abs(fit.area - FREE_ROW.area) > 1e-3 * FREE_ROW.area)
       console.warn(`§325: the free fit at the generated strap axis reads ${(fit.area * mm2).toFixed(2)} mm², the outline cut ${(FREE_ROW.area * mm2).toFixed(2)} mm² — the movement moved since tools/free-outline.mjs ran; re-run it`);
-    const r4 = (q) => Math.round(q * 1e4) / 1e4;
     return { kind: 'free', metal: [x0, x1, y0, y1], rect: null, holds: held.d >= 0, margin: held.d, scale: null, hullN: hull.length, counted: total,
       accuracy: FORM.accuracy, mm: [(FORM.xMax - FORM.xMin) * UNIT_MM, (FORM.yMax - FORM.yMin) * UNIT_MM],
       areaMm2: polyArea(FORM.pts) * mm2, fitAreaMm2: fit ? fit.area * mm2 : null,
       free: { key: FREE_KEY, generated: !!FREE_ROW, c, rc: FREE_RC, need: FITTED_FLAT_MIN, margin: M, worstAt: held.where,
         handOffMm: (P.dial.x - FORM.cx) * UNIT_MM, flat: FORM.free.flat ?? null,
+        keep: { slots: BACK_PLATE_LATE_SLOTS.map(({ ax, ay, bx, by, r }) => ({ ax: r4(ax), ay: r4(ay), bx: r4(bx), by: r4(by), r: r4(r) })) },
+        feet: FREE_DIAL_FEET,
         polys: polys.map((q) => q.map(([x, y]) => [r4(x), r4(y)])),
         pins: FREE_PINS.map(([x, y, n, what]) => [r4(x), r4(y), n, what]),
+        ports,
         fit: fit ? { area: fit.area, pts: fit.pts.map(([x, y]) => [r4(x), r4(y)]), flat: fit.flat, worst: fit.worst.d } : null },
       hull: hull.map(([hx, hy]) => [r4(hx), r4(hy)]) };
   }

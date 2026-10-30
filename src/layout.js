@@ -4354,7 +4354,7 @@ export function freeShapeOf(pts, free = {}) {
 // hull); `margin` M; `rc` the closing radius; `need` the lug flat's half-run;
 // `c` the strap axis; `pins` [[x, y, need]…] points held at their own need.
 // Returns the outline, its area and the measured margin (exact).
-export function fitFreeCase(polys, { margin = PLATE_RIM_MARGIN, rc, need, c, pins = [], h = FREE_H } = {}) {
+export function fitFreeCase(polys, { margin = PLATE_RIM_MARGIN, rc, need, c, pins = [], ports = [], h = FREE_H } = {}) {
   let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
   for (const P of polys) for (const [x, y] of P) { if (x < xMin) xMin = x; if (x > xMax) xMax = x; if (y > yMax) yMax = y; if (y < yMin) yMin = y; }
   for (const [x, y, n] of pins) { xMin = Math.min(xMin, x - n); xMax = Math.max(xMax, x + n); yMax = Math.max(yMax, y + n); yMin = Math.min(yMin, y - n); }
@@ -4390,6 +4390,42 @@ export function fitFreeCase(polys, { margin = PLATE_RIM_MARGIN, rc, need, c, pin
     [[Math.min(c - need, xT), T - margin - dep], [Math.max(c + need, xT), T - margin - dep], [Math.max(c + need, xT), T - margin], [Math.min(c - need, xT), T - margin]],
     [[Math.min(c - need, xB), B + margin], [Math.max(c + need, xB), B + margin], [Math.max(c + need, xB), B + margin + dep], [Math.min(c - need, xB), B + margin + dep]],
   ];
+  // …and THE PORTS (§325 landing 2): a part that passes through the wall and seats on it (the alarm pusher's flat
+  // button, TODO 275) needs the wall FLAT and square to its line across its reach — a concave wall there stands
+  // proud of the seat and buries the button's rim. The lug ends' law along any line: a port is a line (o, u) and a
+  // half-width; the grown set's reach along u across the strip ±(half + rc) about the line sets a block whose face
+  // stands square to u across ±half, so the closing leaves the outline flat there.
+  // Two ports whose strips overlap (the alarm stem and the pusher stand ~11° apart) must not leave one face RECESSED
+  // behind the other's block, or the closing fillets concavely into the recessed one — so a port's reach counts the
+  // other ports' blocks too, iterated to a fixed point (each face only moves out): every face then stands at least as
+  // far out as anything in its strip, and neighbouring flats meet at a convex corner.
+  const portBlock = ({ o: [ox, oy], u: [ux, uy], half }, R, tR) => {
+    const vx = -uy, vy = ux, t0 = Math.min(-half, tR), t1 = Math.max(half, tR), s0 = R - margin - dep, s1 = R - margin;
+    const at = (sA, t) => [ox + sA * ux + t * vx, oy + sA * uy + t * vy];
+    return [at(s0, t0), at(s0, t1), at(s1, t1), at(s1, t0)];
+  };
+  const reachOf = (Sm, { o: [ox, oy], u: [ux, uy], half }) => {
+    const vx = -uy, vy = ux;
+    let R = -Infinity, tR = 0;
+    for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+      if (!Sm[j * W + i]) continue;
+      const dx = grid.cx(i) - ox, dy = grid.cy(j) - oy, t = dx * vx + dy * vy, sAl = dx * ux + dy * uy;
+      if (Math.abs(t) > half + rc || sAl <= 0) continue;
+      if (sAl > R) { R = sAl; tR = t; }
+    }
+    return Number.isFinite(R) ? { R: R + h * (Math.abs(ux) + Math.abs(uy)) / 2, tR } : null;   // the cell's half-extent along u: the safe side
+  };
+  let reach = ports.map((pt) => reachOf(S, pt));
+  for (let it = 0; it < 6 && ports.length > 1; it++) {
+    const Xp = X.slice();
+    ports.forEach((pt, k) => { if (reach[k]) fieldFill(Xp, grid, portBlock(pt, reach[k].R, reach[k].tR)); });
+    const Sp = grownOf(Xp);
+    const next = ports.map((pt, k) => { const r = reachOf(Sp, pt); return r && reach[k] && r.R < reach[k].R ? reach[k] : r; });
+    const moved = next.some((r, k) => r && reach[k] && r.R > reach[k].R + 1e-9);
+    reach = next;
+    if (!moved) break;
+  }
+  ports.forEach((pt, k) => { if (reach[k]) fieldFill(X, grid, portBlock(pt, reach[k].R, reach[k].tR)); });
   for (const Bk of blocks) fieldFill(X, grid, Bk);
   S = grownOf(X);
   // 2–3. closed by rc: U = S ⊕ rc (a cell wider), C = U ⊖ rc
