@@ -8363,7 +8363,8 @@ const ALARM_FEELER_TOP = ALARM_SLEEVE_BAND_FLOOR + DIAL_RECLAIM; // −2.69 (§4
 // TODO 194 — the second spend in the same chain, the same way: the follower's
 // return spiral took the flange→heart gap from one margin to spiral + two, so
 // the chain grew ALARM_FSPIRAL_B + CLEAR_MARGIN more and Z_DIAL carries both.
-{
+// (§325 landing 4: the alarm's fund — a movement built without it reclaims the band, layout.js DIAL_RECLAIM_NO_ALARM)
+if (ALARM_BUILT) {
   const spend = (ALARM_SLEEVE_ENV + CLEAR_MARGIN)     // §45: chain growth vs the pre-§45 stack
     + (ALARM_FSPIRAL_B + CLEAR_MARGIN)                // TODO 194: the return spiral's band
     + ALARM_B_BAND_SPEND;                             // TODO 222: follower-B's seat spring, under the band
