@@ -4,8 +4,8 @@
 
 # The instruments
 
-379 scripts. **260 are ACCEPTANCE tests** — they decide and exit non-zero.
-**119 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
+380 scripts. **260 are ACCEPTANCE tests** — they decide and exit non-zero.
+**120 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
 **Grep this file by what you want to know, not by section number.** The names encode
@@ -35,6 +35,7 @@ when a question was asked; the summaries are what it answered.
 | `explain-i18n.mjs` |  | acceptance | §73 tier two — the STATIC PAGES' translation tooling. |
 | `explain-quotes.mjs` |  | acceptance | §73 tier two — DOES THE EXPLAINER STILL QUOTE THE SOURCE? |
 | `form-layout.mjs` |  | acceptance | §307 — THE FORM LAYOUT OPTIMISER: which arrangement of the going train and the stem makes the movement's RECTANGLE smallest? |
+| `free-arrangement-scan.mjs` |  | report | §325 landing 5 — WHERE THE FUSEE STANDS WITHOUT THE ALARM: a scan of the going train's barrel step (solveLayout's barrelStepDeg, the bearing from the barrel's arbor to the centre wheel's — the fusee and its drum swung round the rest of the train) for the free outline of the movement built without the alarm. A REPORT: it ranks, it lands nothing; tools/free-outline.mjs is what settles a row. |
 | `free-outline.mjs` |  | acceptance | §325 — WRITE OR CHECK src/free-outlines.js, the FREE outline each movement is cut to. ACCEPTANCE (--check exits non-zero on drift). |
 | `glossary-links.mjs` |  | acceptance | §236 tier one — THE GLOSSARY LINKER'S GATE. explain.html defines 28 project words and, since §236, links their first use in each entry to the definition. Nothing about that is authored: the links are injected at runtime by src/glossary-links.js, after src/explain-i18n.js has swapped the page into the reader's language. Two properties have to hold, and neither is visible by reading the diff. |
 | `gong-bench-data.mjs` |  | acceptance | WRITES src/gong-bench-data.json: what gong-bench.html lays its wire into — per form case, the measured free space at the gong wire's own height. The page cannot boot the movement (it is sim-code-free, like technic.html: the battery never sees it), so the space is GENERATED here from booted builds and committed, never typed, and --check re-derives it. |
