@@ -17253,6 +17253,13 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
       // §261 2c): the free outline's table carries them from the boot that measured it (`keep`, TODO 272's precedent for
       // the strike group), and FREE_KEEP_CHECK below holds the carried list to the plate actually cut
       for (const sl of FREE_ROW?.keep?.slots ?? []) c = Math.min(c, stadium(sl) - owed);
+      // §325 landing 3 — and the pillars already seated: the quadrants' ±45° searches share their boundary bearings,
+      // and two deepest seats can be one point (measured without the alarm: two rivet bores at (0, 27)). A seated
+      // pillar is its rivet's opening, owed the same land, and its cap, owed the running clearance
+      for (const ps of pillarSeats) {
+        const d = Math.hypot(x - ps.x, y - ps.y);
+        c = Math.min(c, d - PILLAR_RIVET_MOUTH_R - owed, d - capR);
+      }
     }
     // §112 — the alarm corner's DECLARED under-plate footprint: its metal
     // builds after this plate is cut, so the pillar solve cannot read it as
