@@ -69,6 +69,9 @@ const STEP = Number(process.env.STEP || 0.05);
 const RES = Number(process.env.RES || 0.005);
 const DELTAS = (process.env.DELTAS || '').split(',').filter(Boolean).map(Number);
 const NOSTEP = !!process.env.NOSTEP;
+// §325 landing 4 — the build under study (QUERY, e.g. alarm=0) and the reclaim constant it reads (RECLAIM)
+const QUERY = process.env.QUERY || '';
+const RECLAIM = process.env.RECLAIM || 'DIAL_RECLAIM';
 let port = Number(process.env.PORT || 8671);
 const servers = [];
 process.on('exit', () => { for (const s of servers) try { s.kill(); } catch {} });
@@ -153,7 +156,7 @@ async function open(dir) {
     if (m.text().startsWith('step278')) console.log('  ' + m.text());
   });
   page.on('pageerror', (e) => warns.push('PAGEERROR ' + String(e)));
-  await page.goto(`http://127.0.0.1:${p0}/index.html`, { waitUntil: 'load', timeout: 300000 });
+  await page.goto(`http://127.0.0.1:${p0}/index.html${QUERY ? `?${QUERY}` : ''}`, { waitUntil: 'load', timeout: 300000 });
   await page.waitForFunction(() => !!window.__clock || !!window.__bootError, null, { timeout: 300000 });
   const bootError = await page.evaluate(() => (window.__bootError ? String(window.__bootError) : null));
   if (bootError) throw new Error(`boot failed in ${dir}: ${bootError}`);
@@ -166,10 +169,10 @@ function mutant(delta) {
   cpSync(ROOT, dir, { recursive: true, dereference: true,
     filter: (s) => !/(^|[\\/])(\.git|node_modules|\.battery-out|\.claude|timelapse)([\\/]|$)/.test(s.slice(ROOT.length)) });
   const f = join(dir, 'src/layout.js'), src = readFileSync(f, 'utf8');
-  const m = src.match(/export const DIAL_RECLAIM = (-?[0-9.]+);/);
+  const m = src.match(new RegExp(`export const ${RECLAIM} = (-?[0-9.]+);`));
   if (!m) throw new Error('layout.js declares DIAL_RECLAIM as no plain literal — this tree predates §278 landing 6');
   RECLAIM0 = Number(m[1]);
-  writeFileSync(f, src.replace(m[0], `export const DIAL_RECLAIM = ${+(RECLAIM0 + delta).toFixed(6)};`));
+  writeFileSync(f, src.replace(m[0], `export const ${RECLAIM} = ${+(RECLAIM0 + delta).toFixed(6)};`));
   return dir;
 }
 
