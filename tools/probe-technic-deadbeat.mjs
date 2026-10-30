@@ -22,8 +22,8 @@
 //     lock stands over F2's play, and driven as §316 drives the recoil anchor (the knife's loss and the lock's rest
 //     friction unmodelled: UPPER bounds) it sustains at every corner with both margins positive and a rate spread under
 //     the recoil anchor's, read by the same function off §316's own table; its recoil on the lock beside the anchor's (a
-//     report). Controls: a forged release a degree later
-//     (the adverse margin must go); the convex pallet set a quarter turn round (it must not escape).
+//     report). Controls: a forged release a degree later (the adverse margin must go); the convex pallet set a quarter
+//     turn round (it must not escape).
 //   · A1 — `solveA1` over every candidate pair, every quarter-turn placement face up or down, every escape-arbor
 //     lattice point the pallets' radii reach, both senses, on the 8T: the number that escape, and the CLOSEST (the
 //     least overlap the best wheel angle leaves at the worst of −2°, 0, +2°). The VERDICT is this solve's.
