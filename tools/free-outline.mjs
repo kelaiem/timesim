@@ -100,10 +100,12 @@ const solveAxis = (F) => {
 
 let key = null, row = null, last = null;
 for (let round = 1; round <= ROUNDS; round++) {
-  if (round === 1 && FRESH) rows = Object.fromEntries(Object.entries(rows).filter(([k]) => !k.includes('"caseShape":"free"') || (SPECQ && !k)));
   const b = await boot();
   if (b.bootError) throw new Error(`boot failed: ${b.bootError}`);
   key = b.free.key;
+  // --fresh drops THIS movement's row only (§325 landing 3: with --spec the old filter dropped every free row,
+  // the default movement's included) — the key is the build's own, so it is known after the first boot
+  if (round === 1 && FRESH && rows[key]) { const { [key]: _gone, ...rest } = rows; rows = rest; round--; continue; }
   const s = solveAxis(b.free);
   const r = s.r;
   const flat = { top: r.flat.top.map(r4), bot: r.flat.bot.map(r4), yTop: r4(r.flat.yTop), yBot: r4(r.flat.yBot), halfTop: r4(r.flat.halfTop), halfBot: r4(r.flat.halfBot) };
