@@ -50295,8 +50295,12 @@ const FORM_FOOTPRINT = await (async () => {
     let fit = null;
     // the PORTS: the alarm pusher's button seats flat on the wall (TODO 275), so the wall faces its line square across
     // the button's reach — the reach TODO 275's own check reads (PUSHER_HEAD_R / PUSHER_SEAT_COS + CLEAR_MARGIN)
-    const ports = typeof _pushU !== 'undefined' && _pushU ? [{ o: [-_pushU.y * _pushOffAxis, _pushU.x * _pushOffAxis], u: [_pushU.x, _pushU.y],
-      half: PUSHER_HEAD_R / PUSHER_SEAT_COS + CLEAR_MARGIN }] : [];
+    // — and each crown STEM's tube (§186): the floor holds the plate's widest metal across the sleeve's section short
+    // of the tube's inboard end, which an oblique free wall reaches past on the stem's line; a wall square to the stem
+    // across the notch's half-width plus the margin is the round case's own geometry there
+    const ports = [{ o: [-_pushU.y * _pushOffAxis, _pushU.x * _pushOffAxis], u: [_pushU.x, _pushU.y],
+      half: PUSHER_HEAD_R / PUSHER_SEAT_COS + CLEAR_MARGIN },
+      ...CASE_NOTCHES.map(({ az, halfW }) => ({ o: [0, 0], u: [Math.cos(az), Math.sin(az)], half: halfW + CLEAR_MARGIN }))];
     try { fit = fitFreeCase(polys, { margin: M, rc: FREE_RC, need: FITTED_FLAT_MIN, c, pins, ports }); }
     catch (e) { console.warn(`§325: the free fit failed — ${e.message}`); }
     await handBack();
