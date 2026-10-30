@@ -18,6 +18,7 @@
 //   node tools/free-outline.mjs --write [--spec 'k=v&…']   solve the default movement's row (or the spec's) and write it
 //   node tools/free-outline.mjs --check [--spec …]         re-derive and compare with the committed file
 //   --fresh                                                 start from the stand-in box, not the committed row
+//   --dump FILE                                             on a refusal, write the unsettled row there (key and row)
 import { readFileSync, writeFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
@@ -29,6 +30,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'src/free-outlines.js');
 const ARGS = process.argv.slice(2), WRITE = ARGS.includes('--write'), CHECK = ARGS.includes('--check');
 const SPECQ = ARGS.includes('--spec') ? ARGS[ARGS.indexOf('--spec') + 1] : null;
+const DUMP = ARGS.includes('--dump') ? ARGS[ARGS.indexOf('--dump') + 1] : null;
 if (WRITE === CHECK) { console.error('usage: node tools/free-outline.mjs --write | --check [--spec k=v&…]'); process.exit(2); }
 const SCAN_U = 2.5, TOL_U = 0.05, ROUNDS = 5;
 const r4 = (q) => Math.round(q * 1e4) / 1e4, mm2 = UNIT_MM * UNIT_MM;
@@ -129,8 +131,13 @@ for (let round = 1; round <= ROUNDS; round++) {
 if (!last) {
   const b = await boot();
   last = b;
-  if (!(b.margin >= PLATE_RIM_MARGIN - 1e-3) || b.warnings.some((w) => /§325|^pillar: no seat/.test(w)))
-    throw new Error(`the free outline did not settle in ${ROUNDS} rounds: the last boot held the metal at ${b.margin} with ${b.warnings.filter((w) => /§325/.test(w)).join(' | ')}`);
+  if (!(b.margin >= PLATE_RIM_MARGIN - 1e-3) || b.warnings.some((w) => /§325|^pillar: no seat/.test(w))) {
+    // every warning the last boot raised, not only the §325 ones: the pillar that lost its seat is what refuses most
+    // often, and the old message printed nothing for it. --dump keeps the unsettled row for a hand boot.
+    for (const w of b.warnings) console.log(`    ${w.slice(0, 240)}`);
+    if (DUMP) writeFileSync(DUMP, JSON.stringify({ key, row: rows[key] }));
+    throw new Error(`the free outline did not settle in ${ROUNDS} rounds: the last boot held the metal at ${b.margin} with ${b.warnings.filter((w) => /§325|^pillar: no seat/.test(w)).join(' | ')}`);
+  }
 }
 console.log(`settled: ${key}\n  ${(rows[key].area * mm2).toFixed(2)} mm² (the build reads ${last.areaMm2.toFixed(2)} mm²), the metal held at ${last.margin.toFixed(4)} u; other boot warnings: ${last.warnings.length}`);
 for (const w of last.warnings) console.log(`    ${w.slice(0, 240)}`);
