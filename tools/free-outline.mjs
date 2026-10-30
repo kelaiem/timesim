@@ -107,7 +107,7 @@ for (let round = 1; round <= ROUNDS; round++) {
   const s = solveAxis(b.free);
   const r = s.r;
   const flat = { top: r.flat.top.map(r4), bot: r.flat.bot.map(r4), yTop: r4(r.flat.yTop), yBot: r4(r.flat.yBot), halfTop: r4(r.flat.halfTop), halfBot: r4(r.flat.halfBot) };
-  row = { c: r4(s.c), rc: b.free.rc, need: b.free.need, margin: b.free.margin, area: r4(polyArea(r.pts)), worst: r4(r.worst.d), flat, pts: r.pts.map(([x, y]) => [r4(x), r4(y)]) };
+  row = { c: r4(s.c), rc: b.free.rc, need: b.free.need, margin: b.free.margin, area: r4(polyArea(r.pts)), worst: r4(r.worst.d), flat, keep: b.free.keep, pts: r.pts.map(([x, y]) => [r4(x), r4(y)]) };
   console.log(`round ${round}: c ${row.c} (scan ${s.scan.map(([c, A]) => `${c.toFixed(1)}:${A.toFixed(1)}`).join(' ')}) → ${(row.area * mm2).toFixed(2)} mm², margin ${row.worst}, flats ±${flat.halfTop}/${flat.halfBot} (need ${row.need.toFixed(3)}), ${row.pts.length} points, simple ${loopSimple(row.pts)}`
     + `; the cut it booted on held the metal at ${typeof b.margin === 'number' ? b.margin.toFixed(4) : b.margin}`);
   const prev = rows[key];
