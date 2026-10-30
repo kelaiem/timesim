@@ -488,3 +488,39 @@ export function solveA1Prime(lib, { wheels = { '3647': 8 }, ns = [1, 2, 3], uRan
   }
   return out;
 }
+
+// ── A1′, AS FOUND ────────────────────────────────────────────────────────────
+// `solveA1Prime` on the going train's 8T: of 16,222 geometries (77,056 placements judged), 4,792 let the wheel rest
+// and 124 escape. The one declared here escapes over the widest window with a contact table the drive can read
+// (2.5°–6.5°, the table to 6.5°), and is the one the probe holds: a 2×2 quarter circle plate (convex, r 16) on a
+// friction axle pin in the round hole 8 mm UP the crossbar (10.4 mm above the pivot), a 3×3-cutout plate (concave,
+// r 24) on a pin in the round hole 8 mm along the +u mass arm (8.35 mm from the pivot), the 8T at (−12, 4) mm, driven
+// in sense +1, the locks 3.5 pitches apart. Each pallet's ANGLE is its friction pin's setting (the solve's answer,
+// to a hundredth of a degree), its centre the pin. A1′'s eccentricities (10.4 and 8.35 mm) are what its free angle
+// costs: 4.3 and 3.5 times A1's 2.4.
+export const A1_PRIME = Object.freeze({
+  wheelPart: '3647', teeth: 8, W: Object.freeze([-12, 4]), sense: 1, n: 3,
+  pallets: Object.freeze([
+    Object.freeze({ part: '7904', pin: Object.freeze([0, -10.4]), angleDeg: -128.4, flip: false }),
+    Object.freeze({ part: '35044', pin: Object.freeze([8, -2.4]), angleDeg: 243.2, flip: true }),
+  ]),
+});
+export function a1PrimeSpec(c = A1_PRIME, { res } = {}) {
+  return { wheelPart: c.wheelPart, teeth: c.teeth, W: [...c.W], sense: c.sense, res,
+    pallets: c.pallets.map((p) => ({ part: p.part, centre: DEADBEAT_PALLETS[p.part].centre, normal: DEADBEAT_PALLETS[p.part].normal, at: [...p.pin], angle: deg(p.angleDeg), flip: p.flip })) };
+}
+// the widest swing whose drops are those of the narrowest that escapes (the contact table the drive reads)
+export function tableSwingOf(m, { from = [2, 2.5, 3, 4, 5, 6], step = 0.25, cap = 20, perDeg = 100 } = {}) {
+  let start = null;
+  for (const A of from) { const t = traceCycle(m, A, { n: Math.round(A * perDeg) }); if (t.ok) { start = { A, t }; break; } }
+  if (!start) return null;
+  const ref = start.t.drops.map((d) => ({ dir: d.dir, a: d.alpha })), tol = 2 * 2 * deg(1 / perDeg);
+  let A = start.A, next = null;
+  for (let a = start.A + step; a <= cap + 1e-9; a += step) {
+    const t = traceCycle(m, a, { n: Math.round(a * perDeg) });
+    const same = t.ok && t.drops.length === ref.length && t.drops.every((d, i) => d.dir === ref[i].dir && Math.abs(d.alpha - ref[i].a) <= tol);
+    if (!same) { next = { A: r6(a), why: t.ok ? 'other drops' : t.why }; break; }
+    A = a;
+  }
+  return { from: start.A, A: r6(A), next };
+}
