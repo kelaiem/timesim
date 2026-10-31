@@ -35,7 +35,7 @@ import {
   CASE_LUG_T, CASE_LUG_EDGE_R, CASE_SPRING_BAR_D, CASE_SPRING_BAR_TIP_D,
   caseLugPlan, loopSimple, projectLoop,
 } from './layout.js';
-import { makeRoundedSlab, COLLAR_PROUD, TUBE_WALL, cutEndOnPlane } from './geometry.js';
+import { makeRoundedSlab, PLATE_BEVEL_F, COLLAR_PROUD, TUBE_WALL, cutEndOnPlane } from './geometry.js';
 import { CASE_POLISH_ATTR } from './materials.js';
 
 // The press-contact idiom (makeCase's own `SEAT_EMBED`, geometry.js): two
@@ -524,7 +524,8 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   //     and not reconstructed: `plateFloors[n]`, the plate's widest
   //     METAL along this stem's line within the sleeve's section (main.js
   //     PLATE_RIM, bevel and facets and all), plus CLEAR_MARGIN. It was
-  //     `reach · (1 + PLATE_BEVEL_F)` on the plate LOOP — the round plate's
+  //     `reach · (1 + PLATE_BEVEL_F)` on the plate LOOP, which it stays where
+  //     the measure falls short of the loop — the round plate's
   //     fraction of a radius standing in for a form plate's bevel, which is a
   //     constant and offsets the outline perpendicular to itself — and a stem
   //     line leaving far from the centre stood its sleeve too far off (§325
@@ -548,8 +549,13 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
       inboard = rayExit(loops.bore, dir, lineAt(0)) - SEAT_EMBED;
     } else {
       // §325 landing 6 — the plate's metal on THIS stem's line is MEASURED off the built plate (main.js PLATE_RIM.floors, within the
-      // sleeve's section, bevel and all), so the tube stands CLEAR_MARGIN off exactly the number main.js's §186 assert holds it to
-      inboard = plateFloors[STEM_FLOOR[name]] + CLEAR_MARGIN;
+      // sleeve's section, bevel and all), so the tube stands CLEAR_MARGIN off exactly the number main.js's §186 assert holds it to.
+      // A floor SHORT of the plate loop's own exit is a walk that missed metal (the rect form reads 25 mm on a 45.7 mm plate, and the
+      // sleeve then stood in the keyless and alarm work): the loop rule stands there, as it always did.
+      let reach = -Infinity;
+      for (const k of [-rw, 0, rw]) reach = Math.max(reach, rayExit(loops.plate, dir, lineAt(k)));
+      const floor = plateFloors[STEM_FLOOR[name]];
+      inboard = (floor >= reach ? floor : reach * (1 + PLATE_BEVEL_F)) + CLEAR_MARGIN;
     }
     const outerExit = rayExit(loops.outer, dir, lineAt(0));
     const outboard = flush ? outerExit : outerExit + TUBE_PROUD;
