@@ -20587,6 +20587,12 @@ const SLIDE_REACH = (() => {
 })();
 const slideHandOf = (spec, frac) => G.makeSlideHand({ length: SLIDE_REACH.near * frac, kind: spec.kind, namePrefix: spec.namePrefix, pipe: spec.pipe,
   widthLength: spec.length, ext: (SLIDE_REACH.far - SLIDE_REACH.near) * frac, overlap: SLIDE_OVERLAP });
+// DECLARED DEBT (§325 landing 7): the slider is set by a FUNCTION of the hand's bearing, not driven by a cam. A stationary
+// cam needs a fixed member at the hand's own layer, and the centre stack has none above the hour hand's: whatever
+// stands from the dial to the minute layer crosses the hour blade, and the one fixed coaxial member outside the hour
+// tube would foul the hour pipe pressed on it. Closing this is a centre-stack restructure (a fixed tube and a
+// reordered hand stack, or cams behind the dial on slotted levers), its own landing. Until then ?hands=slide shows
+// what the face needs, not a mechanism the inspector can vouch for, and so it is outside every swept point.
 // Run one slider out to the tip the hand's bearing allows. `rot` is the hand's rotation about the axis in the dial's
 // frame; its local +Y points along az = π/2 + rot there, the frame the track is cut in.
 const poseSlide = (hand, rot, frac) => {
