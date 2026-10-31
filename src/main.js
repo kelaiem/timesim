@@ -2870,7 +2870,8 @@ const {
 // formCaseLoops), where a re-entrant round of radius r becomes r − that grow, so the cut's round is that grow PLUS
 // one band thickness — the band's outside then turns no tighter than the band is thick, rather than to a cusp.
 const FREE_RC = CASE_CLEAR + 2 * CASE_BAND_T;
-const FREE_KEY = SPEC.caseShape === 'free' ? configKey({ spec: { ...SPEC, formRectSpec: null, gongSeat: null } }) : null;
+// §325 landing 7: `hands` moves no metal of the movement, so no movement-keyed lookup below carries it
+const FREE_KEY = SPEC.caseShape === 'free' ? configKey({ spec: { ...SPEC, hands: null, formRectSpec: null, gongSeat: null } }) : null;
 const FREE_ROW = FREE_KEY ? FREE_OUTLINES[FREE_KEY] ?? null : null;
 const FORM = !SPEC.caseShape ? null
   : SPEC.caseShape === 'free'
@@ -8070,7 +8071,7 @@ const ALARM_FLANGE_OUT = 4.05;                  // the carrier flange's rim (hoi
 // ARRANGEMENT (the key the gong seats use: configKey with the case shape, its fit
 // and the seat mode dropped, since a case cuts nothing the link stands on); a
 // spec with no row takes the designed value and the assert says so.
-const ALARM_ARR_KEY = configKey({ spec: { ...SPEC, caseShape: null, formRectSpec: null, gongSeat: null } });
+const ALARM_ARR_KEY = configKey({ spec: { ...SPEC, hands: null, caseShape: null, formRectSpec: null, gongSeat: null } });
 const ALARM_PINB_SEAT_FIXED = Object.freeze({
   'cfg1:{"spec":{"reserveHours":30,"vph":18000},"route":null,"tuned":[]}': 5.2780,   // §278 landing 6: re-quoted to its fixed point — the reclaim moved the dial-hung column against the held arming blade's corner, and hanger 3's jog, moved beside the blade, lengthened the ground's developed path and with it the section and the room (was 5.2650). TODO 240: re-quoted to its fixed point — the re-aimed lever reflects the blade to the nose by its new ratio, and the pin's journal is charged on the same-side reaction (was 5.4263). mN at the pin — the shared equal margin, re-derived and asserted at the link's arming solve (rounded to 0.1 µN). §261 2c: re-quoted to its fixed point — the folded same-side beak reflects the arming blade to the nose by its own lever (was 5.2502)
   'cfg1:{"spec":{"alarmModAzDeg":60,"barrelStepDeg":0,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":6,"vph":18000},"route":null,"tuned":[]}': 5.1837,   // §313: the swung barrel, the reserve at 12 on six idlers, the module at 60°
@@ -17045,7 +17046,7 @@ const GONG_SEAT_MODE = FORM && ALARM_BUILT ? (SPEC.gongSeat ?? defaultSeatMode(G
 // the seat's spec key, and the ARRANGEMENT's (the spec without the case shape, its fit or the seat mode): an
 // arranged movement (spec knobs that move stations — §308 landing 5's barrel swing and module turn) reads its seats
 // from GONG_SEATS_ARRANGED under that key; the designed movement's are GONG_SEATS
-const GONG_SPEC_KEY = configKey({ spec: { ...SPEC, ...(SEAT_KIND ? { caseShape: SEAT_KIND } : {}), formRectSpec: null, gongSeat: null } });
+const GONG_SPEC_KEY = configKey({ spec: { ...SPEC, hands: null, ...(SEAT_KIND ? { caseShape: SEAT_KIND } : {}), formRectSpec: null, gongSeat: null } });
 const GONG_ARR_KEY = ALARM_ARR_KEY;   // the one arrangement key (§313 reads it first, for the arming fixed point)
 const GONG_SEAT_LOOKUP = (() => {
   if (!FORM || !ALARM_BUILT || GONG_SEAT_MODE === 'arc') return null;
@@ -20423,6 +20424,7 @@ const dial = G.makeDial({
   // back to CCW for the Shape.
   ...(FORM ? { outline: FORM.loop().map(([X, Y]) => [P.dial.x - X, Y - P.dial.y]).reverse() } : {}),
   ...(DIAL_TRACK ? { track: DIAL_TRACK } : {}),   // §311 — the form face's railroad, the outline's own offsets
+  fitMarkers: FRAME_LANDS,   // §325 landing 7: the lands preview fits its numerals to the rail, not the round band
   subdialRecess: SUBDIAL_RECESS,
   thickness: DIAL_T,          // TODO 26 — the dial is a plate now; its BACK lands on Z_DIAL
   edgeBreak: DIAL_EDGE_BREAK, // TODO 26 — and the plate is thinner at its rim, by a real chamfer
@@ -20566,7 +20568,40 @@ const coaxialLift = (below, above) => {
 };
 const HOUR_HAND_SPEC = { length: HOUR_HAND_LEN, kind: 'hour', namePrefix: 'hour',
   pipe: { boreR: HOUR_PIPE_BORE, outerR: HOUR_PIPE_OUTER, hang: 'blade' } };
-const hourHand = G.makeHand(HOUR_HAND_SPEC);
+// §325 landing 7 — TELESCOPING HANDS (?hands=slide, a form face): the face's reach is the mid-rail's distance from the
+// hands' axis along each bearing. The minute hand's tip rides it (the round face's rungs, everywhere and not only at
+// the nearest side); the hour hand takes the round face's fraction of it, HOUR_HAND_LEN over the round minute length.
+// Each hand is an arm cut to the NEAREST reach and a slider that runs out to the rest (geometry.js makeSlideHand),
+// the cam below driving it by that very law. On a round face there is no track and the option is ignored.
+const SLIDE_HANDS = SPEC.hands === 'slide' && !!DIAL_TRACK;
+const SLIDE_OVERLAP = 3;   // the slider's rear end stays this far back along the arm at full extension
+const SLIDE_REACH = (() => {
+  if (!SLIDE_HANDS) return null;
+  const reach = (az) => DIAL_TRACK.mid.exit(az);
+  let far = 0;
+  for (let i = 0; i < 720; i++) far = Math.max(far, reach((i / 720) * 2 * Math.PI));
+  const roundMinute = dialRadius * (2 * G.DIAL_CANVAS_FILL_F) * ((G.DIAL_RAIL_IN_F + G.DIAL_RAIL_OUT_F) / 2);
+  const hourFrac = HOUR_HAND_LEN / roundMinute;
+  const near = DIAL_TRACK.nearestMid;
+  return { reach, near, far, hourFrac };
+})();
+const slideHandOf = (spec, frac) => G.makeSlideHand({ length: SLIDE_REACH.near * frac, kind: spec.kind, namePrefix: spec.namePrefix, pipe: spec.pipe,
+  widthLength: spec.length, ext: (SLIDE_REACH.far - SLIDE_REACH.near) * frac, overlap: SLIDE_OVERLAP });
+// DECLARED DEBT (§325 landing 7): the slider is set by a FUNCTION of the hand's bearing, not driven by a cam. A stationary
+// cam needs a fixed member at the hand's own layer, and the centre stack has none above the hour hand's: whatever
+// stands from the dial to the minute layer crosses the hour blade, and the one fixed coaxial member outside the hour
+// tube would foul the hour pipe pressed on it. Closing this is a centre-stack restructure (a fixed tube and a
+// reordered hand stack, or cams behind the dial on slotted levers), its own landing. Until then ?hands=slide shows
+// what the face needs, not a mechanism the inspector can vouch for, and so it is outside every swept point.
+// Run one slider out to the tip the hand's bearing allows. `rot` is the hand's rotation about the axis in the dial's
+// frame; its local +Y points along az = π/2 + rot there, the frame the track is cut in.
+const poseSlide = (hand, rot, frac) => {
+  const sl = hand.userData.slide;
+  if (!sl) return;
+  const tip = SLIDE_REACH.reach(Math.PI / 2 + rot) * frac;
+  sl.group.position.y = Math.min(sl.ext, Math.max(0, tip - hand.userData.length));
+};
+const hourHand = SLIDE_HANDS ? slideHandOf(HOUR_HAND_SPEC, SLIDE_REACH.hourFrac) : G.makeHand(HOUR_HAND_SPEC);
 // Minute hand length: tip ON the railroad's rungs — DERIVED from the print's
 // own frame (§125 step 5), mid-rung between the two rails. A printed fraction
 // f lands at world f · 2·DIAL_CANVAS_FILL_F · dialRadius (the canvas square
@@ -20585,7 +20620,7 @@ const MINUTE_HAND_LEN = DIAL_TRACK ? DIAL_TRACK.nearestMid : dialRadius * (2 * G
   * ((G.DIAL_RAIL_IN_F + G.DIAL_RAIL_OUT_F) / 2);
 const MINUTE_HAND_SPEC = { length: MINUTE_HAND_LEN, kind: 'minute', namePrefix: 'minute',
   pipe: { boreR: MINUTE_PIPE_BORE, outerR: MINUTE_PIPE_OUTER, hang: 'blade' } };
-const minuteHand = G.makeHand(MINUTE_HAND_SPEC);
+const minuteHand = SLIDE_HANDS ? slideHandOf(MINUTE_HAND_SPEC, 1) : G.makeHand(MINUTE_HAND_SPEC);
 // TODO 118 — the minute hand's lift over the hour plane, DERIVED at last.
 // This was `2.3`, a literal sized for the pre-§125 fat cylindrical rods
 // ("rHour + rMinute ≈ 2.10") and never re-cut: §125 widened the plans past
@@ -47555,6 +47590,7 @@ function askTour(onProceed) {
   ];
   const recutHands = () => {
     for (const [hand, spec, finish] of HAND_SPECS) {
+      if (hand.userData.slide) continue;   // §325 landing 7: a telescoping hand is two members; the flute re-cut would rebuild it as one
       hand.traverse((o) => { if (o.isMesh) o.geometry.dispose(); });
       hand.clear();
       for (const ch of [...G.makeHand(spec).children]) hand.add(ch);
@@ -48683,7 +48719,7 @@ updateCrownUI();
   caseSel.value = SPEC.caseShape ?? '';
   caseSel.addEventListener('change', () => {
     const kind = caseSel.value;
-    const key = configKey({ spec: { ...SPEC, caseShape: kind, formRectSpec: null, gongSeat: null } });
+    const key = configKey({ spec: { ...SPEC, hands: null, caseShape: kind, formRectSpec: null, gongSeat: null } });
     location.search = caseShapeSearch(location.search, kind, (seat) => seat.specKey === key);   // reload-tier, like the beat rate: back IS undo
   });
   const alarmSpecSel = document.getElementById('spec-alarm');
@@ -59011,6 +59047,7 @@ function tick(t) {
   // to a movement-frame quantity carries the NEGATED value to be the same rigid
   // body. `reserveHand` (below) always did this; these did not.
   minuteHand.rotation.z = -minuteA;
+  if (SLIDE_HANDS) poseSlide(minuteHand, minuteHand.rotation.z, 1);
   // Hour hand: NOT minuteA/12. The angle is carried through the motion
   // works' two real meshes — cannon pinion → minute wheel, then minute
   // pinion → hour wheel — from their tooth counts, the same way every
@@ -59060,6 +59097,7 @@ function tick(t) {
   }
   // TODO 115 — dial-side: carries the negated movement-frame angle.
   hourWheelGroup.rotation.z = -mwHourA;
+  if (SLIDE_HANDS) poseSlide(hourHand, hourWheelGroup.rotation.z, SLIDE_REACH.hourFrac);
   // TODO 129 — THE HOUR, AS THE ALARM BRANCH READS IT: the hour wheel's own
   // dial-local angle, ONE source. Everything on the alarm side that is keyed
   // to the hour — the release disc's law (both copies), the setting train's
@@ -62266,8 +62304,14 @@ refreshConfigMark();
 // here first, which is the point.
 {
   const identity = VALIDATED_CONFIGS.find((r) => r.point === 'identity');
-  if (!(CASED_DEPTH_MM <= CASE_HEIGHT_MAX_MM))
-    console.warn(`§261: cased assembly ${CASED_DEPTH_MM.toFixed(4)} mm deep, over CASE_HEIGHT_MAX_MM ${CASE_HEIGHT_MAX_MM} — the case grew; spend depth in the open by raising the cap in layout.js, or take the growth back`);
+  // §325 landing 7 — telescoping hands spend depth ON PURPOSE: each slider is one more layer over its arm (its section
+  // and the one margin), and the minute plane rides up over the hour's. The allowance is those layers and nothing else,
+  // so a build that grows for any other reason still fails; the default build has no sliders and the cap as it was.
+  const SLIDE_ALLOWANCE_MM = SLIDE_HANDS
+    ? [hourHand, minuteHand].reduce((t, h) => t + (h.userData.slide.slider.userData.floorDrop + h.userData.slide.slider.userData.topRise + CLEAR_MARGIN) * UNIT_MM, 0) : 0;
+  const CASE_HEIGHT_CAP_MM = CASE_HEIGHT_MAX_MM + SLIDE_ALLOWANCE_MM;
+  if (!(CASED_DEPTH_MM <= CASE_HEIGHT_CAP_MM))
+    console.warn(`§261: cased assembly ${CASED_DEPTH_MM.toFixed(4)} mm deep, over CASE_HEIGHT_MAX_MM ${CASE_HEIGHT_MAX_MM}${SLIDE_ALLOWANCE_MM ? ` + the telescoping hands' ${SLIDE_ALLOWANCE_MM.toFixed(4)} mm` : ''} — the case grew; spend depth in the open by raising the cap in layout.js, or take the growth back`);
   else if (!identity)
     console.warn('§261: no identity row in validated-configs.js — the height cap cannot tell the default build, so its stale half is not held');
   else if (configState().key === identity.key && CASE_HEIGHT_MAX_MM - CASED_DEPTH_MM > CASE_HEIGHT_STEP_MM)
