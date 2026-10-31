@@ -1188,11 +1188,11 @@ the host (`--shards K` → the runner's `.env`), never in the workflow, because 
 is a measured property of a machine. `docs/RUNNERS.md` has the rest.
 
 Since §81 the harness SHARDS: it partitions the work across K browser
-contexts by the measured `cost` column in `BATTERY` (`--shards`, default 2)
+contexts by the measured `cost` column in `BATTERY` (`--shards`, default 3)
 so the wall is max(shard) rather than sum(checks). That is sound because
 `start()` calls `clock.resetInputs()` before every check, so no check can
 observe which ones ran before it — **if a report ever moves between
-`--shards 1` and `--shards 2`, the check that moved has broken that
+`--shards 1` and `--shards 3`, the check that moved has broken that
 invariant and is the bug.** Two rules follow. Keep the cost column
 roughly true (`--report` writes the times back out as `ms`); a stale
 number costs wall clock, never a verdict. And when a check gets much

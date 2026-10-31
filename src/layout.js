@@ -315,6 +315,9 @@ export const SPEC = (() => {
   // take: FORM_KINDS ('rect', 'cushion', 'tonneau', and §317's 'fitted').
   // Anything else is round.
   const caseShape = CASE_KINDS.includes(raw.caseShape) ? raw.caseShape : null;   // §325: and the free outline
+  // §325 landing 6 — THE FRAME'S CONSTRUCTION: 'lands' only, and only on the free case (a land is cut to the free outline's rim;
+  // the round and rect plates have none), else null — the pillar frame, so every existing key and fingerprint stays as it was
+  const frame = raw.frame === 'lands' && caseShape === 'free' ? 'lands' : null;
   // §307 landing 2 — THE MEASURED FORM RECTANGLE, `xMin,xMax,yMin,yMax` in
   // movement units: the footprint of the whole built movement (every part the
   // build placed inside the round case's bore, the case-path gong excepted)
@@ -345,7 +348,7 @@ export const SPEC = (() => {
   // their plate openings). false, or null — the alarm, as designed — so every configuration that names no `alarm`
   // keeps the configKey it was validated under.
   const alarm = raw.alarm === 0 ? false : null;
-  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, rsvIdlers, alarmr, subdialr, dialr, studr, caseShape, formRectSpec, gongSeat, alarm });
+  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, rsvIdlers, alarmr, subdialr, dialr, studr, caseShape, frame, formRectSpec, gongSeat, alarm });
 })();
 // §325 landing 3 — whether this build carries the alarm complication (SPEC.alarm above)
 export const ALARM_BUILT = SPEC.alarm !== false;

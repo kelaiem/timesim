@@ -8450,6 +8450,27 @@ export function makePillar({ height, bodyR, tapR = 0, tapDepth = 0, tenonR = 0, 
   return m;
 }
 
+// §325 landing 6 — A RIM LAND: the base plate's own raised boss, the back plate's seat in the frame built WITHOUT
+// pillars (?frame=lands). It is one piece with the plate, so it has no tenon, no shoulder and no rivet: the foot is
+// SUNK `root` into the slab (the pocket floors' lap, so no two walls are coincident) and the column stands `height`
+// above the face to the back plate's underside, the same radius all the way (a land is turned from the plate's
+// stock, not fitted to it) with the plate screw's TAPPED BORE from the top face. Closed, axis +z, the foot at
+// z = −root and the top at z = height; the caller names it 'backPlate' (support resolves the plate by that name).
+export function makeRimLand({ height, root, r, tapR, tapDepth }) {
+  const pts = [
+    new THREE.Vector2(0, -root),
+    new THREE.Vector2(r, -root),
+    new THREE.Vector2(r, height),
+    new THREE.Vector2(tapR, height),
+    new THREE.Vector2(tapR, height - tapDepth),
+    new THREE.Vector2(0, height - tapDepth),
+  ];
+  const geo = new THREE.LatheGeometry(pts, PILLAR_SEGMENTS);
+  geo.rotateX(Math.PI / 2);
+  assertLatheOutward(geo, 'a rim land');
+  return geo;
+}
+
 // TODO 200 — the countersunk land a riveted tenon is set into: a closed ring,
 // axis +z, its bore tenonR from the top face down to the countersink and then
 // a 45° cone out to mouthR at the bottom face (z0), outerR beyond. Travelled
