@@ -318,6 +318,10 @@ export const SPEC = (() => {
   // §325 landing 6 — THE FRAME'S CONSTRUCTION: 'lands' only, and only on the free case (a land is cut to the free outline's rim;
   // the round and rect plates have none), else null — the pillar frame, so every existing key and fingerprint stays as it was
   const frame = raw.frame === 'lands' && caseShape === 'free' ? 'lands' : null;
+  // §325 landing 7 — 'slide' builds the central hands TELESCOPING (geometry.js makeSlideHand): an arm to the nearest reach
+  // and a slider the cam runs out to the rest. Meaningful only on a form face, whose dial has a track to follow; the
+  // round face keeps its hands whatever is asked, and every existing key stays as it was.
+  const hands = raw.hands === 'slide' && caseShape ? 'slide' : null;
   // §307 landing 2 — THE MEASURED FORM RECTANGLE, `xMin,xMax,yMin,yMax` in
   // movement units: the footprint of the whole built movement (every part the
   // build placed inside the round case's bore, the case-path gong excepted)
@@ -348,7 +352,7 @@ export const SPEC = (() => {
   // their plate openings). false, or null — the alarm, as designed — so every configuration that names no `alarm`
   // keeps the configKey it was validated under.
   const alarm = raw.alarm === 0 ? false : null;
-  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, rsvIdlers, alarmr, subdialr, dialr, studr, caseShape, frame, formRectSpec, gongSeat, alarm });
+  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, rsvIdlers, alarmr, subdialr, dialr, studr, caseShape, frame, hands, formRectSpec, gongSeat, alarm });
 })();
 // §325 landing 3 — whether this build carries the alarm complication (SPEC.alarm above)
 export const ALARM_BUILT = SPEC.alarm !== false;

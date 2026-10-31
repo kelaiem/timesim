@@ -9919,7 +9919,7 @@ function plateWall(cx, cy, A, zA, B, zB, outward) {
 // (and on a form face, §307's round track on the rectangular ground).
 export function makeDial({
   radius, subdials = [], subdialRecess = 0.5, centerBoreR = 0, thickness = 0,
-  edgeBreak = 0, subdialBoreR = 1.0, outline = null, track = null,
+  edgeBreak = 0, subdialBoreR = 1.0, outline = null, track = null, fitMarkers = false,
 }) {
   const g = new THREE.Group();
   let mat = null;
@@ -10681,15 +10681,23 @@ export function makeDial({
       });
     };
 
+    // §325 landing 7 — FITTED MARKERS (opt-in, the lands preview). The band is a circle cut for the round face; a
+    // form face whose inner rail stands nearer than the round one's (an axis near one side of a free outline) would
+    // have its numerals hang off the dial there. Each numeral is built at the round size and then scaled ABOUT THE
+    // AXIS by the rail's distance at its bearing over the round rail's, so its outer edge keeps the same relation
+    // to the rail it hugs. A uniform scale about the axis is exact for the sub-dial test too: the wells enter the
+    // numeral's frame divided by it.
+    const roundRailR = 2 * DIAL_CANVAS_FILL_F * radius * DIAL_RAIL_IN_F;
     for (let h = 0; h < 12; h++) {
       const a = (h / 12) * Math.PI * 2;
       const cosA = Math.cos(a), sinA = Math.sin(a);
+      const fit = fitMarkers && track ? Math.min(1, track.inner.exit(Math.PI / 2 - a) / roundRailR) : 1;
       // Sub-dial centres in THIS numeral's local frame (the numeral sits at
       // radius rc, rotated by −a; invert that so a letter's local x can be
       // tested straight against the sub-dial circle).
       const localSubs = subdials.map((sd) => {
-        const dx = sd.x - sinA * rc, dy = sd.y - cosA * rc;
-        return { sx: dx * cosA - dy * sinA, sy: dx * sinA + dy * cosA, R: sd.r + subdialMargin };
+        const dx = sd.x / fit - sinA * rc, dy = sd.y / fit - cosA * rc;
+        return { sx: dx * cosA - dy * sinA, sy: dx * sinA + dy * cosA, R: (sd.r + subdialMargin) / fit };
       });
 
       // Weight-balanced stroke width for THIS numeral (gap scales with it so
@@ -10735,8 +10743,9 @@ export function makeDial({
         p.l.rotation.z = -p.dth;
         numeral.add(p.l);
       }
-      numeral.position.set(sinA * rc, cosA * rc, 0.12 + D / 2);
+      numeral.position.set(sinA * rc * fit, cosA * rc * fit, 0.12 + D / 2);
       numeral.rotation.z = -a;
+      if (fit < 1) numeral.scale.set(fit, fit, 1);
       g.add(numeral);
     }
   }
@@ -10910,7 +10919,7 @@ export const HAND_RING_FLATS = Math.cos(Math.PI / (2 * HAND_RING_SEG));
 // blade root is bridged to its pipe by real metal (TODO 120: each central
 // hand was two bodies posing as one).
 export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null, bossH: bossHOverride = null,
-  namePrefix = null, subdial = false, halfWidth = null, pipe = null }) {
+  namePrefix = null, subdial = false, halfWidth = null, pipe = null, slider = false, widthLength = null }) {
   // §94 — namePrefix NAMES this hand's four meshes. inspect.js couples by
   // `.name`, and an unnamed mesh only has an index label, which no
   // EXPECTED_CONTACT_FLOORS row can select — so a hand whose contacts a
@@ -10922,7 +10931,9 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
   const handAesthetics = aesthetics.dial.hands;
   const config = handAesthetics[kind];
 
-  const tail = length * config.tailFactor;
+  // §325 landing 7 — a SLIDER is the sliding half of a telescoping hand (makeSlideHand): the bur rod and its tip with a
+  // square rear end, no tail, no pipe and no boss. It rides above an arm that carries those; its section is the arm's.
+  const tail = slider ? 0 : length * config.tailFactor;
   let bossH;        // set per branch: the central law (§188) or the second kind's depth law
   let cwHalf = 0;   // the second kind's counterweight half-thickness, else 0
 
@@ -11065,9 +11076,19 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
     // (the default halfW and the tip taper both read it) while the keel
     // depth drops from length-coupled 0.75/0.64 mm blades to 0.20 mm metal.
     // A sub-dial hand's two bases coincide at the floor, as before.
-    planBase = subdial ? HAND_RBASE_FLOOR : length * config.widthFactor * 0.35;
+    planBase = subdial ? HAND_RBASE_FLOOR : (widthLength ?? length) * config.widthFactor * 0.35;   // widthLength: a telescoping hand's two halves share the nominal hand's plan
     rBase = subdial ? HAND_RBASE_FLOOR : HAND_RBASE_STOCK;
     g.add(burRod(rBase, planBase, pipe ? (pipe.eyeBoreR ?? pipe.boreR) : 0));
+    if (slider) {
+      // The slider's facts are the section's alone: no collet to size, no pipe to stand on.
+      const crownS = rBase * (handAesthetics.fluteFactor ?? -0.3);
+      g.userData.length = length; g.userData.kind = kind; g.userData.rBase = rBase;
+      g.userData.halfW = halfWidth ?? planBase * (Math.sqrt(3) / 2);
+      g.userData.floorDrop = rBase; g.userData.topRise = rBase * 0.5 + Math.max(0, crownS);
+      g.userData.bossR = 0; g.userData.bossH = 0; g.userData.pipe = null;
+      g.userData.sections = [{ name: 'blade', rIn: 0, rOut: Math.max(length + rBase, g.userData.halfW), zLo: -g.userData.floorDrop, zHi: g.userData.topRise }];
+      return g;
+    }
     // The boss must swallow the rod's full circumscribed diameter (2·rBase,
     // ×1.3 land) — and, for the CENTRAL stack, stand at least a real pipe's
     // height (HAND_PIPE_MIN_MM: the friction land the press grips by). The
@@ -11185,6 +11206,36 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
     { name: 'blade', rIn: 0, rOut: bladeROut, zLo: -floorDrop, zHi: topRise },
   ];
   return g;
+}
+
+// §325 landing 7 — A TELESCOPING HAND, for a face whose hands' axis stands near one side of its outline. A round dial
+// gives every bearing the same reach; an eccentric form gives the nearest side a fraction of the farthest (the free
+// −140° outline: 14 u against 58 u), and a hand cut for the round face runs into the case there. The hand is two
+// members:
+//  · the ARM, an ordinary makeHand on its pipe, cut to the shortest reach (`length`);
+//  · the SLIDER, a bare bur rod and tip riding ABOVE the arm, one CLEAR_MARGIN over its top face, its rear end square.
+//    It is `ext + overlap` long: at full extension its rear end is still `overlap` back along the arm, and at rest
+//    (`slide.y = 0`) its tip stands at the arm's. Its section is the arm's — both take the nominal hand's plan width
+//    (`widthLength`) so the two read as one blade.
+// The slider's position is the caller's: `g.userData.slide.group.position.y` is its offset from rest, 0 … `ext`, set
+// each frame by the law that drives it (main.js SLIDE_HANDS: the cam). A hand that never slides is the arm and
+// a slider laid over it. The z of the slider enters `sections`, so the placement site's stacking (coaxialLift) clears
+// the extra layer on its own.
+export function makeSlideHand({ length, kind, namePrefix, pipe, widthLength, ext, overlap }) {
+  const arm = makeHand({ length, kind, namePrefix, pipe, widthLength });
+  const sliderLen = ext + overlap;
+  const slider = makeHand({ length: sliderLen, kind, namePrefix: `${namePrefix}Slide`, slider: true, widthLength, halfWidth: arm.userData.halfW });
+  const z = arm.userData.topRise + CLEAR_MARGIN + slider.userData.floorDrop;
+  const group = new THREE.Group();
+  group.name = `${namePrefix}Slide`;
+  group.add(slider);
+  slider.position.set(0, length - sliderLen, z);   // at rest: the slider's tip on the arm's, its rear end sliderLen back
+  arm.add(group);
+  const sl = slider.userData;
+  arm.userData.slide = { group, slider, ext, overlap, sliderLen, restY: length - sliderLen, z };
+  arm.userData.sections = [...arm.userData.sections,
+    { name: 'slider', rIn: 0, rOut: Math.max(length + ext + sl.rBase, sl.halfW), zLo: z - sl.floorDrop, zHi: z + sl.topRise }];
+  return arm;
 }
 
 // The tube's own metal — MODULE SCOPE and exported since §186, because the
