@@ -99,6 +99,11 @@
   #boot .boot-sound:focus-visible, #boot .boot-selfie:focus-visible { outline: 2px solid #7a3ad8; outline-offset: 2px; }
   #boot .boot-sound[aria-pressed="true"], #boot .boot-selfie[aria-pressed="true"] { background: #7a3ad8; border-color: #7a3ad8; }
   #boot.failed .boot-sound, #boot.failed .boot-selfie { display: none; }
+  /* The reset: a failed build's way out. Hidden while the movement builds; on
+     failure it is the one control left, and reloads at the default spec. */
+  #boot .boot-reset { display: none; font: inherit; font-size: 13px; color: #eaf0f7; background: transparent; border-radius: 999px; padding: 6px 16px; cursor: pointer; border: 1px solid rgba(255,255,255,0.28); -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+  #boot .boot-reset:focus-visible { outline: 2px solid #7a3ad8; outline-offset: 2px; }
+  #boot.failed .boot-reset { display: inline-block; }
   /* §291 — the appearance preselect: static (§238 — nothing here animates a
      layout property), two columns of label and control, hidden on a failed
      build. Its controls only ever WRITE a choice; the build reads it when it
@@ -192,6 +197,7 @@
          during the wait, and hands the stream to main.js. -->
     <button type="button" class="boot-selfie" id="boot-selfie" aria-pressed="false">Camera reflection</button>
   </div>
+  <button type="button" class="boot-reset" id="boot-reset">Reset</button>
   <!-- §291: preselect the look while the movement builds. Each control is
        applied when the build reaches what it changes; the sapphire dial is cut
        at build, so changing it here saves the choice and offers a reload.
@@ -212,6 +218,12 @@
       <option value="tonneau">Tonneau</option>
       <option value="fitted">Fitted tonneau</option>
       <option value="free">Free outline</option>
+    </select></label>
+    <!-- §325 landing 3: ?alarm=0 builds the movement without the alarm. A
+         geometry-tier spec like the case shape, so a change reloads at once. -->
+    <label><span>Alarm</span><select id="boot-alarm">
+      <option value="">On</option>
+      <option value="0">Off</option>
     </select></label>
     <label><span>Case</span><input type="checkbox" data-view="case" checked></label>
     <label><span>Wireframe view</span><input type="checkbox" data-view="wireframe"></label>
@@ -446,6 +458,15 @@
         }).catch(() => {});
       });
     }
+    const alarmSel = prefsEl.querySelector('#boot-alarm');
+    if (alarmSel) {
+      alarmSel.value = new URLSearchParams(location.search).get('alarm') === '0' ? '0' : '';
+      alarmSel.addEventListener('change', () => {
+        const p = new URLSearchParams(location.search);
+        if (alarmSel.value) p.set('alarm', alarmSel.value); else p.delete('alarm');
+        location.search = p.toString();
+      });
+    }
     for (const el of prefsEl.querySelectorAll('[data-view]')) el.addEventListener('change', () => {
       window.__bootView[el.dataset.view] = el.checked;
       if (typeof window.__bootViewApply === 'function') window.__bootViewApply(el.dataset.view, el.checked);
@@ -497,6 +518,10 @@
     }
     setTimeout(() => { throw err; });
   });
+  // A build that fails leaves a spec in the URL that may be the reason: reset
+  // reloads at the default build, dropping every query parameter.
+  const resetBtn = boot && boot.querySelector('#boot-reset');
+  if (resetBtn) resetBtn.addEventListener('click', () => { location.href = location.pathname; });
 </script>
 </body>
 </html>

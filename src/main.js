@@ -46256,6 +46256,14 @@ panel.innerHTML = `
           <option value="free">Free outline</option>
         </select>
       </div>
+      <!-- §325 landing 3 — the ALARM, a reload-tier spec (?alarm=0): the
+           movement as designed, or built without the complication. -->
+      <div class="row label-small"><span>Alarm</span>
+        <select id="spec-alarm">
+          <option value="">On</option>
+          <option value="0">Off</option>
+        </select>
+      </div>
       <!-- §23: ADVANCED — every control below is GENERATED from
            aesthetics.json, so a future finish parameter gets a knob for free
            and the file stays the single source. Collapsed by default on §15's
@@ -48677,6 +48685,13 @@ updateCrownUI();
     const kind = caseSel.value;
     const key = configKey({ spec: { ...SPEC, caseShape: kind, formRectSpec: null, gongSeat: null } });
     location.search = caseShapeSearch(location.search, kind, (seat) => seat.specKey === key);   // reload-tier, like the beat rate: back IS undo
+  });
+  const alarmSpecSel = document.getElementById('spec-alarm');
+  alarmSpecSel.value = ALARM_BUILT ? '' : '0';
+  alarmSpecSel.addEventListener('change', () => {
+    const p = new URLSearchParams(location.search);
+    if (alarmSpecSel.value) p.set('alarm', alarmSpecSel.value); else p.delete('alarm');
+    location.search = p.toString();   // reload-tier, like the case shape: back IS undo
   });
   vphSel.addEventListener('change', reloadWithSpec);
   rsvSel.addEventListener('change', reloadWithSpec);
