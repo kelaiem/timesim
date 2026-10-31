@@ -57,7 +57,14 @@ const boot = async (q) => {
   await page.goto(`http://127.0.0.1:${srv.address().port}/index.html?hud=0&sync=0&${q}`);
   await page.waitForFunction(() => !!window.__clock || !!window.__bootError, null, { timeout: 900000, polling: 1000 });
   const out = await page.evaluate(() => (window.__bootError ? { bootError: String(window.__bootError.message || window.__bootError) }
-    : { free: JSON.parse(JSON.stringify(window.__clock.formFootprint.free)), depth: window.__clock.casedDepthMm }));
+    : { free: JSON.parse(JSON.stringify(window.__clock.formFootprint.free)), depth: window.__clock.casedDepthMm,
+        // the hands' axis is the dial frame's origin: how far the counted metal's hull stands from it along each ray (§325
+        // landing 8 — the REACH a telescoping hand has to cover; the case is this plus its margin)
+        reach: (() => { const hx = window.__clock.formFootprint.hull.map((p) => (Array.isArray(p) ? p : [p.x, p.y])); let lo = Infinity, hi = 0;
+          for (let i = 0; i < 720; i++) { const az = (i / 720) * 2 * Math.PI, dx = Math.cos(az), dy = Math.sin(az); let best = 0;
+            for (let j = 0; j < hx.length; j++) { const a = hx[j], b = hx[(j + 1) % hx.length], ex = b[0] - a[0], ey = b[1] - a[1], den = dx * ey - dy * ex;
+              if (Math.abs(den) < 1e-12) continue; const t = (a[0] * ey - a[1] * ex) / den, u = (a[0] * dy - a[1] * dx) / den; if (t > 0 && u >= 0 && u <= 1) best = Math.max(best, t); }
+            lo = Math.min(lo, best); hi = Math.max(hi, best); } return { lo, hi }; })() }));
   await ctx.close();
   return { ...out, warnings };
 };
@@ -93,14 +100,16 @@ const run = async ([d, idl, so]) => {
   if (b.bootError) { await keep({ d, idl, so, refused: `boot failed: ${b.bootError}` }); console.log(`${tag}  BOOT FAILED ${b.bootError.slice(0, 160)}`); return; }
   const extra = b.warnings.filter((w) => !EXPECTED.test(w));
   let ax; try { ax = solveAxis(b.free); } catch (e) { ax = { c: NaN, area: NaN }; extra.push(`fit failed: ${e.message}`); }
-  const row = { d, idl, so, area: ax.area * mm2, c: ax.c, depth: b.depth, warns: extra };
+  const mg = b.free.margin, ratio = (b.reach.hi + mg) / (b.reach.lo + mg);   // the case stands the margin outside the metal
+  const row = { d, idl, so, area: ax.area * mm2, c: ax.c, depth: b.depth, reachLo: b.reach.lo, reachHi: b.reach.hi, caseRatio: ratio, warns: extra };
   await keep(row);
-  console.log(`${tag}  ${Number.isFinite(row.area) ? row.area.toFixed(1) : '—'} mm² (c ${ax.c.toFixed(2)}), depth ${b.depth?.toFixed(3)} mm`
+  console.log(`${tag}  ${Number.isFinite(row.area) ? row.area.toFixed(1) : '—'} mm² (c ${ax.c.toFixed(2)}), depth ${b.depth?.toFixed(3)} mm, reach ${b.reach.lo.toFixed(1)}..${b.reach.hi.toFixed(1)} (case ratio ${ratio.toFixed(2)})`
     + (extra.length ? `  REFUSED: ${extra.length} warning(s): ${extra.map((w) => w.slice(0, 110)).join(' | ')}` : ''));
 };
 const jobs = bearings.flatMap((d) => IDLERS.flatMap((idl) => STEMOFF.map((so) => [d, idl, so])));
 for (let i = 0; i < jobs.length; i += PAR) await Promise.all(jobs.slice(i, i + PAR).map(run));
 await browser.close(); srv.close();
 const ok = rows.filter((r) => Number.isFinite(r.area) && !r.warns?.length).sort((a, b) => a.area - b.area);
+console.log(`\nby case reach ratio (smaller is easier for a telescoping hand): ${[...ok].sort((a, b) => a.caseRatio - b.caseRatio).map((r) => `${r.d}°/${r.idl}/${r.so} ${r.caseRatio.toFixed(2)}`).join(', ')}`);
 console.log(`\nranked (closed layouts, round-1 area): ${ok.map((r) => `${r.d}°/${r.idl}/${r.so} ${r.area.toFixed(1)}`).join(', ')}`);
 console.log(`refused: ${rows.filter((r) => !ok.includes(r)).map((r) => `${r.d}°/${r.idl}/${r.so} (${r.warns?.length ?? 'boot'})`).join(', ') || 'none'}`);
