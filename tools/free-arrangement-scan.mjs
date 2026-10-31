@@ -15,8 +15,14 @@
 // row then pulls in (the declared arrangement: 842.7 at round 1, 813.9 settled). It ranks bearings; it is not the
 // settled area.
 //
+// The STEM is a second dimension (--stemoff): by default it follows the barrel (stem az = 180 + barrelStep, the
+// winding path's direct mesh), and the winding path still closes within about 40° of that line through an idler,
+// so each offset boots ?stemaz=180+step+offset. Every row is also appended to --out as one JSON line as it lands,
+// so a scan cut short keeps what it measured.
+//
 //   node tools/free-arrangement-scan.mjs [--from -180 --to 180 --step 20] [--par 2] [--extra 'k=v&…']
-import { readFile } from 'node:fs/promises';
+//                                        [--idlers 2] [--stemoff 0,-30,30] [--out rows.jsonl]
+import { readFile, appendFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, normalize, extname } from 'node:path';
@@ -28,6 +34,7 @@ const FROM = Number(arg('--from', -180)), TO = Number(arg('--to', 180)), STEP = 
 const EXTRA = arg('--extra', '');
 // the reserve's idler PAIRS (§313: 0, 2, 4 or 6 idlers) — a free choice of the layout, so each bearing tries each count
 const IDLERS = arg('--idlers', '2').split(',').map(Number);
+const STEMOFF = arg('--stemoff', '0').split(',').map(Number), OUT = arg('--out', null);
 const EXPECTED = /^§186: the rim-to-bore fit|^§261: cased assembly|^§325: no free outline is generated/;
 const mm2 = UNIT_MM * UNIT_MM, SCAN_U = 2.5, TOL_U = 0.05;
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.json': 'application/json', '.css': 'text/css' };
@@ -59,7 +66,7 @@ const solveAxis = (F) => {
   let lo = Infinity, hi = -Infinity;
   for (const P of F.polys) for (const [x] of P) { lo = Math.min(lo, x); hi = Math.max(hi, x); }
   const mid = (lo + hi) / 2, half = Math.max(SCAN_U, (hi - lo) / 2 - F.need);
-  const fit = (c) => { try { return fitFreeCase(F.polys, { margin: F.margin, rc: F.rc, need: F.need, c, pins: F.pins.map(([x, y, n]) => [x, y, n]), ports: F.ports }).area; } catch { return Infinity; } };
+  const fit = (c) => { try { const r = fitFreeCase(F.polys, { margin: F.margin, rc: F.rc, need: F.need, c, pins: F.pins.map(([x, y, n]) => [x, y, n]), ports: F.ports }); return r.flat.top && r.flat.bot ? r.area : Infinity; } catch { return Infinity; } };   // no straight end, no lug: as tools/free-outline.mjs
   const scan = [];
   for (let c = mid - half; c <= mid + half + 1e-9; c += SCAN_U) scan.push([c, fit(c)]);
   let k = 0; for (let i = 1; i < scan.length; i++) if (scan[i][1] < scan[k][1]) k = i;
@@ -76,21 +83,24 @@ const solveAxis = (F) => {
 const bearings = [];
 for (let d = FROM; d <= TO + 1e-9; d += STEP) bearings.push(d);
 const rows = [];
-const run = async ([d, idl]) => {
-  const q = `case=free&alarm=0&barrelstep=${d}&rsvaz=0&rsvidl=${idl}${EXTRA ? `&${EXTRA}` : ''}`;
+const run = async ([d, idl, so]) => {
+  const stemaz = so ? (((180 + d + so) % 360) + 360) % 360 : null;
+  const q = `case=free&alarm=0&barrelstep=${d}&rsvaz=0&rsvidl=${idl}${stemaz !== null ? `&stemaz=${stemaz}` : ''}${EXTRA ? `&${EXTRA}` : ''}`;
+  const tag = `${String(d).padStart(5)}° idl ${idl} stem ${so >= 0 ? '+' : ''}${so}°`;
+  const keep = async (row) => { rows.push(row); if (OUT) await appendFile(OUT, JSON.stringify(row) + '\n'); };
   let b;
   try { b = await boot(q); } catch (e) { b = { bootError: `${e.name}: ${e.message.split('\n')[0]}` }; }   // a boot that never finishes is refused, not the scan's end
-  if (b.bootError) { rows.push({ d, idl, refused: `boot failed: ${b.bootError}` }); console.log(`${d}° idl ${idl}  BOOT FAILED ${b.bootError.slice(0, 160)}`); return; }
+  if (b.bootError) { await keep({ d, idl, so, refused: `boot failed: ${b.bootError}` }); console.log(`${tag}  BOOT FAILED ${b.bootError.slice(0, 160)}`); return; }
   const extra = b.warnings.filter((w) => !EXPECTED.test(w));
-  const ax = solveAxis(b.free);
-  const row = { d, idl, area: ax.area * mm2, c: ax.c, depth: b.depth, warns: extra };
-  rows.push(row);
-  console.log(`${String(d).padStart(5)}° idl ${idl}  ${Number.isFinite(row.area) ? row.area.toFixed(1) : '—'} mm² (c ${ax.c.toFixed(2)}), depth ${b.depth?.toFixed(3)} mm`
+  let ax; try { ax = solveAxis(b.free); } catch (e) { ax = { c: NaN, area: NaN }; extra.push(`fit failed: ${e.message}`); }
+  const row = { d, idl, so, area: ax.area * mm2, c: ax.c, depth: b.depth, warns: extra };
+  await keep(row);
+  console.log(`${tag}  ${Number.isFinite(row.area) ? row.area.toFixed(1) : '—'} mm² (c ${ax.c.toFixed(2)}), depth ${b.depth?.toFixed(3)} mm`
     + (extra.length ? `  REFUSED: ${extra.length} warning(s): ${extra.map((w) => w.slice(0, 110)).join(' | ')}` : ''));
 };
-const jobs = bearings.flatMap((d) => IDLERS.map((idl) => [d, idl]));
+const jobs = bearings.flatMap((d) => IDLERS.flatMap((idl) => STEMOFF.map((so) => [d, idl, so])));
 for (let i = 0; i < jobs.length; i += PAR) await Promise.all(jobs.slice(i, i + PAR).map(run));
 await browser.close(); srv.close();
 const ok = rows.filter((r) => Number.isFinite(r.area) && !r.warns?.length).sort((a, b) => a.area - b.area);
-console.log(`\nranked (closed layouts, round-1 area): ${ok.map((r) => `${r.d}°/${r.idl} ${r.area.toFixed(1)}`).join(', ')}`);
-console.log(`refused: ${rows.filter((r) => !ok.includes(r)).map((r) => `${r.d}°/${r.idl}`).join(', ') || 'none'}`);
+console.log(`\nranked (closed layouts, round-1 area): ${ok.map((r) => `${r.d}°/${r.idl}/${r.so} ${r.area.toFixed(1)}`).join(', ')}`);
+console.log(`refused: ${rows.filter((r) => !ok.includes(r)).map((r) => `${r.d}°/${r.idl}/${r.so} (${r.warns?.length ?? 'boot'})`).join(', ') || 'none'}`);

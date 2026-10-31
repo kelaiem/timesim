@@ -17132,6 +17132,15 @@ const PILLAR_TENON_LEN = PLATE_TOP_FACE - PLATE_BACK_FACE;
 // below is cut through at the mouth with the conical land put back.
 const PILLAR_RIVET_C = STOCK_MIN_U;
 const PILLAR_RIVET_MOUTH_R = PILLAR_TENON_R + PILLAR_RIVET_C;
+// §325 landing 6 — THE FRAME WITHOUT PILLARS (?frame=lands, the free case only: layout.js reads the key to null elsewhere).
+// The back plate is screwed straight onto LANDS the base plate raises on its own rim, so no support is a free column
+// past the train and none needs a seat in the open interior. A land is the pillar's seat WITHOUT the pillar's joint:
+// its radius is the cap the pillar scan already keeps clear (PILLAR_CAP_R — the screw head's seat is the widest land
+// the back plate's screw asks of what carries it), its column the same TQ_BOT_Z − PILLAR_BASE_Z, its bore the same
+// tapped bore. What it does not have is a tenon or a rivet: it is turned from the plate's stock, so it owes the plate
+// no joint of its own and its foot only needs a root in the slab (half the plate, the pocket floors' lap).
+const FRAME_LANDS = SPEC.frame === 'lands' && FORM?.kind === 'free';
+const LAND_ROOT = (PLATE_TOP_FACE - PLATE_BACK_FACE) / 2;
 if (PILLAR_RIVET_C > PILLAR_TENON_LEN - STOCK_MIN_U + 1e-9)
   console.warn(`TODO 200: pillar countersink ${PILLAR_RIVET_C.toFixed(3)} leaves under STOCK_MIN_U of plate round the tenon (plate ${PILLAR_TENON_LEN.toFixed(3)})`);
 if (PILLAR_BODY_R - PILLAR_TAP_R < STOCK_MIN_U - 1e-9)
@@ -17193,12 +17202,12 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
   // far inside its outline. Held only to TQ_LAND_MIN, a pillar the strike group
   // pushed to the rim stood 3.238 inside the cushion and the fit grew the case
   // round it — the frame paying for the gong with the case's size.
-  const PILLAR_RIM_LAND = Math.max(TQ_LAND_MIN, PLATE_RIM_MARGIN);
+  const PILLAR_RIM_LAND = FRAME_LANDS ? TQ_LAND_MIN : Math.max(TQ_LAND_MIN, PLATE_RIM_MARGIN);   // §325 landing 6: a land is plate, not counted metal, so it owes the case's margin nothing — only the back plate's edge land
   const seatClearance = (x, y) => {
     // §325 landing 3 — on the FREE outline the rim is the fit to this very metal, which holds the cap exactly the rim
     // margin inside it: the land owed there IS that margin, so the CLEAR_MARGIN every obstacle below adds is handed
     // back (asked of a pillar the fit stood at its margin, it was refused the next round and the frame lost it)
-    let c = Math.min(inCutClearance(x, y), FORM ? formInset(x, y) - PILLAR_RIM_LAND + (FORM.kind === 'free' ? CLEAR_MARGIN : 0) : plateR - Math.hypot(x, y));
+    let c = Math.min(inCutClearance(x, y), FORM ? formInset(x, y) - PILLAR_RIM_LAND + (FORM.kind === 'free' && !FRAME_LANDS ? CLEAR_MARGIN : 0) : plateR - Math.hypot(x, y));
     for (const h of tqHoles) c = Math.min(c, Math.hypot(x - h.x, y - h.y) - h.r);
     const stadium = (s) => {
       const vx = s.bx - s.ax, vy = s.by - s.ay, L2 = vx * vx + vy * vy || 1e-9;
@@ -17277,7 +17286,8 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
     // do (the first put the rivet mouth 1.656 into the hack stud's slot). Written as the clearance c is judged on
     // (c − capR ≥ CLEAR_MARGIN), so the seat holds exactly when mouth + land fits.
     if (FORM?.kind === 'free') {
-      const owed = PILLAR_RIVET_MOUTH_R + STOCK_MIN_U - capR - CLEAR_MARGIN;
+      const footR = FRAME_LANDS ? capR : PILLAR_RIVET_MOUTH_R;   // §325 landing 6: a land has no tenon bore, its foot is its own disc
+      const owed = footR + STOCK_MIN_U - capR - CLEAR_MARGIN;
       for (const h of BACK_PLATE_CUT.holes) c = Math.min(c, Math.hypot(x - h.x, y - h.y) - h.r - owed);
       for (const sl of BACK_PLATE_CUT.slots) c = Math.min(c, stadium({ ax: sl.ax, ay: sl.ay, bx: sl.bx, by: sl.by, r: sl.r }) - owed);
       for (const sc of BACK_PLATE_CUT.sectors) c = Math.min(c, Math.hypot(x - sc.cx, y - sc.cy) - sc.r1 - sc.pad - owed);
@@ -17291,7 +17301,7 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
       // pillar is its rivet's opening, owed the same land, and its cap, owed the running clearance
       for (const ps of pillarSeats) {
         const d = Math.hypot(x - ps.x, y - ps.y);
-        c = Math.min(c, d - PILLAR_RIVET_MOUTH_R - owed, d - capR);
+        c = Math.min(c, d - footR - owed, d - capR);
       }
     }
     // §112 — the alarm corner's DECLARED under-plate footprint: its metal
@@ -17328,8 +17338,10 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
   // structure-node name so the graph's support edges resolve to the same
   // meshes either way.
   const pillarsGroup = new THREE.Group();
-  movement.add(pillarsGroup);
-  registerLabel('pillars', pillarsGroup);
+  if (!FRAME_LANDS) {   // §325 landing 6: the frame without pillars has no such unit — its lands are the base plate's own metal
+    movement.add(pillarsGroup);
+    registerLabel('pillars', pillarsGroup);
+  }
   for (const base of [45, 135, 225, 315]) {
     let best = null;
     for (let dA = 0; dA <= 60; dA += 1) {
@@ -17343,21 +17355,22 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
         for (let r = rTop; r >= plateR - 16; r -= 0.5) {
           const x = Math.cos(a) * r, y = Math.sin(a) * r;
           const c = seatClearance(x, y);
-          if (c >= CLEAR_MARGIN && (!best || c > best.c + (FORM?.kind === 'free' ? 1e-9 : 0.5))) best = { x, y, c, dA };
+          // §325 landing 6: a LAND takes the first seat that holds (r runs outward in, so the outermost on the nearest bearing)
+          if (c >= CLEAR_MARGIN && (!best || (!FRAME_LANDS && c > best.c + (FORM?.kind === 'free' ? 1e-9 : 0.5)))) best = { x, y, c, dA };
         }
       }
       await breathe(126);
       // nearest feasible bearing to the quadrant's ideal wins — except on the FREE outline (§325 landing 2), where the
       // outline is fitted to the counted metal and a pillar held at the rim land would hold it there every round; there
       // the quadrant's DEEPEST seat (the most clearance within ±45°) wins, a pillar in the plate's open interior
-      if (best && FORM?.kind !== 'free') break;
+      if (best && (FORM?.kind !== 'free' || FRAME_LANDS)) break;
       if (FORM?.kind === 'free' && dA >= 45) break;
     }
     // §325 landing 3 — the ring's inner bound (plateR − 16) is the round build's; on the free outline a quadrant whose
     // ring holds no seat (measured without the alarm: none at 315°) takes the deepest seat further in, on the same
     // clearance law, the plate's open interior being where landing 2 sent the frame
     let nearest = null;
-    if (!best && FORM?.kind === 'free') {
+    if (!best && FORM?.kind === 'free' && !FRAME_LANDS) {   // §325 landing 6: a land is a rim feature — it never takes an interior seat
       for (let dA = 0; dA <= 45; dA += 1) {
         await breathe(373);
         for (const sgn of dA === 0 ? [1] : [1, -1]) {
@@ -17372,10 +17385,22 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
       }
     }
     if (!best) {
-      console.warn('pillar: no seat found near', base, ...(nearest ? [`— the quadrant's best clearance is ${nearest.c.toFixed(3)} at (${nearest.x.toFixed(2)}, ${nearest.y.toFixed(2)}), need CLEAR_MARGIN ${CLEAR_MARGIN}`] : []));
+      console.warn(FRAME_LANDS ? 'pillar: no seat found for a rim land near' : 'pillar: no seat found near', base, ...(nearest ? [`— the quadrant's best clearance is ${nearest.c.toFixed(3)} at (${nearest.x.toFixed(2)}, ${nearest.y.toFixed(2)}), need CLEAR_MARGIN ${CLEAR_MARGIN}`] : []));
       continue;
     }
     const pillarH = TQ_BOT_Z - PILLAR_BASE_Z;
+    if (FRAME_LANDS) {
+      // §325 landing 6 — the land: one piece with the base plate, so a child of it named for it (the pocket floors' and the
+      // rivet lands' convention — `support` resolves the plate by that exact name), standing from a root in the slab to the
+      // back plate's underside. Its footprint is published for the siting solves exactly as a pillar's was.
+      const land = new THREE.Mesh(G.makeRimLand({ height: pillarH, root: LAND_ROOT, r: PILLAR_CAP_R, tapR: PILLAR_TAP_R, tapDepth: PILLAR_TAP_DEPTH }), MATS.perledNickel);
+      land.name = 'backPlate';
+      land.position.set(best.x, best.y, (PLATE_TOP_FACE - PLATE_BACK_FACE) / 2);   // backPlate-local: x, y the movement's, z = 0 the slab's midplane, +F its face
+      land.userData.planStadium = { ax: best.x, ay: best.y, bx: best.x, by: best.y, r: PILLAR_CAP_R };
+      backPlate.add(land);
+      pillarSeats.push({ x: best.x, y: best.y });
+      continue;
+    }
     const pillar = G.makePillar({ height: pillarH, bodyR: PILLAR_BODY_R, tapR: PILLAR_TAP_R, tapDepth: PILLAR_TAP_DEPTH,
       tenonR: PILLAR_TENON_R, tenonLen: PILLAR_TENON_LEN, rivetC: PILLAR_RIVET_C });
     pillar.name = 'pillar'; // structural node — see checkSupportGeometry
@@ -18020,6 +18045,7 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
       ringGeo(G.screwBoreR(PILLAR_SCREW_HEAD_R), PILLAR_SEAT_R + 0.15, PLATE_SCREW_LAND_T),
       MATS.nickel);
     land.position.set(p.x, p.y, -TQ_T / 2 + PLATE_SCREW_LAND_T / 2);
+    if (FRAME_LANDS) land.name = 'plateScrewLand';   // §325 landing 6: the ring that bears on a rim land, named so plateSeats can seat it by name
     threeQuarterPlate.add(land);
   }
   const plateScrews = pillarSeats.map((p) => ({
@@ -18041,7 +18067,7 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   // The head is sunk flush, so what it clamps below itself is the plate's
   // land, PLATE_SCREW_LAND_T, the same land ring cut above.
   for (const p of plateScrews)
-    declareFrameJoint({ joint: 'Three-quarter plate ⇄ pillar', clamped: 'three-quarter plate', host: 'pillar',
+    declareFrameJoint({ joint: FRAME_LANDS ? 'Three-quarter plate ⇄ rim land' : 'Three-quarter plate ⇄ pillar', clamped: 'three-quarter plate', host: FRAME_LANDS ? 'base plate' : 'pillar',
       frame: threeQuarterPlate, x: p.x, y: p.y, top: p.z, headR: PILLAR_SCREW_HEAD_R, headT: PLATE_SCREW_HEAD_T,
       shank: p.shank, clamp: PLATE_SCREW_LAND_T });
 }
@@ -46230,6 +46256,14 @@ panel.innerHTML = `
           <option value="free">Free outline</option>
         </select>
       </div>
+      <!-- §325 landing 3 — the ALARM, a reload-tier spec (?alarm=0): the
+           movement as designed, or built without the complication. -->
+      <div class="row label-small"><span>Alarm</span>
+        <select id="spec-alarm">
+          <option value="">On</option>
+          <option value="0">Off</option>
+        </select>
+      </div>
       <!-- §23: ADVANCED — every control below is GENERATED from
            aesthetics.json, so a future finish parameter gets a knob for free
            and the file stays the single source. Collapsed by default on §15's
@@ -48652,6 +48686,13 @@ updateCrownUI();
     const key = configKey({ spec: { ...SPEC, caseShape: kind, formRectSpec: null, gongSeat: null } });
     location.search = caseShapeSearch(location.search, kind, (seat) => seat.specKey === key);   // reload-tier, like the beat rate: back IS undo
   });
+  const alarmSpecSel = document.getElementById('spec-alarm');
+  alarmSpecSel.value = ALARM_BUILT ? '' : '0';
+  alarmSpecSel.addEventListener('change', () => {
+    const p = new URLSearchParams(location.search);
+    if (alarmSpecSel.value) p.set('alarm', alarmSpecSel.value); else p.delete('alarm');
+    location.search = p.toString();   // reload-tier, like the case shape: back IS undo
+  });
   vphSel.addEventListener('change', reloadWithSpec);
   rsvSel.addEventListener('change', reloadWithSpec);
   studSel.addEventListener('change', reloadWithSpec);
@@ -50232,6 +50273,7 @@ const CASE_DIMS = (() => {
     skirtOD, skirtID, zSkirtBot,
     apertureR: RA, glassEdgeR: RA_EDGE,
     ...(FORM ? { formApertureGrow, formGlassGrow } : {}),   // §307 landing 2 — the form back's window, a grow of the plate's shape
+    ...(FORM ? { plateFloors: PLATE_RIM.floors } : {}),   // §325 landing 6 — each stem's widest plate METAL along its own line, measured off the built plate (the §186 assert below holds the tubes to these same numbers)
     rStep, zStepUnder, zStepTop,
     // The bezel opening COVERS the dial/plate join (layout.js §125: "the
     // CASE, not the plate's rim, covers the join") — 1 mm of dial edge.
@@ -56360,7 +56402,7 @@ const UNIT_GROUPS = new Map([
     ['Power-reserve train', null], ['Hands', null],
   ])],
   ['Frame & plates', new Map([
-    ['Base plate', null], ['pillars', null], ['Three-quarter plate', null],
+    ['Base plate', null], ...(FRAME_LANDS ? [] : [['pillars', null]]), ['Three-quarter plate', null],
     ['Case', null], // backlog: the housing — band, screw back, crystal, lugs, tubes
   ])],
   ...(ALARM_BUILT ? [['Alarm complication', new Map([   // §325 landing 3: the group, when the movement carries it

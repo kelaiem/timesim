@@ -36,7 +36,7 @@ import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from '../ven
 // default and should not add a fourth copy of the number.
 import { ZERO_AREA_MAX, CLEAR_MARGIN, HANDOFF_TRACK_TOL, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MAX_U, CHAIN_PITCH,
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
-  ROUTE_SPEC, ROUTE_UNIT_NAME,                                    // §36 Apply: the same predicate that builds the unit, and the same name
+  ROUTE_SPEC, ROUTE_UNIT_NAME, SPEC,                                    // §36 Apply: the same predicate that builds the unit, and the same name
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, rigidSplit,
   TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R_SPEC, BALANCE_R_REF, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 import { auditLubrication, LUBRICATION, LUBRICATION_DEBT, LUBRICATION_WAIVERS } from './lubrication.js';   // §247 tier one
@@ -609,6 +609,17 @@ export const MECH_GRAPH = {
 // the simulation fiction CLAUDE.md names: an edge with no force behind it.
 if (ROUTE_SPEC) MECH_GRAPH.support.push([ROUTE_UNIT_NAME, 'plate']);
 
+// §325 landing 6 — THE FRAME WITHOUT PILLARS (?frame=lands). The back plate is screwed onto lands the base plate raises on
+// its own rim, so the unit 'pillars' is not built and its two support rows are replaced by the one the metal makes: the back
+// plate stands on the base plate. Like the route's row the condition is the SPEC key main.js builds on, since checkGraph
+// fails both ways (a declared unit that was not built, a built unit that was not declared). SPEC.frame is already null
+// off the free case (layout.js), so the default graph below is the one that has always been.
+const FRAME_LANDS = SPEC.frame === 'lands';
+if (FRAME_LANDS) {
+  MECH_GRAPH.support = MECH_GRAPH.support.filter(([a, b]) => a !== 'pillars' && b !== 'pillars');
+  MECH_GRAPH.support.push(['Three-quarter plate', 'plate']);
+}
+
 // Shared anchor-point extractor: the mesh CENTRE within `unitEntry` nearest
 // to any mesh centre in `targetEntry` — i.e. "whichever part of this unit is
 // actually meant to reach the target." Cheap (mesh-count², not
@@ -874,6 +885,8 @@ const EXPECTED_PAIRS = [
   ['Alarm governor anchor', 'plate'],// §107's stud, §112's face
   ['Alarm governor', 'Alarm governor anchor'],    // §107: the saw's tooth face on the pallet face — the governing contact itself
 ];
+// §325 landing 6 — the plate sits on the base plate's lands, not on pillar caps (the plate is a held fixture, in no sweep's pairs)
+if (FRAME_LANDS) for (let i = EXPECTED_PAIRS.length - 1; i >= 0; i--) if (EXPECTED_PAIRS[i].includes('pillars')) EXPECTED_PAIRS.splice(i, 1);
 // Same rigid assembly / coaxial stacks — not meaningful to test.
 const IGNORED_PAIRS = [
   ['Balance', 'Hairspring'],
@@ -4890,6 +4903,14 @@ const FASTENED_EDGES = {
   'Fork cock ⇄ base plate': ['Fork cock', 'plate'],
   'Escape cock ⇄ base plate': ['Escape cock', 'plate'],   // §322
 };
+// §325 landing 6 — the frame without pillars has ONE fastened edge where the pillars had two: the back plate's screws thread
+// into the base plate's own lands (there is no rivet, because there is no second part to rivet), and FRAME_JOINTS rows named
+// for it must MEASURE engaged in the lands' tapped bores like any thread
+if (FRAME_LANDS) {
+  delete FASTENED_EDGES['Three-quarter plate ⇄ pillar'];
+  delete FASTENED_EDGES['Pillar ⇄ base plate'];
+  FASTENED_EDGES['Three-quarter plate ⇄ rim land'] = ['Three-quarter plate', 'plate'];
+}
 const ENGAGE_TIE_MM = 1e-4;   // the probe's metal-vs-declaration tolerance; a cut short by a real amount reads 0.01+
 
 // TODO 202 step 4 — THE PLATE'S SEATS, a clearance tier between the base plate
@@ -5016,6 +5037,15 @@ export const PLATE_SEATS = [
   { unit: "Case", mesh: "caseMiddle", kind: "housed", why: "the case middle's ledge, which the plate's rim sits on" },
   { unit: "Case", mesh: "caseClampScrew", kind: "fastened", why: "the clamp screws, through the rim's bores (§186)" },
 ];
+// §325 landing 6 — no pillars, no row for them (a row naming a unit that is not built is a stale selector, and fails)
+if (FRAME_LANDS) for (let i = PLATE_SEATS.length - 1; i >= 0; i--) if (PLATE_SEATS[i].unit === 'pillars') PLATE_SEATS.splice(i, 1);
+// …and the back plate bears on the base plate's lands, through the ring its screw head is sunk in and by the thread it
+// cuts into the land's bore; those two meshes are the only metal of its own that the base plate's metal meets
+if (FRAME_LANDS) PLATE_SEATS.push(
+  { unit: "Three-quarter plate", mesh: "plateScrewLand", kind: "fastened", why: "the land ring under each screw head, bearing on the base plate's rim land (§325 landing 6)" },
+  { unit: "Three-quarter plate", mesh: "screwShanks", kind: "fastened", why: "the back plate's screws, threaded into the lands' tapped bores (§325 landing 6)" },
+  { unit: "Three-quarter plate", mesh: "threeQuarterPlate", kind: "fastened", why: "the slab itself, which the screws hold on the lands: it stands a bevel's width off each land's rim, inside CLEAR_MARGIN by construction (§325 landing 6)" },
+);
 export const PLATE_CLEARANCE_DEBT = [
   // Frozen at the arrival depth (the measured minimum over digestPoses, rounded
   // DOWN to 1e-4), each citing TODO 209's fix path. TODO 211 retired the
@@ -5076,7 +5106,11 @@ export async function checkPlateSeats(clock, { seats = PLATE_SEATS, debtTable = 
   clock.resetInputs();
   clock.setPose(poses[0]);
   clock.scene.updateMatrixWorld(true);
-  const tqClear = tq ? Math.min(...tq.meshes.flatMap((m) => plate.map((h) => meshClearance(m, h)))) : null;
+  // §325 landing 6 — on the frame without pillars the back plate BEARS on the base plate's lands, through its screw-land rings
+  // and the screws; the must-miss is then the slab itself (the metal that is neither), which must stand clear of the plate
+  // except where it is sat on — read as out of contact, not as CLEAR_MARGIN away
+  const tqBody = tq ? (FRAME_LANDS ? tq.meshes.filter((m) => m.name !== 'plateScrewLand' && m.name !== 'screwShanks') : tq.meshes) : null;
+  const tqClear = tq ? Math.min(...tqBody.flatMap((m) => plate.map((h) => meshClearance(m, h)))) : null;
 
   const out = [...rows.values()].map((r) => ({ ...r, min: +r.min.toFixed(6), seated: seats.some((s) => plateRowKey(s.unit, s.mesh) === plateRowKey(r.unit, r.mesh)) }))
     .sort((a, b) => a.min - b.min);
@@ -5105,7 +5139,7 @@ export async function checkPlateSeats(clock, { seats = PLATE_SEATS, debtTable = 
   const contactSeen = out.some((r) => r.min <= 0);
   const control = problems.length ? `FAIL — ${problems.map((p) => p.problem).join('; ')}`
     : !contactSeen ? 'FAIL — no mesh measured in contact with the plate: the must-hit never fired'
-    : !(tqClear >= CLEAR_MARGIN) ? `FAIL — the three-quarter plate read ${tqClear} from the base plate: the must-miss did not miss`
+    : !(FRAME_LANDS ? tqClear > 0 : tqClear >= CLEAR_MARGIN) ? `FAIL — the three-quarter plate read ${tqClear} from the base plate: the must-miss did not miss`
     : `PASS (must-hit: ${out.filter((r) => r.min <= 0).length} parts in contact; must-miss: three-quarter plate ${tqClear.toFixed(3)} clear)`;
   return {
     ok: control.startsWith('PASS') && !violations.length && !malformed.length && !staleSeats.length && !regressed.length && !staleDebt.length,

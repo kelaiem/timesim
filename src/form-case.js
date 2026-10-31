@@ -345,7 +345,7 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   const {
     UNIT_MM: U, z0, zMidBack, zStep, zBandFront, zCrystInner, zCrystOuter, zBezelOuter,
     crystT, tubeD, pusherD, stemAz, alarmAz, pusherAz, pusherOff, stemZ, alarmZ, pusherZ,
-    lugSpanInner, apertureR, glassEdgeR, formApertureGrow = null, formGlassGrow = null, bezelFlat,
+    lugSpanInner, apertureR, glassEdgeR, formApertureGrow = null, formGlassGrow = null, bezelFlat, plateFloors,
   } = dims;
   // §307 landing 2 — THE BACK'S WINDOW IS THE PLATE'S SHAPE: main.js derives
   // it as grows of the plate's outline (the three-quarter plate's measured
@@ -520,13 +520,17 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   // stem's own line at the stem's own z: `az` the line's azimuth, `off` its
   // perpendicular offset from the centre (the pusher runs PARALLEL to a
   // radius, ALARM_PUSH_CHORD off it; both crowns are radial, off = 0).
-  //   · The INBOARD end stops short of the plate by CLEAR_MARGIN: the plate
-  //     loop's exit along the tube's axis AND its two in-plane rim lines (the
-  //     end face's extreme points against a prismatic wall — makeCase's
-  //     "the rim's nearest point clears the plate" rule), the farthest taken,
-  //     swelled by the plate's extrude bevel (PLATE_BEVEL_F — the round
-  //     plate's fraction, standing in until the form plate's own bevel is
-  //     measured; CASE_DIMS.tubeClearR's rule). A flush bore instead lands
+  //   · The INBOARD end stops short of the plate by CLEAR_MARGIN, MEASURED
+  //     and not reconstructed: `plateFloors[n]`, the plate's widest
+  //     METAL along this stem's line within the sleeve's section (main.js
+  //     PLATE_RIM, bevel and facets and all), plus CLEAR_MARGIN. It was
+  //     `reach · (1 + PLATE_BEVEL_F)` on the plate LOOP, which it stays where
+  //     the measure falls short of the loop — the round plate's
+  //     fraction of a radius standing in for a form plate's bevel, which is a
+  //     constant and offsets the outline perpendicular to itself — and a stem
+  //     line leaving far from the centre stood its sleeve too far off (§325
+  //     landing 6: the −140° arrangement's, 0.556 against support's 0.5).
+  //     A flush bore instead lands
   //     SEAT_EMBED into the BORE wall (makeCase §187: the pusher's sleeve
   //     lines the band's own hole and nothing more).
   //   · The OUTBOARD end is the axis's exit from the OUTER loop
@@ -535,6 +539,7 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   // TODO (§307, prototype): the band is NOT bored for them — the sleeve
   // stands in solid band metal, the same declared CSG debt the round case
   // carries for its radial bores.
+  const STEM_FLOOR = { caseCrownTube: 0, caseAlarmTube: 1 };   // PLATE_RIM.floors is indexed by CASE_NOTCHES: the crown, then the alarm stem
   const tubeAt = (az, d, z, name, flush = false, off = 0) => {
     const r = d / 2, rw = r + TUBE_WALL;
     const dir = [Math.cos(az), Math.sin(az)], perp = [-Math.sin(az), Math.cos(az)];
@@ -543,9 +548,14 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
     if (flush) {
       inboard = rayExit(loops.bore, dir, lineAt(0)) - SEAT_EMBED;
     } else {
+      // §325 landing 6 — the plate's metal on THIS stem's line is MEASURED off the built plate (main.js PLATE_RIM.floors, within the
+      // sleeve's section, bevel and all), so the tube stands CLEAR_MARGIN off exactly the number main.js's §186 assert holds it to.
+      // A floor SHORT of the plate loop's own exit is a walk that missed metal (the rect form reads 25 mm on a 45.7 mm plate, and the
+      // sleeve then stood in the keyless and alarm work): the loop rule stands there, as it always did.
       let reach = -Infinity;
       for (const k of [-rw, 0, rw]) reach = Math.max(reach, rayExit(loops.plate, dir, lineAt(k)));
-      inboard = reach * (1 + PLATE_BEVEL_F) + CLEAR_MARGIN;
+      const floor = plateFloors[STEM_FLOOR[name]];
+      inboard = (floor >= reach ? floor : reach * (1 + PLATE_BEVEL_F)) + CLEAR_MARGIN;
     }
     const outerExit = rayExit(loops.outer, dir, lineAt(0));
     const outboard = flush ? outerExit : outerExit + TUBE_PROUD;
