@@ -1335,6 +1335,13 @@ const SPEC_POINTS = [
   { name: 'form-rect', q: 'case=rect&formrect=-45.72,45.72,-44.38,44.38', expect: 'declared', sweep: true,
     expectWarns: ['§186: the rim-to-bore fit', '§261: cased assembly'],
     why: '§310 landing 4 / §313 — the rect form case at its default (ARRANGEMENT, the spiral seat since §314) and that seat\'s fit; swept, booting exactly the two rows every form build carries' },
+  // §328 step 1 — THE ROUND BUILD ON INTEGRATED LANDS: the default movement with its back plate screwed onto lands the
+  // base plate raises in place of the four applied pillars (the lands stand on the pillars' own seats). It boots silent
+  // and is swept. What the tiers see is the build without the `pillars` unit and with the back plate's screw rings on
+  // the lands; the lands THEMSELVES are children of the held base plate, in no pair sweep, so neither this point nor the
+  // default's battery reads them: plateSeats on this build and tools/probe-328-round-lands.mjs do, both run by hand.
+  { name: 'round-lands', q: 'frame=lands', expect: 'silent', sweep: true,
+    why: '§328 step 1 — the default round build with integrated lands in place of applied pillars; boots silent, swept' },
 ];
 
 // TODO 186 B1 — THE POINTS THE BATTERY SWEEPS, and what each costs.
@@ -1398,6 +1405,11 @@ const POINT_COSTS = {
   // it changes only the case's units and this row over-reads until a run
   // refreshes it — wall clock, never a verdict.
   'form-rect': 1344,
+  // §328 — unmeasured. Against the default it changes the base plate (a held fixture, in no pair: `pairsTouching` keeps
+  // nothing of it), the back plate's screw rings and drops `pillars`, so the restriction reaches the Three-quarter
+  // plate's pairs, which touch most of the train; carried at half the designed point's reach until a run writes its own
+  // `ms` back (wall clock, never a verdict).
+  'round-lands': 587,
 };
 {
   const named = new Set(SWEEP_POINTS.map((p) => p.name));

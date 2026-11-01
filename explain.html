@@ -3713,6 +3713,45 @@
     </div>
   </details>
 
+  <!-- ===================== THE FRAME ===================== -->
+  <!-- §328 step 1: a compact entry (a seed, no plate yet) for the two ways the back plate is held up. -->
+  <details class="mech" id="frame">
+    <summary>The frame — applied pillars, or lands raised from the plate<span class="where">structure · src/main.js, the pillar seat scan</span></summary>
+    <div class="mech-body">
+      <p>The three-quarter plate stands on four supports above the base plate, and the movement
+      can be built two ways. The default is the traditional one: four turned <b>pillars</b>, each
+      with a tenon riveted through a countersunk bore in the base plate and a tapped bore at its
+      top that the back plate's screw threads into. The other, <code>?frame=lands</code>, is how a
+      machined movement is made: the supports are left standing as part of the base plate itself
+      &mdash; integral <b>lands</b>, each with the same tapped bore and no joint of its own.</p>
+      <p>What stays the same, and why. On the round case a land stands on the pillar's own seat:
+      the scan that places the pillars (in each quadrant, on the bearing nearest its middle that
+      has room, the clearest point on a ring inside the rim, clear of every opening in either
+      plate and every part a full-height column would pass) places the lands, and a land's radius is the pillar's cap,
+      <code>PILLAR_CAP_R</code>, the widest seat the screw head asks of whatever carries it. Its
+      column spans the same height to the back plate's underside, and its foot is rooted half the
+      base plate's thickness into the slab (<code>LAND_ROOT</code>). So every part that sites
+      itself around the supports sees the same footprint, and nothing else in the movement moves.
+      On the free-outline form case a land takes the outermost clear seat on the rim instead,
+      because that outline has room there that a pillar, counted against the case's margin,
+      could not use.</p>
+      <p>What differs. A pillar is a second part joined to the plate, and its riveted tenon is a
+      fastened joint the inspector measures engaged. A land is the plate, so there is no joint to
+      measure: the support graph says the back plate stands on the base plate directly, with one
+      fastened joint (the screws in the lands' bores) where the pillars had two. And a land is not
+      the <em>rim</em>: the case and the gong seat on the rim's face, which is measured off the
+      plate's metal, and the lands are left out of that measurement. A land is part of a held
+      fixture that no pair sweep reads, so <code>tools/probe-328-round-lands.mjs</code> measures
+      every other part against the lands directly.</p>
+      <p>Both constructions are <b>modelled</b> &mdash; described geometry and declared support
+      &mdash; not simulated: no force runs through either beyond the measured engagement of the
+      screws. Open, and stated: a land is drawn as a plain column with a sharp foot, where a real
+      cutter leaves a radius that should be a stated constraint; and the base plate keeps its thin
+      section, although a plate that grows lands this tall is cut from stock as thick as they
+      are &mdash; the wheels sitting in sinks in such a plate is a later landing.</p>
+    </div>
+  </details>
+
   <!-- ===================== WHERE THE OIL GOES ===================== -->
   <details class="mech" id="lubrication">
     <summary>Where the oil goes, and where it must not<span class="where">going &middot; alarm &middot; src/lubrication.js &sect;247</span></summary>
