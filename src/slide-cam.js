@@ -63,9 +63,12 @@ export const PIVOT_NEED = 2 * EYE_R + CLEAR_MARGIN;
 //       something wider than it is long is a diamond:  2h_max ≤ near.
 // The FEWEST cells that satisfy all (every cell is two bars and three pins that owe their own §50 floors), and within it
 // the NARROWEST folded bundle (the smallest α_min that still clears the rails).
-export function solveTongs({ near, far, yb }) {
+export function solveTongs({ near, far, yb, midMin = 0 }) {
   for (let n = 3; n <= 24; n++) {
     if ((2 * (near - yb)) / (2 * n - 1) < PIVOT_NEED - 1e-9) return null;          // more cells cannot fold into the arm
+    // midMin: the first mid pivot's pin must stand at least this far from the axis even folded (the hour hand's pin comes down
+    // outside its pipe and the dial's bore); more cells fold it closer, so a cell count that fails is skipped, not the solve
+    if (yb + (near - yb) / (2 * n - 1) < midMin - 1e-9) continue;
     let best = null;
     for (let a = 4; a <= 40; a += 0.05) {
       const cMin = Math.cos((a * Math.PI) / 180), ell = (far - yb) / ((2 * n - 1) * cMin);
@@ -132,4 +135,30 @@ export function closureError({ tongs, ell }) {
     else { worst = Math.max(worst, Math.abs(len - 2 * ell)); worst = Math.max(worst, Math.hypot((b.from[0] + b.to[0]) / 2 - b.mid[0], (b.from[1] + b.to[1]) / 2 - b.mid[1])); }
   }
   return worst;
+}
+
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// THE HOUR HAND (landing 8b). The same tongs, but its fixed member is a pair of RAILS applied to the dial (a separate part, like an
+// applied index, so the dial stays uncut), and its drive pin comes DOWN through a slot in the arm. Four things differ from the minute:
+//   · the minute NOSE (radius `noseR`) rises through the hour lattice's layers, so the base stands clear of it by a margin, an eye and
+//     the base plate's own pad;
+//   · the pin must land on the dial's face OUTSIDE the dial's bore and the pipe, so the first mid pivot is held `midMin` from the axis;
+//   · the hour reach has a FLOOR, because no tongs folds to the proportional law's shortest reach (the bundle would be wider than the
+//     arm is long); the floor is the smallest that solves, searched, never typed;
+//   · the rails are not a closed-over cam: they stand on the dial, T wide each, either side of the groove.
+export const PLATE_PAD = 0.3;                                     // the base plate extends this far past its pins' eyes (geometry.js makeTongsHand)
+export const hourBaseY = (noseR) => noseR + CLEAR_MARGIN + EYE_R + PLATE_PAD;   // the plate's near edge clears the nose by the one margin
+export const flooredReach = (reachAt, floor) => (az) => Math.max(reachAt(az), floor);
+
+// The smallest floor (stepped by `step`) at which a tongs exists for  law = max(raw, floor) − tipExt.  `raw` is the wanted reach
+// at a bearing. Returns { floor, geo, near, far } or null.
+export function solveHourFloor({ raw, yb, tipExt, midMin, step = 0.05, samples = 720, limit }) {
+  let lo = Infinity, hi = -Infinity;
+  for (let i = 0; i < samples; i++) { const v = raw((i / samples) * 2 * Math.PI); lo = Math.min(lo, v); hi = Math.max(hi, v); }
+  for (let f = lo; f <= (limit ?? hi); f += step) {
+    const near = Math.max(lo, f) - tipExt, far = hi - tipExt, geo = solveTongs({ near, far, yb, midMin });
+    if (geo) return { floor: Math.max(lo, f), geo, near, far };
+  }
+  return null;
 }
