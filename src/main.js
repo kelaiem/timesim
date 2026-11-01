@@ -47,7 +47,7 @@ import {
   segCircleClear, solveElbow, solveStopWork, ELBOW_E_MAX,   // §85 step A: the stop work solves like the layout does
   // Backlog (watch case): the schematic-tier case's dimensions — caps and
   // real hardware sizes, all derived in layout.js at the §39 pin.
-  CASE_WIDTH_MAX, CASE_LUG_SPAN_MAX, CASE_HEIGHT_MAX_MM, CASE_HEIGHT_STEP_MM, CASE_CLEAR, CASE_BAND_T, rigidSplit,
+  CASE_WIDTH_MAX, CASE_LUG_SPAN_MAX, STRAP_MM_DEFAULT, CASE_HEIGHT_MAX_MM, CASE_HEIGHT_STEP_MM, CASE_CLEAR, CASE_BAND_T, rigidSplit,
   CASE_SCREW_SHAFT_D, CASE_SCREW_HEAD_D, CASE_GASKET_D, CASE_GASKET_SEAT, CASE_CRYSTAL_T, CASE_CRYSTAL_CLEAR,
   CASE_TUBE_D, CASE_PUSHER_D,
   CASE_LUG_T, caseLugPlan,                                  // §190/§280: the lug/bar stock and the lug's one outline law — the schematic tier draws the same metal makeCase cuts
@@ -4005,11 +4005,13 @@ const CASE_CLAMP_AZ = (() => {
 // the two lugs' facing walls, which is the size a strap is bought in and
 // exactly the spring bar's free length. Owner spec (2026-08-31): 20 mm, the
 // standard strap width, sitting ON the 20 mm across-the-spring-bar cap
-// rather than under it. (The first cut declared the CENTRE span 18 mm and
+// rather than under it; re-set 2026-11-01 to 19 mm by the owner and made
+// adjustable (`?strap=`, SPEC.strapMm — STRAP_MM_DEFAULT when absent), the cap
+// staying 20 mm. (The first cut declared the CENTRE span 18 mm and
 // the interior came out 16.8 mm — the constant now names the dimension the
 // spec actually constrains; centre-to-centre derives in makeCase as
 // interior + one lug thickness.)
-const CASE_LUG_INNER = 20 / UNIT_MM;
+const CASE_LUG_INNER = (SPEC.strapMm ?? STRAP_MM_DEFAULT) / UNIT_MM;
 if (CASE_R_OUT > CASE_WIDTH_MAX + 1e-9)
   console.warn(`case: body Ø${(2 * CASE_R_OUT * UNIT_MM).toFixed(2)} mm breaks the 40 mm owner cap (body, lugs excluded) — the movement outgrew its housing budget`);
 // The old across-the-lug-tips assert is gone for good (§190): the owner
@@ -8072,7 +8074,8 @@ const ALARM_FLANGE_OUT = 4.05;                  // the carrier flange's rim (hoi
 // ARRANGEMENT (the key the gong seats use: configKey with the case shape, its fit
 // and the seat mode dropped, since a case cuts nothing the link stands on); a
 // spec with no row takes the designed value and the assert says so.
-const ALARM_ARR_KEY = configKey({ spec: { ...SPEC, hands: null, caseShape: null, formRectSpec: null, gongSeat: null } });
+// (strapMm: null too — the strap width moves no movement metal, so a non-default strap keeps the arrangement's alarm rows, as `hands` does)
+const ALARM_ARR_KEY = configKey({ spec: { ...SPEC, hands: null, strapMm: null, caseShape: null, formRectSpec: null, gongSeat: null } });
 const ALARM_PINB_SEAT_FIXED = Object.freeze({
   'cfg1:{"spec":{"reserveHours":30,"vph":18000},"route":null,"tuned":[]}': 5.2780,   // §278 landing 6: re-quoted to its fixed point — the reclaim moved the dial-hung column against the held arming blade's corner, and hanger 3's jog, moved beside the blade, lengthened the ground's developed path and with it the section and the room (was 5.2650). TODO 240: re-quoted to its fixed point — the re-aimed lever reflects the blade to the nose by its new ratio, and the pin's journal is charged on the same-side reaction (was 5.4263). mN at the pin — the shared equal margin, re-derived and asserted at the link's arming solve (rounded to 0.1 µN). §261 2c: re-quoted to its fixed point — the folded same-side beak reflects the arming blade to the nose by its own lever (was 5.2502)
   'cfg1:{"spec":{"alarmModAzDeg":60,"barrelStepDeg":0,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":6,"vph":18000},"route":null,"tuned":[]}': 5.1837,   // §313: the swung barrel, the reserve at 12 on six idlers, the module at 60°
@@ -17047,7 +17050,7 @@ const GONG_SEAT_MODE = FORM && ALARM_BUILT ? (SPEC.gongSeat ?? defaultSeatMode(G
 // the seat's spec key, and the ARRANGEMENT's (the spec without the case shape, its fit or the seat mode): an
 // arranged movement (spec knobs that move stations — §308 landing 5's barrel swing and module turn) reads its seats
 // from GONG_SEATS_ARRANGED under that key; the designed movement's are GONG_SEATS
-const GONG_SPEC_KEY = configKey({ spec: { ...SPEC, hands: null, ...(SEAT_KIND ? { caseShape: SEAT_KIND } : {}), formRectSpec: null, gongSeat: null } });
+const GONG_SPEC_KEY = configKey({ spec: { ...SPEC, hands: null, strapMm: null, ...(SEAT_KIND ? { caseShape: SEAT_KIND } : {}), formRectSpec: null, gongSeat: null } });
 const GONG_ARR_KEY = ALARM_ARR_KEY;   // the one arrangement key (§313 reads it first, for the arming fixed point)
 const GONG_SEAT_LOOKUP = (() => {
   if (!FORM || !ALARM_BUILT || GONG_SEAT_MODE === 'arc') return null;
@@ -48749,7 +48752,7 @@ updateCrownUI();
   caseSel.value = SPEC.caseShape ?? '';
   caseSel.addEventListener('change', () => {
     const kind = caseSel.value;
-    const key = configKey({ spec: { ...SPEC, hands: null, caseShape: kind, formRectSpec: null, gongSeat: null } });
+    const key = configKey({ spec: { ...SPEC, hands: null, strapMm: null, caseShape: kind, formRectSpec: null, gongSeat: null } });
     location.search = caseShapeSearch(location.search, kind, (seat) => seat.specKey === key);   // reload-tier, like the beat rate: back IS undo
   });
   const alarmSpecSel = document.getElementById('spec-alarm');

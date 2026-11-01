@@ -278,6 +278,7 @@
       arrangement: { field: 'arrangement', parse: String }, // §314 — 'designed' builds the designed train; absent, every build takes layout.js' ARRANGEMENT unless the URL names one of its keys. Read by SPEC, never a spec field itself, so it never enters a configKey
       rsvidl: 'rsvIdlers',              // §313 — idler PAIRS between the reserve train's p1 and w2 (0, 2, 4 or 6 idlers), for a station farther from the barrel than two meshes reach; null = the two-stage train as designed
       rsvsweep: 'rsvSweepDeg',          // §308 L4 option A — the reserve hand's graduated sweep, degrees (the reduction train re-solves from it; null = 300)
+      strap: 'strapMm',                 // 2026-11-01 — the strap width, mm between the lugs (the spring bar's free length); absent = 19, the default; the cap is 20
       alarm: 'alarm',                   // §325 landing 3 — 0 builds the movement WITHOUT the alarm complication (no alarm, gong or pusher; their plate openings uncut); absent = the alarm, as designed
       alarmr: 'alarmr',                 // §98 — the alarm corner's radius, in movement units (§76's pin)
       subdialr: 'subdialr',             // §97 — the shared sub-dial well radius, in movement units

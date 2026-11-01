@@ -120,6 +120,11 @@ export const CASE_KINDS = Object.freeze([...FORM_KINDS, 'free']);
 // arrangement key null), exactly as before §314. Written out as numbers, as a URL would carry them, so a default
 // build and the same build spelled in full share one configKey — and the `arrangement` marker itself is NOT a spec
 // field, so the designed train and its variants keep the configKeys they were validated under.
+// The strap the case is cut for, in mm, and it is the owner's pick (2026-11-01: 19 mm, down from the 20 mm the cap itself allowed): the
+// INTERIOR gap between the lugs' facing walls, which is the size a strap is bought in and the spring bar's free length. It sits
+// UNDER the cap, never over it (the cap IS the bar's free length, main.js warns on a spec past it). `?strap=` / SPEC.strapMm
+// adjusts it; null = this default, so every key that names no strap is the one the default was validated under.
+export const STRAP_MM_DEFAULT = 19;
 export const ARRANGEMENT = Object.freeze({ barrelStepDeg: -20, rsvAzDeg: 0, alarmModAzDeg: 50, rsvIdlers: 2 });
 export const SPEC = (() => {
   const raw0 = (typeof globalThis !== 'undefined' && globalThis.__WATCH_SPEC) || {};
@@ -352,7 +357,13 @@ export const SPEC = (() => {
   // their plate openings). false, or null — the alarm, as designed — so every configuration that names no `alarm`
   // keeps the configKey it was validated under.
   const alarm = raw.alarm === 0 ? false : null;
-  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, rsvIdlers, alarmr, subdialr, dialr, studr, caseShape, frame, hands, formRectSpec, gongSeat, alarm });
+  // 2026-11-01 — THE STRAP WIDTH, mm between the lugs (STRAP_MM_DEFAULT when null). Any positive finite number is kept as asked,
+  // like every other station spec: main.js warns past CASE_LUG_SPAN_MAX (the bar cannot be longer than the cap) rather than a clamp
+  // here silently building a different watch than the URL named. A value equal to the default is null, so ?strap=19 is the default's
+  // own configKey, not a second spelling of it.
+  const strapMm = Number.isFinite(Number(raw.strapMm)) && raw.strapMm !== null && raw.strapMm !== '' && Number(raw.strapMm) > 0
+    && Number(raw.strapMm) !== STRAP_MM_DEFAULT ? Number(raw.strapMm) : null;
+  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, rsvIdlers, alarmr, subdialr, dialr, studr, caseShape, frame, hands, formRectSpec, gongSeat, alarm, strapMm });
 })();
 // §325 landing 3 — whether this build carries the alarm complication (SPEC.alarm above)
 export const ALARM_BUILT = SPEC.alarm !== false;
@@ -785,7 +796,7 @@ export const caseLugRootR = (off, rOut, rBore) => {
   const boreR = Math.sqrt(Math.max(rBore * rBore - xIn * xIn, 0));
   return Math.max(surfR - CASE_LUG_ROOT, boreR + STOCK_MIN_U);
 };
-export const CASE_SPRING_BAR_D = 1.5 / UNIT_MM; // Ø1.5 mm — the standard double-flanged spring bar for a 20 mm strap
+export const CASE_SPRING_BAR_D = 1.5 / UNIT_MM; // Ø1.5 mm — the standard double-flanged spring bar for a 19–20 mm strap
 // The wrap gap — owner spec 2026-09-01: at least 2.0 mm between case metal
 // and the bar's surface everywhere on the wrap path, the thickness of strap
 // that can wrap the bar (two-piece ends run 1.2–1.8 mm there; a one-piece/

@@ -16,7 +16,7 @@
 //    made that error and the comment at the read keeps the warning), vs
 //    2×(CASE_WIDTH_MAX + CASE_LUG_REACH).
 // 2. Interior lug distance (the strap purchase dimension) vs the 20 mm
-//    CASE_LUG_SPAN_MAX the owner's 2026-08-31 spec sits ON.
+//    the owner's strap width (STRAP_MM_DEFAULT; 2026-08-31's 20 mm sat ON CASE_LUG_SPAN_MAX, the 2026-11-01 19 mm stands under it).
 // 3. §190 WRAP GAP: minimum distance from each bar's ANALYTIC surface (axis
 //    segment + radius) to every case mesh that is not a lug, held to
 //    CASE_STRAP_CLEAR. The bar side must be analytic because a cylinder's
@@ -57,7 +57,7 @@ import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { UNIT_MM, CASE_WIDTH_MAX, CASE_LUG_SPAN_MAX, CASE_LUG_REACH,
+import { UNIT_MM, CASE_WIDTH_MAX, CASE_LUG_SPAN_MAX, STRAP_MM_DEFAULT, CASE_LUG_REACH,
          CASE_STRAP_CLEAR, CASE_SPRING_BAR_D, CASE_LUG_T, CASE_LUG_EDGE_R,
          CASE_LUG_HOLE_D, CASE_SPRING_BAR_TIP_D, CLEAR_MARGIN, caseLugPlan } from '../src/layout.js';
 const ROOT = process.env.ROOT || join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -372,12 +372,15 @@ const drift = Math.abs(res.tipsAcross - declaredTips);
 if (drift > 0.02) { ok = false; console.log(`CONTROL FAIL: the metal and layout.js's chain disagree by ${drift.toFixed(4)} u — a builder literal has parted from the declaration`); }
 else console.log(`CONTROL PASS: the metal presents the declared chain (drift ${drift.toFixed(4)} u)`);
 
-// 2. Interior lug distance vs the spec the owner's strap width sits ON.
+// 2. Interior lug distance vs the owner's strap width (STRAP_MM_DEFAULT, 19 mm since 2026-11-01; it sat ON the 20 mm cap before and
+//    now stands under it, which the cap check here holds separately).
+const STRAP_SPEC = STRAP_MM_DEFAULT / UNIT_MM;
+if (STRAP_SPEC > CASE_LUG_SPAN_MAX + 1e-9) { ok = false; console.log(`CAP FAIL: the default strap ${STRAP_MM_DEFAULT} mm is past the ${(CASE_LUG_SPAN_MAX * MM).toFixed(0)} mm cap`); }
 for (const it of res.interiors) {
   if (it.error) { ok = false; console.log(`INTERIOR FAIL: ${it.error} — could not pair the lugs`); continue; }
-  const d = Math.abs(it.inner - CASE_LUG_SPAN_MAX);
-  console.log(`interior lug distance MEASURED: ${it.inner.toFixed(4)} u = ${(it.inner * MM).toFixed(3)} mm  (spec ${(CASE_LUG_SPAN_MAX * MM).toFixed(0)} mm, drift ${d.toFixed(4)} u)`);
-  if (d > 0.02) { ok = false; console.log(`INTERIOR FAIL: the metal does not present the ${(CASE_LUG_SPAN_MAX * MM).toFixed(0)} mm strap spec`); }
+  const d = Math.abs(it.inner - STRAP_SPEC);
+  console.log(`interior lug distance MEASURED: ${it.inner.toFixed(4)} u = ${(it.inner * MM).toFixed(3)} mm  (spec ${(STRAP_SPEC * MM).toFixed(0)} mm, drift ${d.toFixed(4)} u)`);
+  if (d > 0.02) { ok = false; console.log(`INTERIOR FAIL: the metal does not present the ${(STRAP_SPEC * MM).toFixed(0)} mm strap spec`); }
 }
 
 // 3. §190 wrap gap, off the analytic bar surface, vs CASE_STRAP_CLEAR.
