@@ -50576,6 +50576,7 @@ const FORM_COUNTED = (() => {
 // the strap's interior span plus one lug, halved, plus half a lug), so its flat lugs weld to straight metal —
 // one law for the build's fit and for tools/gong-seats.mjs, which reads it off formFootprint.fitted
 const FITTED_FLAT_MIN = (CASE_LUG_INNER + CASE_LUG_T) / 2 + CASE_LUG_T / 2;
+const HANDS_DISC_N = 192;   // §325 landing 9: the hands' keep-in disc's sides (a polygon, vertices on the circumscribing radius)
 const FORM_FOOTPRINT = await (async () => {
   if (!FORM) return null;
   const v = new THREE.Vector3();
@@ -50639,6 +50640,19 @@ const FORM_FOOTPRINT = await (async () => {
     if (ALARM_BUILT && GONG_SEATED) {
       for (const [x, y] of GONG_SEAT_PTS) freePin(x, y, GONG_WIRE_R + CLEAR_MARGIN, 'the gong\'s wire');
       freePin(gongFoot.x, gongFoot.y, GONG_POST_R_BUILT, 'the gong\'s block');
+    }
+    // §325 landing 9 — THE HANDS' SWEPT DISC IS A KEEP-IN. The minute hand is the longest thing that turns about the
+    // hands' axis, and the case was fitted to the metal alone, so it stood short of the hand on 74% of bearings (worst
+    // 22.6 u, tools/probe-325-hands-keep-in.mjs). The hand's full round-face length L (the print's own fraction, no
+    // case in it, so no circle: the track follows the case but L does not) must stand CLEAR_MARGIN inside the OPENING,
+    // which the outline encloses by CASE_CLEAR; the fit grows every polygon by the rim margin M, so the disc enters at
+    // L + CLEAR_MARGIN + CASE_CLEAR − M. A 192-gon with its vertices on the circumscribing radius, so no edge undercuts it.
+    // Telescoping hands (?hands=slide) are the roadmap's remainder and change none of this: the disc holds the hand at
+    // full length, which a telescoping hand would have to give back.
+    {
+      const L = dialRadius * (2 * G.DIAL_CANVAS_FILL_F) * ((G.DIAL_RAIL_IN_F + G.DIAL_RAIL_OUT_F) / 2);
+      const R = (L + CLEAR_MARGIN + CASE_CLEAR - M) / Math.cos(Math.PI / HANDS_DISC_N);
+      polys.push(Array.from({ length: HANDS_DISC_N }, (_, i) => [P.dial.x + R * Math.cos((2 * Math.PI * i) / HANDS_DISC_N), P.dial.y + R * Math.sin((2 * Math.PI * i) / HANDS_DISC_N)]));
     }
     const pins = FREE_PINS.map(([x, y, n]) => [x, y, n]);
     await handBack();
