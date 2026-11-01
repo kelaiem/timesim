@@ -1339,7 +1339,7 @@ const SPEC_POINTS = [
   // base plate raises in place of the four applied pillars (the lands stand on the pillars' own seats). It boots silent
   // and is swept. What the tiers see is the build without the `pillars` unit and with the back plate's screw rings on
   // the lands; the lands THEMSELVES are children of the held base plate, in no pair sweep, so neither this point nor the
-  // default's battery reads them: plateSeats on this build and tools/probe-328-round-lands.mjs do, both run by hand.
+  // default's battery reads them: tools/probe-328-round-lands.mjs does, in battery.yml beside the case probes (plateSeats on this build is run by hand).
   { name: 'round-lands', q: 'frame=lands', expect: 'silent', sweep: true,
     why: '§328 step 1 — the default round build with integrated lands in place of applied pillars; boots silent, swept' },
 ];
