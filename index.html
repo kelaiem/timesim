@@ -225,6 +225,10 @@
       <option value="">On</option>
       <option value="0">Off</option>
     </select></label>
+    <!-- §326: ?strap= is the strap width in mm between the lugs. Options are
+         filled from layout.js (the default and the cap are read, not typed);
+         a change reloads at once, like the case shape and the alarm. -->
+    <label><span>Strap width (mm)</span><select id="boot-strap"></select></label>
     <label><span>Case</span><input type="checkbox" data-view="case" checked></label>
     <label><span>Wireframe view</span><input type="checkbox" data-view="wireframe"></label>
     <label><span>Plate X-ray</span><input type="checkbox" data-view="xray" checked></label>
@@ -468,6 +472,31 @@
         if (alarmSel.value) p.set('alarm', alarmSel.value); else p.delete('alarm');
         location.search = p.toString();
       });
+    }
+    // §326 — the strap width. The picker offers whole millimetres from STRAP_PICK_MIN up to the owner cap
+    // (CASE_LUG_SPAN_MAX, read from layout.js); that is a picker's range, not a limit: ?strap= accepts any width and main.js warns past the cap.
+    // The default's option carries value '' (its own key has no strap), and a width the URL carries that is not whole is added so the box never lies.
+    const strapSel = prefsEl.querySelector('#boot-strap');
+    if (strapSel) {
+      const STRAP_PICK_MIN = 14;
+      import('./src/layout.js').then((L) => {
+        const dflt = L.STRAP_MM_DEFAULT, cap = Math.round(L.CASE_LUG_SPAN_MAX * L.UNIT_MM);
+        const asked = new URLSearchParams(location.search).get('strap');
+        const widths = [];
+        for (let w = STRAP_PICK_MIN; w <= cap; w++) widths.push(w);
+        if (asked && Number(asked) > 0 && !widths.includes(Number(asked))) { widths.push(Number(asked)); widths.sort((a, b) => a - b); }
+        for (const w of widths) {
+          const o = document.createElement('option');
+          o.value = w === dflt ? '' : String(w); o.textContent = String(w);
+          strapSel.appendChild(o);
+        }
+        strapSel.value = asked && Number(asked) !== dflt ? String(Number(asked)) : '';
+        strapSel.addEventListener('change', () => {
+          const p = new URLSearchParams(location.search);
+          if (strapSel.value) p.set('strap', strapSel.value); else p.delete('strap');
+          location.search = p.toString();
+        });
+      }).catch(() => {});
     }
     for (const el of prefsEl.querySelectorAll('[data-view]')) el.addEventListener('change', () => {
       window.__bootView[el.dataset.view] = el.checked;

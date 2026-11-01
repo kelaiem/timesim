@@ -478,6 +478,7 @@ const DE = {
   'Beat rate': 'Schlagzahl', 'Reserve spec': 'Reserve-Spezifikation',
   // §310 — the case-shape select (Appearance)
   'Case shape': 'Gehäuseform', 'Round': 'Rund', 'Rectangular': 'Rechteckig', 'Cushion': 'Kissen', 'Tonneau': 'Tonneau', 'Fitted tonneau': 'Tonneau, eingepasst', 'Free outline': 'Freie Kontur',
+  'Strap width (mm)': 'Armbandbreite (mm)',
   'Balance stopped': 'Unruh steht', 'Give it a swing': 'Anschwingen',
   'Stud radius': 'Klötzchenradius',
   'Spring torque': 'Federmoment', 'Train torque': 'Räderwerkmoment',
@@ -906,6 +907,7 @@ const ZH = {
   'Beat rate': '振频', 'Reserve spec': '动储规格',
   // §310 — the case-shape select (Appearance)
   'Case shape': '表壳形状', 'Round': '圆形', 'Rectangular': '矩形', 'Cushion': '枕形', 'Tonneau': '酒桶形', 'Fitted tonneau': '贴合酒桶形', 'Free outline': '自由轮廓',
+  'Strap width (mm)': '表带宽度（毫米）',
   'Balance stopped': '摆轮停摆', 'Give it a swing': '晃动启动',
   'Stud radius': '外桩半径',
   'Spring torque': '发条扭矩', 'Train torque': '轮系扭矩',
@@ -1318,6 +1320,7 @@ const FR = {
   ['Beat rate']: 'Fréquence',
   // §310 — the case-shape select (Appearance)
   ['Case shape']: 'Forme du boîtier', ['Round']: 'Rond', ['Rectangular']: 'Rectangulaire', ['Cushion']: 'Coussin', ['Tonneau']: 'Tonneau', ['Fitted tonneau']: 'Tonneau ajusté', ['Free outline']: 'Contour libre',
+  ['Strap width (mm)']: 'Largeur du bracelet (mm)',
   ['Balance stopped']: 'Balancier arrêté', ['Give it a swing']: 'Relancer',
   ['Reserve spec']: 'Réserve nominale',
   ['Stud radius']: 'Rayon du piton',
@@ -1889,6 +1892,7 @@ const JA = {
   ['Beat rate']: '振動数',
   // §310 — the case-shape select (Appearance)
   ['Case shape']: 'ケース形状', ['Round']: 'ラウンド', ['Rectangular']: 'レクタンギュラー', ['Cushion']: 'クッション', ['Tonneau']: 'トノー', ['Fitted tonneau']: 'フィッテッド・トノー', ['Free outline']: '自由輪郭',
+  ['Strap width (mm)']: 'ストラップ幅（mm）',
   ['Balance stopped']: 'テンプ停止', ['Give it a swing']: '振って始動',
   ['Reserve spec']: '規定持続時間',
   ['Stud radius']: 'スタッド半径',
@@ -2459,6 +2463,7 @@ const ZH_HANT = {
   ['Beat rate']: '振頻',
   // §310 — the case-shape select (Appearance)
   ['Case shape']: '錶殼形狀', ['Round']: '圓形', ['Rectangular']: '矩形', ['Cushion']: '枕形', ['Tonneau']: '酒桶形', ['Fitted tonneau']: '貼合酒桶形', ['Free outline']: '自由輪廓',
+  ['Strap width (mm)']: '錶帶寬度（毫米）',
   ['Balance stopped']: '擺輪停擺', ['Give it a swing']: '晃動啟動',
   ['Reserve spec']: '規格儲存',
   ['Stud radius']: '外樁半徑',
@@ -3038,6 +3043,7 @@ const AR = {
   'Beat rate': 'معدل النبض',
   // §310 — the case-shape select (Appearance)
   'Case shape': 'شكل العلبة', 'Round': 'دائري', 'Rectangular': 'مستطيل', 'Cushion': 'وسادي', 'Tonneau': 'برميلي', 'Fitted tonneau': 'برميلي مُلائم', 'Free outline': 'مخطط حر',
+  'Strap width (mm)': 'عرض السوار (مم)',
   'Balance stopped': 'عجلة التوازن متوقفة', 'Give it a swing': 'هزّها لتبدأ',
   'Reserve spec': 'مواصفة الاحتياطي',
   'Stud radius': 'نصف قطر المربط',
@@ -3601,6 +3607,7 @@ const ES = {
   'Beat rate': 'Frecuencia',
   // §310 — the case-shape select (Appearance)
   'Case shape': 'Forma de la caja', 'Round': 'Redonda', 'Rectangular': 'Rectangular', 'Cushion': 'Cojín', 'Tonneau': 'Tonneau', 'Fitted tonneau': 'Tonneau ajustado', 'Free outline': 'Contorno libre',
+  'Strap width (mm)': 'Ancho de la correa (mm)',
   'Balance stopped': 'Volante detenido', 'Give it a swing': 'Darle impulso',
   'Reserve spec': 'Reserva nominal',
   'Stud radius': 'Radio del pitón',
@@ -4161,6 +4168,7 @@ const KO = {
   'Beat rate': '진동수',
   // §310 — the case-shape select (Appearance)
   'Case shape': '케이스 형태', 'Round': '라운드', 'Rectangular': '렉탱귤러', 'Cushion': '쿠션', 'Tonneau': '토노', 'Fitted tonneau': '맞춤 토노', 'Free outline': '자유 윤곽',
+  'Strap width (mm)': '스트랩 너비 (mm)',
   'Balance stopped': '밸런스 정지', 'Give it a swing': '흔들어 시동',
   'Reserve spec': '리저브 규격',
   'Stud radius': '스터드 반경',
@@ -4723,6 +4731,7 @@ const RU = {
   'Beat rate': 'Частота',
   // §310 — the case-shape select (Appearance)
   'Case shape': 'Форма корпуса', 'Round': 'Круглый', 'Rectangular': 'Прямоугольный', 'Cushion': 'Подушка', 'Tonneau': 'Тонно', 'Fitted tonneau': 'Подогнанный тонно', 'Free outline': 'Свободный контур',
+  'Strap width (mm)': 'Ширина ремешка (мм)',
   'Balance stopped': 'Баланс остановлен', 'Give it a swing': 'Качнуть',
   'Reserve spec': 'Заданный запас',
   'Stud radius': 'Радиус колонки',
@@ -5286,6 +5295,7 @@ const PT = {
   'Beat rate': 'Frequência',
   // §310 — the case-shape select (Appearance)
   'Case shape': 'Formato da caixa', 'Round': 'Redonda', 'Rectangular': 'Retangular', 'Cushion': 'Almofada', 'Tonneau': 'Tonneau', 'Fitted tonneau': 'Tonneau ajustado', 'Free outline': 'Contorno livre',
+  'Strap width (mm)': 'Largura da pulseira (mm)',
   'Balance stopped': 'Balanço parado', 'Give it a swing': 'Dar impulso',
   'Reserve spec': 'Reserva nominal',
   'Stud radius': 'Raio do pitão',
@@ -5848,6 +5858,7 @@ const IT = {
   'Beat rate': 'Frequenza',
   // §310 — the case-shape select (Appearance)
   'Case shape': 'Forma della cassa', 'Round': 'Rotonda', 'Rectangular': 'Rettangolare', 'Cushion': 'Cuscino', 'Tonneau': 'Tonneau', 'Fitted tonneau': 'Tonneau sagomato', 'Free outline': 'Profilo libero',
+  'Strap width (mm)': 'Larghezza del cinturino (mm)',
   'Balance stopped': 'Bilanciere fermo', 'Give it a swing': 'Dare una scossa',
   'Reserve spec': 'Riserva nominale',
   'Stud radius': 'Raggio del piton',
@@ -6407,6 +6418,7 @@ const HI = {
   'Beat rate': 'बीट दर',
   // §310 — the case-shape select (Appearance)
   'Case shape': 'केस का आकार', 'Round': 'गोल', 'Rectangular': 'आयताकार', 'Cushion': 'कुशन', 'Tonneau': 'टोनो', 'Fitted tonneau': 'अनुकूलित टोनो', 'Free outline': 'मुक्त रूपरेखा',
+  'Strap width (mm)': 'पट्टे की चौड़ाई (मिमी)',
   'Balance stopped': 'बैलेंस व्हील रुका हुआ', 'Give it a swing': 'झटका दें',
   'Reserve spec': 'रिज़र्व स्पेक',
   'Stud radius': 'स्टड त्रिज्या',
@@ -6971,6 +6983,7 @@ const VI = {
   'Beat rate': 'Tần số nhịp',
   // §310 — the case-shape select (Appearance)
   'Case shape': 'Hình dáng vỏ', 'Round': 'Tròn', 'Rectangular': 'Chữ nhật', 'Cushion': 'Đệm', 'Tonneau': 'Tonneau', 'Fitted tonneau': 'Tonneau ôm khít', 'Free outline': 'Đường viền tự do',
+  'Strap width (mm)': 'Độ rộng dây đeo (mm)',
   'Balance stopped': 'Bánh lắc dừng', 'Give it a swing': 'Lắc để chạy',
   'Reserve spec': 'Dự trữ thiết kế',
   'Stud radius': 'Bán kính cọc',
@@ -7549,6 +7562,7 @@ const NL = {
   'Beat rate': 'Tikfrequentie',
   // §310 — the case-shape select (Appearance)
   'Case shape': 'Kastvorm', 'Round': 'Rond', 'Rectangular': 'Rechthoekig', 'Cushion': 'Kussen', 'Tonneau': 'Tonneau', 'Fitted tonneau': 'Passend tonneau', 'Free outline': 'Vrije contour',
+  'Strap width (mm)': 'Bandbreedte (mm)',
   'Balance stopped': 'Onrust staat stil', 'Give it a swing': 'Aanslingeren',
   'Reserve spec': 'Nominale reserve',
   'Stud radius': 'Stiftstraal',
@@ -8127,6 +8141,7 @@ const FA = {
   'Beat rate': 'نرخ تیک',
   // §310 — the case-shape select (Appearance)
   'Case shape': 'شکل قاب', 'Round': 'گرد', 'Rectangular': 'مستطیلی', 'Cushion': 'بالشتکی', 'Tonneau': 'بشکه\u200cای', 'Fitted tonneau': 'بشکه\u200cای منطبق', 'Free outline': 'طرح آزاد',
+  'Strap width (mm)': 'عرض بند (میلی‌متر)',
   'Balance stopped': 'بالانس متوقف', 'Give it a swing': 'تکان بده',
   'Reserve spec': 'ذخیره‌ی اسمی',
   'Stud radius': 'شعاع گل‌میخ',
@@ -8706,6 +8721,7 @@ const HE = {
   'Beat rate': 'קצב תקתוק',
   // §310 — the case-shape select (Appearance)
   'Case shape': 'צורת התיבה', 'Round': 'עגול', 'Rectangular': 'מלבני', 'Cushion': 'כרית', 'Tonneau': 'טונו', 'Fitted tonneau': 'טונו מותאם', 'Free outline': 'קו מתאר חופשי',
+  'Strap width (mm)': 'רוחב הרצועה (מ״מ)',
   'Balance stopped': 'המאזן עצר', 'Give it a swing': 'לנער',
   'Reserve spec': 'עתודה נומינלית',
   'Stud radius': 'רדיוס הפין',
@@ -9284,6 +9300,7 @@ const ID = {
   'Beat rate': 'Laju ketukan',
   // §310 — the case-shape select (Appearance)
   'Case shape': 'Bentuk casing', 'Round': 'Bulat', 'Rectangular': 'Persegi panjang', 'Cushion': 'Bantal', 'Tonneau': 'Tonneau', 'Fitted tonneau': 'Tonneau pas', 'Free outline': 'Kontur bebas',
+  'Strap width (mm)': 'Lebar tali (mm)',
   'Balance stopped': 'Balans berhenti', 'Give it a swing': 'Goyangkan',
   'Reserve spec': 'Spek cadangan',
   'Stud radius': 'Jari-jari pasak',
@@ -9863,6 +9880,7 @@ const TR = {
   'Beat rate': 'Vuruş hızı',
   // §310 — the case-shape select (Appearance)
   'Case shape': 'Kasa biçimi', 'Round': 'Yuvarlak', 'Rectangular': 'Dikdörtgen', 'Cushion': 'Yastık', 'Tonneau': 'Fıçı', 'Fitted tonneau': 'Uyarlanmış fıçı', 'Free outline': 'Serbest kontur',
+  'Strap width (mm)': 'Kayış genişliği (mm)',
   'Balance stopped': 'Balans durdu', 'Give it a swing': 'Salla',
   'Reserve spec': 'Nominal rezerv',
   'Stud radius': 'Saplama yarıçapı',
@@ -10442,6 +10460,7 @@ const CY = {
   'Beat rate': 'Cyfradd curiad',
   // §310 — the case-shape select (Appearance)
   'Case shape': 'Siâp y cas', 'Round': 'Crwn', 'Rectangular': 'Petryal', 'Cushion': 'Clustog', 'Tonneau': 'Tonneau', 'Fitted tonneau': 'Tonneau ffitiedig', 'Free outline': 'Amlinell rydd',
+  'Strap width (mm)': 'Lled y strap (mm)',
   'Balance stopped': 'Y fantol wedi stopio', 'Give it a swing': 'Rhoi siglad',
   'Reserve spec': 'Manyleb cronfa',
   'Stud radius': 'Radiws y styden',
@@ -11023,6 +11042,7 @@ const FIL = {
   ['Beat rate']: 'Dalas ng tibok',
   // §310 — the case-shape select (Appearance)
   ['Case shape']: 'Hugis ng kaha', ['Round']: 'Bilog', ['Rectangular']: 'Parihaba', ['Cushion']: 'Unan', ['Tonneau']: 'Tonneau', ['Fitted tonneau']: 'Tonneau na akma', ['Free outline']: 'Malayang balangkas',
+  ['Strap width (mm)']: 'Lapad ng strap (mm)',
   ['Balance stopped']: 'Huminto ang balance', ['Give it a swing']: 'Iugoy',
   ['Reserve spec']: 'Spec ng reserba',
   ['Stud radius']: 'Radius ng stud',
@@ -11580,6 +11600,7 @@ const LV = {
   'Beat rate': 'Sitienu biežums',
   // §310 — the case-shape select (Appearance)
   'Case shape': 'Korpusa forma', 'Round': 'Apaļš', 'Rectangular': 'Taisnstūra', 'Cushion': 'Spilvena', 'Tonneau': 'Tonneau', 'Fitted tonneau': 'Pielāgots tonneau', 'Free outline': 'Brīva kontūra',
+  'Strap width (mm)': 'Siksniņas platums (mm)',
   'Balance stopped': 'Balanss apstājies', 'Give it a swing': 'Iešūpot',
   'Reserve spec': 'Rezerves spec.',
   'Stud radius': 'Stiprinājuma rādiuss',
@@ -12137,6 +12158,7 @@ const HU = {
   'Beat rate': 'Ütésszám',
   // §310 — the case-shape select (Appearance)
   'Case shape': 'Tokforma', 'Round': 'Kerek', 'Rectangular': 'Téglalap', 'Cushion': 'Párna', 'Tonneau': 'Tonneau', 'Fitted tonneau': 'Illesztett tonneau', 'Free outline': 'Szabad körvonal',
+  'Strap width (mm)': 'Szíj szélessége (mm)',
   'Balance stopped': 'A billegő áll', 'Give it a swing': 'Meglendíteni',
   'Reserve spec': 'Tartalék spec.',
   'Stud radius': 'Rugótartó sugara',
@@ -12695,6 +12717,7 @@ const CS = {
   'Beat rate': 'Frekvence',
   // §310 — the case-shape select (Appearance)
   'Case shape': 'Tvar pouzdra', 'Round': 'Kulaté', 'Rectangular': 'Obdélníkové', 'Cushion': 'Polštář', 'Tonneau': 'Tonneau', 'Fitted tonneau': 'Přizpůsobené tonneau', 'Free outline': 'Volný obrys',
+  'Strap width (mm)': 'Šířka řemínku (mm)',
   'Balance stopped': 'Nepokoj stojí',
   'Give it a swing': 'Rozhoupat',
   'Reserve spec': 'Parametry rezervy',

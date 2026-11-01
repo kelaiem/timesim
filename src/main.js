@@ -46334,6 +46334,12 @@ panel.innerHTML = `
           <option value="0">Off</option>
         </select>
       </div>
+      <!-- §326 — the STRAP WIDTH, a reload-tier spec (?strap=): the gap between
+           the lugs in mm. Its options are filled in code from the default and
+           the owner cap (never typed), so the markup is the label alone. -->
+      <div class="row label-small"><span>Strap width (mm)</span>
+        <select id="spec-strap"></select>
+      </div>
       <!-- §23: ADVANCED — every control below is GENERATED from
            aesthetics.json, so a future finish parameter gets a knob for free
            and the file stays the single source. Collapsed by default on §15's
@@ -48764,6 +48770,28 @@ updateCrownUI();
     if (alarmSpecSel.value) p.set('alarm', alarmSpecSel.value); else p.delete('alarm');
     location.search = p.toString();   // reload-tier, like the case shape: back IS undo
   });
+  // §326 — THE STRAP WIDTH. Whole millimetres from STRAP_PICK_MIN_MM up to the owner cap; a picker's range, not a limit (?strap= takes
+  // any width and the cap warning names one past it). The default's option has value '' so picking it clears the param, and a width the
+  // URL carries off the menu is added, so the box never shows a strap the build is not cut for.
+  const strapSel = document.getElementById('spec-strap');
+  {
+    const STRAP_PICK_MIN_MM = 14, capMm = Math.round(CASE_LUG_SPAN_MAX * UNIT_MM), here = SPEC.strapMm ?? STRAP_MM_DEFAULT;
+    const widths = [];
+    for (let w = STRAP_PICK_MIN_MM; w <= capMm; w++) widths.push(w);
+    if (!widths.includes(here)) { widths.push(here); widths.sort((x, y) => x - y); }
+    for (const w of widths) {
+      const o = document.createElement('option');
+      o.value = w === STRAP_MM_DEFAULT ? '' : String(w);
+      o.textContent = fmtNum(w, Number.isInteger(w) ? 0 : 1);
+      strapSel.appendChild(o);
+    }
+    strapSel.value = here === STRAP_MM_DEFAULT ? '' : String(here);
+    strapSel.addEventListener('change', () => {
+      const p = new URLSearchParams(location.search);
+      if (strapSel.value) p.set('strap', strapSel.value); else p.delete('strap');
+      location.search = p.toString();   // reload-tier, like the case shape: back IS undo
+    });
+  }
   vphSel.addEventListener('change', reloadWithSpec);
   rsvSel.addEventListener('change', reloadWithSpec);
   studSel.addEventListener('change', reloadWithSpec);
