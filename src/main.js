@@ -4070,8 +4070,8 @@ const BACK_PLATE_HOLES = [
   // corner's own recess is MW_DROP_PLATE_HOLE, sized off the cut blank
   // (cornerDrop.spec.coneR, A's precedent) and pushed into `holes` beside
   // MW_FOLD_PLATE_HOLE, once the corner exists.
-  { x: ALARM_WIND_X, y: ALARM_WIND_Y, r: 0.55 }, // §25 C: the climb arbor's lower bearing IS this bore
-  { x: alarmSwPos.x, y: alarmSwPos.y, r: ALARM_STRIKE_STAFF_R + PIVOT_BORE_CLEAR }, // §261 landing 2a: the striking staff's lower bearing IS this bore — the running fit, through the plate so the staff can carry the stop wheel to the dial side
+  ...(ALARM_BUILT ? [{ x: ALARM_WIND_X, y: ALARM_WIND_Y, r: 0.55 }] : []), // §25 C: the climb arbor's lower bearing IS this bore (no arbor, no bore without the alarm)
+  ...(ALARM_BUILT ? [{ x: alarmSwPos.x, y: alarmSwPos.y, r: ALARM_STRIKE_STAFF_R + PIVOT_BORE_CLEAR }] : []), // §261 landing 2a: the striking staff's lower bearing IS this bore — the running fit, through the plate so the staff can carry the stop wheel to the dial side
   // (§261 2c retired the selector rod's bore here: the rod runs under the dial now, between the folded beak and the lay shaft, and crosses no plate)
 ];
 // A single stud's slot, from the arc it sweeps between the two crown poses:
@@ -4973,7 +4973,9 @@ const tqPivots = []; // { x, y, staffR, jewelR } — consumed by the plate build
 // parametric ring, and this bore joins it for free. It is also the pivot most
 // worth jewelling: the strike arbor carries the striking wheel, the fastest
 // intermittent load on this plate.
-tqPivots.push({ x: alarmSwPos.x, y: alarmSwPos.y, staffR: 0.75, jewelR: 1.3, boreR: 0.75 + PIVOT_BORE_CLEAR, chaton: true });
+// ?alarm=0 builds no strike arbor, so no chaton either: left in, it was a phantom screwed gold chaton at the alarm's
+// station (10 o'clock dial-facing) bearing nothing.
+if (ALARM_BUILT) tqPivots.push({ x: alarmSwPos.x, y: alarmSwPos.y, staffR: 0.75, jewelR: 1.3, boreR: 0.75 + PIVOT_BORE_CLEAR, chaton: true });
 // TODO 192 — THE STAFFS ARE NAMED, because the power budget prices them. A
 // pivot's friction torque is μ·F·r, linear in this radius, and 0.5 u is
 // 0.379 mm ⌀ — 3–5× the 0.07–0.12 mm §50's own basis for PIVOT_MIN_U calls
