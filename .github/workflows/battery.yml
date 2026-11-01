@@ -787,13 +787,16 @@ jobs:
   # conclusion — `battery` still fails when a probe does (see that step).
   #
   # The cap: setup ~26 s plus the probes' 194 s is ~3.7 min, times the 1.66x
-  # same-tree spread, 6.1 -> 7. The battery's gate step waits the same 7.
+  # same-tree spread, 6.1 -> 7. §328 added the round-lands probe, 85 s
+  # measured in a dev container (two boots and a 52-pose sweep; re-derive from
+  # this job's own timing once it has run): ~26 + 279 s is ~5.1 min, times
+  # 1.66, 8.4 -> 9. The battery's gate step waits the same 9.
   battery-probes:
     name: battery probes
     needs: route
     if: needs.route.outputs.tiers_job == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 7
+    timeout-minutes: 9
     steps:
       - uses: actions/checkout@v4
 
@@ -814,11 +817,12 @@ jobs:
       - name: Install Chromium
         uses: ./.github/actions/install-chromium   # bounded apt from cached .debs, then the cached browser
 
-      - name: Case relief, casing path and back envelope (§186, §187)
+      - name: Case relief, casing path, back envelope and round lands (§186, §187, §328)
         run: |
           node tools/probe-case-relief.mjs
           node tools/probe-187-casing-path.mjs
           node tools/probe-back-envelope.mjs
+          node tools/probe-328-round-lands.mjs
 
   battery:
     needs: route
@@ -1221,13 +1225,13 @@ jobs:
       # therefore holds exactly as a failing probe step after the harness did:
       # the report is still uploaded, nothing is published or seeded.
       #
-      # Its cap is the probes job's own (7 min): the battery reaches it ~12 min
-      # in, so a probes job that started as late as ~5 min after the battery
-      # still finishes, or is killed, inside it. A step killed at the cap fails,
-      # which is the safe side.
-      - name: The case relief, casing path and back envelope probes passed (§186, §187)
+      # Its cap is the probes job's own (9 min since §328): the battery reaches
+      # it ~12 min in, so a probes job that started as late as ~3 min after the
+      # battery still finishes, or is killed, inside it. A step killed at the
+      # cap fails, which is the safe side.
+      - name: The case relief, casing path, back envelope and round lands probes passed (§186, §187, §328)
         if: env.TIERS_JOB == 'true' && env.MATRIX != 'true'
-        timeout-minutes: 7
+        timeout-minutes: 9
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -1244,7 +1248,7 @@ jobs:
               completed:success)
                 echo "§186/§187: 'battery probes' passed" | tee -a "$GITHUB_STEP_SUMMARY"; exit 0 ;;
               completed:*)
-                echo "::error::'battery probes' ended $st — case relief, casing path or back envelope failed (see that job); this battery does not pass"
+                echo "::error::'battery probes' ended $st — case relief, casing path, back envelope or round lands failed (see that job); this battery does not pass"
                 echo "§186/§187: 'battery probes' ended $st — the battery FAILS" >> "$GITHUB_STEP_SUMMARY"
                 exit 1 ;;
             esac
@@ -1289,6 +1293,19 @@ jobs:
         run: |
           node tools/probe-187-casing-path.mjs
           node tools/probe-back-envelope.mjs
+
+      # ---- §328: the lands, which no sweep reads
+      #
+      # On ?frame=lands the back plate stands on lands the base plate raises.
+      # A land is the base plate's own metal, a HELD fixture in no pair sweep, so
+      # the round-lands point's inspection, clearances and undeclaredClearance
+      # cannot see a part standing in one, and plateSeats runs on the default
+      # build (pillars) only. This boots both builds and holds every labelled
+      # mesh off every land over the pose net, the lands on the pillars' seats
+      # and the rim the case seats on unmoved; acceptance, exit 1 on a finding.
+      - name: Round lands (§328)
+        if: (env.MATRIX != 'true' || matrix.worker == 1) && env.TIERS_JOB != 'true'   # on the fan-out path the `battery probes` job runs it
+        run: node tools/probe-328-round-lands.mjs
 
       # ---- §227: what this run measured, so a merge can tell ----------------
       #
