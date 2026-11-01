@@ -4,7 +4,7 @@
 
 # The instruments
 
-380 scripts. **260 are ACCEPTANCE tests** — they decide and exit non-zero.
+381 scripts. **261 are ACCEPTANCE tests** — they decide and exit non-zero.
 **120 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -247,6 +247,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-318-pusher-turn.mjs` | §318 | acceptance | WHERE CAN THE ALARM PUSHER TURN TO? — §318's scan. A form case's seated strike group stands on the column wheel's press line (the hammer's arm spans it from post to head), and under CLAUDE.md's P3 rule the pusher, a LINK since §261 2c (its pin drives crank A, not the wheel), is what yields. The build turns the whole pusher about the movement's centre by ALARM_PUSH_ROT; this scan boots the build at each trial turn (`globalThis.__PUSH_TURN_DEG`, the build's own probe hook) and measures the PUSHER's metal (every `alarmPusher*` mesh) against every other labelled mesh over the press and the strike, so a turn is judged on the metal as built at that turn rather than on a plan. |
 | `probe-322-openwork.mjs` | §322 | acceptance | §322 — THE OPENWORKED PLATE'S VIEWS, measured off a real boot: does the fusee window frame the whole cone, does the kidney cut show the escape wheel round, and does the escape cock actually carry the pivot it took out of the plate — while the fourth wheel stays in its plate chaton, under the plate? |
 | `probe-325-free-case.mjs` | §325 | acceptance | §325 — THE FREE OUTLINE, held: the form case with no construction — the counted metal's own plan, given its lug ends, grown by the rim margin, closed by FREE_RC and opened by the margin's round (layout.js fitFreeCase), cut from the GENERATED table src/free-outlines.js. Pure Node over layout.js and a fixture of the measured metal (tools/data/probe-325-metal.json: each counted mesh's plan hull and every pin, published by a ?case=free boot; `--refresh` re-measures it through boot-form.mjs). |
+| `probe-325-slide-cam.mjs` | §325 | acceptance | §325 landing 8 — holds src/slide-cam.js (the minute hand's lazy-tongs, cam driven, designed in free space) to its own laws on the lands preview's real reach law. ACCEPTANCE: exits non-zero on a failed gate. Each gate has a CONTROL that must fail. node tools/probe-325-slide-cam.mjs (boots the preview once, ~1 min; needs the three env vars in CLAUDE.md) |
 | `probe-36-apply.mjs` | §36 | acceptance | §36 Apply — the acceptance, and the only place the APPLIED tree is judged. |
 | `probe-50-clutch.mjs` | §50 | report | TODO 50 — the stem clutch, measured in the movement. |
 | `probe-50-coupling.mjs` | §50 | report | Boot test-geometry.html headless and report the build log + a lift-law sanity table. |

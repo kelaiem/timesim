@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as G from './geometry.js';
+import * as SC from './slide-cam.js';   // §325 landing 8 — the minute hand's lazy-tongs, solved in free space (pure)
 import { leverEscapement, pinNotchSteps, LOCK_DEG, RUN_DEG, EMBRACE_DEG, TOOTH_RAKE_DEG } from './escapement.js';   // TODO 226 step 3: the lever escapement's one solve
 import { MeshBVH } from '../vendor/three-mesh-bvh.module.js';   // TODO 151: the jumper's siting solve measures the real metal with the battery's own closest-point machinery
 import { MATS, CRYSTAL_GLASS, stockKeyOf, xrayClearFor, applyDecorationFromAesthetics, applyBrushFromAesthetics, applyCaseMetalFromAesthetics } from './materials.js';
@@ -20587,12 +20588,9 @@ const SLIDE_REACH = (() => {
 })();
 const slideHandOf = (spec, frac) => G.makeSlideHand({ length: SLIDE_REACH.near * frac, kind: spec.kind, namePrefix: spec.namePrefix, pipe: spec.pipe,
   widthLength: spec.length, ext: (SLIDE_REACH.far - SLIDE_REACH.near) * frac, overlap: SLIDE_OVERLAP });
-// DECLARED DEBT (§325 landing 7): the slider is set by a FUNCTION of the hand's bearing, not driven by a cam. A stationary
-// cam needs a fixed member at the hand's own layer, and the centre stack has none above the hour hand's: whatever
-// stands from the dial to the minute layer crosses the hour blade, and the one fixed coaxial member outside the hour
-// tube would foul the hour pipe pressed on it. Closing this is a centre-stack restructure (a fixed tube and a
-// reordered hand stack, or cams behind the dial on slotted levers), its own landing. Until then ?hands=slide shows
-// what the face needs, not a mechanism the inspector can vouch for, and so it is outside every swept point.
+// DECLARED DEBT (§325 landing 7, narrowed by landing 8): the HOUR hand's slider is still set by a FUNCTION of its bearing, not a cam.
+// Landing 8 closed the MINUTE hand (a lazy-tongs on a fixed cam, below). The hour hand has no fixed member at its layer for the
+// same reason landing 7 found; it stays on this function until its own landing. `?hands=slide` is outside every swept point.
 // Run one slider out to the tip the hand's bearing allows. `rot` is the hand's rotation about the axis in the dial's
 // frame; its local +Y points along az = π/2 + rot there, the frame the track is cut in.
 const poseSlide = (hand, rot, frac) => {
@@ -20620,7 +20618,24 @@ const MINUTE_HAND_LEN = DIAL_TRACK ? DIAL_TRACK.nearestMid : dialRadius * (2 * G
   * ((G.DIAL_RAIL_IN_F + G.DIAL_RAIL_OUT_F) / 2);
 const MINUTE_HAND_SPEC = { length: MINUTE_HAND_LEN, kind: 'minute', namePrefix: 'minute',
   pipe: { boreR: MINUTE_PIPE_BORE, outerR: MINUTE_PIPE_OUTER, hang: 'blade' } };
-const minuteHand = SLIDE_HANDS ? slideHandOf(MINUTE_HAND_SPEC, 1) : G.makeHand(MINUTE_HAND_SPEC);
+// §325 landing 8 — THE MINUTE HAND OF A TELESCOPING FACE IS A LAZY-TONGS (src/slide-cam.js): it retracts toward the axis, so it has
+// no tail to sweep the dial centre, and the fixed cam above it has only the first mid pivot's pin moving in its plane. The
+// tongs ends TIP_EXT short of the reach (the tip bridge and the blade stand the rest). Solved ONCE here from the face's own
+// reach law; the cam is the polar curve that puts the tip on that law, steepened no further than 45° of pressure.
+const TIP_EXT = 0.6;
+const TONGS = SLIDE_HANDS ? (() => {
+  const yb = SC.baseY();   // the first rail pivots' eyes clear the stud's by the one margin each side
+  const N = 720, reach = SC.conservativeReach((az) => SLIDE_REACH.reach(az) - TIP_EXT, N);   // the minimum over each sample's neighbours: the tip stays inside the rail BETWEEN samples too
+  const geo = SC.solveTongs({ near: SLIDE_REACH.near - TIP_EXT, far: SLIDE_REACH.far - TIP_EXT, yb });
+  if (!geo) { console.warn('§325 landing 8: no lazy-tongs satisfies the pivot spacing, the reach and the slenderness on this face — the minute hand stays a plain arm'); return null; }
+  return { geo, cam: SC.camProfile({ reach, geo }) };
+})() : null;
+const minuteHand = TONGS ? G.makeTongsHand({ geo: TONGS.geo, length: SLIDE_REACH.near, kind: MINUTE_HAND_SPEC.kind, namePrefix: MINUTE_HAND_SPEC.namePrefix,
+    pipe: MINUTE_HAND_SPEC.pipe, widthLength: MINUTE_HAND_SPEC.length, tipExt: TIP_EXT })
+  : SLIDE_HANDS ? slideHandOf(MINUTE_HAND_SPEC, 1) : G.makeHand(MINUTE_HAND_SPEC);
+// the tongs' pose at the minute hand's bearing: `rot` is the hand's rotation about the axis in the dial's frame; its local +Y
+// points along az = π/2 + rot there, the frame the cam's polar curve is cut in
+const poseTongs = (hand, rot) => { const t = hand.userData.tongs; if (!t || !TONGS) return; t.place(SC.poseAt({ cam: TONGS.cam, geo: TONGS.geo, bearing: Math.PI / 2 + rot }).h); };
 // TODO 118 — the minute hand's lift over the hour plane, DERIVED at last.
 // This was `2.3`, a literal sized for the pre-§125 fat cylindrical rods
 // ("rHour + rMinute ≈ 2.10") and never re-cut: §125 widened the plans past
@@ -20817,7 +20832,7 @@ const MW_PINION_T = MW_WHEEL_T + 2 * MW_BEVEL(MW_WHEEL_T, MW_MODULE_2) + MW_COVE
 // reach, so the chain can deepen again without anyone re-counting leaves.
 const CANNON_T = -0.5 - (MW_Z1 - MW_WHEEL_T / 2 - MW_BEVEL(MW_WHEEL_T, MW_MODULE_1) - MW_COVER);
 const CANNON_END = -0.5 - CANNON_T;
-const CANNON_BORE_R = Math.max(MW_MODULE_1 * 0.35, 0.4);   // TODO 120: makePinion's default shaft bore, NAMED because the nose below is bored to it too — passed explicitly, so the leaves are cut exactly as before
+const CANNON_BORE_R = TONGS ? SC.STUD_R + PIVOT_BORE_CLEAR : Math.max(MW_MODULE_1 * 0.35, 0.4);   // §325 landing 8: the centre stud rides this bore   // TODO 120: makePinion's default shaft bore, NAMED because the nose below is bored to it too — passed explicitly, so the leaves are cut exactly as before
 const cannonPinion = G.makePinion({ name: 'cannonPinion', module: MW_MODULE_1, teeth: cannonPinionTeeth, mates: [{ teeth: MW_MINUTE_TEETH, mates: MW_MINUTE_MATES }], thickness: CANNON_T, boreR: CANNON_BORE_R, material: MATS.steel });
 cannonPinion.position.z = -0.5 - CANNON_T / 2;
 dialFace.add(cannonPinion);
@@ -20842,6 +20857,21 @@ const cannonNose = new THREE.Mesh(ringGeo(CANNON_BORE_R, CANNON_NOSE_R, CANNON_N
 cannonNose.name = 'cannonNose';
 cannonNose.position.z = (CANNON_NOSE_TOP - 0.5) / 2;
 dialFace.add(cannonNose);
+// §325 landing 8 — THE CENTRE STUD AND THE FIXED CAM. The stud rises from the plate through the cannon pinion's bore (bore =
+// stud + PIVOT_BORE_CLEAR, the movement's one running fit — TODO 175's idiom) and past the nose to the cam's hub, pressed
+// on; the cam stands over the minute hand's tongs, in the dial's frame, and never turns. The stud's seat is the plate's face
+// (0.4 buried, the motion works' stud's rule).
+if (TONGS) {
+  const t = minuteHand.userData.tongs;
+  const handZ = DIAL_T + aesthetics.dial.hands.handsGroupZOffset + minuteHand.position.z;   // dialFace-local z of hand-local 0
+  const studTop = handZ + t.zC + 2 * t.T - 0.05, studBot = MW_PLATE_FACE_LOCAL - 0.4;     // blind in the hub; buried in the plate
+  const stud = new THREE.Mesh(new THREE.CylinderGeometry(SC.STUD_R, SC.STUD_R, studTop - studBot, 16), MATS.steel);
+  stud.rotation.x = Math.PI / 2; stud.position.z = (studTop + studBot) / 2; stud.name = 'slideStud';
+  dialFace.add(stud);
+  const slideCam = G.makeSlideCam({ r: TONGS.cam.r, zLo: t.zC, studR: SC.STUD_R });
+  slideCam.position.z = minuteHand.position.z;
+  handsGroup.add(slideCam);
+}
 // …and the new floor that derivation creates: the leaves now reach PAST the
 // minute wheel toward the plate, so the pinion's end is the deepest thing on
 // the centre axis. It must still stand off the plate's dial-side face.
@@ -47590,7 +47620,7 @@ function askTour(onProceed) {
   ];
   const recutHands = () => {
     for (const [hand, spec, finish] of HAND_SPECS) {
-      if (hand.userData.slide) continue;   // §325 landing 7: a telescoping hand is two members; the flute re-cut would rebuild it as one
+      if (hand.userData.slide || hand.userData.tongs) continue;   // §325 landing 7: a telescoping hand is two members; the flute re-cut would rebuild it as one
       hand.traverse((o) => { if (o.isMesh) o.geometry.dispose(); });
       hand.clear();
       for (const ch of [...G.makeHand(spec).children]) hand.add(ch);
@@ -59047,7 +59077,7 @@ function tick(t) {
   // to a movement-frame quantity carries the NEGATED value to be the same rigid
   // body. `reserveHand` (below) always did this; these did not.
   minuteHand.rotation.z = -minuteA;
-  if (SLIDE_HANDS) poseSlide(minuteHand, minuteHand.rotation.z, 1);
+  if (SLIDE_HANDS) poseTongs(minuteHand, minuteHand.rotation.z);
   // Hour hand: NOT minuteA/12. The angle is carried through the motion
   // works' two real meshes — cannon pinion → minute wheel, then minute
   // pinion → hour wheel — from their tooth counts, the same way every
@@ -62308,7 +62338,9 @@ refreshConfigMark();
   // and the one margin), and the minute plane rides up over the hour's. The allowance is those layers and nothing else,
   // so a build that grows for any other reason still fails; the default build has no sliders and the cap as it was.
   const SLIDE_ALLOWANCE_MM = SLIDE_HANDS
-    ? [hourHand, minuteHand].reduce((t, h) => t + (h.userData.slide.slider.userData.floorDrop + h.userData.slide.slider.userData.topRise + CLEAR_MARGIN) * UNIT_MM, 0) : 0;
+    ? [hourHand, minuteHand].reduce((t, h) => t + (h.userData.tongs
+        ? (h.userData.tongs.zTop - h.userData.topRise + CLEAR_MARGIN)                       // §325 landing 8: base plate to the cam's roof, a margin over
+        : (h.userData.slide.slider.userData.floorDrop + h.userData.slide.slider.userData.topRise + CLEAR_MARGIN)) * UNIT_MM, 0) : 0;
   const CASE_HEIGHT_CAP_MM = CASE_HEIGHT_MAX_MM + SLIDE_ALLOWANCE_MM;
   if (!(CASED_DEPTH_MM <= CASE_HEIGHT_CAP_MM))
     console.warn(`§261: cased assembly ${CASED_DEPTH_MM.toFixed(4)} mm deep, over CASE_HEIGHT_MAX_MM ${CASE_HEIGHT_MAX_MM}${SLIDE_ALLOWANCE_MM ? ` + the telescoping hands' ${SLIDE_ALLOWANCE_MM.toFixed(4)} mm` : ''} — the case grew; spend depth in the open by raising the cap in layout.js, or take the growth back`);

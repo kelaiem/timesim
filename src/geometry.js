@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { MATS, CRYSTAL_GLASS, SAPPHIRE_IOR, DIAL_GLASS, XRAY_CLEAR, CASE_POLISH_ATTR, ALLOY_COLORS, STEEL_FINISH } from './materials.js';
 import { aesthetics } from './aesthetics.js';
+import { tongsAt } from './slide-cam.js';
 import { STOCK_MIN_U, CLEAR_MARGIN, PIVOT_BORE_CLEAR, SLENDER_TARGET, FORK_BEVEL_FRAC, UNIT_MM,
   mmForArcmin, RESOLVE_ARCMIN, IDENTIFY_ARCMIN, GLANCE_ARCMIN, CAP_PER_EM, MOVEMENT_SENSE,
   CASE_LUG_T, CASE_LUG_EDGE_R, CASE_SPRING_BAR_D, CASE_SPRING_BAR_TIP_D, caseLugPlan,
@@ -11236,6 +11237,147 @@ export function makeSlideHand({ length, kind, namePrefix, pipe, widthLength, ext
   arm.userData.sections = [...arm.userData.sections,
     { name: 'slider', rIn: 0, rOut: Math.max(length + ext + sl.rBase, sl.halfW), zLo: z - sl.floorDrop, zHi: z + sl.topRise }];
   return arm;
+}
+
+// §325 landing 8 — THE LAZY-TONGS MINUTE HAND (src/slide-cam.js is the reference this is folded from). The ARM is an ordinary
+// makeHand cut to the shortest reach; above it, bottom to top, stand
+//   · the BASE PLATE, fixed to the arm, two transverse slots for the base pins (it holds the lattice's foot);
+//   · layer A (bars from +h to −h) and layer B (their mirrors), every pivot a pin through both, an eye at each end and each mid;
+//   · layer C: the TIP PLATE (riveted on the last mid pin) and the BLADE, a bur rod running back from it.
+// The first mid pivot's pin is carried up through layer C to the cam (makeSlideCam), which stands fixed above. Poses are set by
+// `g.userData.tongs.pose(rot, bearing)`; every transform below is a rigid move of a rigid part. The tip is the LAST MID
+// PIVOT, on the axis: the last cell's bars are half bars meeting at it, so the tip needs no closing rail pair (no bridge, no
+// centring debt) and the lattice stays narrow.
+export function makeTongsHand({ geo, length, kind, namePrefix, pipe, widthLength, tipExt }) {
+  const arm = makeHand({ length, kind, namePrefix, pipe, widthLength });
+  const T = STOCK_MIN_U, top = arm.userData.topRise, { n, ell, yb } = geo;
+  const PIN = STOCK_MIN_U / 2, EYE = PIN + PIVOT_BORE_CLEAR + STOCK_MIN_U, W = STOCK_MIN_U;
+  const plateLo = top, plateHi = plateLo + T;                          // stands ON the arm's top face (the cannon nose ends flush with it: a seat any deeper would be inside the nose)
+  const zA = plateHi + CLEAR_MARGIN, zB = zA + T + CLEAR_MARGIN, zC = zB + T + CLEAR_MARGIN;   // plane bottoms
+  const zTop = zC + 2 * T;                                              // the cam: walls T + roof T above layer B
+  const matBar = MATS.bluedHand, matPin = MATS.steel;
+  const g = new THREE.Group(); g.name = `${namePrefix}Tongs`;
+  const slotPlate = (halfX, yc, halfY, h0, h1, z0, name) => {         // a plate with two transverse slots for pins at ±h0..±h1
+    const sh = new THREE.Shape();
+    sh.moveTo(-halfX, yc - halfY); sh.lineTo(halfX, yc - halfY); sh.lineTo(halfX, yc + halfY); sh.lineTo(-halfX, yc + halfY); sh.closePath();
+    const p = PIN + PIVOT_BORE_CLEAR;
+    for (const sg of [1, -1]) {
+      const a = sg * (h0 - p), b = sg * (h1 + p), x0 = Math.min(a, b), x1 = Math.max(a, b), hole = new THREE.Path();
+      hole.moveTo(x0, yc - p); hole.lineTo(x1, yc - p); hole.lineTo(x1, yc + p); hole.lineTo(x0, yc + p); hole.closePath();
+      sh.holes.push(hole);
+    }
+    const m = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: T, bevelEnabled: false }), matBar);
+    m.position.z = z0; m.name = name; return m;
+  };
+  const hMin = geo.hMin, hMax = geo.hMax, halfX = hMax + PIN + PIVOT_BORE_CLEAR + W;
+  g.add(slotPlate(halfX, yb, EYE + 0.3, hMin, hMax, plateLo, `${namePrefix}TongsBase`));
+  // the bars: web + three eyes, built along local +y, centred on the mid pivot
+  const eyeGeo = new THREE.CylinderGeometry(EYE, EYE, T, 20); eyeGeo.rotateX(Math.PI / 2);
+  const webGeo = new THREE.BoxGeometry(W, 2 * ell, T);
+  const bars = [];
+  const halfWebGeo = new THREE.BoxGeometry(W, ell, T);
+  for (let k = 0; k < n; k++) for (const fam of ['A', 'B']) {
+    const half = k === n - 1;                                           // the last cell's bars stop at their crossing: the tip is a point on the axis
+    const b = new THREE.Group(); b.name = `${namePrefix}Tongs${fam}${k}`;
+    const web = new THREE.Mesh(half ? halfWebGeo : webGeo, matBar); web.name = `${namePrefix}TongsBar`;
+    b.add(web);
+    for (const y of (half ? [-ell / 2, ell / 2] : [-ell, 0, ell])) { const e = new THREE.Mesh(eyeGeo, matBar); e.position.y = y; e.name = `${namePrefix}TongsBar`; b.add(e); }
+    b.position.z = (fam === 'A' ? zA : zB) + T / 2;
+    g.add(b); bars.push({ fam, k, group: b });
+  }
+  // the pins: one at every rail pivot and every mid, through both bar layers; the first mid's rises to the cam's floor, and
+  // the base pins go down through the base plate's slots; the far rail pins rise through the bridge
+  const pinGeo = (z0, z1) => { const c = new THREE.CylinderGeometry(PIN, PIN, z1 - z0, 12); c.rotateX(Math.PI / 2); c.translate(0, 0, (z0 + z1) / 2); return c; };
+  const pinMesh = (z0, z1, nm) => { const m = new THREE.Mesh(pinGeo(z0, z1), matPin); m.name = nm; g.add(m); return m; };
+  const rail = [], mid = [];
+  for (let k = 0; k < n; k++) {
+    const lo = k === 0 ? plateLo : zA, hi = zB + T;
+    rail.push([pinMesh(lo, hi, `${namePrefix}TongsPin`), pinMesh(lo, hi, `${namePrefix}TongsPin`)]);
+  }
+  for (let k = 0; k < n; k++) mid.push(pinMesh(zA, k === n - 1 ? zC + T : k === 0 ? zC + T - CLEAR_MARGIN : zB + T, `${namePrefix}TongsPin`));   // first mid rises to the cam; the LAST carries the tip plate
+  // the tip bridge and the blade (layer C)
+  const bridge = new THREE.Group(); bridge.name = `${namePrefix}TongsBridge`;
+  { const tipPlate = new THREE.Mesh(eyeGeo.clone(), matBar); tipPlate.position.z = zC + T / 2; tipPlate.name = `${namePrefix}TongsTipPlate`; bridge.add(tipPlate); }   // one body with the last mid pin (riveted)
+  const bladeLen = Math.max(4, geo.bladeLen ?? 6);
+  const blade = makeHand({ length: bladeLen, kind, namePrefix: `${namePrefix}Blade`, slider: true, widthLength, halfWidth: arm.userData.halfW });
+  blade.position.set(0, tipExt - bladeLen, zC + blade.userData.floorDrop);
+  bridge.add(blade);
+  g.add(bridge);
+  arm.add(g);
+  const sec = { name: 'tongs', rIn: 0, rOut: geo.yb + (2 * n - 1) * Math.sqrt(ell * ell - hMin * hMin) + tipExt + blade.userData.rBase, zLo: plateLo, zHi: zTop };
+  arm.userData.sections = [...arm.userData.sections, sec];
+  arm.userData.tongs = { geo, bars, rail, mid, bridge, zA, zB, zC, zTop, plateLo, tipExt, PIN, EYE, T,
+    // place every rigid part for rail half-width h
+    place(h) {
+      const t = tongsAt({ n, ell, yb, h });
+      for (const b of bars) {
+        const br = t.bars.find((q) => q.fam === b.fam && q.k === b.k), dx = br.to[0] - br.from[0], dy = br.to[1] - br.from[1];
+        b.group.position.x = (br.from[0] + br.to[0]) / 2; b.group.position.y = (br.from[1] + br.to[1]) / 2;   // a half bar's centre is not the crossing
+        b.group.rotation.z = Math.atan2(dy, dx) - Math.PI / 2;
+      }
+      for (let k = 0; k < n; k++) { rail[k][0].position.set(t.rails[k][0][0], t.rails[k][0][1], 0); rail[k][1].position.set(t.rails[k][1][0], t.rails[k][1][1], 0); }
+      for (let k = 0; k < n; k++) mid[k].position.set(t.mids[k][0], t.mids[k][1], 0);
+      bridge.position.set(0, t.tip, 0);
+      return t;
+    } };
+  arm.userData.tongs.place(geo.hMax);
+  return arm;
+}
+
+// §325 landing 8 — THE FIXED CAM (see makeTongsHand): a closed groove whose centre is the polar curve r(θ) = `r[i]` at azimuth
+// i·2π/N in the dial's frame, ridden by the first mid pin. Three parts, bottom to top: two walls (T) either side of the
+// groove, and a roof (T) over it — the pin enters from below and never reaches the roof. A hub bored to the stud (pressed
+// on: bore = the stud's radius) and three spokes carry the band; they stand INSIDE it, where nothing but the pin moves.
+// Offsets are taken along the curve's normal at each vertex (no miter scaling: the groove is 0.21 off its centre).
+export function makeSlideCam({ r, zLo, studR, namePrefix = 'slideCam', decimate = 3 }) {
+  const T = STOCK_MIN_U, PIN = STOCK_MIN_U / 2, GH = PIN + PIVOT_BORE_CLEAR, WALL = STOCK_MIN_U;
+  const N = r.length, pts = [];
+  for (let i = 0; i < N; i += decimate) { const a = (i / N) * 2 * Math.PI; pts.push([r[i] * Math.cos(a), r[i] * Math.sin(a)]); }
+  const M = pts.length, offset = (d) => pts.map((p, i) => {
+    const a = pts[(i + M - 1) % M], b = pts[(i + 1) % M], tx = b[0] - a[0], ty = b[1] - a[1], L = Math.hypot(tx, ty) || 1;
+    return [p[0] + (d * ty) / L, p[1] - (d * tx) / L];
+  });
+  // A normal offset LOOPS where the curve bends tighter than the offset (the cam's min-envelope has corners): the swallowtail is the
+  // part of the offset closer than d to the curve, so it is cut away at its own crossing, which leaves the true offset curve.
+  const segX = (p1, p2, p3, p4) => { const d1x = p2[0] - p1[0], d1y = p2[1] - p1[1], d2x = p4[0] - p3[0], d2y = p4[1] - p3[1], den = d1x * d2y - d1y * d2x;
+    if (Math.abs(den) < 1e-14) return null; const u = ((p3[0] - p1[0]) * d2y - (p3[1] - p1[1]) * d2x) / den, v = ((p3[0] - p1[0]) * d1y - (p3[1] - p1[1]) * d1x) / den;
+    return u > 0 && u < 1 && v > 0 && v < 1 ? [p1[0] + u * d1x, p1[1] + u * d1y] : null; };
+  const untangle = (q0) => {
+    let q = q0;
+    for (let pass = 0; pass < 200; pass++) {
+      const n = q.length; let hit = null;
+      for (let i = 0; i < n && !hit; i++) for (let j = i + 2; j < n; j++) {
+        if (i === 0 && j === n - 1) continue;                               // neighbours across the seam
+        const x = segX(q[i], q[(i + 1) % n], q[j], q[(j + 1) % n]); if (x) { hit = { i, j, x }; break; }
+      }
+      if (!hit) return q;
+      const { i, j, x } = hit, inner = q.slice(i + 1, j + 1), outer = [...q.slice(0, i + 1), ...q.slice(j + 1)];
+      q = inner.length < outer.length ? [...outer.slice(0, i + 1), x, ...outer.slice(i + 1)] : [x, ...inner];   // keep the longer side
+    }
+    throw new Error('makeSlideCam: an offset ring would not untangle');
+  };
+  const loop = (q) => { const sh = new THREE.Shape(); sh.moveTo(q[0][0], q[0][1]); for (let i = 1; i < q.length; i++) sh.lineTo(q[i][0], q[i][1]); sh.closePath(); return sh; };
+  const band = (dIn, dOut, z0, name, mat) => {
+    const sh = loop(untangle(offset(dOut))), hole = new THREE.Path(), q = untangle(offset(dIn)).reverse();
+    hole.moveTo(q[0][0], q[0][1]); for (let i = 1; i < q.length; i++) hole.lineTo(q[i][0], q[i][1]); hole.closePath(); sh.holes.push(hole);
+    const m = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: T, bevelEnabled: false }), mat); m.position.z = z0; m.name = name; return m;
+  };
+  const g = new THREE.Group(); g.name = namePrefix;
+  const mat = MATS.steel;
+  g.add(band(-(GH + WALL), -GH, zLo, `${namePrefix}Band`, mat), band(GH, GH + WALL, zLo, `${namePrefix}Band`, mat),
+    band(-(GH + WALL), GH + WALL, zLo + T, `${namePrefix}Roof`, mat));
+  const hubR = studR + WALL + 0.5, hub = new THREE.Shape(); hub.absarc(0, 0, hubR, 0, Math.PI * 2, false);
+  const bore = new THREE.Path(); bore.absarc(0, 0, studR, 0, Math.PI * 2, true); hub.holes.push(bore);
+  const hubM = new THREE.Mesh(new THREE.ExtrudeGeometry(hub, { depth: 2 * T, bevelEnabled: false, curveSegments: 24 }), mat); hubM.position.z = zLo; hubM.name = `${namePrefix}Hub`;
+  g.add(hubM);
+  for (const deg of [90, 210, 330]) {
+    const a = (deg * Math.PI) / 180, i = Math.round((deg / 360) * N) % N, len = r[i] - GH - WALL - hubR + 0.05;
+    const sp = new THREE.Mesh(new THREE.BoxGeometry(len, 2 * WALL, 2 * T), mat);
+    sp.position.set(Math.cos(a) * (hubR - 0.05 + len / 2), Math.sin(a) * (hubR - 0.05 + len / 2), zLo + T); sp.rotation.z = a; sp.name = `${namePrefix}Spoke`;
+    g.add(sp);
+  }
+  g.userData = { zLo, zHi: zLo + 2 * T, rMax: Math.max(...r) + GH + WALL, hubR };
+  return g;
 }
 
 // The tube's own metal — MODULE SCOPE and exported since §186, because the
