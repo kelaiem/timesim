@@ -8080,7 +8080,9 @@ const ALARM_FLANGE_OUT = 4.05;                  // the carrier flange's rim (hoi
 // and the seat mode dropped, since a case cuts nothing the link stands on); a
 // spec with no row takes the designed value and the assert says so.
 // (strapMm: null too — the strap width moves no movement metal, so a non-default strap keeps the arrangement's alarm rows, as `hands` does)
-const ALARM_ARR_KEY = configKey({ spec: { ...SPEC, hands: null, strapMm: null, caseShape: null, formRectSpec: null, gongSeat: null } });
+// (frame: null too, §328 — a land stands on the pillar's seat with the pillar's footprint, so the frame moves no metal the
+// link stands on; measured, the round lands build re-derives the default arrangement's 5.2248 inside the link assert's tolerance — it stays silent)
+const ALARM_ARR_KEY = configKey({ spec: { ...SPEC, hands: null, strapMm: null, frame: null, caseShape: null, formRectSpec: null, gongSeat: null } });
 const ALARM_PINB_SEAT_FIXED = Object.freeze({
   'cfg1:{"spec":{"reserveHours":30,"vph":18000},"route":null,"tuned":[]}': 5.2780,   // §278 landing 6: re-quoted to its fixed point — the reclaim moved the dial-hung column against the held arming blade's corner, and hanger 3's jog, moved beside the blade, lengthened the ground's developed path and with it the section and the room (was 5.2650). TODO 240: re-quoted to its fixed point — the re-aimed lever reflects the blade to the nose by its new ratio, and the pin's journal is charged on the same-side reaction (was 5.4263). mN at the pin — the shared equal margin, re-derived and asserted at the link's arming solve (rounded to 0.1 µN). §261 2c: re-quoted to its fixed point — the folded same-side beak reflects the arming blade to the nose by its own lever (was 5.2502)
   'cfg1:{"spec":{"alarmModAzDeg":60,"barrelStepDeg":0,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":6,"vph":18000},"route":null,"tuned":[]}': 5.1837,   // §313: the swung barrel, the reserve at 12 on six idlers, the module at 60°
@@ -17139,14 +17141,15 @@ const PILLAR_TENON_LEN = PLATE_TOP_FACE - PLATE_BACK_FACE;
 // below is cut through at the mouth with the conical land put back.
 const PILLAR_RIVET_C = STOCK_MIN_U;
 const PILLAR_RIVET_MOUTH_R = PILLAR_TENON_R + PILLAR_RIVET_C;
-// §325 landing 6 — THE FRAME WITHOUT PILLARS (?frame=lands, the free case only: layout.js reads the key to null elsewhere).
+// §325 landing 6 — THE FRAME WITHOUT PILLARS (?frame=lands, the free case and since §328 step 1 the round one: layout.js
+// reads the key to null on every other kind).
 // The back plate is screwed straight onto LANDS the base plate raises on its own rim, so no support is a free column
 // past the train and none needs a seat in the open interior. A land is the pillar's seat WITHOUT the pillar's joint:
 // its radius is the cap the pillar scan already keeps clear (PILLAR_CAP_R — the screw head's seat is the widest land
 // the back plate's screw asks of what carries it), its column the same TQ_BOT_Z − PILLAR_BASE_Z, its bore the same
 // tapped bore. What it does not have is a tenon or a rivet: it is turned from the plate's stock, so it owes the plate
 // no joint of its own and its foot only needs a root in the slab (half the plate, the pocket floors' lap).
-const FRAME_LANDS = SPEC.frame === 'lands' && FORM?.kind === 'free';
+const FRAME_LANDS = SPEC.frame === 'lands' && (FORM?.kind === 'free' || !FORM);   // §328: the round case too (no FORM)
 const LAND_ROOT = (PLATE_TOP_FACE - PLATE_BACK_FACE) / 2;
 if (PILLAR_RIVET_C > PILLAR_TENON_LEN - STOCK_MIN_U + 1e-9)
   console.warn(`TODO 200: pillar countersink ${PILLAR_RIVET_C.toFixed(3)} leaves under STOCK_MIN_U of plate round the tenon (plate ${PILLAR_TENON_LEN.toFixed(3)})`);
@@ -17363,7 +17366,10 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
           const x = Math.cos(a) * r, y = Math.sin(a) * r;
           const c = seatClearance(x, y);
           // §325 landing 6: a LAND takes the first seat that holds (r runs outward in, so the outermost on the nearest bearing)
-          if (c >= CLEAR_MARGIN && (!best || (!FRAME_LANDS && c > best.c + (FORM?.kind === 'free' ? 1e-9 : 0.5)))) best = { x, y, c, dA };
+          // — on the FREE outline. §328 step 1: on the round plate a land takes the PILLAR's seat (the deepest on the ring,
+          // the scan's own rule), so it stands on exactly the footprint every later siting solve was given (`pillarSeats`,
+          // the cap's disc) and the frame moves nothing else; measured, the outermost rule moved the 45° seat 3.76 round the ring
+          if (c >= CLEAR_MARGIN && (!best || (!(FRAME_LANDS && FORM) && c > best.c + (FORM?.kind === 'free' ? 1e-9 : 0.5)))) best = { x, y, c, dA };
         }
       }
       await breathe(126);
@@ -17402,6 +17408,7 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
       // back plate's underside. Its footprint is published for the siting solves exactly as a pillar's was.
       const land = new THREE.Mesh(G.makeRimLand({ height: pillarH, root: LAND_ROOT, r: PILLAR_CAP_R, tapR: PILLAR_TAP_R, tapDepth: PILLAR_TAP_DEPTH }), MATS.perledNickel);
       land.name = 'backPlate';
+      land.userData.rimLand = true;   // §328: not the rim — PLATE_RIM's walk skips it (see there)
       land.position.set(best.x, best.y, (PLATE_TOP_FACE - PLATE_BACK_FACE) / 2);   // backPlate-local: x, y the movement's, z = 0 the slab's midplane, +F its face
       land.userData.planStadium = { ax: best.x, ay: best.y, bx: best.x, by: best.y, r: PILLAR_CAP_R };
       backPlate.add(land);
@@ -20430,7 +20437,7 @@ const dial = G.makeDial({
   // back to CCW for the Shape.
   ...(FORM ? { outline: FORM.loop().map(([X, Y]) => [P.dial.x - X, Y - P.dial.y]).reverse() } : {}),
   ...(DIAL_TRACK ? { track: DIAL_TRACK } : {}),   // §311 — the form face's railroad, the outline's own offsets
-  fitMarkers: FRAME_LANDS,   // §325 landing 7: the lands preview fits its numerals to the rail, not the round band
+  fitMarkers: FRAME_LANDS && !!FORM,   // §325 landing 7: the lands preview fits its numerals to the rail, not the round band (a form face's; §328's round lands keep the band)
   subdialRecess: SUBDIAL_RECESS,
   thickness: DIAL_T,          // TODO 26 — the dial is a plate now; its BACK lands on Z_DIAL
   edgeBreak: DIAL_EDGE_BREAK, // TODO 26 — and the plate is thinner at its rim, by a real chamfer
@@ -22321,7 +22328,11 @@ const PLATE_RIM = (() => {
   let formOut = -Infinity;
   backPlate.updateMatrixWorld(true);
   backPlate.traverse((o) => {
-    if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
+    // §328 step 1 — a LAND is the plate's metal but not its RIM: on the round plate one stands within this walk's 1 mm seat
+    // band (seat r + PILLAR_CAP_R reaches past rSeat), and read as rim its top (TQ_BOT_Z) became the rim's back face, the
+    // gong's annulus floor (GONG_RIM_Z) rose above the gong and its post length went negative. What the band is FOR — the
+    // case's seat and its clamp heads — is held clear of the lands by tools/probe-328-round-lands.mjs instead
+    if (!o.isMesh || o.userData.schematic || o.userData.rimLand || !o.geometry?.attributes?.position) return;
     const p = o.geometry.attributes.position;
     const _mw = p.count > 0 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
     for (let i = 0; i < p.count; i++) {
@@ -62598,6 +62609,7 @@ window.__clock = {
     radiationPath: (shape, kAc) => gongRadiationFactorsPath(Float64Array.from(shape), gongWireFrame(), kAc),
     straightRoots: GONG_MODE_BL.slice(),
   } : null,
+  get plateRim() { return { front: PLATE_RIM.front, back: PLATE_RIM.back, reach: PLATE_RIM.reach }; },   // §328 — the rim the case and the gong seat on, as measured off the plate's metal (probe-328-round-lands holds a land out of it)
   get armingSpring() { return ALARM_LINK_ARMING_SPRING; }, // TODO 206 — the alarm link's arming spring, its solved line spec
   get beakLever() { return alarmLinkParts.lever; }, // TODO 240 — the re-aimed beak lever: its run, arms, stub, bar line, seat tilt and the site's ray
   get beakPivot() { return alarmLinkParts.pivot; }, // TODO 204 — the beak lever's pin, eye, web, post and head: stations, sections and the stresses that sized them

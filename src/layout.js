@@ -320,9 +320,11 @@ export const SPEC = (() => {
   // take: FORM_KINDS ('rect', 'cushion', 'tonneau', and §317's 'fitted').
   // Anything else is round.
   const caseShape = CASE_KINDS.includes(raw.caseShape) ? raw.caseShape : null;   // §325: and the free outline
-  // §325 landing 6 — THE FRAME'S CONSTRUCTION: 'lands' only, and only on the free case (a land is cut to the free outline's rim;
-  // the round and rect plates have none), else null — the pillar frame, so every existing key and fingerprint stays as it was
-  const frame = raw.frame === 'lands' && caseShape === 'free' ? 'lands' : null;
+  // §325 landing 6 — THE FRAME'S CONSTRUCTION: 'lands' only, else null — the pillar frame, so every existing key and
+  // fingerprint stays as it was. §328 step 1 — read on the ROUND case too (the default build's plate has a rim the
+  // pillar scan already seats against); the rect and the other form kinds still read null, their seat scans being TODO
+  // 271's and their lands never measured
+  const frame = raw.frame === 'lands' && (caseShape === 'free' || !caseShape) ? 'lands' : null;
   // §325 landing 7 — 'slide' builds the central hands TELESCOPING (geometry.js makeSlideHand): an arm to the nearest reach
   // and a slider the cam runs out to the rest. Meaningful only on a form face, whose dial has a track to follow; the
   // round face keeps its hands whatever is asked, and every existing key stays as it was.

@@ -4,7 +4,7 @@
 
 # The instruments
 
-383 scripts. **263 are ACCEPTANCE tests** — they decide and exit non-zero.
+384 scripts. **264 are ACCEPTANCE tests** — they decide and exit non-zero.
 **120 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -250,6 +250,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-325-hands-keep-in.mjs` | §325 | acceptance | §325 remainder — WHAT WOULD THE FREE CASE COST IF THE HANDS' SWEPT DISC WERE A KEEP-IN? A REPORT (it prints and judges nothing). node tools/probe-325-hands-keep-in.mjs ['k=v&…' spec] (boots the preview once; needs the three env vars in CLAUDE.md) fitFreeCase takes the counted metal's plan hulls, the pins and the ports; the hands' sweep is not among them, so the hands' axis can stand close to the opening on one side. This refits the outline with a disc about the hands' axis added as one more polygon, searching the strap axis exactly as tools/free-outline.mjs does (layout.js fitFreeCase at each c: a scan, then golden section). · the fit GROWS every polygon by the rim margin M, so a disc that must stand inside the OPENING enters at radius L + CLEAR_MARGIN + g − M, where g is how far the opening stands inside the outline (read from the build: the nearest reach of the outline minus that of the opening); · the disc is a 192-gon with its VERTICES on the circle's circumscribing radius, so no edge undercuts it. |
 | `probe-325-hour-cam.mjs` | §325 | acceptance | §325 landing 8b — does an HOUR-hand lazy-tongs exist in free space, driven by rails applied to the dial? (src/slide-cam.js, hour half) ACCEPTANCE: exits non-zero when no design satisfies the constraints. Every gate has a control that must fail. node tools/probe-325-hour-cam.mjs (boots the lands preview once, ~1 min; needs the three env vars in CLAUDE.md) The minute hand's fixed cam stands on a stud above everything; the hour layer has no fixed member (the nose and hour tube turn between the stud and any cam), so the hour hand's fixed part is a pair of rails APPLIED TO THE DIAL, ridden by the first mid pivot's pin, which comes down through a slot in the arm. This probe holds the design to the stack it must live in, read off the built scene. |
 | `probe-325-slide-cam.mjs` | §325 | acceptance | §325 landing 8 — holds src/slide-cam.js (the minute hand's lazy-tongs, cam driven, designed in free space) to its own laws on the lands preview's real reach law. ACCEPTANCE: exits non-zero on a failed gate. Each gate has a CONTROL that must fail. node tools/probe-325-slide-cam.mjs (boots the preview once, ~1 min; needs the three env vars in CLAUDE.md) |
+| `probe-328-round-lands.mjs` | §328 | acceptance | §328 step 1 — the ROUND build on integrated lands (`?frame=lands`): do the lands stand on the pillars' own seats, and does nothing but the back plate's screw metal come within CLEAR_MARGIN of them over the pose net? |
 | `probe-36-apply.mjs` | §36 | acceptance | §36 Apply — the acceptance, and the only place the APPLIED tree is judged. |
 | `probe-50-clutch.mjs` | §50 | report | TODO 50 — the stem clutch, measured in the movement. |
 | `probe-50-coupling.mjs` | §50 | report | Boot test-geometry.html headless and report the build log + a lift-law sanity table. |
