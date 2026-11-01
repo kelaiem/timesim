@@ -4679,6 +4679,16 @@ export function reserveSectorLoop(cx, cy, r, hubR, midRad, halfRad, n = 96) {
   for (let i = 0; i <= nHub; i++) { const a = a1 + (i / nHub) * (2 * Math.PI - 2 * halfRad); pts.push([cx + hubR * Math.cos(a), cy + hubR * Math.sin(a)]); }
   return pts;
 }
+// §327 — THE DRUM'S DIRECTION off the barrel (the fusee): perpendicular to the stem, blended OUTWARD along it so the
+// chain's span clears the train (main.js' drumPos, whose comment keeps the reasoning). One law for the drum's
+// placement and for the form rectangle's reach to it: before this the rectangle was built from the P stations
+// alone, and the drum — not a station — stood up to 10 u outside the box a first form boot cut the plates to.
+export const DRUM_OUTWARD_BLEND = 0.45;
+export function drumDirOf(uWind, vPerp, sideSign) {
+  const x = -sideSign * vPerp.x + uWind.x * DRUM_OUTWARD_BLEND, y = -sideSign * vPerp.y + uWind.y * DRUM_OUTWARD_BLEND;
+  const l = Math.hypot(x, y) || 1;
+  return { x: x / l, y: y / l };
+}
 export function solveKeyless({
   P,              // solveLayout's position table (shifted, centre-arbor origin)
   outline,        // { barrel, center, third, fourth, escape, balance, fork, dial } — outline radii for the plate bound
@@ -4691,6 +4701,7 @@ export function solveKeyless({
   subDialRadius = null, // §97/§125 Tier B — the SECONDS well's radius (the wells split; the reserve's is its station's derivation); null = the derived ceiling, bit-exact
   dialR = null,     // §125 step 3 — the dial's radius; null = the movement's own diameter (dialRadius = plateR)
   printFrame = null, // §125 margins tweak — the printed furniture's world fractions { markerInnerF, railInnerF }, measured by the caller from geometry.js's print constants; null = no furniture bound (the wells run to their centre-bore ceilings)
+  drum = null,      // §327 — { dist, r }: the mainspring drum's centre distance from the barrel and its outermost metal's radius (the chain coil on its wall); null = left out of the form rectangle, bit-exact
   warn = () => {},
 }) {
   const barrelDist = Math.hypot(P.barrel.x, P.barrel.y) || 1;
@@ -4947,7 +4958,15 @@ export function solveKeyless({
   // outside every circle by construction — nothing to assert, and nothing
   // typed. Not centred on the hands: the rectangle is the tightest one, and
   // a form calibre's centre need not be its case's.
+  // §327 — the drum is NOT a P station (main.js places it after this solve), so the rectangle took no account of it
+  // and its metal, the chain coil on its wall, stood outside the box a first form boot cut the plates to. Its circle
+  // enters under the same rim margin as every station, at the place main.js puts it (drumDirOf, the one law).
+  const drumCircle = drum ? (() => {
+    const d = drumDirOf(uWind, vPerp, sideSign);
+    return [{ x: P.barrel.x + d.x * drum.dist, y: P.barrel.y + d.y * drum.dist, r: drum.r, rim: PLATE_RIM_MARGIN }];
+  })() : [];
   const formPlate = formRect([
+    ...drumCircle,
     ...Object.keys(P).map((key) => ({ x: P[key].x, y: P[key].y, r: outline[key] || 0, rim: PLATE_RIM_MARGIN })),
     { x: uWind.x * swDist, y: uWind.y * swDist, r: settingWheelR + 1, rim: 0 },
     { x: minuteArborXY.x, y: minuteArborXY.y, r: minuteWheelR + 1, rim: 0 },

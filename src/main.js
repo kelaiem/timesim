@@ -43,7 +43,7 @@ import {
   TECHNIC_FORK, technicChainErrors, ratQ, ratMul, ratEq, ratStr, // §219 tier one — the reserve row's target derives from the sweep below
   solveLayout, d4Window,   // §94 tier A: the two-bar's closure window, the d4 handle's refusal
   CROWN_PULL_DIST, SL_C, SL_TAIL, GROOVE_LOCAL, YK_C,
-  solveKeyless,
+  solveKeyless, drumDirOf,
   segCircleClear, solveElbow, solveStopWork, ELBOW_E_MAX,   // §85 step A: the stop work solves like the layout does
   // Backlog (watch case): the schematic-tier case's dimensions — caps and
   // real hardware sizes, all derived in layout.js at the §39 pin.
@@ -2788,6 +2788,9 @@ const KEYLESS_INPUTS = {
     fourth: fourthWheelR, escape: escapeWheelR, balance: balanceR * 1.35, // + cock
     fork: 4, dial: 0,
   },
+  // §327 — the drum's reach for the form rectangle: its centre distance (FUSEE_DRUM_DIST) and its outermost metal, the
+  // chain coil on the wall, CHAIN_END_R_OUT past DRUM_WRAP_R (the radius TODO 207's plate bound uses). Plain numbers: tools/form-layout.mjs serialises these.
+  drum: { dist: FUSEE_DRUM_DIST, r: DRUM_WRAP_R + CHAIN_END_R_OUT },
   ...(SPEC.stemAzDeg !== null ? { stemAzRad: SPEC.stemAzDeg * DEG2RAD } : {}),
   // §94 tier C — the reserve station's radius spreads in only when present,
   // so identity passes nothing and stays bit-exact (d4's null rule).
@@ -11611,10 +11614,7 @@ const MS_COLLAR_R = 1.5;
 // plate centre) so the chain's span stays clear of the train — the pure
 // perpendicular placement let the span cross the third wheel as the active
 // fusee radius grew (inspector finding).
-const drumDirRawX = -sideSign * vPerp.x + uWind.x * 0.45;
-const drumDirRawY = -sideSign * vPerp.y + uWind.y * 0.45;
-const drumDirL = Math.hypot(drumDirRawX, drumDirRawY) || 1;
-const drumDir = { x: drumDirRawX / drumDirL, y: drumDirRawY / drumDirL };
+const drumDir = drumDirOf(uWind, vPerp, sideSign);   // §327: layout.js' law, shared with the form rectangle's reach to the drum
 const drumPos = {
   // FUSEE_DRUM_DIST is declared with the torque law: the span-aware solve
   // consumes the centre distance before this block runs, and one constant
