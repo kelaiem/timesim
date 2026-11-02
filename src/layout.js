@@ -365,7 +365,13 @@ export const SPEC = (() => {
   // own configKey, not a second spelling of it.
   const strapMm = Number.isFinite(Number(raw.strapMm)) && raw.strapMm !== null && raw.strapMm !== '' && Number(raw.strapMm) > 0
     && Number(raw.strapMm) !== STRAP_MM_DEFAULT ? Number(raw.strapMm) : null;
-  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, rsvIdlers, alarmr, subdialr, dialr, studr, caseShape, frame, hands, formRectSpec, gongSeat, alarm, strapMm });
+  // §75 step 1 — THE DRUM'S AZIMUTH about the fusee, an ABSOLUTE angle in degrees in the movement frame (P's x/y: atan2 of the
+  // drum's direction off P.barrel, counter-clockwise from +x). null keeps drumDirOf's blended direction (the shipped watch, bit-exact).
+  // An absolute angle is the honest dimension (§75): the 0.45 blend is how the default was found, not something to reason about.
+  // Normalised to [0, 360) so one placement has one configKey.
+  const drumAzDeg = raw.drumAzDeg !== undefined && raw.drumAzDeg !== null && raw.drumAzDeg !== '' && Number.isFinite(Number(raw.drumAzDeg))
+    ? ((Number(raw.drumAzDeg) % 360) + 360) % 360 : null;
+  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, rsvIdlers, alarmr, subdialr, dialr, studr, caseShape, frame, hands, formRectSpec, gongSeat, alarm, strapMm, drumAzDeg });
 })();
 // §325 landing 3 — whether this build carries the alarm complication (SPEC.alarm above)
 export const ALARM_BUILT = SPEC.alarm !== false;
@@ -4697,7 +4703,9 @@ export function reserveSectorLoop(cx, cy, r, hubR, midRad, halfRad, n = 96) {
 // placement and for the form rectangle's reach to it: before this the rectangle was built from the P stations
 // alone, and the drum — not a station — stood up to 10 u outside the box a first form boot cut the plates to.
 export const DRUM_OUTWARD_BLEND = 0.45;
-export function drumDirOf(uWind, vPerp, sideSign) {
+// §75 step 1 — `azDeg` (SPEC.drumAzDeg) overrides the blend with an absolute direction in the movement frame; null keeps it.
+export function drumDirOf(uWind, vPerp, sideSign, azDeg = null) {
+  if (azDeg !== null) { const a = (azDeg * Math.PI) / 180; return { x: Math.cos(a), y: Math.sin(a) }; }
   const x = -sideSign * vPerp.x + uWind.x * DRUM_OUTWARD_BLEND, y = -sideSign * vPerp.y + uWind.y * DRUM_OUTWARD_BLEND;
   const l = Math.hypot(x, y) || 1;
   return { x: x / l, y: y / l };
@@ -4975,7 +4983,7 @@ export function solveKeyless({
   // and its metal, the chain coil on its wall, stood outside the box a first form boot cut the plates to. Its circle
   // enters under the same rim margin as every station, at the place main.js puts it (drumDirOf, the one law).
   const drumCircle = drum ? (() => {
-    const d = drumDirOf(uWind, vPerp, sideSign);
+    const d = drumDirOf(uWind, vPerp, sideSign, SPEC.drumAzDeg);
     return [{ x: P.barrel.x + d.x * drum.dist, y: P.barrel.y + d.y * drum.dist, r: drum.r, rim: PLATE_RIM_MARGIN }];
   })() : [];
   const formPlate = formRect([

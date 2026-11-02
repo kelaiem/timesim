@@ -4,7 +4,7 @@
 
 # The instruments
 
-384 scripts. **264 are ACCEPTANCE tests** — they decide and exit non-zero.
+385 scripts. **265 are ACCEPTANCE tests** — they decide and exit non-zero.
 **120 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -263,6 +263,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-60-checks.mjs` | §60 | report | TODO 60 — the focused instruments this change can move, before the full battery. Extending the tower arbor past leg B's pinion puts steel through two bores that had none, so the checks at risk are the ones that judge contact INSIDE a unit and the ones that judge a rigid group's connectedness: |
 | `probe-60-reach.mjs` | §60 | acceptance | TODO 60 — DOES EVERY ROTOR HAVE AN ARBOR IN ITS BORE? |
 | `probe-70-line-spec.mjs` | §70 | acceptance | DOES THE LINE-SPEC GATE FIRE? — `lineSpec` (§70 steps 1–2, scoped by §261 step 4) booted on copied trees whose switch is built wrong on purpose, so the gate is one somebody has seen fire rather than a comment. |
+| `probe-75-drum-az.mjs` | §75 | acceptance | §75 step 1 — WHERE CAN THE MAINSPRING DRUM STAND, judged by the battery's own sweeps? A REPORT (it prints and judges nothing; the battery is the gate). node tools/probe-75-drum-az.mjs '<base spec>' AZ [AZ …] AZ is a ?drumaz= value, or `none` for the build as shipped --fit on a ?case=free spec, solve each point's free outline first (tools/free-outline.mjs --write --spec) and put src/free-outlines.js back afterwards: without a row the free build falls back to a different path, so an unfitted point would measure the fallback, not the drum For each point: a virgin boot (the harness's virginBoot/prepPage), then inspection, clearances and undeclaredClearance RESTRICTED to the units the drum carries with it (pairsTouching: the drum, the chain, the set-up work), with the harness's own opts. It prints each check's GATE rows (BATTERY's `fails`) that touch those units, the boot warnings, and the drum's placement (__clock.drum). Compare a point's rows with `none`'s: a row there too is the build's, not the move's. What it cannot see: pairs not touching the three units (a restricted run, §152's rule), the §35 rod corridor's own probe, and the TODO 207 size claim (a moved drum keeps the size solved along the default direction; the build warns if it no longer fits the plate). |
 | `probe-77-census.mjs` | §77 | acceptance | §77 — run `meshIntegrity` headless and print its summary: the control, the aggregates (builder-owned cause patterns), the top zeroArea and inverted rows, sub-body declarations, and the triangle census's head. The full payload is written to the file named in argv[2] (default meshintegrity-payload.json beside this script) for report-diff work. |
 | `probe-77-chain.mjs` | §77 | acceptance | §77 tier 3 — the chain's sub-body declaration, held at three tensions. |
 | `probe-77-threshold.mjs` | §77 | report | §77 tier 1 — derive ZERO_AREA_MAX from the scene, not from taste. |
