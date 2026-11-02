@@ -1109,11 +1109,16 @@ Cache Storage is partitioned by origin, not path, so `sw.js` names its
 cache for its SCOPE as well as its version; a flat name let each
 environment's activation evict the others'. `tools/offline-check.mjs`
 holds that: it stands up two stamped releases on one origin and boots
-both offline. **`offline.yml` now runs it on PRs that touch those files**
-(`sw.js`, the two documents, `stamp-release.mjs`, `build-pages.mjs`,
-`offline-check.mjs`) — separate from the battery, which runs the source
-tree and so deliberately has no worker at all. Run it by hand when
-iterating; the paths filter keeps it off every other PR.
+both offline. **`offline.yml` runs it on every PR that touches the app's own
+files** (`sw.js`, the documents, everything under `src/` and `vendor/`, the
+stamper, `build-pages.mjs`, `offline-check.mjs`) — separate from the battery,
+which runs the source tree and so deliberately has no worker at all. **Its
+precache gate is COVERAGE, not a count** (§96): every URL the offline journeys
+request must be in the cache by `sw.js`' own rule, a module deleted from the
+cache must be reported (its control), and the precache's size is only reported.
+So a new page or a new dynamic import is covered only once a journey requests
+it: add the journey, never a number. Run it by hand when iterating; docs-only
+PRs skip it.
 
 ## Inspecting
 
