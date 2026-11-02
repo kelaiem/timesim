@@ -14,9 +14,10 @@
 // in the reload dance but is an artifact no real deploy can produce
 // (releases are never seconds apart). Found the hard way; see BUILT §79.
 //
-// What it asserts (30): worker controls on first load · one cache, named for
+// What it asserts: worker controls on first load · one cache, named for
 // the scope AND the version · version.json and /__state NOT cached · precache
-// complete · OFFLINE: index boots, deep link boots, explain.html renders,
+// complete, RE-DERIVED (§96: every URL the offline journeys request is cached, by sw.js' own rule, and a deleted
+// one is reported — its size is reported, never asserted) · OFFLINE: index boots, deep link boots, explain.html renders,
 // primer.html renders · the localized primer boots from cache in EACH of the
 // six non-English locales and the ?lang=zh-Hant deep link stays Traditional
 // (§116) · primer.html renders (§95 — this boot is also the assert that catches a
@@ -306,124 +307,23 @@ try {
   const stateCached = await page.evaluate(async (k) => !!(await (await caches.open(k)).match('/__state')), cacheA);
   check('release: /__state NOT in the cache', !stateCached);
   const counts = await page.evaluate(async (k) => (await (await caches.open(k)).keys()).length, cacheA);
-  // Was 27 at §95 tier two: 20 + favicon.png (Safari SVG fallback) +
-  // apple-touch-icon.png (iOS home screen) + primer.html (the novice
-  // explainer, an unstamped seed like the other documents) + the four modules
-  // its localization pulls in (the shared page-i18n engine, the primer's own
-  // i18n module and its two locale tables — dynamic imports, so they reach
-  // this manifest through the stamper's module walk, not through the
-  // document's).
-  //
-  // 33 since §116: six more locale tables, three locales across two pages,
-  // arriving by that same walk. The count is worth asserting exactly because
-  // it is the cheap half of the guarantee — a table MISSING from the manifest
-  // shows up here, while a table listed but absent from the tree does not
-  // (addAll is all-or-nothing, so the worker simply never activates and this
-  // line is never reached). §116 hit that second failure and it presents as a
-  // hang, not a number: the per-locale offline boots below are what actually
-  // prove each table arrived.
-  // §209 — 37: 35 + Spanish's two tables (one per page). Two per locale is
-  // the rule; a locale that shipped one page and not the other is §116's
-  // shape and would land at an odd number, which this literal would catch.
-  // §211 — 39: Korean's two tables. §213 — 41: Russian's. §214 — 43: Portuguese's. §210 — 45: Italian's.
-  // §212 — 47: Hindi's.
-  // §236 — 48, and it is the first ODD number here on purpose: the glossary
-  // linker is ONE module for both documents (explain.html imports it; the
-  // primer has no glossary), not a per-locale table, so the "two per locale"
-  // rule above does not apply to it and the parity argument now starts from
-  // an odd base.
-  // TODO 158 — 49: src/validated-configs.js, the set of configuration keys the
-  // battery swept, which main.js imports to mark an unverified build. One
-  // module for the app, not a per-locale table, so it adds one.
-  // §249 — 51: Vietnamese's two tables, the two-per-locale rule again. 53: Dutch's.
-  // 55: Persian's. 57: Hebrew's. 59: Indonesian's. 61: Turkish's. 63: Welsh's.
-  // 65: Tagalog's. 67: Latvian's. 69: Hungarian's.
-  // §267 — 70: src/boot-progress.js, the boot bar's generated table, which
-  // main.js imports statically. One module for the app, not a per-locale table,
-  // so it adds one and the two-per-locale parity argument is untouched
-  // (TODO 158's validated-configs.js and §236's glossary linker are the
-  // precedents). It has to be in the manifest: addAll is all-or-nothing and the
-  // app does not boot offline without it, which the OFFLINE boots below prove.
-  // §246 tier two — 71: src/balance-drive.js, the driven balance main.js
-  // imports. One module for the app, like validated-configs.js, so it adds one.
-  // TODO 226 step 3a — 72: src/escapement.js, the lever escapement's one solve
-  // (stones, faces and the wheel's angle off them), which main.js imports
-  // statically. One module for the app, so it adds one, on the same precedents.
-  // §219 tier two (a) — 73: technic.html, an ADOPTED document like the
-  // primer. Its one module import, src/layout.js, is already here through
-  // main.js, so the page adds one. This count is also what catches a
-  // mis-listed technic seed: drop it from ADOPTED and this reads 72.
-  // §219 tier three (b) landing B — 77: the page's LEGO build view adds three
-  // modules (src/ldraw.js, src/technic-frame.js, src/technic-ldraw.js) and the
-  // one data file it fetches, vendor/ldraw/technic-parts.mpd, whose quoted
-  // ./vendor/ URL the document walk stamps like any import. Precached because
-  // the view must open offline like the rest of the page.
-  // §247 tier one — 78: src/lubrication.js, the per-joint lubrication map, which
-  // main.js (the schematic's oil points) and inspect.js import statically. One
-  // module for the app, like balance-drive.js, so it adds one.
-  // §219 tier three (b) landing H — 79: the fusee module (src/technic-fusee.js), which
-  // technic.html imports statically. One module for the page, like landing B's three.
-  // Landing H shipped without this bump, so main read 79/78 until this line (found on the
-  // §274 PR, whose own change adds no module: the diff touches no precached file).
-  // §273 — 80: src/primer-i18n.cs.js. Czech is the first locale to declare fewer
-  // than three surfaces (§274): its explainer is not translated, so there is no
-  // explain-i18n.cs.js and the locale adds ONE module where every other adds two.
-  // §290 — 83: src/selfie-reflection.js, which main.js imports statically. One
-  // module for the app, so it adds one. It found two earlier landings that had
-  // shipped without their bumps, so main had read 82/80 since them: landing I's
-  // src/technic-alarm.js and §287's src/technic-escapement.js, both imported by
-  // technic.html, one module each, like landing H's fusee.
-  // §294 — 84: src/technic-carousel.js, imported statically by technic.html. One
-  // module for the page, so it adds one.
-  // §300-§302 — +6 that were never counted here: technic.html imports src/technic-bom.js, technic-bom-ids.js, technic-bom-view.js,
-  // technic-bricklink.js, technic-colour.js and technic-steps.js, one module each, and this job's path filter did not list the
-  // page or its modules, so those three landings merged without running it (found by §304, which read 90 here). They are
-  // precached like landing H's fusee.
-  // §304 — 96: booklet.html (an adopted document, +1) and its five modules, src/technic-booklet.js, -sig.js, -flags.js,
-  // -page.js and -view.js (+5). The count also catches a mis-listed booklet seed (drop it from ADOPTED and this reads 95); the
-  // booklet is booted offline below.
-  // §307 — 97: src/form-case.js, the form case, which main.js imports DYNAMICALLY
-  // and only under ?case=rect. The stamper walks import() specifiers like static
-  // ones (inspect.js's precedent, above), so the module is versioned and
-  // precached with the rest of the app and the form build opens offline too.
-  // One module for the app, so it adds one.
-  // §306 follow-up — 98: src/technic-clipboard.js, the "copy for BrickLink" button's copy (BrickLink's upload page
-  // takes the wanted list pasted), imported by technic.html and booklet's page module. One module, so it adds one.
-  // §309 — 101: the parts list's substitutes, three modules technic.html reaches through src/technic-bom.js:
-  // src/technic-substitutes.js (the pure reader) and the two files it reads, src/technic-rebrickable.js (generated by
-  // tools/rebrickable-subset.mjs) and src/technic-substitutes-verdicts.js (generated by tools/technic-substitutes.mjs).
-  // One module each, so they add three.
-  // §310 landing 2 — 103: src/gong-solve.js (the wire model and the seat's laws) and src/gong-seats.js (the seats,
-  // generated by tools/gong-seats.mjs), both imported statically by main.js. One module each for the app, so they add two.
-  // §310 — 104: src/case-shape.js, the case-shape select's reload, imported statically by main.js and dynamically
-  // by index.html's boot screen. One module, so it adds one.
-  // 105: src/boot-view.js, the view a boot opens in (case, wireframe, x-ray), imported statically by main.js and
-  // dynamically by index.html's boot screen, which prefills its three view boxes from it. One module, so it adds one.
-  // §310 — 108: gong-bench.html (an adopted document, +1), its solver's module worker src/gong-bench-worker.js (+1, a
-  // quoted ./src/ URL in the document) and the space it lays wires into, src/gong-bench-data.json (+1, fetched by a quoted
-  // ./src/ URL, technic-parts.mpd's precedent). Its other modules (gong-solve.js, gong-seats.js, layout.js) are the
-  // app's. The count also catches a mis-listed bench seed (drop it from ADOPTED and this reads 105, and the bench's
-  // offline boot below fails).
-  // §312 L1 — 109: src/technic-clock.js, the cells joined into one clock, imported statically by technic.html. One
-  // module, so it adds one.
-  // §315 — 110: src/technic-train.js, the going train's cell, imported statically by technic.html (and reached by
-  // booklet's page through src/technic-bom.js and src/technic-steps.js). One module, so it adds one.
-  // §320 — 112: src/gong-level.js, the gong's level law's pure leaves, imported statically by main.js (and by the
-  // volume prototype), and src/alarm-volume.js, the volume prototype's line spec, imported statically by gong-bench.html.
-  // One module each, so they add two.
-  // §316 — 113: src/technic-drive.js, the going train's escapement driven, imported statically by technic.html (and
-  // by src/technic-train.js, which the booklet's page reaches). One module, so it adds one.
-  // §325 — 114: src/free-outlines.js, the free outline each movement is cut to (generated by tools/free-outline.mjs),
-  // imported statically by main.js. One module, so it adds one.
-  // §325 landing 8 — 115: src/slide-cam.js, the telescoping hands' lazy-tongs and cam laws (pure), imported statically by main.js
-  // and geometry.js. One module, so it adds one. (#846 added it and nothing re-ran this check: its paths filter does not
-  // cover main.js, so the drift sat on main until §326's index.html edit triggered it.)
-  // §329 landing 2a — 116: src/trailing-arrest.js, the trailing arrest's line (pure), imported statically by main.js for the
-  // ?arrest=trailing site solve. One module, so it adds one. (Roadmap §96 is the fix that stops this count being transcribed.)
-  check('release: precache complete', counts === 116, `${counts}/116`);
+  // §96 — the precache's SIZE is REPORTED, never asserted. It was a transcribed equality from 23 to 116 (its bump history is in
+  // git and in §96's record), and it could not fail on the change that moved it: a module added under src/ ran no Offline job,
+  // so the next PR to touch a document read N+1/N for someone else's module. What "precache complete" means is asserted below,
+  // after the offline journeys: every URL they request is in the cache, by the worker's own matching rule.
+  mark(`release: precache holds ${counts} entries (reported, not asserted — §96)`);
 
   // ---- offline: the whole point ----
   mark('offline: booting the documents');
+  // §96 — RECORD every same-origin request the offline journeys make (context-wide, so a worker's or a dynamic import's counts),
+  // to assert below that the cache covers each one. Observation sees only what the journeys exercise, so the journeys are the
+  // list that matters now: a missing journey degrades coverage, where a stale count produced a wrong number.
+  const relOrigin = `http://127.0.0.1:${relPort}`;
+  const offlineReqs = new Map();   // url → errorText when it failed, else null
+  const onReq = (r) => { const u = r.url(); if (u.startsWith(relOrigin) && !offlineReqs.has(u)) offlineReqs.set(u, null); };
+  const onFail = (r) => { const u = r.url(); if (u.startsWith(relOrigin)) offlineReqs.set(u, r.failure()?.errorText || 'failed'); };
+  ctx.on('request', onReq);
+  ctx.on('requestfailed', onFail);
   await ctx.setOffline(true);
   await page.reload(NAV);
   await page.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
@@ -484,8 +384,48 @@ try {
     code, { timeout: 10000 }).then(() => true, () => false);
     check(`OFFLINE: primer.html localizes (${code} table came from the cache)`, ok);
   }
+  // §96 — the LEGO page, offline: precached since §219, and until now proved only by the transcribed count. It stands when its
+  // build has published window.__technic (its last line).
+  await page.goto(`http://127.0.0.1:${relPort}/technic.html`, NAV);
+  const technicOk = await page.waitForFunction(() => !!window.__technic, null, { timeout: 120000 }).then(() => true, () => false);
+  check('OFFLINE: technic.html builds from cache', technicOk);
   await page.goto(`http://127.0.0.1:${relPort}/index.html`, NAV);
   await page.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
+  ctx.off('request', onReq);
+  ctx.off('requestfailed', onFail);
+  // §96 — PRECACHE COMPLETE, re-derived: every URL the offline journeys requested is in the cache, matched by sw.js' own rule (an
+  // asset WITH its query — a stale ?v never answers — and a document by its path alone, so deep links load), and none failed. The
+  // two never-cached URLs are excluded here and held NOT cached above.
+  const NEVER = (u) => { const p = new URL(u).pathname; return p === '/__state' || p.endsWith('/version.json'); };
+  const covered = async (urls, cacheKey) => page.evaluate(async ([k, list]) => {
+    const c = await caches.open(k), out = [];
+    for (const u of list) { const url = new URL(u); if (!(await c.match(u)) && !(await c.match(url.origin + url.pathname))) out.push(u); }
+    return out;
+  }, [cacheKey, urls]);
+  const requested = [...offlineReqs.keys()].filter((u) => !NEVER(u));
+  const missing = await covered(requested, cacheA);
+  const failedReqs = requested.filter((u) => offlineReqs.get(u));
+  const short = (u) => u.slice(relOrigin.length);
+  check('release: precache covers every URL the offline journeys request (§96)',
+    requested.length > 0 && missing.length === 0 && failedReqs.length === 0,
+    `${requested.length} distinct URLs requested offline, ${counts} cached; missing ${missing.length}${missing.length ? ` (${missing.slice(0, 5).map(short).join(', ')})` : ''}; failed ${failedReqs.length}${failedReqs.length ? ` (${failedReqs.slice(0, 5).map((u) => `${short(u)} ${offlineReqs.get(u)}`).join(', ')})` : ''}`);
+  // …and its CONTROL, §96's acceptance: take one requested module out of the cache, and the same predicate must report it, and it
+  // must not load offline; then put it back. A coverage check that cannot see a hole is a count with extra steps.
+  {
+    const victim = requested.find((u) => /\/src\/primer-i18n\.[a-z-]+\.js\?v=/.test(u)) ?? requested.find((u) => /\.js\?v=/.test(u));
+    const saved = await page.evaluate(async ([k, u]) => {
+      const c = await caches.open(k), r = await c.match(u);
+      if (!r) return false;
+      window.__precacheControl = r;   // kept in the page to put back
+      await c.delete(u);
+      return true;
+    }, [cacheA, victim]);
+    const reported = saved ? (await covered([victim], cacheA)).length === 1 : false;
+    const loads = saved ? await page.evaluate((u) => fetch(u).then(() => true, () => false), victim) : true;
+    const restored = saved ? await page.evaluate(async ([k, u]) => { await (await caches.open(k)).put(u, window.__precacheControl); return !!(await (await caches.open(k)).match(u)); }, [cacheA, victim]) : false;
+    check('release: control — a requested module deleted from the cache is reported missing and does not load offline',
+      saved && reported && !loads && restored, `${victim ? short(victim) : '(no victim)'}: deleted ${saved}, reported ${reported}, loaded offline ${loads}, restored ${restored}`);
+  }
   await ctx.setOffline(false);
 
   // ---- a release lands: repoint the "QA symlink", expect the ONE toast ----
