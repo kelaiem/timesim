@@ -609,12 +609,12 @@ export const MECH_GRAPH = {
 // the simulation fiction CLAUDE.md names: an edge with no force behind it.
 if (ROUTE_SPEC) MECH_GRAPH.support.push([ROUTE_UNIT_NAME, 'plate']);
 
-// §325 landing 6 — THE FRAME WITHOUT PILLARS (?frame=lands). The back plate is screwed onto lands the base plate raises on
-// its own rim, so the unit 'pillars' is not built and its two support rows are replaced by the one the metal makes: the back
-// plate stands on the base plate. Like the route's row the condition is the SPEC key main.js builds on, since checkGraph
-// fails both ways (a declared unit that was not built, a built unit that was not declared). SPEC.frame is already null
-// off the free case (layout.js), so the default graph below is the one that has always been.
-const FRAME_LANDS = SPEC.frame === 'lands';
+// §325 landing 6 / §328 — THE FRAME ON LANDS, the default since §328 step 2 (`?frame=pillars` builds the applied pillars).
+// The back plate is screwed onto lands the base plate raises, so the unit 'pillars' is not built and its two support rows
+// are replaced by the one the metal makes: the back plate stands on the base plate. Like the route's row the condition is
+// the SPEC key main.js builds on, since checkGraph fails both ways (a declared unit that was not built, a built unit that
+// was not declared); the tables below that name 'pillars' are the pillar frame's, and are kept for `?frame=pillars`.
+const FRAME_LANDS = SPEC.frame !== 'pillars';
 if (FRAME_LANDS) {
   MECH_GRAPH.support = MECH_GRAPH.support.filter(([a, b]) => a !== 'pillars' && b !== 'pillars');
   MECH_GRAPH.support.push(['Three-quarter plate', 'plate']);

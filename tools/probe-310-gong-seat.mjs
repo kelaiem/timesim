@@ -189,7 +189,8 @@ const seatRead = async () => {   // (Infinity crosses page.evaluate as null: the
     r.tqT = tb.max.z - tb.min.z;   // TQ_LAND_MIN is max(STOCK_MIN_U, TQ_T): the plate's own thickness governs
     // TODO 272 — the pillars as built: each one's seat and its widest land, read off its own vertices
     r.pillars = [];
-    c.scene.traverse((o) => { if (o.name !== 'pillar' || !o.isMesh) return;
+    // §328: the frame's supports — a pillar, or (the default since §328 step 2) a land on the pillar's own seat and cap
+    c.scene.traverse((o) => { if ((o.name !== 'pillar' && !o.userData.rimLand) || !o.isMesh) return;
       const w = new T.Vector3(); o.getWorldPosition(w); const pa = o.geometry.attributes.position, v = new T.Vector3(); let capR = 0;
       for (let i = 0; i < pa.count; i++) { v.fromBufferAttribute(pa, i).applyMatrix4(o.matrixWorld); capR = Math.max(capR, Math.hypot(v.x - w.x, v.y - w.y)); }
       r.pillars.push({ x: w.x, y: w.y, capR }); });

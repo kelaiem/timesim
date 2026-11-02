@@ -17141,15 +17141,15 @@ const PILLAR_TENON_LEN = PLATE_TOP_FACE - PLATE_BACK_FACE;
 // below is cut through at the mouth with the conical land put back.
 const PILLAR_RIVET_C = STOCK_MIN_U;
 const PILLAR_RIVET_MOUTH_R = PILLAR_TENON_R + PILLAR_RIVET_C;
-// §325 landing 6 — THE FRAME WITHOUT PILLARS (?frame=lands, the free case and since §328 step 1 the round one: layout.js
-// reads the key to null on every other kind).
+// §325 landing 6 / §328 — THE FRAME ON LANDS: the default on every case kind since §328 step 2 (`?frame=pillars` builds the
+// four applied pillars instead, the traditional frame, kept as a supported style).
 // The back plate is screwed straight onto LANDS the base plate raises on its own rim, so no support is a free column
 // past the train and none needs a seat in the open interior. A land is the pillar's seat WITHOUT the pillar's joint:
 // its radius is the cap the pillar scan already keeps clear (PILLAR_CAP_R — the screw head's seat is the widest land
 // the back plate's screw asks of what carries it), its column the same TQ_BOT_Z − PILLAR_BASE_Z, its bore the same
 // tapped bore. What it does not have is a tenon or a rivet: it is turned from the plate's stock, so it owes the plate
 // no joint of its own and its foot only needs a root in the slab (half the plate, the pocket floors' lap).
-const FRAME_LANDS = SPEC.frame === 'lands' && (FORM?.kind === 'free' || !FORM);   // §328: the round case too (no FORM)
+const FRAME_LANDS = SPEC.frame !== 'pillars';
 const LAND_ROOT = (PLATE_TOP_FACE - PLATE_BACK_FACE) / 2;
 if (PILLAR_RIVET_C > PILLAR_TENON_LEN - STOCK_MIN_U + 1e-9)
   console.warn(`TODO 200: pillar countersink ${PILLAR_RIVET_C.toFixed(3)} leaves under STOCK_MIN_U of plate round the tenon (plate ${PILLAR_TENON_LEN.toFixed(3)})`);
@@ -17212,7 +17212,10 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
   // far inside its outline. Held only to TQ_LAND_MIN, a pillar the strike group
   // pushed to the rim stood 3.238 inside the cushion and the fit grew the case
   // round it — the frame paying for the gong with the case's size.
-  const PILLAR_RIM_LAND = FRAME_LANDS ? TQ_LAND_MIN : Math.max(TQ_LAND_MIN, PLATE_RIM_MARGIN);   // §325 landing 6: a land is plate, not counted metal, so it owes the case's margin nothing — only the back plate's edge land
+  // §325 landing 6: a land is plate, not counted metal, so it owes the case's margin nothing — only the back plate's edge land.
+  // §328 step 2: that is the FREE outline's rule (its rim is fitted to the counted metal, and the pillars it refused left
+  // the 315° quadrant empty); on every other kind a land takes the pillar's seat, so it is scanned on the pillar's terms
+  const PILLAR_RIM_LAND = FRAME_LANDS && FORM?.kind === 'free' ? TQ_LAND_MIN : Math.max(TQ_LAND_MIN, PLATE_RIM_MARGIN);
   const seatClearance = (x, y) => {
     // §325 landing 3 — on the FREE outline the rim is the fit to this very metal, which holds the cap exactly the rim
     // margin inside it: the land owed there IS that margin, so the CLEAR_MARGIN every obstacle below adds is handed
@@ -17366,10 +17369,11 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
           const x = Math.cos(a) * r, y = Math.sin(a) * r;
           const c = seatClearance(x, y);
           // §325 landing 6: a LAND takes the first seat that holds (r runs outward in, so the outermost on the nearest bearing)
-          // — on the FREE outline. §328 step 1: on the round plate a land takes the PILLAR's seat (the deepest on the ring,
-          // the scan's own rule), so it stands on exactly the footprint every later siting solve was given (`pillarSeats`,
-          // the cap's disc) and the frame moves nothing else; measured, the outermost rule moved the 45° seat 3.76 round the ring
-          if (c >= CLEAR_MARGIN && (!best || (!(FRAME_LANDS && FORM) && c > best.c + (FORM?.kind === 'free' ? 1e-9 : 0.5)))) best = { x, y, c, dA };
+          // — on the FREE outline. §328: on every other kind a land takes the PILLAR's seat (the deepest on the ring, the
+          // scan's own rule), so it stands on exactly the footprint every later siting solve was given (`pillarSeats`, the
+          // cap's disc) and the frame moves nothing else; measured, the outermost rule moved the round 45° seat 3.76 round the
+          // ring, and with the pillar's rule `?frame=pillars` and the default share every seat on all six kinds
+          if (c >= CLEAR_MARGIN && (!best || (!(FRAME_LANDS && FORM?.kind === 'free') && c > best.c + (FORM?.kind === 'free' ? 1e-9 : 0.5)))) best = { x, y, c, dA };
         }
       }
       await breathe(126);
@@ -20437,7 +20441,7 @@ const dial = G.makeDial({
   // back to CCW for the Shape.
   ...(FORM ? { outline: FORM.loop().map(([X, Y]) => [P.dial.x - X, Y - P.dial.y]).reverse() } : {}),
   ...(DIAL_TRACK ? { track: DIAL_TRACK } : {}),   // §311 — the form face's railroad, the outline's own offsets
-  fitMarkers: FRAME_LANDS && !!FORM,   // §325 landing 7: the lands preview fits its numerals to the rail, not the round band (a form face's; §328's round lands keep the band)
+  fitMarkers: FRAME_LANDS && FORM?.kind === 'free',   // §325 landing 7: the free outline's lands preview fits its numerals to the rail; §328 made lands every kind's default, and the other faces keep their band
   subdialRecess: SUBDIAL_RECESS,
   thickness: DIAL_T,          // TODO 26 — the dial is a plate now; its BACK lands on Z_DIAL
   edgeBreak: DIAL_EDGE_BREAK, // TODO 26 — and the plate is thinner at its rim, by a real chamfer
@@ -22331,7 +22335,7 @@ const PLATE_RIM = (() => {
     // §328 step 1 — a LAND is the plate's metal but not its RIM: on the round plate one stands within this walk's 1 mm seat
     // band (seat r + PILLAR_CAP_R reaches past rSeat), and read as rim its top (TQ_BOT_Z) became the rim's back face, the
     // gong's annulus floor (GONG_RIM_Z) rose above the gong and its post length went negative. What the band is FOR — the
-    // case's seat and its clamp heads — is held clear of the lands by tools/probe-328-round-lands.mjs instead
+    // case's seat and its clamp heads — is held clear of the lands by tools/probe-328-lands.mjs instead
     if (!o.isMesh || o.userData.schematic || o.userData.rimLand || !o.geometry?.attributes?.position) return;
     const p = o.geometry.attributes.position;
     const _mw = p.count > 0 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)

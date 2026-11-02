@@ -13,8 +13,10 @@
 // stays the instrument that prints the table and holds it to the metal.
 //
 // Controls, fatal:
-//  · ROSTER — exactly the declared population per joint class (4 plate
-//    screws, 2 balance-cock, 1 fork-cock, 1 escape-cock, 4 pillar tenons). A site that
+//  · ROSTER — exactly the declared population per joint class, per frame
+//    (§328: on lands, 4 plate screws into the lands, 2 balance-cock, 1 fork-cock,
+//    1 escape-cock; on `?frame=pillars`, the plate screws into the pillars and
+//    4 pillar tenons besides). A site that
 //    stops declaring its screw would otherwise read as a clean table of
 //    fewer rows.
 //  · METAL AGREES WITH THE DECLARATION — every row's shank (or tenon) is
@@ -32,40 +34,49 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const ROOT = process.env.ROOT || join(dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = 8484;
-const ROSTER = {
-  'Three-quarter plate ⇄ pillar': 4,
+// §328 — the roster per FRAME: the default since §328 step 2 is the back plate on the base plate's own lands (its four
+// plate screws thread the lands' bores, and a land, being the plate, has no tenon), and `?frame=pillars` keeps the
+// applied pillars with their riveted tenons. Both builds are booted, so neither construction's joints go unmeasured.
+const COMMON = {
   'Balance cock ⇄ base plate': 2,
   'Fork cock ⇄ base plate': 1,
   'Escape cock ⇄ base plate': 1,   // §322: the escape cock's one foot screw
-  'Pillar ⇄ base plate': 4,   // step 3: riveted tenons, measured on the pillar mesh itself
 };
+const FRAMES = [
+  { q: '', name: 'lands (default)', roster: { 'Three-quarter plate ⇄ rim land': 4, ...COMMON } },
+  { q: 'frame=pillars', name: 'pillars', roster: {
+    'Three-quarter plate ⇄ pillar': 4, ...COMMON,
+    'Pillar ⇄ base plate': 4,   // step 3: riveted tenons, measured on the pillar mesh itself
+  } },
+];
 const TOL_MM = 1e-4;
 
 const srv = spawn('python3', ['-m', 'http.server', String(PORT), '--bind', '127.0.0.1'], { cwd: ROOT, stdio: 'ignore' });
 await new Promise((r) => setTimeout(r, 1200));
 const browser = await chromium.launch();
-const page = await browser.newPage();
-const warns = [];
-page.on('pageerror', (e) => warns.push('PAGEERROR ' + String(e)));
-// A plain static server has no /__state (dev_server.py's persistence file),
-// so the app's state probe 404s here and falls back to localStorage — the
-// one resource miss that is this harness, not the build. Every other 404
-// still counts.
-const stateMiss = [];
-page.on('response', (r) => { if (r.status() === 404 && new URL(r.url()).pathname === '/__state') stateMiss.push(r.url()); });
-page.on('console', (m) => {
-  const t = m.text();
-  if (/WebGL|ReadPixels|GPU stall/.test(t)) return;
-  if (/Failed to load resource: .*404/.test(t) && stateMiss.length) { stateMiss.pop(); return; }
-  if (m.type() === 'warning' || m.type() === 'error') warns.push('[' + m.type() + '] ' + t);
-});
 let failed = 0;
 const fail = (msg) => { failed++; console.log('FAIL  ' + msg); };
-try {
-  await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'load', timeout: 180000 });
+async function runFrame(F) {
+  const page = await browser.newPage();
+  const warns = [];
+  page.on('pageerror', (e) => warns.push('PAGEERROR ' + String(e)));
+  // A plain static server has no /__state (dev_server.py's persistence file),
+  // so the app's state probe 404s here and falls back to localStorage — the
+  // one resource miss that is this harness, not the build. Every other 404
+  // still counts.
+  const stateMiss = [];
+  page.on('response', (r) => { if (r.status() === 404 && new URL(r.url()).pathname === '/__state') stateMiss.push(r.url()); });
+  page.on('console', (m) => {
+    const t = m.text();
+    if (/WebGL|ReadPixels|GPU stall/.test(t)) return;
+    if (/Failed to load resource: .*404/.test(t) && stateMiss.length) { stateMiss.pop(); return; }
+    if (m.type() === 'warning' || m.type() === 'error') warns.push('[' + m.type() + '] ' + t);
+  });
+  console.log(`\n=== frame: ${F.name} ===`);
+  await page.goto(`http://127.0.0.1:${PORT}/index.html${F.q ? `?${F.q}` : ''}`, { waitUntil: 'load', timeout: 180000 });
   await page.waitForFunction(() => !!window.__clock || !!window.__bootError, null, { timeout: 180000 });
   const bootError = await page.evaluate(() => window.__bootError && String(window.__bootError));
-  if (bootError) throw new Error('boot failed: ' + bootError);
+  if (bootError) throw new Error(`[${F.name}] boot failed: ` + bootError);
   const rows = await page.evaluate(() => {
     window.__clock.resetInputs?.();
     return window.__clock.frameJoints();
@@ -83,24 +94,28 @@ try {
   // ROSTER
   const count = {};
   for (const r of rows) count[r.joint] = (count[r.joint] ?? 0) + 1;
-  for (const [k, n] of Object.entries(ROSTER))
-    if ((count[k] ?? 0) !== n) fail(`roster: '${k}' has ${count[k] ?? 0} rows, expected ${n}`);
+  for (const [k, n] of Object.entries(F.roster))
+    if ((count[k] ?? 0) !== n) fail(`[${F.name}] roster: '${k}' has ${count[k] ?? 0} rows, expected ${n}`);
   for (const k of Object.keys(count))
-    if (!(k in ROSTER)) fail(`roster: undeclared joint class '${k}' (${count[k]} rows) — add it to ROSTER`);
+    if (!(k in F.roster)) fail(`[${F.name}] roster: undeclared joint class '${k}' (${count[k]} rows) — add it to the roster`);
 
   // METAL AGREES WITH THE DECLARATION
   for (const r of rows) {
-    if (!r.shankVerts || r.measuredMM == null) { fail(`${r.joint} at (${f(r.site.x, 2)}, ${f(r.site.y, 2)}): no shank metal at the site`); continue; }
+    if (!r.shankVerts || r.measuredMM == null) { fail(`[${F.name}] ${r.joint} at (${f(r.site.x, 2)}, ${f(r.site.y, 2)}): no shank metal at the site`); continue; }
     if (Math.abs(r.measuredMM - r.engagedMM) > TOL_MM)
-      fail(`${r.joint} at (${f(r.site.x, 2)}, ${f(r.site.y, 2)}): measured ${f(r.measuredMM, 5)} mm ≠ declared ${f(r.engagedMM, 5)} mm`);
+      fail(`[${F.name}] ${r.joint} at (${f(r.site.x, 2)}, ${f(r.site.y, 2)}): measured ${f(r.measuredMM, 5)} mm ≠ declared ${f(r.engagedMM, 5)} mm`);
   }
 
   // BOOT SILENT
-  if (warns.length) fail('boot not silent:\n  ' + warns.join('\n  '));
+  if (warns.length) fail(`[${F.name}] boot not silent:\n  ` + warns.join('\n  '));
 
   const short = rows.filter((r) => r.engagedMM < r.requiredMM - TOL_MM);
   console.log(`\nREPORT: ${short.length}/${rows.length} joints under ENGAGE_MIN·d (TODO 184's debt; not a failure).`);
-  console.log(failed ? `\n${failed} control(s) FAILED` : 'controls PASS (roster, metal = declaration, boot silent)');
+  await page.close();
+}
+try {
+  for (const F of FRAMES) await runFrame(F);
+  console.log(failed ? `\n${failed} control(s) FAILED` : '\ncontrols PASS (roster, metal = declaration, boot silent) on both frames');
 } catch (e) {
   fail(String(e && e.stack || e));
 } finally {

@@ -69,7 +69,8 @@ for (const kind of KINDS) for (const mode of ['bar', 'spiral']) {
   const S = await page.evaluate(() => {
     if (window.__bootError) return { bootError: String(window.__bootError.message || window.__bootError) };
     const c = window.__clock, g = c.gongSeat, pillars = [];
-    c.scene.traverse((o) => { if (o.name !== 'pillar' || !o.isMesh) return;
+    // §328: the frame's supports — a pillar, or (the default since §328 step 2) a land on the pillar's own seat and cap
+    c.scene.traverse((o) => { if ((o.name !== 'pillar' && !o.userData.rimLand) || !o.isMesh) return;
       const w = o.getWorldPosition(o.position.clone()), pa = o.geometry.attributes.position, v = o.position.clone(); let capR = 0;
       for (let i = 0; i < pa.count; i++) { v.fromBufferAttribute(pa, i).applyMatrix4(o.matrixWorld); capR = Math.max(capR, Math.hypot(v.x - w.x, v.y - w.y)); }
       pillars.push({ x: w.x, y: w.y, capR }); });
