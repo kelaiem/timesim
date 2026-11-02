@@ -11621,7 +11621,7 @@ const MS_COLLAR_R = 1.5;
 // plate centre) so the chain's span stays clear of the train — the pure
 // perpendicular placement let the span cross the third wheel as the active
 // fusee radius grew (inspector finding).
-const drumDir = drumDirOf(uWind, vPerp, sideSign);   // §327: layout.js' law, shared with the form rectangle's reach to the drum
+const drumDir = drumDirOf(uWind, vPerp, sideSign, SPEC.drumAzDeg);   // §327: layout.js' law, shared with the form rectangle's reach to the drum; §75: ?drumaz= overrides the blend
 const drumPos = {
   // FUSEE_DRUM_DIST is declared with the torque law: the span-aware solve
   // consumes the centre distance before this block runs, and one constant
@@ -11646,7 +11646,9 @@ const drumPos = {
   const reach = (R) => Math.hypot(P.barrel.x + drumDir.x * (D0 + R), P.barrel.y + drumDir.y * (D0 + R)) + R + 2 * CHAIN_END_R_OUT + CLEAR_MARGIN;
   let lo = 0, hi = plateR;
   for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (reach(m) <= plateR) lo = m; else hi = m; }
-  if (!(DRUM_R_ACTUAL <= lo + 1e-9 && lo - DRUM_R_ACTUAL < 0.01))
+  // §75 step 1 — the drum's SIZE was solved along the default direction. A moved drum (?drumaz=) keeps that size, so there
+  // only the fit is held (its chain coil one CLEAR_MARGIN inside the plate); "as large as the plate allows" is the default's claim.
+  if (SPEC.drumAzDeg !== null ? !(DRUM_R_ACTUAL <= lo + 1e-9) : !(DRUM_R_ACTUAL <= lo + 1e-9 && lo - DRUM_R_ACTUAL < 0.01))
     console.warn(`TODO 207: DRUM_R_ACTUAL ${DRUM_R_ACTUAL} is not the plate's bound rounded down — the drum's chain coil may reach ${lo.toFixed(4)} (one CLEAR_MARGIN inside plateR ${plateR.toFixed(3)})`);
 }
 // Drum seat: LIFTED above the great wheel's plane. At the compact 2.5-unit
@@ -19236,9 +19238,15 @@ for (const j of FRAME_JOINTS) {
       beakMoment: bMoment, rejects, trace: trace.join('') };
   };
   let FINGER = null;
+  // §75 step 1 — EVERY pad candidate's beak scan, not only the chosen one's: which test rejected each beak station (the trace's
+  // letters, counted) and how many stations were legal. The loop stops at the first legal candidate, so on a solved movement this
+  // holds the candidates tried up to it; on one with no legal beak it holds them all. Read through __clock.windArrest.candidateScan.
+  const candidateScan = [];
+  WIND_ARREST.candidateScan = candidateScan;
   for (const cand of candidates) {
     await breathe(151);
     const s = solveFinger(cand.az);
+    candidateScan.push({ az: cand.az, tTouch: cand.tTouch, legal: (s.trace.match(/\./g) || []).length, rejects: s.rejects, trace: s.trace });
     await breathe(152);
     if (!s.beakParked) { FINGER ??= { ...s, az: cand.az, tTouch: cand.tTouch }; continue; }
     FINGER = { ...s, az: cand.az, tTouch: cand.tTouch };
@@ -62411,6 +62419,12 @@ refreshConfigMark();
 // Debug/verification hook: step the sim and render without rAF (occluded windows
 // throttle requestAnimationFrame, which stalls automated checks).
 window.__clock = {
+  // §75 step 1 — the mainspring drum's placement in the movement frame (P's x/y): centre, direction off the fusee (P.barrel),
+  // its absolute azimuth in degrees (counter-clockwise from +x, the frame ?drumaz= takes), the centre distance and the chain
+  // coil's outer reach (DRUM_WRAP_R + CHAIN_END_R_OUT). Serializable, for the drum probes.
+  drum: { x: drumPos.x, y: drumPos.y, dirX: drumDir.x, dirY: drumDir.y,
+    azDeg: ((Math.atan2(drumDir.y, drumDir.x) * 180) / Math.PI + 360) % 360, dist: FUSEE_DRUM_DIST, reachR: DRUM_WRAP_R + CHAIN_END_R_OUT,
+    azSpec: SPEC.drumAzDeg },
   // §247 tier three — the oil points the schematic drew and the bearings it declined to site.
   oilPoints: () => ({ points: SCHEMATIC.oilPoints, unsited: SCHEMATIC.oilUnsited }),
   // TODO 184 — the frame's screw joints, DECLARED (the shank each site passed
@@ -62863,6 +62877,7 @@ window.__clock = {
       padT: WIND_ARREST.padT, padZ: WIND_ARREST.padZ,
       hubZ: WIND_ARREST.hubZ, lugZ: WIND_ARREST.lugZ, lugOuter: WIND_ARREST.lugOuter,
       liftAt: WIND_ARREST.liftAt, beakScanRejects: WIND_ARREST.beakScanRejects,
+      candidateScan: WIND_ARREST.candidateScan,
     };
   },
   setCrownRotation(v) { crownRotation = v; },
