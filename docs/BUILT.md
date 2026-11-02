@@ -32,7 +32,7 @@ that band's swept footprint.
 
 | § | Title | Parts |
 |---|---|---|
-| [§329](built/0329.md) | A trailing-side winding arrest: the fusee stop's beak on the chain-free side, a reversing lever, designed in a line — PARTIAL: landing 1 (the line) | 1 |
+| [§329](built/0329.md) | A trailing-side winding arrest: the fusee stop's beak on the chain-free side, a reversing lever, designed in a line — PARTIAL: landing 1 (the line), landing 2a (the site, measured: no site seats; paused) | 1 |
 | [§328](built/0328.md) | Integrated lands for the default round build, and sinks with lands on both faces — PARTIAL: step 1 shipped, lands the default (step 1b) | 1 |
 | [§327](built/0327.md) | The form rectangle reaches the mainspring drum | 1 |
 | [§326](built/0326.md) | The strap width is adjustable, and 19 mm by default | 1 |

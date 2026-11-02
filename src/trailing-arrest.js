@@ -1,38 +1,52 @@
-// §329 landing 1 — THE TRAILING-SIDE WINDING ARREST, DESIGNED IN A LINE (pure; nothing in the build reads it yet).
+// §329 — THE TRAILING-SIDE WINDING ARREST, DESIGNED IN A LINE (pure). Landing 2a's site solve in main.js reads it under ?arrest=trailing.
 //
 // §47's arrest is one finger on one stud: the arriving coil lifts its pad, and its beak, on the SAME part, throws inward in front of
 // the fusee's lug. §75 step 1 measured that with the mainspring drum turned to 125–135° the chain fills every beak station on the side
-// that finger throws inward, while the other side of the pad is chain-free, where a beak on the same finger throws OUTWARD. A mirrored
-// finger throws inward there but reverses the lug's moment (in radial/tangential components the lug's push gives a moment a_r·f, which
-// a mirror does not change, while the throw's sign flips), so the lug would peel it out. So the beak moves to a SECOND lever on its own
-// stud, and the finger drives it in reverse through a PIN IN A SLOT (the owner's pick, 2026-11-02).
+// that finger throws inward, while the other side of the pad is chain-free (landing 1 measured it: all 105 stations). A beak on the
+// finger there throws OUTWARD; a mirrored finger throws inward but reverses the lug's moment (in radial/tangential components the lug's
+// push gives a moment a_r·f, which a mirror does not change, while the throw's sign flips), so the lug would peel it out. So the beak
+// moves to a SECOND lever on its own stud, driven by the finger through a PIN IN A SLOT (the owner's pick, 2026-11-02): its own pivot is
+// what lets the lug's force pass on the engaging side.
 //
-// The line (CLAUDE.md's design priority: input at one end, output at the other, no corridors), in its own frame:
+// WHICH WAY THE SECOND LEVER TURNS, AND HOW FAR, ARE THE FOLD'S FACTS — and landing 2a found landing 1 wrong on both.
+//   1. Landing 1 drew the pin BETWEEN the studs, so the levers counter-rotated. 2a's site solve tried every far-side beak station at
+//      every lever direction on the lands preview at drum 135° (69 pad candidates): every station able to throw the full 0.506 put the
+//      stop's moment in the PEELING sense (21,874 refused on the sign, none on the size). In this movement the finger turns with
+//      MOVEMENT_SENSE and the lug pushes the beak away from the pad, so an engaging stop needs the beak lever to turn WITH the finger.
+//   2. With the pin beyond S2 (S1 ─ S2 ─ pin) the levers co-rotate but the beak lever turns MORE than the finger (ratio 2.03), so its
+//      arm is short (0.89) and, held near the force line by the engaging condition, keeps S2 within ~4.5 u of the cone: every site's
+//      hub rim stood inside the arm stop (49–59k tries per drum direction, the shipped one included).
+// So the finger's stud stands BETWEEN the beak lever's stud and the pin (S2 ═ S1 ─ pin): the beak lever's slotted tail reaches back
+// over S1 to the pin on the finger's tail, the levers co-rotate, and the beak lever turns LESS than the finger, so its beak arm is long
+// and its stud stands well outside the cone. (The owner's pick, 2026-11-02, after both refusals.)
 //
-//        pad (lifts by PAD_LIFT, −x)               beak (throws +x, inward at the lug)
-//          │                                         ╲  tilted β past the lug's force line
-//          │ R_PAD_ARM                                ╲ L2
-//   S1 ────●──── r1 ──── pin ═══[ slot ]═══ r2 ────────● S2
-//      finger (turns +ψ1)                   beak lever (turns −ψ2)
+//        pad (lifts by PAD_LIFT, −x)
+//          │ R_PAD_ARM
+//   S2 ════════ e ════════ S1 ── r1 ── pin        the beak lever's slot runs from S2 out past S1 to the pin (r2 = e + r1)
+//   │╲                                            finger turns +ψ1, beak lever +ψ2 (< ψ1)
+//   │ ╲ L2 — a +ψ2 turn carries the beak +x (inward at the lug)
+//   ●  beak; the lug pushes it toward S2 (+y): the arm in compression, §47's own idiom
 //
-// S1 at the origin, S2 at (d, 0) with d = r1 + r2; the pad arm and the beak arm both run along +y at rest (the beak arm tilted by β),
-// so the pad's lift and the beak's throw are both along x and opposite. Every row is derived from a constraint, written beside it:
-//   · ψ1 = asin(PAD_LIFT / R_PAD_ARM): the finger's turn when the pad's face moves PAD_LIFT perpendicular to its arm;
-//   · the pin rides the slot exactly: ψ2 = atan2(r1·sin ψ1, d − r1·cos ψ1), the slot running along S2→pin;
-//   · r1 and r2 at their floors: a hub (the bore and its running clearance, a STOCK_MIN_U wall) and the pin (or the slot's flank) set in
-//     a STOCK_MIN_U wall beyond it;
-//   · ONE spring, on the BEAK LEVER, biasing it toward rest on its own bank: through the slot it presses the pin — and the finger with it —
-//     onto the slot's DRIVING flank at every pose, so the slot's running clearance (the pin's diameter plus PIVOT_BORE_CLEAR) is never
-//     lost motion, and the finger needs no bank of its own (the pin locates it). The first draft hung the spring on the finger and left
-//     the beak lever to float: its parked beak could then drift PIVOT_BORE_CLEAR·L2/|S2→pin| (0.104) INWARD, leaving 0.066 to the lug's
-//     orbit, under CLEAR_MARGIN — the reason the spring moved. The stop's engaging moment turns the beak lever further along its throw,
-//     which lifts the flank OFF the pin, so the slot carries the throw and never the stop;
-//   · β: at full throw the lug's force (tangential, along −y onto the beak, toward S2) must pass OUTSIDE the pivot's friction circle on the
-//     ENGAGING side, so the stop's load drives the beak deeper rather than back into the slot. The friction circle's radius is
-//     MU_STEEL·PIVOT_MIN_U (MU_STEEL: the adverse corner of every steel row, layout.js), so the thrown arm stands asin(MU_STEEL·PIVOT_MIN_U
-//     / L2) past the force line, on the side the throw carries it: β = −ψ2 − asin(MU_STEEL·PIVOT_MIN_U / L2);
-//   · L2: solved so the throw, after the lost motion, reaches the PARKED clearance (CLEAR_MARGIN + 0.02, §47's BEAK_PARKED_R − LUG_OUTER)
-//     plus the bite the arrest it replaces delivers (BITE_REF) — the trailing arrest bites as deep as §47's, not merely past 0.15.
+// THE LINE IS A FAMILY IN L2, AND THE FOLD PICKS ITS MEMBER. What the arrest must deliver is the spec: the throw and bite §47 delivers,
+// the gain band, an engaging stop outside the friction circle, the pin's pressure angle inside the friction cone, the member floors.
+// Given L2 those fix everything else in closed form:
+//   · β and ψ2: the thrown arm stands ε = asin(ρ/L2) past the force line (ρ = MU_STEEL·PIVOT_MIN_U, the friction circle), so with the
+//     arm at rest at β and thrown at β + ψ2 = ε, the throw is L2·(sin ε − sin(ε − ψ2)) = ρ − L2·sin(ε − ψ2), and the throw the bite needs
+//     gives ψ2 = ε + asin((throw − ρ) / L2);
+//   · e: the pin-in-slot with S2 behind S1 gives ψ2 = atan2(r1·sin ψ1, r1·cos ψ1 + e), so e = r1·sin ψ1 / tan ψ2 − r1·cos ψ1 for the pin
+//     at its floor radius r1 — and for the fold, r1 = e·tan ψ2 / (sin ψ1 − cos ψ1·tan ψ2) at the stud distance it finds (r1For);
+//   · the arm length is therefore a FOLD output, chosen as the smallest that seats S2 (the arm-length rule binds a fold that changes a
+//     designed arm; here no arm was designed before the fold, and the record says so).
+// Each remaining row is derived from a constraint:
+//   · ψ1 = asin(PAD_LIFT / R_PAD_ARM): the finger's turn when the pad's face moves PAD_LIFT across its arm;
+//   · r1 at its floor (the pin in a STOCK_MIN_U wall beyond the finger's hub), e at or over its floor (the two hubs clear in plan);
+//   · ONE spring, on the BEAK LEVER, biasing it to rest on its own bank: through the slot it holds the pin — and the finger — on the
+//     slot's DRIVING flank at every pose, so the slot's running clearance is never lost motion and the finger needs no bank of its own.
+//     Unsprung, the beak lever would float PIVOT_BORE_CLEAR·L2/|S2→pin|, and its parked beak could drift that much toward the lug's orbit.
+//     The stop's engaging moment turns the beak lever further along its throw, lifting the flank OFF the pin: the slot carries the throw,
+//     never the stop;
+//   · the GAIN band: §47 held its single lever's beak arm to 1.1–2.2 pad arms, which for one lever IS the displacement gain (throw over
+//     lift). With two levers the arms no longer equal the gain, so the band is held where it was always aimed: on throw / PAD_LIFT.
 import { CLEAR_MARGIN, PIVOT_MIN_U, STOCK_MIN_U, PIVOT_BORE_CLEAR, MU_STEEL } from './layout.js';
 
 // §47's own line spec, as main.js declares it (its locals R_PAD_ARM and PAD_LIFT); tools/probe-329-arrest-line.mjs holds these two
@@ -45,66 +59,70 @@ export const PARKED_CLEAR = CLEAR_MARGIN + 0.02;
 // one must match; and the floor §47's own assert holds (ENGAGE ≥ 0.15).
 export const BITE_REF = 0.336;
 export const BITE_MIN = 0.15;
+// §47's lever ratio band, held here on the overall displacement gain (see the header)
+export const GAIN_BAND = Object.freeze([1.1, 2.2]);
 // A hub: the bore (a PIVOT_MIN_U stud) plus 0.01 running clearance plus a STOCK_MIN_U wall — main.js' HUB_R, the same expression.
 export const HUB_R = PIVOT_MIN_U + 0.01 + STOCK_MIN_U;
 export const PIN_R = PIVOT_MIN_U;   // the drive pin: the §50 pivot floor, as §47's bank pin
-// The pin (on the finger) and the slot's flank (on the beak lever) each stand a STOCK_MIN_U wall clear of their own hub.
-export const R1_MIN = HUB_R + STOCK_MIN_U + PIN_R;
-export const R2_MIN = HUB_R + STOCK_MIN_U + PIN_R + PIVOT_BORE_CLEAR / 2;
+export const D_MIN = 2 * HUB_R + CLEAR_MARGIN;                                  // S2 to S1: the two hubs, clear in plan
+export const R1_MIN = HUB_R + STOCK_MIN_U + PIN_R;                               // S1 to the pin: a STOCK_MIN_U wall beyond the finger's hub
 
 const rot = (x, y, a) => [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)];
 
-// The line's kinematics for given radii and beak arm. `psi1` overrides the finger's turn (default: full throw). Pure.
-export function lineAt({ r1 = R1_MIN, r2 = R2_MIN, L2, beta, psi1 = Math.asin(PAD_LIFT / R_PAD_ARM) }) {
-  const d = r1 + r2;
+// The pin-in-slot law with S2 BEHIND S1 (S2 ═ S1 ─ pin): the beak lever's turn for the finger's turn ψ1. Co-rotating, always under ψ1.
+export const psi2Of = (psi1, r1, e) => Math.atan2(r1 * Math.sin(psi1), r1 * Math.cos(psi1) + e);
+// …its inverse for the fold: the pin radius that gives ψ2 at the stud distance e and the finger's own ψ1 (needs ψ2 < ψ1).
+export const r1For = (psi1, psi2, e) => (e * Math.tan(psi2)) / (Math.sin(psi1) - Math.cos(psi1) * Math.tan(psi2));
+// …and the line's own closed forms: the turn an engaging arm of length L2 needs for a throw, and the stud distance that gives it.
+export const frictionCircle = (mu = MU_STEEL) => mu * PIVOT_MIN_U;
+export const epsOf = (L2, mu = MU_STEEL) => Math.asin(Math.min(1, frictionCircle(mu) / L2));
+export const psi2ForThrow = (L2, thr, mu = MU_STEEL) => epsOf(L2, mu) + Math.asin((thr - frictionCircle(mu)) / L2);
+export const eFor = (psi1, psi2, r1 = R1_MIN) => (r1 * Math.sin(psi1)) / Math.tan(psi2) - r1 * Math.cos(psi1);
+
+// The line's kinematics for a given member. `psi1` overrides the finger's turn (default: full throw). Pure.
+export function lineAt({ e, r1 = R1_MIN, L2, beta, psi1 = Math.asin(PAD_LIFT / R_PAD_ARM) }) {
   const pin = [r1 * Math.cos(psi1), r1 * Math.sin(psi1)];
-  const psi2 = -Math.atan2(pin[1], d - pin[0]);   // the slot runs along S2→pin, so the beak lever turns to keep it there: reversed
-  const toPin = Math.hypot(d - pin[0], pin[1]);
-  // the beak arm at rest is tilted by +beta from +y about S2 (toward −x, i.e. outboard of the force line); the lever turns by psi2
-  const [bx0, by0] = rot(0, L2, beta), [bx, by] = rot(bx0, by0, psi2);
+  const psi2 = psi2Of(psi1, r1, e);
+  const toPin = Math.hypot(pin[0] + e, pin[1]);
+  // the beak arm at rest points −y from S2 = (−e, 0), tilted by beta (CCW positive); the lever turns by psi2 with the finger
+  const [bx0, by0] = rot(0, -L2, beta), [bx, by] = rot(bx0, by0, psi2);
   const pad = rot(0, R_PAD_ARM, psi1);
-  return { d, pin, psi1, psi2, toPin, beak0: [d + bx0, by0], beak: [d + bx, by], pad, armAngle: Math.atan2(-bx, by) };
+  return { e, r1, pin, psi1, psi2, toPin, beak0: [-e + bx0, by0], beak: [-e + bx, by], pad };
 }
 
-// Solve the line: the radii at their floors, L2 for the throw the bite needs, β for an engaging stop. Returns every row.
-export function solveTrailingArrest({ r1 = R1_MIN, r2 = R2_MIN, bite = BITE_REF, mu = MU_STEEL } = {}) {
+// Solve one member of the line: L2 given (the fold's pick), or, by default, the most compact member (S2 at its floor distance D_MIN,
+// the pin at R1_MIN) for the probe to judge in free space. Returns every row.
+export function solveTrailingArrest({ L2 = null, r1 = R1_MIN, bite = BITE_REF, mu = MU_STEEL } = {}) {
   const psi1 = Math.asin(PAD_LIFT / R_PAD_ARM);
   const throwNeed = PARKED_CLEAR + bite;
-  const throwOf = (L2) => {
-    const beta = betaOf(L2);
-    const a = lineAt({ r1, r2, L2, beta, psi1: 0 }), b = lineAt({ r1, r2, L2, beta, psi1 });
-    // the spring holds the pin on the driving flank, so none of the slot's clearance is lost motion; `floatIfUnsprung` is what it
-    // would cost (and how far the parked beak could drift inward) were the beak lever left without it — reported, the first draft's error
-    const floatIfUnsprung = L2 * (PIVOT_BORE_CLEAR / b.toPin);
-    return { gross: b.beak[0] - a.beak[0], lost: 0, floatIfUnsprung, net: b.beak[0] - a.beak[0], beta, a, b };
-  };
-  // β: the full-throw arm must stand asin(ρ/L2) past the force line (ρ = μ·r_pivot), measured from where the throw leaves it
-  const psi2Full = lineAt({ r1, r2, L2: 1, beta: 0, psi1 }).psi2;
-  // At full throw the arm stands at β + ψ2 from +y. The force (−y, toward S2) then has moment L2·sin(β + ψ2)·(+1) about S2 — CCW, back
-  // toward rest — when β + ψ2 > 0, so the ENGAGING side is β + ψ2 < 0: the arm carried just past the force line by the throw itself.
-  function betaOf(L2) { return -psi2Full - Math.asin(Math.min(1, (mu * PIVOT_MIN_U) / L2)); }
-  // the throw grows with L2: bracket and bisect
-  let lo = 1e-3, hi = 1;
-  while (throwOf(hi).net < throwNeed && hi < 1e3) hi *= 2;
-  for (let i = 0; i < 200 && hi - lo > 1e-13; i++) { const m = (lo + hi) / 2; if (throwOf(m).net < throwNeed) lo = m; else hi = m; }
-  const L2 = hi, t = throwOf(L2), full = t.b;
-  // the stop's moment about S2 at full throw: the lug pushes the beak along −y (toward S2); engaging = the sense that turns the lever
-  // further along its own throw (psi2's sign)
-  const F = [0, -1];
-  const arm = [full.beak[0] - full.d, full.beak[1]];
-  const moment = arm[0] * F[1] - arm[1] * F[0];          // z of arm × F, per unit force
+  let psi2, e;
+  if (L2 === null) {
+    e = D_MIN; psi2 = psi2Of(psi1, r1, e);
+    // throw(L2) = ρ − L2·sin(ε − ψ2) at this ψ2 grows with L2: bisect for the throw
+    const thr = (x) => frictionCircle(mu) - x * Math.sin(epsOf(x, mu) - psi2);
+    let lo = Math.max(1e-3, frictionCircle(mu) + 1e-9), hi = 1;
+    while (thr(hi) < throwNeed && hi < 1e3) hi *= 2;
+    for (let i = 0; i < 200 && hi - lo > 1e-13; i++) { const m = (lo + hi) / 2; if (thr(m) < throwNeed) lo = m; else hi = m; }
+    L2 = hi;
+  } else {
+    psi2 = psi2ForThrow(L2, throwNeed, mu); e = eFor(psi1, psi2, r1);
+  }
+  const eps = epsOf(L2, mu), beta = eps - psi2;
+  const a = lineAt({ e, r1, L2, beta, psi1: 0 }), full = lineAt({ e, r1, L2, beta, psi1 });
+  const throwNet = full.beak[0] - a.beak[0];
+  // the stop's moment about S2 at full throw, per unit force: the lug pushes the beak toward S2 (+y); engaging = psi2's sense
+  const moment = full.beak[0] - (-e);
   const engaging = Math.sign(moment) === Math.sign(full.psi2);
-  const leverOffset = Math.abs(moment);                   // the force line's distance from S2, per unit force
-  // the pin's transmission: angle between the pin's own velocity (⊥ S1→pin) and the slot's normal (⊥ S2→pin); 0 is ideal
-  const sv = [-Math.sin(psi1), Math.cos(psi1)], sn = [-(full.pin[1] - 0), full.pin[0] - full.d];
-  const snL = Math.hypot(sn[0], sn[1]);
-  const transmissionDeg = (Math.acos(Math.min(1, Math.abs(sv[0] * sn[0] + sv[1] * sn[1]) / snL)) * 180) / Math.PI;
-  // the slot's length: the pin's travel along it over the stroke, plus its diameter and the clearance
-  const slide = Math.abs(full.toPin - r2);
+  // the pin's pressure angle: between its velocity (⊥ S1→pin) and the slot's normal (⊥ S2→pin); 0 is ideal
+  const v = [-Math.sin(psi1), Math.cos(psi1)], n = [-full.pin[1], full.pin[0] + e];
+  const transmissionDeg = (Math.acos(Math.min(1, Math.abs(v[0] * n[0] + v[1] * n[1]) / Math.hypot(n[0], n[1]))) * 180) / Math.PI;
+  const r2 = e + r1, slide = Math.abs(full.toPin - r2), floatIfUnsprung = L2 * (PIVOT_BORE_CLEAR / full.toPin);
   return Object.freeze({
-    psi1, psi2: full.psi2, ratio: Math.abs(full.psi2 / psi1), r1, r2, d: full.d, L2, beta: t.beta,
-    throwGross: t.gross, lostMotion: t.lost, floatIfUnsprung: t.floatIfUnsprung, parkedIfUnsprung: PARKED_CLEAR - t.floatIfUnsprung, throwNet: t.net, throwNeed, bite: t.net - PARKED_CLEAR,
-    gain: t.net / PAD_LIFT, leverOffset, frictionCircle: mu * PIVOT_MIN_U, engaging, transmissionDeg,
+    topology: 'S2 behind S1, the pin beyond S1 (co-rotating, ratio under 1)',
+    psi1, psi2: full.psi2, ratio: full.psi2 / psi1, e, r1, r2, L2, beta, eps,
+    throwNet, throwNeed, bite: throwNet - PARKED_CLEAR, gain: throwNet / PAD_LIFT, lostMotion: 0,
+    floatIfUnsprung, parkedIfUnsprung: PARKED_CLEAR - floatIfUnsprung,
+    leverOffset: Math.abs(moment), frictionCircle: frictionCircle(mu), engaging, transmissionDeg,
     slotLen: slide + 2 * PIN_R + PIVOT_BORE_CLEAR, slide,
   });
 }

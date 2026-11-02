@@ -369,9 +369,12 @@ export const SPEC = (() => {
   // drum's direction off P.barrel, counter-clockwise from +x). null keeps drumDirOf's blended direction (the shipped watch, bit-exact).
   // An absolute angle is the honest dimension (§75): the 0.45 blend is how the default was found, not something to reason about.
   // Normalised to [0, 360) so one placement has one configKey.
+  // §329 landing 2a — ?arrest=trailing asks the winding arrest's solve for the TRAILING-SIDE arrest's site (a measurement under
+  // __clock.windArrest.trailing; no metal moves yet). null = §47's arrest, as built, so every configKey without it is unchanged.
+  const arrest = raw.arrest === 'trailing' ? 'trailing' : null;
   const drumAzDeg = raw.drumAzDeg !== undefined && raw.drumAzDeg !== null && raw.drumAzDeg !== '' && Number.isFinite(Number(raw.drumAzDeg))
     ? ((Number(raw.drumAzDeg) % 360) + 360) % 360 : null;
-  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, rsvIdlers, alarmr, subdialr, dialr, studr, caseShape, frame, hands, formRectSpec, gongSeat, alarm, strapMm, drumAzDeg });
+  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, rsvIdlers, alarmr, subdialr, dialr, studr, caseShape, frame, hands, formRectSpec, gongSeat, alarm, strapMm, drumAzDeg, arrest });
 })();
 // §325 landing 3 — whether this build carries the alarm complication (SPEC.alarm above)
 export const ALARM_BUILT = SPEC.alarm !== false;
