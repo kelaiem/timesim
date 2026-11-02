@@ -10752,6 +10752,13 @@ export function makeDial({
   }
 
   g.userData.r = radius;
+  // §78's opt-out word for a PLATE: the dial is a slab, drawn in the schematic
+  // as its own extrude's faces and edges (main.js, the `slab` pass), never as a
+  // pitch circle. `r` stays — the placement searches read it as the dial's
+  // radius — but on its own it enrols the dial as a ROTOR, and the rotor pass
+  // drew a brass wheel at the ROUND radius on every case shape. The value names
+  // the mesh whose extrude the pass draws, so the word and its drawing are one.
+  g.userData.slab = 'dialPlate';
   g.userData.sapphire = sapphire; // §3 — what the plate is, for probes and the record
   g.userData.smoke = sapphire ? DIAL_GLASS.opacity : null; // §220 — the coat the plate carries (its recipe's opacity; 0.14 is the clear crystal), for probes
 

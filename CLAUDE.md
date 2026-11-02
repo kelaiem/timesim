@@ -398,11 +398,14 @@ Two §78 rules govern what the tier is allowed to SAY. **A generic glyph
 is a claim, so a part may opt out of one**: the opt-out is the named set
 `OWN_GLYPH`, consulted through `SCHEMATIC.ownGlyph` by both the rotor
 pass (which would call the part a wheel) and the §48 blade pass (which
-would call it a leaf spring). Three words so far — `userData.spiral =
+would call it a leaf spring). Four words so far — `userData.spiral =
 { innerR, outerR, coils }` (a wound ribbon), `userData.profile =
 { poly, hubR, boreR }` (§83 — a wheel whose content is its cut outline,
 the escape wheel's club teeth), `userData.crown` (§83 — a knurled knob a
-hand turns). Each member is drawn by its own pass instead, which is the
+hand turns), `userData.slab = '<mesh name>'` (a plate that does not turn —
+the dial, which records `userData.r` for the placement searches and was
+drawn as a brass wheel at the ROUND radius on every form case until it
+said so; `probe-schematic-form-case.mjs` D1 holds it). Each member is drawn by its own pass instead, which is the
 pattern to follow when the generic vocabulary would state something
 false: overdrawing leaves the wrong glyph in place underneath, so the
 generic pass must SKIP. A morphing part draws its current frame, not its
