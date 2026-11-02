@@ -578,10 +578,15 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
     // square end on a wall the line meets at 18.3° (rect) stood up to 0.78 u
     // proud of it on one side, where the button then landed on it. In the pivot's frame +X is −perp, so the plane through the
     // exit rises (n·perp)/(n·dir) per unit of x.
+    // `endSlope` is that rise, kept on the tube's record: a line on the bore at
+    // perpendicular offset k ends at outboard − endSlope·(k − off), and the
+    // drawing must end its lines there (they ended square at `outboard` and
+    // stood up to 0.88 u past the metal on one wall and short of it on the other).
+    let endSlope = 0;
     if (flush) {
       const [nx, ny] = rayExitNormal(loops.outer, dir, lineAt(0));
-      cutEndOnPlane(sleeve.geometry, 'y', Math.max(len, 1e-6) / 2, 'x',
-        (nx * perp[0] + ny * perp[1]) / (nx * dir[0] + ny * dir[1]));
+      endSlope = (nx * perp[0] + ny * perp[1]) / (nx * dir[0] + ny * dir[1]);
+      cutEndOnPlane(sleeve.geometry, 'y', Math.max(len, 1e-6) / 2, 'x', endSlope);
     }
     sleeve.position.y = inboard + len / 2;
     sleeve.name = `${name}Sleeve`;
@@ -598,7 +603,7 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
     const grp = new THREE.Group();
     grp.add(pivot);
     grp.name = name;
-    grp.userData.tube = { az, off, inboard, outboard, len, d, z };   // the drawing (formCaseLines) reads the built tube, never the dims again
+    grp.userData.tube = { az, off, inboard, outboard, len, d, z, endSlope };   // the drawing (formCaseLines) reads the built tube, never the dims again
     middleAsm.add(grp);
     return grp;
   };
@@ -730,7 +735,7 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
 // TUBES are read from each tube group's own `userData.tube`: two lines at ±d/2
 // (the bore's walls, the round drawing's convention) from the built inboard end
 // to the built outboard end, on the tube's own line (`off` carries the pusher's
-// chord). LUGS are the plans makeFormCase built (`userData.lugPlans`, each with
+// chord); a flush bore's lines each end on its built end plane (`endSlope`). LUGS are the plans makeFormCase built (`userData.lugPlans`, each with
 // the azimuth that placed it): the outline and the hole at each lug's centre
 // plane — makeRoundedSlab's straight wall, so the outline IS the section there
 // — and the spring bar as its AXIS between the two lugs (an axis line, the one
@@ -785,8 +790,11 @@ export function formCaseLines(g, dims) {
     const dir = [Math.cos(t.az), Math.sin(t.az)], perp = [-Math.sin(t.az), Math.cos(t.az)];
     for (const s of [-1, 1]) {
       const k = t.off + s * t.d / 2;
+      // A flush bore's end is cut on the wall's tangent plane (TODO 275), so
+      // each wall line ends where IT meets that plane, not at the axis's exit.
+      const out = t.outboard - (t.endSlope ?? 0) * (k - t.off);
       seg('tube', [dir[0] * t.inboard + perp[0] * k, dir[1] * t.inboard + perp[1] * k, t.z],
-                  [dir[0] * t.outboard + perp[0] * k, dir[1] * t.outboard + perp[1] * k, t.z]);
+                  [dir[0] * out + perp[0] * k, dir[1] * out + perp[1] * k, t.z]);
     }
   });
   // The lugs, as planned.
