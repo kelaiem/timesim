@@ -32,7 +32,7 @@ that band's swept footprint.
 
 | § | Title | Parts |
 |---|---|---|
-| [§328](built/0328.md) | Integrated lands for the default round build, and sinks with lands on both faces — PARTIAL: step 1 shipped | 1 |
+| [§328](built/0328.md) | Integrated lands for the default round build, and sinks with lands on both faces — PARTIAL: step 1 shipped, lands the default (step 1b) | 1 |
 | [§327](built/0327.md) | The form rectangle reaches the mainspring drum | 1 |
 | [§326](built/0326.md) | The strap width is adjustable, and 19 mm by default | 1 |
 | [§325](built/0325.md) | The free outline: an asymmetric, concave form case fitted to the movement's metal | 1 |

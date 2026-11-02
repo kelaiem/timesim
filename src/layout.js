@@ -321,7 +321,7 @@ export const SPEC = (() => {
   // Anything else is round.
   const caseShape = CASE_KINDS.includes(raw.caseShape) ? raw.caseShape : null;   // §325: and the free outline
   // §325 landing 6 / §328 — THE FRAME'S CONSTRUCTION. null is the frame on LANDS the base plate raises (the default on every
-  // case kind since §328 step 2: the owner's CNC construction); 'pillars' is the traditional frame on four applied pillars
+  // case kind since §328 step 1b: the owner's CNC construction); 'pillars' is the traditional frame on four applied pillars
   // riveted into the plate, kept as a supported style. The default is null rather than a name so every default build keeps
   // its configKey and its URL; an old `?frame=lands` link reads the default, which is what it asked for
   const frame = raw.frame === 'pillars' ? 'pillars' : null;

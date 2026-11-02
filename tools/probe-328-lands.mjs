@@ -1,4 +1,4 @@
-// §328 — THE FRAME ON LANDS, the default on every case kind since §328 step 2: do the lands stand where they should, and
+// §328 — THE FRAME ON LANDS, the default on every case kind since §328 step 1b: do the lands stand where they should, and
 // does nothing but the back plate's screw metal come within CLEAR_MARGIN of them over the pose net?
 //
 // Why this exists. A land is a child of the base plate, a HELD fixture, so it is in no pair sweep. The one gate that
@@ -30,8 +30,9 @@
 //   5. CLEAR: every labelled mesh outside the back plate's screw set stands ≥ CLEAR_MARGIN off every land at every pose,
 //      and the case clamp screws (round only — a form case has none) are reported by name. Must-hit control: the screw
 //      shanks read in contact (≤ 0) with every land (they thread its tapped bore), so the sweep cannot pass by measuring
-//      nothing. Must-fire control: land 0 carried along the line to its nearest foreign mesh by the gap it read, plus
-//      CLEAR_MARGIN, must then read under CLEAR_MARGIN against that mesh, and restored must read its gap again.
+//      nothing. Must-fire control: land 0 carried toward its nearest foreign mesh with metal in the land's height band
+//      (stepped at that mesh's nearest in-band vertex, each step the gap then read plus CLEAR_MARGIN, at most six) must
+//      then read under CLEAR_MARGIN against that mesh, and restored must read its gap again.
 //
 // Run: node tools/probe-328-lands.mjs  (needs `npm ci` in tools/; five boots and three sweeps, a few minutes).
 import { chromium } from 'playwright';
@@ -88,7 +89,7 @@ const SWEEP = async () => {
   const { CLEAR_MARGIN } = await import('./src/layout.js');
   const { Box3, Vector3 } = await import('./vendor/three.module.js');
   const c = window.__clock;
-  const BEARS = new Set(['plateScrewLand', 'screwShanks', 'screwHeads', 'threeQuarterPlate']);   // the back plate's screw set
+  const BEARS = new Set(['plateScrewLand', 'screwShanks', 'screwHeads', 'screwSlots', 'threeQuarterPlate']);   // the back plate's screw set
   const bears = (e) => e.unit === 'Three-quarter plate' && BEARS.has(e.mesh.name);
   const lands = [];
   c.movement.traverse((o) => { if (o.isMesh && o.userData.rimLand) lands.push(o); });
@@ -131,25 +132,45 @@ const SWEEP = async () => {
   // the case clamp screws by name (the round case's; a form case has none)
   let clamp = null;
   for (const e of entries) if (e.mesh.name === 'caseClampScrew') for (const l of lands) clamp = Math.min(clamp ?? Infinity, I.meshClearance(e.mesh, l));
-  // must-fire: carry land 0 toward its nearest foreign mesh (over every labelled mesh at the build pose) by the gap read
-  // plus CLEAR_MARGIN; it must then read under the margin, and restored read its gap again
-  let best = null;
-  for (const e of entries) {
-    if (bears(e)) continue;
-    const d = I.meshClearance(e.mesh, lands[0], 20);
-    if (!best || d < best.d) best = { e, d };
-  }
+  // must-fire: carry land 0 toward its nearest foreign mesh that has metal INSIDE the land's own height band (a part
+  // above or below it — the case's back crystal — closes no gap however the land slides), aimed at that mesh's nearest
+  // in-band vertex, by the gap read plus CLEAR_MARGIN; it must then read under the margin, and restored read its gap again
   const l = lands[0];
-  const cen = new Box3().setFromObject(best.e.mesh).getCenter(new Vector3());
-  const ax = l.getWorldPosition(new Vector3());
-  const dx = cen.x - ax.x, dy = cen.y - ax.y, n = Math.hypot(dx, dy) || 1, step = best.d + CLEAR_MARGIN;
+  const lb = new Box3().setFromObject(l), v = new Vector3();
+  const nearestInBand = (mesh, ax) => {
+    const pa = mesh.geometry.attributes.position;
+    let near = null;
+    for (let k = 0; k < pa.count; k++) {
+      v.fromBufferAttribute(pa, k).applyMatrix4(mesh.matrixWorld);
+      if (v.z < lb.min.z || v.z > lb.max.z) continue;
+      const r = Math.hypot(v.x - ax.x, v.y - ax.y);
+      if (!near || r < near.r) near = { r, x: v.x, y: v.y };
+    }
+    return near;
+  };
+  let best = null;
+  {
+    const ax = l.getWorldPosition(new Vector3());
+    for (const e of entries) {
+      if (bears(e) || !nearestInBand(e.mesh, ax)) continue;
+      const d = I.meshClearance(e.mesh, l, 20);
+      if (!best || d < best.d) best = { e, d };
+    }
+  }
+  // stepped, re-aimed at the nearest in-band vertex each time (a rod's nearest vertex is not along its closest point)
   const x0 = l.position.x, y0 = l.position.y;
-  l.position.x += dx / n * step; l.position.y += dy / n * step; l.updateMatrixWorld(true);
-  const moved = I.meshClearance(best.e.mesh, l);
+  let moved = best.d, steps = 0;
+  for (; steps < 6 && moved >= CLEAR_MARGIN; steps++) {
+    const ax = l.getWorldPosition(new Vector3()), q = nearestInBand(best.e.mesh, ax);
+    const dx = q.x - ax.x, dy = q.y - ax.y, n = Math.hypot(dx, dy) || 1, step = moved + CLEAR_MARGIN;
+    l.position.x += dx / n * step; l.position.y += dy / n * step; l.updateMatrixWorld(true);
+    moved = I.meshClearance(best.e.mesh, l);
+  }
+  const step = Math.hypot(l.position.x - x0, l.position.y - y0);
   l.position.x = x0; l.position.y = y0; l.updateMatrixWorld(true);
   const back = I.meshClearance(best.e.mesh, l);
   return { margin: CLEAR_MARGIN, poses: poses.length, population: entries.length, lands: lands.length, rows: [...rows.values()], clamp,
-    control: { target: `${best.e.unit} / ${best.e.name}`, gap: best.d, step, moved, back } };
+    control: { target: `${best.e.unit} / ${best.e.name}`, gap: best.d, step, steps, moved, back } };
 };
 
 const fmt = (L) => L.map(([x, y]) => `(${x.toFixed(3)}, ${y.toFixed(3)})`).join(' ');
@@ -207,7 +228,7 @@ for (const K of KINDS) {
   if (shankHit === S.lands) pass(`${K.name} must-hit: the back plate's screw shanks read in contact with all ${S.lands} lands`);
   else fail(`${K.name} must-hit: the screw shanks read in contact with ${shankHit} of ${S.lands} lands — the sweep is not reaching them`);
   const c = S.control;
-  if (c.moved < M && Math.abs(c.back - c.gap) < 1e-9) pass(`${K.name} must-fire: land 0 carried ${c.step.toFixed(3)} toward ${c.target} (gap ${c.gap.toFixed(3)}) reads ${c.moved.toFixed(3)} < ${M}; restored reads its gap`);
+  if (c.moved < M && Math.abs(c.back - c.gap) < 1e-9) pass(`${K.name} must-fire: land 0 carried ${c.step.toFixed(3)} in ${c.steps} step(s) toward ${c.target} (gap ${c.gap.toFixed(3)}) reads ${c.moved.toFixed(3)} < ${M}; restored reads its gap`);
   else fail(`${K.name} must-fire: land 0 carried toward ${c.target} read ${c.moved} (want < ${M}), restored ${c.back} against ${c.gap}`);
   const under = foreign.filter((r) => r.min < M);
   if (under.length) fail(`${K.name}: ${under.length} foreign mesh(es) within CLEAR_MARGIN of a land: ${under.map((r) => `land ${r.land} ⇄ ${r.unit} / ${r.mesh} ${r.min.toFixed(4)} @pose ${r.pose}`).join('; ')}`);

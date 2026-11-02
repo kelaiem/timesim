@@ -787,16 +787,17 @@ jobs:
   # conclusion — `battery` still fails when a probe does (see that step).
   #
   # The cap: setup ~26 s plus the probes' 194 s is ~3.7 min, times the 1.66x
-  # same-tree spread, 6.1 -> 7. §328 added the round-lands probe, 85 s
-  # measured in a dev container (two boots and a 52-pose sweep; re-derive from
-  # this job's own timing once it has run): ~26 + 279 s is ~5.1 min, times
-  # 1.66, 8.4 -> 9. The battery's gate step waits the same 9.
+  # same-tree spread, 6.1 -> 7. §328 added the lands probe; since step 1b it
+  # boots the round, rect and free builds and two pillar twins and sweeps
+  # three, 226 s measured uncontended in a dev container (re-derive from this
+  # job's own timing once it has run): ~26 + 194 + 226 s is ~7.4 min, times
+  # 1.66, 12.3 -> 13. The battery's gate step waits the same 13.
   battery-probes:
     name: battery probes
     needs: route
     if: needs.route.outputs.tiers_job == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 9
+    timeout-minutes: 13
     steps:
       - uses: actions/checkout@v4
 
@@ -1225,13 +1226,13 @@ jobs:
       # therefore holds exactly as a failing probe step after the harness did:
       # the report is still uploaded, nothing is published or seeded.
       #
-      # Its cap is the probes job's own (9 min since §328): the battery reaches
-      # it ~12 min in, so a probes job that started as late as ~3 min after the
-      # battery still finishes, or is killed, inside it. A step killed at the
-      # cap fails, which is the safe side.
+      # Its cap is the probes job's own (13 min since §328 step 1b): the
+      # battery reaches it ~12 min in, so a probes job that started with the
+      # battery finishes, or is killed, within a minute of it. A step killed at
+      # the cap fails, which is the safe side.
       - name: The case relief, casing path, back envelope and lands probes passed (§186, §187, §328)
         if: env.TIERS_JOB == 'true' && env.MATRIX != 'true'
-        timeout-minutes: 9
+        timeout-minutes: 13
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -1296,7 +1297,7 @@ jobs:
 
       # ---- §328: the lands, which no sweep reads
       #
-      # Since §328 step 2 the back plate stands on lands the base plate raises,
+      # Since §328 step 1b the back plate stands on lands the base plate raises,
       # on every case kind (`?frame=pillars` keeps the applied pillars). A land
       # is the base plate's own metal, a HELD fixture in no pair sweep, so
       # inspection, clearances and undeclaredClearance cannot see a part

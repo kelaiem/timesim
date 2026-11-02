@@ -34,7 +34,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const ROOT = process.env.ROOT || join(dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = 8484;
-// §328 — the roster per FRAME: the default since §328 step 2 is the back plate on the base plate's own lands (its four
+// §328 — the roster per FRAME: the default since §328 step 1b is the back plate on the base plate's own lands (its four
 // plate screws thread the lands' bores, and a land, being the plate, has no tenon), and `?frame=pillars` keeps the
 // applied pillars with their riveted tenons. Both builds are booted, so neither construction's joints go unmeasured.
 const COMMON = {

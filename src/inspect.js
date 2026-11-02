@@ -609,7 +609,7 @@ export const MECH_GRAPH = {
 // the simulation fiction CLAUDE.md names: an edge with no force behind it.
 if (ROUTE_SPEC) MECH_GRAPH.support.push([ROUTE_UNIT_NAME, 'plate']);
 
-// §325 landing 6 / §328 — THE FRAME ON LANDS, the default since §328 step 2 (`?frame=pillars` builds the applied pillars).
+// §325 landing 6 / §328 — THE FRAME ON LANDS, the default since §328 step 1b (`?frame=pillars` builds the applied pillars).
 // The back plate is screwed onto lands the base plate raises, so the unit 'pillars' is not built and its two support rows
 // are replaced by the one the metal makes: the back plate stands on the base plate. Like the route's row the condition is
 // the SPEC key main.js builds on, since checkGraph fails both ways (a declared unit that was not built, a built unit that

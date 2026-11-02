@@ -1335,14 +1335,14 @@ const SPEC_POINTS = [
   { name: 'form-rect', q: 'case=rect&formrect=-45.72,45.72,-44.38,44.38', expect: 'declared', sweep: true,
     expectWarns: ['§186: the rim-to-bore fit', '§261: cased assembly'],
     why: '§310 landing 4 / §313 — the rect form case at its default (ARRANGEMENT, the spiral seat since §314) and that seat\'s fit; swept, booting exactly the two rows every form build carries' },
-  // §328 step 2 — THE APPLIED PILLARS. Since step 2 the default frame is the back plate on lands the base plate raises
+  // §328 step 1b — THE APPLIED PILLARS. Since step 1b the default frame is the back plate on lands the base plate raises
   // (step 1's `round-lands` point, `frame=lands`, became the identity and was retired), and the traditional frame on four
   // applied pillars riveted into the plate is kept as a supported style: `frame=pillars` is the movement every gate here
-  // measured until step 2, bit for bit (its fingerprint is the old default's), so this point keeps it swept. The lands
+  // measured until step 1b, bit for bit (its fingerprint is the old default's), so this point keeps it swept. The lands
   // themselves are the held plate's metal and no pair sweep reads them; tools/probe-328-lands.mjs does, in battery.yml
   // beside the case probes.
   { name: 'pillars', q: 'frame=pillars', expect: 'silent', sweep: true,
-    why: '§328 step 2 — the round build on applied pillars, the default until step 2 and a supported style since; boots silent, swept' },
+    why: '§328 step 1b — the round build on applied pillars, the default until step 1b and a supported style since; boots silent, swept' },
 ];
 
 // TODO 186 B1 — THE POINTS THE BATTERY SWEEPS, and what each costs.
@@ -1406,7 +1406,7 @@ const POINT_COSTS = {
   // it changes only the case's units and this row over-reads until a run
   // refreshes it — wall clock, never a verdict.
   'form-rect': 1344,
-  // §328 step 2 — against the lands default the pillar build adds the `pillars` unit (four full-height columns past the
+  // §328 step 1b — against the lands default the pillar build adds the `pillars` unit (four full-height columns past the
   // train, in every pair sweep) and moves the back plate's screw rings, so its restriction reaches the pillars' and the
   // Three-quarter plate's pairs; carried at half the designed point's reach until a run writes its own `ms` back (wall
   // clock, never a verdict).
