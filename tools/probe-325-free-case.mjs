@@ -35,7 +35,7 @@
 //      table missing one width fails S1, and a row read at its neighbour width's need fails S2.
 //   W  the PORT FACES are flats (TODO 281): on every row of the movement with the alarm, every outline vertex inside a
 //      port's strip (the fixture's ports: the pusher's flat button and the two stems) stands either exactly ON that
-//      port's face (float noise, 1e-9 u) or more than half a cell (FREE_H / 2) behind it — a fillet, or the
+//      port's face (the table's own 1e-4 quantum — free-outline.mjs rounds every point) or more than half a cell (FREE_H / 2) behind it — a fillet, or the
 //      neighbouring face it belongs to — never in the staircase between, which TODO 275's guard reads as the wall
 //      proud of the button. Control: a row with one face vertex moved in 0.02 u (inside the staircase's measured
 //      0.027) fails.
@@ -219,7 +219,11 @@ if (ROW) {
   const strapOf = (k) => { const m = JSON.parse(k.replace(/^cfg1:/, '')); const { strapMm, ...rest } = m.spec;
     return JSON.stringify({ ...m, spec: rest }) === JSON.stringify({ ...parsed, spec: (({ strapMm: _, ...r }) => r)(parsed.spec) }) ? (strapMm ?? L.STRAP_MM_DEFAULT) : null; };
   const rows = Object.entries(FREE_OUTLINES).filter(([k]) => strapOf(k) !== null);
-  // the worst vertex of a port's strip standing in the staircase band (0, FREE_H / 2] behind its face
+  // ON the face is the TABLE's quantum, not float noise: tools/free-outline.mjs writes every point at 1e-4 (r4), and
+  // rounding each coordinate moves a point off a SLANTED line by up to 0.5e-4·(|uₓ| + |u_y|) ≤ 0.71e-4 (an axis-aligned
+  // lug end does not feel it). The staircase it guards against stood 0.027 u off, 270 quanta.
+  const ON = 1e-4;
+  // the worst vertex of a port's strip standing in the staircase band (ON, FREE_H / 2] behind its face
   const stair = (pts) => {
     let worst = 0, where = null;
     for (const [pi, { o: [ox, oy], u: [ux, uy], half }] of F.ports.entries()) {
@@ -230,9 +234,9 @@ if (ROW) {
         if (qi === pi) return false;
         const t = (p[0] - qx) * -qv + (p[1] - qy) * qu; if (Math.abs(t) > qh) return false;
         const fq = Math.max(...pts.filter((r) => Math.abs((r[0] - qx) * -qv + (r[1] - qy) * qu) <= qh).map((r) => (r[0] - qx) * qu + (r[1] - qy) * qv));
-        return fq - ((p[0] - qx) * qu + (p[1] - qy) * qv) <= 1e-9;
+        return fq - ((p[0] - qx) * qu + (p[1] - qy) * qv) <= ON;
       });
-      for (const v of S) { const d = face - v.s; if (d > 1e-9 && d <= L.FREE_H / 2 && !onOther(v.p) && d > worst) { worst = d; where = `port ${pi} at (${v.p[0].toFixed(3)}, ${v.p[1].toFixed(3)})`; } }
+      for (const v of S) { const d = face - v.s; if (d > ON && d <= L.FREE_H / 2 && !onOther(v.p) && d > worst) { worst = d; where = `port ${pi} at (${v.p[0].toFixed(3)}, ${v.p[1].toFixed(3)})`; } }
     }
     return { worst, where };
   };
@@ -243,7 +247,9 @@ if (ROW) {
   const [ux, uy] = F.ports[0].u, half0 = F.ports[0].half;
   const s0 = (p) => p[0] * ux + p[1] * uy, t0 = (p) => p[0] * -uy + p[1] * ux;
   const strip0 = ROW.pts.filter((p) => Math.abs(t0(p)) <= half0 && s0(p) > 0), f0 = Math.max(...strip0.map(s0));
-  const i0 = ROW.pts.findIndex((p) => Math.abs(t0(p)) <= half0 && Math.abs(f0 - s0(p)) <= 1e-9 && strip0.filter((q) => Math.abs(f0 - s0(q)) <= 1e-9).length > 1);
+  // a face vertex that is not the face's only one (moving the sole maximum would move the face it is read against)
+  const i0 = ROW.pts.findIndex((p) => Math.abs(t0(p)) <= half0 && Math.abs(f0 - s0(p)) <= ON && strip0.filter((q) => Math.abs(f0 - s0(q)) <= ON).length > 1
+    && s0(p) < f0);
   const moved = ROW.pts.map((p, i) => (i === i0 ? [p[0] - ux * 0.02, p[1] - uy * 0.02] : p));
   ok('W1 control: a face vertex moved in 0.02 u reads as the staircase', i0 >= 0 && stair(moved).worst > 0.019);
 }
