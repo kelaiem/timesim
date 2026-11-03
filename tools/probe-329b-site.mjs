@@ -1,16 +1,16 @@
 // §329 landing 3b — WHERE COULD OPTION B'S GENEVA STAR STAND? A REPORT (it prints and judges nothing).
-//   node tools/probe-329b-site.mjs ['k=v&…' spec]
+//   node tools/probe-329b-site.mjs ['k=v&…' spec] ['k=v&…' spec] …     several specs boot AT ONCE (tools/boot-pool.mjs), reported in order
 // src/stopwork-arrest.js gives the star's size from the pin's orbit (the lug's, windArrest.lugOuter): a pivot a from the cone's axis and a
 // tip circle of radius rTip about it, in the lug's z band. This samples the SURFACE of every unit's metal in that band (each triangle cut by
 // the plane at the band's bottom, middle and top, then walked), the chain at ten tensions across the wind, and reports for each azimuth of
 // the pivot the nearest foreign metal inside the star's disc (tip circle + CLEAR_MARGIN) — which unit it is, and how far in it stands.
 // The cone ("Fusee & great wheel") is the LOCK DISC's seat, not a blocker: its radius in the band is printed instead, to be read against
 // the lock window. "Winding arrest" is the part option B would replace, so it is left out.
-import { bootForm } from './boot-form.mjs';
+import { bootMany } from './boot-pool.mjs';
 import { genevaDims } from '../src/stopwork-arrest.js';
 import { CLEAR_MARGIN } from '../src/layout.js';
 
-const SPEC = process.argv[2] ?? '';
+const SPECS = process.argv.length > 2 ? process.argv.slice(2) : [''];
 const EXPR = `(async () => {
   const c = window.__clock, wa = c.windArrest, C = c.P.barrel;
   const zlo = wa.lugZ[0], zhi = wa.lugZ[1], zs = [zlo, (zlo + zhi) / 2, zhi];
@@ -44,8 +44,10 @@ const EXPR = `(async () => {
   return { C, lugOuter: wa.lugOuter, lugZ: wa.lugZ, coneMax, sec, pts: pts.filter((p) => p[0] !== 'Fusee & great wheel'), chain, units: [...new Set(pts.map((p) => p[0]))] };
 })()`;
 
-const { extra, warnings, bootError } = await bootForm(SPEC, EXPR);
-if (bootError || !extra) { console.log('BOOT ERROR', bootError); process.exit(2); }
+for (const { query, extra, warnings, bootError, unknownKeys } of await bootMany(SPECS, EXPR)) {
+console.log(`\n=== ${query || '(default)'}`);
+if (unknownKeys?.length) { console.log(`UNKNOWN QUERY KEY(S) ${unknownKeys.join(', ')} — the page ignored them, so this is not the spec asked for; skipped`); continue; }
+if (bootError || !extra) { console.log('BOOT ERROR', bootError); continue; }
 const { C, lugOuter, coneMax } = extra, all = [...extra.pts, ...extra.chain];
 const d = genevaDims(4, lugOuter);
 console.log(`boot warnings: ${warnings.length}; cone axis (${C.x.toFixed(2)}, ${C.y.toFixed(2)}); lug orbit ${lugOuter.toFixed(3)}; z band ${extra.lugZ.map((v) => v.toFixed(3)).join('..')}`);
@@ -54,7 +56,7 @@ const sorted = [...extra.sec].sort((a, b) => a - b);
 console.log(`cone metal per 5° sector: min ${sorted[0].toFixed(3)}, median ${sorted[36].toFixed(3)}, max ${sorted[71].toFixed(3)} (the median is the body, the max the lug)`);
 console.log(`${all.length} surface samples (${extra.chain.length} chain) from ${extra.units.length} units\n\nstar pivot azimuth (deg, movement frame) → nearest foreign metal inside the disc (tip + ${CLEAR_MARGIN}):`);
 const R = d.rTip + CLEAR_MARGIN;
-let freeAz = [];
+const freeAz = [];
 for (let az = 0; az < 360; az += 5) {
   const a = (az * Math.PI) / 180, px = C.x + d.a * Math.cos(a), py = C.y + d.a * Math.sin(a);
   let worst = null;
@@ -63,3 +65,4 @@ for (let az = 0; az < 360; az += 5) {
   if (!process.env.QUIET) console.log(`  ${String(az).padStart(3)}°  ${worst ? `${worst.u} stands ${worst.depth.toFixed(2)} inside` : 'FREE'}`);
 }
 console.log(`\nfree azimuths: ${freeAz.length ? freeAz.join(', ') : 'none'}`);
+}
