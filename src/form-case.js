@@ -115,6 +115,31 @@ export function rayExitNormal(loop, dir, base = [0, 0]) {
 // shape grown: one vertex per vertex, so the rounds, the seat the crystal is
 // pressed into and the crystal itself are one polygon at each depth, and the
 // hairlines (formCaseLines) lie on the metal's own vertices.
+// §331 — A STRAIGHT RUN IS CUT AT THE SPACING ITS OWN CURVES ARE. `form.loop` samples a corner as an arc and emits a
+// straight side as ONE edge, so a rectangle's side became one wall quad and its caps' triangulation joined points a
+// side apart: on `case=rect` the middle carried 420 triangles with an edge over 20 u (to 90.5 u, the case's width) and
+// the back 210, where the round case carries none. A triangle that long has a bounding box across half the case,
+// which no BVH query near it can prune, and that was ~93% of `form-rect`'s undeclaredClearance cost (Case pairs at
+// 50–850 ms a clearance call against the round case's ~9). So every edge longer than the loop's MEDIAN edge (on a
+// rectangle, the corners' arc chord) is split into equal pieces no longer than it. The points are collinear: the
+// outline, every mitre offset of it (each edge moves exactly t inward, a split edge's pieces with it) and every ray's
+// exit are what they were; only the triangulation is finer. A loop with no long edge comes back unchanged.
+export function densifyLoop(pts) {
+  const n = pts.length;
+  if (n < 3) return pts;
+  const len = pts.map(([ax, ay], i) => { const [bx, by] = pts[(i + 1) % n]; return Math.hypot(bx - ax, by - ay); });
+  const sorted = [...len].sort((a, b) => a - b), med = sorted[Math.floor(n / 2)];
+  if (!(med > 0) || !len.some((L) => L > med * (1 + 1e-9))) return pts;
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const [ax, ay] = pts[i], [bx, by] = pts[(i + 1) % n];
+    out.push([ax, ay]);
+    const k = Math.ceil(len[i] / med - 1e-9);
+    for (let j = 1; j < k; j++) out.push([ax + (bx - ax) * (j / k), ay + (by - ay) * (j / k)]);
+  }
+  return out;
+}
+
 export function formCaseLoops(form) {
   const G = CASE_CLEAR + CASE_BAND_T;
   // §325 — the FREE outline is a polyline, and a polyline grown G turns at every vertex on an arc of radius G: the
@@ -132,7 +157,7 @@ export function formCaseLoops(form) {
     };
     return { plate: form.loop({ grow: 0 }), bore: ring(CASE_BAND_T), outer, opening: ring(G + 1 / UNIT_MM), crystal: ring(G + 0.5 / UNIT_MM), ring };
   }
-  const outer = form.loop({ grow: G });
+  const outer = densifyLoop(form.loop({ grow: G }));   // §331: the straight runs at the corners' spacing
   const ring = (t) => inward(outer, t);
   return {
     plate: form.loop({ grow: 0 }),
@@ -308,7 +333,8 @@ function ringExtrude(outerR, innerR, thickness, seg = 32) {
 // holes: each a loop wound the other way (CW), or a round hole { r } about the
 // origin. Extruded between two z planes, whichever order they come in.
 const toVec2 = (loop) => loop.map(([x, y]) => new THREE.Vector2(x, y));
-function prism(outer, holes, zA, zB, { seg = ROUND_SEG } = {}) {
+function prism(outer, holes, zA, zB, { seg = ROUND_SEG, stitch = false } = {}) {
+  if (stitch && holes.length === 1) return annulusPrism(outer, holes[0], zA, zB);
   const shape = new THREE.Shape(toVec2(outer));
   for (const h of holes) {
     if (Array.isArray(h)) shape.holes.push(new THREE.Path(toVec2(h.slice().reverse())));
@@ -317,6 +343,50 @@ function prism(outer, holes, zA, zB, { seg = ROUND_SEG } = {}) {
   const zLo = Math.min(zA, zB), zHi = Math.max(zA, zB);
   const g = new THREE.ExtrudeGeometry(shape, { depth: zHi - zLo, bevelEnabled: false, curveSegments: seg });
   g.translate(0, 0, zLo);
+  return g;
+}
+// §331 — A CONVEX FORM'S ANNULUS, CAPPED BY STITCHING ITS TWO LOOPS. earcut triangulates a thin annulus whose straight
+// runs carry collinear points as long fans along those runs (measured on `case=rect`: 2,364 middle triangles over 20 u
+// once the loops were densified, against 420 before). Here both loops are densified (densifyLoop), and each cap is
+// stitched between them the way a loft joins two contours: march round both, each step advancing the loop whose next
+// diagonal is the shorter, so every triangle spans the band and one spacing. The walls are a quad per edge. Both
+// loops CCW (a hole is given CCW, as the Shape path took it before its reverse), or a round hole { r } on ROUND_SEG.
+// Non-indexed with flat normals, as ExtrudeGeometry's own output is once merged.
+function annulusPrism(outerLoop, hole, zA, zB) {
+  const A = densifyLoop(outerLoop);
+  const B = Array.isArray(hole) ? densifyLoop(hole)
+    : Array.from({ length: ROUND_SEG }, (_, k) => { const a = (2 * Math.PI * k) / ROUND_SEG; return [hole.r * Math.cos(a), hole.r * Math.sin(a)]; });
+  const zLo = Math.min(zA, zB), zHi = Math.max(zA, zB);
+  const n = A.length, m = B.length, tris = [];
+  const P = (p, z) => [p[0], p[1], z];
+  const d2 = (p, q) => (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2;
+  // start the hole's walk at its point nearest the outer's first
+  let j0 = 0;
+  for (let j = 1; j < m; j++) if (d2(B[j], A[0]) < d2(B[j0], A[0])) j0 = j;
+  const cap = [];   // CCW seen from +z: [outer, outer, hole] advances, [outer, hole, hole] advances
+  for (let i = 0, j = 0; i < n || j < m;) {
+    const a = A[i % n], b = B[(j0 + j) % m];
+    const aN = A[(i + 1) % n], bN = B[(j0 + j + 1) % m];
+    const advA = j >= m || (i < n && d2(aN, b) <= d2(a, bN));
+    if (advA) { cap.push([a, aN, b]); i++; } else { cap.push([a, bN, b]); j++; }
+  }
+  for (const [p, q, r] of cap) {
+    tris.push([P(p, zHi), P(q, zHi), P(r, zHi)]);   // front cap, normal +z
+    tris.push([P(p, zLo), P(r, zLo), P(q, zLo)]);   // back cap, normal −z
+  }
+  for (let i = 0; i < n; i++) {   // the outer wall, facing out
+    const a = A[i], b = A[(i + 1) % n];
+    tris.push([P(a, zLo), P(b, zLo), P(b, zHi)], [P(a, zLo), P(b, zHi), P(a, zHi)]);
+  }
+  for (let j = 0; j < m; j++) {   // the hole's wall, facing into the hole
+    const a = B[j], b = B[(j + 1) % m];
+    tris.push([P(b, zLo), P(a, zLo), P(a, zHi)], [P(b, zLo), P(a, zHi), P(b, zHi)]);
+  }
+  const pos = new Float32Array(tris.length * 9);
+  tris.forEach((t, k) => t.forEach((v, l) => pos.set(v, k * 9 + l * 3)));
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.computeVertexNormals();
   return g;
 }
 // A round disc about the origin between two z planes, on ROUND_SEG.
@@ -398,7 +468,7 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   }
   const sweep = mergeGeos(bezel.runs.map((run) => { const r = sweepRun(loops.ring, run); r.computeVertexNormals(); return r; }));
   if (signedVolume(sweep) < 0) flipWinding(sweep);
-  const middleGeo = mergeGeos([sweep, prism(loops.outer, [loops.bore], zBandFront, formApertureGrow === null ? z0 : zMidBack)]);   // §321: the band ends where the back's round begins
+  const middleGeo = mergeGeos([sweep, prism(loops.outer, [loops.bore], zBandFront, formApertureGrow === null ? z0 : zMidBack, { stitch: form.kind !== 'free' })]);   // §321: the band ends where the back's round begins
   holdWound(middleGeo, 'the case middle');
   // §289 — the bezel's metal is the part in front of the seat plane
   // zBandFront, and the brush shader (materials.js, CASE_POLISH_ATTR) polishes
@@ -480,8 +550,8 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   // glass's outer face, the lip over it (polished with the rim).
   const backOuter = backRound ? loops.ring(backRound.reach) : loops.outer;
   const backParts = [   // [geometry, polished]
-    [prism(backOuter, [glassLoop ?? { r: glassEdgeR }], zMidBack, zCrystOut), false],
-    [prism(backOuter, [apHole], zCrystOut, z0), true],
+    [prism(backOuter, [glassLoop ?? { r: glassEdgeR }], zMidBack, zCrystOut, { stitch: form.kind !== 'free' }), false],
+    [prism(backOuter, [apHole], zCrystOut, z0, { stitch: form.kind !== 'free' }), true],
   ];
   if (backRound) {
     const { reach, ell } = backRound;
