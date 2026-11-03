@@ -35,6 +35,9 @@ one grep for one word is not a search — the vocabulary drifts (`stud` / `post`
 If you do write a new one, say in its header which existing probe it is NOT,
 and why. That is what makes the next search work.
 
+Once you know you are writing one, the `tool-construction` skill covers building it: the harness, booting
+specs in parallel (`tools/boot-pool.mjs`), and proving the boot is the spec you asked for.
+
 ## 2. Pick the kind deliberately
 
 - **ACCEPTANCE** (55 of them) — decides, prints PASS/FAIL, exits non-zero.
