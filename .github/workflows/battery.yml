@@ -616,9 +616,24 @@ jobs:
           # sweep the points FULL with no ceiling on ubuntu-latest: a push, and a
           # dispatch that stayed hosted, which is the same whole run and is
           # how the hand-off is exercised from a branch before it merges. Not
-          # a PR (its points are incremental and ceilinged, and §259's matrix
-          # already spreads them), and not the host's dispatch or nightly (a
-          # second job would take its second slot, which §260 keeps free).
+          # the host's dispatch or nightly (a second job would take its second
+          # slot, which §260 keeps free).
+          #
+          # §330 — AND A HOSTED PULL REQUEST. A PR ran every stage in one
+          # process (#866: 33.8 min, of which the spec tier 7.7, the point tier
+          # 10.5 and the probes 5.2), and its point tier was CEILINGED to
+          # POINT_PR_BUDGET_MS only to bound that one process's wall: #866's
+          # ceiling skipped `designed` and `form-rect`, so the PR verified one
+          # point of three. On the fan-out the point tier runs on its own
+          # runner, so it costs the PR no wall beyond the slowest sibling, and
+          # it is swept FULL with no ceiling, exactly the push's tier: the
+          # sibling path takes nothing else (pointsRefusal). The PR's own
+          # shards stay incremental against its base's baseline; only its point
+          # tier stops inheriting. Hosted only: on the host the tiers would
+          # take three more slots (§260), and a PR's matrix opt-in already
+          # spreads both tiers across its workers. The runner minutes are free
+          # (a public repository's hosted Linux minutes are not billed); what a
+          # PR spends is four concurrent hosted jobs where it held one.
           #
           # §263 — and only when the run is NOT split. A split run (a hosted
           # dispatch with `split: true`, or a PR's opt-in) already spreads both
@@ -626,7 +641,7 @@ jobs:
           # hand-off's consumer is the single process's (the flags refuse
           # --matrix).
           tiers_job=false; pwhy=""
-          if [ "$run" = true ] && [ "$matrix" != true ] && [ "$host" = ubuntu-latest ] && { [ "$EVENT" = push ] || [ "$EVENT" = workflow_dispatch ]; }; then
+          if [ "$run" = true ] && [ "$matrix" != true ] && [ "$host" = ubuntu-latest ] && { [ "$EVENT" = push ] || [ "$EVENT" = workflow_dispatch ] || [ "$EVENT" = pull_request ]; }; then
             tiers_job=true
             pwhy="the spec boots and the point tier are measured by the parallel 'battery spec' and 'battery points' jobs and handed to the battery before it judges; the case and casing probes run on 'battery probes', whose conclusion the battery gates on"
           fi
@@ -1039,10 +1054,16 @@ jobs:
         run: |
           args=""
           why=""
-          # TODO 186 — every PR's points run under the ceiling; they inherit
+          # TODO 186 — a PR's points run under the ceiling; they inherit
           # only where the default would (same cache entry, no full-battery
           # ask), and the harness decides FULL or INCREMENTAL per point.
-          if [ "$EVENT" = "pull_request" ]; then args="--points-pr"; fi
+          # §330 — except on the fan-out (TIERS_JOB): there `battery points`
+          # sweeps every point FULL on its own runner, and the battery takes
+          # its file, so this process takes no --points-pr and no --points-base
+          # (the harness refuses --tiers-from beside --points-pr).
+          pts_pr=""; pts_base=""
+          if [ "$EVENT" = "pull_request" ] && [ "$TIERS_JOB" != true ]; then pts_pr="--points-pr"; pts_base=" --points-base .battery-baseline/points.json"; fi
+          args="$pts_pr"
           if [ "$EVENT" != "pull_request" ]; then
             why="not a pull request — this run IS the baseline, so it is always whole (and every spec point is swept full)"
           elif [ "$HIT" != "true" ]; then
@@ -1052,7 +1073,7 @@ jobs:
           elif printf '%s' "$TITLE" | grep -qF '[full battery]'; then
             why="[full battery] in the PR title — running everything"
           else
-            args="$args --baseline .battery-baseline/report.json --digests-base .battery-baseline/digests.json --points-base .battery-baseline/points.json"
+            args="$args --baseline .battery-baseline/report.json --digests-base .battery-baseline/digests.json$pts_base"
             why="incremental if the check-code digest also matches; the harness decides and logs which"
           fi
           echo "args=$args" >> "$GITHUB_OUTPUT"
