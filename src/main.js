@@ -47,7 +47,7 @@ import {
   segCircleClear, solveElbow, solveStopWork, ELBOW_E_MAX,   // §85 step A: the stop work solves like the layout does
   // Backlog (watch case): the schematic-tier case's dimensions — caps and
   // real hardware sizes, all derived in layout.js at the §39 pin.
-  CASE_WIDTH_MAX, CASE_LUG_SPAN_MAX, STRAP_MM_DEFAULT, CASE_HEIGHT_MAX_MM, CASE_HEIGHT_STEP_MM, CASE_CLEAR, CASE_BAND_T, rigidSplit,
+  CASE_WIDTH_MAX, CASE_LUG_SPAN_MAX, STRAP_MM_DEFAULT, STRAP_PICK_MIN_MM, fittedFlatMin, CASE_HEIGHT_MAX_MM, CASE_HEIGHT_STEP_MM, CASE_CLEAR, CASE_BAND_T, rigidSplit,
   CASE_SCREW_SHAFT_D, CASE_SCREW_HEAD_D, CASE_GASKET_D, CASE_GASKET_SEAT, CASE_CRYSTAL_T, CASE_CRYSTAL_CLEAR,
   CASE_TUBE_D, CASE_PUSHER_D,
   CASE_LUG_T, caseLugPlan,                                  // §190/§280: the lug/bar stock and the lug's one outline law — the schematic tier draws the same metal makeCase cuts
@@ -48933,7 +48933,7 @@ updateCrownUI();
   // URL carries off the menu is added, so the box never shows a strap the build is not cut for.
   const strapSel = document.getElementById('spec-strap');
   {
-    const STRAP_PICK_MIN_MM = 14, capMm = Math.round(CASE_LUG_SPAN_MAX * UNIT_MM), here = SPEC.strapMm ?? STRAP_MM_DEFAULT;
+    const capMm = Math.round(CASE_LUG_SPAN_MAX * UNIT_MM), here = SPEC.strapMm ?? STRAP_MM_DEFAULT;
     const widths = [];
     for (let w = STRAP_PICK_MIN_MM; w <= capMm; w++) widths.push(w);
     if (!widths.includes(here)) { widths.push(here); widths.sort((x, y) => x - y); }
@@ -50766,7 +50766,7 @@ const FORM_COUNTED = (() => {
 // §317 — the fitted tonneau's straight ends run at least the lug pair's outboard reach (makeFormCase's `need`:
 // the strap's interior span plus one lug, halved, plus half a lug), so its flat lugs weld to straight metal —
 // one law for the build's fit and for tools/gong-seats.mjs, which reads it off formFootprint.fitted
-const FITTED_FLAT_MIN = (CASE_LUG_INNER + CASE_LUG_T) / 2 + CASE_LUG_T / 2;
+const FITTED_FLAT_MIN = fittedFlatMin(SPEC.strapMm ?? STRAP_MM_DEFAULT);   // layout.js — one law for the fit, the tool and probe-325 S
 const HANDS_DISC_N = 192;   // §325 landing 9: the hands' keep-in disc's sides (a polygon, vertices on the circumscribing radius)
 const FORM_FOOTPRINT = await (async () => {
   if (!FORM) return null;
