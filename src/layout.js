@@ -125,6 +125,10 @@ export const CASE_KINDS = Object.freeze([...FORM_KINDS, 'free']);
 // UNDER the cap, never over it (the cap IS the bar's free length, main.js warns on a spec past it). `?strap=` / SPEC.strapMm
 // adjusts it; null = this default, so every key that names no strap is the one the default was validated under.
 export const STRAP_MM_DEFAULT = 19;
+// The narrowest strap the pickers offer (index.html's boot prefs, main.js's spec panel), whole millimetres up to the
+// cap — a picker's RANGE, not a limit (?strap= takes any width). One declaration, because the free case's generated
+// outlines (src/free-outlines.js) must cover every width offered, and probe-325-free-case.mjs S holds that against it.
+export const STRAP_PICK_MIN_MM = 14;
 export const ARRANGEMENT = Object.freeze({ barrelStepDeg: -20, rsvAzDeg: 0, alarmModAzDeg: 50, rsvIdlers: 2 });
 export const SPEC = (() => {
   const raw0 = (typeof globalThis !== 'undefined' && globalThis.__WATCH_SPEC) || {};
@@ -790,6 +794,10 @@ export const CASE_PUSHER_D = 1.2 / UNIT_MM;
 // is a styling input in the strap width's own standing — the look is chosen,
 // the section that carries it is derived.
 export const CASE_LUG_T = 1.0 / UNIT_MM;
+// §317 — a form case's straight ENDS run at least the lug pair's outboard reach (makeFormCase's `need`): the strap's
+// interior span plus one lug, halved, plus half a lug, so the flat lugs weld to straight metal. One law for the
+// build's fit (main.js FITTED_FLAT_MIN), the free outlines' tool and the probe that holds every strap's row to it.
+export const fittedFlatMin = (strapMm) => (strapMm / UNIT_MM + CASE_LUG_T) / 2 + CASE_LUG_T / 2;
 export const CASE_LUG_ROOT = 0.8 / UNIT_MM;   // embed into the band — the welded foot sinks into the wall it is fused to (a 0.3 mm first cut read as floating at screen scale)
 // TODO 209 — the foot's depth is bounded by the wall it is welded INTO. The
 // lugs stand ±(span + T)/2 off the pair axis, where the back band's bore has
@@ -4492,8 +4500,36 @@ export function fitFreeCase(polys, { margin = PLATE_RIM_MARGIN, rc, need, c, pin
   // of a straight run IS straight (the transform below a flat edge is the vertical distance alone), so nothing more is
   // snapped: a vertex moved up onto the line from the corner's arc would leave a KINK there, a corner of no radius,
   // which the band's outside rounds only by its own grow and the bezel's deeper offset then folds (§289)
+  // THE PORT FACES (TODO 281): a lug end runs along a raster axis, so the cell transform below it is exact and its
+  // contour comes out straight; a port's face is SLANTED, and the same contour reads it as a staircase — measured on
+  // the pusher's, every vertex within 0.027 u of the face and none on it, which TODO 275's guard reads as a wall
+  // standing proud of the button's seat plane wherever the raster happens to fall. So each port's face is snapped as
+  // the ends are: inside its strip (|t| ≤ half, where the block's face runs — its corner round starts at the strip's
+  // edge, so no arc vertex is moved and no kink is made), a vertex within half a cell of the face (FREE_H / 2: the
+  // cell-centre transform's worst miss) is moved OUT along u onto it. Where two strips overlap (the pusher and the
+  // winding stem stand 8° apart) a vertex goes to the face it is NEAREST, never onto a neighbour's line, which would
+  // stand it proud of its own face. Outward only, so the metal stays held; freeWorst re-reads it after every snap.
+  const snapPorts = (q) => {
+    if (!ports.length) return q;
+    const geo = ports.map(({ o: [ox, oy], u: [ux, uy], half }) => {
+      const vx = -uy, vy = ux;
+      const sOf = ([x, y]) => (x - ox) * ux + (y - oy) * uy, tOf = ([x, y]) => (x - ox) * vx + (y - oy) * vy;
+      let face = -Infinity;
+      for (const p of q) if (Math.abs(tOf(p)) <= half && sOf(p) > 0) face = Math.max(face, sOf(p));
+      return { ux, uy, half, sOf, tOf, face };
+    });
+    return q.map((p) => {
+      let best = null, bestDev = h / 2;
+      for (const g of geo) {
+        if (!Number.isFinite(g.face) || Math.abs(g.tOf(p)) > g.half) continue;
+        const dev = g.face - g.sOf(p);
+        if (dev >= 0 && dev <= bestDev) { best = g; bestDev = dev; }
+      }
+      return best ? [p[0] + best.ux * bestDev, p[1] + best.uy * bestDev] : p;
+    });
+  };
   const snap = (loop) => {
-    let q = loop.map((p) => p.slice()), top = -Infinity, bot = Infinity;
+    let q = snapPorts(loop.map((p) => p.slice())), top = -Infinity, bot = Infinity;
     const inStrip = (x) => Math.abs(x - c) <= need + rc;
     for (const [x, y] of q) if (inStrip(x)) { top = Math.max(top, y); bot = Math.min(bot, y); }
     for (const p of q) if (inStrip(p[0])) { if (top - p[1] <= 1e-7) p[1] = top; else if (p[1] - bot <= 1e-7) p[1] = bot; }

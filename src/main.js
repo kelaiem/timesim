@@ -47,7 +47,7 @@ import {
   segCircleClear, solveElbow, solveStopWork, ELBOW_E_MAX,   // §85 step A: the stop work solves like the layout does
   // Backlog (watch case): the schematic-tier case's dimensions — caps and
   // real hardware sizes, all derived in layout.js at the §39 pin.
-  CASE_WIDTH_MAX, CASE_LUG_SPAN_MAX, STRAP_MM_DEFAULT, CASE_HEIGHT_MAX_MM, CASE_HEIGHT_STEP_MM, CASE_CLEAR, CASE_BAND_T, rigidSplit,
+  CASE_WIDTH_MAX, CASE_LUG_SPAN_MAX, STRAP_MM_DEFAULT, STRAP_PICK_MIN_MM, fittedFlatMin, CASE_HEIGHT_MAX_MM, CASE_HEIGHT_STEP_MM, CASE_CLEAR, CASE_BAND_T, rigidSplit,
   CASE_SCREW_SHAFT_D, CASE_SCREW_HEAD_D, CASE_GASKET_D, CASE_GASKET_SEAT, CASE_CRYSTAL_T, CASE_CRYSTAL_CLEAR,
   CASE_TUBE_D, CASE_PUSHER_D,
   CASE_LUG_T, caseLugPlan,                                  // §190/§280: the lug/bar stock and the lug's one outline law — the schematic tier draws the same metal makeCase cuts
@@ -7757,7 +7757,18 @@ const RSV_SWING_MAX_DEG = 30;
 // without them, the leg carried the rise corner into the star (0.0727 at the
 // pose net), because those solvers judged only the fold's own corners.
 const FOLD_SAT = 2 * CLEAR_MARGIN;
-async function solveReserveSwing(pts) {
+// TODO 280 — THE STATIC HALF, SIFTED ONCE. CAP_SOLVE asks this solve about
+// `staticPts.concat(candidate)` for every candidate bearing, and the static
+// points (what the keyless works already hold, ~56k) are the same every time:
+// re-sifting and re-measuring them at every swing for every candidate was a
+// third of a walked heading's cost. `reserveSwingStatic(staticPts)` sifts them
+// once and memoizes each band's least clearance per swing; `solveReserveSwing(
+// cand, statics)` then reads exactly what `solveReserveSwing(staticPts.concat(
+// cand))` reads — within each band the static points come first in that concat,
+// and a band's least distance folded in with the same strict `<` sets the same
+// clearance and the same member — so the two calls return the same object.
+function reserveSwingStatic(pts) { return { ...siftReserveBands(pts), at: new Map() }; }
+function siftReserveBands(pts) {
   // Each member's z-band is its FACE REACH AS CUT plus one margin — not its
   // nominal half-thickness. w1 is cut 1.0 thick and p1 1.2, and both
   // generators' extrude bevels stand proud of both faces (`gearFaceReach`,
@@ -7779,6 +7790,10 @@ async function solveReserveSwing(pts) {
     if (q[2] >= hubLo && q[2] <= hubHi) inHub.push(q);
     if (q[2] >= p1LoMax && q[2] <= p1HiMax) inP1.push(q);
   }
+  return { w1Reach, p1Z, inW1, inHub, inP1 };
+}
+async function solveReserveSwing(pts, statics = null) {
+  const { w1Reach, p1Z, inW1, inHub, inP1 } = siftReserveBands(pts);
   // TODO 188 — the sift above reads every obstacle point once (~1.9M for the
   // confirmation call, 100–150 ms), so the thread goes back before the scan.
   await breathe(55);
@@ -7798,17 +7813,40 @@ async function solveReserveSwing(pts) {
     const p1TipR = cutTipR(G.makePinion, { module: m1, teeth: rsvTeethP1, mates: [RSV_P1_MATE], thickness: 1.2, boreR: RSV_W1_BORE_R, material: MATS.steel });
     const p1Reach = G.gearFaceReach({ module: m1, thickness: 1.2, pinion: true }).body;
     const p1Lo = p1Z - p1Reach - CLEAR_MARGIN, p1Hi = p1Z + p1Reach + CLEAR_MARGIN;
-    let c = Infinity, member = 'none';
     // A point either of whose plan legs, less the member's reach, stands at
     // or past the clearance so far cannot lower it (a distance is never under
     // its larger leg; LEG_LO takes the leg 1e-12 down, a thousand times what
     // hypot's rounding could), so it is passed over unmeasured: `c` and the
     // member that set it are the same.
     const LEG_LO = 1 - 1e-12;
-    const far = (q, R) => Math.abs(wx - q[0]) * LEG_LO - R >= c || Math.abs(wy - q[1]) * LEG_LO - R >= c;
-    for (const q of inW1) { if (far(q, rsvW1TipR)) continue; const d = Math.hypot(wx - q[0], wy - q[1]) - rsvW1TipR; if (d < c) { c = d; member = 'w1'; } }
-    for (const q of inHub) { if (far(q, w1Reach.hub.r)) continue; const d = Math.hypot(wx - q[0], wy - q[1]) - w1Reach.hub.r; if (d < c) { c = d; member = 'w1 hub'; } }
-    for (const q of inP1) { if (q[2] < p1Lo || q[2] > p1Hi) continue; if (far(q, p1TipR)) continue; const d = Math.hypot(wx - q[0], wy - q[1]) - p1TipR; if (d < c) { c = d; member = 'p1'; } }
+    // one band's least clearance from `c0` down: the one law both the static
+    // memo and the candidate's points are measured by
+    const seg = (arr, R, c0, zBand) => {
+      let m = c0;
+      for (const q of arr) {
+        if (zBand && (q[2] < p1Lo || q[2] > p1Hi)) continue;
+        if (Math.abs(wx - q[0]) * LEG_LO - R >= m || Math.abs(wy - q[1]) * LEG_LO - R >= m) continue;
+        const d = Math.hypot(wx - q[0], wy - q[1]) - R;
+        if (d < m) m = d;
+      }
+      return m;
+    };
+    let st = null;
+    if (statics) {
+      st = statics.at.get(dl);
+      if (!st) {
+        st = { w1: seg(statics.inW1, rsvW1TipR, Infinity), hub: seg(statics.inHub, w1Reach.hub.r, Infinity), p1: seg(statics.inP1, p1TipR, Infinity, true) };
+        statics.at.set(dl, st);
+      }
+    }
+    let c = Infinity, member = 'none';
+    const take = (v, name) => { if (v < c) { c = v; member = name; } };
+    if (st) take(st.w1, 'w1');
+    take(seg(inW1, rsvW1TipR, c), 'w1');
+    if (st) take(st.hub, 'w1 hub');
+    take(seg(inHub, w1Reach.hub.r, c), 'w1 hub');
+    if (st) take(st.p1, 'p1');
+    take(seg(inP1, p1TipR, c, true), 'p1');
     return { c, member };
   };
   let best = { c: -Infinity, member: 'none', swing: 0 };
@@ -9015,6 +9053,7 @@ const CAP_SOLVE = await (async () => {
     zHi: transferArbor.position.z + transferArbor.geometry.parameters.height / 2 };
   await breathe(76);
   const staticPts = await reserveObstaclePoints(keyless);   // what the keyless works hold before the traverse — the reserve reads these too (no mwCorner* here yet, so this is meshPoints)
+  const rsvStatic = reserveSwingStatic(staticPts);   // TODO 280: the static half sifted once and memoized per swing — the same answer as staticPts.concat(…), see reserveSwingStatic
   const disposeTree = (g) => g.traverse((o) => { if (o.isMesh) o.geometry.dispose(); });
   const arbClear = (pts) => {
     let m = Infinity;
@@ -9050,7 +9089,7 @@ const CAP_SOLVE = await (async () => {
     await breathe(77);
     const arbM0 = arbClear(cand0);
     if (arbM0 < 0) { disposeTree(scratch); return { m: arbM0, clause: 'transfer arbor', s: 0 }; }
-    const r0 = await solveReserveSwing(staticPts.concat(cand0));
+    const r0 = await solveReserveSwing(cand0, rsvStatic);
     if (r0.swing === null) { disposeTree(scratch); return { m: r0.bestC - CLEAR_MARGIN, clause: `reserve ${r0.bestMember}`, s: r0.bestSwing / DEG2RAD }; }
     // Phase 0 clears — only NOW pay for the full multi-phase judgement.
     const cand = await reserveObstaclePoints(scratch);
@@ -9059,7 +9098,7 @@ const CAP_SOLVE = await (async () => {
     const arbM = arbClear(cand);
     await breathe(79);
     if (arbM < 0) return { m: arbM, clause: 'transfer arbor', s: 0 };
-    const r = await solveReserveSwing(staticPts.concat(cand));
+    const r = await solveReserveSwing(cand, rsvStatic);
     if (r.swing === null) return { m: r.bestC - CLEAR_MARGIN, clause: `reserve ${r.bestMember}`, s: r.bestSwing / DEG2RAD };
     return { m: Math.min(arbM, r.clear - CLEAR_MARGIN), clause: 'open', s: r.swing / DEG2RAD, swing: r.swing };
   };
@@ -48933,7 +48972,7 @@ updateCrownUI();
   // URL carries off the menu is added, so the box never shows a strap the build is not cut for.
   const strapSel = document.getElementById('spec-strap');
   {
-    const STRAP_PICK_MIN_MM = 14, capMm = Math.round(CASE_LUG_SPAN_MAX * UNIT_MM), here = SPEC.strapMm ?? STRAP_MM_DEFAULT;
+    const capMm = Math.round(CASE_LUG_SPAN_MAX * UNIT_MM), here = SPEC.strapMm ?? STRAP_MM_DEFAULT;
     const widths = [];
     for (let w = STRAP_PICK_MIN_MM; w <= capMm; w++) widths.push(w);
     if (!widths.includes(here)) { widths.push(here); widths.sort((x, y) => x - y); }
@@ -50766,7 +50805,7 @@ const FORM_COUNTED = (() => {
 // §317 — the fitted tonneau's straight ends run at least the lug pair's outboard reach (makeFormCase's `need`:
 // the strap's interior span plus one lug, halved, plus half a lug), so its flat lugs weld to straight metal —
 // one law for the build's fit and for tools/gong-seats.mjs, which reads it off formFootprint.fitted
-const FITTED_FLAT_MIN = (CASE_LUG_INNER + CASE_LUG_T) / 2 + CASE_LUG_T / 2;
+const FITTED_FLAT_MIN = fittedFlatMin(SPEC.strapMm ?? STRAP_MM_DEFAULT);   // layout.js — one law for the fit, the tool and probe-325 S
 const HANDS_DISC_N = 192;   // §325 landing 9: the hands' keep-in disc's sides (a polygon, vertices on the circumscribing radius)
 const FORM_FOOTPRINT = await (async () => {
   if (!FORM) return null;
@@ -58498,6 +58537,23 @@ if (IMPORT_OUTCOME) {
   adv.open = true;
   adv.parentElement.closest('details').open = true;
 }
+// §246 tier two — the position select. Its option values are the canonical
+// keys (balance-drive.js POSITIONS); only their text is translated. Changing
+// it tilts the watch: the driven balance carries on from where it is, under
+// the new position's friction and weight, and settles to that position's swing.
+// Declared BEFORE applyDeepLink(), which calls setBalancePosition for
+// ?position=: below it, the deep link reached `positionSelect` in its temporal
+// dead zone and every ?position= link died at boot (ReferenceError).
+const positionSelect = document.getElementById('sel-position');
+function syncPositionUI() { positionSelect.value = balancePosition; }
+function setBalancePosition(pos) {
+  if (!BD.POSITIONS.includes(pos)) return;
+  balancePosition = pos;
+  syncPositionUI();
+}
+positionSelect.addEventListener('change', () => setBalancePosition(positionSelect.value));
+syncPositionUI();
+
 applyDeepLink();
 
 // §55 — BOOT SYNCED TO THE WALL CLOCK. The movement used to start at an
@@ -58612,19 +58668,6 @@ function setQualityMode(mode) {
   qualitySelect.value = qualityMode;
 }
 qualitySelect.addEventListener('change', () => setQualityMode(qualitySelect.value));
-// §246 tier two — the position select. Its option values are the canonical
-// keys (balance-drive.js POSITIONS); only their text is translated. Changing
-// it tilts the watch: the driven balance carries on from where it is, under
-// the new position's friction and weight, and settles to that position's swing.
-const positionSelect = document.getElementById('sel-position');
-function syncPositionUI() { positionSelect.value = balancePosition; }
-function setBalancePosition(pos) {
-  if (!BD.POSITIONS.includes(pos)) return;
-  balancePosition = pos;
-  syncPositionUI();
-}
-positionSelect.addEventListener('change', () => setBalancePosition(positionSelect.value));
-syncPositionUI();
 const amplitudeReadout = document.getElementById('readout-amplitude');
 const rateReadout = document.getElementById('readout-rate');
 function paintBalanceReadouts() {

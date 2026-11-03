@@ -1368,7 +1368,7 @@ any warning as `warns` could never let a form build join the set however clean
 its sweeps came back; the arrangement is the first such row. A push, dispatch
 or local run sweeps every point FULL — against that run's default — and
 `--points-out` writes the whole payloads into the cached baseline beside the
-report. **Since §264 a push's tier (and a hosted dispatch's) is MEASURED on a
+report. **Since §264 a push's tier (and a hosted dispatch's, and since §330 a hosted PR's) is MEASURED on a
 parallel job, and since §265 its spec boots too — since the fan-out on TWO
 jobs, `battery spec` and `battery points`** (`--tiers-only --tiers-part P`, one
 file per tier naming its part, `TIERS_FORMAT` 3). Each is handed to the battery
@@ -1389,10 +1389,16 @@ casing path, back envelope) run on a fourth hosted job, `battery probes`, from
 t=0, and the `battery` job's last gate step reads that job's conclusion off the
 run: anything but `success` fails `battery` (the required check, §259's rule
 that the job named `battery` is the one that gates) before provenance or
-seeding can run. PR, matrix, self-hosted and nightly runs keep the probes after
-the harness, and no tiers jobs. Measured, §264 took the push from 89 to 63 min. Since §263 a hosted dispatch may ask for the SPLIT (`split: true`) instead,
+seeding can run. **Since §330 a hosted, unsplit PULL REQUEST takes the same
+fan-out**: its shards stay incremental against the base's baseline, but its
+point tier is the sibling's, swept FULL with no ceiling (the one the sibling path
+accepts), so it drops `--points-pr` and `--points-base`. #866's single process
+spent 33.8 min and its ceiling skipped two of the three points; on the fan-out
+the PR costs four concurrent hosted jobs where it held one, and its minutes stay
+free (the repository is public). Matrix, self-hosted and nightly runs keep the
+probes after the harness, and no tiers jobs. Measured, §264 took the push from 89 to 63 min. Since §263 a hosted dispatch may ask for the SPLIT (`split: true`) instead,
 which spreads both tiers across its two workers, so the tiers jobs run only on
-an unsplit run. A PR (`--points-pr`) sweeps each point INCREMENTALLY against its own
+an unsplit run. A PR off the fan-out (`--points-pr`: a self-hosted or matrix one) sweeps each point INCREMENTALLY against its own
 stored payload, re-measuring only the units the PR moved in that point's
 build; every doubt sends a point FULL and says so, and the PR's point tier is
 held to `POINT_PR_BUDGET_MS` of wall — a point that cannot finish is SKIPPED,
