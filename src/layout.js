@@ -125,6 +125,10 @@ export const CASE_KINDS = Object.freeze([...FORM_KINDS, 'free']);
 // UNDER the cap, never over it (the cap IS the bar's free length, main.js warns on a spec past it). `?strap=` / SPEC.strapMm
 // adjusts it; null = this default, so every key that names no strap is the one the default was validated under.
 export const STRAP_MM_DEFAULT = 19;
+// The narrowest strap the pickers offer (index.html's boot prefs, main.js's spec panel), whole millimetres up to the
+// cap — a picker's RANGE, not a limit (?strap= takes any width). One declaration, because the free case's generated
+// outlines (src/free-outlines.js) must cover every width offered, and probe-325-free-case.mjs S holds that against it.
+export const STRAP_PICK_MIN_MM = 14;
 export const ARRANGEMENT = Object.freeze({ barrelStepDeg: -20, rsvAzDeg: 0, alarmModAzDeg: 50, rsvIdlers: 2 });
 export const SPEC = (() => {
   const raw0 = (typeof globalThis !== 'undefined' && globalThis.__WATCH_SPEC) || {};
@@ -790,6 +794,10 @@ export const CASE_PUSHER_D = 1.2 / UNIT_MM;
 // is a styling input in the strap width's own standing — the look is chosen,
 // the section that carries it is derived.
 export const CASE_LUG_T = 1.0 / UNIT_MM;
+// §317 — a form case's straight ENDS run at least the lug pair's outboard reach (makeFormCase's `need`): the strap's
+// interior span plus one lug, halved, plus half a lug, so the flat lugs weld to straight metal. One law for the
+// build's fit (main.js FITTED_FLAT_MIN), the free outlines' tool and the probe that holds every strap's row to it.
+export const fittedFlatMin = (strapMm) => (strapMm / UNIT_MM + CASE_LUG_T) / 2 + CASE_LUG_T / 2;
 export const CASE_LUG_ROOT = 0.8 / UNIT_MM;   // embed into the band — the welded foot sinks into the wall it is fused to (a 0.3 mm first cut read as floating at screen scale)
 // TODO 209 — the foot's depth is bounded by the wall it is welded INTO. The
 // lugs stand ±(span + T)/2 off the pair axis, where the back band's bore has

@@ -27,6 +27,12 @@
 //      A1 its committed row holds that metal at the rim margin and IS the fit at its axis; A2 the metal it was
 //      fitted to carries no alarm — no pusher port, no gong, hammer-stud or strike-opening pin; A3 it encloses less
 //      than the with-alarm row, which is the reason the landing exists.
+//   S  every STRAP the picker offers (layout.js STRAP_PICK_MIN_MM to the cap, whole mm) on the movement WITH the
+//      alarm: the strap sets the lug flats' need (layout.js fittedFlatMin), so the outline is keyed by it, and a
+//      width with no row is cut to the solvers' stand-in box, which the gong goes through (?strap=18 did, 6.26 u).
+//      S1 each width has a row under its own key (the default's carries no strapMm); S2 each row was fitted at its
+//      own width's need; S3 each row's lug ends are flats that run that need either side of its axis. Controls: a
+//      table missing one width fails S1, and a row read at its neighbour width's need fails S2.
 // An ACCEPTANCE test: exits non-zero on any failure.
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -169,6 +175,36 @@ if (ROW) {
     ok('A3 it encloses less than the movement with the alarm', R0.area < ROW.area,
       `${(R0.area * mm2).toFixed(2)} mm² against ${(ROW.area * mm2).toFixed(2)} (${((R0.area / ROW.area - 1) * 100).toFixed(1)}%)`);
   }
+}
+// ── S: every strap the picker offers ─────────────────────────────────────────────────────────
+{
+  const F = JSON.parse(readFileSync(FIX, 'utf8'));
+  const parsed = JSON.parse(F.key.replace(/^cfg1:/, ''));
+  const keyAt = (w) => L.configKey({ spec: { ...parsed.spec, strapMm: w === L.STRAP_MM_DEFAULT ? null : w }, route: parsed.route, tuned: parsed.tuned });
+  const capMm = Math.round(L.CASE_LUG_SPAN_MAX * L.UNIT_MM);
+  const widths = [];
+  for (let w = L.STRAP_PICK_MIN_MM; w <= capMm; w++) widths.push(w);
+  const missing = (table) => widths.filter((w) => !table[keyAt(w)]);
+  const miss = missing(FREE_OUTLINES);
+  ok(`S1 every strap the picker offers (${widths.join(', ')} mm) has a free outline`, widths.length > 1 && keyAt(L.STRAP_MM_DEFAULT) === F.key && miss.length === 0,
+    miss.length ? `no row for ${miss.join(', ')} mm — run node tools/free-outline.mjs --write --spec 'case=free&strap=W'` : `${widths.length} rows`);
+  const present = widths.find((w) => FREE_OUTLINES[keyAt(w)]);   // the default always is (keyAt(default) === F.key)
+  const dropped = { ...FREE_OUTLINES }; delete dropped[keyAt(present)];
+  ok('S1 control: dropping one width\'s row is read as one more width missing', present !== undefined && missing(dropped).length === miss.length + 1
+    && missing(dropped).includes(present));
+  const needOff = (w, at) => Math.abs(FREE_OUTLINES[keyAt(w)].need - L.fittedFlatMin(at));
+  const have = widths.filter((w) => FREE_OUTLINES[keyAt(w)]);
+  const worstNeed = Math.max(0, ...have.map((w) => needOff(w, w)));
+  ok('S2 each row was fitted at its own width\'s need', have.length > 0 && worstNeed <= 1e-9, `worst |need − fittedFlatMin(w)| ${worstNeed.toExponential(2)}`);
+  ok('S2 control: a row read at its neighbour width\'s need fails', have.length > 1 && have.every((w) => needOff(w, w === capMm ? w - 1 : w + 1) > 1e-3));
+  const short = [];
+  for (const w of have) {
+    const R = FREE_OUTLINES[keyAt(w)], fl = R.flat;
+    const half = (run) => (run ? Math.min(R.c - run[0], run[1] - R.c) : -Infinity);
+    const h = Math.min(half(fl?.top), half(fl?.bot));
+    if (!(h >= R.need - 1e-6)) short.push(`${w} mm: ${h.toFixed(4)} < ${R.need.toFixed(4)}`);
+  }
+  ok('S3 each row\'s lug ends are flats running its need either side of the strap axis', have.length > 0 && short.length === 0, short.join('; ') || `${have.length} rows`);
 }
 console.log(fails ? `${fails} FAILED` : 'all PASS');
 process.exit(fails ? 1 : 0);
