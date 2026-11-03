@@ -29,6 +29,12 @@ export async function bootForm(query, expr = null) {
   await page.waitForFunction(() => !!window.__clock || !!window.__bootError, null, { timeout: 400000 });
   const out = await page.evaluate(async (ex) => window.__bootError ? { bootError: String(window.__bootError.message ?? window.__bootError) }
     : { ff: window.__clock.formFootprint, extra: ex ? await (0, eval)(ex) : null }, expr);
+  // A query key the page does not read is IGNORED, silently, and the boot is the default's: `barrel=-140` for `barrelstep=-140`
+  // measured the wrong arrangement for a whole probe (§329 landing 3b). So name every key that is neither a spec key
+  // (index.html's SPEC_FIELDS, published as __WATCH_SPEC_KEYS) nor one of the page's own parameters.
+  const known = await page.evaluate(() => globalThis.__WATCH_SPEC_KEYS ?? null);
+  const PAGE_KEYS = ['trial', 'hud', 'sync', 'lang', 'reconf', 'cam', 'focus', 'tour', 'cell'];
+  out.unknownKeys = known ? [...new URLSearchParams(query)].map(([k]) => k).filter((k) => !known.includes(k) && !PAGE_KEYS.includes(k)) : null;
   await browser.close(); srv.close();
   return { ...out, warnings };
 }
@@ -36,6 +42,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const r = await bootForm(process.argv[2] ?? '', process.argv[3] ?? null);
   if (r.ff) { const { hull, ...ff } = r.ff; console.log(JSON.stringify(ff, null, 1)); }
   if (r.bootError) console.log('BOOT ERROR', r.bootError);
+  if (r.unknownKeys?.length) console.log(`UNKNOWN QUERY KEY(S), IGNORED BY THE PAGE: ${r.unknownKeys.join(', ')} — this boot is NOT the spec you asked for`);
   if (r.extra !== null && r.extra !== undefined) console.log('extra', JSON.stringify(r.extra, null, 1));
   console.log(`${r.warnings.length} warning(s)`); for (const w of r.warnings) console.log('  ' + w.slice(0, 600));
 }
