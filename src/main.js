@@ -9094,7 +9094,7 @@ const CAP_SOLVE = await (async () => {
   // 161 bearings past the fold's clauses). Where the held heading DOES give folds and they are refused on the cap leg,
   // the arbor or the reserve, the heading is not what refuses them, and walking it bought nothing: measured on
   // ?barrelstep=-20, ?rsvr=20, ?rsvr=30 and ?reserveh=48&rsvr=27 (73 of 161 past them), every one of 180 headings stayed
-  // shut and the scan cost 93 s of boot, past the battery's 120 s on the hosted runner (TODO pending claim).
+  // shut and the scan cost 93 s of boot, past the battery's 120 s on the hosted runner (TODO 280, which also holds ?d4=16, the walk that still runs long).
   const heldNearest = found.nearest, heldOpensFold = foldsSeen > 0, heldScan = scan.slice();
   for (let k = 1; !found.open && !heldOpensFold && k <= 90; k++)
     for (const sgn of [1, -1]) {
