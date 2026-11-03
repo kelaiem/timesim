@@ -8876,10 +8876,14 @@ async function buildSettingMetal(B, parent, { candidate = false } = {}) {
   // above): φ, the stub, the cap's site on the wheel's mesh circle and the two
   // new corners' shaft angles and modules. A B it cannot house is refused
   // before any metal is cut, the same shape as the F clauses above.
+  // §325 landing 5's trigger reads this: the three clauses above are the FOLD's
+  // own (does this heading and bearing give a fold at all?); everything after is
+  // whether that fold's cap leg, arbor and reserve clear.
+  const noFold = !!refused;
   const S = refused ? null : await solveCapLeg(B, F);
   if (S && S.refused) refused = S.refused;
   if (refused) {
-    if (candidate) return { F, refused };
+    if (candidate) return { F, refused, noFold };
     console.warn(`§234 fold: the cap corner B the bearing solve settled on has no fold worth building (${refused}) — building it anyway; the battery judges it`);
   }
 
@@ -9021,10 +9025,12 @@ const CAP_SOLVE = await (async () => {
     }
     return m;
   };
+  let foldsSeen = 0;   // candidates past the fold's own clauses (buildSettingMetal's noFold) — the walk's trigger below
   // returns the worst clause margin at the best swing (≥ 0 = open), with the clause named
   const window = async (dl) => {
     const scratch = new THREE.Group();
     const M = await buildSettingMetal(capAt(dl), scratch, { candidate: true });
+    if (!M.noFold) foldsSeen++;
     if (M.refused) return { m: -Infinity, clause: M.refused, s: 0 };
     // TODO 162 — PREFILTER ON PHASE 0, EXACT NOT APPROXIMATE. The multi-phase
     // accept test below requires the candidate clear EVERY phase the corners
@@ -9080,11 +9086,17 @@ const CAP_SOLVE = await (async () => {
     return { nearest };
   };
   let found = await searchBearings();
-  // §325 landing 5 — the held heading opened nothing: walk leg 1's heading out from it, nearest first, a degree at a
+  // §325 landing 5 — the held heading opened NO FOLD: walk leg 1's heading out from it, nearest first, a degree at a
   // time to a quarter turn either way (MW_FOLD_LEG1_HEADING_USED_DEG above), each heading's whole bearing scan the one
   // above. The identity train opens at the held heading and never comes here.
-  const heldNearest = found.nearest;
-  for (let k = 1; !found.open && k <= 90; k++)
+  // The trigger is the record's own rule ("held where it opens a fold"): the walk exists for a train swung round its
+  // barrel, where every bearing's rays fail to meet at the held heading (measured: −60°, −120°, −140° and ?d4=16, 0 of
+  // 161 bearings past the fold's clauses). Where the held heading DOES give folds and they are refused on the cap leg,
+  // the arbor or the reserve, the heading is not what refuses them, and walking it bought nothing: measured on
+  // ?barrelstep=-20, ?rsvr=20, ?rsvr=30 and ?reserveh=48&rsvr=27 (73 of 161 past them), every one of 180 headings stayed
+  // shut and the scan cost 93 s of boot, past the battery's 120 s on the hosted runner (TODO 280, which also holds ?d4=16, the walk that still runs long).
+  const heldNearest = found.nearest, heldOpensFold = foldsSeen > 0, heldScan = scan.slice();
+  for (let k = 1; !found.open && !heldOpensFold && k <= 90; k++)
     for (const sgn of [1, -1]) {
       MW_FOLD_LEG1_HEADING_USED_DEG = MW_FOLD_LEG1_HEADING_W_DEG + sgn * k;
       scan.length = 0;
@@ -9093,6 +9105,7 @@ const CAP_SOLVE = await (async () => {
     }
   if (found.open) return found.open;
   MW_FOLD_LEG1_HEADING_USED_DEG = MW_FOLD_LEG1_HEADING_W_DEG;
+  scan.length = 0; scan.push(...heldScan);   // the published scan is the held heading's, the one `nearest` was read off
   const nearest = heldNearest;
   console.warn(`setting traverse: no cap bearing within ±60° leaves the reserve a swing that clears the fold, this corner, the cap and the transfer arbor `
     + `at once — keeping the short way in; the battery judges it. Nearest: ${nearest.d > 0 ? '+' : ''}${nearest.d}° at swing ${nearest.s}°, ${nearest.clause} ${nearest.m.toFixed(3)}`);
