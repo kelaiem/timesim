@@ -33,6 +33,12 @@
 //      S1 each width has a row under its own key (the default's carries no strapMm); S2 each row was fitted at its
 //      own width's need; S3 each row's lug ends are flats that run that need either side of its axis. Controls: a
 //      table missing one width fails S1, and a row read at its neighbour width's need fails S2.
+//   W  the PORT FACES are flats (TODO 281): on every row of the movement with the alarm, every outline vertex inside a
+//      port's strip (the fixture's ports: the pusher's flat button and the two stems) stands either exactly ON that
+//      port's face (float noise, 1e-9 u) or more than half a cell (FREE_H / 2) behind it — a fillet, or the
+//      neighbouring face it belongs to — never in the staircase between, which TODO 275's guard reads as the wall
+//      proud of the button. Control: a row with one face vertex moved in 0.02 u (inside the staircase's measured
+//      0.027) fails.
 // An ACCEPTANCE test: exits non-zero on any failure.
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -205,6 +211,41 @@ if (ROW) {
     if (!(h >= R.need - 1e-6)) short.push(`${w} mm: ${h.toFixed(4)} < ${R.need.toFixed(4)}`);
   }
   ok('S3 each row\'s lug ends are flats running its need either side of the strap axis', have.length > 0 && short.length === 0, short.join('; ') || `${have.length} rows`);
+}
+// ── W: the port faces are flats ──────────────────────────────────────────────────────────────
+{
+  const F = JSON.parse(readFileSync(FIX, 'utf8'));
+  const parsed = JSON.parse(F.key.replace(/^cfg1:/, ''));
+  const strapOf = (k) => { const m = JSON.parse(k.replace(/^cfg1:/, '')); const { strapMm, ...rest } = m.spec;
+    return JSON.stringify({ ...m, spec: rest }) === JSON.stringify({ ...parsed, spec: (({ strapMm: _, ...r }) => r)(parsed.spec) }) ? (strapMm ?? L.STRAP_MM_DEFAULT) : null; };
+  const rows = Object.entries(FREE_OUTLINES).filter(([k]) => strapOf(k) !== null);
+  // the worst vertex of a port's strip standing in the staircase band (0, FREE_H / 2] behind its face
+  const stair = (pts) => {
+    let worst = 0, where = null;
+    for (const [pi, { o: [ox, oy], u: [ux, uy], half }] of F.ports.entries()) {
+      const S = pts.map((p) => ({ p, s: (p[0] - ox) * ux + (p[1] - oy) * uy, t: (p[0] - ox) * -uy + (p[1] - oy) * ux })).filter((v) => Math.abs(v.t) <= half && v.s > 0);
+      const face = Math.max(...S.map((v) => v.s));
+      // a vertex in the band that is ON another port's face belongs to that face (the overlap rule), not this one's
+      const onOther = (p) => F.ports.some(({ o: [qx, qy], u: [qu, qv], half: qh }, qi) => {
+        if (qi === pi) return false;
+        const t = (p[0] - qx) * -qv + (p[1] - qy) * qu; if (Math.abs(t) > qh) return false;
+        const fq = Math.max(...pts.filter((r) => Math.abs((r[0] - qx) * -qv + (r[1] - qy) * qu) <= qh).map((r) => (r[0] - qx) * qu + (r[1] - qy) * qv));
+        return fq - ((p[0] - qx) * qu + (p[1] - qy) * qv) <= 1e-9;
+      });
+      for (const v of S) { const d = face - v.s; if (d > 1e-9 && d <= L.FREE_H / 2 && !onOther(v.p) && d > worst) { worst = d; where = `port ${pi} at (${v.p[0].toFixed(3)}, ${v.p[1].toFixed(3)})`; } }
+    }
+    return { worst, where };
+  };
+  const bad = rows.map(([k, R]) => ({ w: strapOf(k), ...stair(R.pts) })).filter((r) => r.worst > 0);
+  ok(`W1 every port face is a flat on each of the ${rows.length} rows of the movement with the alarm`, rows.length > 0 && bad.length === 0,
+    bad.map((b) => `${b.w} mm: ${b.worst.toFixed(4)} u off the face, ${b.where}`).join('; ') || 'no vertex in the staircase band');
+  // control: the default row with the pusher face's first ON-face vertex moved in 0.02 u
+  const [ux, uy] = F.ports[0].u, half0 = F.ports[0].half;
+  const s0 = (p) => p[0] * ux + p[1] * uy, t0 = (p) => p[0] * -uy + p[1] * ux;
+  const strip0 = ROW.pts.filter((p) => Math.abs(t0(p)) <= half0 && s0(p) > 0), f0 = Math.max(...strip0.map(s0));
+  const i0 = ROW.pts.findIndex((p) => Math.abs(t0(p)) <= half0 && Math.abs(f0 - s0(p)) <= 1e-9 && strip0.filter((q) => Math.abs(f0 - s0(q)) <= 1e-9).length > 1);
+  const moved = ROW.pts.map((p, i) => (i === i0 ? [p[0] - ux * 0.02, p[1] - uy * 0.02] : p));
+  ok('W1 control: a face vertex moved in 0.02 u reads as the staircase', i0 >= 0 && stair(moved).worst > 0.019);
 }
 console.log(fails ? `${fails} FAILED` : 'all PASS');
 process.exit(fails ? 1 : 0);

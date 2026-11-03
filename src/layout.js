@@ -4500,8 +4500,36 @@ export function fitFreeCase(polys, { margin = PLATE_RIM_MARGIN, rc, need, c, pin
   // of a straight run IS straight (the transform below a flat edge is the vertical distance alone), so nothing more is
   // snapped: a vertex moved up onto the line from the corner's arc would leave a KINK there, a corner of no radius,
   // which the band's outside rounds only by its own grow and the bezel's deeper offset then folds (§289)
+  // THE PORT FACES (TODO 281): a lug end runs along a raster axis, so the cell transform below it is exact and its
+  // contour comes out straight; a port's face is SLANTED, and the same contour reads it as a staircase — measured on
+  // the pusher's, every vertex within 0.027 u of the face and none on it, which TODO 275's guard reads as a wall
+  // standing proud of the button's seat plane wherever the raster happens to fall. So each port's face is snapped as
+  // the ends are: inside its strip (|t| ≤ half, where the block's face runs — its corner round starts at the strip's
+  // edge, so no arc vertex is moved and no kink is made), a vertex within half a cell of the face (FREE_H / 2: the
+  // cell-centre transform's worst miss) is moved OUT along u onto it. Where two strips overlap (the pusher and the
+  // winding stem stand 8° apart) a vertex goes to the face it is NEAREST, never onto a neighbour's line, which would
+  // stand it proud of its own face. Outward only, so the metal stays held; freeWorst re-reads it after every snap.
+  const snapPorts = (q) => {
+    if (!ports.length) return q;
+    const geo = ports.map(({ o: [ox, oy], u: [ux, uy], half }) => {
+      const vx = -uy, vy = ux;
+      const sOf = ([x, y]) => (x - ox) * ux + (y - oy) * uy, tOf = ([x, y]) => (x - ox) * vx + (y - oy) * vy;
+      let face = -Infinity;
+      for (const p of q) if (Math.abs(tOf(p)) <= half && sOf(p) > 0) face = Math.max(face, sOf(p));
+      return { ux, uy, half, sOf, tOf, face };
+    });
+    return q.map((p) => {
+      let best = null, bestDev = h / 2;
+      for (const g of geo) {
+        if (!Number.isFinite(g.face) || Math.abs(g.tOf(p)) > g.half) continue;
+        const dev = g.face - g.sOf(p);
+        if (dev >= 0 && dev <= bestDev) { best = g; bestDev = dev; }
+      }
+      return best ? [p[0] + best.ux * bestDev, p[1] + best.uy * bestDev] : p;
+    });
+  };
   const snap = (loop) => {
-    let q = loop.map((p) => p.slice()), top = -Infinity, bot = Infinity;
+    let q = snapPorts(loop.map((p) => p.slice())), top = -Infinity, bot = Infinity;
     const inStrip = (x) => Math.abs(x - c) <= need + rc;
     for (const [x, y] of q) if (inStrip(x)) { top = Math.max(top, y); bot = Math.min(bot, y); }
     for (const p of q) if (inStrip(p[0])) { if (top - p[1] <= 1e-7) p[1] = top; else if (p[1] - bot <= 1e-7) p[1] = bot; }
