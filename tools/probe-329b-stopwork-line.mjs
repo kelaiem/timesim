@@ -21,16 +21,16 @@ const row = (name, ok, detail) => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${name
 const control = (name, fired, detail) => { console.log(`${fired ? 'ok  ' : 'FAIL'}  control ${name} — ${detail}`); if (!fired) fails++; };
 const f3 = (v) => v.toFixed(3);
 
-const R1 = 3.2;   // a pin orbit of the size the lug's orbit has (LUG_OUTER ≈ 3.2); the line holds for any r1, three are run below
+const R1 = 4.214;   // the pin's orbit: the lug's, windArrest.lugOuter on the lands preview (4.214); the line holds for any r1, three are run below
 
 // G
 let gOk = true, gWorst = 0;
-for (const n of [3, 4, 5, 6, 8]) for (const r1 of [2.5, R1, 4]) {
+for (const n of [3, 4, 5, 6, 8]) for (const r1 of [2.5, R1, 5]) {
   const al = entryAlignment(n, r1), E = engagementArc(n);
   const dAng = Math.max(Math.abs(starAngle(n, r1, -E / 2, undefined) + Math.PI / n), Math.abs(starAngle(n, r1, E / 2) - Math.PI / n));
   gWorst = Math.max(gWorst, 1 - al, dAng); if (!(1 - al < 1e-12 && dAng < 1e-12)) gOk = false;
 }
-row('G geometry', gOk, `alignment 1 and star turn ±π/n over n 3..8, r1 2.5/${R1}/4: worst departure ${gWorst.toExponential(2)}`);
+row('G geometry', gOk, `alignment 1 and star turn ±π/n over n 3..8, r1 2.5/${R1}/5: worst departure ${gWorst.toExponential(2)}`);
 { const n = 4, a = R1 / Math.sin(Math.PI / n), bad = entryAlignment(n, R1 * 1.05, a);
   control('G', bad < 1 - 1e-4, `a pin radius 5% over the law enters at alignment ${bad.toFixed(5)}`); }
 
