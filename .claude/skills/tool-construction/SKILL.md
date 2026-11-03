@@ -37,14 +37,46 @@ preview:
 | 16 | 149.6 s | 9.4 s |
 
 Every run read the identical area, so concurrency did not change a result. Past
-the performance cores, throughput FALLS. So:
+the performance cores, throughput FALLS.
+
+**GitHub's hosted `ubuntu-latest` is a different machine, and the gain is
+smaller.** Measured 2026-11-03 by `.github/workflows/boot-bench.yml` (4 vCPUs,
+15 GB, X64; the same lands preview):
+
+| boots at once | wall | per boot | gain |
+|---|---|---|---|
+| 1 | 31.8 s | 31.8 s | — |
+| 2 | 38.2 s | 19.1 s | 1.66× |
+| 3 | 53.5 s | 17.8 s | 1.79× |
+| 4 | 70.2 s | 17.5 s | 1.82× |
+| 6 | 108.7 s | 18.1 s | flat |
+
+A boot there is 2.3× slower than on the M2 Max, and the pool's Linux default (2,
+half the vCPUs) takes most of what parallelism offers. So:
+
+- **Budget a CI probe in hosted seconds, not local ones.** A probe that boots 8
+  specs takes ~22 s on the M2 Max and ~75 s on `ubuntu-latest`. If it belongs in
+  a workflow, size its spec list for the hosted number, and put it in its own
+  fast workflow rather than the battery (`boot-yield.yml` is the pattern: one
+  fixed host, minutes, positive `paths`).
+- **The self-hosted battery host is a third machine.** Its Tart guests are 5 vCPU
+  / 6 GB (docs/RUNNERS.md), unmeasured for the pool. 6 GB may bind before the
+  cores do. Run `node tools/boot-pool.mjs --bench 1,2,3` in a guest before
+  relying on a number there, and never beside a live battery job.
+- **The battery's own shards are a different measurement.** `ci-battery.mjs`
+  splits its checks across K browser CONTEXTS in one browser, and K=3 is
+  measured best on `ubuntu-latest` (docs/RUNNERS.md). The pool runs separate
+  BROWSERS for independent boots. Don't carry one number across to the other.
+
+Then:
 
 - **Use `bootMany` / `pool` from `tools/boot-pool.mjs`.** Its default
   concurrency is `perfCores()` (macOS reports the core classes; elsewhere it
   takes half the logical CPUs). Results come back in input order.
 - **Measure a new machine, never assume.** `node tools/boot-pool.mjs --bench
   1,4,8,12` prints that table for the host it runs on, and says if any two
-  boots read differently.
+  boots read differently. `boot-bench.yml` re-measures `ubuntu-latest` whenever
+  the pool or the harness changes (or on dispatch).
 - **One browser per boot, not contexts in one browser.** One browser shares one
   GPU process, and its pages serialise on SwiftShader.
 - **Never run two writers of one file at once.** `tools/free-outline.mjs

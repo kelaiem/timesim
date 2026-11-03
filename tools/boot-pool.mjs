@@ -6,6 +6,9 @@
 // efficiency cores, 32 GB), the lands preview, 2026-11-03: 1 boot 14.0 s; 4 at once 15.9 s (3.5x); 8 at once 21.6 s (5.2x);
 // 12 at once 49.2 s (3.4x); 16 at once 149.6 s (1.5x). Every run read the identical area, so concurrency does not move a
 // result. The knee is the PERFORMANCE-core count, so that is the default; past it, throughput falls, never rises.
+// On GitHub's ubuntu-latest (4 vCPUs, 15 GB, measured by .github/workflows/boot-bench.yml, 2026-11-03): 1 boot 31.8 s; 2 at once
+// 19.1 s a boot (1.66x); 3 at once 17.8 s (1.79x); 4 at once 17.5 s (1.82x); 6 at once 18.1 s. The Linux default (half the vCPUs, 2)
+// takes most of that.
 // Separate browsers, not contexts in one: one browser shares one GPU process, so its pages serialise on SwiftShader.
 // NOT for tools that WRITE a shared file (tools/free-outline.mjs --write rewrites src/free-outlines.js): concurrent writers
 // race. Give each worker its own tree (BOOT_ROOT, boot-form.mjs) or keep those steps serial.
