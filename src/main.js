@@ -51321,7 +51321,13 @@ const SCHEMATIC = { proxies: [], on: false };
   // club teeth), `crown` (a knurled knob a hand turns, not a gear). Each is
   // drawn by its own pass below or in §83, so the part keeps exactly one glyph
   // and the wrong one is SKIPPED rather than drawn and overdrawn.
-  const OWN_GLYPH = ['spiral', 'profile', 'crown'];
+  // `slab` (a plate that does not turn — the dial: its own extrude's faces and
+  // edges, the §78 part three pass). The dial records `userData.r` for the
+  // placement searches, and until this word the rotor pass read that as a
+  // wheel and drew a brass circle at the ROUND dial's radius on every case
+  // shape — a phantom disc standing outside a form face's corners and inside
+  // its flanks, in the wheel palette, on a part that never turns.
+  const OWN_GLYPH = ['spiral', 'profile', 'crown', 'slab'];
   const optedOut = (o) => OWN_GLYPH.some((k) => o.userData[k] !== undefined);
   SCHEMATIC.ownGlyph = optedOut;  // the §48 blade pass lives in another closure and asks the same question
   const circGeo = (r, n = 64) => {
@@ -52216,14 +52222,25 @@ document.getElementById('btn-case').addEventListener('click', () => setCaseLines
         // labelled 'Dial' unit, which is what §71's collectUnits prune exists
         // to permit — every object flagged directly, since an unflagged child
         // of a flagged parent is not protected.
+        //
+        // It is the ONE pass for the `slab` word (OWN_GLYPH, §107's rule: a
+        // word draws itself wherever it is spoken), so the dial's opt-out from
+        // the pitch circle and the glyph it gets instead cannot part: every
+        // part carrying `userData.slab` is drawn here from the mesh it names.
         {
-          const dp = byName('dialPlate');
-          const occ = new THREE.Mesh(dp.geometry, SCHEMATIC.occMat);
-          occ.userData.schematic = true; occ.layers.set(1); dp.add(occ);
-          SCHEMATIC.occluderFills.push(occ);   // §78 part four: the dial IS one of the two things the realistic x-ray glasses
-          await breathe(319);
-          const edges = new THREE.LineSegments(new THREE.EdgesGeometry(dp.geometry, 30), SCHEMATIC.rimMat);
-          edges.userData.schematic = true; edges.layers.set(1); dp.add(edges);
+          const slabs = [];
+          movement.traverse((o) => { if (typeof o.userData?.slab === 'string') slabs.push(o); });
+          for (const s of slabs) {
+            let dp = null;
+            s.traverse((o) => { if (!dp && o.isMesh && o.name === s.userData.slab) dp = o; });
+            if (!dp) { console.warn(`§78: a part opts out of the pitch circle as a slab of '${s.userData.slab}', and carries no such mesh — it draws nothing`); continue; }
+            const occ = new THREE.Mesh(dp.geometry, SCHEMATIC.occMat);
+            occ.userData.schematic = true; occ.layers.set(1); dp.add(occ);
+            SCHEMATIC.occluderFills.push(occ);   // §78 part four: the dial IS one of the two things the realistic x-ray glasses
+            await breathe(319);
+            const edges = new THREE.LineSegments(new THREE.EdgesGeometry(dp.geometry, 30), SCHEMATIC.rimMat);
+            edges.userData.schematic = true; edges.layers.set(1); dp.add(edges);
+          }
         }
 
         // PART FOUR's invariant, asserted rather than intended: x-ray in the
