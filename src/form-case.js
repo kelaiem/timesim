@@ -20,8 +20,9 @@
 // `formRect` was solved in; `main.js` adds the group to `movement`.
 //
 // PROTOTYPE, and every line that is one says so: the back is a plain plate
-// (no thread, no gasket), the band is not bored for the tubes (the round
-// case's declared CSG debt, kept), and the step the round midcase carries at
+// (no thread, no gasket), the band is bored for the tubes only on a convex
+// form (§331: boredBand; the free outline's band is not yet, and its sleeves
+// stand in solid band metal), and the step the round midcase carries at
 // zStep is not cut — the outer wall is one plane from the bezel to the back.
 //
 // Every body is a CLOSED solid wound outward (the parity raycast in
@@ -345,6 +346,90 @@ function prism(outer, holes, zA, zB, { seg = ROUND_SEG, stitch = false } = {}) {
   g.translate(0, 0, zLo);
   return g;
 }
+// §331 — THE BAND, BORED FOR ITS TUBES. Until §331 the form band was "not bored for the tubes" (this file's own header,
+// kept as declared CSG debt) and every crown stem passed through solid band metal: on `case=rect` the winding stem
+// crossed the middle 96 times (an exact edge–triangle count), which the clearance sweep read as 2.29 u clear because the
+// band's 90 u slivers blinded `meshClearance`. The round case bores its band (makeCase's BORED sectors), and this is the
+// same rule on the form's loops: a bore is the strip of perpendicular half-width `ap` (the sleeve's outer radius, the
+// tubeAt expression) round the tube's line, over the z window z ± ap, and the opening in a wall of thickness is the
+// union of the strip's crossings on the two walls (the round `boreWindow`'s rule). `A` is the outer loop and `B` the
+// bore, index-aligned (B = inward(A)): both are split exactly where any strip crosses either wall — each split point
+// interpolated on its OWN wall's edge, so it is on that wall's surface — and the band is built cell by cell, a cell
+// (A[i], A[i+1], B[i+1], B[i]) carrying metal over [zLo, zHi] less the windows of the strips its walls fall in. Radial
+// faces stand only where two neighbouring cells' metal differs, so the body stays closed. Non-indexed, flat normals.
+function boredBand(A0, B0, zLo, zHi, bores) {
+  if (A0.length !== B0.length) throw new Error(`boredBand: the outer (${A0.length}) and bore (${B0.length}) loops are not index-aligned`);
+  const n0 = A0.length;
+  const lineOf = (b) => ({ ...b, dir: [Math.cos(b.az), Math.sin(b.az)], perp: [-Math.sin(b.az), Math.cos(b.az)] });
+  const L = bores.map(lineOf);
+  const pOf = (b, q) => q[0] * b.perp[0] + q[1] * b.perp[1];
+  const alongOf = (b, q) => (q[0] - b.perp[0] * b.off) * b.dir[0] + (q[1] - b.perp[1] * b.off) * b.dir[1];
+  // the splits: per edge i, the fractions where a strip edge (p = off ± ap) crosses A's or B's edge i, ahead of the line's origin
+  const cuts = Array.from({ length: n0 }, () => []);
+  for (const b of L) for (const W of [A0, B0]) for (let i = 0; i < n0; i++) {
+    const q0 = W[i], q1 = W[(i + 1) % n0], p0 = pOf(b, q0), p1 = pOf(b, q1);
+    for (const p of [b.off - b.ap, b.off + b.ap]) {
+      if ((p0 - p) * (p1 - p) >= 0 || p1 === p0) continue;
+      const t = (p - p0) / (p1 - p0);
+      if (t > 1e-9 && t < 1 - 1e-9 && alongOf(b, [q0[0] + (q1[0] - q0[0]) * t, q0[1] + (q1[1] - q0[1]) * t]) > 0) cuts[i].push(t);
+    }
+  }
+  const A = [], B = [];
+  const lerp = (q0, q1, t) => [q0[0] + (q1[0] - q0[0]) * t, q0[1] + (q1[1] - q0[1]) * t];
+  for (let i = 0; i < n0; i++) {
+    A.push(A0[i]); B.push(B0[i]);
+    for (const t of [...new Set(cuts[i])].sort((x, y) => x - y)) {
+      A.push(lerp(A0[i], A0[(i + 1) % n0], t)); B.push(lerp(B0[i], B0[(i + 1) % n0], t));
+    }
+  }
+  const n = A.length;
+  // each cell's metal: [zLo, zHi] less the windows of every strip either wall's edge-midpoint falls in (ahead of the line)
+  const inStrip = (b, q) => alongOf(b, q) > 0 && Math.abs(pOf(b, q) - b.off) < b.ap;
+  const metal = [];
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n, mA = lerp(A[i], A[j], 0.5), mB = lerp(B[i], B[j], 0.5);
+    const wins = L.filter((b) => inStrip(b, mA) || inStrip(b, mB))
+      .map((b) => [Math.max(zLo, b.z - b.ap), Math.min(zHi, b.z + b.ap)]).filter(([a, c]) => c > a).sort((x, y) => x[0] - y[0]);
+    const pieces = [];
+    let z = zLo;
+    for (const [a, c] of wins) { if (a > z) pieces.push([z, a]); z = Math.max(z, c); }
+    if (z < zHi) pieces.push([z, zHi]);
+    metal.push(pieces);
+  }
+  const tris = [];
+  const P = (q, z) => [q[0], q[1], z];
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n, a0 = A[i], a1 = A[j], b0 = B[i], b1 = B[j];
+    for (const [z0, z1] of metal[i]) {
+      tris.push([P(a0, z1), P(a1, z1), P(b1, z1)], [P(a0, z1), P(b1, z1), P(b0, z1)]);   // front face of the piece, +z
+      tris.push([P(a0, z0), P(b1, z0), P(a1, z0)], [P(a0, z0), P(b0, z0), P(b1, z0)]);   // back face of the piece, −z
+      tris.push([P(a0, z0), P(a1, z0), P(a1, z1)], [P(a0, z0), P(a1, z1), P(a0, z1)]);   // the outer wall, out
+      tris.push([P(b1, z0), P(b0, z0), P(b0, z1)], [P(b1, z0), P(b0, z1), P(b1, z1)]);   // the bore wall, in
+    }
+  }
+  // radial faces on the line A[i]–B[i], between cell i−1 (behind) and cell i (ahead), where exactly one side is metal
+  const minus = (S, T) => {   // S \ T, both sorted disjoint interval lists
+    const out = [];
+    for (const [s0, s1] of S) {
+      let cur = s0;
+      for (const [t0, t1] of T) { if (t1 <= cur || t0 >= s1) continue; if (t0 > cur) out.push([cur, t0]); cur = Math.max(cur, t1); }
+      if (cur < s1) out.push([cur, s1]);
+    }
+    return out;
+  };
+  for (let i = 0; i < n; i++) {
+    const behind = metal[(i + n - 1) % n], ahead = metal[i], a = A[i], b = B[i];
+    for (const [z0, z1] of minus(behind, ahead)) tris.push([P(a, z0), P(b, z0), P(b, z1)], [P(a, z0), P(b, z1), P(a, z1)]);   // faces ahead
+    for (const [z0, z1] of minus(ahead, behind)) tris.push([P(a, z0), P(b, z1), P(b, z0)], [P(a, z0), P(a, z1), P(b, z1)]);   // faces behind
+  }
+  const pos = new Float32Array(tris.length * 9);
+  tris.forEach((t, k) => t.forEach((v, l) => pos.set(v, k * 9 + l * 3)));
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
+}
+
 // §331 — A CONVEX FORM'S ANNULUS, CAPPED BY STITCHING ITS TWO LOOPS. earcut triangulates a thin annulus whose straight
 // runs carry collinear points as long fans along those runs (measured on `case=rect`: 2,364 middle triangles over 20 u
 // once the loops were densified, against 420 before). Here both loops are densified (densifyLoop), and each cap is
@@ -468,7 +553,22 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   }
   const sweep = mergeGeos(bezel.runs.map((run) => { const r = sweepRun(loops.ring, run); r.computeVertexNormals(); return r; }));
   if (signedVolume(sweep) < 0) flipWinding(sweep);
-  const middleGeo = mergeGeos([sweep, prism(loops.outer, [loops.bore], zBandFront, formApertureGrow === null ? z0 : zMidBack, { stitch: form.kind !== 'free' })]);   // §321: the band ends where the back's round begins
+  // §331 — on a convex form the band is BORED for its tubes (boredBand), from the same line, offset, sleeve radius and z
+  // tubeAt builds each sleeve on below. The free outline keeps its unbored prism (filed, not in this landing).
+  const BAND_BORES = [
+    { az: stemAz, off: 0, ap: tubeD / 2 + TUBE_WALL, z: stemZ },
+    ...(alarmAz !== null ? [{ az: alarmAz, off: 0, ap: tubeD / 2 + TUBE_WALL, z: alarmZ }] : []),
+    ...(pusherAz !== null ? [{ az: pusherAz, off: pusherOff, ap: pusherD / 2 + TUBE_WALL, z: pusherZ }] : []),
+  ];
+  const zBandEnd = formApertureGrow === null ? z0 : zMidBack;   // §321: the band ends where the back's round begins
+  const band = form.kind !== 'free'
+    ? boredBand(loops.outer, loops.bore, Math.min(zBandFront, zBandEnd), Math.max(zBandFront, zBandEnd), BAND_BORES)
+    : prism(loops.outer, [loops.bore], zBandFront, zBandEnd);
+  for (const b of BAND_BORES)
+    if (!(b.z - b.ap > Math.min(zBandFront, zBandEnd) && b.z + b.ap < Math.max(zBandFront, zBandEnd)))
+      console.warn(`makeFormCase §331: a bore window (z ${(b.z - b.ap).toFixed(3)}..${(b.z + b.ap).toFixed(3)}) reaches past the band's own wall `
+        + `(${Math.min(zBandFront, zBandEnd).toFixed(3)}..${Math.max(zBandFront, zBandEnd).toFixed(3)})`);
+  const middleGeo = mergeGeos([sweep, band]);   // §321: the band ends where the back's round begins
   holdWound(middleGeo, 'the case middle');
   // §289 — the bezel's metal is the part in front of the seat plane
   // zBandFront, and the brush shader (materials.js, CASE_POLISH_ATTR) polishes
@@ -606,9 +706,8 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   //   · The OUTBOARD end is the axis's exit from the OUTER loop
   //     (makeCase's `alongAt(R_OUT)`), plus TUBE_PROUD for a crown; flush for
   //     the pusher.
-  // TODO (§307, prototype): the band is NOT bored for them — the sleeve
-  // stands in solid band metal, the same declared CSG debt the round case
-  // carries for its radial bores.
+  // §331: on a convex form the band is BORED for them (boredBand, from these same lines and radii); the free outline's
+  // band is not yet, and its sleeves still stand in solid band metal.
   const STEM_FLOOR = { caseCrownTube: 0, caseAlarmTube: 1 };   // PLATE_RIM.floors is indexed by CASE_NOTCHES: the crown, then the alarm stem
   const tubeAt = (az, d, z, name, flush = false, off = 0) => {
     const r = d / 2, rw = r + TUBE_WALL;
