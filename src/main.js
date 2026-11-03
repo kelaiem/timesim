@@ -58498,6 +58498,23 @@ if (IMPORT_OUTCOME) {
   adv.open = true;
   adv.parentElement.closest('details').open = true;
 }
+// §246 tier two — the position select. Its option values are the canonical
+// keys (balance-drive.js POSITIONS); only their text is translated. Changing
+// it tilts the watch: the driven balance carries on from where it is, under
+// the new position's friction and weight, and settles to that position's swing.
+// Declared BEFORE applyDeepLink(), which calls setBalancePosition for
+// ?position=: below it, the deep link reached `positionSelect` in its temporal
+// dead zone and every ?position= link died at boot (ReferenceError).
+const positionSelect = document.getElementById('sel-position');
+function syncPositionUI() { positionSelect.value = balancePosition; }
+function setBalancePosition(pos) {
+  if (!BD.POSITIONS.includes(pos)) return;
+  balancePosition = pos;
+  syncPositionUI();
+}
+positionSelect.addEventListener('change', () => setBalancePosition(positionSelect.value));
+syncPositionUI();
+
 applyDeepLink();
 
 // §55 — BOOT SYNCED TO THE WALL CLOCK. The movement used to start at an
@@ -58612,19 +58629,6 @@ function setQualityMode(mode) {
   qualitySelect.value = qualityMode;
 }
 qualitySelect.addEventListener('change', () => setQualityMode(qualitySelect.value));
-// §246 tier two — the position select. Its option values are the canonical
-// keys (balance-drive.js POSITIONS); only their text is translated. Changing
-// it tilts the watch: the driven balance carries on from where it is, under
-// the new position's friction and weight, and settles to that position's swing.
-const positionSelect = document.getElementById('sel-position');
-function syncPositionUI() { positionSelect.value = balancePosition; }
-function setBalancePosition(pos) {
-  if (!BD.POSITIONS.includes(pos)) return;
-  balancePosition = pos;
-  syncPositionUI();
-}
-positionSelect.addEventListener('change', () => setBalancePosition(positionSelect.value));
-syncPositionUI();
 const amplitudeReadout = document.getElementById('readout-amplitude');
 const rateReadout = document.getElementById('readout-rate');
 function paintBalanceReadouts() {
