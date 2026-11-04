@@ -573,6 +573,92 @@
     </div>
   </details>
 
+  <!-- ===================== DESIGN IN A LINE, FOLD TO FIT ===================== -->
+  <details class="mech" id="line-and-fold">
+    <summary>Design in a line, fold to fit &mdash; how a mechanism is made to fit without being changed<span class="where">method &middot; CLAUDE.md &middot; src/inspect.js <code>LINE_SPECS</code></span></summary>
+    <div class="mech-body">
+      <p>Every new mechanism in this movement starts life <b>straight</b>: its input at one end,
+      its output at the other, nothing in the way. Laid out like that, the numbers that make it
+      work &mdash; the ratio of each mesh, the length of each lever arm, how far one member
+      throws the next, how hard it pushes &mdash; can be settled on their own merits, because
+      there is no tight corner to argue them into anything. Those numbers are the mechanism's
+      <b>line spec</b>, and from then on they are the reference the built version is measured
+      back to.</p>
+      <p>Only then is it made to fit. A movement is round and crowded, and a straight chain of
+      parts never fits in it, so the line is <b>folded</b>: each joint turned about the point
+      where its two members meet, a member moved up or down into a free layer, a station slid,
+      or a corner or idler added where the route has to bend. What a fold may not do is change
+      the line spec. Plate 1 shows the difference on a schematic train. Laid straight, the train
+      is long and thin, and so is its <b>case</b> &mdash; the tightest outline that goes round
+      all of its metal. Folding turns each mesh about the wheel before it, and the fold the
+      script keeps is the one whose case has the least perimeter, while every centre distance
+      &mdash; and with it every ratio &mdash; stays exactly what the line said. That is the
+      question this movement's free outline asks of its real metal (&sect;325): the case follows
+      the parts, never the parts the case.</p>
+
+      <!-- —————— PLATE 1 : THE FOLD —————— -->
+      <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">A train laid straight, then folded into the tightest case</span></div>
+        <div class="controls">
+          <button id="fdPlay" style="background: rgba(255,255,255,0.06); border: 1px solid var(--hairline-strong); color: var(--text); border-radius: 6px; padding: 5px 12px; font: 11px system-ui, sans-serif; cursor: pointer;">▶ play</button>
+          <label>fold
+            <input type="range" id="fdSlider" min="0" max="1000" value="0" step="1"
+                   aria-label="How far the line is folded, from straight to fitted">
+          </label>
+          <button id="fdFork" aria-pressed="false" style="background: rgba(255,255,255,0.06); border: 1px solid var(--hairline-strong); color: var(--text); border-radius: 6px; padding: 5px 12px; font: 11px system-ui, sans-serif; cursor: pointer;">the forbidden fix</button>
+          <span class="readout" id="fdDist">centre distances: every one as the line</span>
+          <span class="readout" id="fdFit">case perimeter: the line's</span>
+          <span class="chip ride" id="fdChip">THE LINE · the spec is settled straight</span>
+        </div>
+        <div class="fig-body">
+          <svg viewBox="0 0 780 330" width="780" height="330" role="img"
+               aria-label="A schematic five-wheel train drawn as circles, first laid in a straight line inside a long thin case, then folded mesh by mesh into the case of least perimeter with every centre distance unchanged">
+            <!-- Written by the script below. The train is a SCHEMATIC (five pitch circles, no tooth counts). The case is the
+                 convex outline round the wheels, re-drawn every frame; the fold is SOLVED on load for the least perimeter. -->
+            <path id="fdGhost" fill="none" stroke="var(--muted)" stroke-width="1" stroke-dasharray="4 4" opacity="0.6"/>
+            <path id="fdCase" fill="var(--steel-fill)" fill-opacity="0.35" stroke="var(--steel)" stroke-width="1.4" stroke-linejoin="round"/>
+            <g id="fdLinks" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3"></g>
+            <g id="fdWheels"></g>
+            <text class="lbl lbl-strong" x="20" y="286">input</text>
+            <text class="val" x="20" y="300">the first wheel never moves</text>
+            <text class="lbl lbl-strong" x="520" y="24">the case</text>
+            <text class="val val-steel" x="520" y="38">the tightest outline round the metal</text>
+            <text class="lbl" x="520" y="58">dashed: the line's case</text>
+            <text class="val val-ruby" id="fdNote" x="20" y="316"></text>
+          </svg>
+        </div>
+        <figcaption>A schematic, not a drawing of this movement's train: five pitch circles, each
+        meshing the next. The fold is solved when the page loads, from many starting folds: each
+        joint is turned a degree at a time until the case's perimeter stops falling, wheels that
+        do not mesh are forbidden to touch, and the tightest result is kept &mdash; so the final
+        <b>azimuths</b> are nowhere drawn by hand. The train curls from its tail in, and the case
+        is re-fitted round the wheels on every frame. The two readouts are measured off the
+        drawing itself &mdash; the centre distances against the line's, and the case's perimeter
+        as a share of the line's. <b>The forbidden fix</b> reaches the same perimeter without
+        folding: shrink the wheels until the straight line's case is as small. It fits, and it is
+        no longer the same mechanism: every wheel that shrank changed the ratio of its mesh, and
+        the readout counts the centre distances that moved. In the build that is a <b>fork</b>,
+        which has to be declared, each changed value derived in place from the constraint that
+        forced it. A force or section budget cannot be forked at all.</figcaption>
+      </figure>
+
+      <p>In the build this is enforced rather than hoped for. The alarm's lines &mdash; the
+      switch's drive, the lock that reads it, the link to the selector ring, the release, the
+      strike and the detector &mdash; each carry their line spec in <code>LINE_SPECS</code>,
+      and the <code>lineSpec</code> gate measures every row off the folded metal. A fold that
+      moves a row fails unless a declared fork re-derives it, and each reference carries a
+      control that moves one part a known distance to prove the reading follows. The winding
+      arrest's Geneva stop-work (§329) went the same way: designed as a pure line in
+      <code>src/stopwork-arrest.js</code>, then folded into the gap above the fusee cone, its
+      stud planted in a web of the plate and every dimension derived from the metal it meets.</p>
+      <p>Why it is written down: once, a mechanism here was designed the other way round, by
+      fitting first. Every collision gate stayed green while its lever grew to many times the
+      length anyone would design, its force fell below what its own detent needed, and none of
+      its hand-offs touched. Designing in a line makes that impossible to do quietly, because
+      the line's numbers are the reference and the fold can only spend position.</p>
+    </div>
+  </details>
+
   <!-- ===================== GEAR TEETH ===================== -->
   <details class="mech" id="gear-teeth">
     <summary>Gear teeth &mdash; cycloidal, and derived rather than drawn<span class="where">every train &middot; src/geometry.js &sect;136</span></summary>
@@ -5902,6 +5988,164 @@
       arcSl.addEventListener('input', upd);
       diaSl.addEventListener('input', upd);
       upd();
+    })();
+
+    // —— Design in a line, fold to fit: PLATE 1 — a schematic train, straight then folded into the tightest case ——
+    // The line spec is the five pitch radii, so the centre distances (r_k−1 + r_k) and every ratio. The CASE is the convex
+    // outline round the wheels (each circle sampled, the hull of the samples), re-fitted every frame — the free outline's
+    // question (§325), asked of a schematic. The FOLD turns joint k by A[k] about wheel k−1's centre, and A is SOLVED here on
+    // load: a hill climb from many seeds on the case's perimeter, non-meshing wheels forbidden to touch. Nothing is typed. The
+    // FORK shrinks wheels 1..4 by a common factor until the STRAIGHT line's case has the fold's perimeter. Both readouts are
+    // measured off the circles drawn this frame.
+    (function () {
+      var el = function (id) { return document.getElementById(id); };
+      var box = el('line-and-fold'), slider = el('fdSlider'), btn = el('fdPlay'), forkBtn = el('fdFork');
+      var dOut = el('fdDist'), fitOut = el('fdFit'), chip = el('fdChip'), note = el('fdNote');
+      var caseEl = el('fdCase'), ghostEl = el('fdGhost'), wheelsG = el('fdWheels'), linksG = el('fdLinks');
+      if (!slider) return;
+      var NS = 'http://www.w3.org/2000/svg', DEG = Math.PI / 180;
+      var GAP = 4, RIM = 7;                                // the room every non-meshing pair keeps; the case's margin round the metal
+      var R0 = [50, 36, 30, 24, 18];                       // the line spec: five pitch radii
+      var IN = { x: 335, y: 190 };                         // the input wheel's centre: it never moves
+      var D0 = []; for (var k = 1; k < R0.length; k++) D0.push(R0[k - 1] + R0[k]);
+      function lay(angles, radii) {                        // centres from joint turns (cumulative) and radii
+        var c = [{ x: IN.x, y: IN.y }], dir = 0;
+        for (var k = 1; k < radii.length; k++) {
+          dir += angles[k - 1];
+          var d = radii[k - 1] + radii[k];
+          c.push({ x: c[k - 1].x + d * Math.cos(dir), y: c[k - 1].y + d * Math.sin(dir) });
+        }
+        return c;
+      }
+      function fouls(c, radii) {                           // non-meshing pairs closer than the gap
+        var n = 0;
+        for (var i = 0; i < c.length; i++) for (var j = i + 2; j < c.length; j++)
+          if (Math.hypot(c[i].x - c[j].x, c[i].y - c[j].y) < radii[i] + radii[j] + GAP) n++;
+        return n;
+      }
+      function hull(c, radii, rim, K) {                    // the convex outline round the circles: Andrew's monotone chain over K samples per circle
+        var pts = [];
+        for (var i = 0; i < c.length; i++) for (var s = 0; s < K; s++) {
+          var a = (s / K) * 2 * Math.PI, r = radii[i] + rim;
+          pts.push([c[i].x + r * Math.cos(a), c[i].y + r * Math.sin(a)]);
+        }
+        pts.sort(function (p, q) { return p[0] - q[0] || p[1] - q[1]; });
+        var cross = function (o, a, b) { return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]); };
+        var lo = [], up = [];
+        for (var i2 = 0; i2 < pts.length; i2++) { while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], pts[i2]) <= 0) lo.pop(); lo.push(pts[i2]); }
+        for (var i3 = pts.length - 1; i3 >= 0; i3--) { while (up.length >= 2 && cross(up[up.length - 2], up[up.length - 1], pts[i3]) <= 0) up.pop(); up.push(pts[i3]); }
+        lo.pop(); up.pop();
+        return lo.concat(up);
+      }
+      function perim(h) { var p = 0; for (var i = 0; i < h.length; i++) { var a = h[i], b = h[(i + 1) % h.length]; p += Math.hypot(b[0] - a[0], b[1] - a[1]); } return p; }
+      function cost(ang, radii) { var c = lay(ang, radii); return fouls(c, radii) ? Infinity : perim(hull(c, radii, 0, 12)); }
+      // the solve: coordinate descent with a shrinking step, from the straight line and 80 seeded folds (every joint at −100°, 0, +100°)
+      var A = null, bestCost = Infinity, seeds = [];
+      for (var s1 = -1; s1 <= 1; s1++) for (var s2 = -1; s2 <= 1; s2++) for (var s3 = -1; s3 <= 1; s3++) for (var s4 = -1; s4 <= 1; s4++) seeds.push([s1 * 100 * DEG, s2 * 100 * DEG, s3 * 100 * DEG, s4 * 100 * DEG]);
+      for (var si = 0; si < seeds.length; si++) {
+        var ang = seeds[si].slice(), cur = cost(ang, R0), steps = [20, 10, 5, 2, 1];
+        for (var st = 0; st < steps.length; st++) {
+          var step = steps[st] * DEG, improved = true;
+          while (improved) {
+            improved = false;
+            for (var jnt = 0; jnt < 4; jnt++) for (var sg = -1; sg <= 1; sg += 2) {
+              var t = ang.slice(); t[jnt] += sg * step;
+              if (Math.abs(t[jnt]) > 170 * DEG) continue;
+              var cc = cost(t, R0);
+              if (cc < cur - 1e-9) { cur = cc; ang = t; improved = true; }
+            }
+          }
+        }
+        if (cur < bestCost - 1e-9) { bestCost = cur; A = ang; }
+      }
+      var P_LINE = perim(hull(lay([0, 0, 0, 0], R0), R0, 0, 36));
+      var P_FOLD = perim(hull(lay(A, R0), R0, 0, 36));
+      // the fork's factor: the common shrink of wheels 1..4 at which the STRAIGHT line's case has the fold's perimeter
+      function shrunk(sf) { return R0.map(function (r, i) { return i === 0 ? r : r * sf; }); }
+      var lo = 0.05, hi = 1;
+      for (var it = 0; it < 50; it++) { var mid = (lo + hi) / 2; if (perim(hull(lay([0, 0, 0, 0], shrunk(mid)), shrunk(mid), 0, 36)) > P_FOLD) hi = mid; else lo = mid; }
+      var SF = lo;
+      var smooth = function (u) { u = Math.max(0, Math.min(1, u)); return u * u * (3 - 2 * u); };
+      function anglesAt(f) {                               // the train curls from its tail in: joint 4 first, each window 0.4 long, 0.2 apart
+        return A.map(function (a, k) { return a * smooth((f - (3 - k) * 0.2) / 0.4); });
+      }
+      function pathOf(h) { var d = ''; for (var i = 0; i < h.length; i++) d += (i ? ' L ' : 'M ') + h[i][0].toFixed(1) + ' ' + h[i][1].toFixed(1); return d + ' Z'; }
+      ghostEl.setAttribute('d', pathOf(hull(lay([0, 0, 0, 0], R0), R0, RIM, 36)));
+      var forking = false;
+      function draw(f) {
+        var radii = forking ? shrunk(1 - f * (1 - SF)) : R0;
+        var ang = forking ? [0, 0, 0, 0] : anglesAt(f);
+        var c = lay(ang, radii);
+        caseEl.setAttribute('d', pathOf(hull(c, radii, RIM, 36)));
+        var P = perim(hull(c, radii, 0, 36));
+        while (wheelsG.firstChild) wheelsG.removeChild(wheelsG.firstChild);
+        while (linksG.firstChild) linksG.removeChild(linksG.firstChild);
+        var moved = 0, nf = fouls(c, radii);
+        for (var k = 0; k < c.length; k++) {
+          if (k > 0) {
+            var ln = document.createElementNS(NS, 'line');
+            ln.setAttribute('x1', c[k - 1].x); ln.setAttribute('y1', c[k - 1].y); ln.setAttribute('x2', c[k].x); ln.setAttribute('y2', c[k].y);
+            linksG.appendChild(ln);
+            if (Math.abs(Math.hypot(c[k].x - c[k - 1].x, c[k].y - c[k - 1].y) - D0[k - 1]) > 1e-9) moved++;
+          }
+          var changed = Math.abs(radii[k] - R0[k]) > 1e-9;
+          var w = document.createElementNS(NS, 'circle');
+          w.setAttribute('cx', c[k].x); w.setAttribute('cy', c[k].y); w.setAttribute('r', radii[k]);
+          w.setAttribute('fill', changed ? 'var(--ruby-fill)' : 'var(--brass-fill)');
+          w.setAttribute('stroke', changed ? 'var(--ruby)' : 'var(--brass)');
+          w.setAttribute('stroke-width', '1.4');
+          wheelsG.appendChild(w);
+          var hub = document.createElementNS(NS, 'circle');
+          hub.setAttribute('cx', c[k].x); hub.setAttribute('cy', c[k].y); hub.setAttribute('r', 2.2);
+          hub.setAttribute('fill', k === 0 ? 'var(--text)' : 'var(--muted)');
+          wheelsG.appendChild(hub);
+        }
+        dOut.textContent = moved ? tr('centre distances changed:') + ' ' + moved : tr('centre distances: every one as the line');
+        fitOut.textContent = tr('case perimeter:') + ' ' + Math.round((100 * P) / P_LINE) + '% ' + tr('of the line’s');
+        var done = f >= 0.999;
+        if (forking) {
+          chip.className = 'chip ' + (moved ? 'trip' : 'ride');
+          chip.textContent = moved ? tr('A FORK · the same case, a different mechanism') : tr('THE LINE · the spec is settled straight');
+          note.textContent = moved ? tr('every red wheel changed the ratio of its mesh') : '';
+        } else {
+          chip.className = 'chip ' + (f <= 0.001 || done ? 'ride' : 'ramp');
+          chip.textContent = f <= 0.001 ? tr('THE LINE · the spec is settled straight')
+            : done ? tr('FOLDED · the same spec, the tightest case') : tr('FOLDING · only azimuths move');
+          note.textContent = nf ? tr('two wheels that do not mesh are touching') : '';
+        }
+      }
+      var playing = false, raf = 0, t0 = null, CYCLE = 10;   // straight 1.5 s, fold 4 s, hold 3 s, unfold 1.5 s
+      function phase(e) {
+        if (e < 1.5) return 0;
+        if (e < 5.5) return (e - 1.5) / 4;
+        if (e < 8.5) return 1;
+        return 1 - smooth((e - 8.5) / 1.5);
+      }
+      function tick(now) {
+        if (!playing) return;
+        if (!box.open || document.hidden) { t0 = null; raf = requestAnimationFrame(tick); return; }
+        if (t0 === null) t0 = now;
+        var f = phase(((now - t0) / 1000) % CYCLE);
+        slider.value = String(Math.round(f * 1000));
+        draw(f);
+        raf = requestAnimationFrame(tick);
+      }
+      function setPlaying(on) {
+        playing = on;
+        btn.textContent = on ? tr('⏸ pause') : tr('▶ play');
+        if (on) { t0 = null; raf = requestAnimationFrame(tick); }
+        else { cancelAnimationFrame(raf); draw(slider.value / 1000); }
+      }
+      slider.addEventListener('input', function () { if (playing) setPlaying(false); else draw(slider.value / 1000); });
+      btn.addEventListener('click', function () { setPlaying(!playing); });
+      forkBtn.addEventListener('click', function () {
+        forking = !forking;
+        forkBtn.setAttribute('aria-pressed', forking ? 'true' : 'false');
+        forkBtn.textContent = forking ? tr('fold instead') : tr('the forbidden fix');
+        if (playing) t0 = null; else draw(slider.value / 1000);
+      });
+      draw(0);
+      if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) setPlaying(true);
     })();
   })();
 </script>
