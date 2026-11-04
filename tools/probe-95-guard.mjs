@@ -38,7 +38,7 @@ console.log(await p.evaluate(async ()=>{
   const unit=n=>c.labelEntries.find(x=>x.name===n);
   const meshesOf=e=>{const m=[];const w=n=>{if(n.userData&&n.userData.schematic)return;
     if(n.isMesh&&n.geometry&&n.geometry.attributes.position)m.push(n);for(const ch of n.children)w(ch);};w(e.obj);return m;};
-  const closed=(g)=>{const {bad}=I.surfaceEdgeCensus(g); return {closed:bad===0, bad};};   // TODO 165: boundsASolid's own law, never a copy
+  const closed=(g)=>{const {bad,odd}=I.surfaceEdgeCensus(g); return {closed:odd===0, bad, odd};};   // TODO 165/282: boundsASolid's own law (no odd edge), never a copy
   I.enterAxis(c); c.setPose(I.AXES[0].pose(0,c));
   const rows=[
     ['Alarm switch','alarmPusherStem','Alarm switch','alarmPusherReturnSpring','MUST STAY reported (spring closed, real graze)'],

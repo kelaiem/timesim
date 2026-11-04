@@ -2030,7 +2030,16 @@ const _closedCache = new WeakMap();
 function boundsASolid(geom) {
   let v = _closedCache.get(geom);
   if (v !== undefined) return v;
-  v = surfaceEdgeCensus(geom).bad === 0;   // manifold: every edge shared by exactly 2 faces
+  // TODO 282 — CLOSED MEANS NO BOUNDARY, i.e. every edge on an EVEN number of faces. The witness's argument
+  // ("crossed twice, so the segment was inside between") needs only that the surface bounds a region: a face DOUBLED
+  // inside the metal (the form case's bezel sweep and band share the seat plane, §289; the chain's links touch along
+  // edges) shares its edges four ways and still has no boundary, and a segment can reach it only from inside the
+  // metal, so n ≥ 2 crossings still means it was inside. "Exactly two" refused all six such meshes in the movement
+  // (`caseMiddle`, `caseBack`, `chainRun`, `star` and two unnamed), and with no sample point in the metal
+  // `meshClearance` replaced the library's correct 0 with a vertex distance: on `case=rect` before §331 the winding
+  // stem read 2.289 u clear of the band it crossed 96 times. An ODD count is a real hole or an open sheet (the
+  // springs, the hands' tips, the sub-dials: 19 meshes), and those stay refused.
+  v = surfaceEdgeCensus(geom).odd === 0;
   _closedCache.set(geom, v);
   return v;
 }
@@ -2039,7 +2048,9 @@ function boundsASolid(geom) {
 // closedness (probe-165-witness, probe-mesh-closedness-census) read THIS law
 // rather than carrying a copy of it. `bad` is the number of position-keyed
 // edges not shared by exactly two faces, `over` those shared by three or more
-// (bad − over are holes); `collapsed` the triangles skipped as segments (below).
+// (bad − over are holes); `odd` those shared by an ODD number of faces, the surface's boundary mod 2, which is what
+// boundsASolid reads (TODO 282); `collapsed` the triangles skipped as segments (below). meshIntegrity's held-fixture
+// gate reads `bad` and `over` and is unchanged by `odd`.
 export function surfaceEdgeCensus(geom) {
   const pos = geom.attributes.position, idx = geom.index;
   const n = idx ? idx.count : pos.count;
@@ -2080,9 +2091,9 @@ export function surfaceEdgeCensus(geom) {
       edge.set(kk, (edge.get(kk) || 0) + 1);
     }
   }
-  let bad = 0, over = 0;
-  for (const c of edge.values()) { if (c !== 2) bad++; if (c > 2) over++; }
-  return { edges: edge.size, bad, over, collapsed };
+  let bad = 0, over = 0, odd = 0;
+  for (const c of edge.values()) { if (c !== 2) bad++; if (c > 2) over++; if (c % 2) odd++; }
+  return { edges: edge.size, bad, over, odd, collapsed };
 }
 
 const _pierceRay = new THREE.Ray(), _pierceDir = new THREE.Vector3();
