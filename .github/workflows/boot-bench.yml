@@ -1,0 +1,57 @@
+# HOW MANY BOOTS AT ONCE DOES A HOSTED RUNNER TAKE? A report, never a gate.
+#
+# tools/boot-pool.mjs runs probes' boots in parallel, one headless Chromium per boot, and its default concurrency is a
+# guess off the core count wherever the OS does not report core classes (Linux: half the logical CPUs). The knee is a
+# measured property of a host (docs/RUNNERS.md's rule for the battery's shard count), so this measures it on
+# ubuntu-latest whenever the pool or the boot harness changes, and on demand. The table lands in the job summary; the
+# tool-construction skill quotes it. It fails only if the harness crashes; a slow or flat table is a finding, not a fault.
+name: Boot bench
+
+on:
+  pull_request:
+    paths:
+      - 'tools/boot-pool.mjs'
+      - 'tools/boot-form.mjs'
+      - '.github/workflows/boot-bench.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: boot-bench-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pinned Playwright
+        working-directory: tools
+        run: npm ci --no-audit --no-fund
+
+      - name: Cache Playwright Chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('tools/package-lock.json') }}
+
+      - name: Install Chromium
+        uses: ./.github/actions/install-chromium
+
+      - name: The host
+        run: |
+          { echo "### Boot bench on \`${{ runner.os }}\` / \`${{ runner.arch }}\`"; echo '```';
+            echo "nproc: $(nproc)"; free -g | head -2; echo '```'; } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Boots at once, the lands preview
+        run: |
+          node tools/boot-pool.mjs --bench 1,2,3,4,6 | tee bench.txt
+          { echo '```'; cat bench.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"

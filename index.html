@@ -480,8 +480,8 @@
     // The default's option carries value '' (its own key has no strap), and a width the URL carries that is not whole is added so the box never lies.
     const strapSel = prefsEl.querySelector('#boot-strap');
     if (strapSel) {
-      const STRAP_PICK_MIN = 14;
       import('./src/layout.js').then((L) => {
+        const STRAP_PICK_MIN = L.STRAP_PICK_MIN_MM;   // one declaration: the free outlines must cover every width offered
         const dflt = L.STRAP_MM_DEFAULT, cap = Math.round(L.CASE_LUG_SPAN_MAX * L.UNIT_MM);
         const asked = new URLSearchParams(location.search).get('strap');
         const widths = [];
