@@ -398,13 +398,33 @@ function boredBand(A0, B0, zLo, zHi, bores) {
   }
   const tris = [];
   const P = (q, z) => [q[0], q[1], z];
+  // TODO 282 — EDGE-CONFORMING. Every vertical line A[i]–B[i] carries the z breakpoints of BOTH cells beside it, and
+  // every wall and radial face on that line is split at them: a wall that ran its neighbour's full height past a bored
+  // cell's window edge left a T-junction there, an edge on one face, and 48 such edges made the band read OPEN to
+  // `boundsASolid`, which refuses it the pass-through witness — the blindness TODO 282 closed. Each wall is a zipper
+  // between its two lines' breakpoints, so the band has no edge on an odd number of faces (probe-282-witness holds it).
+  const brk = Array.from({ length: n }, (_, i) => {
+    const zs = new Set([zLo, zHi]);
+    for (const c of [metal[(i + n - 1) % n], metal[i]]) for (const [z0, z1] of c) { zs.add(z0); zs.add(z1); }
+    return [...zs].sort((x, y) => x - y);
+  });
+  const within = (zs, z0, z1) => zs.filter((z) => z >= z0 && z <= z1);
+  // a strip between two vertical chains, L (left) and R (right), each ascending, wound as the quad
+  // [L0, R0, R1], [L0, R1, L1] is: every triangle advances one chain one step, the lower next step first
+  const zipper = (L, R) => {
+    for (let a = 0, b = 0; a < L.length - 1 || b < R.length - 1;) {
+      if (b < R.length - 1 && (a === L.length - 1 || R[b + 1][2] <= L[a + 1][2])) { tris.push([L[a], R[b], R[b + 1]]); b++; }
+      else { tris.push([L[a], R[b], L[a + 1]]); a++; }
+    }
+  };
   for (let i = 0; i < n; i++) {
     const j = (i + 1) % n, a0 = A[i], a1 = A[j], b0 = B[i], b1 = B[j];
     for (const [z0, z1] of metal[i]) {
       tris.push([P(a0, z1), P(a1, z1), P(b1, z1)], [P(a0, z1), P(b1, z1), P(b0, z1)]);   // front face of the piece, +z
       tris.push([P(a0, z0), P(b1, z0), P(a1, z0)], [P(a0, z0), P(b0, z0), P(b1, z0)]);   // back face of the piece, −z
-      tris.push([P(a0, z0), P(a1, z0), P(a1, z1)], [P(a0, z0), P(a1, z1), P(a0, z1)]);   // the outer wall, out
-      tris.push([P(b1, z0), P(b0, z0), P(b0, z1)], [P(b1, z0), P(b0, z1), P(b1, z1)]);   // the bore wall, in
+      const zl = within(brk[i], z0, z1), zr = within(brk[j], z0, z1);
+      zipper(zl.map((z) => P(a0, z)), zr.map((z) => P(a1, z)));   // the outer wall, out
+      zipper(zr.map((z) => P(b1, z)), zl.map((z) => P(b0, z)));   // the bore wall, in
     }
   }
   // radial faces on the line A[i]–B[i], between cell i−1 (behind) and cell i (ahead), where exactly one side is metal
@@ -419,8 +439,12 @@ function boredBand(A0, B0, zLo, zHi, bores) {
   };
   for (let i = 0; i < n; i++) {
     const behind = metal[(i + n - 1) % n], ahead = metal[i], a = A[i], b = B[i];
-    for (const [z0, z1] of minus(behind, ahead)) tris.push([P(a, z0), P(b, z0), P(b, z1)], [P(a, z0), P(b, z1), P(a, z1)]);   // faces ahead
-    for (const [z0, z1] of minus(ahead, behind)) tris.push([P(a, z0), P(b, z1), P(b, z0)], [P(a, z0), P(a, z1), P(b, z1)]);   // faces behind
+    // split at the line's breakpoints, so its vertical edges meet the walls' (TODO 282)
+    const steps = (z0, z1) => { const zs = within(brk[i], z0, z1), out = []; for (let k = 0; k + 1 < zs.length; k++) out.push([zs[k], zs[k + 1]]); return out; };
+    for (const [w0, w1] of minus(behind, ahead)) for (const [z0, z1] of steps(w0, w1))
+      tris.push([P(a, z0), P(b, z0), P(b, z1)], [P(a, z0), P(b, z1), P(a, z1)]);   // faces ahead
+    for (const [w0, w1] of minus(ahead, behind)) for (const [z0, z1] of steps(w0, w1))
+      tris.push([P(a, z0), P(b, z1), P(b, z0)], [P(a, z0), P(a, z1), P(b, z1)]);   // faces behind
   }
   const pos = new Float32Array(tris.length * 9);
   tris.forEach((t, k) => t.forEach((v, l) => pos.set(v, k * 9 + l * 3)));

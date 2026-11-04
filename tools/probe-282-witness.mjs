@@ -18,6 +18,8 @@
 //             witness: a segment crossing an open surface twice is inside no metal at all (TODO 95's guard).
 //   census  — the default build and `form-rect`: nothing accepted by the old law is refused by the new one (monotone),
 //             and the meshes the new law newly accepts are listed by name, each with no odd edge.
+//   case    — `caseMiddle` and `caseBack` on both builds have no odd edge: a stem passes through each on a form build,
+//             and an open case body is refused the witness (§331's first bored band carried 48 T-junction edges).
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -93,6 +95,10 @@ const MEASURE = async () => {
     }
   }
   out.census = { total, oldAcc, newAcc, lost, gained: [...new Set(gained)] };
+  // the case's own bodies, each of which a stem passes through on a form build: they must be closed mod 2, or the
+  // witness is off for exactly the pairs this item is about (§331's first bored band left 48 T-junction edges)
+  out.caseBodies = [];
+  c.scene.traverse((o) => { if (o.isMesh && (o.name === 'caseMiddle' || o.name === 'caseBack')) out.caseBodies.push({ name: o.name, odd: I.surfaceEdgeCensus(o.geometry).odd }); });
   return out;
 };
 
@@ -145,6 +151,13 @@ for (const [tag, R] of [['default', NEW], ['form-rect', FORM]]) {
 }
 if (!NEW.census.gained.length && !FORM.census.gained.length) fail('the new law accepts no mesh the old refused — the change did nothing');
 
+console.log('== the case bodies, closed mod 2 ==');
+for (const [tag, R] of [['default', NEW], ['form-rect', FORM]]) {
+  console.log(`  ${tag}: ` + (R.caseBodies.map((x) => `${x.name} odd ${x.odd}`).join(', ') || 'none found'));
+  if (!R.caseBodies.length) fail(`${tag}: no caseMiddle or caseBack found — the tier measured nothing`);
+  for (const x of R.caseBodies) if (x.odd) fail(`${tag}: ${x.name} has ${x.odd} edge(s) on an odd number of faces — the witness is off for it`);
+}
+
 console.log('== boot ==');
 for (const [tag, R] of [['new', NEW], ['old', OLD], ['form-rect', FORM]]) {
   console.log(`  ${tag}: ${R.errors.length} page error(s)`);
@@ -152,5 +165,5 @@ for (const [tag, R] of [['new', NEW], ['old', OLD], ['form-rect', FORM]]) {
 }
 
 await browser.close(); srv.kill();
-console.log(fails.length ? `\nFAIL — ${fails.length} problem(s)` : '\nPASS — a rod through a doubled-face slab reads 0 (the old rule read it clear), an open sheet is still refused, and the census is monotone');
+console.log(fails.length ? `\nFAIL — ${fails.length} problem(s)` : '\nPASS — a rod through a doubled-face slab reads 0 (the old rule read it clear), an open sheet is still refused, the census is monotone, and the case bodies are closed');
 process.exit(fails.length ? 1 : 0);

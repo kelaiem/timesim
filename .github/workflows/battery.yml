@@ -833,12 +833,13 @@ jobs:
       - name: Install Chromium
         uses: ./.github/actions/install-chromium   # bounded apt from cached .debs, then the cached browser
 
-      - name: Case relief, casing path, back envelope and lands (§186, §187, §328)
+      - name: Case relief, casing path, back envelope, lands and the clearance witness (§186, §187, §328, TODO 282)
         run: |
           node tools/probe-case-relief.mjs
           node tools/probe-187-casing-path.mjs
           node tools/probe-back-envelope.mjs
           node tools/probe-328-lands.mjs
+          node tools/probe-282-witness.mjs
 
   battery:
     needs: route
@@ -1331,6 +1332,15 @@ jobs:
       - name: Lands (§328)
         if: (env.MATRIX != 'true' || matrix.worker == 1) && env.TIERS_JOB != 'true'   # on the fan-out path the `battery probes` job runs it
         run: node tools/probe-328-lands.mjs
+
+      # TODO 282 — the clearance query's pass-through witness, held against the rule as it was: a rod through a
+      # doubled-face slab must read 0 (the old "exactly two faces" closedness read it clear), a rod through an open
+      # sheet must still be refused, the closedness census must be monotone, and the case bodies a stem passes
+      # through must have no odd edge. It is a check on the INSTRUMENT the sweeps above trust, so it rides with them;
+      # three boots, acceptance, exit 1 on a finding.
+      - name: Clearance witness (TODO 282)
+        if: (env.MATRIX != 'true' || matrix.worker == 1) && env.TIERS_JOB != 'true'   # on the fan-out path the `battery probes` job runs it
+        run: node tools/probe-282-witness.mjs
 
       # ---- §227: what this run measured, so a merge can tell ----------------
       #
