@@ -620,6 +620,22 @@ if (FRAME_LANDS) {
   MECH_GRAPH.support.push(['Three-quarter plate', 'plate']);
 }
 
+// §329 landing 4 — ?arrest=stopwork builds the Geneva stop-work INSTEAD of §47's arrest (main.js, in §47's block), so the unit
+// 'Winding arrest' is not built and 'Winding stop-work' is. Its rows are the metal's: the star's stud is planted in the
+// three-quarter plate's underside, and the pin the cone carries drives the star both ways. The condition is the SPEC key main.js
+// builds on, for FRAME_LANDS' reason (checkGraph fails both ways). Every table below that names §47's unit is filtered the same way.
+const STOPWORK_ARREST = SPEC.arrest === 'stopwork';
+const dropArrestRows = (rows, names) => {
+  if (!STOPWORK_ARREST) return;
+  for (let i = rows.length - 1; i >= 0; i--) if (names(rows[i]).includes('Winding arrest')) rows.splice(i, 1);
+};
+dropArrestRows(MECH_GRAPH.support, (r) => r);
+dropArrestRows(MECH_GRAPH.drive, (r) => r);
+if (STOPWORK_ARREST) {
+  MECH_GRAPH.support.push(['Winding stop-work', 'Three-quarter plate']);
+  MECH_GRAPH.drive.push(['Fusee & great wheel', 'Winding stop-work']);
+}
+
 // Shared anchor-point extractor: the mesh CENTRE within `unitEntry` nearest
 // to any mesh centre in `targetEntry` — i.e. "whichever part of this unit is
 // actually meant to reach the target." Cheap (mesh-count², not
@@ -885,6 +901,8 @@ const EXPECTED_PAIRS = [
   ['Alarm governor anchor', 'plate'],// §107's stud, §112's face
   ['Alarm governor', 'Alarm governor anchor'],    // §107: the saw's tooth face on the pallet face — the governing contact itself
 ];
+dropArrestRows(EXPECTED_PAIRS, (r) => r);   // §329 landing 4 (see STOPWORK_ARREST)
+if (STOPWORK_ARREST) EXPECTED_PAIRS.push(['Winding stop-work', 'Three-quarter plate'], ['Winding stop-work', 'Fusee & great wheel']);   // the stud's seat; the pin in the star's slot and the lock disc in its arcs
 // §325 landing 6 — the plate sits on the base plate's lands, not on pillar caps (the plate is a held fixture, in no sweep's pairs)
 if (FRAME_LANDS) for (let i = EXPECTED_PAIRS.length - 1; i >= 0; i--) if (EXPECTED_PAIRS[i].includes('pillars')) EXPECTED_PAIRS.splice(i, 1);
 // Same rigid assembly / coaxial stacks — not meaningful to test.
@@ -3078,6 +3096,7 @@ export const EXPECTED_CONTACT_FLOORS = [
     ],
   },
 ];
+dropArrestRows(EXPECTED_CONTACT_FLOORS, (r) => [r.a, r.b]);   // §329 landing 4 (see STOPWORK_ARREST)
 
 // TODO 6's check: sweep each row's unit pair with its declared contacts
 // EXCLUDED, and hold the remainder to the row's floor. REPORT-first (§50's
@@ -3941,6 +3960,7 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Case', a: 'caseBackCrystal', b: 'caseBackCrystalGasket', why: 'TODO 122: the pane\'s edge on its I-ring — the interference that fixes the glass in every direction the lip does not, drawn at the gasket\'s compressed section' },
   { unit: 'Case', a: 'caseBackCrystalGasket', b: 'caseBack', why: 'TODO 122: the I-ring compressed against the channel\'s wall and squeezed under the lip — the channel is cut to the gasket\'s compressed wall (glassEdgeR = skirtID − 0.8·stock), so the fit IS the press' },
 ];
+dropArrestRows(INTRA_UNIT_CONTACTS, (r) => [r.unit]);   // §329 landing 4 (see STOPWORK_ARREST)
 // Accepted debt, §50's convention — red in the report, cited, not silenced:
 export const INTRA_UNIT_WAIVERS = [
   // TODO 107's row (genevaFingerDisc ⇄ alarmArrestFingerArbor) stood here and
@@ -6281,6 +6301,7 @@ const PENETRATION_BUDGETS = [
     },
   },
 ];
+dropArrestRows(PENETRATION_BUDGETS, (r) => r.pair || []);   // §329 landing 4 (see STOPWORK_ARREST)
 
 // §61 helper — worst radial burial of a mesh below an axisymmetric surface
 // r = floorAt(z, az), in the surface's own frame. Samples every vertex AND each
@@ -6742,6 +6763,7 @@ export const WIND_ARREST_HANDOFFS = [
     expect: { full: 'contact', slack: 'free' },
   },
 ];
+dropArrestRows(WIND_ARREST_HANDOFFS, (r) => [r.unitA, r.unitB]);   // §329 landing 4 (see STOPWORK_ARREST)
 
 // TODO 50 — the stem clutch's handoff rows, a SIBLING registration in the
 // windArrestHandoff pattern (never widen another mechanism's tables — its

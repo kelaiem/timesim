@@ -93,6 +93,7 @@ import {
   MOVEMENT_SENSE, ALARM_SENSE,                // TODO 115: the two trains' hands — the going train's, and the alarm's own motor's; every direction-committed cut is checked against one of them
   BACK_PLATE_T, KEYLESS_STACK_R,              // TODO 211: the plate's thickness (hoisted — the keyless plane derives from its dial face) and the stem stack's reach that plane is cut against
 } from './layout.js';
+import { genevaDims as swDims, chooseStopwork, starAngle as swStarAngle, engagementArc as swEngagementArc, travelTurns as swTravelTurns } from './stopwork-arrest.js';   // §329 landing 4: option B, the Geneva stop-work's line
 import { solveTrailingArrest, r1For as trailR1For, psi2ForThrow as trailPsi2ForThrow, epsOf as trailEpsOf, D_MIN as TRAIL_D_MIN, R1_MIN as TRAIL_R1_MIN } from './trailing-arrest.js';   // §329: the trailing arrest's line
 import { LUBRICATION, REGIME_INFO } from './lubrication.js';
 // §267 — the boot bar's table: each seam's measured share of the build,
@@ -1236,6 +1237,7 @@ const FUSEE_F_ACTIVE = FUSEE_WRAP_TURNS / FUSEE_GROOVE_TURNS; // 0.875 — the w
 // second number: tick() banks against engageTurns, so a lug whose clocking
 // drifted from the wrap would be caught at boot, not discovered as overwind.
 const WIND_ARREST = { engageTurns: FUSEE_WRAP_TURNS };
+const STOPWORK = SPEC.arrest === 'stopwork';   // §329 landing 4: option B's Geneva stop-work replaces §47's finger, beak and lug (its build is in §47's block)
 // (The cone's z stack — groove width and depth, base collar, center-wheel bind, band, pitch,
 // base and groove start — is declared below, beside the spring constants it needs:
 // the groove's width carries the plate's twist off the helicoid walls, which is a
@@ -2876,7 +2878,7 @@ const {
 // one band thickness — the band's outside then turns no tighter than the band is thick, rather than to a cusp.
 const FREE_RC = CASE_CLEAR + 2 * CASE_BAND_T;
 // §325 landing 7: `hands` moves no metal of the movement, so no movement-keyed lookup below carries it
-const FREE_KEY = SPEC.caseShape === 'free' ? configKey({ spec: { ...SPEC, hands: null, formRectSpec: null, gongSeat: null, arrest: null } }) : null;   // §329 2a: ?arrest=trailing moves no metal, so it reads the outline the build without it was fitted to
+const FREE_KEY = SPEC.caseShape === 'free' ? configKey({ spec: { ...SPEC, hands: null, formRectSpec: null, gongSeat: null, arrest: SPEC.arrest === 'trailing' ? null : SPEC.arrest } }) : null;   // §329 landing 4: ?arrest=stopwork moves metal the outline is fitted to, so it keys its own outline; ?arrest=trailing (2a) moves none, so it reads the outline the build without it was fitted to
 const FREE_ROW = FREE_KEY ? FREE_OUTLINES[FREE_KEY] ?? null : null;
 const FORM = !SPEC.caseShape ? null
   : SPEC.caseShape === 'free'
@@ -18203,7 +18205,7 @@ for (const j of FRAME_JOINTS) {
 // arrest with the cone, and the lug's clocking is a CONSTRUCTION: full wind
 // is one fixed world azimuth (windLocalAt), so the lug is cut kissing the
 // thrown beak and the engagement turn count IS FUSEE_WRAP_TURNS.
-{
+arrest47: {   // labelled: §329 landing 4's stop-work branch leaves it before §47's arrest is solved
   const C = { x: P.barrel.x, y: P.barrel.y };
   const TAU2 = Math.PI * 2;
   const GROOVE = fusee.userData.groove; // the cut's own closures (floorAt takes cone-local z)
@@ -18425,6 +18427,29 @@ for (const j of FRAME_JOINTS) {
     return worst;
   };
 
+  // A2 — the owed measurement, Chain ⇄ three-quarter plate, CLOSED
+  // (§329 landing 4 moved this up from the block's end, unchanged: it reads only the chain's occupancy law, and the stop-work branch
+  // below leaves the block before §47's arrest is solved, so the measurement has to stand before the branch to hold on both builds.)
+  // (TODO 53): from the same occupancy law (the top link's leaned section
+  // at full wind against the plate's underside). The plate floor now
+  // carries CHAIN_TQ_REACH — the closed-form bound of exactly this
+  // measurement — so the assert holds the MARGIN, no longer just the
+  // sign. A second assert holds the bound CONSERVATIVE: the discrete top
+  // (the links the mesh really lays) must sit under it, every boot,
+  // every spec variant — the continuum bound errs outward by ~0.03 where
+  // chording errs inward, which is the right side for a floor, and the
+  // slack between them is published as a report, not gated.
+  {
+    let top = 0;
+    for (const pnt of linkOuterPtsNear(1, 1e9)) top = Math.max(top, pnt.z);
+    WIND_ARREST.chainTqGap = TQ_BOT_Z - top;
+    WIND_ARREST.chainTqBoundSlack = CHAIN_TQ_REACH - top;
+    if (!(WIND_ARREST.chainTqGap >= CLEAR_MARGIN - 1e-9))
+      console.warn(`§47/TODO 53: Chain ⇄ three-quarter plate gap ${WIND_ARREST.chainTqGap.toFixed(4)} under the ${CLEAR_MARGIN} margin — the plate floor's chain term regressed`);
+    if (WIND_ARREST.chainTqBoundSlack < -1e-9)
+      console.warn(`TODO 53: CHAIN_TQ_REACH under-bounds the discrete top by ${(-WIND_ARREST.chainTqBoundSlack).toFixed(4)} — the closed form stopped being conservative`);
+  }
+
   // --- the z plan, top down (all against the live plate) -----------------
   // One stack, every step a margin: plate underside → bracket (flush, the
   // support joint) → margin → the finger's plate (hub, arms, beak) → the
@@ -18456,6 +18481,312 @@ for (const j of FRAME_JOINTS) {
   const LUG_H = STOCK_MIN_U; // §50 wheel floor
   const LUG_Z2 = CONE_TOP_Z - 0.01;
   const LUG_Z1 = LUG_Z2 - LUG_H;
+  // ===========================================================================
+  // §329 landing 4 — THE STOP-WORK (option B), under ?arrest=stopwork. The owner's picks: a count, not a cam (a cam on the cone
+  // repeats every turn; the wind is FUSEE_WRAP_TURNS of the cone's own rotation), and the star turning in the GAP above the cone
+  // rather than in a pocket cut into it (measured: the cone's top face at CONE_TOP_Z, the three-quarter plate's underside one
+  // gap above, nothing between them but the fusee's own top staff). The line is src/stopwork-arrest.js; everything below is a fold
+  // of it, each dimension derived from the metal it meets:
+  //   · the PIN stands in the cone's top face at the largest radius whose root is still cone metal at its own azimuth (the groove
+  //     runs out through that face), floored where the star's teeth would reach the fusee's top staff;
+  //   · the STAR is the line's (n, m) for this wind at that pin orbit, its pivot a = r1 / sin(π/n) off the cone's axis, PLANTED in
+  //     plate metal (a web of the fusee window) at the azimuth whose disc stands clearest of the chain over the whole wind;
+  //   · the LOCK DISC on the cone's top face is the largest that clears the pin's circle by the margin (the line's lockHi), and its
+  //     RELIEF is carved from the star's own sweep through the engagement, never drawn;
+  //   · z: the star's stock at the §50 floor, the gap split evenly above and below it. Those two gaps are RUNNING gaps of one
+  //     mechanism (the star rides its driver's face and hangs from its own support), not structural clearances — they cannot be:
+  //     the gap is less than the stock plus two CLEAR_MARGINs, which is what the owner accepted.
+  // The arrest is the pin meeting a CLOSED notch's floor head-on (its velocity along the notch, so the force passes through the
+  // star's pivot and turns nothing): at full wind going up, at the end of the reserve coming down. The second stop is new — §47
+  // has only the first.
+  if (STOPWORK) {
+    const OMEGA = -MOVEMENT_SENSE;   // the cone's turn sense while WINDING: windLocalAt turns it +SENSE·2π per turn left to bank
+    const RUN = 0.01;                // the running fit (HUB_R's): a working contact inside one mechanism
+    const SW_STUD_R = PIVOT_MIN_U, SW_HEAD_R = PIVOT_MIN_U + 0.06, SW_HEAD_T = PIVOT_MIN_U;   // §47's stud and head, the §50 pivot floor
+    const datum = barrelMeshAngle(0);   // the cone's world angle at full wind (windLocalAt ≡ 0 there)
+    const T = FUSEE_WRAP_TURNS;
+    const GAP = (TQ_BOT_Z - CONE_TOP_Z - STOCK_MIN_U) / 2;
+    const S_Z2 = TQ_BOT_Z - GAP, S_Z1 = S_Z2 - STOCK_MIN_U;
+    if (!(GAP >= 2 * RUN))
+      console.warn(`§329: the gap over the cone leaves ${GAP.toFixed(4)} each side of the star's ${STOCK_MIN_U.toFixed(3)} stock — under twice the running fit`);
+    const E = swEngagementArc(4);   // provisional for the pin's azimuth: E depends on n, re-checked once n is chosen
+    // the pin's root: the cone's own surface at the top face (cone-local z, azimuth), over the pin's width and a root depth
+    const ROOT_D = STOCK_MIN_U;
+    const rootR = (azLocal) => {
+      let r = Infinity;
+      for (let dz = 0.02; dz <= ROOT_D + 1e-9; dz += ROOT_D / 6)
+        for (let da = -0.08; da <= 0.08 + 1e-9; da += 0.04) r = Math.min(r, GROOVE.floorAt(coneLocalZ(CONE_TOP_Z - dz), azLocal + da));
+      return r;
+    };
+    const rPinOf = () => Math.max(PIVOT_MIN_U, STOCK_MIN_U / 2);
+    // the chain near the star's band, over the whole wind (the occupancy law the arrest has always read)
+    const zLoBand = S_Z1 - SW_HEAD_T;
+    const chainNear = [];
+    for (let t = 0; t <= 1.0001; t += 0.05)
+      for (const pt of linkOuterPtsNear(Math.min(t, 1), 1e9))
+        if (pt.z > zLoBand - CLEAR_MARGIN && Math.hypot(pt.x - C.x, pt.y - C.y) < 14) chainNear.push(pt);
+    const winPolys = (TQ_WINDOWS.polys || []).map((q) => q.pts);
+    const inPolyXY = (pts, x, y) => {
+      let inside = false;
+      for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+        const [xi, yi] = pts[i], [xj, yj] = pts[j];
+        if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+      }
+      return inside;
+    };
+    const plateMetalAt = (x, y, ring) => {   // plate metal under a planted stud: its seat ring outside every opening
+      for (let k = 0; k < 16; k++) {
+        const a = (k / 16) * TAU2, px = x + ring * Math.cos(a), py = y + ring * Math.sin(a);
+        if (tqOpeningClearance(px, py) < 0 || winPolys.some((w) => inPolyXY(w, px, py))) return false;
+      }
+      return true;
+    };
+    const rejects = { root: 0, line: 0, plate: 0, chain: 0, drum: 0 };
+    let site = null;
+    for (let i = 0; i < 720; i++) {
+      const azS = (i / 720) * TAU2;
+      const pinAzW = azS - OMEGA * E / 2;   // the pin's world azimuth at full wind: θ = −E/2, entering the upper stop's notch
+      const rPin = rPinOf();
+      const r1 = rootR(pinAzW - datum) - rPin - STOCK_MIN_U;
+      const R1_LO = (TRAIN_STAFF_R + CLEAR_MARGIN + rPin + CLEAR_MARGIN) / (1 / Math.sin(Math.PI / 4) - 1);   // the teeth (a − rTip) clear the top staff
+      if (!(r1 >= R1_LO)) { rejects.root++; continue; }
+      const sw = chooseStopwork(T, r1);
+      if (!sw || sw.n !== 4) { rejects.line++; continue; }
+      const S = { x: C.x + sw.a * Math.cos(azS), y: C.y + sw.a * Math.sin(azS) };
+      if (!plateMetalAt(S.x, S.y, SW_STUD_R + STOCK_MIN_U)) { rejects.plate++; continue; }
+      let m = Infinity;
+      for (const pt of chainNear) {
+        const dz = pt.z < zLoBand ? zLoBand - pt.z : pt.z > S_Z2 ? pt.z - S_Z2 : 0;
+        if (dz >= CLEAR_MARGIN) continue;
+        m = Math.min(m, Math.hypot(pt.x - S.x, pt.y - S.y) - sw.rTip - Math.sqrt(CLEAR_MARGIN ** 2 - dz * dz));
+      }
+      if (!(m >= 0)) { rejects.chain++; continue; }
+      const drumM = Math.hypot(S.x - drumPos.x, S.y - drumPos.y) - sw.rTip - DRUM_WRAP_R - CLEAR_MARGIN;
+      if (!(drumM >= 0)) { rejects.drum++; continue; }
+      const margin = Math.min(m, drumM);
+      if (!site || margin > site.margin) site = { azS, S, r1, rPin, sw, margin, chainM: m, drumM, pinAzW };
+    }
+    if (!site) {
+      console.warn(`§329: no stop-work site: every star azimuth was refused (root ${rejects.root}, line ${rejects.line}, plate ${rejects.plate}, chain ${rejects.chain}, drum ${rejects.drum}) — the movement is built with NO winding arrest`);
+      WIND_ARREST.pose = () => {};
+      WIND_ARREST.unit = fusee;
+      WIND_ARREST.stopwork = { built: false, rejects };
+      break arrest47;
+    }
+    const { S, r1, rPin, sw, azS } = site;
+    const n = sw.n, m = sw.m, a = sw.a, rTip = sw.rTip;
+    if (Math.abs(swTravelTurns(m, n) - T) > 1e-9)
+      console.warn(`§329: the stop-work travels ${swTravelTurns(m, n).toFixed(4)} turns against a wind of ${T.toFixed(4)} — trim ${(swTravelTurns(m, n) - T).toFixed(4)} is not built`);
+    const En = swEngagementArc(n);
+    if (Math.abs(En - E) > 1e-12) console.warn(`§329: the pin was clocked for n = 4 and the line chose n = ${n}`);
+    // --- the star, in its own frame: x̂ toward the cone's axis at its run-down rest (ρ = 0) -----------------------------
+    const W = rPin + RUN;                          // a slot's half-width: the pin and its running fit
+    const R_L = sw.lockHi, R_ARC = R_L + RUN;      // the lock disc, and the star's concave arcs that ride it
+    const slotAz = (k) => OMEGA * (Math.PI / n + k * (TAU2 / n));   // k = 0 the open slot; 1..n−1 closed notches
+    const floorOf = (k) => (k < m ? sw.rIn : sw.r2 - rPin);         // open: the pin's closest approach less the margin; closed: the stop
+    const cornerA = Math.asin(W / rTip);
+    const cosD = (a * a + rTip * rTip - R_ARC * R_ARC) / (2 * a * rTip);
+    const delta = Math.acos(Math.max(-1, Math.min(1, cosD)));
+    if (!(delta < Math.PI / n - cornerA - 1e-6))
+      console.warn(`§329: the lock arcs (±${(delta * 180 / Math.PI).toFixed(2)}°) reach the slots' corners (${((Math.PI / n - cornerA) * 180 / Math.PI).toFixed(2)}°) — no tooth tip is left between them`);
+    const outline = [];
+    const tipArc = (b0, b1) => { const k = Math.max(2, Math.ceil(Math.abs(b1 - b0) / 0.03)); for (let j = 0; j <= k; j++) { const b = b0 + (b1 - b0) * (j / k); outline.push([rTip * Math.cos(b), rTip * Math.sin(b)]); } };
+    const lockArc = (bL) => {   // the concave arc about the cone's axis at its rest, from β = bL − δ to bL + δ through its innermost point
+      const cx = a * Math.cos(bL), cy = a * Math.sin(bL);
+      const p1 = [rTip * Math.cos(bL - delta), rTip * Math.sin(bL - delta)], p2 = [rTip * Math.cos(bL + delta), rTip * Math.sin(bL + delta)];
+      let g1 = Math.atan2(p1[1] - cy, p1[0] - cx), g2 = Math.atan2(p2[1] - cy, p2[0] - cx);
+      // the arc about c from p1 to p2 that passes the point nearest the star's centre (angle bL + π about c), going the way β increases
+      while (g2 > g1) g2 -= TAU2;   // β increasing along the star's edge runs the arc about c CLOCKWISE (c lies outside, beyond the edge)
+      const k = 48; for (let j = 0; j <= k; j++) { const g = g1 + (g2 - g1) * (j / k); outline.push([cx + R_ARC * Math.cos(g), cy + R_ARC * Math.sin(g)]); }
+    };
+    const slot = (bS, f) => {
+      const d = [Math.cos(bS), Math.sin(bS)], nn = [-Math.sin(bS), Math.cos(bS)], sTip = Math.sqrt(rTip * rTip - W * W);
+      const P = (s, w) => [s * d[0] + w * nn[0], s * d[1] + w * nn[1]];
+      outline.push(P(sTip, -W), P(f, -W), P(f, W), P(sTip, W));
+    };
+    const feats = [];
+    for (let k = 0; k < n; k++) { feats.push({ b: k * (TAU2 / n), kind: 'lock' }); feats.push({ b: slotAz(k), kind: 'slot', k }); }
+    for (const f of feats) f.b = ((f.b % TAU2) + TAU2) % TAU2;
+    feats.sort((p, q) => p.b - q.b);
+    // walk β upward: each lock arc spans [b − δ, b + δ], each slot [b − cornerA, b + cornerA]; tip arcs fill between
+    let prevEnd = null, firstStart = null;
+    for (const f of feats) {
+      const s0 = f.kind === 'lock' ? f.b - delta : f.b - cornerA;
+      if (prevEnd !== null) tipArc(prevEnd, s0); else firstStart = s0;
+      if (f.kind === 'lock') lockArc(f.b); else slot(f.b, floorOf(f.k));
+      prevEnd = f.kind === 'lock' ? f.b + delta : f.b + cornerA;
+    }
+    tipArc(prevEnd, firstStart + TAU2);
+    const starShape = new THREE.Shape();
+    starShape.moveTo(outline[0][0], outline[0][1]);
+    for (let j = 1; j < outline.length; j++) starShape.lineTo(outline[j][0], outline[j][1]);
+    starShape.closePath();
+    const bore = new THREE.Path(); bore.absarc(0, 0, SW_STUD_R + RUN, 0, TAU2, true); starShape.holes.push(bore);
+    // --- the pose law: the star's turn from the cone's, through the Geneva -----------------------------------------------
+    const PHI_HI = (m + 1) * TAU2 - En / 2;     // the finger angle at full wind (the upper stop); the lower stop is En/2
+    const rhoAt = (phi) => {                    // the star's CCW turn from its run-down rest, for finger angle phi
+      let rho = 0;
+      for (let k = 1; k <= m; k++) {
+        const th = phi - k * TAU2;
+        if (th >= En / 2) rho += -OMEGA * (TAU2 / n);
+        else if (th > -En / 2) rho += -OMEGA * (swStarAngle(n, r1, th, a) + Math.PI / n);
+      }
+      return rho;
+    };
+    const azU = azS + Math.PI;                  // the star frame's x̂: from its pivot toward the cone's axis
+    const phiOfTension = (tension) => PHI_HI - TAU2 * T * (1 - clamp(tension, 0, 1));
+    // the pin's world position at finger angle phi (θ about the line of centres, its passage's)
+    const pinAt = (phi) => { const ang = azS + OMEGA * (phi - PHI_HI) - OMEGA * En / 2; return { x: C.x + r1 * Math.cos(ang), y: C.y + r1 * Math.sin(ang) }; };
+    const toStar = (p, rho) => { const dx = p.x - S.x, dy = p.y - S.y, c0 = Math.cos(-(azU + rho)), s0 = Math.sin(-(azU + rho)); return [dx * c0 - dy * s0, dx * s0 + dy * c0]; };
+    // A — the construction, measured: through every passage the pin's centre lies on the open slot's centreline, and at the two
+    // stops it sits on a closed notch's centreline at its floor plus its own radius (a derivation over the pose law — boot has no pose)
+    {
+      let worst = 0;
+      for (let k = 1; k <= m; k++) for (let j = 0; j <= 40; j++) {
+        const phi = k * TAU2 - En / 2 + (j / 40) * En;
+        const [u, v] = toStar(pinAt(phi), rhoAt(phi));
+        const b = slotAz(k - 1), off = Math.abs(-u * Math.sin(b) + v * Math.cos(b));
+        worst = Math.max(worst, off);
+      }
+      const stopOff = (phi, k) => { const [u, v] = toStar(pinAt(phi), rhoAt(phi)); const b = slotAz(k); return [Math.abs(-u * Math.sin(b) + v * Math.cos(b)), Math.abs(u * Math.cos(b) + v * Math.sin(b) - (floorOf(k) + rPin))]; };
+      const up = stopOff(PHI_HI, m), lo = stopOff(En / 2, n - 1);
+      if (!(worst < 1e-9 && Math.max(...up, ...lo) < 1e-9))
+        console.warn(`§329: the stop-work is not the construction it claims — pin off the open slot by ${worst.toExponential(2)}, upper stop off by ${up.map((x) => x.toExponential(2))}, lower by ${lo.map((x) => x.toExponential(2))}`);
+    }
+    // --- the lock disc and its relief, in the cone's own frame -------------------------------------------------------------
+    const starPts = outline;
+    const distStar = (u, v) => {   // signed distance to the star's outline (negative inside)
+      let d = Infinity, inside = false;
+      for (let i = 0, j = starPts.length - 1; i < starPts.length; j = i++) {
+        const [xi, yi] = starPts[i], [xj, yj] = starPts[j];
+        if ((yi > v) !== (yj > v) && u < ((xj - xi) * (v - yi)) / (yj - yi) + xi) inside = !inside;
+        const ex = xi - xj, ey = yi - yj, L = ex * ex + ey * ey || 1e-12, tt = clamp(((u - xj) * ex + (v - yj) * ey) / L, 0, 1);
+        d = Math.min(d, Math.hypot(u - xj - tt * ex, v - yj - tt * ey));
+      }
+      return inside ? -d : d;
+    };
+    // The disc sits fast on the cone's TOP FACE, its bore around the fusee's top staff (no hub ring of its own): a hub's §50 wall
+    // would stand out to 0.817, and the star's teeth come in to a − rTip (0.764 on the lands preview), so where the star's sweep
+    // reaches the bore the disc is OPEN there — a C, carried by the face it sits on. The teeth then clear the staff itself, which
+    // the pin's floor R1_LO holds by the margin.
+    const DISC_IN = TRAIN_STAFF_R;
+    const NA = 360, poses = [];
+    for (let k = 1; k <= m; k++) for (let j = 0; j <= 24; j++) { const phi = k * TAU2 - En / 2 + (j / 24) * En; poses.push({ rho: rhoAt(phi), coneAng: datum + OMEGA * (phi - PHI_HI) }); }
+    const discR = new Float64Array(NA);
+    let reliefMin = Infinity;
+    for (let i = 0; i < NA; i++) {
+      const al = (i / NA) * TAU2;
+      let r = R_L;
+      // the relief is a SLIDING fit inside one mechanism (the star's flanks pass the disc's edge as the lock arcs do), so it is
+      // cut at the running fit, never the structural margin: cut at CLEAR_MARGIN it ate the disc under the lock arcs at both ends
+      // of the passage, where they run at RUN, and left the star unlocked over 228° of the finger's 540° of dwell (measured).
+      const R_STEP = 0.01;
+      for (let rr = DISC_IN + RUN; rr <= R_L + 1e-9; rr += R_STEP) {
+        let hit = false;
+        for (const ps of poses) {
+          const wx = C.x + rr * Math.cos(al + ps.coneAng), wy = C.y + rr * Math.sin(al + ps.coneAng);
+          if (Math.hypot(wx - S.x, wy - S.y) > rTip + RUN) continue;
+          const [u, v] = toStar({ x: wx, y: wy }, ps.rho);
+          if (distStar(u, v) < RUN - 1e-9) { hit = true; break; }
+        }
+        if (hit) { r = rr - R_STEP; break; }
+      }
+      discR[i] = r; reliefMin = Math.min(reliefMin, r);
+    }
+    // where the relief leaves less than a §50 wall outside the bore, the disc is cut through to it: those azimuths are the C's opening
+    const open = Array.from(discR, (r) => r < DISC_IN + STOCK_MIN_U);
+    // Metal BETWEEN two openings touches only the bore, so it is a loose sliver, not a member: the opening is the smallest arc
+    // that covers every open azimuth (measured on the default stop-work: 338–354° and 2–18°, with the open slot's shadow left
+    // standing between them out to ~1.0). It is the complement of the longest run of metal.
+    if (open.some(Boolean)) {
+      let bestS = -1, bestL = 0;
+      for (let i = 0; i < NA; i++) if (!open[i] && open[(i + NA - 1) % NA]) { let L = 0; while (!open[(i + L) % NA] && L < NA) L++; if (L > bestL) { bestL = L; bestS = i; } }
+      for (let k = bestL; k < NA; k++) open[(bestS + k) % NA] = true;
+      if (bestL < NA / 2) console.warn(`§329: the lock disc's opening spans ${((NA - bestL) * 360 / NA).toFixed(0)}° — more than half the disc`);
+    }
+    const runs = []; for (let i = 0; i < NA; i++) if (open[i] && !open[(i + NA - 1) % NA]) runs.push(i);
+    // the lock holds through every dwell: the disc is whole under the azimuth the star faces whenever the pin is out of a slot
+    // A concave arc riding a convex disc holds the star both ways only while there is disc metal under the arc on BOTH sides of
+    // the azimuth it faces (metal on one side blocks one sense of turn and lets the other go). The arc spans ±GAMMA about the
+    // cone's axis: the angle, seen from the axis, of the arc's ends on the star's tip circle.
+    const GAMMA = Math.atan2(rTip * Math.sin(delta), a - rTip * Math.cos(delta));
+    const fullAt = (al) => { let q = Math.round((al / TAU2) * NA) % NA; if (q < 0) q += NA; return discR[q] >= R_L - 1e-9; };
+    const sideHeld = (al, sgn) => { for (let k = 1; k <= Math.ceil(GAMMA / (TAU2 / NA)); k++) if (fullAt(al + sgn * k * (TAU2 / NA))) return true; return false; };
+    let unlockedDeg = 0;
+    const DWELL_N = 720, dPhi = (PHI_HI - En / 2) / (DWELL_N - 1);
+    for (let j = 0; j < DWELL_N; j++) {
+      const phi = En / 2 + j * dPhi;
+      let inPass = false; for (let k = 1; k <= m; k++) if (Math.abs(phi - k * TAU2) < En / 2) inPass = true;
+      if (inPass) continue;
+      const coneAng = datum + OMEGA * (phi - PHI_HI);
+      let al = (azS - coneAng) % TAU2; if (al < 0) al += TAU2;
+      if (!(sideHeld(al, 1) && sideHeld(al, -1))) unlockedDeg += (dPhi * 180) / Math.PI;
+    }
+    if (unlockedDeg > 1e-9)
+      console.warn(`§329: the lock disc lets the star go for ${unlockedDeg.toFixed(1)}° of the finger's dwell — its relief reaches under both ends of the lock arc`);
+    const discShape = new THREE.Shape();
+    const P_AT = (i, r) => { const al = (i / NA) * TAU2; return [r * Math.cos(al), r * Math.sin(al)]; };
+    if (!runs.length) {   // whole: an outline and a bore
+      for (let i = 0; i < NA; i++) { const [x, y] = P_AT(i, discR[i]); if (i === 0) discShape.moveTo(x, y); else discShape.lineTo(x, y); }
+      discShape.closePath();
+      const discBore = new THREE.Path(); discBore.absarc(0, 0, DISC_IN, 0, TAU2, true); discShape.holes.push(discBore);
+    } else {              // a C: the outline over the metal's azimuths, then back round the bore
+      const s0 = runs[0]; let e0 = s0; while (open[(e0 + 1) % NA] && e0 - s0 < NA) e0++;   // the opening is s0..e0
+      const first = (e0 + 1) % NA, count = NA - (e0 - s0 + 1);
+      for (let k = 0; k < count; k++) { const i = (first + k) % NA; const [x, y] = P_AT(i, discR[i]); if (k === 0) discShape.moveTo(x, y); else discShape.lineTo(x, y); }
+      for (let k = count - 1; k >= 0; k--) { const i = (first + k) % NA; const [x, y] = P_AT(i, DISC_IN); discShape.lineTo(x, y); }
+      discShape.closePath();
+    }
+    // --- metal --------------------------------------------------------------------------------------------------------------
+    const swUnit = new THREE.Group();
+    swUnit.name = 'stopworkUnit';
+    movement.add(swUnit);
+    const starPivot = new THREE.Group();
+    starPivot.position.set(S.x, S.y, 0);
+    swUnit.add(starPivot);
+    const star = new THREE.Mesh(new THREE.ExtrudeGeometry(starShape, { depth: STOCK_MIN_U, bevelEnabled: false, curveSegments: 24 }), MATS.steel);
+    star.name = 'stopworkStar';
+    star.position.z = S_Z1;
+    starPivot.add(star);
+    const studMesh = new THREE.Mesh(new THREE.CylinderGeometry(SW_STUD_R, SW_STUD_R, TQ_BOT_Z - (S_Z1 - SW_HEAD_T), 16), MATS.blueSteel);
+    studMesh.name = 'stopworkStud';
+    studMesh.rotation.x = Math.PI / 2;
+    studMesh.position.set(S.x, S.y, (TQ_BOT_Z + S_Z1 - SW_HEAD_T) / 2);
+    swUnit.add(studMesh);
+    const headMesh = new THREE.Mesh(new THREE.CylinderGeometry(SW_HEAD_R, SW_HEAD_R, SW_HEAD_T, 16), MATS.blueSteel);
+    headMesh.name = 'stopworkStudHead';
+    headMesh.rotation.x = Math.PI / 2;
+    headMesh.position.set(S.x, S.y, S_Z1 - SW_HEAD_T / 2 - RUN);
+    swUnit.add(headMesh);
+    // the finger wheel rides the cone: built in the fusee's frame (world at full wind turned back by the datum), like §47's lug
+    const disc = new THREE.Mesh(new THREE.ExtrudeGeometry(discShape, { depth: S_Z2 - CONE_TOP_Z, bevelEnabled: false }), MATS.steel);
+    disc.name = 'stopworkLockDisc';
+    disc.position.z = coneLocalZ(CONE_TOP_Z);   // its outline is already in the fusee's frame: azimuth `al` above is the cone-local one
+    fusee.add(disc);
+    const pinW = pinAt(PHI_HI), pinL = rot2(pinW, -datum);
+    const pinMesh = new THREE.Mesh(new THREE.CylinderGeometry(rPin, rPin, S_Z2 - (CONE_TOP_Z - ROOT_D), 16), MATS.blueSteel);
+    pinMesh.name = 'stopworkPin';
+    pinMesh.rotation.x = Math.PI / 2;
+    pinMesh.position.set(pinL.x - C.x, pinL.y - C.y, coneLocalZ((S_Z2 + CONE_TOP_Z - ROOT_D) / 2));
+    fusee.add(pinMesh);
+    // --- pose + the public object -------------------------------------------------------------------------------------------
+    WIND_ARREST.pose = (tension) => { starPivot.rotation.z = azU + rhoAt(phiOfTension(tension)); };
+    WIND_ARREST.unit = swUnit;
+    WIND_ARREST.stopwork = {
+      built: true, n, m, travel: swTravelTurns(m, n), wind: T, r1, rPin, a, rTip, rIn: sw.rIn, r2: sw.r2, lockR: R_L, reliefMin,
+      unlockedDeg, lockArcDeg: (GAMMA * 180) / Math.PI, discOpenDeg: (open.filter(Boolean).length * 360) / NA, discOpenRuns: runs.map((r0) => { let e = r0; while (open[(e + 1) % NA] && e - r0 < NA) e++; return [r0, e].map((q) => (q * 360) / NA); }), starAzDeg: (azS * 180) / Math.PI, pivot: S, z: [S_Z1, S_Z2], gap: GAP, margin: site.margin, chainMargin: site.chainM,
+      drumMargin: site.drumM, rejects, pinAzDeg: (site.pinAzW * 180) / Math.PI,
+    };
+    WIND_ARREST.pose(1);
+    registerLabel('Winding stop-work', swUnit);
+    registerExplode(swUnit, 0, 9);
+    declareTravel('Winding stop-work', (TAU2 / n) * m,
+      'the star turns 2π/n per passage of the pin, m passages between its two stops — the Geneva law, one engagement per cone turn');
+    declareRestoring('Winding stop-work', 'stopworkStar', 'two-way',
+      'the pin carries the star forward as the crown winds the cone and back as the mainspring unwinds it; between passages the lock disc holds it',
+      ['input:the going crown', 'Mainspring drum/mainspringRibbon']);
+    break arrest47;
+  }
   // TWO CEILINGS HANG OVER THE FINGER'S PLATE, AND THE LUG IS THE LOWER ONE
   // — TODO 51 row two. The bracket is the obvious one: the plate swings
   // under its arm, a pin's gap below. But the lug ORBITS, so it sweeps every
@@ -20263,26 +20594,6 @@ for (const j of FRAME_JOINTS) {
     'the blade re-seats the finger on its bank pin when the coil leaves the pad — a real torsion arc about the stud, its fixed end on its own post under the bracket; the ARREST hold is the chain pressing the pad, not the spring',
     'windArrestSpring');
 
-  // A2 — the owed measurement, Chain ⇄ three-quarter plate, CLOSED
-  // (TODO 53): from the same occupancy law (the top link's leaned section
-  // at full wind against the plate's underside). The plate floor now
-  // carries CHAIN_TQ_REACH — the closed-form bound of exactly this
-  // measurement — so the assert holds the MARGIN, no longer just the
-  // sign. A second assert holds the bound CONSERVATIVE: the discrete top
-  // (the links the mesh really lays) must sit under it, every boot,
-  // every spec variant — the continuum bound errs outward by ~0.03 where
-  // chording errs inward, which is the right side for a floor, and the
-  // slack between them is published as a report, not gated.
-  {
-    let top = 0;
-    for (const pnt of linkOuterPtsNear(1, 1e9)) top = Math.max(top, pnt.z);
-    WIND_ARREST.chainTqGap = TQ_BOT_Z - top;
-    WIND_ARREST.chainTqBoundSlack = CHAIN_TQ_REACH - top;
-    if (!(WIND_ARREST.chainTqGap >= CLEAR_MARGIN - 1e-9))
-      console.warn(`§47/TODO 53: Chain ⇄ three-quarter plate gap ${WIND_ARREST.chainTqGap.toFixed(4)} under the ${CLEAR_MARGIN} margin — the plate floor's chain term regressed`);
-    if (WIND_ARREST.chainTqBoundSlack < -1e-9)
-      console.warn(`TODO 53: CHAIN_TQ_REACH under-bounds the discrete top by ${(-WIND_ARREST.chainTqBoundSlack).toFixed(4)} — the closed form stopped being conservative`);
-  }
 }
 
 // (The power-reserve reduction train is built after the dial side below — its
@@ -56713,7 +57024,7 @@ const UNIT_GROUPS = new Map([
   ['Fusee & chain', new Map([
     ['Fusee & great wheel', null], ['Chain', null], ['Mainspring drum', null],
     ['Maintaining detent', null], ['Set-up work', null],
-    ['Winding arrest', null], // §47 — the chain-thrown finger and its lug live with the cone they arrest
+    [STOPWORK ? 'Winding stop-work' : 'Winding arrest', null], // §47 — the chain-thrown finger and its lug live with the cone they arrest (§329 landing 4: or the stop-work, under its key)
   ])],
   ['Keyless & winding', new Map([
     ['Keyless works', null], ['Setting lever', null], ['Yoke', null],
@@ -58102,7 +58413,7 @@ const TOUR_STEPS = [
     caption: 'Winding hauls the chain up the fusee cone; its rising radius keeps the drive torque steady', dwell: 2.4 },
   { // §47 — the winding arrest. camera is a GETTER: TOUR_STEPS is built
     // before frameOn exists, and the step only reads it at enter time.
-    get camera() { return frameOn('Winding arrest', [0.35, -0.5, 0.75], 4.6); },
+    get camera() { return frameOn(STOPWORK ? 'Winding stop-work' : 'Winding arrest', [0.35, -0.5, 0.75], 4.6); },   // §329 landing 4: the stop-work under its key
     scale: 1, xray: true,
     caption: 'Full wind ends on metal: the last coil lifts a finger, its beak drops before a stop on the cone, and the crown stands still', dwell: 5.0 },
   { preset: 'Train', scale: 1, powerflow: true,
@@ -63077,6 +63388,7 @@ window.__clock = {
       hubZ: WIND_ARREST.hubZ, lugZ: WIND_ARREST.lugZ, lugOuter: WIND_ARREST.lugOuter,
       liftAt: WIND_ARREST.liftAt, beakScanRejects: WIND_ARREST.beakScanRejects,
       candidateScan: WIND_ARREST.candidateScan,
+      stopwork: WIND_ARREST.stopwork ?? null,   // §329 landing 4: the stop-work's solved numbers under ?arrest=stopwork
       // §329 landing 2a — the trailing arrest's site (null unless ?arrest=trailing): the line, the best site over every pad candidate,
       // and the reasons summed over all of them
       trailing: (() => {

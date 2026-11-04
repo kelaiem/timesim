@@ -34,8 +34,14 @@ export async function pool(items, worker, { concurrency = perfCores() } = {}) {
 }
 
 // boot each query (with an optional expression over __clock) through the pool; each result carries its own wall time
+// One boot's failure (a throwing expression, a timeout) is THAT boot's result, never the pool's: an expression that read a field
+// only some specs build took down a whole three-spec run, results and all (§329 landing 4). It comes back as `bootError`.
 export const bootMany = (queries, expr = null, opts = {}) =>
-  pool(queries, async (q) => { const t = Date.now(); const r = await bootForm(q, expr); return { query: q, ms: Date.now() - t, ...r }; }, opts);
+  pool(queries, async (q) => {
+    const t = Date.now();
+    try { const r = await bootForm(q, expr); return { query: q, ms: Date.now() - t, ...r }; }
+    catch (e) { return { query: q, ms: Date.now() - t, bootError: `harness: ${String(e?.message ?? e).split('\n')[0]}`, warnings: [], extra: null }; }
+  }, opts);
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
