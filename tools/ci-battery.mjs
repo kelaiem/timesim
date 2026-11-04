@@ -1350,6 +1350,11 @@ const SPEC_POINTS = [
   // outline is committed (src/free-outlines.js, 811.92 mm² against the preview's own 877.33), so it boots fitted, with
   // exactly the one row every free build carries. This is the first point that is missing units the default has (no alarm):
   // battery-points.mjs counts a unit absent from either side as changed and drops it from the pairs it measures.
+  // Its first sweep (PR #880) read FINDING, and every row is the ARRANGEMENT's, not the stop-work's: the same four pairs, row
+  // for row, read on the lands preview as it ships (no stop-work, its own drum) — the winding stem through the case middle,
+  // a motion-works corner cap on the hour wheel, a setting traverse on a reserve wheel (Keyless works ⇄ Case / Hour wheel /
+  // Power-reserve train, all 0), Balance cock ⇄ Fork cock at 0.0122. None touches the stop-work, fusee, drum or chain. So
+  // the point joins validated-configs only once the -140° no-alarm arrangement itself sweeps clean (§325's open blocker).
   { name: 'stopwork-140', q: 'case=free&alarm=0&barrelstep=-140&rsvaz=0&rsvidl=2&frame=lands&arrest=stopwork&drumaz=140', expect: 'declared', sweep: true,
     expectWarns: ['§186: the rim-to-bore fit'],
     why: '§329 landing 4 — the stop-work on the alarm-off free case with the drum turned to 140° (−7.5% case area); boots exactly the free build\'s §186 row, swept' },
