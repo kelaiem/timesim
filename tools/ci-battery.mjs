@@ -1405,7 +1405,11 @@ const POINT_COSTS = {
   // 4-vCPU dev container). Since §314 the round default IS the arrangement, so
   // it changes only the case's units and this row over-reads until a run
   // refreshes it — wall clock, never a verdict.
-  'form-rect': 1344,
+  // §331 — re-measured: 1104 s solo in the dev container on main (undeclaredClearance 676 of it, ~93% Case pairs at
+  // 46 ms a call, the band's 90 u slivers), 426 s once the convex band is cut without slivers and bored for its tubes
+  // (undeclaredClearance 77, Case pairs 4.6 ms). `designed` swept 812 s solo on the same container, so form-rect is no
+  // longer the costliest point and the LPT order puts designed first.
+  'form-rect': 426,
   // §328 step 1b — against the lands default the pillar build adds the `pillars` unit (four full-height columns past the
   // train, in every pair sweep) and moves the back plate's screw rings, so its restriction reaches the pillars' and the
   // Three-quarter plate's pairs; carried at half the designed point's reach until a run writes its own `ms` back (wall
