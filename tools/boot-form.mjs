@@ -20,6 +20,9 @@ export async function bootForm(query, expr = null) {
   await new Promise((r) => srv.listen(0, '127.0.0.1', r));
   const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist',
     '--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'] });
+  // everything after the launch runs under `finally`: a boot that throws (an expression reading a field the spec does not build, a
+  // timeout) must still close its browser and its server, or each failure leaves both running (the instruments skill's orphan trap)
+  try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   const warnings = [];
   const NOISE = /GPU stall|GL Driver Message|swiftshader|ReadPixels|Automatic fallback to software WebGL/i;
@@ -35,8 +38,8 @@ export async function bootForm(query, expr = null) {
   const known = await page.evaluate(() => globalThis.__WATCH_SPEC_KEYS ?? null);
   const PAGE_KEYS = ['trial', 'hud', 'sync', 'lang', 'reconf', 'cam', 'focus', 'tour', 'cell'];
   out.unknownKeys = known ? [...new URLSearchParams(query)].map(([k]) => k).filter((k) => !known.includes(k) && !PAGE_KEYS.includes(k)) : null;
-  await browser.close(); srv.close();
   return { ...out, warnings };
+  } finally { await browser.close().catch(() => {}); srv.close(); }
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const r = await bootForm(process.argv[2] ?? '', process.argv[3] ?? null);

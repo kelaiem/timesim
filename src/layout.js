@@ -375,7 +375,9 @@ export const SPEC = (() => {
   // Normalised to [0, 360) so one placement has one configKey.
   // §329 landing 2a — ?arrest=trailing asks the winding arrest's solve for the TRAILING-SIDE arrest's site (a measurement under
   // __clock.windArrest.trailing; no metal moves yet). null = §47's arrest, as built, so every configKey without it is unchanged.
-  const arrest = raw.arrest === 'trailing' ? 'trailing' : null;
+  // §329 landing 4 — ?arrest=stopwork builds option B: a Geneva stop-work on the fusee (src/stopwork-arrest.js) INSTEAD of §47's
+  // finger, beak and lug. It moves metal, so unlike 'trailing' it is part of every configuration key that is about the movement.
+  const arrest = raw.arrest === 'trailing' ? 'trailing' : raw.arrest === 'stopwork' ? 'stopwork' : null;
   const drumAzDeg = raw.drumAzDeg !== undefined && raw.drumAzDeg !== null && raw.drumAzDeg !== '' && Number.isFinite(Number(raw.drumAzDeg))
     ? ((Number(raw.drumAzDeg) % 360) + 360) % 360 : null;
   return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, rsvIdlers, alarmr, subdialr, dialr, studr, caseShape, frame, hands, formRectSpec, gongSeat, alarm, strapMm, drumAzDeg, arrest });
@@ -4651,7 +4653,7 @@ export const FORM_ACTION_GROUPS = Object.freeze([
       Object.freeze({ name: 'centre pinion on the great wheel', at: 'P.center', pin: 'power', edge: 'Fusee & great wheel → Center wheel' }),
     ]) }),
   Object.freeze({ id: 'power', name: 'barrel, fusee and chain',
-    units: Object.freeze(['Mainspring drum', 'Set-up work', 'Chain', 'Fusee & great wheel', 'Maintaining detent', 'Winding arrest']),
+    units: Object.freeze(['Mainspring drum', 'Set-up work', 'Chain', 'Fusee & great wheel', 'Maintaining detent', SPEC.arrest === 'stopwork' ? 'Winding stop-work' : 'Winding arrest']),   // §329 landing 4: the stop-work replaces the arrest under its key
     reason: 'drive mainspring → Mainspring drum → Chain → Fusee & great wheel (→ Maintaining detent); Chain → Winding arrest; the set-up work is the drum\'s arbor',
     anchors: Object.freeze([
       Object.freeze({ name: 'great wheel on the centre pinion', at: 'P.barrel', pin: 'going', edge: 'Fusee & great wheel → Center wheel' }),

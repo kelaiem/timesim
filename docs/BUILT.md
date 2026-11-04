@@ -33,7 +33,7 @@ that band's swept footprint.
 | § | Title | Parts |
 |---|---|---|
 | [§330](built/0330.md) | Hosted pull requests take the push's four-way battery split | 1 |
-| [§329](built/0329.md) | A trailing-side winding arrest: the fusee stop's beak on the chain-free side, a reversing lever, designed in a line — PARTIAL: landing 1 (the line), landing 2a (the site, measured: no site seats; paused) | 1 |
+| [§329](built/0329.md) | A trailing-side winding arrest: the fusee stop's beak on the chain-free side, a reversing lever, designed in a line — PARTIAL: landing 1 (the line), landing 2a (the site, measured: no site seats), landing 3 (option B, a Geneva stop-work: the line and its site), landing 4 (the stop-work built behind `?arrest=stopwork`; the alarm-off lands preview up to 5.9% smaller with the drum turned) | 1 |
 | [§328](built/0328.md) | Integrated lands for the default round build, and sinks with lands on both faces — PARTIAL: step 1 shipped, lands the default (step 1b) | 1 |
 | [§327](built/0327.md) | The form rectangle reaches the mainspring drum | 1 |
 | [§326](built/0326.md) | The strap width is adjustable, and 19 mm by default | 1 |

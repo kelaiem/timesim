@@ -8,6 +8,7 @@
 // RESTRICTED to the units the drum carries with it (pairsTouching: the drum, the chain, the set-up work), with the harness's
 // own opts. It prints each check's GATE rows (BATTERY's `fails`) that touch those units, the boot warnings, and the drum's
 // placement (__clock.drum). Compare a point's rows with `none`'s: a row there too is the build's, not the move's.
+//   --units 'A,B,…'   restrict to these units instead (§329 landing 4 sweeps the stop-work and the fusee with the drum's three)
 // What it cannot see: pairs not touching the three units (a restricted run, §152's rule), the §35 rod corridor's own probe,
 // and the TODO 207 size claim (a moved drum keeps the size solved along the default direction; the build warns if it no
 // longer fits the plate).
@@ -21,9 +22,10 @@ import { BATTERY, YIELD_EVERY, virginBoot, prepPage, runCheck } from './battery-
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2), FIT = args.includes('--fit');
+const ui = args.indexOf('--units'), UNITS_ARG = ui >= 0 ? args.splice(ui, 2)[1] : null;
 const [BASE, ...AZS] = args.filter((a) => a !== '--fit');
 if (!BASE || !AZS.length) { console.error("usage: node tools/probe-75-drum-az.mjs [--fit] '<base spec>' AZ|none [AZ …]"); process.exit(2); }
-const UNITS = ['Mainspring drum', 'Chain', 'Set-up work'];
+const UNITS = UNITS_ARG ? UNITS_ARG.split(',').map((u) => u.trim()) : ['Mainspring drum', 'Chain', 'Set-up work'];
 const CHECKS = ['inspection', 'clearances', 'undeclaredClearance'];
 const { chromium } = createRequire(join(ROOT, 'tools/package.json'))('playwright');
 
