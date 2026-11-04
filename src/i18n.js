@@ -748,6 +748,7 @@ Object.assign(DE, {
   // governor; the anchor takes Anker, the same word the pallet fork has above.
   'Alarm governor': 'Weckerwindfang', 'Alarm governor anchor': 'Windfanganker',
   'Winding arrest': 'Aufzugssperre', // §47 — the chain-thrown stop finger on the fusee
+  'Winding stop-work': 'Malteserkreuz-Stellung', // §329 landing 4 — the Geneva (Maltese-cross) stop-work that replaces the arrest under ?arrest=stopwork
   // §107 — the schematic tier's member callouts. Same rule as the unit names:
   // the English string is the key, only the display is translated.
   'Governor wheel': 'Windfangrad', 'Governor wheel sleeve': 'Windfangrad-Hülse',
@@ -1152,6 +1153,7 @@ Object.assign(ZH, {
   'Alarm barrel': '闹铃发条盒', 'Alarm striking wheel': '打铃轮',
   'Alarm governor': '闹铃调速器', 'Alarm governor anchor': '调速器擒纵叉',
   'Winding arrest': '上链止动', // §47
+  'Winding stop-work': '马耳他十字止动', // §329 landing 4 — the Geneva (Maltese-cross) stop-work that replaces the arrest under ?arrest=stopwork
   'Governor wheel': '调速轮', 'Governor wheel sleeve': '调速轮轴套',
   'Strike arbor sleeve': '打铃轴套', 'Lifting cam': '提升凸轮',
   'Lifting lever nose': '抬起杠杆鼻', 'Lifting lever tip': '抬起杠杆端头', 'Lifting lever post': '抬起杠杆立柱',
@@ -1655,6 +1657,7 @@ const FR = {
   ['Alarm barrel']: 'Barillet du réveil',
   ['Alarm striking wheel']: 'Roue de frappe du réveil',
   ['Winding arrest']: 'Arrêtage de remontage', // §47
+  ['Winding stop-work']: 'Arrêtage à croix de Malte', // §329 landing 4 — the Geneva (Maltese-cross) stop-work that replaces the arrest under ?arrest=stopwork
   ['Alarm governor']: 'Régulateur du réveil',
   ['Alarm governor anchor']: 'Ancre du régulateur du réveil',
   ['Governor wheel']: 'Roue du régulateur',
@@ -2227,6 +2230,7 @@ const JA = {
   ['Alarm barrel']: 'アラーム香箱',
   ['Alarm striking wheel']: 'アラーム打撃車',
   ['Winding arrest']: '巻止め', // §47
+  ['Winding stop-work']: 'マルタ十字止め', // §329 landing 4 — the Geneva (Maltese-cross) stop-work that replaces the arrest under ?arrest=stopwork
   ['Alarm governor']: 'アラーム調速機',
   ['Alarm governor anchor']: 'アラーム調速アンクル',
   ['Governor wheel']: '調速車',
@@ -2798,6 +2802,7 @@ const ZH_HANT = {
   ['Alarm barrel']: '鬧鈴發條盒',
   ['Alarm striking wheel']: '鬧鈴打擊輪',
   ['Winding arrest']: '上鏈止動', // §47
+  ['Winding stop-work']: '馬爾他十字止動', // §329 landing 4 — the Geneva (Maltese-cross) stop-work that replaces the arrest under ?arrest=stopwork
   ['Alarm governor']: '鬧鈴調速器',
   ['Alarm governor anchor']: '鬧鈴調速錨',
   ['Governor wheel']: '調速輪',
@@ -3377,6 +3382,7 @@ const AR = {
   'Alarm barrel': 'برميل المنبه',
   'Alarm striking wheel': 'عجلة طرق المنبه',
   'Winding arrest': 'حاجز التعبئة',
+  'Winding stop-work': 'إيقاف الصليب المالطي', // §329 landing 4 — the Geneva (Maltese-cross) stop-work that replaces the arrest under ?arrest=stopwork
   'Alarm governor': 'حاكم المنبه',
   'Alarm governor anchor': 'مرساة حاكم المنبه',
   'Governor wheel': 'عجلة الحاكم',
@@ -3941,6 +3947,7 @@ const ES = {
   'Alarm barrel': 'Barrilete del despertador',
   'Alarm striking wheel': 'Rueda de sonería del despertador',
   'Winding arrest': 'Tope de cuerda',
+  'Winding stop-work': 'Tope de cruz de Malta', // §329 landing 4 — the Geneva (Maltese-cross) stop-work that replaces the arrest under ?arrest=stopwork
   'Alarm governor': 'Regulador del despertador',
   'Alarm governor anchor': 'Áncora del regulador del despertador',
   'Governor wheel': 'Rueda del regulador',
@@ -4502,6 +4509,7 @@ const KO = {
   'Alarm barrel': '알람 배럴',
   'Alarm striking wheel': '알람 타격 휠',
   'Winding arrest': '태엽 감기 멈춤',
+  'Winding stop-work': '몰타 십자 멈춤', // §329 landing 4 — the Geneva (Maltese-cross) stop-work that replaces the arrest under ?arrest=stopwork
   'Alarm governor': '알람 거버너',
   'Alarm governor anchor': '알람 거버너 앵커',
   'Governor wheel': '거버너 휠',
@@ -5065,6 +5073,7 @@ const RU = {
   'Alarm barrel': 'Барабан будильника',
   'Alarm striking wheel': 'Ударное колесо будильника',
   'Winding arrest': 'Стопор завода',
+  'Winding stop-work': 'Мальтийский стопор завода', // §329 landing 4 — the Geneva (Maltese-cross) stop-work that replaces the arrest under ?arrest=stopwork
   'Alarm governor': 'Регулятор будильника',
   'Alarm governor anchor': 'Анкер регулятора будильника',
   'Governor wheel': 'Колесо регулятора',
@@ -5629,6 +5638,7 @@ const PT = {
   'Alarm barrel': 'Tambor do despertador',
   'Alarm striking wheel': 'Roda de toque do despertador',
   'Winding arrest': 'Batente de corda',
+  'Winding stop-work': 'Batente de cruz de Malta', // §329 landing 4 — the Geneva (Maltese-cross) stop-work that replaces the arrest under ?arrest=stopwork
   'Alarm governor': 'Regulador do despertador',
   'Alarm governor anchor': 'Âncora do regulador do despertador',
   'Governor wheel': 'Roda do regulador',
@@ -6192,6 +6202,7 @@ const IT = {
   'Alarm barrel': 'Bariletto della sveglia',
   'Alarm striking wheel': 'Ruota di suoneria della sveglia',
   'Winding arrest': 'Arresto di carica',
+  'Winding stop-work': 'Arresto a croce di Malta', // §329 landing 4 — the Geneva (Maltese-cross) stop-work that replaces the arrest under ?arrest=stopwork
   'Alarm governor': 'Regolatore della sveglia',
   'Alarm governor anchor': 'Àncora del regolatore della sveglia',
   'Governor wheel': 'Ruota del regolatore',
@@ -6752,6 +6763,7 @@ const HI = {
   'Alarm barrel': 'अलार्म बैरल',
   'Alarm striking wheel': 'अलार्म स्ट्राइकिंग व्हील',
   'Winding arrest': 'वाइंडिंग अरेस्ट',
+  'Winding stop-work': 'माल्टीज़ क्रॉस स्टॉप', // §329 landing 4 — the Geneva (Maltese-cross) stop-work that replaces the arrest under ?arrest=stopwork
   'Alarm governor': 'अलार्म गवर्नर',
   'Alarm governor anchor': 'अलार्म गवर्नर एंकर',
   'Governor wheel': 'गवर्नर व्हील',
@@ -7322,6 +7334,7 @@ const VI = {
   'Alarm barrel': 'Hộp cót báo thức',
   'Alarm striking wheel': 'Bánh xe gõ báo thức',
   'Winding arrest': 'Cơ cấu chặn lên dây',
+  'Winding stop-work': 'Cơ cấu chặn chữ thập Malta', // §329 landing 4 — the Geneva (Maltese-cross) stop-work that replaces the arrest under ?arrest=stopwork
   'Alarm governor': 'Bộ điều tốc báo thức',
   'Alarm governor anchor': 'Neo bộ điều tốc báo thức',
   'Governor wheel': 'Bánh xe điều tốc',
@@ -7901,6 +7914,7 @@ const NL = {
   'Alarm barrel': 'Wekkerveerhuis',
   'Alarm striking wheel': 'Wekkerslagrad',
   'Winding arrest': 'Opwindstop',
+  'Winding stop-work': 'Maltezer-kruisstop', // §329 landing 4 — the Geneva (Maltese-cross) stop-work that replaces the arrest under ?arrest=stopwork
   'Alarm governor': 'Wekkerregulateur',
   'Alarm governor anchor': 'Wekkerregulateuranker',
   'Governor wheel': 'Regulateurrad',
@@ -8480,6 +8494,7 @@ const FA = {
   'Alarm barrel': 'بشکه‌ی زنگ',
   'Alarm striking wheel': 'چرخ ضربه‌ی زنگ',
   'Winding arrest': 'توقف کوک',
+  'Winding stop-work': 'توقف صلیب مالتی', // §329 landing 4 — the Geneva (Maltese-cross) stop-work that replaces the arrest under ?arrest=stopwork
   'Alarm governor': 'گاورنر زنگ',
   'Alarm governor anchor': 'انکر گاورنر زنگ',
   'Governor wheel': 'چرخ گاورنر',
@@ -9060,6 +9075,7 @@ const HE = {
   'Alarm barrel': 'תוף המעורר',
   'Alarm striking wheel': 'גלגל ההקשה של המעורר',
   'Winding arrest': 'עוצר המתיחה',
+  'Winding stop-work': 'עוצר צלב מלטזי', // §329 landing 4 — the Geneva (Maltese-cross) stop-work that replaces the arrest under ?arrest=stopwork
   'Alarm governor': 'וסת המעורר',
   'Alarm governor anchor': 'עוגן וסת המעורר',
   'Governor wheel': 'גלגל הווסת',
@@ -9639,6 +9655,7 @@ const ID = {
   'Alarm barrel': 'Tabung pegas alarm',
   'Alarm striking wheel': 'Roda pemukul alarm',
   'Winding arrest': 'Penghenti putaran',
+  'Winding stop-work': 'Penghenti salib Malta', // §329 landing 4 — the Geneva (Maltese-cross) stop-work that replaces the arrest under ?arrest=stopwork
   'Alarm governor': 'Governor alarm',
   'Alarm governor anchor': 'Jangkar governor alarm',
   'Governor wheel': 'Roda governor',
@@ -10219,6 +10236,7 @@ const TR = {
   'Alarm barrel': 'Alarm zemberek kutusu',
   'Alarm striking wheel': 'Alarm vurma çarkı',
   'Winding arrest': 'Kurma durdurucu',
+  'Winding stop-work': 'Malta haçı durdurucu', // §329 landing 4 — the Geneva (Maltese-cross) stop-work that replaces the arrest under ?arrest=stopwork
   'Alarm governor': 'Alarm regülatörü',
   'Alarm governor anchor': 'Alarm regülatörü çapası',
   'Governor wheel': 'Regülatör çarkı',
@@ -10799,6 +10817,7 @@ const CY = {
   'Alarm barrel': 'Casgen y larwm',
   'Alarm striking wheel': 'Olwyn daro\'r larwm',
   'Winding arrest': 'Ataliad weindio',
+  'Winding stop-work': 'Ataliad croes Malta', // §329 landing 4 — the Geneva (Maltese-cross) stop-work that replaces the arrest under ?arrest=stopwork
   'Alarm governor': 'Rheolydd y larwm',
   'Alarm governor anchor': 'Angor rheolydd y larwm',
   'Governor wheel': 'Olwyn y rheolydd',
@@ -11391,6 +11410,7 @@ const FIL = {
   ['Alarm governor']: 'Governor ng alarm',
   ['Alarm governor anchor']: 'Angkla ng governor ng alarm',
   ['Winding arrest']: 'Arrest sa pag-wind',
+  ['Winding stop-work']: 'Pantigil na krus ng Malta', // §329 landing 4 — the Geneva (Maltese-cross) stop-work that replaces the arrest under ?arrest=stopwork
   ['Governor wheel']: 'Gulong ng governor',
   ['Governor wheel sleeve']: 'Sleeve ng gulong ng governor',
   ['Strike arbor sleeve']: 'Sleeve ng strike arbor',
@@ -11949,6 +11969,7 @@ const LV = {
   'Alarm governor': 'Modinātāja regulators',
   'Alarm governor anchor': 'Modinātāja regulatora enkurs',
   'Winding arrest': 'Uzvilkšanas ierobežotājs',
+  'Winding stop-work': 'Maltas krusta ierobežotājs', // §329 landing 4 — the Geneva (Maltese-cross) stop-work that replaces the arrest under ?arrest=stopwork
   'Governor wheel': 'Regulatora ritenis',
   'Governor wheel sleeve': 'Regulatora riteņa uzmava',
   'Strike arbor sleeve': 'Sitiena vārpstiņas uzmava',
@@ -12507,6 +12528,7 @@ const HU = {
   'Alarm governor': 'Ébresztőszabályozó',
   'Alarm governor anchor': 'Ébresztőszabályozó horgonya',
   'Winding arrest': 'Felhúzásgátló',
+  'Winding stop-work': 'Máltai keresztes felhúzásgátló', // §329 landing 4 — the Geneva (Maltese-cross) stop-work that replaces the arrest under ?arrest=stopwork
   'Governor wheel': 'Szabályozókerék',
   'Governor wheel sleeve': 'Szabályozókerék hüvelye',
   'Strike arbor sleeve': 'Ütőtengely hüvelye',
@@ -13067,6 +13089,7 @@ const CS = {
   'Alarm governor': 'Regulátor budíku',
   'Alarm governor anchor': 'Kotva regulátoru budíku',
   'Winding arrest': 'Zarážka natahování',
+  'Winding stop-work': 'Maltézská zarážka natahování', // §329 landing 4 — the Geneva (Maltese-cross) stop-work that replaces the arrest under ?arrest=stopwork
   'Governor wheel': 'Kolo regulátoru',
   'Governor wheel sleeve': 'Objímka kola regulátoru',
   'Strike arbor sleeve': 'Objímka úderové hřídele',
