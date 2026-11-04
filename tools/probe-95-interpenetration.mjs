@@ -41,7 +41,7 @@ console.log(await p.evaluate(async (PAIRS) => {
   // whole, so indices match what the battery labels.
   const meshesOf=e=>{const m=[];const w=n=>{if(n.userData&&n.userData.schematic)return;
     if(n.isMesh&&n.geometry&&n.geometry.attributes.position)m.push(n);for(const ch of n.children)w(ch);};w(e.obj);return m;};
-  const boundary=(g)=>I.surfaceEdgeCensus(g).bad;   // TODO 165: boundsASolid's own law, never a copy
+  const boundary=(g)=>I.surfaceEdgeCensus(g).odd;   // TODO 165/282: boundsASolid's own law (the edges on an odd number of faces), never a copy
   const surf=(mesh,N)=>{const g=mesh.geometry,pos=g.attributes.position,idx=g.index;
     const n=idx?idx.count:pos.count, out=[];
     const a=new THREE.Vector3(),b2=new THREE.Vector3(),cc=new THREE.Vector3();
