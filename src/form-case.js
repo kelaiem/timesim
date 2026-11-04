@@ -553,17 +553,18 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   }
   const sweep = mergeGeos(bezel.runs.map((run) => { const r = sweepRun(loops.ring, run); r.computeVertexNormals(); return r; }));
   if (signedVolume(sweep) < 0) flipWinding(sweep);
-  // §331 — on a convex form the band is BORED for its tubes (boredBand), from the same line, offset, sleeve radius and z
-  // tubeAt builds each sleeve on below. The free outline keeps its unbored prism (filed, not in this landing).
+  // §331 — the band is BORED for its tubes (boredBand), from the same line, offset, sleeve radius and z tubeAt builds each
+  // sleeve on below. TODO 283: the FREE outline too, which §331 left an unbored prism with the winding stem standing in
+  // its metal. Its two loops are index-aligned by construction (formCaseLoops projects every ring onto the outer loop's
+  // vertices), and boredBand splits each wall at EVERY crossing of a strip's edge and judges each cell by its own
+  // midpoint, so a concave wall the strip crosses four times takes two windows with no special case.
   const BAND_BORES = [
     { az: stemAz, off: 0, ap: tubeD / 2 + TUBE_WALL, z: stemZ },
     ...(alarmAz !== null ? [{ az: alarmAz, off: 0, ap: tubeD / 2 + TUBE_WALL, z: alarmZ }] : []),
     ...(pusherAz !== null ? [{ az: pusherAz, off: pusherOff, ap: pusherD / 2 + TUBE_WALL, z: pusherZ }] : []),
   ];
   const zBandEnd = formApertureGrow === null ? z0 : zMidBack;   // §321: the band ends where the back's round begins
-  const band = form.kind !== 'free'
-    ? boredBand(loops.outer, loops.bore, Math.min(zBandFront, zBandEnd), Math.max(zBandFront, zBandEnd), BAND_BORES)
-    : prism(loops.outer, [loops.bore], zBandFront, zBandEnd);
+  const band = boredBand(loops.outer, loops.bore, Math.min(zBandFront, zBandEnd), Math.max(zBandFront, zBandEnd), BAND_BORES);
   for (const b of BAND_BORES)
     if (!(b.z - b.ap > Math.min(zBandFront, zBandEnd) && b.z + b.ap < Math.max(zBandFront, zBandEnd)))
       console.warn(`makeFormCase §331: a bore window (z ${(b.z - b.ap).toFixed(3)}..${(b.z + b.ap).toFixed(3)}) reaches past the band's own wall `
@@ -706,8 +707,7 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   //   · The OUTBOARD end is the axis's exit from the OUTER loop
   //     (makeCase's `alongAt(R_OUT)`), plus TUBE_PROUD for a crown; flush for
   //     the pusher.
-  // §331: on a convex form the band is BORED for them (boredBand, from these same lines and radii); the free outline's
-  // band is not yet, and its sleeves still stand in solid band metal.
+  // §331: the band is BORED for them (boredBand, from these same lines and radii); since TODO 283 on the free outline too.
   const STEM_FLOOR = { caseCrownTube: 0, caseAlarmTube: 1 };   // PLATE_RIM.floors is indexed by CASE_NOTCHES: the crown, then the alarm stem
   const tubeAt = (az, d, z, name, flush = false, off = 0) => {
     const r = d / 2, rw = r + TUBE_WALL;
