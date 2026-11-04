@@ -40,7 +40,11 @@ const src = readFileSync(join(ROOT, 'src/inspect.js'), 'utf8');
 const count = (s, x) => s.split(x).length - 1;
 if (count(src, NEW_LINE) !== 1 || count(src, OLD_KEY) !== 1)
   throw new Error('probe-165: the rule line or the edge key is not where this probe expects it — the old-rule rewrite cannot be made, update the probe');
-const OLD_SRC = src.replace(NEW_LINE, '').replace(OLD_KEY, 'if (a === b) continue; ' + OLD_KEY);
+// TODO 282 — the witness reads "no odd edge" now, under which a collapsed triangle's doubled seam is even and closed
+// anyway; the rule AS IT WAS before TODO 165 also read "exactly two", so the rewrite restores that line too.
+const NEW_CLOSED = 'v = surfaceEdgeCensus(geom).odd === 0;';
+if (count(src, NEW_CLOSED) !== 1) throw new Error('probe-165: boundsASolid\'s closedness line is not where this probe expects it — update the probe');
+const OLD_SRC = src.replace(NEW_LINE, '').replace(OLD_KEY, 'if (a === b) continue; ' + OLD_KEY).replace(NEW_CLOSED, 'v = surfaceEdgeCensus(geom).bad === 0;');
 
 const browser = await chromium.launch({ args: ['--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'] });
 
