@@ -1343,6 +1343,21 @@ const SPEC_POINTS = [
   // beside the case probes.
   { name: 'pillars', q: 'frame=pillars', expect: 'silent', sweep: true,
     why: '§328 step 1b — the round build on applied pillars, the default until step 1b and a supported style since; boots silent, swept' },
+  // §329 landing 4 — THE STOP-WORK, SWEPT. `?arrest=stopwork` builds the Geneva stop-work on the fusee cone instead of §47's
+  // finger, beak and lug, and what it buys is the drum's turn on the ALARM-OFF free case: the lands preview (§325's -140°
+  // no-alarm arrangement) with the drum at 140°, the last direction whose drum clears the centre wheel (measured: 145°, 150°
+  // and 160° put the drum into it, and past 140° the outline is already the 810.92 the rest of the metal needs). Its free
+  // outline is committed (src/free-outlines.js, 811.92 mm² against the preview's own 877.33), so it boots fitted, with
+  // exactly the one row every free build carries. This is the first point that is missing units the default has (no alarm):
+  // battery-points.mjs counts a unit absent from either side as changed and drops it from the pairs it measures.
+  // Its first sweep (PR #880) read FINDING, and every row is the ARRANGEMENT's, not the stop-work's: the same four pairs, row
+  // for row, read on the lands preview as it ships (no stop-work, its own drum) — the winding stem through the case middle,
+  // a motion-works corner cap on the hour wheel, a setting traverse on a reserve wheel (Keyless works ⇄ Case / Hour wheel /
+  // Power-reserve train, all 0), Balance cock ⇄ Fork cock at 0.0122. None touches the stop-work, fusee, drum or chain. So
+  // the point joins validated-configs only once the -140° no-alarm arrangement itself sweeps clean (§325's open blocker).
+  { name: 'stopwork-140', q: 'case=free&alarm=0&barrelstep=-140&rsvaz=0&rsvidl=2&frame=lands&arrest=stopwork&drumaz=140', expect: 'declared', sweep: true,
+    expectWarns: ['§186: the rim-to-bore fit'],
+    why: '§329 landing 4 — the stop-work on the alarm-off free case with the drum turned to 140° (−7.5% case area); boots exactly the free build\'s §186 row, swept' },
 ];
 
 // TODO 186 B1 — THE POINTS THE BATTERY SWEEPS, and what each costs.
@@ -1415,6 +1430,10 @@ const POINT_COSTS = {
   // Three-quarter plate's pairs; carried at half the designed point's reach until a run writes its own `ms` back (wall
   // clock, never a verdict).
   'pillars': 587,
+  // §329 landing 4 — against the round alarm default this build changes most of the movement: no alarm at all, a free case
+  // and plates, the barrel at -140°, the drum turned, the stop-work in §47's place. Carried at the designed point's reach
+  // (its nearest measured kin in scope) until a run writes its own `ms` back — wall clock, never a verdict.
+  'stopwork-140': 1174,
 };
 {
   const named = new Set(SWEEP_POINTS.map((p) => p.name));
