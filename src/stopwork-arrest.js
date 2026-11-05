@@ -18,35 +18,43 @@ export const TAU = Math.PI * 2;
 export const engagementArc = (n) => Math.PI - TAU / n;                       // E
 export const travelTurns = (m, n) => (m + 1) - engagementArc(n) / TAU;       // stop to stop, in finger revolutions
 
-// the Geneva's dimensions from the pin's orbit radius (the one input the cone supplies)
-export function genevaDims(n, r1) {
+// the pin's and the stud's §50 floor (a pivot's bore / half a wheel's stock): the radius the line uses when no load sizes them
+export const PIN_FLOOR_U = Math.max(PIVOT_MIN_U, STOCK_MIN_U / 2);
+export const STUD_FLOOR_U = PIVOT_MIN_U;
+// the Geneva's dimensions from the pin's orbit radius (the one input the cone supplies). The pin's radius and the star's stud are
+// INPUTS since §329's P1 pricing: at the going side's stall they are sized by the load, not the floor (main.js), and every
+// dimension that reads them (the slot's width, the tip circle, the slots' inner end, the lock disc's window) follows.
+export function genevaDims(n, r1, { rPin = PIN_FLOOR_U, studR = STUD_FLOOR_U } = {}) {
   const a = r1 / Math.sin(Math.PI / n), r2 = a * Math.cos(Math.PI / n);
-  const rPin = Math.max(PIVOT_MIN_U, STOCK_MIN_U / 2);                        // §50 floors: a pivot's bore / half a wheel's stock
   const rTip = r2 + rPin + CLEAR_MARGIN;                                      // the star's tip circle: past the entry point by the pin and the margin
   const rIn = a - r1 - rPin - CLEAR_MARGIN;                                   // the slots' inner end: the pin's closest approach, less its own radius and the margin
   // the lock disc rides the star's concave arc between engagements: it must reach the tip circle and stay clear of the slots' pin circle
   const lockLo = a - rTip, lockHi = r1 - rPin - CLEAR_MARGIN;
-  return { n, a, r1, r2, rPin, rTip, rIn, lockLo, lockHi, E: engagementArc(n) };
+  return { n, a, r1, r2, rPin, studR, rTip, rIn, lockLo, lockHi, E: engagementArc(n) };
 }
 
 // the earliest the stop face can meet the pin: where the pin's circle first crosses the star's tip circle
-export function trimMax(n, r1) {
-  const { a, rTip, E } = genevaDims(n, r1);
+export function trimMax(n, r1, sizes = {}) {
+  const { a, rTip, E } = genevaDims(n, r1, sizes);
   const c = (a * a + r1 * r1 - rTip * rTip) / (2 * a * r1);
   return c >= 1 ? 0 : Math.max(0, Math.acos(Math.max(-1, c)) - E / 2) * 2 / TAU;   // in finger revolutions (both ends can give it)
 }
 
-// the member floors the dimensions owe: the lock disc has a window, and the slots' inner end leaves a hub (a bore's wall and a wheel's stock)
-export const floorsHold = (d) => d.lockLo <= d.lockHi && d.rIn >= PIVOT_MIN_U + STOCK_MIN_U;
+// the member floors the dimensions owe: the lock disc has a window, and the slots' inner end leaves a hub round the star's bore (the
+// stud, its running fit, and a §50 wall). The fit was not counted while the stud stood at the pivot floor (PIVOT_MIN_U + STOCK_MIN_U);
+// it is a hundredth, and counted now that the stud may be sized by its load.
+export const STAR_RUN_U = 0.01;   // the star's bore over its stud: main.js's RUN, the running fit inside one mechanism
+export const floorsHold = (d) => d.lockLo <= d.lockHi && d.rIn >= d.studR + STAR_RUN_U + STOCK_MIN_U;
 
 // the (m, n) with the least trim that still reaches the wind's turns T: travel ≥ T, trim = travel − T ≤ trimMax
-export function chooseStopwork(T, r1, { nMax = 12 } = {}) {
+export function chooseStopwork(T, r1, { nMax = 12, rPin = PIN_FLOOR_U, studR = STUD_FLOOR_U } = {}) {
+  const sizes = { rPin, studR };
   let best = null;
   for (let n = 3; n <= nMax; n++) for (let m = 1; m <= Math.ceil(T) + 1; m++) {
     const travel = travelTurns(m, n), trim = travel - T;
-    if (trim < -1e-9 || trim > trimMax(n, r1) + 1e-9) continue;
-    if (!floorsHold(genevaDims(n, r1))) continue;
-    if (!best || trim < best.trim - 1e-12 || (Math.abs(trim - best.trim) < 1e-12 && n < best.n)) best = { n, m, c: n - m, travel, trim, ...genevaDims(n, r1) };
+    if (trim < -1e-9 || trim > trimMax(n, r1, sizes) + 1e-9) continue;
+    if (!floorsHold(genevaDims(n, r1, sizes))) continue;
+    if (!best || trim < best.trim - 1e-12 || (Math.abs(trim - best.trim) < 1e-12 && n < best.n)) best = { n, m, c: n - m, travel, trim, ...genevaDims(n, r1, sizes) };
   }
   return best;
 }
