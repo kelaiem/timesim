@@ -130,6 +130,23 @@ export const STRAP_MM_DEFAULT = 19;
 // outlines (src/free-outlines.js) must cover every width offered, and probe-325-free-case.mjs S holds that against it.
 export const STRAP_PICK_MIN_MM = 14;
 export const ARRANGEMENT = Object.freeze({ barrelStepDeg: -20, rsvAzDeg: 0, alarmModAzDeg: 50, rsvIdlers: 2 });
+// The fusee's own gearing: the great wheel on the fusee into the centre pinion, TRAIN.barrel's tooth counts (its derivation is
+// there). Named here, above SPEC, because the spec's parse needs the fusee's turns per hour (§329's arrest key, below) before
+// TRAIN is declared; TRAIN.barrel reads them, so the two cannot part.
+export const GREAT_WHEEL_TEETH = 120, CENTRE_PINION_LEAVES = 7;
+// §329 — WHERE THE STOP-WORK STANDS. Two facts decide it, and only the first is arithmetic. A Geneva of n slots, m of them open,
+// travels (m + 1) − E/2π = m + ½ + 1/n finger turns between its stops (src/stopwork-arrest.js travelTurns), and the cone's wind
+// is reserveHours·pinion/teeth turns, so the LINE reaches a reserve only where those are equal (exact, with no trim). Of the
+// reserves the spec offers it reaches 30 h (n 4, m 1) and 45 h (n 8, m 2). The second fact is the build's: whether the cone's top
+// face leaves an orbit for the pin and the plate a seat for the star (main.js, §329's site search). That is MEASURED, so it is a
+// declared list, held to the metal by tools/probe-329-stopwork-reserves.mjs: every reserve the line reaches must find a site
+// exactly when it is listed. 45 h does not (every one of 720 azimuths refused at the pin's root, on main before §329's P1).
+export const stopworkReaches = (reserveHours) => {
+  const T = (reserveHours * CENTRE_PINION_LEAVES) / GREAT_WHEEL_TEETH;
+  for (let n = 3; n <= 12; n++) for (let m = 1; m <= Math.ceil(T) + 1; m++) if (Math.abs(m + 0.5 + 1 / n - T) < 1e-9) return true;
+  return false;
+};
+export const STOPWORK_SITED_HOURS = Object.freeze([30]);
 export const SPEC = (() => {
   const raw0 = (typeof globalThis !== 'undefined' && globalThis.__WATCH_SPEC) || {};
   const given = (v) => v !== undefined && v !== null && v !== '';
@@ -377,7 +394,14 @@ export const SPEC = (() => {
   // __clock.windArrest.trailing; no metal moves yet). null = §47's arrest, as built, so every configKey without it is unchanged.
   // §329 landing 4 — ?arrest=stopwork builds option B: a Geneva stop-work on the fusee (src/stopwork-arrest.js) INSTEAD of §47's
   // finger, beak and lug. It moves metal, so unlike 'trailing' it is part of every configuration key that is about the movement.
-  const arrest = raw.arrest === 'trailing' ? 'trailing' : raw.arrest === 'stopwork' ? 'stopwork' : null;
+  // §329 — THE STOP-WORK STANDS ONLY WHERE IT CAN (stopworkReaches and STOPWORK_SITED_HOURS above say where, and why), and
+  // elsewhere the key folds back to §47's stop iron: the owner's choice, 2026-11-05, so every reserve keeps a real arrest. Pure, so
+  // layout.js, inspect.js and lubrication.js agree before anything is built, and a stop-work URL at another reserve keys as the
+  // stop-iron build it then is. `stopwork-site` is a MEASUREMENT key (the 'trailing' precedent): it builds the stop-work's site
+  // search at any reserve, so the reserves probe can ask the build whether a site exists. It is not a configuration a reader picks.
+  const arrest = raw.arrest === 'trailing' ? 'trailing'
+    : raw.arrest === 'stopwork-site' ? 'stopwork'
+    : raw.arrest === 'stopwork' ? (stopworkReaches(reserveHours) && STOPWORK_SITED_HOURS.includes(reserveHours) ? 'stopwork' : null) : null;
   const drumAzDeg = raw.drumAzDeg !== undefined && raw.drumAzDeg !== null && raw.drumAzDeg !== '' && Number.isFinite(Number(raw.drumAzDeg))
     ? ((Number(raw.drumAzDeg) % 360) + 360) % 360 : null;
   return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, rsvIdlers, alarmr, subdialr, dialr, studr, caseShape, frame, hands, formRectSpec, gongSeat, alarm, strapMm, drumAzDeg, arrest });
@@ -1858,7 +1882,7 @@ export const TRAIN = {
   // wheel's pitch radius grows 14.40 → 15.307 and the 7-leaf pinion runs a
   // module inside the movement's existing practice (the escape mesh is cut
   // at 0.21).
-  barrel: { module: (2 * 16.2) / (120 + 7), teeth: 120, pinion: 7 }, // great wheel → center pinion
+  barrel: { module: (2 * 16.2) / (GREAT_WHEEL_TEETH + CENTRE_PINION_LEAVES), teeth: GREAT_WHEEL_TEETH, pinion: CENTRE_PINION_LEAVES }, // great wheel → center pinion
   center: { module: 0.30, teeth: 75, pinion: 10 }, // center wheel → third pinion
   third:  { module: 0.24, teeth: 80, pinion: 10 }, // third wheel → fourth pinion
   // fourth wheel → escape pinion: the ONE mesh the beat-rate spec re-gears
