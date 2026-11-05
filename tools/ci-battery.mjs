@@ -206,6 +206,22 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 // neither timeout.
 const CHECK_TIMEOUT_MS = 35 * 60 * 1000;
 const BOOT_TIMEOUT_MS = 120 * 1000;
+// A SPEC POINT'S OWN BOOT, MEASURED. BOOT_TIMEOUT_MS means "one roughly uncontended boot must build" (the spec tier's pool
+// keeps it so), and that is a statement about the DEFAULT boot. Some points are heavier by construction, and their
+// timeout scales by how much: the ratio of the point's solo boot to the default's, each a headless boot through
+// tools/boot-form.mjs, one at a time (2026-11-05, M2 Max: the default 12.2 s, every one of the 42 declared points timed).
+// Only points over 1.5× are listed, and each ratio is the slowest of its runs, rounded up to a tenth. d4=16 is the one
+// that crossed 120 s: DEAD on the slow hosted runners (the spec tier near 630 s against about 370 s on the fast ones) on
+// the main pushes for #881 and #882 and on #884 and #886, and alive solo and alive locally every time. A stale ratio
+// costs only how long a dead boot is waited for, never a verdict: a point that builds is judged the same either way.
+const SPEC_BOOT_RATIO = Object.freeze({
+  'd4=16': 3.0,          // 32.0 / 33.1 / 36.1 s: the siting scan refuses almost every candidate near the setting cap (see its row)
+  'reconf=1': 2.3,       // 27.4 s
+  'alarmaz=175': 2.1,    // 25.4 s
+  'stopwork-140': 1.9,   // 22.2 s
+  'alarmaz=180': 1.8,    // 21.2 s
+});
+const specBootTimeoutMs = (name) => Math.round(BOOT_TIMEOUT_MS * Math.max(1, SPEC_BOOT_RATIO[name] ?? 1));
 
 // §81 — THE MEASURED COST COLUMN, AND WHY IT IS DATA. The harness shards the
 // battery across K browser contexts and partitions the tasks by these numbers
@@ -1367,6 +1383,11 @@ const SPEC_POINTS = [
   { name: 'stopwork', q: 'arrest=stopwork', expect: 'silent', sweep: true,
     why: '§329 toward the default — the Geneva stop-work on the default build (round case, alarm, shipped drum); boots silent, swept' },
 ];
+// A SPEC_BOOT_RATIO row naming no declared point is a stale measurement (the waiver tables' rule): it fails here,
+// before any browser starts, rather than quietly applying to nothing.
+for (const name of Object.keys(SPEC_BOOT_RATIO))
+  if (!SPEC_POINTS.some((p) => p.name === name)) throw new Error(`SPEC_BOOT_RATIO names '${name}', which is no declared spec point`);
+
 
 // TODO 186 B1 — THE POINTS THE BATTERY SWEEPS, and what each costs.
 //
@@ -1534,15 +1555,15 @@ const NON_FINITE_WALK = () => {
 // carries the state isolation (state.js guards it at the choke point: a trial
 // neither reads nor writes /__state), so these need no serialising against
 // each other and no DELETE — they cannot race the file they never touch.
-async function specBoot(browser, base, q) {
+async function specBoot(browser, base, q, timeoutMs = BOOT_TIMEOUT_MS) {
   const context = await browser.newContext();
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e.message || e)));
   const url = `${base}/index.html?trial=1${q ? `&${q}` : ''}`;
   try {
-    await page.goto(url, { waitUntil: 'load', timeout: BOOT_TIMEOUT_MS });
-    await page.waitForFunction(() => !!window.__clock, null, { timeout: BOOT_TIMEOUT_MS });
+    await page.goto(url, { waitUntil: 'load', timeout: timeoutMs });
+    await page.waitForFunction(() => !!window.__clock, null, { timeout: timeoutMs });
     const warns = await page.evaluate(() => (window.__clock.bootWarns || []).slice());
     const nonFinite = await page.evaluate(NON_FINITE_WALK);
     const config = await page.evaluate(() => window.__clock.config ?? null);   // TODO 158: what the build says it is, and whether it calls itself verified
@@ -2319,7 +2340,7 @@ async function runSpecTier(browser, base, points) {
         const i = next++;
         if (i >= points.length) return;
         const pt = points[i];
-        const r = await specBoot(browser, base, pt.q);
+        const r = await specBoot(browser, base, pt.q, specBootTimeoutMs(pt.name));
         rows[i] = { ...pt, ...r };
       }
     }));
