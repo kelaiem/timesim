@@ -160,7 +160,7 @@ const measure = async () => {
     fingerprint: I.fingerprint(c),
     form: c.formFootprint ? { rect: c.formFootprint.rect, metal: c.formFootprint.metal, holds: c.formFootprint.holds, mm: c.formFootprint.mm } : null,
     barrel: c.P.barrel,
-    arrestLegal: (c.windArrest.beakScanTrace || '').includes('.'),
+    arrestLegal: c.windArrest.stopwork ? !!c.windArrest.stopwork.built : (c.windArrest.beakScanTrace || '').includes('.'),   // §329: the stop-work where it is built, §47's beak scan elsewhere
     fold: { bearingDeg: c.settingFold.bearingDeg, swingDeg: c.settingFold.swingDeg, alphaDeg: c.settingFold.alphaDeg, stemTurnDeg: c.settingFold.stemTurnDeg },
     jumperAzDeg: c.jumperSite.azDeg,
     hammer: R ? box(R.units['Alarm hammer'].hull) : null,

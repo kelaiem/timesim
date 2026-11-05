@@ -3120,6 +3120,17 @@
   <details class="mech" id="winding-arrest">
     <summary>Winding arrest &mdash; the stop that makes overwinding impossible<span class="where">going &middot; src/main.js &sect;126</span></summary>
     <div class="mech-body">
+      <p><b>The arrest that ships is a count.</b> A star of four slots stands beside the cone,
+      one of them open, and a pin in the cone's top face carries it a quarter turn each time the
+      cone comes round. Its closed slots are the two stops, so the pin is stopped head-on at full
+      wind and again at the end of the reserve: the star's travel is exactly
+      <code>FUSEE_WRAP_TURNS</code>, designed as a line in <code>src/stopwork-arrest.js</code>
+      before it was folded into the gap over the cone. Because the stop's force runs through the
+      star's own pivot, the cone's level torque is the whole load, and the pin and stud are cut
+      to carry it. A star stands only where its travel matches the wind and the cone leaves it a
+      site (<code>STOPWORK_SITED_HOURS</code>). At every other reserve, and under
+      <code>?arrest=stop-iron</code>, the movement keeps the stop iron the rest of this entry
+      describes.</p>
       <p>A fusee cannot slip. The chain is a fixed length hooked at both ends, so when the
       last coil is home there is nowhere for another turn to go &mdash; and until this
       mechanism existed, the sim said so with a number instead of a part: the bank was

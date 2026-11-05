@@ -1374,14 +1374,13 @@ const SPEC_POINTS = [
   // TODO 283 (closed) bored the free band for its tubes, which removed the first (the stem stands 2.507 off the middle);
   // the setting fold's judge then took the hour wheel and the reserve input pinion as envelopes (FOLD_WHEEL_ENVELOPES in
   // main.js), which removed the keyless fold's two. The cocks' 0.0122 remains.
-  { name: 'stopwork-140', q: 'case=free&alarm=0&barrelstep=-140&rsvaz=0&rsvidl=2&frame=lands&arrest=stopwork&drumaz=140', expect: 'declared', sweep: true,
+  { name: 'stopwork-140', q: 'case=free&alarm=0&barrelstep=-140&rsvaz=0&rsvidl=2&frame=lands&drumaz=140', expect: 'declared', sweep: true,
     expectWarns: ['§186: the rim-to-bore fit'],
     why: '§329 landing 4 — the stop-work on the alarm-off free case with the drum turned to 140° (−7.5% case area); boots exactly the free build\'s §186 row, swept' },
-  // §329 toward the default — THE STOP-WORK ON THE DEFAULT BUILD: the round case, the alarm, the shipped drum, and the Geneva
-  // stop-work in place of §47's arrest. The first step toward making it the default arrest: its pairs swept on the build it
-  // would ship on, beside the free arrangement it was designed for.
-  { name: 'stopwork', q: 'arrest=stopwork', expect: 'silent', sweep: true,
-    why: '§329 toward the default — the Geneva stop-work on the default build (round case, alarm, shipped drum); boots silent, swept' },
+  // §329 — THE STOP IRON ON THE DEFAULT BUILD. Since the flip the Geneva stop-work is the default arrest (swept as the default
+  // itself), and §47's stop iron is the supported alternative, `?arrest=stop-iron`: swept here so it stays buildable.
+  { name: 'stop-iron', q: 'arrest=stop-iron', expect: 'silent', sweep: true,
+    why: '§329 — §47\'s stop iron on the default build: the shipped arrest until the stop-work became the default (2026-11-05), kept buildable and swept' },
 ];
 // A SPEC_BOOT_RATIO row naming no declared point is a stale measurement (the waiver tables' rule): it fails here,
 // before any browser starts, rather than quietly applying to nothing.
@@ -1463,7 +1462,7 @@ const POINT_COSTS = {
   // and plates, the barrel at -140°, the drum turned, the stop-work in §47's place. Carried at the designed point's reach
   // (its nearest measured kin in scope) until a run writes its own `ms` back — wall clock, never a verdict.
   'stopwork-140': 1174,
-  'stopwork': 600,   // a stand-in at the default build's own scale (pillars 587), until a run's --report writes the measured one
+  'stop-iron': 600,   // a stand-in at the default build's own scale (pillars 587), until a run's --report writes the measured one
 };
 {
   const named = new Set(SWEEP_POINTS.map((p) => p.name));

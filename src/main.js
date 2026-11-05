@@ -92,6 +92,7 @@ import {
   SLENDER_MAX,                                // §54's CEILING, distinct from SLENDER_TARGET above: TODO 117's line derives the reader pin's length against the ceiling (what the check refuses), not the target (what new metal aims at)
   MOVEMENT_SENSE, ALARM_SENSE,                // TODO 115: the two trains' hands — the going train's, and the alarm's own motor's; every direction-committed cut is checked against one of them
   BACK_PLATE_T, KEYLESS_STACK_R,              // TODO 211: the plate's thickness (hoisted — the keyless plane derives from its dial face) and the stem stack's reach that plane is cut against
+  STOPWORK_BUILT,                             // §329: the Geneva stop-work is the shipped arrest where it stands — the one derived answer
 } from './layout.js';
 import { genevaDims as swDims, PIN_FLOOR_U as SW_PIN_FLOOR, STUD_FLOOR_U as SW_STUD_FLOOR, chooseStopwork, starAngle as swStarAngle, engagementArc as swEngagementArc, travelTurns as swTravelTurns } from './stopwork-arrest.js';   // §329 landing 4: option B, the Geneva stop-work's line
 import { solveTrailingArrest, r1For as trailR1For, psi2ForThrow as trailPsi2ForThrow, epsOf as trailEpsOf, D_MIN as TRAIL_D_MIN, R1_MIN as TRAIL_R1_MIN } from './trailing-arrest.js';   // §329: the trailing arrest's line
@@ -1237,7 +1238,7 @@ const FUSEE_F_ACTIVE = FUSEE_WRAP_TURNS / FUSEE_GROOVE_TURNS; // 0.875 — the w
 // second number: tick() banks against engageTurns, so a lug whose clocking
 // drifted from the wrap would be caught at boot, not discovered as overwind.
 const WIND_ARREST = { engageTurns: FUSEE_WRAP_TURNS };
-const STOPWORK = SPEC.arrest === 'stopwork';   // §329 landing 4: option B's Geneva stop-work replaces §47's finger, beak and lug (its build is in §47's block)
+const STOPWORK = STOPWORK_BUILT;   // §329 landing 4: option B's Geneva stop-work replaces §47's finger, beak and lug (its build is in §47's block)
 // (The cone's z stack — groove width and depth, base collar, center-wheel bind, band, pitch,
 // base and groove start — is declared below, beside the spring constants it needs:
 // the groove's width carries the plate's twist off the helicoid walls, which is a
@@ -63526,7 +63527,7 @@ window.__clock = {
       // §329 landing 2a — the trailing arrest's site (null unless ?arrest=trailing): the line, the best site over every pad candidate,
       // and the reasons summed over all of them
       trailing: (() => {
-        if (!SPEC.arrest) return null;
+        if (SPEC.arrest !== 'trailing') return null;
         const rows = (WIND_ARREST.candidateScan || []).filter((c) => c.trailing);
         let best = null; const why = {};
         for (const c of rows) {
