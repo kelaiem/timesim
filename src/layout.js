@@ -5193,8 +5193,18 @@ export function solveKeyless({
   // gap between its ring and the dial centre the owner asked for (inner
   // edge 3.55 → ~11.8, since the well no longer grows from the keep-out).
   // The centre-bore ceiling (TODO 33) remains the hard cap on both.
-  const markerInnerR = printFrame ? dialRadius * printFrame.markerInnerF : Infinity;
-  const railInnerR = printFrame ? dialRadius * printFrame.railInnerF : Infinity;
+  // THE PRINT FOLLOWS THE CASE (the free case only, when the caller passes `secondsFloor`): the round print — its marker
+  // band and railroad, and with them the hands main.js cuts to them — is scaled down from the plate's round face until
+  // the seconds well, which grows to the railroad's inner rail less the ring wall and margin (the ceiling below), stands
+  // at `secondsFloor`, the smallest seconds face whose figures and caption read at their acuity floors
+  // (geometry.js secondsFaceFloorMm). The case is the quantity being minimised and every printed size here is a
+  // function of it, so the print takes the smallest scale its most demanding sub-dial reads at, never larger than
+  // the round face (a scale over 1 would grow the case to suit the print). 1 exactly on every other build.
+  const printScale = printFrame && printFrame.secondsFloor != null
+    ? Math.min(1, (-SECONDS_LOCAL.y + printFrame.secondsFloor + DIAL_WALL_HALF + CLEAR_MARGIN) / (dialRadius * printFrame.railInnerF))
+    : 1;
+  const markerInnerR = printFrame ? dialRadius * printFrame.markerInnerF * printScale : Infinity;
+  const railInnerR = printFrame ? dialRadius * printFrame.railInnerF * printScale : Infinity;
   const secondsWellCeil = Math.min(
     -SECONDS_LOCAL.y - SUBDIAL_INBOARD_CLEAR,
     railInnerR - DIAL_WALL_HALF - CLEAR_MARGIN - -SECONDS_LOCAL.y,
@@ -5384,6 +5394,7 @@ export function solveKeyless({
     settingLeverPivot, settingLeverAngleAt, tailPostWorldAt, postEng, postRel,
     kwPostBow, yokePivot, yokeAngleAt, slMidAlong, canonToWorld,
     plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, reserveWellR, secondsWellR, secondsWellCeil, alarmCornerR, rsvrWindow,
+    printScale,   // the print-follows-case scale on the round print (1 unless the free case passed secondsFloor)
     reserveStationR, reserveWellLaw, railOuterR, // §308 L4 option A
     reserveSector, // §308 L4 option B — the fan well's derivation (null unless the law is 'sector')
     formPlate, // §307 — the form rectangle (read only under ?case=rect)

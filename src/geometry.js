@@ -8877,6 +8877,9 @@ export const SUBDIAL_MAJOR_W_F = 0.055, SUBDIAL_MINOR_W_F = 0.022;
 // The seconds comb's own drawn fractions, exported for the small seconds
 // hand's width floor (main.js), the reserve comb's rule above.
 export const SECONDS_MAJOR_W_F = 0.045, SECONDS_MINOR_W_F = 0.022;
+// The small-seconds face's radial layout, as fractions of its well radius sr (the paint below, kind 'seconds'):
+// the tick circle, the two tick lengths, and the caption's centre below the pivot.
+export const SECONDS_TICK_OUTER_F = 0.92, SECONDS_MAJOR_LEN_F = 0.16, SECONDS_MINOR_LEN_F = 0.09, SECONDS_CAPTION_DY_F = 0.40;
 export const SUBDIAL_MINOR_ARCMIN = RESOLVE_ARCMIN;
 export const SUBDIAL_MAJOR_ARCMIN = 2 * RESOLVE_ARCMIN;
 export const subdialStrokeF = (f, floorArcmin, mmPerSr) =>
@@ -8960,6 +8963,26 @@ function resolvableEm(family, floorF) {
 }
 const SUBDIAL_SANS = '"Helvetica Neue", Helvetica, Arial, sans-serif';
 const SUBDIAL_MONO = 'ui-monospace, "SF Mono", Menlo, Consolas, monospace';
+// §293's seconds-face INK in mm, at its acuity floors, for secondsFaceFloorMm: the figures' cap at the glance floor,
+// the caption's em at the identify floor, and the resolvable gap. FONT-FREE ON PURPOSE: the paint (kind 'seconds')
+// also raises the caption's em to the one where the installed monospace's heaviest weight strokes a resolvable line
+// (resolvableEm, a canvas measurement), and that term differs by platform (§332's first CI run: a Linux font moved
+// the scale, the case and the hands with it, and the build held its metal 0.017 u inside the outline it was cut to).
+// The print scale sets METAL — the case and the hands — so it reads only the arcmin floors; where a platform's
+// monospace needs a hair more em than the identify floor (0.8129 against 0.8115 mm here) the paint's one `fit` factor
+// absorbs it, a fraction of a percent, far above the half where it warns.
+export function secondsFaceInk() {
+  return { capMm: mmForArcmin(GLANCE_ARCMIN), gapMm: mmForArcmin(RESOLVE_ARCMIN), captionEmMm: mmForArcmin(IDENTIFY_ARCMIN) / CAP_PER_EM };
+}
+// THE SMALLEST SECONDS FACE THAT READS (§332): the well radius, in mm, at which the paint's `fit` reaches 1 at the
+// arcmin floors — figures and caption in the run from the major ticks' inner end to the caption's centre, less a
+// resolvable gap at each end:
+//   (TICK_OUTER − MAJOR_LEN − CAPTION_DY)·sr = cap + captionEm·CAP_PER_EM/2 + 2·gap
+// The free case scales its whole print down to the print whose seconds well is this radius, and no further.
+export function secondsFaceFloorMm() {
+  const { capMm, gapMm, captionEmMm } = secondsFaceInk();
+  return (capMm + (captionEmMm * CAP_PER_EM) / 2 + 2 * gapMm) / (SECONDS_TICK_OUTER_F - SECONDS_MAJOR_LEN_F - SECONDS_CAPTION_DY_F);
+}
 
 // §158's FIGURE BAND, the one law (§308 L4 option B lifted it out of the
 // paint so the sector well's extent reads the same three numbers the paint
@@ -9392,7 +9415,7 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null, sh
     // and the strokes take §293's floors. A caller with no physical scale gets
     // the pre-§293 fractions.
     const { mmPerSr = null } = scale;
-    const TICK_OUTER_F = 0.92, MAJOR_LEN_F = 0.16, MINOR_LEN_F = 0.09;
+    const TICK_OUTER_F = SECONDS_TICK_OUTER_F, MAJOR_LEN_F = SECONDS_MAJOR_LEN_F, MINOR_LEN_F = SECONDS_MINOR_LEN_F;
     const MAJOR_W_F = subdialStrokeF(SECONDS_MAJOR_W_F, SUBDIAL_MAJOR_ARCMIN, mmPerSr);
     const MINOR_W_F = subdialStrokeF(SECONDS_MINOR_W_F, SUBDIAL_MINOR_ARCMIN, mmPerSr);
     for (let s = 0; s < 60; s++) {
@@ -9400,7 +9423,7 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null, sh
       tickAt(90 - s * 6, sr * TICK_OUTER_F, sr * (major ? MAJOR_LEN_F : MINOR_LEN_F), sr * (major ? MAJOR_W_F : MINOR_W_F));
     }
     const gapF = mmPerSr ? mmForArcmin(RESOLVE_ARCMIN) / mmPerSr : 0.02;
-    const CAPTION_DY_F = 0.40;   // the caption's centre below the pivot (see caption())
+    const CAPTION_DY_F = SECONDS_CAPTION_DY_F;   // the caption's centre below the pivot (see caption())
     // The caption sets in the monospace, whose cap height is within a few
     // percent of Helvetica's 0.717 (SF Mono 0.70, Menlo 0.73), so one ratio
     // turns both caps into ems.
@@ -9410,10 +9433,12 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null, sh
     // small for both at their floors (?subdialr=8 is 3 mm) scales them by ONE
     // factor, the largest that fits, so neither is spent on the other; under
     // half the floor the print is a smudge and says so, the maker's mark's rule.
-    const capT = mmForArcmin(GLANCE_ARCMIN) / (mmPerSr || 1);
     // The caption is identified at IDENTIFY_ARCMIN, but at that size no weight
     // of the monospace strokes a resolvable line (measured: bold 0.98′), so its
-    // em is also at least the one where its heaviest weight resolves.
+    // em is also at least the one where its heaviest weight resolves
+    // (secondsFaceInk states the arcmin floors in mm for secondsFaceFloorMm, without the font's term; the paint
+    // keeps its own order of operations so its print is bit-identical).
+    const capT = mmForArcmin(GLANCE_ARCMIN) / (mmPerSr || 1);
     const captionT = Math.max(mmForArcmin(IDENTIFY_ARCMIN) / (mmPerSr || 1) / CAP_PER_EM,
       mmPerSr ? resolvableEm(SUBDIAL_MONO, mmForArcmin(RESOLVE_ARCMIN) / mmPerSr) : 0);
     const run = TICK_OUTER_F - MAJOR_LEN_F - 2 * gapF - CAPTION_DY_F;
