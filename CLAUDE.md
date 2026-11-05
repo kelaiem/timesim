@@ -1395,7 +1395,14 @@ point tier is the sibling's, swept FULL with no ceiling (the one the sibling pat
 accepts), so it drops `--points-pr` and `--points-base`. #866's single process
 spent 33.8 min and its ceiling skipped two of the three points; on the fan-out
 the PR costs four concurrent hosted jobs where it held one, and its minutes stay
-free (the repository is public). Matrix, self-hosted and nightly runs keep the
+free (the repository is public). **Measured on the first seven hosted PRs after
+it (#882–#887), the fan-out walls 12.9–18.2 min**, the point tier its critical
+path every time — no slower than the self-hosted host (13.9 and 17.7 min on #883
+and #885). **So hosted is the default and the host is a BACKUP**: a PR opts into
+`self-hosted-battery` only when a hosted run cannot give a verdict (hosted jobs
+queued, a runner lost mid-run, a failure only the hosted runners show and the
+PR's diff cannot cause), never because its battery has not passed yet, and a
+real failure is fixed, not routed around. Matrix, self-hosted and nightly runs keep the
 probes after the harness, and no tiers jobs. Measured, §264 took the push from 89 to 63 min. Since §263 a hosted dispatch may ask for the SPLIT (`split: true`) instead,
 which spreads both tiers across its two workers, so the tiers jobs run only on
 an unsplit run. A PR off the fan-out (`--points-pr`: a self-hosted or matrix one) sweeps each point INCREMENTALLY against its own
