@@ -6399,7 +6399,7 @@ const _pivotBox = new THREE.Box3();
 // underside. It no longer reaches mid-plate: the stone is the bearing, and a
 // staff carried on into the plate's bore would have been a second one at the
 // staff's radius. pivotR = staffR is the old construction exactly.
-function addLowerPivot(arbor, { staffR = TRAIN_STAFF_R, pivotR = staffR, jewelR = 1.3, name = 'trainPivot' } = {}) {
+function addLowerPivot(arbor, { staffR = TRAIN_STAFF_R, pivotR = staffR, jewelR = 1.3, name = 'trainPivot', staffName = null } = {}) {
   arbor.updateMatrixWorld(true);
   _pivotBox.setFromObject(arbor);
   const worldBottom = _pivotBox.min.z;
@@ -6415,6 +6415,7 @@ function addLowerPivot(arbor, { staffR = TRAIN_STAFF_R, pivotR = staffR, jewelR 
     const shaft = new THREE.Mesh(new THREE.CylinderGeometry(staffR, staffR, len, PIVOT_SEGMENTS), MATS.steel);
     shaft.rotation.x = Math.PI / 2;
     shaft.position.z = (worldBottom - arbor.position.z) - len / 2; // arbor-local
+    if (staffName) shaft.name = staffName;   // §329: a staff a table names is named, never read by its index among the unit's meshes
     arbor.add(shaft);
   }
   if (shouldered) {
@@ -6433,7 +6434,9 @@ function addLowerPivot(arbor, { staffR = TRAIN_STAFF_R, pivotR = staffR, jewelR 
 // The fusee runs in plain bushes at its staff's size — it carries the chain's
 // pull and the winding torque, and its let-down square must pass its bore.
 await breathe(42);
-addLowerPivot(barrelArbor);
+// NAMED (§329): PLATE_SEATS seats this staff in the base plate, and while it was read as CylinderGeometry#12 any mesh the fusee
+// gained before it (the stop-work's pin) moved its label and orphaned the seat.
+addLowerPivot(barrelArbor, { staffName: 'fuseeLowerStaff' });
 for (const arbor of [centerArbor, thirdArbor, fourthArbor, escapeArbor]) {
   await breathe(43);
   addLowerPivot(arbor, { pivotR: TRAIN_PIVOT_R });
@@ -13601,6 +13604,7 @@ let MAINT_RING_POLY = null;   // the ring's cut outline, ring-local — the dete
     if (MAINT_FLANGE_TOP - CLEAR_MARGIN < MAINT_FLANGE_BOT + MAINT_FLANGE_T * 0.1 + CHAIN_PLATE_T)
       console.warn('maintaining wheel: the pawl stud, stopped a margin under the cone, would no longer reach into the pawl');
     const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, studH, 8), MATS.blueSteel);
+    stud.name = 'maintPawlStud';   // §329: named — INTRA_UNIT_CONTACTS read it by index (#15, #17), which the stop-work's pin shifted
     stud.rotation.x = Math.PI / 2;
     stud.position.set(MAINT_PAWL_PIV, 0, MAINT_RING_TOP + studH / 2 - L_BARREL);
     az.add(stud);
@@ -18682,6 +18686,12 @@ arrest47: {   // labelled: §329 landing 4's stop-work branch leaves it before �
       prevEnd = f.kind === 'lock' ? f.b + delta : f.b + cornerA;
     }
     tipArc(prevEnd, firstStart + TAU2);
+    // each tip arc ends exactly where the next slot or lock arc begins (both on the tip circle at the same β), so every
+    // junction was written twice: sixteen zero-length edges, a seam the `outlines` gate fails (found flipping the default
+    // arrest to the stop-work). One point per junction, and the loop's last point is not its first.
+    for (let j = outline.length - 1; j > 0; j--)
+      if (Math.hypot(outline[j][0] - outline[j - 1][0], outline[j][1] - outline[j - 1][1]) < 1e-9) outline.splice(j, 1);
+    if (Math.hypot(outline[outline.length - 1][0] - outline[0][0], outline[outline.length - 1][1] - outline[0][1]) < 1e-9) outline.pop();
     const starShape = new THREE.Shape();
     starShape.moveTo(outline[0][0], outline[0][1]);
     for (let j = 1; j < outline.length; j++) starShape.lineTo(outline[j][0], outline[j][1]);
@@ -20644,22 +20654,24 @@ arrest47: {   // labelled: §329 landing 4's stop-work branch leaves it before �
   registerExplode(arrestUnit, 0, 9); // rides out with the back/plate stack, the alarm click's tier convention
   declareTravel('Winding arrest', Math.abs(PSI_MAX) * 1.15,
     'the finger swings ψFor(LIFT_MAX) from bank to the law\'s deepest throw — the MEASURED ride through the pose\'s exact lever inverse, not the designed PAD_LIFT one, since the law carries the pad past its nominal lift; the margin covers the blade\'s seat preload, and the registry\'s containment assert widens this if the built ride exceeds it');
-  // §48 — the keyless winding wheels RECIPROCATE now, and honestly: §47's
-  // collapse made them pose from the bank, so the crown drives them one way
-  // while the mainspring back-drives them through the fusee arbor and its
-  // spur the other. Nothing restores them because nothing needs to — both
-  // directions are DRIVEN, which is exactly what the 'two-way' kind says.
-  // (Before the collapse they moved on no axis at all, so the audit could
-  // not judge them: §121's rule, met by a part becoming visible rather than
-  // by a waiver.)
-  declareRestoring('Keyless works', '*', 'two-way',
-    'the crown drives the winding wheels forward through the clutch\'s saw coupling into the fixed winding pinion (TODO 50\'s split); the mainspring back-drives the same teeth through the fusee arbor and its spur as the watch runs down — the reversal is two drives, not a spring; the coupling\'s own one-way lives on the CLUTCH unit, whose spring is declared there',
-    ['input:the going crown', 'Mainspring drum/mainspringRibbon']);
   declareRestoring('Winding arrest', 'windArrestPawl', 'spring',
     'the blade re-seats the finger on its bank pin when the coil leaves the pad — a real torsion arc about the stud, its fixed end on its own post under the bracket; the ARREST hold is the chain pressing the pad, not the spring',
     'windArrestSpring');
 
 }
+// §48 — the keyless winding wheels RECIPROCATE now, and honestly: §47's
+// collapse made them pose from the bank, so the crown drives them one way
+// while the mainspring back-drives them through the fusee arbor and its
+// spur the other. Nothing restores them because nothing needs to — both
+// directions are DRIVEN, which is exactly what the 'two-way' kind says.
+// (Before the collapse they moved on no axis at all, so the audit could
+// not judge them: §121's rule, met by a part becoming visible rather than
+// by a waiver.)
+declareRestoring('Keyless works', '*', 'two-way',
+  'the crown drives the winding wheels forward through the clutch\'s saw coupling into the fixed winding pinion (TODO 50\'s split); the mainspring back-drives the same teeth through the fusee arbor and its spur as the watch runs down — the reversal is two drives, not a spring; the coupling\'s own one-way lives on the CLUTCH unit, whose spring is declared there',
+  ['input:the going crown', 'Mainspring drum/mainspringRibbon']);
+// (§329: declared OUTSIDE arrest47 since the stop-work. It is the keyless wheels' fact, true under either arrest, and written
+// inside the block it was skipped by the stop-work's `break`, so the restoring audit read Keyless works as restored by nothing.)
 
 // (The power-reserve reduction train is built after the dial side below — its
 // output arbor must be coaxial with the reserve sub-dial pivot, whose

@@ -3614,8 +3614,7 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Keyless works', a: 'crownWheel', b: 'transferArbor', why: '§47: the crown wheel keyed on its arbor — the arbor passes through the wheel it drives' },
   { unit: 'Keyless works', a: 'crownWheel', b: 'cwScrew', why: '§47: the same wheel seated on the blued screw below it — the axial seat that seats the wheel on its shoulder' },
   { unit: 'Keyless works', a: 'transferWheel', b: 'transferArbor', why: '§47: the TRANSFER wheel at the plate-top end of the same arbor — keyed to it, which is why tick() poses the two wheels from one angle' },
-  { unit: 'Fusee & great wheel', a: 'maintPawl', b: 'CylinderGeometry#15', why: '§47: a maintaining pawl on its own pivot pin — the pawl rides the pin it rocks about (both pawls carry the same mesh name, so this row covers the pair the check reports). (#14 until TODO 219 hung the spring\'s pin, a cylinder, from the ring)' },
-  { unit: 'Fusee & great wheel', a: 'maintPawl', b: 'CylinderGeometry#17', why: '§47: the second maintaining pawl on its own pin — the same joint at the other station (#16 until TODO 219)' },
+  { unit: 'Fusee & great wheel', a: 'maintPawl', b: 'maintPawlStud', why: '§47: each maintaining pawl on its own pivot stud — the pawl rides the stud it rocks about. Both pawls and both studs carry one name each, so this one row covers both stations (it was two rows by index, #15 and #17, until §329\'s stop-work pin shifted the indices and orphaned them)' },
   // §47 — the arrest's own declared joints: the finger on its stud (a bored
   // hub, running clearance), under its retaining head, seated on its bank
   // by the blade whose fixed end bears its post.
@@ -3961,6 +3960,11 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Case', a: 'caseBackCrystalGasket', b: 'caseBack', why: 'TODO 122: the I-ring compressed against the channel\'s wall and squeezed under the lip — the channel is cut to the gasket\'s compressed wall (glassEdgeR = skirtID − 0.8·stock), so the fit IS the press' },
 ];
 dropArrestRows(INTRA_UNIT_CONTACTS, (r) => [r.unit]);   // §329 landing 4 (see STOPWORK_ARREST)
+// §329 — the stop-work's lock disc is FAST on the cone's top face, its bore cut at the fusee's top staff (main.js DISC_IN =
+// TRAIN_STAFF_R): one body with the cone, as the cone is with its staff (the §254 row above). The disc is posed with the cone
+// and the staff stands under the arbor, so the MF tier read the seat as a mover in a fixture (found flipping the default
+// arrest to the stop-work); DECLARED_CONTACT_REACH holds the row to a real touch.
+if (STOPWORK_ARREST) INTRA_UNIT_CONTACTS.push({ unit: 'Fusee & great wheel', a: 'stopworkLockDisc', b: 'fuseeUpperPivot', why: '§329: the lock disc is fast on the cone\'s top face, its bore on the fusee\'s top staff — one body with the cone, as the cone is with its staff' });
 // Accepted debt, §50's convention — red in the report, cited, not silenced:
 export const INTRA_UNIT_WAIVERS = [
   // TODO 107's row (genevaFingerDisc ⇄ alarmArrestFingerArbor) stood here and
@@ -4985,7 +4989,7 @@ export const PLATE_SEATS = [
   // kind: pivot (an arbor end running in the plate), planted (a stud, post or
   // foot set into or onto it), fastened (a frame joint's leg, screw or tenon),
   // housed (the case and the crown stem's sleeve, which hold the plate's rim).
-  { unit: "Fusee & great wheel", mesh: "CylinderGeometry#12", kind: "pivot", why: "the fusee arbor's lower pivot, seated mid-plate (PIVOT_SEAT_Z) — #11 until TODO 219's spring pin, a cylinder, moved its index label one on" },
+  { unit: "Fusee & great wheel", mesh: "fuseeLowerStaff", kind: "pivot", why: "the fusee arbor's lower pivot, seated mid-plate (PIVOT_SEAT_Z) — named since §329 (it was CylinderGeometry#12, #11 before TODO 219: every mesh the fusee gained moved its index label)" },
   { unit: "Center wheel", mesh: "trainPivot", kind: "pivot", why: "the lower pivot, seated mid-plate in its bore" },
   { unit: "Third wheel", mesh: "trainPivot", kind: "pivot", why: "the lower pivot, seated mid-plate in its bore" },
   { unit: "Fourth wheel", mesh: "trainPivot", kind: "pivot", why: "the lower pivot, seated mid-plate in its bore" },
@@ -9030,6 +9034,12 @@ export const STOCK_KIND_BY_MESH = {
   windArrestStudHead: 'pivot',    // its retaining head
   windArrestBank: 'pivot',        // the seat pin
   windArrestSpringPost: 'pivot',  // the blade's anchor pin
+  // §329 — the Geneva stop-work (?arrest=stopwork), cut to the same §50 pivot floor as §47's stud and head (main.js
+  // SW_STUD_R / SW_HEAD_T = PIVOT_MIN_U): pin-class, as §47's are. Read 'wheel' by default, the head's 0.07 mm failed the
+  // 0.12 mm sheet floor it was never cut to (found flipping the default arrest to the stop-work).
+  stopworkStud: 'pivot',         // the planted stud the star turns on
+  stopworkStudHead: 'pivot',     // its retaining head
+  stopworkPin: 'pivot',          // the finger's pin, in the cone's top face
   // §99 — the alarm barrel's own click:
   alarmClickPawl: 'spring',    // the click blade — same spring-tempered pawl stock as the going side's
   alarmClickSpring: 'spring',  // the solved-arc torus (tube ⌀ 0.2 u) — spring stock
