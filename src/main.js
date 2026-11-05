@@ -51082,7 +51082,10 @@ const FREE_DIAL_FEET = FORM?.kind === 'free' ? await (async () => {
   movement.updateWorldMatrix(true, true);
   const hulls = [];
   movement.traverse((o) => {
-    if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position || skipRoot.some((r) => under(o, r))) return;
+    // the base plate's RIM LANDS (§328) are its own metal standing up into the feet's layer, so they count although
+    // the plate is skipped: §332's smaller print brought a foot's seat onto land 1 (probe-328-lands, 0.0000 at pose 0)
+    // on the default free build, which nothing here could see while every land was a skipped child of the plate
+    if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position || (skipRoot.some((r) => under(o, r)) && !o.userData.rimLand)) return;
     for (let q = o; q && q !== movement; q = q.parent) if (/^case|CaseLiner$|TubeLiner$/.test(q.name)) return;
     const pa = o.geometry.attributes.position, xs = [], ys = [];
     let z0 = Infinity, z1 = -Infinity;
