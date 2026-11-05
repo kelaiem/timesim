@@ -53109,6 +53109,14 @@ document.getElementById('btn-case').addEventListener('click', () => setCaseLines
 
 // §39 fills this at the end of the build; the axes key reads it.
 let scaleReadout = null;
+// A plan as text: a diameter on the round build, width × height on a form one
+// (a form outline has no one diameter, and quoting the round plateR there was
+// the defect). Width is world x, height world y — the plan's own bounds.
+const planText = (w, h) => scaleReadout.round ? `⌀${fmtNum(w, 1)}` : `${fmtNum(w, 1)} × ${fmtNum(h, 1)}`;
+// The vertical leg's span in whole millimetres, covering the plate's plan:
+// [kLo, kHi] with ticks at k / UNIT_MM. On the round build kLo = −kHi =
+// −ceil(MM(plateR)), the leg it always had.
+const measureSpanMM = () => [Math.floor(MM(scaleReadout.plateYMinUnits)), Math.ceil(MM(scaleReadout.plateYMaxUnits))];
 
 // Orientation legend (world axes at the movement's origin). Sized to the plate
 // so it reads at any framing, and drawn on top of the geometry so it is never
@@ -53187,7 +53195,7 @@ function setAxes(on) {
     const arm = plateR * 1.15;   // the AxesHelper's arm length, above
     scaleRow.firstElementChild.textContent =
       `${t('ticks')} ${fmtNum(AXIS_TICK_MM, 1)} mm · ${t('long')} ${fmtNum(AXIS_TICK_MAJOR_MM, 1)} mm · ${t('arm')} ${fmtNum(MM(arm), 1)} mm` +
-      (scaleReadout ? ` · ⌀${fmtNum(scaleReadout.plateMM, 1)} mm ${t('plate')}, ${fmtNum(scaleReadout.movMM, 1)} mm ${t('deep')}` : '');
+      (scaleReadout ? ` · ${planText(scaleReadout.plateWMM, scaleReadout.plateHMM)} mm ${t('plate')}, ${fmtNum(scaleReadout.movMM, 1)} mm ${t('deep')}` : '');
   }
 }
 document.getElementById('btn-axes').addEventListener('click', () => setAxes(!axesOn));
@@ -53254,10 +53262,10 @@ function buildMeasureScale() {
   const pts = [], cols = [];
   const C_SPINE = [0.82, 0.86, 0.9], C_MAJOR = [1, 0.83, 0.35], C_MINOR = [0.65, 0.7, 0.76];
   const seg = (ax, ay, az, bx, by, bz, c) => { pts.push(ax, ay, az, bx, by, bz); cols.push(...c, ...c); };
-  const R = scaleReadout.plateRUnits, zA = scaleReadout.zMinUnits, zB = scaleReadout.zMaxUnits;
-  const mmTop = Math.ceil(MM(R)), yTop = mmTop * mm, yFoot = -yTop;
+  const zA = scaleReadout.zMinUnits, zB = scaleReadout.zMaxUnits;
+  const [kLo, kHi] = measureSpanMM(), yTop = kHi * mm, yFoot = kLo * mm;
   seg(0, yFoot, 0, 0, yTop, 0, C_SPINE);
-  for (let k = -mmTop; k <= mmTop; k++) {
+  for (let k = kLo; k <= kHi; k++) {
     if (k === 0) continue;
     const major = k % 5 === 0, h = major ? 1.4 : 0.55, c = major ? C_MAJOR : C_MINOR;
     seg(-h, k * mm, 0, h, k * mm, 0, c); seg(0, k * mm, -h, 0, k * mm, h, c);
@@ -53313,7 +53321,9 @@ const _selBox = new THREE.Box3();
 function updateMeasureStats() {
   const stats = document.getElementById('scale-stats');
   if (!stats || !scaleReadout) return;
-  const base = `⌀${fmtNum(scaleReadout.plateMM, 1)} × ${fmtNum(scaleReadout.movMM, 1)} mm · ` +
+  const S = scaleReadout;
+  const base = `${planText(S.plateWMM, S.plateHMM)} × ${fmtNum(S.movMM, 1)} mm · ` +
+    `${t('Case')} ${planText(S.caseWMM, S.caseHMM)} × ${fmtNum(S.casedMM, 1)} mm · ` +
     `${fmtInt(F_BALANCE * 7200)} A/h · ${fmtNum(RELAX_SECONDS / 3600, 0)} ${t('h reserve')}`;
   const sel = selectionMeasureBox();
   stats.firstElementChild.textContent = sel
@@ -53349,15 +53359,15 @@ function updateMeasureLeaders() {
     return;
   }
   measureLeaders.visible = true;
-  const R = scaleReadout.plateRUnits, zA = scaleReadout.zMinUnits, zB = scaleReadout.zMaxUnits;
-  const X = measureGroup.position.x, yFoot = -Math.ceil(MM(R)) / UNIT_MM;
+  const yT = scaleReadout.plateYMaxUnits, yB = scaleReadout.plateYMinUnits, zA = scaleReadout.zMinUnits, zB = scaleReadout.zMaxUnits;
+  const X = measureGroup.position.x, yFoot = measureSpanMM()[0] / UNIT_MM;
   const pos = measureLeaders.geometry.getAttribute('position');
   let w = 0;
   const seg = (ax, ay, az, bx, by, bz) => { pos.setXYZ(w++, ax, ay, az); pos.setXYZ(w++, bx, by, bz); };
   const sel = selectionMeasureBox();
   if (!sel) {
-    seg(0,  R, 0,  X,  R, 0);
-    seg(0, -R, 0,  X, -R, 0);
+    seg(0, yT, 0,  X, yT, 0);
+    seg(0, yB, 0,  X, yB, 0);
     seg(0, yFoot, zA,  X, yFoot, zA);
     seg(0, yFoot, zB,  X, yFoot, zB);
   } else {
@@ -57718,7 +57728,7 @@ function lifeSizeDistance() {
 }
 // What the movement will actually measure across the glass, for the caption —
 // derived from the same ruler rather than asserted.
-function lifeSizePlateMM() { return scaleReadout ? scaleReadout.plateMM : 0; }
+function lifeSizePlateMM() { return scaleReadout ? scaleReadout.plateWMM : 0; }   // "across": the plan's width (the diameter on the round build)
 
 // The three limits used to be suspended FOR THE MODE and restored on
 // leaving; the §60 remainder retired that special case. Fog and camera.far
@@ -62716,11 +62726,36 @@ let CASED_DEPTH_MM = NaN;
   // legend, in-scene ruler tick, leader-line endpoint — reads from here, so
   // two displays of one measurement cannot drift apart. Raw unit extents ride
   // along because the ruler needs world coordinates, not just mm.
+  //
+  // THE PLAN IS THE OUTLINE ACTUALLY CUT (TODO 285). On a form build `plateR` is kept for
+  // its other consumers (the radial chain, the wells) while the plates and the
+  // case are cut to FORM (§307), so a readout built on `plateR · 2` said
+  // "⌀31.5" for a 34.65 × 33.64 rectangle and a 27.6 × 29.1 cushion alike. The
+  // plate's plan is FORM's own bounds; the case's is the wall it is cut on —
+  // the round body's CASE_R_OUT (the 40 mm body cap, lugs excluded, §186) or
+  // the form band's `outer` loop (formCaseLoops: the outline grown
+  // CASE_CLEAR + CASE_BAND_T), the same loop caseWallAlong reads. Its depth is
+  // the cased box above. The Z leaders read `movBox`: they read `box`, which
+  // unitBox('Balance') had last set, so the foot marked the balance's faces
+  // and not the assembly's that the stats line quotes.
+  const planOf = (pts) => {
+    let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
+    for (const [x, y] of pts) { xMin = Math.min(xMin, x); xMax = Math.max(xMax, x); yMin = Math.min(yMin, y); yMax = Math.max(yMax, y); }
+    return { xMin, xMax, yMin, yMax };
+  };
+  const platePlan = FORM ? { xMin: FORM.xMin, xMax: FORM.xMax, yMin: FORM.yMin, yMax: FORM.yMax }
+    : { xMin: -plateR, xMax: plateR, yMin: -plateR, yMax: plateR };
+  const casePlan = FORM ? planOf(FORM_CASE_MOD.formCaseLoops(FORM).outer)
+    : { xMin: -CASE_R_OUT, xMax: CASE_R_OUT, yMin: -CASE_R_OUT, yMax: CASE_R_OUT };
   scaleReadout = {
     plateMM, movMM,
     balMM: bal ? MM(Math.max(bal.max.x - bal.min.x, bal.max.y - bal.min.y)) : null,
     plateRUnits: plateR,
-    zMinUnits: +box.min.z.toFixed(3), zMaxUnits: +box.max.z.toFixed(3),
+    round: !FORM,
+    plateWMM: MM(platePlan.xMax - platePlan.xMin), plateHMM: MM(platePlan.yMax - platePlan.yMin),
+    plateXMinUnits: platePlan.xMin, plateXMaxUnits: platePlan.xMax, plateYMinUnits: platePlan.yMin, plateYMaxUnits: platePlan.yMax,
+    caseWMM: MM(casePlan.xMax - casePlan.xMin), caseHMM: MM(casePlan.yMax - casePlan.yMin), casedMM,
+    zMinUnits: +movBox.min.z.toFixed(3), zMaxUnits: +movBox.max.z.toFixed(3),
   };
 }
 // ---------------------------------------------------------------------------
@@ -63932,6 +63967,7 @@ window.__clock = {
       module1: rsvModule1, w2Tip: (rsvModule1 * (rsvTeethW2 + 2)) / 2, maxTip: RSV_FIT_TRAIN?.maxTip, short: RSV_FIT_TRAIN?.short },
     station: { x: RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, r: reserveStationR } } : null,
   casedDepthMm: CASED_DEPTH_MM,   // §317 — the cased depth §261 holds to its cap, for the instruments
+  get scaleReadout() { return scaleReadout; },   // §49's one derived dimension set, as the Measure overlay reads it (TODO 285, tools/probe-measure-readout.mjs)
   formFootprint: FORM_FOOTPRINT, form: FORM,  // §307 landing 2 — the measured footprint (§308: the fitted shape) and the shape actually cut
   dialTrack: DIAL_TRACK,                      // §311 — the form face's railroad (null round): rails, rungs, the hand's reach
   dialSpec: DIAL_SPEC,
