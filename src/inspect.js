@@ -3097,6 +3097,28 @@ export const EXPECTED_CONTACT_FLOORS = [
   },
 ];
 dropArrestRows(EXPECTED_CONTACT_FLOORS, (r) => [r.a, r.b]);   // §329 landing 4 (see STOPWORK_ARREST)
+// §329 — THE STOP-WORK'S TWO PAIRS, each with exactly the contacts its design claims; everything else between them owes the
+// one margin (§47's rule above). Two of the claimed contacts are RUNNING GAPS rather than touches: the star rides 0.071 under
+// the three-quarter plate and 0.071 over the cone's top face (main.js GAP, less than its stock plus two margins, which the owner
+// accepted). They are excused here and held OPEN at every stop-work pose by WIND_ARREST_HANDOFFS below, the hourTube⇄cannonNose
+// pattern (a running fit declared here, held by an instrument).
+if (STOPWORK_ARREST) EXPECTED_CONTACT_FLOORS.push(
+  {
+    a: 'Winding stop-work', b: 'Three-quarter plate', min: CLEAR_MARGIN,
+    contacts: [
+      ['stopworkStud', 'threeQuarterPlate'],     // the stud planted in the plate's web — the support joint
+      ['stopworkStar', 'threeQuarterPlate'],     // the star's running gap under the plate (held open by the handoff row)
+    ],
+  },
+  {
+    a: 'Winding stop-work', b: 'Fusee & great wheel', min: CLEAR_MARGIN,
+    contacts: [
+      ['stopworkStar', 'stopworkPin'],           // the pin in the slots and on a closed notch's floor at each stop — the arrest itself
+      ['stopworkStar', 'stopworkLockDisc'],      // the lock arcs riding the disc through every dwell, at the running fit
+      ['stopworkStar', 'fuseeCone'],             // the star's running gap over the cone's top face (held open by the handoff row)
+    ],
+  },
+);
 
 // TODO 6's check: sweep each row's unit pair with its declared contacts
 // EXCLUDED, and hold the remainder to the row's floor. REPORT-first (§50's
@@ -6768,6 +6790,25 @@ export const WIND_ARREST_HANDOFFS = [
   },
 ];
 dropArrestRows(WIND_ARREST_HANDOFFS, (r) => [r.unitA, r.unitB]);   // §329 landing 4 (see STOPWORK_ARREST)
+// §329 — THE STOP-WORK'S OWN HAND-OFFS, on its own wind states (§47's 'slack' would sit mid-passage: at tension ½ the 30 h star's
+// one passage is centred, the pin in the open slot). The pin meets a closed notch's floor at BOTH stops, full wind and the end
+// of the reserve, so it is held in contact at both and free in the dwells either side of the passage (tension ¾ and ¼, finger
+// angles 2.875π and 1.125π against the passage's 1.75π–2.25π for n 4, m 1). The two running gaps are held FREE at every pose:
+// the star never closes on the plate above it or the cone below it.
+if (STOPWORK_ARREST) {
+  WIND_ARREST_POSES.splice(0, WIND_ARREST_POSES.length,
+    ['full', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1 }],
+    ['dwellHi', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 0.75 }],
+    ['dwellLo', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 0.25 }],
+    ['empty', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 0 }]);
+  WIND_ARREST_HANDOFFS.push(
+    { label: 'pin ⇄ closed notch (the stop)', unitA: 'Fusee & great wheel', meshA: 'stopworkPin', unitB: 'Winding stop-work', meshB: 'stopworkStar',
+      expect: { full: 'contact', dwellHi: 'free', dwellLo: 'free', empty: 'contact' } },
+    { label: 'star ⇄ plate (running gap)', unitA: 'Winding stop-work', meshA: 'stopworkStar', unitB: 'Three-quarter plate', meshB: 'threeQuarterPlate',
+      expect: { full: 'free', dwellHi: 'free', dwellLo: 'free', empty: 'free' } },
+    { label: 'star ⇄ cone face (running gap)', unitA: 'Winding stop-work', meshA: 'stopworkStar', unitB: 'Fusee & great wheel', meshB: 'fuseeCone',
+      expect: { full: 'free', dwellHi: 'free', dwellLo: 'free', empty: 'free' } });
+}
 
 // TODO 50 — the stem clutch's handoff rows, a SIBLING registration in the
 // windArrestHandoff pattern (never widen another mechanism's tables — its
