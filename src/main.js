@@ -16328,6 +16328,7 @@ const tqKeepClearanceIn = (keeps, x, y) => {
   return c;
 };
 const tqKeepClearance = (x, y) => tqKeepClearanceIn(TQ_KEEPS, x, y);
+const NO_KEEPS = [];   // §335 — tqKeepClearanceIn over no meshes: the pivot bosses alone
 // Distance from (x, y) to the nearest EXISTING opening — the bores, the
 // slots, the balance cut and the rim. A window that came closer than
 // TQ_LAND_MIN to one of these would merge with it, and the strip between
@@ -16382,6 +16383,18 @@ const tqOpeningClearance = (x, y) => {
 // circle. What the union costs is that the solve's polar centre is no longer
 // any member's axis: it is a declared point, and the property it must have
 // is written where it is asserted below.
+// §62/§322 — the cone window's reveal: the chain's outer edge where it wraps
+// the cone, or the cone's own measured silhouette, whichever is larger, plus
+// one margin. Named because §335's gear window stands one land outside it.
+function fuseeConeReveal() {
+  let r = 0;
+  for (let i = 0; i <= 64; i++) r = Math.max(r, fuseeGrooveAt((i / 64) * FUSEE_F_ACTIVE).r);
+  const chainEdge = r + CHAIN_END_R_OUT;
+  const cone = fusee.getObjectByName('fuseeCone');
+  const coneEdge = cone ? xyRadiusAbout(cone, P.barrel) : 0;
+  if (!cone) console.warn('§322: the fusee window cannot see the cone mesh (fuseeCone) — sized to the chain alone');
+  return Math.max(chainEdge, coneEdge) + CLEAR_MARGIN;
+}
 const TQ_WINDOW_INTENTS = [
   {
     name: 'fusee',
@@ -16411,15 +16424,7 @@ const TQ_WINDOW_INTENTS = [
     // rotation; the instruments skill's trap, and why this is a vertex
     // measurement.)
     at: () => P.barrel,
-    reveal: () => {
-      let r = 0;
-      for (let i = 0; i <= 64; i++) r = Math.max(r, fuseeGrooveAt((i / 64) * FUSEE_F_ACTIVE).r);
-      const chainEdge = r + CHAIN_END_R_OUT;
-      const cone = fusee.getObjectByName('fuseeCone');
-      const coneEdge = cone ? xyRadiusAbout(cone, P.barrel) : 0;
-      if (!cone) console.warn('§322: the fusee window cannot see the cone mesh (fuseeCone) — sized to the chain alone');
-      return Math.max(chainEdge, coneEdge) + CLEAR_MARGIN;
-    },
+    reveal: () => fuseeConeReveal(),
     // §308 landing 5 — THE WEBS TURN WITH THE FUSEE. A window open all the way
     // round takes its three webs by an even split that starts at bearing 0 of
     // the MOVEMENT's frame, so under `?barrelstep=` the webs stood still while
@@ -16428,6 +16433,52 @@ const TQ_WINDOW_INTENTS = [
     // lost its only legal stations. The split is phased by the barrel's own
     // turn, which is exactly 0 on the designed train.
     phaseDeg: () => FUSEE_TURN_DEG,
+  },
+  // §335 — THE GEARS UNDER THE CONE. The owner's ask (2026-11-05): "enlarge the
+  // window to show more of the gears". §62 declined to frame the great wheel
+  // ("a frame becomes a hole"); the owner reverses that, and the question is
+  // only HOW.
+  //
+  // Not by growing the cone's window. §47's arrest hangs its bracket from the
+  // plate body just outside that window's rim, reaching in to the stud over
+  // the cone; one window out to the great wheel would move the bracket's foot
+  // from 6.9 to 16.4 off the axis, a cantilever 0.62 wide and ~13 long
+  // carrying the stop's load — a member stretched to pay for a view, which is
+  // P1's forbidden currency. So the cone's window stands exactly as it was,
+  // and the plate keeps ONE LAND of ring outside it (TQ_LAND_MIN, the floor
+  // between two openings) for the bracket to land on; this second window is
+  // the annulus from that ring out to the great wheel, between the SAME three
+  // webs, which now run on to carry the ring as well as the boss. Same centre,
+  // same web width (tqWebWidthFor of a span still under 21.6 is the floor),
+  // same phase, one full run split three ways — so the webs' edges are the
+  // same straight lines in both windows, and a mismatch is asserted below.
+  //
+  // The reveal is the great wheel's silhouette about its own axis, MEASURED
+  // off the built wheel (teeth, crossings and the maintaining blade it
+  // carries; exact for a revolver), plus one margin of reveal. It is still a
+  // WANT: step 1 pulls each bearing back against everything the plate must
+  // carry (the centre and third chatons, the pillar seats, the kidney cut),
+  // so the plate gives up only metal with no job.
+  {
+    name: 'fusee gears',
+    at: () => P.barrel,
+    reveal: () => xyRadiusAbout(greatWheel, P.barrel) + CLEAR_MARGIN,
+    // The inner edge: the cone window's reveal plus the ring's land, plus the
+    // sagitta both outlines' half-degree chords can sag inward by at that
+    // radius, so the land holds between the emitted polygons and not only
+    // between the circles they sample.
+    r0: () => { const r = fuseeConeReveal() + TQ_LAND_MIN; return r + 2 * r * (1 - Math.cos(0.25 * DEG2RAD)); },
+    phaseDeg: () => FUSEE_TURN_DEG,
+    websFrom: 'fusee',   // its sectors are cut at the cone window's web axes (below), so its webs ARE those webs
+    // A REVEAL THIS LARGE HAS OPENINGS BESIDE ITS RAYS. At the cone's 6.3
+    // nothing the plate is cut for stood inside the disc, so a clear ray END
+    // was a clear ray; at the great wheel's 15.8 the kidney cut and the centre
+    // wheel's chaton stand beside the rays' middles, and the first build left
+    // a 1.204 land to the cut on a web edge whose ray ended clear. So the rays
+    // are WALKED — against the plate's own openings and pivot bosses only,
+    // which are the plate's and never a window's tenants. Mesh keeps keep the
+    // early window's end test (the walk is otherwise late-only, below).
+    walkOpenings: true,
   },
   // §148 — THE ESCAPEMENT WINDOW IS WITHDRAWN, and the reason is the thing it
   // was islanding. §115's entry framed the escape wheel by cutting an annulus
@@ -16697,7 +16748,11 @@ function solveTqWindows() {
     // CLEAR_MARGIN and left the fusee's bearing collar 0.15 of nickel wide,
     // under both §50's floor and §54's; the land check said so at boot, which
     // is the assert doing its job on the very solve that added it.
-    const r0 = boss ? pivotBossR(boss) + TQ_LAND_MIN : 0;
+    const r0Boss = boss ? pivotBossR(boss) + TQ_LAND_MIN : 0;
+    // §335 — an intent may stand its inner edge farther out than its boss's
+    // land: the gear window starts one land outside the cone window, on the
+    // same boss's webs. Its webs still exist (the boss is what they carry).
+    const r0 = intent.r0 && boss ? Math.max(r0Boss, intent.r0()) : r0Boss;
     // §201 — WHAT STANDS INSIDE THE DISC. The bisection below assumes the
     // clearance along a ray is monotone: clear at the centre, blocked once
     // and for good somewhere out toward the rim. A keep standing INSIDE the
@@ -16757,6 +16812,7 @@ function solveTqWindows() {
       });
     const walk = !!intent.late && interior;
     const TQ_RAY_STEP = CLEAR_MARGIN / 2;
+    const openWalk = !!intent.walkOpenings;
     // Step 1 — the outer edge, per degree: the wanted reveal, pulled in by
     // whichever bound binds first at that bearing.
     // Bisect for the largest radius at this bearing whose point still clears
@@ -16775,18 +16831,38 @@ function solveTqWindows() {
       const ok = (r) => tqKeepClearance(c.x + cs * r, c.y + sn * r) >= CLEAR_MARGIN - 1e-9
         && tqOpeningClearance(c.x + cs * r, c.y + sn * r) >= TQ_LAND_MIN - 1e-9
         && (priorEdges.length === 0 || priorLand(c.x + cs * r, c.y + sn * r) >= priorLandAt(r) - 1e-9);
-      if (!walk && ok(want)) return want;      // the end is clear and nothing stands inside: full reach
+      if (!openWalk && !walk && ok(want)) return want;   // the end is clear and nothing stands inside: full reach
       if (!ok(r0)) return 0;                   // pinched shut at this bearing
-      let lo = r0, hi = want;
+      // §335 — an early window that walks its OPENINGS: the ray's reach is
+      // first cut back to where it meets a plate opening or pivot boss (the
+      // walk below, on those terms only), and the old end test then runs on
+      // what is left. Absent the flag this is the solve as it was.
+      let reach = want;
+      if (openWalk) {
+        const okOpen = (r) => tqKeepClearanceIn(NO_KEEPS, c.x + cs * r, c.y + sn * r) >= CLEAR_MARGIN - 1e-9
+          && tqOpeningClearance(c.x + cs * r, c.y + sn * r) >= TQ_LAND_MIN - 1e-9;
+        let r = r0;
+        while (r < want - 1e-12) {
+          const n = Math.min(r + TQ_RAY_STEP, want);
+          if (!okOpen(n)) {
+            let a = r, b = n;
+            for (let k = 0; k < 20; k++) { const m = (a + b) / 2; if (okOpen(m)) a = m; else b = m; }
+            reach = a; break;
+          }
+          r = n;
+        }
+      }
+      if (openWalk && !walk && ok(reach)) return reach;
+      let lo = r0, hi = reach;
       if (walk) {
         // walk out; the first failing step brackets the bisection
         let r = r0, blocked = false;
-        while (r < want - 1e-12) {
-          const n = Math.min(r + TQ_RAY_STEP, want);
+        while (r < reach - 1e-12) {
+          const n = Math.min(r + TQ_RAY_STEP, reach);
           if (!ok(n)) { lo = r; hi = n; blocked = true; break; }
           r = n;
         }
-        if (!blocked) return want;
+        if (!blocked) return reach;
       }
       for (let k = 0; k < 20; k++) { const m = (lo + hi) / 2; if (ok(m)) lo = m; else hi = m; }
       return lo;
@@ -16860,6 +16936,42 @@ function solveTqWindows() {
     const phaseDeg = intent.phaseDeg ? ((intent.phaseDeg() % 360) + 360) % 360 : 0;
     if (boss && phaseDeg !== 0 && runs.length === 1 && runs[0].a === 0 && runs[0].b === 360)
       runs[0] = { a: phaseDeg, b: phaseDeg + 360 };
+    // §335 — A WINDOW THAT CONTINUES ANOTHER'S WEBS (the fusee gear window
+    // outside the cone window) is cut AT THOSE WEBS' AXES rather than split
+    // evenly: an even split agrees with the inner window only while both run
+    // open all the way round, and the form builds pinch the gear window into
+    // runs whose even split put its webs 45° off the cone's. Cut at the axes,
+    // every web of this window is an inner web carried on out, and a pinch
+    // only leaves more plate between the ring and the plate body — never a
+    // member nobody derived. TQ_WEBS_MIN is the inner window's to meet.
+    const webAxes = (() => {
+      if (!boss || !intent.websFrom) return null;
+      const src = report.find((r) => r.name === intent.websFrom);
+      if (!src?.cut) return null;
+      return src.sectors.map((q) => ((q.a / DEG2RAD) % 360 + 360) % 360);
+    })();
+    if (intent.websFrom && boss && !webAxes)
+      console.warn(`§335 window '${intent.name}': the window whose webs it continues ('${intent.websFrom}') is not cut — no webs to continue`);
+    if (webAxes) {
+      if (runs.length === 1 && runs[0].b - runs[0].a >= 360) {
+        const a0 = Math.min(...webAxes);
+        runs[0] = { a: a0, b: a0 + 360 };
+      }
+      const split = [];
+      for (const r of runs) {
+        const cuts = [];
+        for (const x of webAxes) for (let k = -1; k <= 2; k++) {
+          const y = x + 360 * k;
+          if (y > r.a + 1e-9 && y < r.b - 1e-9) cuts.push(y);
+        }
+        cuts.sort((p, q) => p - q);
+        let a = r.a;
+        for (const y of cuts) { split.push({ a, b: y }); a = y; }
+        split.push({ a, b: r.b });
+      }
+      runs.length = 0;
+      runs.push(...split);
+    }
     // A run too narrow to be a window is not a web either — it is a nick in
     // the plate that leaves NO opening once the two web edges have trimmed it.
     // Counting them was how the fusee came back with "three webs" of which one
@@ -16872,7 +16984,7 @@ function solveTqWindows() {
         if (arc < webW + TQ_LAND_MIN) runs.splice(k, 1);
       }
     }
-    if (boss && runs.length && runs.length < TQ_WEBS_MIN) {
+    if (boss && !webAxes && runs.length && runs.length < TQ_WEBS_MIN) {
       const total = runs.reduce((s, r) => s + (r.b - r.a), 0);
       const share = runs.map((r) => ((r.b - r.a) / total) * TQ_WEBS_MIN);
       const pieces = share.map((s) => Math.max(1, Math.floor(s)));
@@ -16979,6 +17091,23 @@ function solveTqWindows() {
     }
     polys.push(...kept.map((s) => ({ pts: s.pts, name: intent.name })));
     report.push({ name: intent.name, c, discs, wanted, r0, boss: !!boss, cut: true, late: !!intent.late, interior, walked: walk, webW, webSpan, sectors: kept, rOut });
+  }
+  // §335 — THE GEAR WINDOW'S WEBS ARE THE CONE WINDOW'S, continued: no gear
+  // sector may span a cone web's axis, or the ring between the two windows
+  // would lose that web's carry outward and the sector would stand where the
+  // inner window's arm needs plate. The cut above makes it so by
+  // construction; this measures the emitted sectors.
+  {
+    const inner = report.find((r) => r.name === 'fusee'), outer = report.find((r) => r.name === 'fusee gears');
+    if (inner?.cut && outer?.cut) {
+      const TAU = 2 * Math.PI;
+      for (const q of outer.sectors) for (const w of inner.sectors) {
+        const d = (((w.a - q.a) % TAU) + TAU) % TAU;
+        if (d > 1e-9 && d < q.b - q.a - 1e-9)
+          console.warn(`§335: the fusee gear window's sector ${(q.a / DEG2RAD).toFixed(1)}–${(q.b / DEG2RAD).toFixed(1)}° spans the cone window's web at `
+            + `${(w.a / DEG2RAD).toFixed(1)}° — the ring between them would lose that web's carry`);
+      }
+    }
   }
   return { polys, report };
 }
