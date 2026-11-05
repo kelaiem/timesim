@@ -93,7 +93,7 @@ import {
   MOVEMENT_SENSE, ALARM_SENSE,                // TODO 115: the two trains' hands — the going train's, and the alarm's own motor's; every direction-committed cut is checked against one of them
   BACK_PLATE_T, KEYLESS_STACK_R,              // TODO 211: the plate's thickness (hoisted — the keyless plane derives from its dial face) and the stem stack's reach that plane is cut against
 } from './layout.js';
-import { genevaDims as swDims, chooseStopwork, starAngle as swStarAngle, engagementArc as swEngagementArc, travelTurns as swTravelTurns } from './stopwork-arrest.js';   // §329 landing 4: option B, the Geneva stop-work's line
+import { genevaDims as swDims, PIN_FLOOR_U as SW_PIN_FLOOR, STUD_FLOOR_U as SW_STUD_FLOOR, chooseStopwork, starAngle as swStarAngle, engagementArc as swEngagementArc, travelTurns as swTravelTurns } from './stopwork-arrest.js';   // §329 landing 4: option B, the Geneva stop-work's line
 import { solveTrailingArrest, r1For as trailR1For, psi2ForThrow as trailPsi2ForThrow, epsOf as trailEpsOf, D_MIN as TRAIL_D_MIN, R1_MIN as TRAIL_R1_MIN } from './trailing-arrest.js';   // §329: the trailing arrest's line
 import { LUBRICATION, REGIME_INFO } from './lubrication.js';
 // §267 — the boot bar's table: each seam's measured share of the build,
@@ -18571,7 +18571,7 @@ arrest47: {   // labelled: §329 landing 4's stop-work branch leaves it before �
   if (STOPWORK) {
     const OMEGA = -MOVEMENT_SENSE;   // the cone's turn sense while WINDING: windLocalAt turns it +SENSE·2π per turn left to bank
     const RUN = 0.01;                // the running fit (HUB_R's): a working contact inside one mechanism
-    const SW_STUD_R = PIVOT_MIN_U, SW_HEAD_R = PIVOT_MIN_U + 0.06, SW_HEAD_T = PIVOT_MIN_U;   // §47's stud and head, the §50 pivot floor
+    const SW_HEAD_T = PIVOT_MIN_U;   // the stud's retaining head: §47's, at the §50 pivot floor (it retains; it carries no stop load)
     const datum = barrelMeshAngle(0);   // the cone's world angle at full wind (windLocalAt ≡ 0 there)
     const T = FUSEE_WRAP_TURNS;
     const GAP = (TQ_BOT_Z - CONE_TOP_Z - STOCK_MIN_U) / 2;
@@ -18579,15 +18579,39 @@ arrest47: {   // labelled: §329 landing 4's stop-work branch leaves it before �
     if (!(GAP >= 2 * RUN))
       console.warn(`§329: the gap over the cone leaves ${GAP.toFixed(4)} each side of the star's ${STOCK_MIN_U.toFixed(3)} stock — under twice the running fit`);
     const E = swEngagementArc(4);   // provisional for the pin's azimuth: E depends on n, re-checked once n is chosen
-    // the pin's root: the cone's own surface at the top face (cone-local z, azimuth), over the pin's width and a root depth
-    const ROOT_D = STOCK_MIN_U;
-    const rootR = (azLocal) => {
+    // §329 P1 — SIZED FROM THE STALL. At either stop the star holds the cone: the pin meets a closed notch's floor head-on, so
+    // its force passes through the star's pivot, and the cone's moment there is the chain's pull times the groove radius it
+    // leaves from, which the fusee holds LEVEL over the whole wind (the equalisation record: GOING_POWER.fuseeTorque_Nm, the
+    // same moment at full wind and at the end of the reserve). So both stops carry one load, F = T / r1, and the run-down stop
+    // that §47 never had is priced by the same number. Each member takes the larger of the section that load asks and its
+    // §50 floor (the alarm Geneva's rule, ARREST_STALL_NMM above), against the one steel's SPRING_SIGMA_Y_PA:
+    //   · the pin, a cantilever off the cone's top face loaded at the star's mid-plane: σ = 32·F·L/(π·d³);
+    //   · the star's stud, a cantilever down from the three-quarter plate to the same plane: the same law, the same F;
+    //   · the pin's root, sunk into the cone: the face moment F·L and the shear F reacted over the embed e as a bearing
+    //     pressure p = F/(d·e) + 6·F·L/(d·e²), solved for the e that holds it at yield.
+    // r1 depends on the pin (its root must be cone metal), so the pin is solved per site, a few fixed-point passes.
+    const SW_STALL_NMM = GOING_POWER.fuseeTorque_Nm * 1000;
+    const SW_SIGMA = SPRING_SIGMA_Y_PA / 1e6;                                          // N/mm²
+    const SW_MID_Z = S_Z1 + STOCK_MIN_U / 2;                                           // the star's mid-plane: where the pin and stud are loaded
+    const SW_PIN_L = SW_MID_Z - CONE_TOP_Z, SW_STUD_L = TQ_BOT_Z - SW_MID_Z;           // the two cantilevers' free lengths
+    const swCantR = (F, L) => Math.cbrt((32 * F * L * UNIT_MM) / (Math.PI * SW_SIGMA)) / 2 / UNIT_MM;   // radius at yield, units
+    const swRootE = (F, L, r) => {   // the embed that holds the face moment at yield: σ·d·e² − F·e − 6·F·L = 0, in units
+      const d = 2 * r * UNIT_MM, M = F * L * UNIT_MM;
+      return (F + Math.sqrt(F * F + 24 * SW_SIGMA * d * M)) / (2 * SW_SIGMA * d) / UNIT_MM;
+    };
+    const swSize = (r1) => {   // the load at orbit r1, and every member it sizes
+      const F = SW_STALL_NMM / (r1 * UNIT_MM);
+      const rPin = Math.max(SW_PIN_FLOOR, swCantR(F, SW_PIN_L));
+      const studR = Math.max(SW_STUD_FLOOR, swCantR(F, SW_STUD_L));
+      return { F, rPin, studR, rootD: Math.max(STOCK_MIN_U, swRootE(F, SW_PIN_L, rPin)) };
+    };
+    // the pin's root: the cone's own surface at the top face (cone-local z, azimuth), over the pin's width and its embed
+    const rootR = (azLocal, depth) => {
       let r = Infinity;
-      for (let dz = 0.02; dz <= ROOT_D + 1e-9; dz += ROOT_D / 6)
+      for (let dz = 0.02; dz <= depth + 1e-9; dz += depth / 6)
         for (let da = -0.08; da <= 0.08 + 1e-9; da += 0.04) r = Math.min(r, GROOVE.floorAt(coneLocalZ(CONE_TOP_Z - dz), azLocal + da));
       return r;
     };
-    const rPinOf = () => Math.max(PIVOT_MIN_U, STOCK_MIN_U / 2);
     // the chain near the star's band, over the whole wind (the occupancy law the arrest has always read)
     const zLoBand = S_Z1 - SW_HEAD_T;
     const chainNear = [];
@@ -18615,14 +18639,22 @@ arrest47: {   // labelled: §329 landing 4's stop-work branch leaves it before �
     for (let i = 0; i < 720; i++) {
       const azS = (i / 720) * TAU2;
       const pinAzW = azS - OMEGA * E / 2;   // the pin's world azimuth at full wind: θ = −E/2, entering the upper stop's notch
-      const rPin = rPinOf();
-      const r1 = rootR(pinAzW - datum) - rPin - STOCK_MIN_U;
+      // the pin and its orbit, solved together: the pin sized at the orbit's load, the orbit the root's metal less the pin
+      let sz = swSize(rootR(pinAzW - datum, STOCK_MIN_U) - SW_PIN_FLOOR - STOCK_MIN_U), r1 = NaN;
+      for (let it = 0; it < 6; it++) {
+        r1 = rootR(pinAzW - datum, sz.rootD) - sz.rPin - STOCK_MIN_U;
+        if (!(r1 > 0)) break;
+        const nx = swSize(r1);
+        if (Math.abs(nx.rPin - sz.rPin) < 1e-9 && Math.abs(nx.rootD - sz.rootD) < 1e-9) { sz = nx; break; }
+        sz = nx;
+      }
+      const { rPin, studR } = sz;
       const R1_LO = (TRAIN_STAFF_R + CLEAR_MARGIN + rPin + CLEAR_MARGIN) / (1 / Math.sin(Math.PI / 4) - 1);   // the teeth (a − rTip) clear the top staff
       if (!(r1 >= R1_LO)) { rejects.root++; continue; }
-      const sw = chooseStopwork(T, r1);
+      const sw = chooseStopwork(T, r1, { rPin, studR });
       if (!sw || sw.n !== 4) { rejects.line++; continue; }
       const S = { x: C.x + sw.a * Math.cos(azS), y: C.y + sw.a * Math.sin(azS) };
-      if (!plateMetalAt(S.x, S.y, SW_STUD_R + STOCK_MIN_U)) { rejects.plate++; continue; }
+      if (!plateMetalAt(S.x, S.y, studR + STOCK_MIN_U)) { rejects.plate++; continue; }
       let m = Infinity;
       for (const pt of chainNear) {
         const dz = pt.z < zLoBand ? zLoBand - pt.z : pt.z > S_Z2 ? pt.z - S_Z2 : 0;
@@ -18633,7 +18665,7 @@ arrest47: {   // labelled: §329 landing 4's stop-work branch leaves it before �
       const drumM = Math.hypot(S.x - drumPos.x, S.y - drumPos.y) - sw.rTip - DRUM_WRAP_R - CLEAR_MARGIN;
       if (!(drumM >= 0)) { rejects.drum++; continue; }
       const margin = Math.min(m, drumM);
-      if (!site || margin > site.margin) site = { azS, S, r1, rPin, sw, margin, chainM: m, drumM, pinAzW };
+      if (!site || margin > site.margin) site = { azS, S, r1, rPin, studR, rootD: sz.rootD, F: sz.F, sw, margin, chainM: m, drumM, pinAzW };
     }
     if (!site) {
       console.warn(`§329: no stop-work site: every star azimuth was refused (root ${rejects.root}, line ${rejects.line}, plate ${rejects.plate}, chain ${rejects.chain}, drum ${rejects.drum}) — the movement is built with NO winding arrest`);
@@ -18642,7 +18674,29 @@ arrest47: {   // labelled: §329 landing 4's stop-work branch leaves it before �
       WIND_ARREST.stopwork = { built: false, rejects };
       break arrest47;
     }
-    const { S, r1, rPin, sw, azS } = site;
+    const { S, r1, rPin, sw, azS, studR: SW_STUD_R, rootD: ROOT_D } = site;
+    const SW_HEAD_R = SW_STUD_R + 0.06;   // the head's lip over the bore: §47's, on the stud the load sized
+    // §329 P1 — the chosen site's members at the stall, held (each sized above, so these are the build checking its own sizing),
+    // and the two BEARING faces the stall loads, which the sizing above does not solve: the pin on a closed notch's floor and
+    // the star's bore on its stud, each the load over its projected area (diameter × the star's stock), against the same yield.
+    // The LOCK DISC carries nothing at either stop: the pin's force passes through the star's pivot, so the star feels no moment
+    // and its lock arcs press on nothing; the disc holds the star only against the drag of its own dwell.
+    const SW_P1 = (() => {
+      const F = site.F, mm = UNIT_MM, t = STOCK_MIN_U * mm;
+      const bend = (r, L) => (32 * F * L * mm) / (Math.PI * (2 * r * mm) ** 3);
+      const out = {
+        stallNmm: SW_STALL_NMM, F_N: F,
+        pin: { r: rPin, floor: SW_PIN_FLOOR, L: SW_PIN_L, sigma: bend(rPin, SW_PIN_L), governs: rPin > SW_PIN_FLOOR + 1e-12 ? 'load' : 'floor' },
+        stud: { r: SW_STUD_R, floor: SW_STUD_FLOOR, L: SW_STUD_L, sigma: bend(SW_STUD_R, SW_STUD_L), governs: SW_STUD_R > SW_STUD_FLOOR + 1e-12 ? 'load' : 'floor' },
+        root: { e: ROOT_D, floor: STOCK_MIN_U, p: F / (2 * rPin * mm * ROOT_D * mm) + (6 * F * SW_PIN_L * mm) / (2 * rPin * mm * (ROOT_D * mm) ** 2), governs: ROOT_D > STOCK_MIN_U + 1e-12 ? 'load' : 'floor' },
+        notchBearing: F / (2 * rPin * mm * t), studBearing: F / (2 * SW_STUD_R * mm * t), yield: SW_SIGMA,
+      };
+      for (const [what, v] of [['pin bending', out.pin.sigma], ['stud bending', out.stud.sigma], ['pin root bearing', out.root.p],
+        ['pin on the notch floor', out.notchBearing], ['star bore on its stud', out.studBearing]])
+        if (!(v <= SW_SIGMA * (1 + 1e-9)))
+          console.warn(`§329 P1: the stop-work's ${what} reads ${v.toFixed(1)} MPa at the stall (${SW_STALL_NMM.toFixed(3)} N·mm, ${F.toFixed(3)} N at the pin), over the ${SW_SIGMA.toFixed(0)} MPa yield`);
+      return out;
+    })();
     const n = sw.n, m = sw.m, a = sw.a, rTip = sw.rTip;
     if (Math.abs(swTravelTurns(m, n) - T) > 1e-9)
       console.warn(`§329: the stop-work travels ${swTravelTurns(m, n).toFixed(4)} turns against a wind of ${T.toFixed(4)} — trim ${(swTravelTurns(m, n) - T).toFixed(4)} is not built`);
@@ -18850,7 +18904,7 @@ arrest47: {   // labelled: §329 landing 4's stop-work branch leaves it before �
     WIND_ARREST.stopwork = {
       built: true, n, m, travel: swTravelTurns(m, n), wind: T, r1, rPin, a, rTip, rIn: sw.rIn, r2: sw.r2, lockR: R_L, reliefMin,
       unlockedDeg, lockArcDeg: (GAMMA * 180) / Math.PI, discOpenDeg: (open.filter(Boolean).length * 360) / NA, discOpenRuns: runs.map((r0) => { let e = r0; while (open[(e + 1) % NA] && e - r0 < NA) e++; return [r0, e].map((q) => (q * 360) / NA); }), starAzDeg: (azS * 180) / Math.PI, pivot: S, z: [S_Z1, S_Z2], gap: GAP, margin: site.margin, chainMargin: site.chainM,
-      drumMargin: site.drumM, rejects, pinAzDeg: (site.pinAzW * 180) / Math.PI,
+      drumMargin: site.drumM, rejects, pinAzDeg: (site.pinAzW * 180) / Math.PI, p1: SW_P1,
     };
     WIND_ARREST.pose(1);
     registerLabel('Winding stop-work', swUnit);
