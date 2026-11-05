@@ -102,7 +102,11 @@ export const MECH_GRAPH = {
     // on the base plate instead.)
     ['Three-quarter plate', 'pillars'],
     ['pillars', 'plate'],
-    ['Fusee & great wheel', 'Three-quarter plate'], // upper pivots, jewelled bores
+    // §336 — the fusee's top bush runs in the FUSEE COCK, standing on the base
+    // plate outside the great wheel, its slab carried over this plate's top
+    // face: the plate keeps no boss over the cone.
+    ['Fusee & great wheel', 'Fusee cock'],   // top bush in the cock's boss
+    ['Fusee cock', 'plate'],                 // its leg lands on the base plate
     ['Center wheel', 'Three-quarter plate'],
     ['Third wheel', 'Three-quarter plate'],
     ['Fourth wheel', 'Three-quarter plate'],
@@ -569,6 +573,7 @@ export const MECH_GRAPH = {
     'Balance cock',
     'Fork cock',
     'Escape cock',   // §322
+    'Fusee cock',    // §336
   ],
   // Every unit that carries a pinion or a staff must be grounded to the
   // plate — DIRECTLY OR INDIRECTLY (unlike `bridges` above, a chain through
@@ -720,7 +725,7 @@ const EXPECTED_PAIRS = [
   // on the base plate — TODO 184.) Everything else in
   // the movement must CLEAR it — which is the point of listing these
   // explicitly rather than excluding the plate from the sweep.
-  ['Fusee & great wheel', 'Three-quarter plate'],
+  ['Fusee & great wheel', 'Fusee cock'],   // §336: the arbor's top bush in the cock's boss (it crosses the plate's cone window in air)
   // The pillars are a labelled unit now (they were a bare structure node,
   // invisible to this sweep — which is how a re-seated pillar ended up
   // inside the hack collar's swing without a single check firing). The one
@@ -4959,6 +4964,7 @@ const FASTENED_EDGES = {
   'Balance cock ⇄ base plate': ['Balance cock', 'plate'],
   'Fork cock ⇄ base plate': ['Fork cock', 'plate'],
   'Escape cock ⇄ base plate': ['Escape cock', 'plate'],   // §322
+  'Fusee cock ⇄ base plate': ['Fusee cock', 'plate'],     // §336
 };
 // §325 landing 6 — the frame without pillars has ONE fastened edge where the pillars had two: the back plate's screws thread
 // into the base plate's own lands (there is no rivet, because there is no second part to rivet), and FRAME_JOINTS rows named
@@ -5027,6 +5033,9 @@ export const PLATE_SEATS = [
   { unit: "Escape cock", mesh: "bridgeLeg", kind: "fastened", why: "§322: the cock's leg, bored for its screw" },
   { unit: "Escape cock", mesh: "bridgeFoot", kind: "fastened", why: "§322: the leg's foot, on the plate face" },
   { unit: "Escape cock", mesh: "screwShanks", kind: "fastened", why: "§322: the cock's foot screw, tapped through the plate" },
+  { unit: "Fusee cock", mesh: "bridgeLeg", kind: "fastened", why: "§336: the cock's leg, bored for its screw" },
+  { unit: "Fusee cock", mesh: "bridgeFoot", kind: "fastened", why: "§336: the leg's foot, on the plate face" },
+  { unit: "Fusee cock", mesh: "screwShanks", kind: "fastened", why: "§336: the cock's foot screw, tapped through the plate" },
   { unit: "Keyless works", mesh: "TorusGeometry#30", kind: "housed", why: "the crown stem's bushing, in the plate rim's notch (§186)" },
   { unit: "Keyless works", mesh: "BoxGeometry#31", kind: "housed", why: "the crown-stem sleeve, standing in the plate rim's notch" },
   { unit: "Setting lever", mesh: "CylinderGeometry#8", kind: "pivot", why: "the lever's pivot, seated mid-plate (#7 until TODO 214's boss, lug and screw renumbered the unit)" },
