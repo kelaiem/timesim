@@ -2835,6 +2835,10 @@ const KEYLESS_INPUTS = {
     // everywhere (asserted at the dial build), so the ceilings it derives
     // from it are conservative on a form face, never breached.
     ...(SPEC.caseShape ? {} : { railOuterF: 2 * G.DIAL_CANVAS_FILL_F * G.DIAL_RAIL_OUT_F }),
+    // THE PRINT FOLLOWS THE CASE — on the free case (the one whose outline is minimised) the solver scales this print
+    // down to the smallest whose seconds face reads (geometry.js secondsFaceFloorMm, in units); a spec'd ?subdialr=
+    // pins the seconds well instead, and keeps the round print.
+    ...(SPEC.caseShape === 'free' && SPEC.subdialr === null ? { secondsFloor: G.secondsFaceFloorMm() / UNIT_MM } : {}),
   },
 };
 const {
@@ -2844,6 +2848,7 @@ const {
   settingLeverPivot, settingLeverAngleAt, tailPostWorldAt, postEng, postRel,
   kwPostBow, yokePivot, yokeAngleAt, slMidAlong, canonToWorld,
   plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, reserveWellR, secondsWellR, secondsWellCeil, alarmCornerR, rsvrWindow,
+  printScale,   // the print-follows-case scale (layout.js solveKeyless; 1 except on the free case)
   reserveStationR, reserveWellLaw, // §308 L4 option A — the station's distance, and which side of the chapter its well is cut
   reserveSector,   // §308 L4 option B — the fan well (null unless reserveWellLaw is 'sector')
   formPlate, // §307 — the form rectangle, derived beside plateR from the same members
@@ -20939,7 +20944,8 @@ for (const [nm, cy, wr] of [['reserve', reserveStationR, reserveWellR], ['second
   const inboard = -SECONDS_LOCAL.y - SUBDIAL_INBOARD_CLEAR;
   const outboard = dialRadius * (2 * G.DIAL_CANVAS_FILL_F) * G.DIAL_RAIL_IN_F
     - DIAL_WALL_HALF - CLEAR_MARGIN - -SECONDS_LOCAL.y;
-  if (SPEC.d4 === null && Math.abs(inboard - outboard) > 0.02)
+  // a print scaled to the case (printScale < 1) moved the outboard bound in on purpose: D4 is the ROUND print's maximum
+  if (SPEC.d4 === null && printScale === 1 && Math.abs(inboard - outboard) > 0.02)
     console.warn(`§125: D4 no longer maximizes the seconds well — inboard bound ${inboard.toFixed(4)} vs `
       + `outboard ${outboard.toFixed(4)} (need equal within 0.02); re-derive D4 from its comment's closed form`);
 }
@@ -20972,7 +20978,7 @@ if (DIAL_TRACK) {
   // rail the face prints). The free outline hugs the metal, and its rail comes inside the round one; the wells are
   // pins of its fit at the outline's own distance — the rail's inward offset gIn plus the ring wall and margin (a
   // disk at least the held corner's round inside the rail's offset stands inside the held rail too).
-  const roundInner = dialRadius * 2 * G.DIAL_CANVAS_FILL_F * G.DIAL_RAIL_IN_F;
+  const roundInner = dialRadius * 2 * G.DIAL_CANVAS_FILL_F * G.DIAL_RAIL_IN_F * printScale;   // the rail the solver read
   const wells = [{ name: 'seconds', at: SECONDS_LOCAL, r: secondsWellR },
     ...(reserveWellLaw === 'chapter' ? [{ name: 'reserve', at: RESERVE_LOCAL, r: reserveWellR }] : [])];
   for (const w of wells) freePin(P.dial.x - w.at.x, P.dial.y + w.at.y, w.r + DIAL_WALL_HALF + CLEAR_MARGIN + DIAL_TRACK.gIn, `the ${w.name} well inside the track`);
@@ -21084,7 +21090,7 @@ registerExplode(handsGroup, aesthetics.dial.hands.handsGroupZOffset, 2, 1);
 // Be clear what this does NOT do: it changes nothing about when the alarm
 // FIRES. That window is set by the release notch's angular width at the track
 // radius (§38's floor: pin ÷ radius), and no hand length touches it.
-const HOUR_HAND_LEN = dialRadius * G.DIAL_MARKER_INNER_F;
+const HOUR_HAND_LEN = dialRadius * G.DIAL_MARKER_INNER_F * printScale;   // the marker band the print-follows-case scale put it at
 // TODO 112/113 — every hand's build options live in ONE named spec object,
 // and the panel's HAND_SPECS rows reference these same objects: boot and
 // re-cut cannot diverge because there is nothing to keep in step.
@@ -21150,7 +21156,7 @@ const SLIDE_REACH = (() => {
   const reach = (az) => DIAL_TRACK.mid.exit(az);
   let far = 0;
   for (let i = 0; i < 720; i++) far = Math.max(far, reach((i / 720) * 2 * Math.PI));
-  const roundMinute = dialRadius * (2 * G.DIAL_CANVAS_FILL_F) * ((G.DIAL_RAIL_IN_F + G.DIAL_RAIL_OUT_F) / 2);
+  const roundMinute = dialRadius * (2 * G.DIAL_CANVAS_FILL_F) * ((G.DIAL_RAIL_IN_F + G.DIAL_RAIL_OUT_F) / 2) * printScale;
   const hourFrac = HOUR_HAND_LEN / roundMinute;
   const near = DIAL_TRACK.nearestMid;
   return { reach, near, far, hourFrac };
@@ -51250,7 +51256,7 @@ const FORM_FOOTPRINT = await (async () => {
     // Telescoping hands (?hands=slide) are the roadmap's remainder and change none of this: the disc holds the hand at
     // full length, which a telescoping hand would have to give back.
     {
-      const L = dialRadius * (2 * G.DIAL_CANVAS_FILL_F) * ((G.DIAL_RAIL_IN_F + G.DIAL_RAIL_OUT_F) / 2);
+      const L = dialRadius * (2 * G.DIAL_CANVAS_FILL_F) * ((G.DIAL_RAIL_IN_F + G.DIAL_RAIL_OUT_F) / 2) * printScale;   // the print-follows-case scale: the hands' design length is the scaled print's
       const R = (L + CLEAR_MARGIN + CASE_CLEAR - M) / Math.cos(Math.PI / HANDS_DISC_N);
       polys.push(Array.from({ length: HANDS_DISC_N }, (_, i) => [P.dial.x + R * Math.cos((2 * Math.PI * i) / HANDS_DISC_N), P.dial.y + R * Math.sin((2 * Math.PI * i) / HANDS_DISC_N)]));
     }
