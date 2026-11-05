@@ -1361,6 +1361,11 @@ const SPEC_POINTS = [
   { name: 'stopwork-140', q: 'case=free&alarm=0&barrelstep=-140&rsvaz=0&rsvidl=2&frame=lands&arrest=stopwork&drumaz=140', expect: 'declared', sweep: true,
     expectWarns: ['§186: the rim-to-bore fit'],
     why: '§329 landing 4 — the stop-work on the alarm-off free case with the drum turned to 140° (−7.5% case area); boots exactly the free build\'s §186 row, swept' },
+  // §329 toward the default — THE STOP-WORK ON THE DEFAULT BUILD: the round case, the alarm, the shipped drum, and the Geneva
+  // stop-work in place of §47's arrest. The first step toward making it the default arrest: its pairs swept on the build it
+  // would ship on, beside the free arrangement it was designed for.
+  { name: 'stopwork', q: 'arrest=stopwork', expect: 'silent', sweep: true,
+    why: '§329 toward the default — the Geneva stop-work on the default build (round case, alarm, shipped drum); boots silent, swept' },
 ];
 
 // TODO 186 B1 — THE POINTS THE BATTERY SWEEPS, and what each costs.
@@ -1437,6 +1442,7 @@ const POINT_COSTS = {
   // and plates, the barrel at -140°, the drum turned, the stop-work in §47's place. Carried at the designed point's reach
   // (its nearest measured kin in scope) until a run writes its own `ms` back — wall clock, never a verdict.
   'stopwork-140': 1174,
+  'stopwork': 600,   // a stand-in at the default build's own scale (pillars 587), until a run's --report writes the measured one
 };
 {
   const named = new Set(SWEEP_POINTS.map((p) => p.name));
