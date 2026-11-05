@@ -24,7 +24,7 @@ import {
   SPEC, SPEC_RATES, ALARM_BUILT,
   F_BALANCE, BEAT_DEG, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_STEP, BALANCE_R_REF, BAL_R_STEP, balanceWheelDims, BALANCE_R_SPEC, AMPLITUDE_POSED_DEG, LIFT_DEG, IMPULSE_WIDTH,
   CLEAR_MARGIN, HANDOFF_TRACK_TOL, ZERO_AREA_MAX, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK, FORK_HALF_Z,
-  BAL_T, BAL_RIM_F, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T,
+  BAL_T, BAL_RIM_F, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T, NICKEL_SILVER_SIGMA_Y_PA,
   SPRING_TOP_Z, TRAIN_CEILING_Z, HAIRSPRING_OVERCOIL_RAISE, COCK_SLAB_BOT, COCK_SLAB_TOP, COCK_MID_Z, Z_DIAL, Z_DIAL_WITH_ALARM, DIAL_RECLAIM, DIAL_T, DIAL_EDGE_BREAK, Z_KEYLESS,
   // Train ratios (§13 steps 2 + 3c): TRAIN is the ONE table — module, wheel
   // teeth and pinion teeth per mesh. Builders and tick()'s ratio chain
@@ -5104,24 +5104,88 @@ for (const arbor of [centerArbor, thirdArbor, fourthArbor]) {
 // The square is the watchmaker's let-down square: a key on it is how the
 // power is safely released at the bench. A winding arbor runs in a plain
 // bushed bore, not a jewel — and no jewel could pass the square anyway.
-{
-  // NAMED (TODO 53's landing): the windTop continuation abuts this pivot at
-  // the plate's mid-plane, and the joint is declared in
-  // INTRA_UNIT_CONTACTS — see the windTop build for why it stopped being a
-  // coincidence and became a joint.
+//
+// §336 — AND IT IS BORNE BY THE FUSEE COCK, NOT THE PLATE. The owner's ask
+// (2026-11-05): show more of the cone. §322 measured what hides it — the
+// plate's bush boss and the three webs that island it, 26.3% of the cone —
+// and §335 opened the gears round it; the bush itself is the one thing left
+// in the plate over the cone. So the arbor's top bearing moves to a COCK
+// standing on the BASE plate (the frame's rule for a cock, TODO 184: the
+// owner chose it over a cock screwed to this plate), its slab carried over
+// this plate's top face and its single leg down through plate body to the
+// base plate. The plate keeps no boss here; the cone window solves
+// bossless.
+//
+// Its z-band is fixed by two things the cock cannot choose, so it is known
+// HERE, long before the cock is sited: the slab's floor stands one
+// CLEAR_MARGIN over this plate's top face (it may not touch the plate it
+// passes over), and its section is the cocks' own COCK_T — the in-plane width
+// carries the load (§336's sizing, at the cock's build), so the depth stays
+// the frame's. The arbor's staff runs up through the window's air into the
+// cock's boss to the slab's mid-plane, its bearing plane; the windTop
+// continuation carries it on to the slab's top face and the let-down square
+// stands proud of THAT face.
+//
+// AND IT IS CRANKED. A flat slab over the plate put the square 0.95 higher
+// and the cased movement 0.038 mm over CASE_HEIGHT_MAX_MM (§261) — a P3
+// conflict, so it is settled in position space, not by the cap: the BOSS
+// stands in the cone window's AIR (no plate is cut there), its top flush with
+// the plate's top face, so the bearing plane and the let-down square are
+// exactly where the case was fitted to them; a round post at the window's
+// edge carries it up to the bar, which crosses the plate a margin over its
+// face. The boss is the slab's own section (COCK_T) and its underside stands
+// over the cone and the arrest's bracket, which both stay under the plate's
+// underside.
+//
+// The SECTION'S DEPTH is what stands between the plate's margin and the
+// square's top: the square is the tallest thing at this corner and the case is
+// fitted to it, so an arm one CLEAR_MARGIN over the plate may be at most
+// LETDOWN_H − CLEAR_MARGIN deep (COCK_T's 0.8 stood 0.05 over it and put the
+// free case's form 0.046 mm over CASE_HEIGHT_MAX_MM). The width carries the load.
+//
+// AND ONLY ON §47'S BUILD. The stop-work (`?arrest=stopwork`, §329) plants its
+// star's stud in plate over the cone — the webs this removes — and finds no
+// site without them, so on that build the bush stays in the plate exactly as
+// before; TODO 288 owns re-siting the stud.
+const FUSEE_COCK_BUILT = !STOPWORK;
+const LETDOWN_H = 0.9; // proud of its face: enough engagement for a let-down key
+const FUSEE_COCK_T = LETDOWN_H - CLEAR_MARGIN;
+const FUSEE_BOSS_TOP = TQ_TOP_Z;
+const FUSEE_BOSS_MID = FUSEE_BOSS_TOP - FUSEE_COCK_T / 2;   // the bush's bearing plane
+const FUSEE_BOSS_BOT = FUSEE_BOSS_TOP - FUSEE_COCK_T;
+const FUSEE_COCK_BOT = TQ_TOP_Z + CLEAR_MARGIN;               // the bar, over the plate
+const FUSEE_COCK_MID = FUSEE_COCK_BOT + FUSEE_COCK_T / 2;
+const FUSEE_COCK_TOP = FUSEE_COCK_BOT + FUSEE_COCK_T;
+// The bearing plane: the cock boss's mid-plane, or (the stop-work's build) the plate's.
+const FUSEE_BEARING_Z = FUSEE_COCK_BUILT ? FUSEE_BOSS_MID : TQ_MID_Z;
+if (!FUSEE_COCK_BUILT) {
   const staff = addUpperPivot(barrelArbor, { staffR: TRAIN_STAFF_R, jewelR: 0, boreR: TRAIN_STAFF_R + PIVOT_BORE_CLEAR });
   if (staff) staff.name = 'fuseeUpperPivot';
+} else {
+  // NAMED (TODO 53's landing): the windTop continuation abuts this pivot at
+  // the cock's mid-plane, and the joint is declared in
+  // INTRA_UNIT_CONTACTS — see the windTop build for why it stopped being a
+  // coincidence and became a joint. Not addUpperPivot: that function's
+  // whole contract is a bearing IN THIS PLATE (its tqPivots row is what cuts
+  // the plate's bore and islands the window's boss), and this bearing is not
+  // in the plate any more.
+  const worldTop = boxOf(barrelArbor).max.z;
+  const len = FUSEE_BOSS_MID - worldTop;
+  const staff = new THREE.Mesh(new THREE.CylinderGeometry(TRAIN_STAFF_R, TRAIN_STAFF_R, len, PIVOT_SEGMENTS), MATS.steel);
+  staff.rotation.x = Math.PI / 2;
+  staff.position.z = (worldTop - barrelArbor.position.z) + len / 2;
+  staff.name = 'fuseeUpperPivot';
+  barrelArbor.add(staff);
 }
 // Square across-corners = staff diameter (0.5·2), so the filed square
-// passes the plate's own bore without opening it.
+// passes the cock's own bore without opening it.
 const FUSEE_SQ_S = 0.5 * Math.SQRT2;
-const LETDOWN_H = 0.9; // proud of the plate face: enough engagement for a let-down key
-const LETDOWN_TOP = TQ_TOP_Z + LETDOWN_H; // tallest thing on the plate top at this corner (rods run LOW now)
+const LETDOWN_TOP = FUSEE_BOSS_TOP + LETDOWN_H; // tallest thing at this corner: the square, on the cock's sunk boss (§336)
 const windTop = new THREE.Group();
 {
-  // Shaft continuation: addUpperPivot's staff stops at the plate's
-  // mid-thickness (its bearing plane); carry the round arbor on to the
-  // plate's top face, where the square begins. It reaches DOWN into the
+  // Shaft continuation: the staff stops at the cock boss's mid-thickness (its
+  // bearing plane, §336); carry the round arbor on to the boss's top face,
+  // where the square begins. It reaches DOWN into the
   // staff by half a §50 stock floor — one shaft in two meshes wants a weld,
   // not a knife-edge: the two caps used to COINCIDE exactly at TQ_MID_Z,
   // which no instrument can arbitrate (coplanar triangles), and the
@@ -5131,13 +5195,13 @@ const windTop = new THREE.Group();
   // makes it seen — row 'arbor through the winding pinion' is the exact
   // precedent.
   const weld = STOCK_MIN_U / 2;
-  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, TQ_TOP_Z - TQ_MID_Z + weld, 12), MATS.steel);
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, FUSEE_BOSS_TOP - FUSEE_BEARING_Z + weld, 12), MATS.steel);
   shaft.name = 'fuseeTopArbor';
   shaft.rotation.x = Math.PI / 2;
-  shaft.position.z = (TQ_MID_Z - weld + TQ_TOP_Z) / 2 - L_BARREL;
+  shaft.position.z = (FUSEE_BEARING_Z - weld + FUSEE_BOSS_TOP) / 2 - L_BARREL;
   windTop.add(shaft);
   const square = new THREE.Mesh(new THREE.BoxGeometry(FUSEE_SQ_S, FUSEE_SQ_S, LETDOWN_H), MATS.steel);
-  square.position.z = TQ_TOP_Z + LETDOWN_H / 2 - L_BARREL;
+  square.position.z = FUSEE_BOSS_TOP + LETDOWN_H / 2 - L_BARREL;
   windTop.add(square);
 }
 barrelArbor.add(windTop); // explodes and labels with 'Fusee & great wheel', which is what it is
@@ -16243,6 +16307,14 @@ function tqKeepVisitor() {
     // band stands CASE_CLEAR off the plate rim by construction. Its meshes
     // opt out on the part (makeCase sets casePart); the check stays generic.
     if (o.userData?.casePart) return;
+    // §336 — NOR IS THE FUSEE COCK. It stands on the BASE plate: its leg
+    // passes this plate through an opening of its own (a tqHoles row, which
+    // every window and opening already keeps a land from), its bar passes
+    // over the top face a margin clear, and its boss and crank stand in the
+    // cone window's AIR, which is what that window was cut for. Read as a
+    // keep, the cranked arm's world box — a rotated bar's — claims plate it
+    // never touches, and a bossless window that pinches anywhere is not cut.
+    if (o.userData?.notPlateLoad) return;
     o.geometry.computeBoundingBox();
     const b = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
     const crosses = b.min.z < TQ_TOP_Z - 1e-6 && b.max.z > TQ_BOT_Z + 1e-6;
@@ -16750,9 +16822,16 @@ function solveTqWindows() {
     // is the assert doing its job on the very solve that added it.
     const r0Boss = boss ? pivotBossR(boss) + TQ_LAND_MIN : 0;
     // §335 — an intent may stand its inner edge farther out than its boss's
-    // land: the gear window starts one land outside the cone window, on the
-    // same boss's webs. Its webs still exist (the boss is what they carry).
-    const r0 = intent.r0 && boss ? Math.max(r0Boss, intent.r0()) : r0Boss;
+    // land: the gear window starts one land outside the cone window.
+    // §336 — AND IT CARRIES WHAT IT ENCLOSES WHETHER OR NOT A PIVOT IS THERE.
+    // With the fusee's bush in its cock the plate keeps no boss at the axis,
+    // but the ring between the two windows is still plate (the arrest's
+    // bracket lands on it), islanded by this annulus exactly as a boss is. So
+    // a declared inner edge makes the window an ISLAND's: webs, a split, an
+    // inner return, all as for a boss — `island` below, where `boss` alone
+    // used to decide it.
+    const r0 = intent.r0 ? Math.max(r0Boss, intent.r0()) : r0Boss;
+    const island = !!boss || !!intent.r0;
     // §201 — WHAT STANDS INSIDE THE DISC. The bisection below assumes the
     // clearance along a ray is monotone: clear at the centre, blocked once
     // and for good somewhere out toward the rim. A keep standing INSIDE the
@@ -16906,7 +16985,7 @@ function solveTqWindows() {
     // The row is still REPORTED, with its rOut, so the numbers survive for
     // the record and the re-cut's shrink-only comparison still has both
     // sides to compare.
-    if (!boss && !(runs.length === 1 && runs[0].a === 0 && runs[0].b === 360)) {
+    if (!island && !(runs.length === 1 && runs[0].a === 0 && runs[0].b === 360)) {
       const shut = [];
       for (let i = 0; i < 360; i++) if (!open[i]) shut.push(i);
       const i0 = shut.length ? shut[0] : 0;
@@ -16928,13 +17007,13 @@ function solveTqWindows() {
     // leaving a 180° stretch with no arm in it, which restrains the boss no
     // better than two arms do. That is the failure this step exists to avoid,
     // and it was the first thing the solve actually did.
-    const webSpan = boss ? wanted - r0 : 0;
-    const webW = boss ? tqWebWidthFor(webSpan) : 0;
+    const webSpan = island ? wanted - r0 : 0;
+    const webW = island ? tqWebWidthFor(webSpan) : 0;
     // §308 landing 5 — a full-round run's even split starts at the intent's
     // own phase (the fusee's: the barrel's turn), never at the movement's 0°.
     // Absent or 0, the run is the one it was; rOut is read modulo 360 below.
     const phaseDeg = intent.phaseDeg ? ((intent.phaseDeg() % 360) + 360) % 360 : 0;
-    if (boss && phaseDeg !== 0 && runs.length === 1 && runs[0].a === 0 && runs[0].b === 360)
+    if (island && phaseDeg !== 0 && runs.length === 1 && runs[0].a === 0 && runs[0].b === 360)
       runs[0] = { a: phaseDeg, b: phaseDeg + 360 };
     // §335 — A WINDOW THAT CONTINUES ANOTHER'S WEBS (the fusee gear window
     // outside the cone window) is cut AT THOSE WEBS' AXES rather than split
@@ -16945,12 +17024,12 @@ function solveTqWindows() {
     // only leaves more plate between the ring and the plate body — never a
     // member nobody derived. TQ_WEBS_MIN is the inner window's to meet.
     const webAxes = (() => {
-      if (!boss || !intent.websFrom) return null;
+      if (!island || !intent.websFrom) return null;
       const src = report.find((r) => r.name === intent.websFrom);
-      if (!src?.cut) return null;
+      if (!src?.cut || !src.boss) return null;   // §336: a bossless source has no webs to continue — split evenly
       return src.sectors.map((q) => ((q.a / DEG2RAD) % 360 + 360) % 360);
     })();
-    if (intent.websFrom && boss && !webAxes)
+    if (intent.websFrom && island && !webAxes && !report.find((r) => r.name === intent.websFrom)?.cut)
       console.warn(`§335 window '${intent.name}': the window whose webs it continues ('${intent.websFrom}') is not cut — no webs to continue`);
     if (webAxes) {
       if (runs.length === 1 && runs[0].b - runs[0].a >= 360) {
@@ -16978,13 +17057,13 @@ function solveTqWindows() {
     // spanned 352° and the other two were a degree wide: the count was right
     // and the boss was still a cantilever. Measured at the reveal radius,
     // because that is where a run is widest and so most likely to survive.
-    if (boss) {
+    if (island) {
       for (let k = runs.length - 1; k >= 0; k--) {
         const arc = wanted * (runs[k].b - runs[k].a) * DEG2RAD;
         if (arc < webW + TQ_LAND_MIN) runs.splice(k, 1);
       }
     }
-    if (boss && !webAxes && runs.length && runs.length < TQ_WEBS_MIN) {
+    if (island && !webAxes && runs.length && runs.length < TQ_WEBS_MIN) {
       const total = runs.reduce((s, r) => s + (r.b - r.a), 0);
       const share = runs.map((r) => ((r.b - r.a) / total) * TQ_WEBS_MIN);
       const pieces = share.map((s) => Math.max(1, Math.floor(s)));
@@ -17079,18 +17158,18 @@ function solveTqWindows() {
         // the lesser lets the sector swallow the web it is bounded by, and
         // the polygon then crosses itself into triangulation garbage (a patch
         // of PHANTOM PLATE, not a hole, which is how this was caught).
-        const rLo = boss
+        const rLo = island
           ? Math.max(r0, webEdge(a - aRaw), webEdge(bRaw - a))
           : 0;
         if (rLo > rHi) continue;          // pinched by a web (or by the shrink)
         outer.push([c.x + Math.cos(a) * rHi, c.y + Math.sin(a) * rHi]);
-        if (boss) inner.push([c.x + Math.cos(a) * rLo, c.y + Math.sin(a) * rLo]);
+        if (island) inner.push([c.x + Math.cos(a) * rLo, c.y + Math.sin(a) * rLo]);
       }
       if (outer.length < 4) continue;     // the webs met: no sector left
       kept.push({ pts: [...outer, ...inner.reverse()], a: aRaw, b: bRaw });
     }
     polys.push(...kept.map((s) => ({ pts: s.pts, name: intent.name })));
-    report.push({ name: intent.name, c, discs, wanted, r0, boss: !!boss, cut: true, late: !!intent.late, interior, walked: walk, webW, webSpan, sectors: kept, rOut });
+    report.push({ name: intent.name, c, discs, wanted, r0, boss: !!boss, island, cut: true, late: !!intent.late, interior, walked: walk, webW, webSpan, sectors: kept, rOut });
   }
   // §335 — THE GEAR WINDOW'S WEBS ARE THE CONE WINDOW'S, continued: no gear
   // sector may span a cone web's axis, or the ring between the two windows
@@ -17099,7 +17178,7 @@ function solveTqWindows() {
   // construction; this measures the emitted sectors.
   {
     const inner = report.find((r) => r.name === 'fusee'), outer = report.find((r) => r.name === 'fusee gears');
-    if (inner?.cut && outer?.cut) {
+    if (inner?.cut && inner.boss && outer?.cut) {   // §336: a bossless cone window has no webs to carry on
       const TAU = 2 * Math.PI;
       for (const q of outer.sectors) for (const w of inner.sectors) {
         const d = (((w.a - q.a) % TAU) + TAU) % TAU;
@@ -17248,14 +17327,14 @@ function checkPlateWindows(stage) {
     // §115 — the all-round rule, re-asserted against the sectors that were
     // BUILT and at every stage, because the re-solve sees keeps the first
     // solve could not and may pinch a window that was open when it was cut.
-    if (!r.boss) {
+    if (!r.boss && !r.island) {   // §336: an island's window (a ring, not a boss) is carried on webs like a boss's
       if (r.sectors.length !== 1)
         console.warn(`§62 window '${r.name}' (${stage}): cut as ${r.sectors.length} sectors with no boss to carry `
           + '— a bossless window is one opening or none');
       continue;
     }
     if (r.sectors.length < TQ_WEBS_MIN) {
-      console.warn(`§62 window '${r.name}' (${stage}): ${r.sectors.length} webs carry its pivot boss — need ${TQ_WEBS_MIN}`);
+      console.warn(`§62 window '${r.name}' (${stage}): ${r.sectors.length} webs carry its ${r.boss ? 'pivot boss' : 'island'} — need ${TQ_WEBS_MIN}`);
       continue;
     }
     // Web azimuths are the gaps BETWEEN sectors: each sector's end and the
@@ -18151,6 +18230,7 @@ ESCAPE_COCK = await (async () => {
   seatCut();
   checkCutVsPivots();
 }
+let WIND_ARREST_STOP_ARM = null;   // §336: §47's stop lever about the fusee axis, filled in when the lug is cut
 // TODO 184 — THE BASE PLATE'S LATE RE-CUT, run once, after the last late
 // opening is known: the balance cock's tapped holes (step 1b) and the pillars'
 // tenon holes (step 3). Every late hole must leave a LAND to every other
@@ -20635,6 +20715,11 @@ arrest47: {   // labelled: §329 landing 4's stop-work branch leaves it before �
       y: beakTan.x * Math.sin(PSI_FULL) + beakTan.y * Math.cos(PSI_FULL),
     };
     const alongFace = { x: -nT.y, y: nT.x };
+    // §336 — the stop's LEVER: the stall force runs along the face normal nT,
+    // so its moment arm about the arbor is the face line's distance from the
+    // axis, wherever on the face it lands. Published for the fusee cock,
+    // which was sized before this lug existed (checkFuseeCockStall).
+    WIND_ARREST_STOP_ARM = Math.abs((beakThrown.x - C.x) * alongFace.x + (beakThrown.y - C.y) * alongFace.y);
     const lugFloorR = GROOVE.floorR(F_LUG);   // §254: the shelf at the lug's station (the floor is helical now, so it is read by station, not by z)
     // face edge: the thrown-face line clipped to the lug's radial band
     const hitR = (targetR) => {
@@ -49980,6 +50065,400 @@ if (FORM && ALARM_BUILT) {   // §325 landing 3: no strike group to open the pla
 }
 
 // ---------------------------------------------------------------------------
+// §336 — THE FUSEE COCK: the fusee arbor's top bush in a cock standing on the
+// BASE plate, so the three-quarter plate keeps no boss over the cone.
+//
+// The owner chose the base plate (TODO 184's one rule for a cock) over a cock
+// screwed to this plate. What that costs is length: the great wheel stands
+// on the base plate's face out to 15.6 from the axis, so the leg stands
+// outside it and the bar carries the bush over the plate from there. What it
+// carries is the movement's heaviest bearing, and it carries it SIDEWAYS: the
+// chain's pull and the great wheel's mesh force lie in the plate's plane, so
+// the bar bends in its own plane (its WIDTH is the section's depth) and the
+// leg is a column with a side load at its top and a twist from the bar.
+// Derived, each from its constraint (P1 — the section from the load path):
+//
+//  · THE REACTION, an upper bound the energy column's own way (the loads
+//    ADDED, as if collinear): statics between the lower bush (the base
+//    plate's mid-plane) and this bush (the slab's mid-plane, FUSEE_COCK_MID),
+//    for the chain at the groove station whose pull × height is largest
+//    (the pull is the level fusee torque over that station's radius, since
+//    the fusee is level by construction), the great wheel's tangential force
+//    at its pitch radius and height, and the winding arrest's lug at the
+//    stall — §329's rule, the stop holds the cone at the going torque — at
+//    the lug's radius and height.
+//  · THE BAR, rectangular, COCK_T deep in z and `b` wide in plan: in-plane
+//    bending at its root, σ = 6·R·L/(T·b²), held to the plate metal's yield
+//    (NICKEL_SILVER_SIGMA_Y_PA, the band's low end), solved for b at each
+//    candidate's own length; never under the §50 floor.
+//  · THE LEG, a tube round its foot screw: the side load R at the slab's
+//    mid-plane bends it over its height, and the bar's moment R·L twists it;
+//    the outer radius is the least whose von Mises stress √(σ² + 3τ²) is
+//    under the same yield, never under TODO 184's sleeve (the bore plus a
+//    stock floor).
+//  · THE FOOT is SCANNED about the arbor over every bearing and reach, the
+//    nearest feasible seat winning (the fork and escape cocks' policy). A
+//    seat is feasible when the leg's column clears everything standing
+//    between the base plate and the slab (every mesh there by the keep
+//    visitor's two footprints; the chain by its run's hull over the whole
+//    reserve, because the chain mesh stands at one wind; the low corridor by
+//    LOW_LINKAGE_OBSTACLES, rule 5; the fork by FORK_SWEEP), its pad stands on
+//    base-plate metal a stock floor from every opening there, its hole
+//    through THIS plate leaves a TQ_LAND_MIN land to every opening, pivot
+//    boss and window already solved (it is a late opening: the windows'
+//    re-solve, shrink-only, stands them off it at the end), and the bar,
+//    over this plate in the slab's band, clears everything standing there.
+//    It is built HERE, after every part between the plates and on the plate's
+//    face exists, because the cock is the newcomer: built with the escape cock
+//    its leg was sited straight through the alarm click's spring, which is
+//    built eighteen thousand lines later (§322's lesson, the other way round:
+//    the frame comes first and the newcomer fits round it). Its foot's tapped
+//    hole re-cuts the base plate here, and its leg's passage joins tqHoles
+//    before the windows' re-solve and the three-quarter plate's re-cut below.
+//  · THE FOOT JOINT carries the bar's twist R·L through its one screw's
+//    clamp; that capacity is not modelled anywhere in this frame (TODO 184
+//    sized the screws by the plate they grip, not by a torque), so the record
+//    carries the demand and §336 files it.
+// ---------------------------------------------------------------------------
+await breathe(375);
+const FUSEE_COCK = !FUSEE_COCK_BUILT ? null : await (async () => {
+  const C = P.barrel;
+  const T = FUSEE_COCK_T;
+  const sigmaY = NICKEL_SILVER_SIGMA_Y_PA;
+  const torque = GOING_POWER.fuseeTorque_Nm;
+  // 1. The reaction at this bush.
+  const zLow = BACK_PLATE_Z, zUp = FUSEE_BOSS_MID, span = zUp - zLow;
+  let chain = { m: 0 };
+  for (let i = 0; i <= 64; i++) {
+    const gp = fuseeGrooveAt((i / 64) * FUSEE_F_ACTIVE);
+    const F = torque / (gp.r * OSC_U), m = F * (gp.z - zLow);
+    if (m > chain.m) chain = { m, F, r: gp.r, z: gp.z };
+  }
+  const gwPos = greatWheel.getWorldPosition(new THREE.Vector3());
+  const rGreat = TRAIN.barrel.module * TRAIN.barrel.teeth / 2;
+  const gear = { F: torque / (rGreat * OSC_U), z: gwPos.z };
+  gear.m = gear.F * (gear.z - zLow);
+  // THE STALL, at full wind (§329's rule: the stop holds the cone at the
+  // going torque). Two forces join the chain's and the mesh's: the stop's on
+  // the cone, and the winding input's at the winding spur under the great
+  // wheel, which delivers that torque. The stop (§47's lug, or §329's stop-work)
+  // is built thousands of lines after this cock, so its force is BOUNDED here —
+  // at the cone's smallest groove radius (the largest force a stop riding the
+  // cone can need) and the cone's top (the longest lever about the lower bush)
+  // — and the built stop is held inside that bound at the movement-complete
+  // stage (checkFuseeCockStall).
+  const coneMesh = fusee.getObjectByName('fuseeCone');
+  let rSmall = Infinity;
+  for (let i = 0; i <= 64; i++) rSmall = Math.min(rSmall, fuseeGrooveAt((i / 64) * FUSEE_F_ACTIVE).r);
+  const stop = { r: rSmall, z: coneMesh ? new THREE.Box3().setFromObject(coneMesh).max.z : FUSEE_Z0 + FUSEE_ZSPAN };
+  stop.F = torque / (stop.r * OSC_U); stop.m = stop.F * (stop.z - zLow);
+  const spurPos = windSpur.getWorldPosition(new THREE.Vector3());
+  const wind = { r: windSpur.userData.r, z: spurPos.z };
+  wind.F = torque / (wind.r * OSC_U); wind.m = wind.F * (wind.z - zLow);
+  const R = (chain.m + gear.m + stop.m + wind.m) / span;    // N, at the boss's mid-plane: the stall, every force ADDED
+  // 2. The sections. THE ARM IS A FULLY STRESSED BEAM: the load acts at the
+  //    bush, so the in-plane moment at distance s along the arm is R·s, zero
+  //    at the boss and greatest at the foot, and the width that holds σ at the
+  //    yield there is √(6·R·s/(T·σ)) — the arm tapers with √s rather than
+  //    carrying its root's section all the way to a boss that does not need
+  //    it (a uniform bar here covered more cone than the plate's webs did:
+  //    55.6% clear against their 73.7%). Floored by SHEAR, which does not
+  //    fall with s: 1.5·R/(T·b) under the yield's shear (von Mises, σ/√3).
+  const T_m = T * OSC_U;
+  const bShear = 1.5 * R / (T_m * sigmaY / Math.sqrt(3)) / OSC_U;
+  const widthAt = (s) => Math.max(STOCK_MIN_U, bShear, Math.sqrt(6 * R * (Math.max(s, 0) * OSC_U) / (T_m * sigmaY)) / OSC_U);
+  const bore = G.screwBoreR(COCK_SCREW_HEAD_R);
+  // the side load's line of action is the bush's plane, so that is the leg's lever arm
+  const legH = FUSEE_BOSS_MID - (BACK_PLATE_Z + BACK_PLATE_T / 2);
+  // A round column, bored or solid, with the side load R at a height h above
+  // its root and the arm's moment R·L twisting it: the least outer radius
+  // whose von Mises stress is under the yield. The leg (bored for its screw,
+  // h from the base plate to the bush's plane) and the post (solid, h its own
+  // height, L the crank's reach) are the one law.
+  const columnSigma = (ro, h, L, bi) => {
+    const a = ro * OSC_U, b = bi * OSC_U;
+    const Z = Math.PI * (a ** 4 - b ** 4) / (4 * a);   // bending section modulus; the polar one is 2Z
+    const sig = R * (h * OSC_U) / Z, tau = R * (L * OSC_U) / (2 * Z);
+    return Math.sqrt(sig * sig + 3 * tau * tau);
+  };
+  const columnRFor = (h, L, bi, floor) => {
+    let lo = floor;
+    if (columnSigma(lo, h, L, bi) <= sigmaY) return lo;
+    let hi = lo * 2;
+    while (columnSigma(hi, h, L, bi) > sigmaY) hi *= 2;
+    for (let k = 0; k < 40; k++) { const m = (lo + hi) / 2; if (columnSigma(m, h, L, bi) <= sigmaY) hi = m; else lo = m; }
+    return hi;
+  };
+  const legSigma = (ro, L) => columnSigma(ro, legH, L, bore);
+  const legRFor = (L) => columnRFor(legH, L, bore, COCK_LEG_BORE_R + STOCK_MIN_U);
+  const postH = FUSEE_COCK_TOP - FUSEE_BOSS_BOT;
+  const bushBore = TRAIN_STAFF_R + PIVOT_BORE_CLEAR;
+  // The boss: the bush plus a stock floor of nickel round it, and as wide as
+  // the arm where it leaves it.
+  const bossR = Math.max(bushBore + STOCK_MIN_U, widthAt(bushBore + STOCK_MIN_U) / 2);
+  // 3. The keeps.
+  // (the three-quarter plate is not a keep either: the leg passes it through
+  // its own opening, held to every opening and boss by plateHoleClear, and the
+  // arm stands a margin over its face by construction; read as a keep, its
+  // whole-disc box closed every reach)
+  const swept = new Set([hammerGroup, forkGroup, balanceGroup, hairspringGroup, backPlate, resetRod, hackRod, threeQuarterPlate]);
+  const keepsIn = async (zLo, zHi, skip) => {
+    const keeps = [], v = new THREE.Vector3(), walk = [];
+    movement.updateMatrixWorld(true);
+    for (const child of movement.children) {
+      if (swept.has(child) || skip(child)) continue;
+      child.traverse((o) => { if (o.isMesh && o.geometry?.attributes?.position && !o.userData?.schematic) walk.push([child, o]); });
+    }
+    for (const [child, o] of walk) {
+      await breathe(376);
+      if (skip(o)) continue;
+      o.geometry.computeBoundingBox();
+      const b = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
+      if (b.max.z < zLo || b.min.z > zHi) continue;
+      let cr = 0;
+      const cx = (b.min.x + b.max.x) / 2, cy = (b.min.y + b.max.y) / 2;
+      const pos = o.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+        cr = Math.max(cr, Math.hypot(v.x - cx, v.y - cy));
+      }
+      keeps.push({ b, cx, cy, cr, unit: labelEntries.find((e) => e.obj === child)?.name ?? '(unlabeled)', mesh: o.name || o.geometry.type });
+    }
+    return keeps;
+  };
+  const keepClear = (keeps, x, y) => {
+    let c = Infinity, who = null;
+    for (const k of keeps) {
+      const bx = clamp(x, k.b.min.x, k.b.max.x), by = clamp(y, k.b.min.y, k.b.max.y);
+      const d = Math.max(Math.hypot(x - bx, y - by), Math.hypot(x - k.cx, y - k.cy) - k.cr);
+      if (d < c) { c = d; who = k.unit + ':' + k.mesh; }
+    }
+    return { c, who };
+  };
+  // the chain is the ONE mover between the plates here whose pose is a wind:
+  // its run is held by its hull over the reserve instead of its mesh
+  const isChain = (o) => o === chainMesh;
+  const columnKeeps = await keepsIn(BACK_PLATE_Z + BACK_PLATE_T / 2, FUSEE_COCK_BOT, isChain);
+  // the bar's band, a margin each way; the fusee's own top (its staff, the
+  // windTop continuation and the square) is the boss's tenant, not a keep
+  const ownTop = new Set();
+  barrelArbor.getObjectByName('fuseeUpperPivot') && ownTop.add(barrelArbor.getObjectByName('fuseeUpperPivot'));
+  windTop.traverse((o) => ownTop.add(o));
+  const barKeeps = await keepsIn(FUSEE_COCK_BOT - CLEAR_MARGIN, FUSEE_COCK_TOP + CLEAR_MARGIN, (o) => isChain(o) || ownTop.has(o));
+  // ...and the crank's band, in the cone window's air: the boss, the arm to
+  // the post and the post itself, which runs up to the bar
+  const crankKeeps = await keepsIn(FUSEE_BOSS_BOT - CLEAR_MARGIN, FUSEE_COCK_TOP + CLEAR_MARGIN, (o) => isChain(o) || ownTop.has(o));
+  // The post stands one margin inside the cone window's solved edge: the
+  // crank is the window's tenant and touches no plate.
+  const coneWin = TQ_WINDOWS.report.find((w) => w.name === 'fusee');
+  const coneR = coneWin?.cut ? Math.min(...coneWin.rOut) : 0;
+  if (!coneWin?.cut) console.warn('§336: the cone window is not cut — the fusee cock\'s boss has no air to stand in');
+  const stadium = (x, y, s) => {
+    const vx = s.bx - s.ax, vy = s.by - s.ay, L2 = vx * vx + vy * vy || 1e-9;
+    const t = clamp(((x - s.ax) * vx + (y - s.ay) * vy) / L2, 0, 1);
+    return Math.hypot(x - s.ax - t * vx, y - s.ay - t * vy) - s.r;
+  };
+  // The chain's run over the whole reserve lies inside the hull of the
+  // fusee's widest wrap and the drum's: the stadium of the larger of the two
+  // circles is a conservative cover of that hull.
+  let fuseeWrapR = 0;
+  for (let i = 0; i <= 64; i++) fuseeWrapR = Math.max(fuseeWrapR, fuseeGrooveAt((i / 64) * FUSEE_F_ACTIVE).r);
+  const chainHull = { ax: C.x, ay: C.y, bx: drumPos.x, by: drumPos.y, r: Math.max(fuseeWrapR, DRUM_WRAP_R) + CHAIN_END_R_OUT };
+  const baseOpenings = [...BACK_PLATE_CUT.holes, ...BACK_PLATE_LATE_HOLES];
+  const baseSlots = [...BACK_PLATE_CUT.slots, ...BACK_PLATE_LATE_SLOTS];
+  const windowEdges = tqWindowEdges(TQ_WINDOWS.polys, null, C.x, C.y, plateR * 2);
+  const inPoly = (pts, x, y) => {
+    let inside = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      const [xi, yi] = pts[i], [xj, yj] = pts[j];
+      if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  };
+  const least = (...pairs) => { let c = Infinity, who = null; for (const [d, w] of pairs) if (d < c) { c = d; who = w; } return { c, who }; };
+  // the leg's column, between the plates (padR: the pad it lands on)
+  const columnClear = (x, y, padR) => {
+    const k = keepClear(columnKeeps, x, y);
+    const pairs = [[k.c - padR - CLEAR_MARGIN, k.who], [stadium(x, y, chainHull) - padR - CLEAR_MARGIN, 'the chain\'s run over the reserve']];
+    for (const o of LOW_LINKAGE_OBSTACLES) pairs.push([(o.ax === undefined ? Math.hypot(x - o.x, y - o.y) - o.r : stadium(x, y, o)) - padR - CLEAR_MARGIN, 'low corridor']);
+    pairs.push([FORK_SWEEP.clear(x, y) - padR - CLEAR_MARGIN, 'fork sweep']);
+    for (const h of baseOpenings) pairs.push([Math.hypot(x - h.x, y - h.y) - h.r - padR - STOCK_MIN_U, 'base plate opening']);
+    for (const sl of baseSlots) pairs.push([stadium(x, y, sl) - padR - STOCK_MIN_U, 'base plate slot']);
+    return least(...pairs);
+  };
+  // its hole through the three-quarter plate (holeR: the leg's widest, plus a margin)
+  const plateHoleClear = (x, y, holeR) => {
+    const pairs = [[tqOpeningClearance(x, y) - holeR - TQ_LAND_MIN, 'a plate opening'],
+      [tqKeepClearanceIn(NO_KEEPS, x, y) - holeR - CLEAR_MARGIN, 'a pivot boss in the plate'],
+      [tqEdgeLand(windowEdges, x, y) - holeR - TQ_LAND_MIN, 'a window\'s edge']];
+    for (const w of TQ_WINDOWS.polys) if (inPoly(w.pts, x, y)) pairs.push([-1, `inside window '${w.name}'`]);
+    return least(...pairs);
+  };
+  const barClear = (x, y, hw, keeps = barKeeps) => {   // hw: the half-width at that station
+    const k = keepClear(keeps, x, y);
+    return least([k.c - hw - CLEAR_MARGIN, k.who], [Math.hypot(x - P.balance.x, y - P.balance.y) - Math.max(BAL_OUTER_R, HAIRSPRING_SWEPT_R) - hw - CLEAR_MARGIN, 'balance']);
+  };
+  const plateEdge = (x, y) => (FORM ? formInset(x, y) : plateR - Math.hypot(x, y));
+  // The POST: as far out as the window's air allows (its edge one margin
+  // inside the cone window's solved rim), sized by the column law for its own
+  // height and the twist the crank's reach puts on it, and never narrower
+  // than the arms it joins. Its radius and its station depend on each other,
+  // so they are iterated to the fixed point (a few rounds: the twist grows
+  // with the station only as its cube root).
+  // The window is cut to half-degree CHORDS, which sag inside its circle by
+  // r(1 − cos 0.25°); the post keeps its margin from the chords, so that sag
+  // (twice, §335's rule for the ring) comes off its station.
+  const coneEdge = coneR - 2 * coneR * (1 - Math.cos(0.25 * DEG2RAD));
+  const postFor = (() => {
+    let postR = Math.max(widthAt(coneEdge) / 2, STOCK_MIN_U), sStep = coneEdge - CLEAR_MARGIN - postR;
+    for (let k = 0; k < 30; k++) {
+      const r = Math.max(columnRFor(postH, Math.max(sStep, 0), 0, STOCK_MIN_U), widthAt(sStep) / 2);
+      sStep = coneEdge - CLEAR_MARGIN - r;
+      if (Math.abs(r - postR) < 1e-9) { postR = r; break; }
+      postR = r;
+    }
+    return { postR, sStep };
+  })();
+  // 4. The scan.
+  let best = null, near = null;
+  const landscape = [];
+  for (let dd = 0; dd < 360; dd += 2) {
+    await breathe(377);
+    const a = dd * DEG2RAD, cs = Math.cos(a), sn = Math.sin(a);
+    let bearingNear = null;
+    const series = [];   // every reach tried on this bearing, for the report
+    for (let reach = 2; ; reach += 0.25) {
+      if (best && reach >= best.reach - 1e-9) break;
+      const { sStep, postR } = postFor;
+      if (!(sStep > bossR)) break;               // no post fits inside the window's air beyond the boss
+      const legR = legRFor(reach), padR = legR * 1.5, holeR = legR * 1.15 + CLEAR_MARGIN;
+      const nodeR = Math.max(legR * 1.35, widthAt(reach) / 2);
+      const hw = widthAt(reach) / 2;              // the arm's root, for the record
+      if (reach < sStep + postR + nodeR + CLEAR_MARGIN) continue;
+      const x = C.x + cs * reach, y = C.y + sn * reach;
+      const mPlate = plateEdge(x, y) - Math.max(nodeR, padR) - STOCK_MIN_U;
+      if (mPlate < 0) break;   // past the rim, every farther reach is too
+      const col = columnClear(x, y, padR);
+      const hole = plateHoleClear(x, y, holeR);
+      let mBar = Infinity, barWho = null;
+      if (col.c >= 0 && hole.c >= 0) {
+        // the crank, in the window's air: the arm from the boss to the post, and the post
+        for (let sb = bossR + CLEAR_MARGIN; sb <= sStep && mBar >= 0; sb += 0.5) {
+          const bc = barClear(C.x + cs * sb, C.y + sn * sb, widthAt(sb) / 2, crankKeeps);
+          if (bc.c < mBar) { mBar = bc.c; barWho = bc.who; }
+        }
+        { const bc = barClear(C.x + cs * sStep, C.y + sn * sStep, postR, crankKeeps); if (bc.c < mBar) { mBar = bc.c; barWho = bc.who; } }
+        // the bar over the plate, from the post to the foot
+        for (let sb = sStep + postR; sb <= reach - nodeR && mBar >= 0; sb += 0.5) {
+          const bc = barClear(C.x + cs * sb, C.y + sn * sb, widthAt(sb) / 2);
+          if (bc.c < mBar) { mBar = bc.c; barWho = bc.who; }
+        }
+        const fc = barClear(x, y, nodeR);
+        if (fc.c < mBar) { mBar = fc.c; barWho = fc.who; }
+      }
+      const short = Math.min(mPlate, col.c, hole.c, mBar);
+      const row = { x, y, a, reach, short, hw, postR, sStep, legR, nodeR, padR, holeR, mPlate, mColumn: col.c, colWho: col.who, mHole: hole.c, holeWho: hole.who, mBar, barWho };
+      series.push([reach, +short.toFixed(3), +col.c.toFixed(3), col.who, +hole.c.toFixed(3), hole.who, mBar === Infinity ? null : +mBar.toFixed(3), barWho]);
+      if (!near || short > near.short) near = row;
+      if (!bearingNear || short > bearingNear.short) bearingNear = row;
+      if (short < 0) continue;
+      if (!best || reach < best.reach - 1e-9) best = row;
+      break;
+    }
+    if (bearingNear) bearingNear.series = series;
+    landscape.push(bearingNear);
+  }
+  let foot = best;
+  if (!foot) {
+    const walls = [[near.mPlate, 'the plate runs out'], [near.mColumn, `the leg's column (${near.colWho})`],
+      [near.mHole, `its hole through the plate (${near.holeWho})`], [near.mBar, `the bar over the plate (${near.barWho})`]].sort((p, q) => p[0] - q[0]);
+    console.warn(`§336: no clear footing for the fusee cock — best near-miss is short by ${(-near.short).toFixed(3)} at `
+      + `(${near.x.toFixed(2)}, ${near.y.toFixed(2)}), reach ${near.reach.toFixed(2)}, bearing ${(near.a / DEG2RAD).toFixed(1)}°; bound by ${walls[0][1]}. `
+      + 'Seated there anyway so the rest of the boot reports — the cock is KNOWN BAD.');
+    foot = { ...near, missed: true };
+  }
+  // 5. The build.
+  await breathe(378);
+  const L = foot.reach;
+  const cs = Math.cos(foot.a), sn = Math.sin(foot.a);
+  const step = { x: C.x + cs * foot.sStep, y: C.y + sn * foot.sStep, r: foot.postR };
+  const cock = new THREE.Group();
+  // The foot: makeEscapeBridge's own foot boss, leg, pad and screw (a chain of
+  // one node draws no bar).
+  const upper = G.makeEscapeBridge({
+    chain: [{ x: foot.x, y: foot.y, r: foot.nodeR, foot: true, legR: foot.legR }], thickness: T,
+    foot: { headR: COCK_SCREW_HEAD_R, engage: BACK_PLATE_T },
+    footDrop: FUSEE_COCK_BOT - (BACK_PLATE_Z + BACK_PLATE_T / 2),
+  });
+  upper.position.set(0, 0, FUSEE_COCK_MID);
+  cock.add(upper);
+  // The boss: the bush, the same builder's pivot boss (a chain of one node).
+  const lower = G.makeEscapeBridge({ chain: [{ x: C.x, y: C.y, r: bossR, bore: bushBore }], thickness: T, footDrop: 0 });
+  lower.position.set(0, 0, FUSEE_BOSS_MID);
+  cock.add(lower);
+  // The two ARMS, cut to the taper: a strip whose half-width at distance s
+  // from the bush is widthAt(s)/2, from s0 to s1 along the cock's bearing,
+  // extruded T deep and centred on zMid. Each overlaps the member at either
+  // end by its own radius (the boss, the post, the foot node), so the arm is
+  // one body with them.
+  const armGeo = (s0, s1) => {
+    const N = 24, shape = new THREE.Shape(), left = [], right = [];
+    for (let k = 0; k <= N; k++) {
+      const sk = s0 + ((s1 - s0) * k) / N, w = widthAt(sk) / 2;
+      left.push([C.x + cs * sk - sn * w, C.y + sn * sk + cs * w]);
+      right.push([C.x + cs * sk + sn * w, C.y + sn * sk - cs * w]);
+    }
+    const pts = [...left, ...right.reverse()];
+    pts.forEach(([x, y], k) => (k ? shape.lineTo(x, y) : shape.moveTo(x, y)));
+    shape.closePath();
+    const g = new THREE.ExtrudeGeometry(shape, { depth: T, bevelEnabled: false });
+    g.translate(0, 0, -T / 2);
+    return g;
+  };
+  const lowerArm = new THREE.Mesh(armGeo(0, foot.sStep), MATS.ribbedNickel);
+  lowerArm.name = 'fuseeCockCrank';
+  lowerArm.position.z = FUSEE_BOSS_MID;
+  cock.add(lowerArm);
+  const upperArm = new THREE.Mesh(armGeo(foot.sStep, L), MATS.ribbedNickel);
+  upperArm.name = 'fuseeCockArm';
+  upperArm.position.z = FUSEE_COCK_MID;
+  cock.add(upperArm);
+  // The post joining them, from the boss's underside to the arm's top.
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(foot.postR, foot.postR, postH, 28), MATS.ribbedNickel);
+  post.geometry.rotateX(Math.PI / 2);
+  post.name = 'fuseeCockPost';
+  post.position.set(step.x, step.y, (FUSEE_BOSS_BOT + FUSEE_COCK_TOP) / 2);
+  cock.add(post);
+  cock.traverse((o) => { o.userData.notPlateLoad = true; });
+  movement.add(cock);
+  const g = cock;
+  for (const f of upper.userData.footScrews)
+    declareFrameJoint({ joint: 'Fusee cock ⇄ base plate', clamped: 'fusee cock slab and leg', host: 'base plate',
+      frame: upper, x: f.x, y: f.y, top: f.z, headR: f.headR, headT: f.headT, shank: f.shank, clamp: f.clamp });
+  BACK_PLATE_LATE_HOLES.push({ x: foot.x, y: foot.y, r: COCK_PLATE_TAP_R });
+  recutBackPlate();
+  tqHoles.push({ x: foot.x, y: foot.y, r: foot.holeR });   // the leg's passage through the three-quarter plate
+  registerExplode(g, 0, 7);   // the group stands at the movement's origin; its parts carry their own heights
+  registerLabel('Fusee cock', g);
+  const barSigma = 6 * R * (L * OSC_U) / (T_m * (widthAt(L) * OSC_U) ** 2);
+  // The tip's deflection, by the unit-load integral over the taper:
+  // δ = ∫ R·s² / (E·I(s)) ds, I(s) = T·b(s)³/12 in plane.
+  const E = STOCK.nickelSilver.E;
+  let deflect = 0;
+  { const N = 400; for (let k = 0; k < N; k++) { const sk = (k + 0.5) * L / N, b = widthAt(sk) * OSC_U; deflect += R * (sk * OSC_U) ** 2 / (E * T_m * b ** 3 / 12) * (L / N) * OSC_U; } }
+  const deflect_mm = deflect * 1000;
+  return {
+    obj: g, foot, step, T, bot: FUSEE_COCK_BOT, mid: FUSEE_COCK_MID, top: FUSEE_COCK_TOP, bossMid: FUSEE_BOSS_MID, L,
+    load: { R_N: R, R_running_N: (chain.m + gear.m) / span, chain: { F_N: chain.F, r_u: chain.r, z: chain.z }, gear: { F_N: gear.F, z: gear.z },
+      stop: { F_N: stop.F, r_u: stop.r, z: stop.z }, wind: { F_N: wind.F, r_u: wind.r, z: wind.z }, zLow, zUp },
+    bar: { rootWidth_u: widthAt(L), widthAtWindow_u: widthAt(coneR), shearFloor_u: bShear, sigma_Pa: barSigma, yield_Pa: sigmaY, deflect_mm },
+    boss: { r_u: bossR }, post: { r_u: foot.postR, s_u: foot.sStep, h_u: postH, sigma_Pa: columnSigma(foot.postR, postH, foot.sStep, 0) },
+    leg: { r_u: foot.legR, h_u: legH, sigma_Pa: legSigma(foot.legR, L), yield_Pa: sigmaY },
+    footTwist_Nmm: R * L * UNIT_MM,
+    landscape,
+  };
+})();
+// ---------------------------------------------------------------------------
 // §62 — THE WINDOWS, RE-SOLVED against the finished movement, and the plate
 // re-cut to the answer.
 //
@@ -57287,6 +57766,7 @@ const UNIT_GROUPS = new Map([
   ['Fusee & chain', new Map([
     ['Fusee & great wheel', null], ['Chain', null], ['Mainspring drum', null],
     ['Maintaining detent', null], ['Set-up work', null],
+    ...(FUSEE_COCK_BUILT ? [['Fusee cock', null]] : []),   // §336 — the fusee's top bush is in it (§47's build)
     [STOPWORK ? 'Winding stop-work' : 'Winding arrest', null], // §47 — the chain-thrown finger and its lug live with the cone they arrest (§329 landing 4: or the stop-work, under its key)
   ])],
   ['Keyless & winding', new Map([
@@ -62751,6 +63231,24 @@ if (ALARM_BUILT) {
 // undermined one says so.
 await breathe(352);
 checkPlateWindows('movement complete');
+// §336 — THE FUSEE COCK'S STALL BOUND, held against the stop that was built.
+// The cock was sized before §47's arrest existed, with the stop's force bounded
+// at the cone's smallest groove radius as its lever and the cone's top as its
+// height. The lug is metal now, so the bound is checked against it: its lever
+// (WIND_ARREST_STOP_ARM, the beak face's distance from the axis — a longer
+// lever needs less force) at or over the bound's, and the lug at or under the
+// bound's height (a shorter lever about the lower bush). Outside either, the
+// cock was sized for a smaller load than the stop puts on it.
+{
+  const lug = barrelArbor.getObjectByName('windArrestLug');
+  if (lug && FUSEE_COCK) {
+    const b = FUSEE_COCK.load.stop;
+    const zMax = new THREE.Box3().setFromObject(lug).max.z;
+    if (!(WIND_ARREST_STOP_ARM >= b.r_u - 1e-9) || zMax > b.z + 1e-9)
+      console.warn(`§336: the winding arrest's stop (lever ${WIND_ARREST_STOP_ARM?.toFixed(3)}, lug top ${zMax.toFixed(3)}) stands outside the stall bound `
+        + `the fusee cock was sized to (lever ≥ ${b.r_u.toFixed(3)}, z ≤ ${b.z.toFixed(3)}) — the cock carries more than its section was derived for`);
+  }
+}
 
 await breathe(353);
 tick(0); // seed correct initial pose before the first paint
@@ -64016,6 +64514,11 @@ window.__clock = {
   get escapeCock() {
     if (!ESCAPE_COCK) return null;
     const { obj, ...rest } = ESCAPE_COCK;
+    return rest;
+  },
+  get fuseeCock() {   // §336
+    if (!FUSEE_COCK) return null;
+    const { obj, ...rest } = FUSEE_COCK;
     return rest;
   },
   declaredTravels,   // §36 job A: the pose laws sampling cannot recover
