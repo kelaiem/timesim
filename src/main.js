@@ -9018,6 +9018,62 @@ async function buildSettingMetal(B, parent, { candidate = false } = {}) {
 // (6°) and at most 0.2017 for the other eight — first-feasible IS the argmax
 // today (all ten open bearings, measured while planning TODO 157 by
 // rewriting this scan to run past its first open bearing).
+// §325 / §329 — TWO WHEELS THE FOLD COULD NOT SEE. CAP_SOLVE below judges each candidate fold against the transfer
+// arbor and the reserve's own swing, but two wheels it can land on are built thousands of lines AFTER it: the HOUR WHEEL
+// (dial side, under the motion works) and the reserve's INPUT PINION (fast on the barrel's arbor; the swing solve moves the
+// wheels round it and never reads it). On the default arrangement the fold happens to land clear of both. On the −140°
+// no-alarm arrangement the barrel stands beside the keyless works and the battery measured the fold ON both: the corner
+// cap 0.04 into the hour wheel, the setting traverse 0.02 into the input pinion (stopwork-140's sweep, #880/#881).
+// So the judge reads each as an ENVELOPE — the metal's own tip radius and z extent, MEASURED off the builder with the
+// exact arguments its build uses (cutTipR's rule: "the wall is MEASURED, not modelled"), placed by the same frame law
+// the build places it by. The arguments are one object each, used by the build below as well, so the two cannot part;
+// and each build asserts the envelope it was judged by against its own metal once it exists.
+const MW_HOUR_WHEEL_ARGS = { name: 'mwHourWheel', module: MW_MODULE_2, teeth: MW_HOUR_TEETH, mates: [MW_PINION_TEETH],
+  thickness: MW_WHEEL_T, boreR: HOUR_TUBE_OUTER, spokes: 4, material: MATS.brass, hub: false };   // TODO 144: solved at the stack
+const RSV_P0_ARGS = { name: 'reservePinion0', module: rsvModule0, teeth: rsvTeethP0, mates: [rsvTeethW1], thickness: 1.2,
+  boreR: RSV_ARB_EXT_R, material: MATS.steel };
+function cutEnvelope(builder, args) {   // the part's metal in its own frame: farthest radius from its axis, and its z extent
+  const g = builder(args);
+  g.updateMatrixWorld(true);   // an unparented root: world IS the part's own frame
+  let r = 0, zLo = Infinity, zHi = -Infinity;
+  const v = new THREE.Vector3();
+  g.traverse((o) => { if (!o.isMesh) return; const pos = o.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld); r = Math.max(r, Math.hypot(v.x, v.y)); zLo = Math.min(zLo, v.z); zHi = Math.max(zHi, v.z); }
+    o.geometry.dispose(); });
+  return { r, zLo, zHi };
+}
+// world envelopes. The hour wheel rides dialFace at MW_Z2: dial-local (x, y, z) is world (P.dial.x − x, P.dial.y + y,
+// Z_DIAL − z) (the frame turned 180° about Y under dialGroup at Z_DIAL), so its axis is the dial centre and its band flips.
+// The input pinion is fast on rsvArbor0 at (P.barrel, Z_RSV).
+const FOLD_WHEEL_ENVELOPES = (() => {
+  const h = cutEnvelope(G.makeGear, MW_HOUR_WHEEL_ARGS), p0 = cutEnvelope(G.makePinion, RSV_P0_ARGS);
+  return [
+    { name: 'hour wheel', x: P.dial.x, y: P.dial.y, r: h.r, zLo: Z_DIAL - (MW_Z2 + h.zHi), zHi: Z_DIAL - (MW_Z2 + h.zLo) },
+    { name: 'reserve input pinion', x: P.barrel.x, y: P.barrel.y, r: p0.r, zLo: Z_RSV + p0.zLo, zHi: Z_RSV + p0.zHi },
+  ];
+})();
+// rule 6 — the envelope the fold was judged by must BE the wheel's metal once it exists (its radius about the axis the
+// judge used and its z band in the world; neither moves as the wheel turns, so this is a derivation, not a pose claim)
+const assertFoldEnvelope = (name, root) => {
+  const e = FOLD_WHEEL_ENVELOPES.find((q) => q.name === name);
+  let r = 0, zLo = Infinity, zHi = -Infinity;
+  const v = new THREE.Vector3();
+  root.traverse((o) => { if (!o.isMesh) return; o.updateWorldMatrix(true, false); const pos = o.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld); r = Math.max(r, Math.hypot(v.x - e.x, v.y - e.y)); zLo = Math.min(zLo, v.z); zHi = Math.max(zHi, v.z); } });
+  const off = Math.max(Math.abs(r - e.r), Math.abs(zLo - e.zLo), Math.abs(zHi - e.zHi));
+  if (!(off < 1e-6))
+    console.warn(`setting traverse: the ${name}'s envelope the fold was judged by misses its metal by ${off.toExponential(2)} (r ${r.toFixed(4)} vs ${e.r.toFixed(4)}, z ${zLo.toFixed(4)}..${zHi.toFixed(4)} vs ${e.zLo.toFixed(4)}..${e.zHi.toFixed(4)})`);
+};
+const foldWheelClear = (pts) => {   // the worst 3D clearance of a candidate's points to either envelope, less the margin
+  let m = Infinity, by = null;
+  for (const e of FOLD_WHEEL_ENVELOPES) for (const q of pts) {
+    const dz = q[2] < e.zLo ? e.zLo - q[2] : q[2] > e.zHi ? q[2] - e.zHi : 0;
+    const dr = Math.max(0, Math.hypot(q[0] - e.x, q[1] - e.y) - e.r);
+    const c = Math.hypot(dr, dz) - CLEAR_MARGIN;
+    if (c < m) { m = c; by = e.name; }
+  }
+  return { m, by };
+};
 const CAP_SOLVE = await (async () => {
   const capAt = (dl) => {
     const cs = Math.cos(dl), sn = Math.sin(dl);
@@ -9091,6 +9147,8 @@ const CAP_SOLVE = await (async () => {
     await breathe(77);
     const arbM0 = arbClear(cand0);
     if (arbM0 < 0) { disposeTree(scratch); return { m: arbM0, clause: 'transfer arbor', s: 0 }; }
+    const wh0 = foldWheelClear(cand0);
+    if (wh0.m < 0) { disposeTree(scratch); return { m: wh0.m, clause: wh0.by, s: 0 }; }
     const r0 = await solveReserveSwing(cand0, rsvStatic);
     if (r0.swing === null) { disposeTree(scratch); return { m: r0.bestC - CLEAR_MARGIN, clause: `reserve ${r0.bestMember}`, s: r0.bestSwing / DEG2RAD }; }
     // Phase 0 clears — only NOW pay for the full multi-phase judgement.
@@ -9100,9 +9158,11 @@ const CAP_SOLVE = await (async () => {
     const arbM = arbClear(cand);
     await breathe(79);
     if (arbM < 0) return { m: arbM, clause: 'transfer arbor', s: 0 };
+    const wh = foldWheelClear(cand);
+    if (wh.m < 0) return { m: wh.m, clause: wh.by, s: 0 };
     const r = await solveReserveSwing(cand, rsvStatic);
     if (r.swing === null) return { m: r.bestC - CLEAR_MARGIN, clause: `reserve ${r.bestMember}`, s: r.bestSwing / DEG2RAD };
-    return { m: Math.min(arbM, r.clear - CLEAR_MARGIN), clause: 'open', s: r.swing / DEG2RAD, swing: r.swing };
+    return { m: Math.min(arbM, wh.m, r.clear - CLEAR_MARGIN), clause: 'open', s: r.swing / DEG2RAD, swing: r.swing };
   };
   // every bearing tried is RECORDED (the clause, its margin, the best swing)
   // and published on window.__clock.settingFold for
@@ -21518,10 +21578,7 @@ const hourWheelGroup = new THREE.Group();
 dialFace.add(hourWheelGroup);
 registerLabel('Hour wheel', hourWheelGroup);
 await breathe(163);
-const mwHourWheel = G.makeGear({ name: 'mwHourWheel',
-  module: MW_MODULE_2, teeth: MW_HOUR_TEETH, mates: [MW_PINION_TEETH], thickness: MW_WHEEL_T,   // TODO 144: solved at the stack
-  boreR: HOUR_TUBE_OUTER, spokes: 4, material: MATS.brass, hub: false,
-});
+const mwHourWheel = G.makeGear(MW_HOUR_WHEEL_ARGS);   // the fold's judge read this wheel's envelope off the same arguments (FOLD_WHEEL_ENVELOPES)
 // §194 — the MOTION WORKS, the movement's 12:1. It was the one chain with no
 // phase solve of its own, so before §194's rows nothing anywhere named these
 // two meshes and standing rule 2's own worked example (the hour hand arrives
@@ -21539,6 +21596,7 @@ await breathe(164);
 mwHourWheel.traverse((o) => { if (o.isMesh) o.name = 'mwHourWheel'; }); // TODO 6 contact-floor selector
 mwHourWheel.position.z = MW_Z2;
 hourWheelGroup.add(mwHourWheel);
+assertFoldEnvelope('hour wheel', mwHourWheel);
 {
   // TODO 26 — the hour tube CROSSES the dial, so a thicker dial makes it
   // LONGER, not shorter: the hand plane rides forward with the face (the
@@ -22332,7 +22390,7 @@ for (const m of rsvTrainWarnsAt(RESERVE_LOCAL, reserveWellR, rsvModule1)) consol
 // TODO 175 — p0 is PRESSED on the barrel-arbor extension (the slip coupling
 // its floors row declares), so its bore IS the extension's radius; it took
 // makePinion's default 0.4, inside the 0.55 rod.
-const reservePinion0 = G.makePinion({ name: 'reservePinion0', module: rsvModule0, teeth: rsvTeethP0, mates: [rsvTeethW1], thickness: 1.2, boreR: RSV_ARB_EXT_R, material: MATS.steel });
+const reservePinion0 = G.makePinion(RSV_P0_ARGS);   // the fold's judge read this pinion's envelope off the same arguments (FOLD_WHEEL_ENVELOPES)
 const rsvWheel1 = G.makeGear({ name: 'rsvWheel1', module: rsvModule0, teeth: rsvTeethW1, mates: [rsvTeethP0], thickness: 1.0, boreR: RSV_W1_BORE_R, spokes: 4, material: MATS.brass });
 const reservePinion1 = G.makePinion({ name: 'reservePinion1', module: rsvModule1, teeth: rsvTeethP1, mates: [RSV_P1_MATE], thickness: 1.2, boreR: RSV_W1_BORE_R, material: MATS.steel });
 // §234 — the swing solve's z-bands were read off `gearFaceReach` before these
@@ -22377,6 +22435,7 @@ const rsvW1Pos = rsvW1PosSolved; // §125 Tier B — the solved bearing (identic
 const rsvArbor0 = new THREE.Group(); // p0 — slip-coupled on the barrel arbor axis
 rsvArbor0.position.set(P.barrel.x, P.barrel.y, Z_RSV);
 rsvArbor0.add(reservePinion0);
+assertFoldEnvelope('reserve input pinion', reservePinion0);
 reserveTrain.add(rsvArbor0);
 // §234 step 3a coherence guard — RSV_P0_TOP_Z (near SETTING_ROD_R, far above
 // this point in the file) is a hand-off across the build order: the setting
