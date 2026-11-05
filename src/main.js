@@ -5146,7 +5146,7 @@ for (const arbor of [centerArbor, thirdArbor, fourthArbor]) {
 // AND ONLY ON §47'S BUILD. The stop-work (`?arrest=stopwork`, §329) plants its
 // star's stud in plate over the cone — the webs this removes — and finds no
 // site without them, so on that build the bush stays in the plate exactly as
-// before; TODO 287 owns re-siting the stud.
+// before; TODO 288 owns re-siting the stud.
 const FUSEE_COCK_BUILT = !STOPWORK;
 const LETDOWN_H = 0.9; // proud of its face: enough engagement for a let-down key
 const FUSEE_COCK_T = LETDOWN_H - CLEAR_MARGIN;

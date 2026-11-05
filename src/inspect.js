@@ -631,7 +631,7 @@ const STOPWORK_ARREST = SPEC.arrest === 'stopwork';
 // this plate: the plate keeps no boss over the cone. On the stop-work's build
 // the bush stays in the three-quarter plate, because the stop-work's stud is
 // planted in plate over the cone (the webs §336 removes) and has no site
-// without it — TODO 287 owns re-siting it.
+// without it — TODO 288 owns re-siting it.
 const FUSEE_COCK_BUILT = !STOPWORK_ARREST;
 if (FUSEE_COCK_BUILT) {
   MECH_GRAPH.support.push(['Fusee & great wheel', 'Fusee cock'], ['Fusee cock', 'plate']);
