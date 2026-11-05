@@ -1363,6 +1363,19 @@ export const SPRING_TAU_Y_PA = SPRING_SIGMA_Y_PA / Math.sqrt(3);
 // figure by a fraction of a decibel; a grade NOBODY would accept (brass at
 // steel's modulus) would move it by whole ones, which is why the row names
 // its source. materials.js's `stockKeyOf` maps each material here.
+// §336 — THE PLATE METAL'S YIELD, which no member asked for until a cock had
+// to carry the fusee: the frame's nickel silver (STOCK.nickelSilver, CuNi18Zn20
+// / CDA C75200). A BAND over the alloy's published tempers, never one number —
+// FRICTION's rule for what the movement cannot measure — and a member is held to
+// its LOW end, the annealed temper, because nothing specifies the cock's stock as
+// work-hardened. The figures are CDA's C75200 temper table as recalled
+// (annealed ≈ 25 ksi, half hard ≈ 74 ksi); §336's record names them for a
+// source check.
+export const NICKEL_SILVER_SIGMA_Y_BAND = Object.freeze({
+  low: 172e6, high: 510e6,
+  why: 'CuNi18Zn20 (CDA C75200): annealed ≈ 172 MPa to half hard ≈ 510 MPa yield; the low end governs',
+});
+export const NICKEL_SILVER_SIGMA_Y_PA = NICKEL_SILVER_SIGMA_Y_BAND.low;
 export const STOCK = Object.freeze({
   steel:        { rho: 7850,  E: STEEL_E_PA, nu: STEEL_NU, why: 'carbon/spring steel — §56\'s density, §137\'s modulus' },
   brass:        { rho: 8500,  E: 100e9, nu: 0.34, why: 'CuZn37 wrought brass (CDA C27400): 8400–8730 kg/m³, E 97–110 GPa' },

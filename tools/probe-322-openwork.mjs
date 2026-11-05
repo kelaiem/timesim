@@ -8,10 +8,12 @@
 //    vertex of `fuseeCone` about the barrel axis) plus one CLEAR_MARGIN — the
 //    intent takes the larger of the cone and the chain's edge, and today the
 //    chain's edge (6.19) still holds the cone (5.53), so the window frames the
-//    whole cone and only its boss ring and three webs cover any of it;
-//  · every cone vertex outside the window's boss that the plate still covers
-//    lies under one of the three webs — the webs are the only plate inside
-//    the reveal;
+//    whole cone;
+//  · §336: the PLATE covers no cone vertex at all. The fusee's top bush is in
+//    the fusee cock now (tools/probe-336-fusee-cock.mjs holds the cock), so the
+//    cone window solves bossless and no boss ring or web is left over the
+//    cone. (Until §336 the boss and three webs covered 26.3% of it, and this
+//    probe held that every covered vertex lay under one of them.);
 //  · the ESCAPE WHEEL stands wholly in the opening (no chaton holds it to the
 //    plate any more);
 //  · the FOURTH WHEEL keeps its upper bearing in the plate: a pivot collar
@@ -152,7 +154,7 @@ if (warns.length) fail(`boot is not silent: ${warns.length} warning(s)\n  ` + wa
 const f = out.fusee;
 console.log(`fusee window: wanted ${f.wanted.toFixed(4)}, cone silhouette ${f.coneR.toFixed(4)} + margin = ${(f.coneR + M).toFixed(4)}; boss r0 ${f.r0.toFixed(3)}, ${f.sectors} sectors, webs ${f.webW.toFixed(3)} wide; cone vertices clear of the plate ${(f.coneFree * 100).toFixed(1)}% of ${f.coneVerts}`);
 if (f.wanted < f.coneR + M - 1e-6) fail(`the fusee window's reveal does not contain the cone's silhouette plus the margin (${f.wanted.toFixed(4)} vs ${(f.coneR + M).toFixed(4)})`); else ok(`the fusee window contains the cone (reveal ${f.wanted.toFixed(3)} ≥ silhouette ${f.coneR.toFixed(3)} + ${M}: the chain's edge still sizes it)`);
-if (f.coneCoveredOffWeb) fail(`${f.coneCoveredOffWeb} covered cone vertices lie under no web and no boss`); else ok('every covered cone vertex is under a web or the boss');
+if (f.coneFree < 1) fail(`${((1 - f.coneFree) * f.coneVerts).toFixed(0)} cone vertices are still under the plate — §336 left no plate over the cone`); else ok('§336: the plate covers no cone vertex (the bush is in the fusee cock)');
 // the cut's tenants
 const r = out.reveal;
 console.log(`reveal, clear of the plate: escape wheel ${(r.escape * 100).toFixed(1)}%; under the plate (report): fourth wheel ${(r.fourth * 100).toFixed(1)}% clear (the lens of its rim the escape wheel's rounding shows), heart cam ${(r.heart * 100).toFixed(1)}%, reset hammer ${(r.hammer * 100).toFixed(1)}%; third wheel ${(r.third * 100).toFixed(1)}% [control], pallet fork ${(r.fork * 100).toFixed(1)}% [control]`);

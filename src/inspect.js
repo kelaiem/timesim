@@ -102,7 +102,8 @@ export const MECH_GRAPH = {
     // on the base plate instead.)
     ['Three-quarter plate', 'pillars'],
     ['pillars', 'plate'],
-    ['Fusee & great wheel', 'Three-quarter plate'], // upper pivots, jewelled bores
+    // (§336: the fusee's top bush — in the FUSEE COCK on §47's build, in this
+    // plate on the stop-work's — is pushed below, once STOPWORK_ARREST is known.)
     ['Center wheel', 'Three-quarter plate'],
     ['Third wheel', 'Three-quarter plate'],
     ['Fourth wheel', 'Three-quarter plate'],
@@ -625,6 +626,17 @@ if (FRAME_LANDS) {
 // three-quarter plate's underside, and the pin the cone carries drives the star both ways. The condition is the SPEC key main.js
 // builds on, for FRAME_LANDS' reason (checkGraph fails both ways). Every table below that names §47's unit is filtered the same way.
 const STOPWORK_ARREST = STOPWORK_BUILT;   // §329: the stop-work's build, derived once in layout.js (the shipped arrest where it stands)
+// §336 — THE FUSEE'S TOP BUSH. On §47's build it runs in the FUSEE COCK, which
+// stands on the base plate outside the great wheel with its arm carried over
+// this plate: the plate keeps no boss over the cone. On the stop-work's build
+// the bush stays in the three-quarter plate, because the stop-work's stud is
+// planted in plate over the cone (the webs §336 removes) and has no site
+// without it — TODO 288 owns re-siting it.
+const FUSEE_COCK_BUILT = !STOPWORK_ARREST;
+if (FUSEE_COCK_BUILT) {
+  MECH_GRAPH.support.push(['Fusee & great wheel', 'Fusee cock'], ['Fusee cock', 'plate']);
+  MECH_GRAPH.bridges.push('Fusee cock');
+} else MECH_GRAPH.support.push(['Fusee & great wheel', 'Three-quarter plate']);   // upper pivots, jewelled bores
 const dropArrestRows = (rows, names) => {
   if (!STOPWORK_ARREST) return;
   for (let i = rows.length - 1; i >= 0; i--) if (names(rows[i]).includes('Winding arrest')) rows.splice(i, 1);
@@ -720,7 +732,7 @@ const EXPECTED_PAIRS = [
   // on the base plate — TODO 184.) Everything else in
   // the movement must CLEAR it — which is the point of listing these
   // explicitly rather than excluding the plate from the sweep.
-  ['Fusee & great wheel', 'Three-quarter plate'],
+  // (§336: the fusee's top bush — see the push beside STOPWORK_ARREST.)
   // The pillars are a labelled unit now (they were a bare structure node,
   // invisible to this sweep — which is how a re-seated pillar ended up
   // inside the hack collar's swing without a single check firing). The one
@@ -902,7 +914,9 @@ const EXPECTED_PAIRS = [
   ['Alarm governor', 'Alarm governor anchor'],    // §107: the saw's tooth face on the pallet face — the governing contact itself
 ];
 dropArrestRows(EXPECTED_PAIRS, (r) => r);   // §329 landing 4 (see STOPWORK_ARREST)
-if (STOPWORK_ARREST) EXPECTED_PAIRS.push(['Winding stop-work', 'Three-quarter plate'], ['Winding stop-work', 'Fusee & great wheel']);   // the stud's seat; the pin in the star's slot and the lock disc in its arcs
+if (STOPWORK_ARREST) EXPECTED_PAIRS.push(['Winding stop-work', 'Three-quarter plate'], ['Winding stop-work', 'Fusee & great wheel']);
+// §336 — the fusee's top bush: in the cock's boss (its staff crosses the plate's cone window in air), or the plate's on the stop-work's build
+EXPECTED_PAIRS.push(FUSEE_COCK_BUILT ? ['Fusee & great wheel', 'Fusee cock'] : ['Fusee & great wheel', 'Three-quarter plate']);   // the stud's seat; the pin in the star's slot and the lock disc in its arcs
 // §325 landing 6 — the plate sits on the base plate's lands, not on pillar caps (the plate is a held fixture, in no sweep's pairs)
 if (FRAME_LANDS) for (let i = EXPECTED_PAIRS.length - 1; i >= 0; i--) if (EXPECTED_PAIRS[i].includes('pillars')) EXPECTED_PAIRS.splice(i, 1);
 // Same rigid assembly / coaxial stacks — not meaningful to test.
@@ -4959,6 +4973,7 @@ const FASTENED_EDGES = {
   'Balance cock ⇄ base plate': ['Balance cock', 'plate'],
   'Fork cock ⇄ base plate': ['Fork cock', 'plate'],
   'Escape cock ⇄ base plate': ['Escape cock', 'plate'],   // §322
+  ...(FUSEE_COCK_BUILT ? { 'Fusee cock ⇄ base plate': ['Fusee cock', 'plate'] } : {}),     // §336
 };
 // §325 landing 6 — the frame without pillars has ONE fastened edge where the pillars had two: the back plate's screws thread
 // into the base plate's own lands (there is no rivet, because there is no second part to rivet), and FRAME_JOINTS rows named
@@ -5027,6 +5042,11 @@ export const PLATE_SEATS = [
   { unit: "Escape cock", mesh: "bridgeLeg", kind: "fastened", why: "§322: the cock's leg, bored for its screw" },
   { unit: "Escape cock", mesh: "bridgeFoot", kind: "fastened", why: "§322: the leg's foot, on the plate face" },
   { unit: "Escape cock", mesh: "screwShanks", kind: "fastened", why: "§322: the cock's foot screw, tapped through the plate" },
+  ...(FUSEE_COCK_BUILT ? [
+    { unit: "Fusee cock", mesh: "bridgeLeg", kind: "fastened", why: "§336: the cock's leg, bored for its screw" },
+    { unit: "Fusee cock", mesh: "bridgeFoot", kind: "fastened", why: "§336: the leg's foot, on the plate face" },
+    { unit: "Fusee cock", mesh: "screwShanks", kind: "fastened", why: "§336: the cock's foot screw, tapped through the plate" },
+  ] : []),
   { unit: "Keyless works", mesh: "TorusGeometry#30", kind: "housed", why: "the crown stem's bushing, in the plate rim's notch (§186)" },
   { unit: "Keyless works", mesh: "BoxGeometry#31", kind: "housed", why: "the crown-stem sleeve, standing in the plate rim's notch" },
   { unit: "Setting lever", mesh: "CylinderGeometry#8", kind: "pivot", why: "the lever's pivot, seated mid-plate (#7 until TODO 214's boss, lug and screw renumbered the unit)" },
