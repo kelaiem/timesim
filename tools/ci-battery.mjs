@@ -1356,7 +1356,8 @@ const SPEC_POINTS = [
   // Power-reserve train, all 0), Balance cock ⇄ Fork cock at 0.0122. None touches the stop-work, fusee, drum or chain. So
   // the point joins validated-configs only once the -140° no-alarm arrangement itself sweeps clean (§325's open blocker).
   // TODO 283 (closed) bored the free band for its tubes, which removed the first (the stem stands 2.507 off the middle);
-  // the keyless fold's two and the cocks' remain.
+  // the setting fold's judge then took the hour wheel and the reserve input pinion as envelopes (FOLD_WHEEL_ENVELOPES in
+  // main.js), which removed the keyless fold's two. The cocks' 0.0122 remains.
   { name: 'stopwork-140', q: 'case=free&alarm=0&barrelstep=-140&rsvaz=0&rsvidl=2&frame=lands&arrest=stopwork&drumaz=140', expect: 'declared', sweep: true,
     expectWarns: ['§186: the rim-to-bore fit'],
     why: '§329 landing 4 — the stop-work on the alarm-off free case with the drum turned to 140° (−7.5% case area); boots exactly the free build\'s §186 row, swept' },
