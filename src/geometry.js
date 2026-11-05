@@ -8963,20 +8963,22 @@ function resolvableEm(family, floorF) {
 }
 const SUBDIAL_SANS = '"Helvetica Neue", Helvetica, Arial, sans-serif';
 const SUBDIAL_MONO = 'ui-monospace, "SF Mono", Menlo, Consolas, monospace';
-// §293's seconds-face INK in mm, at its acuity floors: the figures' cap at the glance floor, the caption's em at the
-// larger of the identify floor and the em where the monospace's heaviest weight strokes a resolvable line, and the
-// resolvable gap. One law for the paint (kind 'seconds') and for secondsFaceFloorMm.
+// §293's seconds-face INK in mm, at its acuity floors, for secondsFaceFloorMm: the figures' cap at the glance floor,
+// the caption's em at the identify floor, and the resolvable gap. FONT-FREE ON PURPOSE: the paint (kind 'seconds')
+// also raises the caption's em to the one where the installed monospace's heaviest weight strokes a resolvable line
+// (resolvableEm, a canvas measurement), and that term differs by platform (§332's first CI run: a Linux font moved
+// the scale, the case and the hands with it, and the build held its metal 0.017 u inside the outline it was cut to).
+// The print scale sets METAL — the case and the hands — so it reads only the arcmin floors; where a platform's
+// monospace needs a hair more em than the identify floor (0.8129 against 0.8115 mm here) the paint's one `fit` factor
+// absorbs it, a fraction of a percent, far above the half where it warns.
 export function secondsFaceInk() {
-  const gapMm = mmForArcmin(RESOLVE_ARCMIN);
-  return { capMm: mmForArcmin(GLANCE_ARCMIN), gapMm,
-    captionEmMm: Math.max(mmForArcmin(IDENTIFY_ARCMIN) / CAP_PER_EM, resolvableEm(SUBDIAL_MONO, gapMm)) };
+  return { capMm: mmForArcmin(GLANCE_ARCMIN), gapMm: mmForArcmin(RESOLVE_ARCMIN), captionEmMm: mmForArcmin(IDENTIFY_ARCMIN) / CAP_PER_EM };
 }
-// THE SMALLEST SECONDS FACE THAT READS (the print-follows-case landing): the well radius, in mm, at which the paint's
-// `fit` reaches 1 — figures and caption both at their floors in the run from the major ticks' inner end to the
-// caption's centre, less a resolvable gap at each end:
-//   (TICK_OUTER − MAJOR_LEN − CAPTION_DY)·sr ≥ cap + captionEm·CAP_PER_EM/2 + 2·gap
-// Under it the paint scales the ink below its floors (and warns under half). The free case scales its whole print
-// down to the print whose seconds well is this radius, and no further.
+// THE SMALLEST SECONDS FACE THAT READS (§332): the well radius, in mm, at which the paint's `fit` reaches 1 at the
+// arcmin floors — figures and caption in the run from the major ticks' inner end to the caption's centre, less a
+// resolvable gap at each end:
+//   (TICK_OUTER − MAJOR_LEN − CAPTION_DY)·sr = cap + captionEm·CAP_PER_EM/2 + 2·gap
+// The free case scales its whole print down to the print whose seconds well is this radius, and no further.
 export function secondsFaceFloorMm() {
   const { capMm, gapMm, captionEmMm } = secondsFaceInk();
   return (capMm + (captionEmMm * CAP_PER_EM) / 2 + 2 * gapMm) / (SECONDS_TICK_OUTER_F - SECONDS_MAJOR_LEN_F - SECONDS_CAPTION_DY_F);
@@ -9434,8 +9436,8 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null, sh
     // The caption is identified at IDENTIFY_ARCMIN, but at that size no weight
     // of the monospace strokes a resolvable line (measured: bold 0.98′), so its
     // em is also at least the one where its heaviest weight resolves
-    // (secondsFaceInk states the same floors in mm for secondsFaceFloorMm; the paint keeps its own order of
-    // operations so its print is bit-identical).
+    // (secondsFaceInk states the arcmin floors in mm for secondsFaceFloorMm, without the font's term; the paint
+    // keeps its own order of operations so its print is bit-identical).
     const capT = mmForArcmin(GLANCE_ARCMIN) / (mmPerSr || 1);
     const captionT = Math.max(mmForArcmin(IDENTIFY_ARCMIN) / (mmPerSr || 1) / CAP_PER_EM,
       mmPerSr ? resolvableEm(SUBDIAL_MONO, mmForArcmin(RESOLVE_ARCMIN) / mmPerSr) : 0);
