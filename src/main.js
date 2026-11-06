@@ -93,6 +93,7 @@ import {
   MOVEMENT_SENSE, ALARM_SENSE,                // TODO 115: the two trains' hands — the going train's, and the alarm's own motor's; every direction-committed cut is checked against one of them
   BACK_PLATE_T, KEYLESS_STACK_R,              // TODO 211: the plate's thickness (hoisted — the keyless plane derives from its dial face) and the stem stack's reach that plane is cut against
   STOPWORK_BUILT,                             // §329: the Geneva stop-work is the shipped arrest where it stands — the one derived answer
+  unionLoops, filletReflexCorners,            // §336 landing 2: the flush cock's opening, merged from the windows it crosses
 } from './layout.js';
 import { genevaDims as swDims, PIN_FLOOR_U as SW_PIN_FLOOR, STUD_FLOOR_U as SW_STUD_FLOOR, chooseStopwork, starAngle as swStarAngle, engagementArc as swEngagementArc, travelTurns as swTravelTurns } from './stopwork-arrest.js';   // §329 landing 4: option B, the Geneva stop-work's line
 import { solveTrailingArrest, r1For as trailR1For, psi2ForThrow as trailPsi2ForThrow, epsOf as trailEpsOf, D_MIN as TRAIL_D_MIN, R1_MIN as TRAIL_R1_MIN } from './trailing-arrest.js';   // §329: the trailing arrest's line
@@ -5153,9 +5154,12 @@ const FUSEE_COCK_T = LETDOWN_H - CLEAR_MARGIN;
 const FUSEE_BOSS_TOP = TQ_TOP_Z;
 const FUSEE_BOSS_MID = FUSEE_BOSS_TOP - FUSEE_COCK_T / 2;   // the bush's bearing plane
 const FUSEE_BOSS_BOT = FUSEE_BOSS_TOP - FUSEE_COCK_T;
-const FUSEE_COCK_BOT = TQ_TOP_Z + CLEAR_MARGIN;               // the bar, over the plate
-const FUSEE_COCK_MID = FUSEE_COCK_BOT + FUSEE_COCK_T / 2;
-const FUSEE_COCK_TOP = FUSEE_COCK_BOT + FUSEE_COCK_T;
+// §336 landing 2 — THE COCK IS AN ISLAND IN THE PLATE, flush with its top face (the owner's choice, 2026-11-06): the bar no
+// longer stands over the plate but runs in the plate's own plane, in an opening merged with the cone window and the gear window
+// it crosses (§62's re-cut, below). So the boss, the crank and the bar are one plane, and the bar's z is the boss's.
+const FUSEE_COCK_BOT = FUSEE_BOSS_BOT;
+const FUSEE_COCK_MID = FUSEE_BOSS_MID;
+const FUSEE_COCK_TOP = FUSEE_BOSS_TOP;
 // The bearing plane: the cock boss's mid-plane, or (the stop-work's build) the plate's.
 const FUSEE_BEARING_Z = FUSEE_COCK_BUILT ? FUSEE_BOSS_MID : TQ_MID_Z;
 if (!FUSEE_COCK_BUILT) {
@@ -50126,6 +50130,7 @@ if (FORM && ALARM_BUILT) {   // §325 landing 3: no strike group to open the pla
 //    carries the demand and §336 files it.
 // ---------------------------------------------------------------------------
 await breathe(375);
+let FUSEE_COCK_SLOT = null;   // §336 landing 2: the cock's slot outline in plan (set by its build, merged into the windows at §62's re-cut)
 const FUSEE_COCK = !FUSEE_COCK_BUILT ? null : await (async () => {
   const C = P.barrel;
   const T = FUSEE_COCK_T;
@@ -50304,6 +50309,18 @@ const FUSEE_COCK = !FUSEE_COCK_BUILT ? null : await (async () => {
     return least([k.c - hw - CLEAR_MARGIN, k.who], [Math.hypot(x - P.balance.x, y - P.balance.y) - Math.max(BAL_OUTER_R, HAIRSPRING_SWEPT_R) - hw - CLEAR_MARGIN, 'balance']);
   };
   const plateEdge = (x, y) => (FORM ? formInset(x, y) : plateR - Math.hypot(x, y));
+  // §336 landing 2 — THE SLOT'S LAND. Where the bar runs through plate, its slot (the bar's half-width and a margin) keeps a
+  // plate land (TQ_LAND_MIN) from every other opening and the rim, every pivot boss, and every window but the cone's and the
+  // gear window's: the slot merges with those two into one opening at the re-cut, so their edges are not lands to keep.
+  const otherEdges = tqWindowEdges(TQ_WINDOWS.polys.filter((w) => w.name !== 'fusee' && w.name !== 'fusee gears'), null, C.x, C.y, plateR * 2);
+  const inMerged = (x, y) => TQ_WINDOWS.polys.some((w) => (w.name === 'fusee' || w.name === 'fusee gears') && inPoly(w.pts, x, y));
+  const slotLand = (x, y, hw) => {
+    if (inMerged(x, y)) return { c: Infinity, who: null };
+    const r = hw + CLEAR_MARGIN;
+    return least([tqOpeningClearance(x, y) - r - TQ_LAND_MIN, 'a plate opening or the rim'],
+      [tqKeepClearanceIn(NO_KEEPS, x, y) - r - TQ_LAND_MIN, 'a pivot boss in the plate'],
+      [tqEdgeLand(otherEdges, x, y) - r - TQ_LAND_MIN, 'another window\'s edge']);
+  };
   // The POST: as far out as the window's air allows (its edge one margin
   // inside the cone window's solved rim), sized by the column law for its own
   // height and the twist the crank's reach puts on it, and never narrower
@@ -50353,13 +50370,14 @@ const FUSEE_COCK = !FUSEE_COCK_BUILT ? null : await (async () => {
           if (bc.c < mBar) { mBar = bc.c; barWho = bc.who; }
         }
         { const bc = barClear(C.x + cs * sStep, C.y + sn * sStep, postR, crankKeeps); if (bc.c < mBar) { mBar = bc.c; barWho = bc.who; } }
-        // the bar over the plate, from the post to the foot
+        // the bar IN THE PLATE'S PLANE (§336 landing 2), from the post to the foot: clear of what crosses the plate band, and its
+        // slot (the bar and a margin) a plate land from every other opening, pivot boss and window, and from the rim
         for (let sb = sStep + postR; sb <= reach - nodeR && mBar >= 0; sb += 0.5) {
-          const bc = barClear(C.x + cs * sb, C.y + sn * sb, widthAt(sb) / 2);
+          const bx = C.x + cs * sb, by = C.y + sn * sb, hw = widthAt(sb) / 2;
+          const b1 = barClear(bx, by, hw, crankKeeps), b2 = slotLand(bx, by, hw), bc = least([b1.c, b1.who], [b2.c, b2.who]);
           if (bc.c < mBar) { mBar = bc.c; barWho = bc.who; }
         }
-        const fc = barClear(x, y, nodeR);
-        if (fc.c < mBar) { mBar = fc.c; barWho = fc.who; }
+        { const a1 = barClear(x, y, nodeR, crankKeeps), a2 = slotLand(x, y, nodeR); const fc = least([a1.c, a1.who], [a2.c, a2.who]); if (fc.c < mBar) { mBar = fc.c; barWho = fc.who; } }
       }
       const short = Math.min(mPlate, col.c, hole.c, mBar);
       const row = { x, y, a, reach, short, hw, postR, sStep, legR, nodeR, padR, holeR, mPlate, mColumn: col.c, colWho: col.who, mHole: hole.c, holeWho: hole.who, mBar, barWho };
@@ -50406,14 +50424,17 @@ const FUSEE_COCK = !FUSEE_COCK_BUILT ? null : await (async () => {
   // extruded T deep and centred on zMid. Each overlaps the member at either
   // end by its own radius (the boss, the post, the foot node), so the arm is
   // one body with them.
-  const armGeo = (s0, s1) => {
-    const N = 24, shape = new THREE.Shape(), left = [], right = [];
+  const armPts = (s0, s1) => {
+    const N = 24, left = [], right = [];
     for (let k = 0; k <= N; k++) {
       const sk = s0 + ((s1 - s0) * k) / N, w = widthAt(sk) / 2;
       left.push([C.x + cs * sk - sn * w, C.y + sn * sk + cs * w]);
       right.push([C.x + cs * sk + sn * w, C.y + sn * sk - cs * w]);
     }
-    const pts = [...left, ...right.reverse()];
+    return [...left, ...right.reverse()];
+  };
+  const armGeo = (s0, s1) => {
+    const shape = new THREE.Shape(), pts = armPts(s0, s1);
     pts.forEach(([x, y], k) => (k ? shape.lineTo(x, y) : shape.moveTo(x, y)));
     shape.closePath();
     const g = new THREE.ExtrudeGeometry(shape, { depth: T, bevelEnabled: false });
@@ -50442,7 +50463,22 @@ const FUSEE_COCK = !FUSEE_COCK_BUILT ? null : await (async () => {
       frame: upper, x: f.x, y: f.y, top: f.z, headR: f.headR, headT: f.headT, shank: f.shank, clamp: f.clamp });
   BACK_PLATE_LATE_HOLES.push({ x: foot.x, y: foot.y, r: COCK_PLATE_TAP_R });
   recutBackPlate();
-  tqHoles.push({ x: foot.x, y: foot.y, r: foot.holeR });   // the leg's passage through the three-quarter plate
+  // §336 landing 2: the leg stands in the cock's slot, so the plate keeps no separate hole for it. The slot's outline (the
+  // bar's taper and a margin, out past the foot's node) is merged with the cone and gear windows at §62's re-cut below.
+  // It is built FROM THE CUT OUTLINE, offset by the margin, so the margin is exact wherever the plate stands: the two arms'
+  // polygons as extruded, the post's and the foot's discs as polygons circumscribing their meshes, and the boss (a first cut
+  // re-sampled the taper on its own grid and stood 0.0017 short of the margin between the two chordings).
+  // the slot stands the margin plus a float tie out: both meshes reach the GPU's Float32 positions, and the battery holds the
+  // pair strictly (min < CLEAR_MARGIN fails), so a slot cut at exactly the margin read 0.1499990 at 24 h. The tie is two
+  // Float32 vertices one ulp each at |coordinate| < 64 u, inspect.js's FLOOR_TIE_EPS by the same rule
+  const F32_TIE = 2 * Math.pow(2, -23) * 64;
+  FUSEE_COCK_SLOT = (() => {
+    const disc = (x, y, r, n) => Array.from({ length: n }, (_, k) => { const a = (2 * Math.PI * k) / n, R = r / Math.cos(Math.PI / n); return [x + R * Math.cos(a), y + R * Math.sin(a)]; });
+    // each piece is offset ALONE and the offsets are unioned: a piece is convex, where a miter offset is exact, while the union's
+    // junctions are reflex corners, where a miter's offset vertex lands short of the margin
+    return unionLoops([armPts(0, foot.sStep), armPts(foot.sStep, L), disc(step.x, step.y, foot.postR, 28), disc(foot.x, foot.y, foot.nodeR, 48), disc(C.x, C.y, bossR, 48)]
+      .map((P) => G.offsetPolygon(P, CLEAR_MARGIN + F32_TIE)));
+  })();
   registerExplode(g, 0, 7);   // the group stands at the movement's origin; its parts carry their own heights
   registerLabel('Fusee cock', g);
   const barSigma = 6 * R * (L * OSC_U) / (T_m * (widthAt(L) * OSC_U) ** 2);
@@ -50560,6 +50596,25 @@ const FUSEE_COCK = !FUSEE_COCK_BUILT ? null : await (async () => {
       if (worst.d < TQ_LAND_MIN - 1e-9)
         console.warn(`TODO 266: the strike group's opening in the three-quarter plate leaves ${worst.d.toFixed(3)} of plate to ${worst.what} — need TQ_LAND_MIN ${TQ_LAND_MIN.toFixed(3)}; re-site the hammer (tools/gong-seats.mjs) rather than thin the land`);
       tqPolyHoles.push({ name: 'strike group (TODO 266)', pts });
+    }
+  }
+  // §336 landing 2 — THE COCK'S OPENING. The flush cock runs in the plate's own plane from the cone window out to its foot, so
+  // the plate is opened along it: the cone window, every gear-window sector its slot touches, and the slot itself become ONE
+  // opening (the plate builder cuts no overlapping holes: ExtrudeGeometry triangulates them into phantom plate), their union
+  // taken exactly (layout.js unionLoops). Every other window stands as solved; the bar's scan held the slot a plate land
+  // from all of them, so the merge opens nothing the land rule did not already clear.
+  if (FUSEE_COCK_SLOT) {
+    const inP = (pts, x, y) => { let k = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, yi] = pts[i], [xj, yj] = pts[j]; if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) k = !k; } return k; };
+    const overlaps = (pts) => FUSEE_COCK_SLOT.some(([x, y]) => inP(pts, x, y)) || pts.some(([x, y]) => inP(FUSEE_COCK_SLOT, x, y));
+    const merged = TQ_WINDOWS.polys.filter((w) => w.name === 'fusee' || (w.name === 'fusee gears' && overlaps(w.pts)));
+    if (!merged.some((w) => w.name === 'fusee')) console.warn('§336 landing 2: the cone window is not among the plate\'s windows at the re-cut — the cock\'s slot opens into nothing');
+    else {
+      // the merge's new corners are sharp convex corners of plate, which the plate's extrude bevel pushes out along their bisectors
+      // past the edge the clearances were solved to (measured 0.103 against 0.15 at the slot's junction with the cone window), so
+      // they are rounded: at 2·PLATE_BEVEL, so the drawn corner keeps a PLATE_BEVEL radius through the builder's own pre-offset of
+      // every opening by PLATE_BEVEL, and the bevel then offsets it as it does a straight edge (layout.js filletReflexCorners)
+      const loop = filletReflexCorners(unionLoops([...merged.map((w) => w.pts), FUSEE_COCK_SLOT]), 2 * G.PLATE_BEVEL);
+      TQ_WINDOWS.polys = [...TQ_WINDOWS.polys.filter((w) => !merged.includes(w)), { name: 'fusee', pts: loop, merged: merged.map((w) => w.name) }];
     }
   }
   await breathe(298);
@@ -64561,6 +64616,9 @@ window.__clock = {
     const { obj, ...rest } = FUSEE_COCK;
     return rest;
   },
+  // §337 — the three-quarter plate's windows AS CUT (the final solve, §62, with §336's merged opening), named, in plan: the geared stop-work folds into the
+  // cone window's air, so its site search and its probe read the same outline the plate was cut to
+  get tqWindowPolys() { return (TQ_WINDOWS.polys || []).map((w) => ({ name: w.name, pts: w.pts.map(([x, y]) => [x, y]) })); },   // tqWindows (above) is the solver's report
   declaredTravels,   // §36 job A: the pose laws sampling cannot recover
   declaredRestoring, // §48: what brings each reciprocating part back
   // §36 part three: the routing spec's own frame. A sketched polyline arrives

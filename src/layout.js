@@ -4243,6 +4243,127 @@ export function polyArea(pts) {
   return A / 2;
 }
 // Douglas–Peucker on a closed loop, every dropped vertex within tol of its chord.
+// THE UNION OF CLOSED POLYGONS, as one outer loop, EXACT (§336 landing 2: an opening merged from several). Every edge of every
+// polygon is split where it crosses another's, each piece is kept when its midpoint stands outside every other polygon, and the
+// kept pieces (each polygon walked CCW, so the union's boundary runs CCW too) are stitched end to start into loops. The inputs'
+// own vertices survive untouched, so an edge that held a land before the merge holds the same land after it; only the
+// crossings are new points. (A first cut traced the union on a field, and its half-cell offset ate 0.034 of lands that stood
+// exactly at TQ_LAND_MIN.) The largest loop by area is returned; a union that would leave a hole returns its outer loop, which
+// is what an opening's outline is. Edges that overlap collinearly are not handled; openings meeting at a crossing are.
+export function unionLoops(polys) {
+  const ccw = polys.map((P) => (polyArea(P) < 0 ? P.slice().reverse() : P));
+  const inside = (P, x, y) => { let k = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, yi] = P[i], [xj, yj] = P[j]; if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) k = !k; } return k; };
+  const boxes = ccw.map((P) => { let a = Infinity, b = -Infinity, c = Infinity, d = -Infinity; for (const [x, y] of P) { a = Math.min(a, x); b = Math.max(b, x); c = Math.min(c, y); d = Math.max(d, y); } return [a, b, c, d]; });
+  const pieces = [];
+  for (let p = 0; p < ccw.length; p++) {
+    const P = ccw[p];
+    for (let i = 0; i < P.length; i++) {
+      const a = P[i], b = P[(i + 1) % P.length], ts = [0, 1];
+      const ex0 = Math.min(a[0], b[0]), ex1 = Math.max(a[0], b[0]), ey0 = Math.min(a[1], b[1]), ey1 = Math.max(a[1], b[1]);
+      for (let q = 0; q < ccw.length; q++) {
+        if (q === p) continue;
+        const [bx0, bx1, by0, by1] = boxes[q];
+        if (ex1 < bx0 || ex0 > bx1 || ey1 < by0 || ey0 > by1) continue;
+        const Q = ccw[q];
+        for (let k = 0; k < Q.length; k++) {
+          const c = Q[k], d = Q[(k + 1) % Q.length];
+          if (Math.max(c[0], d[0]) < ex0 || Math.min(c[0], d[0]) > ex1 || Math.max(c[1], d[1]) < ey0 || Math.min(c[1], d[1]) > ey1) continue;
+          const rx = b[0] - a[0], ry = b[1] - a[1], sx = d[0] - c[0], sy = d[1] - c[1], den = rx * sy - ry * sx;
+          if (Math.abs(den) < 1e-15) continue;
+          const t = ((c[0] - a[0]) * sy - (c[1] - a[1]) * sx) / den, u = ((c[0] - a[0]) * ry - (c[1] - a[1]) * rx) / den;
+          if (t > 1e-12 && t < 1 - 1e-12 && u >= 0 && u <= 1) ts.push(t);
+        }
+      }
+      ts.sort((x, y) => x - y);
+      for (let k = 0; k + 1 < ts.length; k++) {
+        const t0 = ts[k], t1 = ts[k + 1];
+        if (t1 - t0 < 1e-12) continue;
+        const m = (t0 + t1) / 2, mx = a[0] + (b[0] - a[0]) * m, my = a[1] + (b[1] - a[1]) * m;
+        if (ccw.some((Q, q) => q !== p && inside(Q, mx, my))) continue;
+        pieces.push([[a[0] + (b[0] - a[0]) * t0, a[1] + (b[1] - a[1]) * t0], [a[0] + (b[0] - a[0]) * t1, a[1] + (b[1] - a[1]) * t1]]);
+      }
+    }
+  }
+  const key = ([x, y]) => `${Math.round(x * 1e7)},${Math.round(y * 1e7)}`;
+  const byStart = new Map();
+  for (const pc of pieces) { const k = key(pc[0]); if (!byStart.has(k)) byStart.set(k, []); byStart.get(k).push(pc); }
+  const used = new Set(), loops = [];
+  for (const pc of pieces) {
+    if (used.has(pc)) continue;
+    const loop = [];
+    for (let cur = pc; cur && !used.has(cur);) {
+      used.add(cur); loop.push(cur[0]);
+      const nxt = (byStart.get(key(cur[1])) || []).find((q) => !used.has(q));
+      cur = nxt;
+    }
+    if (loop.length >= 3) loops.push(loop);
+  }
+  loops.sort((x, y) => Math.abs(polyArea(y)) - Math.abs(polyArea(x)));
+  return loops[0] ?? [];
+}
+// ROUND AN OPENING'S SHARP REFLEX CORNERS (§336 landing 2): where an opening's outline turns by more than `minTurn` the wrong
+// way (its interior angle over 180°, a CONVEX corner of the plate round it), replace the corner by an arc of radius r tangent to
+// both runs, the arc cut into the plate, so the opening grows there. Why: the plate's extrude bevel moves a straight edge by
+// PLATE_BEVEL but a sharp convex corner of metal along its bisector by PLATE_BEVEL/sin(β/2), so a corner a merge creates
+// stands proud of the edge the clearances were solved to (measured: 0.103 against 0.15 at the cock's slot meeting the cone
+// window). A corner rounded at r ≥ PLATE_BEVEL offsets as its edges do. The tangent points are found by arc length along the
+// outline, so a corner between curved runs (a polygonised circle) is rounded the same way.
+export function filletReflexCorners(pts, r, minTurn = (20 * Math.PI) / 180) {
+  const n = pts.length; if (n < 4) return pts.slice();
+  const ccw = polyArea(pts) > 0, sgn = ccw ? 1 : -1;
+  const turn = (i) => {
+    const a = pts[(i - 1 + n) % n], b = pts[i], c = pts[(i + 1) % n];
+    const ux = b[0] - a[0], uy = b[1] - a[1], vx = c[0] - b[0], vy = c[1] - b[1];
+    return Math.atan2(ux * vy - uy * vx, ux * vx + uy * vy) * sgn;   // + left (convex for a CCW opening), − right (reflex)
+  };
+  const walk = (i, dist, dir) => {   // the point `dist` along the outline from vertex i, going dir (+1 forward, −1 back)
+    let j = i, left = dist;
+    for (let k = 0; k < n; k++) {
+      const a = pts[j], b = pts[(j + dir + n) % n], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (L >= left) return { pt: [a[0] + ((b[0] - a[0]) * left) / L, a[1] + ((b[1] - a[1]) * left) / L], idx: j, dir };
+      left -= L; j = (j + dir + n) % n;
+    }
+    return null;
+  };
+  const corners = [];
+  for (let i = 0; i < n; i++) { const t = turn(i); if (t < -minTurn) corners.push({ i, t: -t }); }
+  if (!corners.length) return pts.slice();
+  const drop = new Set(), insert = new Map();
+  for (const { i, t } of corners) {
+    const beta = Math.PI - t;                              // the plate's corner angle
+    const tan = r / Math.tan(beta / 2);
+    const p1 = walk(i, tan, -1), p2 = walk(i, tan, +1);
+    if (!p1 || !p2) continue;
+    // drop every vertex strictly between the two tangent points, and put the arc in their place
+    // the tangent points lie on the segments that START at p1.idx (going back) and p2.idx (going forward), so every vertex from
+    // p1.idx to p2.idx lies between them and is replaced by the arc (the corner itself, i, by the arc's insertion)
+    // the centre is where the normals at the two tangent points cross (on the plate's side, the right of the outline's travel
+    // for a CCW opening), and the arc runs from p1 to p2 EXACTLY, its radius eased from one normal's length to the other's.
+    // A centre set off the corner's bisector at r/sin(β/2) holds only where both runs are straight to the corner; where one
+    // is a polygonised curve the arc's end missed its tangent point (measured 0.0003 into the cock's slot)
+    const seg1a = pts[(p1.idx - 1 + n) % n], seg1b = pts[p1.idx], seg2a = pts[p2.idx], seg2b = pts[(p2.idx + 1) % n];
+    const nrm = (a, c) => { const fx = c[0] - a[0], fy = c[1] - a[1], L = Math.hypot(fx, fy) || 1e-12; return [(sgn * fy) / L, (-sgn * fx) / L]; };
+    const n1 = nrm(seg1a, seg1b), n2 = nrm(seg2a, seg2b), den = n1[0] * -n2[1] - n1[1] * -n2[0];
+    if (Math.abs(den) < 1e-9) continue;
+    const ex = p2.pt[0] - p1.pt[0], ey = p2.pt[1] - p1.pt[1];
+    const r1 = (ex * -n2[1] - ey * -n2[0]) / den, r2 = (n1[0] * ey - n1[1] * ex) / den;
+    if (!(r1 > 0 && r2 > 0)) continue;
+    const cx = p1.pt[0] + r1 * n1[0], cy = p1.pt[1] + r1 * n1[1];
+    const a1 = Math.atan2(p1.pt[1] - cy, p1.pt[0] - cx);
+    let da = Math.atan2(p2.pt[1] - cy, p2.pt[0] - cx) - a1; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI;
+    const steps = Math.max(2, Math.ceil(Math.abs(da) / ((10 * Math.PI) / 180))), arc = [p1.pt];
+    for (let k = 1; k < steps; k++) { const a = a1 + (da * k) / steps, rk = r1 + ((r2 - r1) * k) / steps; arc.push([cx + rk * Math.cos(a), cy + rk * Math.sin(a)]); }
+    arc.push(p2.pt);
+    for (let j = (p1.idx + n) % n; j !== (p2.idx + 1) % n; j = (j + 1) % n) drop.add(j);
+    insert.set(i, arc);
+  }
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    if (insert.has(i)) { out.push(...insert.get(i)); continue; }
+    if (!drop.has(i)) out.push(pts[i]);
+  }
+  return out;
+}
 export function simplifyLoop(pts, tol) {
   const n = pts.length;
   if (n < 8) return pts.slice();
