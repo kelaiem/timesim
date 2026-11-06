@@ -5145,10 +5145,10 @@ for (const arbor of [centerArbor, thirdArbor, fourthArbor]) {
 // LETDOWN_H − CLEAR_MARGIN deep (COCK_T's 0.8 stood 0.05 over it and put the
 // free case's form 0.046 mm over CASE_HEIGHT_MAX_MM). The width carries the load.
 //
-// AND ONLY ON §47'S BUILD. The stop-work (§329, the default arrest since the flip) plants its star's stud in a web of the
-// plate over the cone, the metal this removes, so on its build the bush stays in the plate's island and webs: the owner's
-// choice (TODO 288, closed), not a debt. The cock stands on `?arrest=stop-iron` and wherever the stop-work does not stand.
-const FUSEE_COCK_BUILT = !STOPWORK;
+// ON EVERY BUILD since §336 landing 3 (the owner, 2026-11-06: "cock on default build"). Landings 1 and 2 built it on §47's
+// arrest only, because the stop-work (the default arrest since §329's flip) planted its star's stud in a web of the plate over
+// the cone, the metal the cock removes. The stud is planted in the cock's CRANK now, which doglegs through its seat (the cock's
+// build, below), so the stop-work's build carries the cock too and the plate keeps no boss, web or ring over the fusee there.
 const LETDOWN_H = 0.9; // proud of its face: enough engagement for a let-down key
 const FUSEE_COCK_T = LETDOWN_H - CLEAR_MARGIN;
 const FUSEE_BOSS_TOP = TQ_TOP_Z;
@@ -5160,12 +5160,9 @@ const FUSEE_BOSS_BOT = FUSEE_BOSS_TOP - FUSEE_COCK_T;
 const FUSEE_COCK_BOT = FUSEE_BOSS_BOT;
 const FUSEE_COCK_MID = FUSEE_BOSS_MID;
 const FUSEE_COCK_TOP = FUSEE_BOSS_TOP;
-// The bearing plane: the cock boss's mid-plane, or (the stop-work's build) the plate's.
-const FUSEE_BEARING_Z = FUSEE_COCK_BUILT ? FUSEE_BOSS_MID : TQ_MID_Z;
-if (!FUSEE_COCK_BUILT) {
-  const staff = addUpperPivot(barrelArbor, { staffR: TRAIN_STAFF_R, jewelR: 0, boreR: TRAIN_STAFF_R + PIVOT_BORE_CLEAR });
-  if (staff) staff.name = 'fuseeUpperPivot';
-} else {
+// The bearing plane: the cock boss's mid-plane.
+const FUSEE_BEARING_Z = FUSEE_BOSS_MID;
+{
   // NAMED (TODO 53's landing): the windTop continuation abuts this pivot at
   // the cock's mid-plane, and the joint is declared in
   // INTRA_UNIT_CONTACTS — see the windTop build for why it stopped being a
@@ -16859,7 +16856,14 @@ const TQ_WINDOW_INTENTS = [
     // rotation; the instruments skill's trap, and why this is a vertex
     // measurement.)
     at: () => P.barrel,
-    reveal: () => fuseeConeReveal(),
+    // §336 landing 3 — AND ON THE STOP-WORK'S BUILD, OUT TO THE GREAT WHEEL. The ring §335 left between this window and the
+    // gear window exists for one part: §47's bracket, which hangs from it over the cone. The stop-work's build has no bracket
+    // (its star's stud is in the cock's crank since this landing), so the ring has no job there, and the owner chose to drop it
+    // ("make window bigger", 2026-11-06): this one window frames the cone and the gears under it, sized to the great wheel's
+    // silhouette as the gear window is, and the gear window is not built. §47's builds keep the ring and both windows.
+    reveal: () => (STOPWORK ? Math.max(fuseeConeReveal(), xyRadiusAbout(greatWheel, P.barrel) + CLEAR_MARGIN) : fuseeConeReveal()),
+    // a reveal that large has openings beside its rays: walk them, as the gear window does (below)
+    walkOpenings: STOPWORK,
     // §308 landing 5 — THE WEBS TURN WITH THE FUSEE. A window open all the way
     // round takes its three webs by an even split that starts at bearing 0 of
     // the MOVEMENT's frame, so under `?barrelstep=` the webs stood still while
@@ -17061,7 +17065,8 @@ const TQ_WINDOW_INTENTS = [
       return null;
     },
   },
-].filter((w) => ALARM_BUILT || (w.name !== 'governor' && w.name !== 'arrest'));   // §325 landing 3: those two windows show the alarm's governor and winding arrest
+].filter((w) => ALARM_BUILT || (w.name !== 'governor' && w.name !== 'arrest'))   // §325 landing 3: those two windows show the alarm's governor and winding arrest
+  .filter((w) => !STOPWORK || w.name !== 'fusee gears');   // §336 landing 3: the stop-work's build frames the gears in the one fusee window
 // §314 — the pusher linkage's studs (planted in this plate), filled in once the linkage is solved
 let ALARM_LINKAGE_STUDS = null;
 // §201 — the late intent's centre. null until the arrest block has placed the
@@ -17274,7 +17279,16 @@ function solveTqWindows() {
         && tqOpeningClearance(c.x + cs * r, c.y + sn * r) >= TQ_LAND_MIN - 1e-9
         && (priorEdges.length === 0 || priorLand(c.x + cs * r, c.y + sn * r) >= priorLandAt(r) - 1e-9);
       if (!openWalk && !walk && ok(want)) return want;   // the end is clear and nothing stands inside: full reach
-      if (!ok(r0)) return 0;                   // pinched shut at this bearing
+      // §336 landing 3 — a BOSSLESS window that walks its openings starts its rays at its own centre, which stands in its
+      // tenant (the fusee's staff, which the window frames: a keep at the axis). So the ray starts where it first leaves the
+      // keeps it begins in. A window with an inner edge (r0 > 0: a boss's land, or the gear window's ring) starts there, as before.
+      let rIn = r0;
+      if (openWalk && r0 === 0 && !ok(0)) {
+        rIn = Infinity;
+        for (let r = TQ_RAY_STEP; r < want; r += TQ_RAY_STEP) if (ok(r)) { rIn = r; break; }
+        if (!Number.isFinite(rIn)) return 0;
+      }
+      if (!ok(rIn)) return 0;                   // pinched shut at this bearing
       // §335 — an early window that walks its OPENINGS: the ray's reach is
       // first cut back to where it meets a plate opening or pivot boss (the
       // walk below, on those terms only), and the old end test then runs on
@@ -17295,7 +17309,7 @@ function solveTqWindows() {
         }
       }
       if (openWalk && !walk && ok(reach)) return reach;
-      let lo = r0, hi = reach;
+      let lo = rIn, hi = reach;
       if (walk) {
         // walk out; the first failing step brackets the bisection
         let r = r0, blocked = false;
@@ -19131,7 +19145,8 @@ arrest47: {   // labelled: §329 landing 4's stop-work branch leaves it before �
   //   · the PIN stands in the cone's top face at the largest radius whose root is still cone metal at its own azimuth (the groove
   //     runs out through that face), floored where the star's teeth would reach the fusee's top staff;
   //   · the STAR is the line's (n, m) for this wind at that pin orbit, its pivot a = r1 / sin(π/n) off the cone's axis, PLANTED in
-  //     plate metal (a web of the fusee window) at the azimuth whose disc stands clearest of the chain over the whole wind;
+  //     the fusee cock's crank (§336 landing 3; a web of the plate's island until then) at the azimuth whose disc stands clearest
+  //     of the chain over the whole wind;
   //   · the LOCK DISC on the cone's top face is the largest that clears the pin's circle by the margin (the line's lockHi), and its
   //     RELIEF is carved from the star's own sweep through the engagement, never drawn;
   //   · z: the star's stock at the §50 floor, the gap split evenly above and below it. Those two gaps are RUNNING gaps of one
@@ -19165,7 +19180,10 @@ arrest47: {   // labelled: §329 landing 4's stop-work branch leaves it before �
     const SW_STALL_NMM = GOING_POWER.fuseeTorque_Nm * 1000;
     const SW_SIGMA = SPRING_SIGMA_Y_PA / 1e6;                                          // N/mm²
     const SW_MID_Z = S_Z1 + STOCK_MIN_U / 2;                                           // the star's mid-plane: where the pin and stud are loaded
-    const SW_PIN_L = SW_MID_Z - CONE_TOP_Z, SW_STUD_L = TQ_BOT_Z - SW_MID_Z;           // the two cantilevers' free lengths
+    // §336 landing 3 — the stud is planted in the FUSEE COCK's crank, whose underside is FUSEE_BOSS_BOT (the plate over the
+    // cone is the fusee window's air now), so its free length runs from the star's mid-plane up to there
+    const SW_STUD_TOP = FUSEE_BOSS_BOT;
+    const SW_PIN_L = SW_MID_Z - CONE_TOP_Z, SW_STUD_L = SW_STUD_TOP - SW_MID_Z;        // the two cantilevers' free lengths
     const swCantR = (F, L) => Math.cbrt((32 * F * L * UNIT_MM) / (Math.PI * SW_SIGMA)) / 2 / UNIT_MM;   // radius at yield, units
     const swRootE = (F, L, r) => {   // the embed that holds the face moment at yield: σ·d·e² − F·e − 6·F·L = 0, in units
       const d = 2 * r * UNIT_MM, M = F * L * UNIT_MM;
@@ -19199,10 +19217,14 @@ arrest47: {   // labelled: §329 landing 4's stop-work branch leaves it before �
       }
       return inside;
     };
-    const plateMetalAt = (x, y, ring) => {   // plate metal under a planted stud: its seat ring outside every opening
+    // §336 landing 3 — THE SEAT IS THE COCK'S CRANK, not plate: the crank is routed through the seat at the cock's build, so
+    // what the seat needs here is the fusee window's AIR the crank runs in, its whole seat ring (the stud and a §50 floor of
+    // crank metal round it) inside that window. (It was plate metal outside every opening: a web of the island the cock removes.)
+    const fuseeWin = (TQ_WINDOWS.polys || []).filter((q) => q.name === 'fusee').map((q) => q.pts);
+    const plateMetalAt = (x, y, ring) => {   // the seat ring, inside the fusee window's air where the crank can carry it
       for (let k = 0; k < 16; k++) {
         const a = (k / 16) * TAU2, px = x + ring * Math.cos(a), py = y + ring * Math.sin(a);
-        if (tqOpeningClearance(px, py) < 0 || winPolys.some((w) => inPolyXY(w, px, py))) return false;
+        if (!fuseeWin.some((w) => inPolyXY(w, px, py))) return false;
       }
       return true;
     };
@@ -19454,10 +19476,10 @@ arrest47: {   // labelled: §329 landing 4's stop-work branch leaves it before �
     star.name = 'stopworkStar';
     star.position.z = S_Z1;
     starPivot.add(star);
-    const studMesh = new THREE.Mesh(new THREE.CylinderGeometry(SW_STUD_R, SW_STUD_R, TQ_BOT_Z - (S_Z1 - SW_HEAD_T), 16), MATS.blueSteel);
+    const studMesh = new THREE.Mesh(new THREE.CylinderGeometry(SW_STUD_R, SW_STUD_R, SW_STUD_TOP - (S_Z1 - SW_HEAD_T), 16), MATS.blueSteel);
     studMesh.name = 'stopworkStud';
     studMesh.rotation.x = Math.PI / 2;
-    studMesh.position.set(S.x, S.y, (TQ_BOT_Z + S_Z1 - SW_HEAD_T) / 2);
+    studMesh.position.set(S.x, S.y, (SW_STUD_TOP + S_Z1 - SW_HEAD_T) / 2);
     swUnit.add(studMesh);
     const headMesh = new THREE.Mesh(new THREE.CylinderGeometry(SW_HEAD_R, SW_HEAD_R, SW_HEAD_T, 16), MATS.blueSteel);
     headMesh.name = 'stopworkStudHead';
@@ -50490,7 +50512,7 @@ if (FORM && ALARM_BUILT) {   // §325 landing 3: no strike group to open the pla
 // ---------------------------------------------------------------------------
 await breathe(375);
 let FUSEE_COCK_SLOT = null;   // §336 landing 2: the cock's slot outline in plan (set by its build, merged into the windows at §62's re-cut)
-const FUSEE_COCK = !FUSEE_COCK_BUILT ? null : await (async () => {
+const FUSEE_COCK = await (async () => {
   const C = P.barrel;
   const T = FUSEE_COCK_T;
   const sigmaY = NICKEL_SILVER_SIGMA_Y_PA;
@@ -50521,6 +50543,14 @@ const FUSEE_COCK = !FUSEE_COCK_BUILT ? null : await (async () => {
   for (let i = 0; i <= 64; i++) rSmall = Math.min(rSmall, fuseeGrooveAt((i / 64) * FUSEE_F_ACTIVE).r);
   const stop = { r: rSmall, z: coneMesh ? new THREE.Box3().setFromObject(coneMesh).max.z : FUSEE_Z0 + FUSEE_ZSPAN };
   stop.F = torque / (stop.r * OSC_U); stop.m = stop.F * (stop.z - zLow);
+  // §336 landing 3 — ON THE STOP-WORK'S BUILD THE STOP IS KNOWN, not bounded: the stop-work is built before this cock (in §47's
+  // block), so its pin's force on the cone at the stall is read off its own record (§329 P1: F = T / r1, at the star's mid-plane)
+  // in place of the bound. And the same force comes back into the cock: the star's stud is PLANTED IN THE CRANK, and at either
+  // stop the pin's force passes through the star's pivot, so the stud carries it whole into the crank at the seat.
+  const SWK = STOPWORK && WIND_ARREST.stopwork?.built ? WIND_ARREST.stopwork : null;
+  if (STOPWORK && !SWK) console.warn('§336: the stop-work is not built — the fusee cock has no stud to seat and its stop is the bound');
+  const seat = SWK ? { x: SWK.pivot.x, y: SWK.pivot.y, F: SWK.p1.F_N, studR: SWK.p1.stud.r, ringR: SWK.p1.stud.r + STOCK_MIN_U } : null;
+  if (SWK) { stop.F = SWK.p1.F_N; stop.r = SWK.r1; stop.z = (SWK.z[0] + SWK.z[1]) / 2; stop.m = stop.F * (stop.z - zLow); stop.exact = true; }
   const spurPos = windSpur.getWorldPosition(new THREE.Vector3());
   const wind = { r: windSpur.userData.r, z: spurPos.z };
   wind.F = torque / (wind.r * OSC_U); wind.m = wind.F * (wind.z - zLow);
@@ -50534,8 +50564,16 @@ const FUSEE_COCK = !FUSEE_COCK_BUILT ? null : await (async () => {
   //    55.6% clear against their 73.7%). Floored by SHEAR, which does not
   //    fall with s: 1.5·R/(T·b) under the yield's shear (von Mises, σ/√3).
   const T_m = T * OSC_U;
-  const bShear = 1.5 * R / (T_m * sigmaY / Math.sqrt(3)) / OSC_U;
+  const shearOf = (F) => 1.5 * F / (T_m * sigmaY / Math.sqrt(3)) / OSC_U;
+  const bShear = shearOf(R);
   const widthAt = (s) => Math.max(STOCK_MIN_U, bShear, Math.sqrt(6 * R * (Math.max(s, 0) * OSC_U) / (T_m * sigmaY)) / OSC_U);
+  // §336 landing 3 — AT A POINT, with the stud's load: the moment a section at p carries is R's from the bush and, PAST the
+  // seat (from the seat toward the foot), the stud's from the seat, each at most its force times its distance (an upper
+  // bound whatever their directions, the energy column's ADDED rule). The width at p holds that moment at the yield, never
+  // under the shear floor of the forces it carries. With no stud it is widthAt of the distance from the bush, exactly.
+  const Fs = seat ? seat.F : 0;
+  const momentAt = (px, py, past) => R * Math.hypot(px - C.x, py - C.y) + (past && seat ? Fs * Math.hypot(px - seat.x, py - seat.y) : 0);
+  const widthAtP = (px, py, past) => Math.max(STOCK_MIN_U, shearOf(R + (past ? Fs : 0)), Math.sqrt(6 * momentAt(px, py, past) * OSC_U / (T_m * sigmaY)) / OSC_U);
   const bore = G.screwBoreR(COCK_SCREW_HEAD_R);
   // the side load's line of action is the bush's plane, so that is the leg's lever arm
   const legH = FUSEE_BOSS_MID - (BACK_PLATE_Z + BACK_PLATE_T / 2);
@@ -50544,22 +50582,24 @@ const FUSEE_COCK = !FUSEE_COCK_BUILT ? null : await (async () => {
   // whose von Mises stress is under the yield. The leg (bored for its screw,
   // h from the base plate to the bush's plane) and the post (solid, h its own
   // height, L the crank's reach) are the one law.
-  const columnSigma = (ro, h, L, bi) => {
+  // (§336 landing 3: the side force F and the twist Tq are given apart, because past the seat the stud's force joins both)
+  const columnSigma = (ro, h, F, Tq, bi) => {
     const a = ro * OSC_U, b = bi * OSC_U;
     const Z = Math.PI * (a ** 4 - b ** 4) / (4 * a);   // bending section modulus; the polar one is 2Z
-    const sig = R * (h * OSC_U) / Z, tau = R * (L * OSC_U) / (2 * Z);
+    const sig = F * (h * OSC_U) / Z, tau = Tq * OSC_U / (2 * Z);   // Tq in N·u
     return Math.sqrt(sig * sig + 3 * tau * tau);
   };
-  const columnRFor = (h, L, bi, floor) => {
+  const columnRFor = (h, F, Tq, bi, floor) => {
     let lo = floor;
-    if (columnSigma(lo, h, L, bi) <= sigmaY) return lo;
+    if (columnSigma(lo, h, F, Tq, bi) <= sigmaY) return lo;
     let hi = lo * 2;
-    while (columnSigma(hi, h, L, bi) > sigmaY) hi *= 2;
-    for (let k = 0; k < 40; k++) { const m = (lo + hi) / 2; if (columnSigma(m, h, L, bi) <= sigmaY) hi = m; else lo = m; }
+    while (columnSigma(hi, h, F, Tq, bi) > sigmaY) hi *= 2;
+    for (let k = 0; k < 40; k++) { const m = (lo + hi) / 2; if (columnSigma(m, h, F, Tq, bi) <= sigmaY) hi = m; else lo = m; }
     return hi;
   };
-  const legSigma = (ro, L) => columnSigma(ro, legH, L, bore);
-  const legRFor = (L) => columnRFor(legH, L, bore, COCK_LEG_BORE_R + STOCK_MIN_U);
+  // the leg at foot (x, y): the bush's and the stud's side forces at the bush's plane, their moments about its axis twisting it
+  const legSigma = (ro, x, y) => columnSigma(ro, legH, R + Fs, momentAt(x, y, true), bore);
+  const legRFor = (x, y) => columnRFor(legH, R + Fs, momentAt(x, y, true), bore, COCK_LEG_BORE_R + STOCK_MIN_U);
   const postH = FUSEE_COCK_TOP - FUSEE_BOSS_BOT;
   const bushBore = TRAIN_STAFF_R + PIVOT_BORE_CLEAR;
   // The boss: the bush plus a stock floor of nickel round it, and as wide as
@@ -50616,7 +50656,8 @@ const FUSEE_COCK = !FUSEE_COCK_BUILT ? null : await (async () => {
   const barKeeps = await keepsIn(FUSEE_COCK_BOT - CLEAR_MARGIN, FUSEE_COCK_TOP + CLEAR_MARGIN, (o) => isChain(o) || ownTop.has(o));
   // ...and the crank's band, in the cone window's air: the boss, the arm to
   // the post and the post itself, which runs up to the bar
-  const crankKeeps = await keepsIn(FUSEE_BOSS_BOT - CLEAR_MARGIN, FUSEE_COCK_TOP + CLEAR_MARGIN, (o) => isChain(o) || ownTop.has(o));
+  // (the stop-work's stud is the seat's tenant: it is planted in the crank's underside, so it is not a keep for the crank)
+  const crankKeeps = await keepsIn(FUSEE_BOSS_BOT - CLEAR_MARGIN, FUSEE_COCK_TOP + CLEAR_MARGIN, (o) => isChain(o) || ownTop.has(o) || o.name === 'stopworkStud');
   // The post stands one margin inside the cone window's solved edge: the
   // crank is the window's tenant and touches no plate.
   const coneWin = TQ_WINDOWS.report.find((w) => w.name === 'fusee');
@@ -50690,53 +50731,69 @@ const FUSEE_COCK = !FUSEE_COCK_BUILT ? null : await (async () => {
   // r(1 − cos 0.25°); the post keeps its margin from the chords, so that sag
   // (twice, §335's rule for the ring) comes off its station.
   const coneEdge = coneR - 2 * coneR * (1 - Math.cos(0.25 * DEG2RAD));
-  const postFor = (() => {
-    let postR = Math.max(widthAt(coneEdge) / 2, STOCK_MIN_U), sStep = coneEdge - CLEAR_MARGIN - postR;
+  // (§336 landing 3: per bearing, because the post's twist is the moment at the post, which past the seat depends on where it is)
+  const postFor = (a) => {
+    const cs = Math.cos(a), sn = Math.sin(a), at = (s) => [C.x + cs * s, C.y + sn * s];
+    let postR = Math.max(widthAtP(...at(coneEdge), true) / 2, STOCK_MIN_U), sStep = coneEdge - CLEAR_MARGIN - postR;
     for (let k = 0; k < 30; k++) {
-      const r = Math.max(columnRFor(postH, Math.max(sStep, 0), 0, STOCK_MIN_U), widthAt(sStep) / 2);
+      const pt = at(Math.max(sStep, 0));
+      const r = Math.max(columnRFor(postH, R + Fs, momentAt(...pt, true), 0, STOCK_MIN_U), widthAtP(...pt, true) / 2);
       sStep = coneEdge - CLEAR_MARGIN - r;
       if (Math.abs(r - postR) < 1e-9) { postR = r; break; }
       postR = r;
     }
     return { postR, sStep };
-  })();
+  };
+  // §336 landing 3 — THE CRANK'S PATH: from the bush to the post along the cock's bearing or, with a stud to carry, a DOGLEG
+  // through the stud's seat (the bush to the seat, the seat to the post), each leg a strip cut to the width at each of its
+  // points. A segment is sampled from where it leaves the member at its start.
+  const crankSegs = (P0) => (seat ? [[C, seat, false], [seat, P0, true]] : [[C, P0, false]]);
+  const segSamples = (A, B, past, skip0, fn) => {
+    const L = Math.hypot(B.x - A.x, B.y - A.y);
+    for (let t = skip0; t <= L; t += 0.5) { const f = t / (L || 1); if (fn(A.x + (B.x - A.x) * f, A.y + (B.y - A.y) * f, past) === false) return; }
+  };
   // 4. The scan.
   let best = null, near = null;
   const landscape = [];
   for (let dd = 0; dd < 360; dd += 2) {
     await breathe(377);
     const a = dd * DEG2RAD, cs = Math.cos(a), sn = Math.sin(a);
+    const { sStep, postR } = postFor(a);
+    const P0 = { x: C.x + cs * sStep, y: C.y + sn * sStep };
     let bearingNear = null;
     const series = [];   // every reach tried on this bearing, for the report
     for (let reach = 2; ; reach += 0.25) {
       if (best && reach >= best.reach - 1e-9) break;
-      const { sStep, postR } = postFor;
       if (!(sStep > bossR)) break;               // no post fits inside the window's air beyond the boss
-      const legR = legRFor(reach), padR = legR * 1.5, holeR = legR * 1.15 + CLEAR_MARGIN;
-      const nodeR = Math.max(legR * 1.35, widthAt(reach) / 2);
-      const hw = widthAt(reach) / 2;              // the arm's root, for the record
-      if (reach < sStep + postR + nodeR + CLEAR_MARGIN) continue;
       const x = C.x + cs * reach, y = C.y + sn * reach;
+      const legR = legRFor(x, y), padR = legR * 1.5, holeR = legR * 1.15 + CLEAR_MARGIN;
+      const hw = widthAtP(x, y, true) / 2;         // the arm's root
+      const nodeR = Math.max(legR * 1.35, hw);
+      if (reach < sStep + postR + nodeR + CLEAR_MARGIN) continue;
       const mPlate = plateEdge(x, y) - Math.max(nodeR, padR) - STOCK_MIN_U;
       if (mPlate < 0) break;   // past the rim, every farther reach is too
       const col = columnClear(x, y, padR);
       const hole = plateHoleClear(x, y, holeR);
       let mBar = Infinity, barWho = null;
+      const take = (r) => { if (r.c < mBar) { mBar = r.c; barWho = r.who; } return mBar >= 0; };
       if (col.c >= 0 && hole.c >= 0) {
-        // the crank, in the window's air: the arm from the boss to the post, and the post
-        for (let sb = bossR + CLEAR_MARGIN; sb <= sStep && mBar >= 0; sb += 0.5) {
-          const bc = barClear(C.x + cs * sb, C.y + sn * sb, widthAt(sb) / 2, crankKeeps);
-          if (bc.c < mBar) { mBar = bc.c; barWho = bc.who; }
-        }
-        { const bc = barClear(C.x + cs * sStep, C.y + sn * sStep, postR, crankKeeps); if (bc.c < mBar) { mBar = bc.c; barWho = bc.who; } }
+        // the crank: the bush to the post, through the stud's seat when there is one; its slot keeps the plate land too
+        for (const [A0, B0, past] of crankSegs(P0))
+          segSamples(A0, B0, past, A0 === C ? bossR + CLEAR_MARGIN : 0, (px, py, pst) => {
+            const w = widthAtP(px, py, pst) / 2;
+            const b1 = barClear(px, py, w, crankKeeps), b2 = slotLand(px, py, w);
+            return take(least([b1.c, b1.who], [b2.c, b2.who]));
+          });
+        if (seat) { const b1 = barClear(seat.x, seat.y, seat.ringR, crankKeeps), b2 = slotLand(seat.x, seat.y, seat.ringR); take(least([b1.c, b1.who], [b2.c, b2.who])); }
+        take(barClear(P0.x, P0.y, postR, crankKeeps));
         // the bar IN THE PLATE'S PLANE (§336 landing 2), from the post to the foot: clear of what crosses the plate band, and its
         // slot (the bar and a margin) a plate land from every other opening, pivot boss and window, and from the rim
         for (let sb = sStep + postR; sb <= reach - nodeR && mBar >= 0; sb += 0.5) {
-          const bx = C.x + cs * sb, by = C.y + sn * sb, hw = widthAt(sb) / 2;
-          const b1 = barClear(bx, by, hw, crankKeeps), b2 = slotLand(bx, by, hw), bc = least([b1.c, b1.who], [b2.c, b2.who]);
-          if (bc.c < mBar) { mBar = bc.c; barWho = bc.who; }
+          const bx = C.x + cs * sb, by = C.y + sn * sb, w = widthAtP(bx, by, true) / 2;
+          const b1 = barClear(bx, by, w, crankKeeps), b2 = slotLand(bx, by, w);
+          take(least([b1.c, b1.who], [b2.c, b2.who]));
         }
-        { const a1 = barClear(x, y, nodeR, crankKeeps), a2 = slotLand(x, y, nodeR); const fc = least([a1.c, a1.who], [a2.c, a2.who]); if (fc.c < mBar) { mBar = fc.c; barWho = fc.who; } }
+        { const a1 = barClear(x, y, nodeR, crankKeeps), a2 = slotLand(x, y, nodeR); take(least([a1.c, a1.who], [a2.c, a2.who])); }
       }
       const short = Math.min(mPlate, col.c, hole.c, mBar);
       const row = { x, y, a, reach, short, hw, postR, sStep, legR, nodeR, padR, holeR, mPlate, mColumn: col.c, colWho: col.who, mHole: hole.c, holeWho: hole.who, mBar, barWho };
@@ -50783,28 +50840,45 @@ const FUSEE_COCK = !FUSEE_COCK_BUILT ? null : await (async () => {
   // extruded T deep and centred on zMid. Each overlaps the member at either
   // end by its own radius (the boss, the post, the foot node), so the arm is
   // one body with them.
-  const armPts = (s0, s1) => {
-    const N = 24, left = [], right = [];
+  // §336 landing 3: a strip along any segment A→B, its half-width at each point the width law's there, cut on the segment's
+  // own normal (the crank's dogleg legs are not on the cock's bearing)
+  const stripPts = (A0, B0, past) => {
+    const N = 24, left = [], right = [], ux = B0.x - A0.x, uy = B0.y - A0.y, Ls = Math.hypot(ux, uy) || 1, nx = -uy / Ls, ny = ux / Ls;
     for (let k = 0; k <= N; k++) {
-      const sk = s0 + ((s1 - s0) * k) / N, w = widthAt(sk) / 2;
-      left.push([C.x + cs * sk - sn * w, C.y + sn * sk + cs * w]);
-      right.push([C.x + cs * sk + sn * w, C.y + sn * sk - cs * w]);
+      const f = k / N, px = A0.x + ux * f, py = A0.y + uy * f, w = widthAtP(px, py, past) / 2;
+      left.push([px + nx * w, py + ny * w]);
+      right.push([px - nx * w, py - ny * w]);
     }
     return [...left, ...right.reverse()];
   };
-  const armGeo = (s0, s1) => {
-    const shape = new THREE.Shape(), pts = armPts(s0, s1);
+  const armPts = (s0, s1) => stripPts({ x: C.x + cs * s0, y: C.y + sn * s0 }, { x: C.x + cs * s1, y: C.y + sn * s1 }, true);
+  const crankSegsBuilt = crankSegs(step);
+  const crankPieces = crankSegsBuilt.map(([A0, B0, past]) => stripPts(A0, B0, past));
+  const armGeoOf = (pts) => {
+    const shape = new THREE.Shape();
     pts.forEach(([x, y], k) => (k ? shape.lineTo(x, y) : shape.moveTo(x, y)));
     shape.closePath();
     const g = new THREE.ExtrudeGeometry(shape, { depth: T, bevelEnabled: false });
     g.translate(0, 0, -T / 2);
     return g;
   };
-  const lowerArm = new THREE.Mesh(armGeo(0, foot.sStep), MATS.ribbedNickel);
-  lowerArm.name = 'fuseeCockCrank';
-  lowerArm.position.z = FUSEE_BOSS_MID;
-  cock.add(lowerArm);
-  const upperArm = new THREE.Mesh(armGeo(foot.sStep, L), MATS.ribbedNickel);
+  for (const [k, pts] of crankPieces.entries()) {
+    const lowerArm = new THREE.Mesh(armGeoOf(pts), MATS.ribbedNickel);
+    lowerArm.name = 'fuseeCockCrank';
+    lowerArm.userData.armPast = crankSegsBuilt[k][2];   // past the stud's seat: the stud's moment is in its width (probe-336 reads it)
+    lowerArm.position.z = FUSEE_BOSS_MID;
+    cock.add(lowerArm);
+  }
+  // the stud's SEAT: a boss of crank metal round the stop-work's stud (its radius and a §50 floor), the stud planted in its underside
+  if (seat) {
+    const seatMesh = new THREE.Mesh(new THREE.CylinderGeometry(seat.ringR, seat.ringR, T, 28), MATS.ribbedNickel);
+    seatMesh.geometry.rotateX(Math.PI / 2);
+    seatMesh.name = 'fuseeCockSeat';
+    seatMesh.position.set(seat.x, seat.y, FUSEE_BOSS_MID);
+    cock.add(seatMesh);
+  }
+  const upperArm = new THREE.Mesh(armGeoOf(armPts(foot.sStep, L)), MATS.ribbedNickel);
+  upperArm.userData.armPast = true;
   upperArm.name = 'fuseeCockArm';
   upperArm.position.z = FUSEE_COCK_MID;
   cock.add(upperArm);
@@ -50835,26 +50909,30 @@ const FUSEE_COCK = !FUSEE_COCK_BUILT ? null : await (async () => {
     const disc = (x, y, r, n) => Array.from({ length: n }, (_, k) => { const a = (2 * Math.PI * k) / n, R = r / Math.cos(Math.PI / n); return [x + R * Math.cos(a), y + R * Math.sin(a)]; });
     // each piece is offset ALONE and the offsets are unioned: a piece is convex, where a miter offset is exact, while the union's
     // junctions are reflex corners, where a miter's offset vertex lands short of the margin
-    return unionLoops([armPts(0, foot.sStep), armPts(foot.sStep, L), disc(step.x, step.y, foot.postR, 28), disc(foot.x, foot.y, foot.nodeR, 48), disc(C.x, C.y, bossR, 48)]
+    return unionLoops([...crankPieces, armPts(foot.sStep, L), disc(step.x, step.y, foot.postR, 28), disc(foot.x, foot.y, foot.nodeR, 48), disc(C.x, C.y, bossR, 48),
+      ...(seat ? [disc(seat.x, seat.y, seat.ringR, 28)] : [])]
       .map((P) => G.offsetPolygon(P, CLEAR_MARGIN + F32_TIE)));
   })();
   registerExplode(g, 0, 7);   // the group stands at the movement's origin; its parts carry their own heights
   registerLabel('Fusee cock', g);
-  const barSigma = 6 * R * (L * OSC_U) / (T_m * (widthAt(L) * OSC_U) ** 2);
+  const rootM = momentAt(foot.x, foot.y, true), rootW = widthAtP(foot.x, foot.y, true);
+  const barSigma = 6 * rootM * OSC_U / (T_m * (rootW * OSC_U) ** 2);
   // The tip's deflection, by the unit-load integral over the taper:
   // δ = ∫ R·s² / (E·I(s)) ds, I(s) = T·b(s)³/12 in plane.
   const E = STOCK.nickelSilver.E;
   let deflect = 0;
-  { const N = 400; for (let k = 0; k < N; k++) { const sk = (k + 0.5) * L / N, b = widthAt(sk) * OSC_U; deflect += R * (sk * OSC_U) ** 2 / (E * T_m * b ** 3 / 12) * (L / N) * OSC_U; } }
+  // (along the arm's line, the stud's moment included past its seat's station: a report, not a gate)
+  { const N = 400; for (let k = 0; k < N; k++) { const sk = (k + 0.5) * L / N, px = C.x + cs * sk, py = C.y + sn * sk, b = widthAtP(px, py, true) * OSC_U; deflect += momentAt(px, py, true) * OSC_U * (sk * OSC_U) / (E * T_m * b ** 3 / 12) * (L / N) * OSC_U; } }
   const deflect_mm = deflect * 1000;
   return {
     obj: g, foot, step, T, bot: FUSEE_COCK_BOT, mid: FUSEE_COCK_MID, top: FUSEE_COCK_TOP, bossMid: FUSEE_BOSS_MID, L,
     load: { R_N: R, R_running_N: (chain.m + gear.m) / span, chain: { F_N: chain.F, r_u: chain.r, z: chain.z }, gear: { F_N: gear.F, z: gear.z },
-      stop: { F_N: stop.F, r_u: stop.r, z: stop.z }, wind: { F_N: wind.F, r_u: wind.r, z: wind.z }, zLow, zUp },
-    bar: { rootWidth_u: widthAt(L), widthAtWindow_u: widthAt(coneR), shearFloor_u: bShear, sigma_Pa: barSigma, yield_Pa: sigmaY, deflect_mm },
-    boss: { r_u: bossR }, post: { r_u: foot.postR, s_u: foot.sStep, h_u: postH, sigma_Pa: columnSigma(foot.postR, postH, foot.sStep, 0) },
-    leg: { r_u: foot.legR, h_u: legH, sigma_Pa: legSigma(foot.legR, L), yield_Pa: sigmaY },
-    footTwist_Nmm: R * L * UNIT_MM,
+      stop: { F_N: stop.F, r_u: stop.r, z: stop.z, exact: !!stop.exact }, wind: { F_N: wind.F, r_u: wind.r, z: wind.z }, zLow, zUp },
+    seat: seat && { x: seat.x, y: seat.y, F_N: seat.F, studR_u: seat.studR, ringR_u: seat.ringR, widthAt_u: widthAtP(seat.x, seat.y, true) },
+    bar: { rootWidth_u: rootW, rootMoment_Nu: rootM, widthAtWindow_u: widthAt(coneR), shearFloor_u: bShear, sigma_Pa: barSigma, yield_Pa: sigmaY, deflect_mm },
+    boss: { r_u: bossR }, post: { r_u: foot.postR, s_u: foot.sStep, h_u: postH, sigma_Pa: columnSigma(foot.postR, postH, R + Fs, momentAt(step.x, step.y, true), 0) },
+    leg: { r_u: foot.legR, h_u: legH, sigma_Pa: legSigma(foot.legR, foot.x, foot.y), yield_Pa: sigmaY },
+    footTwist_Nmm: rootM * UNIT_MM,
     landscape,
   };
 })();
@@ -58195,7 +58273,7 @@ const UNIT_GROUPS = new Map([
   ['Fusee & chain', new Map([
     ['Fusee & great wheel', null], ['Chain', null], ['Mainspring drum', null],
     ['Maintaining detent', null], ['Set-up work', null],
-    ...(FUSEE_COCK_BUILT ? [['Fusee cock', null]] : []),   // §336 — the fusee's top bush is in it (§47's build)
+    ['Fusee cock', null],   // §336 — the fusee's top bush is in it
     [STOPWORK ? 'Winding stop-work' : 'Winding arrest', null], // §47 — the chain-thrown finger and its lug live with the cone they arrest (§329 landing 4: or the stop-work, under its key)
   ])],
   ['Keyless & winding', new Map([

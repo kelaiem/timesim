@@ -31,9 +31,8 @@
 //
 // Boot must be silent (rule 6).
 //
-//   cd tools && node probe-336-fusee-cock.mjs
-//   QUERY='reserveh=24' node probe-336-fusee-cock.mjs   (a spec point; the default query is arrest=stop-iron, because since
-//   §329's flip the plain default builds the stop-work on the plate's island and carries no cock)
+//   cd tools && node probe-336-fusee-cock.mjs           (the default build: the stop-work's stud seated in the crank, §336 landing 3)
+//   QUERY='arrest=stop-iron' node probe-336-fusee-cock.mjs   (§47's arrest: no seat, the stop bounded; also 'reserveh=24')
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { dirname, join } from 'node:path';
@@ -56,7 +55,7 @@ page.on('console', (m) => {
   if (m.type() === 'warning' || m.type() === 'error') warns.push(t);
 });
 page.on('pageerror', (e) => warns.push('PAGEERROR ' + String(e)));
-const QUERY = process.env.QUERY ?? 'arrest=stop-iron';
+const QUERY = process.env.QUERY ?? '';
 await page.goto(`http://127.0.0.1:${port}/index.html?${QUERY}`, { waitUntil: 'load', timeout: 180000 });
 await page.waitForFunction(() => !!window.__clock && (!window.__clock.boot || window.__clock.boot.done !== false), null, { timeout: 400000 });
 await page.waitForTimeout(1000);
@@ -106,15 +105,18 @@ const out = await page.evaluate(async () => {
       bossBore = r;
     }
   });
-  // the arm's outline, read back: its half-width at stations along the bearing
+  // the arms' outlines, read back as STATIONS: each strip is its left edge then its right edge reversed (main.js stripPts), so
+  // station k's centre is the mid-point of the two edges' k-th points and its half-width half their distance. Each mesh says
+  // whether it lies past the stud's seat (userData.armPast), which is whether the stud's moment is in its width.
   const arms = [];
   cockE.obj.traverse((o) => {
     if (o.name !== 'fuseeCockArm' && o.name !== 'fuseeCockCrank') return;
-    const sh = o.geometry.parameters.shapes; const pts = (Array.isArray(sh) ? sh[0] : sh).getPoints();
-    const cs = Math.cos(fc.foot.a), sn = Math.sin(fc.foot.a);
-    for (const p of pts) {
-      const dx = p.x - P.barrel.x, dy = p.y - P.barrel.y;
-      arms.push({ s: dx * cs + dy * sn, w: Math.abs(-dx * sn + dy * cs) });
+    const sh = o.geometry.parameters.shapes; let pts = (Array.isArray(sh) ? sh[0] : sh).getPoints();
+    if (pts.length % 2 && Math.hypot(pts[0].x - pts[pts.length - 1].x, pts[0].y - pts[pts.length - 1].y) < 1e-12) pts = pts.slice(0, -1);
+    const M = pts.length / 2;
+    for (let k = 0; k < M; k++) {
+      const a = pts[k], b = pts[pts.length - 1 - k];
+      arms.push({ cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, hw: Math.hypot(a.x - b.x, a.y - b.y) / 2, past: !!o.userData.armPast });
     }
   });
   const win = clock.tqWindows.find((w) => w.name === 'fusee');
@@ -124,7 +126,7 @@ const out = await page.evaluate(async () => {
   for (const nme of ['Three-quarter plate', 'Center wheel', 'Chain']) rest[nme] = I.clearanceAt(clock, 'Fusee cock', nme);
   return {
     CLEAR_MARGIN: L.CLEAR_MARGIN, yield: L.NICKEL_SILVER_SIGMA_Y_PA, unitMM: L.UNIT_MM, stockMin: L.STOCK_MIN_U, fc, cone: { n, underPlate, clearAll }, ctlCovered,
-    staffTop, squareBot, bossBore, arms, win: { cut: win.cut, boss: win.boss, sectors: win.sectors.length },
+    staffTop, squareBot, bossBore, arms, barrel: P.barrel, win: { cut: win.cut, boss: win.boss, sectors: win.sectors.length },
     joints: joints.map((j) => ({ at: j.site, engagedMM: j.measuredMM, requiredMM: j.requiredMM })), rest,
     pivotR: 0.5,
   };
@@ -145,8 +147,9 @@ const sumM = ld.chain.F_N * (ld.chain.z - ld.zLow) + ld.gear.F_N * (ld.gear.z - 
 const R = sumM / span;
 console.log(`reaction: R ${R.toFixed(4)} N (running ${ld.R_running_N.toFixed(4)} N); chain ${ld.chain.F_N.toFixed(3)} N @ z ${ld.chain.z.toFixed(2)}, mesh ${ld.gear.F_N.toFixed(3)} N, stop ${ld.stop.F_N.toFixed(3)} N, wind ${ld.wind.F_N.toFixed(3)} N; span ${span.toFixed(3)}`);
 if (Math.abs(R - ld.R_N) > 1e-9 * R) fail(`the record's R ${ld.R_N} is not its own moments over the span (${R})`); else ok('R is its four moments over the bearing span');
-// σ at the root, from the record's own width and length (the record carries T and L in units)
-const sig = (b_u) => 6 * R * (fc.L * UM) / ((fc.T * UM) * (b_u * UM) ** 2);
+// σ at the root, from the record's own moment there and its width (R·L, and with a stud seated the stud's moment from its seat)
+const sig = (b_u) => 6 * fc.bar.rootMoment_Nu * UM / ((fc.T * UM) * (b_u * UM) ** 2);
+if (fc.seat) console.log(`seat: the stop-work's stud (r ${fc.seat.studR_u.toFixed(3)}) at (${fc.seat.x.toFixed(2)}, ${fc.seat.y.toFixed(2)}), ${fc.seat.F_N.toFixed(3)} N into the crank; the stop exact: ${ld.stop.exact}`);
 const rootSig = sig(fc.bar.rootWidth_u);
 console.log(`arm: L ${fc.L.toFixed(2)}, root ${fc.bar.rootWidth_u.toFixed(3)} wide (σ ${(rootSig / 1e6).toFixed(1)} MPa), ${fc.bar.widthAtWindow_u.toFixed(3)} at the window's rim, shear floor ${fc.bar.shearFloor_u.toFixed(3)}; tip deflection ${fc.bar.deflect_mm.toFixed(4)} mm`);
 if (!(rootSig <= Y * (1 + 1e-6))) fail(`the arm's root reads ${(rootSig / 1e6).toFixed(1)} MPa, over the ${(Y / 1e6).toFixed(0)} MPa yield`); else ok(`the arm's root is at or under the yield (${(rootSig / 1e6).toFixed(1)} of ${(Y / 1e6).toFixed(0)} MPa)`);
@@ -155,13 +158,13 @@ for (const [what, r] of [['leg', fc.leg], ['post', fc.post]])
   if (!(r.sigma_Pa <= Y * (1 + 1e-6))) fail(`the ${what} reads ${(r.sigma_Pa / 1e6).toFixed(1)} MPa, over the yield`); else ok(`the ${what} is under the yield (${(r.sigma_Pa / 1e6).toFixed(1)} MPa, r ${r.r_u.toFixed(3)})`);
 // the taper, read off the built outline: every vertex's half-width is the law's at its station (or the floor)
 {
-  const T_m = fc.T * UM, tauY = Y / Math.sqrt(3);
-  const bSh = 1.5 * R / (T_m * tauY) / UM;
+  const T_m = fc.T * UM, tauY = Y / Math.sqrt(3), C = out.barrel, Fs = fc.seat ? fc.seat.F_N : 0;
+  const shear = (F) => 1.5 * F / (T_m * tauY) / UM;
   let worst = 0;
   for (const a of out.arms) {
-    if (a.s < 1e-6) continue;
-    const law = Math.max(out.stockMin, bSh, Math.sqrt(6 * R * (a.s * UM) / (T_m * Y)) / UM) / 2;
-    worst = Math.max(worst, Math.abs(a.w - law));
+    const Mm = R * Math.hypot(a.cx - C.x, a.cy - C.y) + (a.past && fc.seat ? Fs * Math.hypot(a.cx - fc.seat.x, a.cy - fc.seat.y) : 0);
+    const law = Math.max(out.stockMin, shear(R + (a.past ? Fs : 0)), Math.sqrt(6 * Mm * UM / (T_m * Y)) / UM) / 2;
+    worst = Math.max(worst, Math.abs(a.hw - law));
   }
   if (!out.arms.length) fail('no arm outline read');
   else if (worst > 1e-3) fail(`the built arms depart from the taper law by up to ${worst.toFixed(4)}`); else ok(`the arms are cut to the taper (${out.arms.length} outline vertices, worst ${worst.toExponential(2)})`);
