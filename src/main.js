@@ -18846,6 +18846,8 @@ arrest47: {   // labelled: §329 landing 4's stop-work branch leaves it before �
     const rejects = { root: 0, line: 0, plate: 0, chain: 0, drum: 0 };
     let site = null;
     for (let i = 0; i < 720; i++) {
+      // a seam per azimuth: the default build runs this scan since §329's flip, and §47's own seams are past its `break`
+      await breathe(379);
       const azS = (i / 720) * TAU2;
       const pinAzW = azS - OMEGA * E / 2;   // the pin's world azimuth at full wind: θ = −E/2, entering the upper stop's notch
       // the pin and its orbit, solved together: the pin sized at the orbit's load, the orbit the root's metal less the pin
@@ -19013,6 +19015,9 @@ arrest47: {   // labelled: §329 landing 4's stop-work branch leaves it before �
     const discR = new Float64Array(NA);
     let reliefMin = Infinity;
     for (let i = 0; i < NA; i++) {
+      // a seam per azimuth of the relief: each carves ~100 radii against the star's whole outline at every passage pose,
+      // about a second for the disc in one stretch (boot-yield read 968 ms held on the flipped default)
+      await breathe(380);
       const al = (i / NA) * TAU2;
       let r = R_L;
       // the relief is a SLIDING fit inside one mechanism (the star's flanks pass the disc's edge as the lock arcs do), so it is
