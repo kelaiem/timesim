@@ -9,6 +9,13 @@
 // with that field in place of the window's edge. It prints the best margin, what binds it, and the bulge's area outside the
 // window as solved (the metal the plate gives up).
 //
+// And the STUDS' SUPPORT: the finger's and the star's studs hang from the cock, so the fold adds a BRANCH ARM off the cock's boss
+// (in the cock's plane, flush with the plate) running boss → finger → star. It is a cantilever in plan, loaded at the finger by
+// the pin's force plus the mesh's (the torque the finger carries, stall / g, over the pinion's pitch radius) and at the star by
+// the pin's force, so its root width is the cock's bar's law, b = √(6·M/(T·σ_y)), M = Σ F·(distance to the boss). The arm must
+// stand a margin inside the opening the bulge makes, so each point of the path needs room for b/2 + a margin. Reported per
+// reserve: the root width, and the bulge with the arm counted.
+//
 // Every reserve but 30 h builds §336's fusee cock (§329's direct stop-work keeps the plate's island at 30 h), and with no plate
 // over the cone the window is air from the cone's top face up to the cock's boss. That band, less a margin at each end, must
 // hold the line's three layers (src/geared-geneva.js): the GEAR layer (the cone's wheel fast on the fusee's arbor, the finger's
@@ -26,7 +33,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { bootMany } from './boot-pool.mjs';
 import { chooseGearedStopwork, gearPair, MODULE_MIN_U, sizeGeneva } from '../src/geared-geneva.js';
-import { STOCK_MIN_U, CLEAR_MARGIN } from '../src/layout.js';
+import { STOCK_MIN_U, CLEAR_MARGIN, UNIT_MM } from '../src/layout.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -42,7 +49,7 @@ const EXPR = `(() => {
   const win = (c.tqWindowPolys || []).find((w) => w.name === 'fusee');
   const G = 0.1, R = 25, n = Math.round((2 * R) / G) + 1, land = new Array(n * n);
   for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) land[j * n + i] = +c.plateLandAt(C.x - R + i * G, C.y - R + j * G).toFixed(3);
-  return { land: { n, G, R, v: land }, C: { x: C.x, y: C.y }, coneTop: top, bossBot: k ? k.bossMid - k.T / 2 : null, bearing: k?.foot?.a ?? null, postS: k?.post?.s_u ?? null,
+  return { land: { n, G, R, v: land }, C: { x: C.x, y: C.y }, coneTop: top, bossBot: k ? k.bossMid - k.T / 2 : null, T: k?.T ?? null, yieldPa: k?.bar?.yield_Pa ?? null, bearing: k?.foot?.a ?? null, postS: k?.post?.s_u ?? null,
     win: win ? win.pts : null, stall: c.equalisation?.going?.energy?.fuseeTorque_Nm ?? null };
 })()`;
 const boots = await bootMany(HOURS.map((h) => `reserveh=${h}`), EXPR, { concurrency: par });
@@ -81,20 +88,31 @@ for (let i = 0; i < HOURS.length; i++) {
         for (let sd = 0; sd < 360; sd += 2) {
           const s = (sd * Math.PI) / 180, Sx = Fx + g.a * Math.cos(s), Sy = Fy + g.a * Math.sin(s);
           const mS = Math.min(cap(Sx, Sy) - g.rTip - M, Math.hypot(Sx - r.C.x, Sy - r.C.y) - g.rTip - keep);
-          const m = Math.min(mF, mS, mCone);
+          // the branch arm: boss → finger → star, a cantilever off the boss, uniform at its root width (an upper bound on the taper)
+          const dF = Math.hypot(Fx - r.C.x, Fy - r.C.y), dS = Math.hypot(Sx - r.C.x, Sy - r.C.y);
+          const Ff = g.F + (r.stall * 1000 / (row.num / row.den)) / ((MODULE_MIN_U * zf / 2) * UNIT_MM), Fs = g.F;   // N: the stall is N·m, ×1000 = N·mm
+          const Mroot = (Ff * dF + Fs * dS) * UNIT_MM;                                                // N·mm
+          const armW = Math.sqrt((6 * Mroot) / ((r.T * UNIT_MM) * (r.yieldPa / 1e6))) / UNIT_MM;     // units
+          let mA = Infinity;
+          for (const [ax, ay, bx, by] of [[r.C.x, r.C.y, Fx, Fy], [Fx, Fy, Sx, Sy]])
+            for (let q = 0; q <= 12; q++) { const x = ax + ((bx - ax) * q) / 12, y = ay + ((by - ay) * q) / 12; mA = Math.min(mA, cap(x, y) - armW / 2 - M); }
+          const m = Math.min(mF, mS, mCone, mA);
           if (m < 0) continue;
           const prot = (x, y, rad) => Math.max(0, rad + M - edge(r.win, x, y));
-          const bulge = Math.max(prot(Fx, Fy, Math.max(pinTip, crankR, g.lockHi)), prot(Sx, Sy, g.rTip), prot(r.C.x, r.C.y, coneTip));
+          let armProt = 0;
+          for (const [ax, ay, bx, by] of [[r.C.x, r.C.y, Fx, Fy], [Fx, Fy, Sx, Sy]])
+            for (let q = 0; q <= 12; q++) armProt = Math.max(armProt, prot(ax + ((bx - ax) * q) / 12, ay + ((by - ay) * q) / 12, armW / 2 - M));
+          const bulge = Math.max(prot(Fx, Fy, Math.max(pinTip, crankR, g.lockHi)), prot(Sx, Sy, g.rTip), prot(r.C.x, r.C.y, coneTip), armProt);
           // the least bulge (how far the worst disc stands past the window as solved); of equals, the more margin
           if (!best || bulge < best.bulge - 1e-9 || (Math.abs(bulge - best.bulge) <= 1e-9 && m > best.m)) {
             const why = [[mCone, 'cone wheel ⇄ land'], [eF - Math.max(pinTip, crankR, g.lockHi) - M, 'finger ⇄ land'], [D - crankR - keep, 'crank ⇄ arbor'],
               [cap(Sx, Sy) - g.rTip - M, 'star ⇄ land'], [Math.hypot(Sx - r.C.x, Sy - r.C.y) - g.rTip - keep, 'star ⇄ arbor']].sort((u, v) => u[0] - v[0])[0][1];
-            best = { bulge, m, why, n: row.n, mm: row.m, zc, zf, kk, D, pd, sd, S: Math.hypot(Sx - r.C.x, Sy - r.C.y) };
+            best = { armW, bulge, m, why, n: row.n, mm: row.m, zc, zf, kk, D, pd, sd, S: Math.hypot(Sx - r.C.x, Sy - r.C.y) };
           }
         }
       }
     }
   }
   const winR = Math.max(...r.win.map(([x, y]) => Math.hypot(x - r.C.x, y - r.C.y)));
-  console.log(`  ${String(h).padStart(2)} h  ${f3(band)} (${f3(needZ)})   ${best ? f3(best.m).padStart(7) : '   none'}           ${best ? best.why.padEnd(18) : ''}  bulge ${best ? f3(best.bulge) : ''} ${best ? `n${best.n}m${best.mm} ${best.zc}:${best.zf}  ${best.kk}  ${f3(best.D)}  ${best.pd}°    |S| ${f3(best.S)}` : ''}   window r ≤ ${f3(winR)}`);
+  console.log(`  ${String(h).padStart(2)} h  ${f3(band)} (${f3(needZ)})   ${best ? f3(best.m).padStart(7) : '   none'}           ${best ? best.why.padEnd(18) : ''}  bulge ${best ? f3(best.bulge) : ''} arm ${best ? f3(best.armW) : ''} ${best ? `n${best.n}m${best.mm} ${best.zc}:${best.zf}  ${best.kk}  ${f3(best.D)}  ${best.pd}°    |S| ${f3(best.S)}` : ''}   window r ≤ ${f3(winR)}`);
 }
