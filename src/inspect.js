@@ -3112,13 +3112,12 @@ dropArrestRows(EXPECTED_CONTACT_FLOORS, (r) => [r.a, r.b]);   // §329 landing 4
 // pattern (a running fit declared here, held by an instrument).
 if (STOPWORK_ARREST) EXPECTED_CONTACT_FLOORS.push(
   {
-    // §336 landing 3: the stud is planted in the fusee cock's crank, at its seat (the plate's web until then). The star's running
-    // gap under the plate went with the plate: the fusee window stands over the whole of the star's sweep, and the crank's
-    // underside stands its stud's length above the star.
+    // §336 landing 3: the stud is planted in the fusee cock's seat, a pendant hanging from the crank to where the plate's
+    // underside was (the plate's web until then), so the star rides the same running gap under the pendant's foot.
     a: 'Winding stop-work', b: 'Fusee cock', min: CLEAR_MARGIN,
     contacts: [
-      ['stopworkStud', 'fuseeCockSeat'],         // the stud planted in the seat's underside — the support joint
-      ['stopworkStud', 'fuseeCockCrank'],        // ...which is the crank's too, the seat standing on the dogleg's corner
+      ['stopworkStud', 'fuseeCockSeat'],         // the stud planted in the seat's pendant — the support joint
+      ['stopworkStar', 'fuseeCockSeat'],         // the star's running gap under the pendant's foot (held open by the handoff row)
     ],
   },
   {
@@ -6838,7 +6837,9 @@ if (STOPWORK_ARREST) {
   WIND_ARREST_HANDOFFS.push(
     { label: 'pin ⇄ closed notch (the stop)', unitA: 'Fusee & great wheel', meshA: 'stopworkPin', unitB: 'Winding stop-work', meshB: 'stopworkStar',
       expect: { full: 'contact', dwellHi: 'free', dwellLo: 'free', empty: 'contact' } },
-    // (§336 landing 3: no 'star ⇄ plate' running gap any more — the plate over the star is the fusee window's air)
+    // §336 landing 3: the star's running gap is under the cock's seat pendant now (its foot where the plate's underside was)
+    { label: 'star ⇄ seat pendant (running gap)', unitA: 'Winding stop-work', meshA: 'stopworkStar', unitB: 'Fusee cock', meshB: 'fuseeCockSeat',
+      expect: { full: 'free', dwellHi: 'free', dwellLo: 'free', empty: 'free' } },
     { label: 'star ⇄ cone face (running gap)', unitA: 'Winding stop-work', meshA: 'stopworkStar', unitB: 'Fusee & great wheel', meshB: 'fuseeCone',
       expect: { full: 'free', dwellHi: 'free', dwellLo: 'free', empty: 'free' } });
 }

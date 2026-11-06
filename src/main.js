@@ -19180,9 +19180,11 @@ arrest47: {   // labelled: §329 landing 4's stop-work branch leaves it before �
     const SW_STALL_NMM = GOING_POWER.fuseeTorque_Nm * 1000;
     const SW_SIGMA = SPRING_SIGMA_Y_PA / 1e6;                                          // N/mm²
     const SW_MID_Z = S_Z1 + STOCK_MIN_U / 2;                                           // the star's mid-plane: where the pin and stud are loaded
-    // §336 landing 3 — the stud is planted in the FUSEE COCK's crank, whose underside is FUSEE_BOSS_BOT (the plate over the
-    // cone is the fusee window's air now), so its free length runs from the star's mid-plane up to there
-    const SW_STUD_TOP = FUSEE_BOSS_BOT;
+    // §336 landing 3 — the stud is planted in the FUSEE COCK's seat, a PENDANT that hangs from the crank down to where the
+    // plate's underside stood (the plate over the cone is the fusee window's air now), so the stud, the star's two running gaps
+    // and the stud's head are this design's unchanged. (A first cut planted the stud in the crank's own underside, 1.38 up: the
+    // load sized it at r 0.367, its head grew with it, and the head stood 0.104 off the cone's flank.)
+    const SW_STUD_TOP = TQ_BOT_Z;
     const SW_PIN_L = SW_MID_Z - CONE_TOP_Z, SW_STUD_L = SW_STUD_TOP - SW_MID_Z;        // the two cantilevers' free lengths
     const swCantR = (F, L) => Math.cbrt((32 * F * L * UNIT_MM) / (Math.PI * SW_SIGMA)) / 2 / UNIT_MM;   // radius at yield, units
     const swRootE = (F, L, r) => {   // the embed that holds the face moment at yield: σ·d·e² − F·e − 6·F·L = 0, in units
@@ -50549,7 +50551,8 @@ const FUSEE_COCK = await (async () => {
   // stop the pin's force passes through the star's pivot, so the stud carries it whole into the crank at the seat.
   const SWK = STOPWORK && WIND_ARREST.stopwork?.built ? WIND_ARREST.stopwork : null;
   if (STOPWORK && !SWK) console.warn('§336: the stop-work is not built — the fusee cock has no stud to seat and its stop is the bound');
-  const seat = SWK ? { x: SWK.pivot.x, y: SWK.pivot.y, F: SWK.p1.F_N, studR: SWK.p1.stud.r, ringR: SWK.p1.stud.r + STOCK_MIN_U } : null;
+  const seat = SWK ? { x: SWK.pivot.x, y: SWK.pivot.y, F: SWK.p1.F_N, studR: SWK.p1.stud.r, ringR: SWK.p1.stud.r + STOCK_MIN_U,
+    zLoad: (SWK.z[0] + SWK.z[1]) / 2 } : null;
   if (SWK) { stop.F = SWK.p1.F_N; stop.r = SWK.r1; stop.z = (SWK.z[0] + SWK.z[1]) / 2; stop.m = stop.F * (stop.z - zLow); stop.exact = true; }
   const spurPos = windSpur.getWorldPosition(new THREE.Vector3());
   const wind = { r: windSpur.userData.r, z: spurPos.z };
@@ -50601,6 +50604,11 @@ const FUSEE_COCK = await (async () => {
   const legSigma = (ro, x, y) => columnSigma(ro, legH, R + Fs, momentAt(x, y, true), bore);
   const legRFor = (x, y) => columnRFor(legH, R + Fs, momentAt(x, y, true), bore, COCK_LEG_BORE_R + STOCK_MIN_U);
   const postH = FUSEE_COCK_TOP - FUSEE_BOSS_BOT;
+  // THE SEAT'S PENDANT (§336 landing 3): a round column of cock metal hanging from the crank's underside to the plate's old
+  // underside, the stud planted in its foot. The stud's force passes through the star's pivot, on the pendant's axis, so it
+  // bends the pendant (lever: the star's mid-plane up to the crank's underside) and twists nothing; its radius is the least
+  // the column law holds at the yield, never under the seat ring the stud needs.
+  if (seat) seat.pendR = Math.max(seat.ringR, columnRFor(FUSEE_BOSS_BOT - seat.zLoad, seat.F, 0, 0, STOCK_MIN_U));
   const bushBore = TRAIN_STAFF_R + PIVOT_BORE_CLEAR;
   // The boss: the bush plus a stock floor of nickel round it, and as wide as
   // the arm where it leaves it.
@@ -50658,6 +50666,11 @@ const FUSEE_COCK = await (async () => {
   // the post and the post itself, which runs up to the bar
   // (the stop-work's stud is the seat's tenant: it is planted in the crank's underside, so it is not a keep for the crank)
   const crankKeeps = await keepsIn(FUSEE_BOSS_BOT - CLEAR_MARGIN, FUSEE_COCK_TOP + CLEAR_MARGIN, (o) => isChain(o) || ownTop.has(o) || o.name === 'stopworkStud');
+  // ...and the seat's pendant's band, down to the plate's old underside: the stop-work (its stud planted in the pendant, its
+  // star riding the declared running gap under it) is the pendant's tenant, not a keep
+  const swUnitObj = labelEntries.find((e) => e.name === 'Winding stop-work')?.obj;
+  const swMeshes = new Set(); swUnitObj?.traverse((o) => swMeshes.add(o));
+  const pendantKeeps = await keepsIn(TQ_BOT_Z - CLEAR_MARGIN, FUSEE_BOSS_BOT, (o) => isChain(o) || ownTop.has(o) || o === swUnitObj || swMeshes.has(o));
   // The post stands one margin inside the cone window's solved edge: the
   // crank is the window's tenant and touches no plate.
   const coneWin = TQ_WINDOWS.report.find((w) => w.name === 'fusee');
@@ -50784,7 +50797,10 @@ const FUSEE_COCK = await (async () => {
             const b1 = barClear(px, py, w, crankKeeps), b2 = slotLand(px, py, w);
             return take(least([b1.c, b1.who], [b2.c, b2.who]));
           });
-        if (seat) { const b1 = barClear(seat.x, seat.y, seat.ringR, crankKeeps), b2 = slotLand(seat.x, seat.y, seat.ringR); take(least([b1.c, b1.who], [b2.c, b2.who])); }
+        if (seat) {
+          const b1 = barClear(seat.x, seat.y, seat.pendR, crankKeeps), b2 = slotLand(seat.x, seat.y, seat.pendR), b3 = barClear(seat.x, seat.y, seat.pendR, pendantKeeps);
+          take(least([b1.c, b1.who], [b2.c, b2.who], [b3.c, b3.who]));
+        }
         take(barClear(P0.x, P0.y, postR, crankKeeps));
         // the bar IN THE PLATE'S PLANE (§336 landing 2), from the post to the foot: clear of what crosses the plate band, and its
         // slot (the bar and a margin) a plate land from every other opening, pivot boss and window, and from the rim
@@ -50871,10 +50887,11 @@ const FUSEE_COCK = await (async () => {
   }
   // the stud's SEAT: a boss of crank metal round the stop-work's stud (its radius and a §50 floor), the stud planted in its underside
   if (seat) {
-    const seatMesh = new THREE.Mesh(new THREE.CylinderGeometry(seat.ringR, seat.ringR, T, 28), MATS.ribbedNickel);
+    // the seat and its pendant: one column, from the plate's old underside (the stud's foot) up through the crank's band
+    const seatMesh = new THREE.Mesh(new THREE.CylinderGeometry(seat.pendR, seat.pendR, FUSEE_BOSS_TOP - TQ_BOT_Z, 28), MATS.ribbedNickel);
     seatMesh.geometry.rotateX(Math.PI / 2);
     seatMesh.name = 'fuseeCockSeat';
-    seatMesh.position.set(seat.x, seat.y, FUSEE_BOSS_MID);
+    seatMesh.position.set(seat.x, seat.y, (FUSEE_BOSS_TOP + TQ_BOT_Z) / 2);
     cock.add(seatMesh);
   }
   const upperArm = new THREE.Mesh(armGeoOf(armPts(foot.sStep, L)), MATS.ribbedNickel);
@@ -50910,7 +50927,7 @@ const FUSEE_COCK = await (async () => {
     // each piece is offset ALONE and the offsets are unioned: a piece is convex, where a miter offset is exact, while the union's
     // junctions are reflex corners, where a miter's offset vertex lands short of the margin
     return unionLoops([...crankPieces, armPts(foot.sStep, L), disc(step.x, step.y, foot.postR, 28), disc(foot.x, foot.y, foot.nodeR, 48), disc(C.x, C.y, bossR, 48),
-      ...(seat ? [disc(seat.x, seat.y, seat.ringR, 28)] : [])]
+      ...(seat ? [disc(seat.x, seat.y, seat.pendR, 28)] : [])]
       .map((P) => G.offsetPolygon(P, CLEAR_MARGIN + F32_TIE)));
   })();
   registerExplode(g, 0, 7);   // the group stands at the movement's origin; its parts carry their own heights
@@ -50928,7 +50945,8 @@ const FUSEE_COCK = await (async () => {
     obj: g, foot, step, T, bot: FUSEE_COCK_BOT, mid: FUSEE_COCK_MID, top: FUSEE_COCK_TOP, bossMid: FUSEE_BOSS_MID, L,
     load: { R_N: R, R_running_N: (chain.m + gear.m) / span, chain: { F_N: chain.F, r_u: chain.r, z: chain.z }, gear: { F_N: gear.F, z: gear.z },
       stop: { F_N: stop.F, r_u: stop.r, z: stop.z, exact: !!stop.exact }, wind: { F_N: wind.F, r_u: wind.r, z: wind.z }, zLow, zUp },
-    seat: seat && { x: seat.x, y: seat.y, F_N: seat.F, studR_u: seat.studR, ringR_u: seat.ringR, widthAt_u: widthAtP(seat.x, seat.y, true) },
+    seat: seat && { x: seat.x, y: seat.y, F_N: seat.F, studR_u: seat.studR, ringR_u: seat.ringR, pendR_u: seat.pendR, pendH_u: FUSEE_BOSS_BOT - TQ_BOT_Z,
+      pendSigma_Pa: columnSigma(seat.pendR, FUSEE_BOSS_BOT - seat.zLoad, seat.F, 0, 0), widthAt_u: widthAtP(seat.x, seat.y, true) },
     bar: { rootWidth_u: rootW, rootMoment_Nu: rootM, widthAtWindow_u: widthAt(coneR), shearFloor_u: bShear, sigma_Pa: barSigma, yield_Pa: sigmaY, deflect_mm },
     boss: { r_u: bossR }, post: { r_u: foot.postR, s_u: foot.sStep, h_u: postH, sigma_Pa: columnSigma(foot.postR, postH, R + Fs, momentAt(step.x, step.y, true), 0) },
     leg: { r_u: foot.legR, h_u: legH, sigma_Pa: legSigma(foot.legR, foot.x, foot.y), yield_Pa: sigmaY },
