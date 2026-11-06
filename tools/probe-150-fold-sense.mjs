@@ -259,13 +259,20 @@ const out = await page.evaluate(async ({ bases, tauBases }) => {
   const MOVED = ['mwCornerRiseIn', 'mwCornerRiseOut', 'settingRise', 'mwCornerFootIn', 'mwCornerFootOut', 'settingStub',
     'mwCornerCapIn', 'mwCornerCapOut', 'settingCapArbor', 'settingCap'];
   const CORNER = (n) => (n.match(/^mwCorner(Rise|Foot|Cap)(In|Out)$/) || [])[1];
+  // TODO 289 — the tail's bearings are the fold's own metal (each bush reads its rod at the running fit, the
+  // jewel the cap arbor): inside FOLD, so FOLD CLEAR judges the fold against what is NOT the fold
+  const BEARINGS = ['settingRisePivot', 'settingRiseBush', 'settingRiseArm', 'settingRiseColumn', 'settingStubBush', 'settingStubArm',
+    'settingStubColumn', 'settingCapBush', 'settingCapArm', 'settingCapColumn', 'settingCapJewel'];
   const FOLD = new Set(['settingDrop', 'mwCornerDropIn', 'mwCornerDropOut', 'settingTraverse1', 'mwCornerFoldIn',
-    'mwCornerFoldOut', 'settingTraverse2', ...MOVED]);
+    'mwCornerFoldOut', 'settingTraverse2', ...MOVED, ...BEARINGS]);
   const labelOf = (o) => { for (let q = o; q; q = q.parent) if (q.name) return q.name; return '(unnamed)'; };
   const moved = MOVED.map((n) => [n, collectFor(n)]);
   const others = [];
   C.scene.traverse((o) => { if (o.isMesh && o.visible && unschem(o) && !FOLD.has(labelOf(o)) && o.geometry?.attributes?.position) others.push(o); });
-  const DECLARED = { 'settingCap|mwMinuteWheel': 'the mesh itself' };
+  const DECLARED = { 'settingCap|mwMinuteWheel': 'the mesh itself',
+    // TODO 289 — the cap arbor's upper pivot runs up through its jewel's stone into the plate: the jewel's recess is
+    // not cut from the slab (the train pivots' construction), so the arbor reads the plate's metal at its pivot
+    'settingCapArbor|backPlate': 'the upper pivot in its jewel, set in the cap pocket\'s floor (TODO 289; PLATE_SEATS names it a pivot)' };
   const foldClear = {}, cross = {};
   const put = (m, k, d, pi) => { if (!m[k] || d < m[k].d) m[k] = { d, pose: pi }; };
   const box = (o) => new THREE.Box3().setFromObject(o);

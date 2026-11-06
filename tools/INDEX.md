@@ -4,7 +4,7 @@
 
 # The instruments
 
-392 scripts. **271 are ACCEPTANCE tests** — they decide and exit non-zero.
+393 scripts. **272 are ACCEPTANCE tests** — they decide and exit non-zero.
 **121 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -328,6 +328,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-drum-azimuth.mjs` |  | report | Where else can the MAINSPRING DRUM stand? |
 | `probe-feeler-travel.mjs` |  | acceptance | IF THE FEELER RIDES THE HOUR, HAS IT ANYWHERE TO GO? |
 | `probe-ff-live.mjs` |  | report | What fast-forward costs the VIEWER, measured on the live requestAnimationFrame loop (§258's footing, not advanceFrame in a loop): fast-forward on from a full reserve, wall clock until the reserve reads flat, and beside it what the page felt like while it ran — the longest main-thread block (long tasks), the gaps between drawn frames, and how long a posted task waited for the thread. A REPORT: it prints and exits 0. `--ref DIR` serves every DIR/<name>.js in place of src/<name>.js (e.g. `git show <base>:src/main.js > DIR/main.js` for each file a change touches), so two trees are compared in one run on one machine, alternating when `--runs` is more than one. |
+| `probe-fold-bearings.mjs` |  | acceptance | TODO 289 — DOES ANYTHING BEAR THE SETTING FOLD'S SHAFTS? Before this item no rod of the motion-works fold ran in anything: each blank was keyed to a rod whose only other constraint was the bevel mesh at its far end. The tail — the tilted rise, the stub and the cap arbor — now runs in three plain bushes hung from the base plate and a jewel over the cap; the two traverses still do not (the item's residue, REPORTED here, never passed). |
 | `probe-fork-blank.mjs` |  | acceptance | TODO 98 — is the pallet fork ONE piece of metal, and is it one thickness? A Swiss lever is a single blank: boss, both pallet arms, the lever and the fork end are cut in one outline and lapped to one thickness, with only the ruby stones and the guard dart separate. This REPORTS what the movement actually builds — the unit's steel members, the z-height of each, the joint steps between them, the two arms' symmetry, and the one thing the eye cannot see: whether `L_BALANCE`'s stated derivation (`L_FORK + FORK_T/2` as "fork body top") matches the fork's real reach. |
 | `probe-form-crowns.mjs` |  | acceptance | DO THE TWO CROWNS STAND CLEAR OF THE CASE THEY ARE CUT FOR — ON EVERY CASE SHAPE? Acceptance (TODO 268): exits non-zero on any failure. |
 | `probe-form-track.mjs` |  | acceptance | DOES THE FORM DIAL'S RAILROAD TRACK FOLLOW THE CASE AT ONE GAUGE, AND CAN A RAIL BE BENT ROUND EVERY TURN OF IT? Acceptance (BUILT §311): exits non-zero on any failure. Pure Node — the law (geometry.js dialTrack) is read on layout.js's own shapes, no browser. |

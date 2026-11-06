@@ -514,6 +514,7 @@ const DE = {
   'Setting drop': 'Stellweg, Abstieg',
   'Setting rise': 'Stellweg, Anstieg',
   'Setting cap': 'Stellkappe',
+  'Setting bearings': 'Stellwerk-Lager',   // TODO 289
   'Setting bevel': 'Stellkegelrad',
   'Setting bevel corners': 'Stellwerk-Kegelradecken',
   'Setting traverse': 'Stelltraverse',
@@ -942,6 +943,7 @@ const ZH = {
   'Setting drop': '拨针连杆（降）',
   'Setting rise': '拨针连杆（升）',
   'Setting cap': '拨针端盖',
+  'Setting bearings': '拨针轴承',   // TODO 289
   'Setting bevel': '拨针锥齿轮',
   'Setting bevel corners': '拨针锥齿轮拐角',
   'Setting traverse': '拨针横杆',
@@ -1379,6 +1381,7 @@ const FR = {
   ['Setting drop']: 'Descente de mise à l’heure',
   ['Setting rise']: 'Montée de mise à l’heure',
   ['Setting cap']: 'Chapeau de mise à l’heure',
+  ['Setting bearings']: 'Paliers de mise à l’heure',   // TODO 289
   ['Setting bevel']: 'Pignon conique de mise à l’heure',
   ['Setting bevel corners']: 'Coins coniques de mise à l’heure',
   ['Setting traverse']: 'Traverse de mise à l’heure',
@@ -1952,6 +1955,7 @@ const JA = {
   ['Setting drop']: '針合わせロッド（下り）',
   ['Setting rise']: '針合わせロッド（上り）',
   ['Setting cap']: '針合わせキャップ',
+  ['Setting bearings']: '針合わせ軸受',   // TODO 289
   ['Setting bevel']: '針合わせかさ歯車',
   ['Setting bevel corners']: '針合わせかさ歯車コーナー',
   ['Setting traverse']: '針合わせトラバース',
@@ -2524,6 +2528,7 @@ const ZH_HANT = {
   ['Setting drop']: '撥針連桿（降）',
   ['Setting rise']: '撥針連桿（升）',
   ['Setting cap']: '撥針端蓋',
+  ['Setting bearings']: '撥針軸承',   // TODO 289
   ['Setting bevel']: '撥針傘齒輪',
   ['Setting bevel corners']: '撥針傘齒輪轉角',
   ['Setting traverse']: '撥針橫桿',
@@ -3104,6 +3109,7 @@ const AR = {
   'Setting drop': 'هبوط الضبط',
   'Setting rise': 'صعود الضبط',
   'Setting cap': 'غطاء الضبط',
+  'Setting bearings': 'محامل الضبط',   // TODO 289
   'Setting bevel': 'ترس مخروطي للضبط',
   'Setting bevel corners': 'زوايا مخروطية للضبط',
   'Setting traverse': 'عارضة الضبط',
@@ -3669,6 +3675,7 @@ const ES = {
   'Setting drop': 'Bajada de puesta en hora',
   'Setting rise': 'Subida de puesta en hora',
   'Setting cap': 'Tapa de puesta en hora',
+  'Setting bearings': 'Cojinetes de puesta en hora',   // TODO 289
   'Setting bevel': 'Piñón cónico de puesta en hora',
   'Setting bevel corners': 'Esquinas cónicas de puesta en hora',
   'Setting traverse': 'Travesaño de puesta en hora',
@@ -4231,6 +4238,7 @@ const KO = {
   'Setting drop': '세팅 로드 (하강)',
   'Setting rise': '세팅 로드 (상승)',
   'Setting cap': '세팅 캡',
+  'Setting bearings': '세팅 베어링',   // TODO 289
   'Setting bevel': '세팅 베벨',
   'Setting bevel corners': '세팅 베벨 코너',
   'Setting traverse': '세팅 트래버스',
@@ -4795,6 +4803,7 @@ const RU = {
   'Setting drop': 'Вал перевода, вниз',
   'Setting rise': 'Вал перевода, вверх',
   'Setting cap': 'Колпачок перевода',
+  'Setting bearings': 'Подшипники перевода',   // TODO 289
   'Setting bevel': 'Коническое колесо перевода',
   'Setting bevel corners': 'Конические углы перевода',
   'Setting traverse': 'Траверса перевода',
@@ -5360,6 +5369,7 @@ const PT = {
   'Setting drop': 'Descida de acerto',
   'Setting rise': 'Subida de acerto',
   'Setting cap': 'Tampa de acerto',
+  'Setting bearings': 'Mancais de acerto',   // TODO 289
   'Setting bevel': 'Pinhão cônico de acerto',
   'Setting bevel corners': 'Cantos cônicos de acerto',
   'Setting traverse': 'Travessa de acerto',
@@ -5924,6 +5934,7 @@ const IT = {
   'Setting drop': 'Discesa di messa all’ora',
   'Setting rise': 'Risalita di messa all’ora',
   'Setting cap': 'Cappello di messa all’ora',
+  'Setting bearings': 'Cuscinetti di messa all’ora',   // TODO 289
   'Setting bevel': 'Ruota conica di messa all’ora',
   'Setting bevel corners': 'Angoli conici di messa all’ora',
   'Setting traverse': 'Traversa di messa all’ora',
@@ -6485,6 +6496,7 @@ const HI = {
   'Setting drop': 'सेटिंग ड्रॉप',
   'Setting rise': 'सेटिंग राइज़',
   'Setting cap': 'सेटिंग कैप',
+  'Setting bearings': 'सेटिंग बेयरिंग',   // TODO 289
   'Setting bevel': 'सेटिंग बेवल',
   'Setting bevel corners': 'सेटिंग बेवल कोने',
   'Setting traverse': 'सेटिंग ट्रैवर्स',
@@ -7052,6 +7064,7 @@ const VI = {
   'Setting drop': 'Đoạn hạ chỉnh kim',
   'Setting rise': 'Đoạn lên chỉnh kim',
   'Setting cap': 'Nắp chỉnh kim',
+  'Setting bearings': 'Ổ trục chỉnh kim',   // TODO 289
   'Setting bevel': 'Bánh răng côn chỉnh giờ',
   'Setting bevel corners': 'Góc chuyển côn chỉnh kim',
   'Setting traverse': 'Đoạn ngang chỉnh kim',
@@ -7632,6 +7645,7 @@ const NL = {
   'Setting drop': 'Zetdaling',
   'Setting rise': 'Zetstijging',
   'Setting cap': 'Zetkap',
+  'Setting bearings': 'Zetlagers',   // TODO 289
   'Setting bevel': 'Kegelwiel voor het gelijkzetten',
   'Setting bevel corners': 'Zet-kegelhoekstukken',
   'Setting traverse': 'Zetdwarsstuk',
@@ -8212,6 +8226,7 @@ const FA = {
   'Setting drop': 'فرود تنظیم',
   'Setting rise': 'فراز تنظیم',
   'Setting cap': 'کلاهک تنظیم',
+  'Setting bearings': 'یاتاقان‌های تنظیم',   // TODO 289
   'Setting bevel': 'چرخ‌دندهٔ مخروطی تنظیم',
   'Setting bevel corners': 'گوشه‌های مخروطی تنظیم',
   'Setting traverse': 'گذر افقی تنظیم',
@@ -8793,6 +8808,7 @@ const HE = {
   'Setting drop': 'ירידת הכיוון',
   'Setting rise': 'עליית הכיוון',
   'Setting cap': 'מכסה הכיוון',
+  'Setting bearings': 'מיסבי הכיוון',   // TODO 289
   'Setting bevel': 'גלגל משופע לכיוון',
   'Setting bevel corners': 'פינות הכיוון המשופעות',
   'Setting traverse': 'מעבר הכיוון',
@@ -9373,6 +9389,7 @@ const ID = {
   'Setting drop': 'Turunan setel',
   'Setting rise': 'Tanjakan setel',
   'Setting cap': 'Tutup setel',
+  'Setting bearings': 'Bantalan setel',   // TODO 289
   'Setting bevel': 'Roda kerucut penyetel',
   'Setting bevel corners': 'Sudut belok kerucut setel',
   'Setting traverse': 'Lintasan setel',
@@ -9954,6 +9971,7 @@ const TR = {
   'Setting drop': 'Ayar inişi',
   'Setting rise': 'Ayar çıkışı',
   'Setting cap': 'Ayar başlığı',
+  'Setting bearings': 'Ayar yatakları',   // TODO 289
   'Setting bevel': 'Ayar konik dişlisi',
   'Setting bevel corners': 'Ayar konik köşeleri',
   'Setting traverse': 'Ayar traversi',
@@ -10535,6 +10553,7 @@ const CY = {
   'Setting drop': 'Disgyniad gosod',
   'Setting rise': 'Codiad gosod',
   'Setting cap': 'Cap gosod',
+  'Setting bearings': 'Berynnau gosod',   // TODO 289
   'Setting bevel': 'Olwyn befel gosod',
   'Setting bevel corners': 'Corneli befel gosod',
   'Setting traverse': 'Croesiad gosod',
@@ -11119,6 +11138,7 @@ const FIL = {
   ['Setting drop']: 'Pagbaba sa pagtatakda',
   ['Setting rise']: 'Pag-angat sa pagtatakda',
   ['Setting cap']: 'Takip sa pagtatakda',
+  ['Setting bearings']: 'Mga bearing sa pagtatakda',   // TODO 289
   ['Setting bevel']: 'Bevel sa pagtatakda',
   ['Setting bevel corners']: 'Mga bevel na sulok sa pagtatakda',
   ['Setting traverse']: 'Baras ng pagtatakda',
@@ -11678,6 +11698,7 @@ const LV = {
   'Setting drop': 'Iestatīšanas nolaidums',
   'Setting rise': 'Iestatīšanas pacēlums',
   'Setting cap': 'Iestatīšanas vāciņš',
+  'Setting bearings': 'Iestatīšanas gultņi',   // TODO 289
   'Setting bevel': 'Iestatīšanas koniskais ritenis',
   'Setting bevel corners': 'Iestatīšanas koniskie stūri',
   'Setting traverse': 'Iestatīšanas šķērsis',
@@ -12237,6 +12258,7 @@ const HU = {
   'Setting drop': 'Állító leszálló ág',
   'Setting rise': 'Állító felszálló ág',
   'Setting cap': 'Állító fedél',
+  'Setting bearings': 'Állító csapágyak',   // TODO 289
   'Setting bevel': 'Állító kúpkerék',
   'Setting bevel corners': 'Állító kúpkerekes sarkok',
   'Setting traverse': 'Állító keresztág',
@@ -12798,6 +12820,7 @@ const CS = {
   'Setting drop': 'Přestavování, sestup',
   'Setting rise': 'Přestavování, výstup',
   'Setting cap': 'Víko přestavování',
+  'Setting bearings': 'Ložiska přestavování',   // TODO 289
   'Setting bevel': 'Kuželové kolo přestavování',
   'Setting bevel corners': 'Rohy kuželového kola přestavování',
   'Setting traverse': 'Příčka přestavování',
