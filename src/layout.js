@@ -394,14 +394,20 @@ export const SPEC = (() => {
   // __clock.windArrest.trailing; no metal moves yet). null = §47's arrest, as built, so every configKey without it is unchanged.
   // §329 landing 4 — ?arrest=stopwork builds option B: a Geneva stop-work on the fusee (src/stopwork-arrest.js) INSTEAD of §47's
   // finger, beak and lug. It moves metal, so unlike 'trailing' it is part of every configuration key that is about the movement.
-  // §329 — THE STOP-WORK STANDS ONLY WHERE IT CAN (stopworkReaches and STOPWORK_SITED_HOURS above say where, and why), and
-  // elsewhere the key folds back to §47's stop iron: the owner's choice, 2026-11-05, so every reserve keeps a real arrest. Pure, so
-  // layout.js, inspect.js and lubrication.js agree before anything is built, and a stop-work URL at another reserve keys as the
-  // stop-iron build it then is. `stopwork-site` is a MEASUREMENT key (the 'trailing' precedent): it builds the stop-work's site
-  // search at any reserve, so the reserves probe can ask the build whether a site exists. It is not a configuration a reader picks.
+  // §329 — THE DEFAULT ARREST IS THE GENEVA STOP-WORK WHERE IT STANDS (stopworkReaches and STOPWORK_SITED_HOURS above say where,
+  // and why), and §47's stop iron everywhere else: the owner's flip, 2026-11-05, after landing 4 built it behind a key and the
+  // landings since swept it, fixed the gates only the default runs, priced it at P1 and held its contacts. So the key's null is
+  // the shipped arrest, as every other key's null is, and the default's configuration key does not move with the metal (every
+  // landing changes the default's metal under one key). `stopwork` is accepted and normalised to that null. `stop-iron` builds
+  // §47's arrest at every reserve (the old default, kept buildable and swept), and folds to null where the stop-work does not
+  // stand anyway, the same build. `trailing` measures §47's trailing side and so builds §47. `stopwork-site` is a MEASUREMENT key
+  // (the reserves probe): the stop-work's site search at any reserve, with no fold. Whether the stop-work is BUILT is the
+  // derived STOPWORK_BUILT below, which every reader asks instead of comparing this key.
+  const stopworkStands = stopworkReaches(reserveHours) && STOPWORK_SITED_HOURS.includes(reserveHours);
   const arrest = raw.arrest === 'trailing' ? 'trailing'
-    : raw.arrest === 'stopwork-site' ? 'stopwork'
-    : raw.arrest === 'stopwork' ? (stopworkReaches(reserveHours) && STOPWORK_SITED_HOURS.includes(reserveHours) ? 'stopwork' : null) : null;
+    : raw.arrest === 'stopwork-site' ? 'stopwork-site'
+    : raw.arrest === 'stop-iron' ? (stopworkStands ? 'stop-iron' : null)
+    : null;
   const drumAzDeg = raw.drumAzDeg !== undefined && raw.drumAzDeg !== null && raw.drumAzDeg !== '' && Number.isFinite(Number(raw.drumAzDeg))
     ? ((Number(raw.drumAzDeg) % 360) + 360) % 360 : null;
   return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, rsvIdlers, alarmr, subdialr, dialr, studr, caseShape, frame, hands, formRectSpec, gongSeat, alarm, strapMm, drumAzDeg, arrest });
@@ -490,6 +496,10 @@ export function configKey({ spec = SPEC, route = null, tuned = [] } = {}) {
   const t = [...tuned].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
   return `cfg1:${JSON.stringify({ spec: s, route: route ?? null, tuned: t })}`;
 }
+// §329 — is the Geneva stop-work BUILT (main.js, in §47's block), instead of §47's stop iron? The one question every reader asks
+// (main.js, inspect.js, lubrication.js, the action groups below), derived from the spec so all of them agree before the build.
+export const STOPWORK_BUILT = SPEC.arrest === 'stopwork-site'
+  || (SPEC.arrest === null && stopworkReaches(SPEC.reserveHours) && STOPWORK_SITED_HOURS.includes(SPEC.reserveHours));
 export const SPEC_RATES = Object.freeze(Object.keys(RATE_TABLE).map(Number));
 
 // ---------------------------------------------------------------------------
@@ -1353,6 +1363,19 @@ export const SPRING_TAU_Y_PA = SPRING_SIGMA_Y_PA / Math.sqrt(3);
 // figure by a fraction of a decibel; a grade NOBODY would accept (brass at
 // steel's modulus) would move it by whole ones, which is why the row names
 // its source. materials.js's `stockKeyOf` maps each material here.
+// §336 — THE PLATE METAL'S YIELD, which no member asked for until a cock had
+// to carry the fusee: the frame's nickel silver (STOCK.nickelSilver, CuNi18Zn20
+// / CDA C75200). A BAND over the alloy's published tempers, never one number —
+// FRICTION's rule for what the movement cannot measure — and a member is held to
+// its LOW end, the annealed temper, because nothing specifies the cock's stock as
+// work-hardened. The figures are CDA's C75200 temper table as recalled
+// (annealed ≈ 25 ksi, half hard ≈ 74 ksi); §336's record names them for a
+// source check.
+export const NICKEL_SILVER_SIGMA_Y_BAND = Object.freeze({
+  low: 172e6, high: 510e6,
+  why: 'CuNi18Zn20 (CDA C75200): annealed ≈ 172 MPa to half hard ≈ 510 MPa yield; the low end governs',
+});
+export const NICKEL_SILVER_SIGMA_Y_PA = NICKEL_SILVER_SIGMA_Y_BAND.low;
 export const STOCK = Object.freeze({
   steel:        { rho: 7850,  E: STEEL_E_PA, nu: STEEL_NU, why: 'carbon/spring steel — §56\'s density, §137\'s modulus' },
   brass:        { rho: 8500,  E: 100e9, nu: 0.34, why: 'CuZn37 wrought brass (CDA C27400): 8400–8730 kg/m³, E 97–110 GPa' },
@@ -4677,7 +4700,7 @@ export const FORM_ACTION_GROUPS = Object.freeze([
       Object.freeze({ name: 'centre pinion on the great wheel', at: 'P.center', pin: 'power', edge: 'Fusee & great wheel → Center wheel' }),
     ]) }),
   Object.freeze({ id: 'power', name: 'barrel, fusee and chain',
-    units: Object.freeze(['Mainspring drum', 'Set-up work', 'Chain', 'Fusee & great wheel', 'Maintaining detent', SPEC.arrest === 'stopwork' ? 'Winding stop-work' : 'Winding arrest']),   // §329 landing 4: the stop-work replaces the arrest under its key
+    units: Object.freeze(['Mainspring drum', 'Set-up work', 'Chain', 'Fusee & great wheel', 'Maintaining detent', STOPWORK_BUILT ? 'Winding stop-work' : 'Winding arrest']),   // §329 landing 4: the stop-work replaces the arrest under its key
     reason: 'drive mainspring → Mainspring drum → Chain → Fusee & great wheel (→ Maintaining detent); Chain → Winding arrest; the set-up work is the drum\'s arbor',
     anchors: Object.freeze([
       Object.freeze({ name: 'great wheel on the centre pinion', at: 'P.barrel', pin: 'going', edge: 'Fusee & great wheel → Center wheel' }),

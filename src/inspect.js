@@ -38,7 +38,7 @@ import { ZERO_AREA_MAX, CLEAR_MARGIN, HANDOFF_TRACK_TOL, UNIT_MM, Z_DIAL, SLENDE
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME, SPEC,                                    // §36 Apply: the same predicate that builds the unit, and the same name
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, rigidSplit,
-  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R_SPEC, BALANCE_R_REF, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
+  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R_SPEC, BALANCE_R_REF, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG, STOPWORK_BUILT } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 import { auditLubrication, LUBRICATION, LUBRICATION_DEBT, LUBRICATION_WAIVERS } from './lubrication.js';   // §247 tier one
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
@@ -102,7 +102,8 @@ export const MECH_GRAPH = {
     // on the base plate instead.)
     ['Three-quarter plate', 'pillars'],
     ['pillars', 'plate'],
-    ['Fusee & great wheel', 'Three-quarter plate'], // upper pivots, jewelled bores
+    // (§336: the fusee's top bush — in the FUSEE COCK on §47's build, in this
+    // plate on the stop-work's — is pushed below, once STOPWORK_ARREST is known.)
     ['Center wheel', 'Three-quarter plate'],
     ['Third wheel', 'Three-quarter plate'],
     ['Fourth wheel', 'Three-quarter plate'],
@@ -624,7 +625,17 @@ if (FRAME_LANDS) {
 // 'Winding arrest' is not built and 'Winding stop-work' is. Its rows are the metal's: the star's stud is planted in the
 // three-quarter plate's underside, and the pin the cone carries drives the star both ways. The condition is the SPEC key main.js
 // builds on, for FRAME_LANDS' reason (checkGraph fails both ways). Every table below that names §47's unit is filtered the same way.
-const STOPWORK_ARREST = SPEC.arrest === 'stopwork';
+const STOPWORK_ARREST = STOPWORK_BUILT;   // §329: the stop-work's build, derived once in layout.js (the shipped arrest where it stands)
+// §336 — THE FUSEE'S TOP BUSH. On §47's build it runs in the FUSEE COCK, which
+// stands on the base plate outside the great wheel with its arm carried over
+// this plate: the plate keeps no boss over the cone. On the stop-work's build
+// the bush stays in the three-quarter plate's island and webs, because the stop-work's stud is planted in a web (the
+// owner's choice, TODO 288 closed). Since §329's flip that is the default build; the cock is the stop iron's.
+const FUSEE_COCK_BUILT = !STOPWORK_ARREST;
+if (FUSEE_COCK_BUILT) {
+  MECH_GRAPH.support.push(['Fusee & great wheel', 'Fusee cock'], ['Fusee cock', 'plate']);
+  MECH_GRAPH.bridges.push('Fusee cock');
+} else MECH_GRAPH.support.push(['Fusee & great wheel', 'Three-quarter plate']);   // upper pivots, jewelled bores
 const dropArrestRows = (rows, names) => {
   if (!STOPWORK_ARREST) return;
   for (let i = rows.length - 1; i >= 0; i--) if (names(rows[i]).includes('Winding arrest')) rows.splice(i, 1);
@@ -720,7 +731,7 @@ const EXPECTED_PAIRS = [
   // on the base plate — TODO 184.) Everything else in
   // the movement must CLEAR it — which is the point of listing these
   // explicitly rather than excluding the plate from the sweep.
-  ['Fusee & great wheel', 'Three-quarter plate'],
+  // (§336: the fusee's top bush — see the push beside STOPWORK_ARREST.)
   // The pillars are a labelled unit now (they were a bare structure node,
   // invisible to this sweep — which is how a re-seated pillar ended up
   // inside the hack collar's swing without a single check firing). The one
@@ -902,7 +913,9 @@ const EXPECTED_PAIRS = [
   ['Alarm governor', 'Alarm governor anchor'],    // §107: the saw's tooth face on the pallet face — the governing contact itself
 ];
 dropArrestRows(EXPECTED_PAIRS, (r) => r);   // §329 landing 4 (see STOPWORK_ARREST)
-if (STOPWORK_ARREST) EXPECTED_PAIRS.push(['Winding stop-work', 'Three-quarter plate'], ['Winding stop-work', 'Fusee & great wheel']);   // the stud's seat; the pin in the star's slot and the lock disc in its arcs
+if (STOPWORK_ARREST) EXPECTED_PAIRS.push(['Winding stop-work', 'Three-quarter plate'], ['Winding stop-work', 'Fusee & great wheel']);
+// §336 — the fusee's top bush: in the cock's boss (its staff crosses the plate's cone window in air), or the plate's on the stop-work's build
+EXPECTED_PAIRS.push(FUSEE_COCK_BUILT ? ['Fusee & great wheel', 'Fusee cock'] : ['Fusee & great wheel', 'Three-quarter plate']);   // the stud's seat; the pin in the star's slot and the lock disc in its arcs
 // §325 landing 6 — the plate sits on the base plate's lands, not on pillar caps (the plate is a held fixture, in no sweep's pairs)
 if (FRAME_LANDS) for (let i = EXPECTED_PAIRS.length - 1; i >= 0; i--) if (EXPECTED_PAIRS[i].includes('pillars')) EXPECTED_PAIRS.splice(i, 1);
 // Same rigid assembly / coaxial stacks — not meaningful to test.
@@ -3097,6 +3110,28 @@ export const EXPECTED_CONTACT_FLOORS = [
   },
 ];
 dropArrestRows(EXPECTED_CONTACT_FLOORS, (r) => [r.a, r.b]);   // §329 landing 4 (see STOPWORK_ARREST)
+// §329 — THE STOP-WORK'S TWO PAIRS, each with exactly the contacts its design claims; everything else between them owes the
+// one margin (§47's rule above). Two of the claimed contacts are RUNNING GAPS rather than touches: the star rides 0.071 under
+// the three-quarter plate and 0.071 over the cone's top face (main.js GAP, less than its stock plus two margins, which the owner
+// accepted). They are excused here and held OPEN at every stop-work pose by WIND_ARREST_HANDOFFS below, the hourTube⇄cannonNose
+// pattern (a running fit declared here, held by an instrument).
+if (STOPWORK_ARREST) EXPECTED_CONTACT_FLOORS.push(
+  {
+    a: 'Winding stop-work', b: 'Three-quarter plate', min: CLEAR_MARGIN,
+    contacts: [
+      ['stopworkStud', 'threeQuarterPlate'],     // the stud planted in the plate's web — the support joint
+      ['stopworkStar', 'threeQuarterPlate'],     // the star's running gap under the plate (held open by the handoff row)
+    ],
+  },
+  {
+    a: 'Winding stop-work', b: 'Fusee & great wheel', min: CLEAR_MARGIN,
+    contacts: [
+      ['stopworkStar', 'stopworkPin'],           // the pin in the slots and on a closed notch's floor at each stop — the arrest itself
+      ['stopworkStar', 'stopworkLockDisc'],      // the lock arcs riding the disc through every dwell, at the running fit
+      ['stopworkStar', 'fuseeCone'],             // the star's running gap over the cone's top face (held open by the handoff row)
+    ],
+  },
+);
 
 // TODO 6's check: sweep each row's unit pair with its declared contacts
 // EXCLUDED, and hold the remainder to the row's floor. REPORT-first (§50's
@@ -4937,6 +4972,7 @@ const FASTENED_EDGES = {
   'Balance cock ⇄ base plate': ['Balance cock', 'plate'],
   'Fork cock ⇄ base plate': ['Fork cock', 'plate'],
   'Escape cock ⇄ base plate': ['Escape cock', 'plate'],   // §322
+  ...(FUSEE_COCK_BUILT ? { 'Fusee cock ⇄ base plate': ['Fusee cock', 'plate'] } : {}),     // §336
 };
 // §325 landing 6 — the frame without pillars has ONE fastened edge where the pillars had two: the back plate's screws thread
 // into the base plate's own lands (there is no rivet, because there is no second part to rivet), and FRAME_JOINTS rows named
@@ -5005,6 +5041,11 @@ export const PLATE_SEATS = [
   { unit: "Escape cock", mesh: "bridgeLeg", kind: "fastened", why: "§322: the cock's leg, bored for its screw" },
   { unit: "Escape cock", mesh: "bridgeFoot", kind: "fastened", why: "§322: the leg's foot, on the plate face" },
   { unit: "Escape cock", mesh: "screwShanks", kind: "fastened", why: "§322: the cock's foot screw, tapped through the plate" },
+  ...(FUSEE_COCK_BUILT ? [
+    { unit: "Fusee cock", mesh: "bridgeLeg", kind: "fastened", why: "§336: the cock's leg, bored for its screw" },
+    { unit: "Fusee cock", mesh: "bridgeFoot", kind: "fastened", why: "§336: the leg's foot, on the plate face" },
+    { unit: "Fusee cock", mesh: "screwShanks", kind: "fastened", why: "§336: the cock's foot screw, tapped through the plate" },
+  ] : []),
   { unit: "Keyless works", mesh: "TorusGeometry#30", kind: "housed", why: "the crown stem's bushing, in the plate rim's notch (§186)" },
   { unit: "Keyless works", mesh: "BoxGeometry#31", kind: "housed", why: "the crown-stem sleeve, standing in the plate rim's notch" },
   { unit: "Setting lever", mesh: "CylinderGeometry#8", kind: "pivot", why: "the lever's pivot, seated mid-plate (#7 until TODO 214's boss, lug and screw renumbered the unit)" },
@@ -6768,6 +6809,25 @@ export const WIND_ARREST_HANDOFFS = [
   },
 ];
 dropArrestRows(WIND_ARREST_HANDOFFS, (r) => [r.unitA, r.unitB]);   // §329 landing 4 (see STOPWORK_ARREST)
+// §329 — THE STOP-WORK'S OWN HAND-OFFS, on its own wind states (§47's 'slack' would sit mid-passage: at tension ½ the 30 h star's
+// one passage is centred, the pin in the open slot). The pin meets a closed notch's floor at BOTH stops, full wind and the end
+// of the reserve, so it is held in contact at both and free in the dwells either side of the passage (tension ¾ and ¼, finger
+// angles 2.875π and 1.125π against the passage's 1.75π–2.25π for n 4, m 1). The two running gaps are held FREE at every pose:
+// the star never closes on the plate above it or the cone below it.
+if (STOPWORK_ARREST) {
+  WIND_ARREST_POSES.splice(0, WIND_ARREST_POSES.length,
+    ['full', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1 }],
+    ['dwellHi', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 0.75 }],
+    ['dwellLo', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 0.25 }],
+    ['empty', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 0 }]);
+  WIND_ARREST_HANDOFFS.push(
+    { label: 'pin ⇄ closed notch (the stop)', unitA: 'Fusee & great wheel', meshA: 'stopworkPin', unitB: 'Winding stop-work', meshB: 'stopworkStar',
+      expect: { full: 'contact', dwellHi: 'free', dwellLo: 'free', empty: 'contact' } },
+    { label: 'star ⇄ plate (running gap)', unitA: 'Winding stop-work', meshA: 'stopworkStar', unitB: 'Three-quarter plate', meshB: 'threeQuarterPlate',
+      expect: { full: 'free', dwellHi: 'free', dwellLo: 'free', empty: 'free' } },
+    { label: 'star ⇄ cone face (running gap)', unitA: 'Winding stop-work', meshA: 'stopworkStar', unitB: 'Fusee & great wheel', meshB: 'fuseeCone',
+      expect: { full: 'free', dwellHi: 'free', dwellLo: 'free', empty: 'free' } });
+}
 
 // TODO 50 — the stem clutch's handoff rows, a SIBLING registration in the
 // windArrestHandoff pattern (never widen another mechanism's tables — its

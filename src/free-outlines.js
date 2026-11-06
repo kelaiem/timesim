@@ -356,7 +356,7 @@ export const FREE_OUTLINES = Object.freeze({
    [-30.8551, -40.1044]
   ]
  },
- "cfg1:{\"spec\":{\"alarm\":false,\"arrest\":\"stopwork\",\"barrelStepDeg\":-140,\"caseShape\":\"free\",\"drumAzDeg\":140,\"reserveHours\":30,\"rsvAzDeg\":0,\"rsvIdlers\":2,\"vph\":18000},\"route\":null,\"tuned\":[]}": {
+ "cfg1:{\"spec\":{\"alarm\":false,\"barrelStepDeg\":-140,\"caseShape\":\"free\",\"drumAzDeg\":140,\"reserveHours\":30,\"rsvAzDeg\":0,\"rsvIdlers\":2,\"vph\":18000},\"route\":null,\"tuned\":[]}": {
   "c": 9.051,
   "rc": 7.916666666666666,
   "need": 27.70833333333333,
