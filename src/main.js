@@ -50603,6 +50603,50 @@ const FUSEE_COCK = await (async () => {
   // the leg at foot (x, y): the bush's and the stud's side forces at the bush's plane, their moments about its axis twisting it
   const legSigma = (ro, x, y) => columnSigma(ro, legH, R + Fs, momentAt(x, y, true), bore);
   const legRFor = (x, y) => columnRFor(legH, R + Fs, momentAt(x, y, true), bore, COCK_LEG_BORE_R + STOCK_MIN_U);
+  // §336 landing 4 — THE STEADY PINS (TODO 286). The arm's moment about the leg's axis, the twist at the foot, has to pass
+  // into the base plate, and a screw only holds the cock down: a cock is KEYED by two steady pins pressed into the plate
+  // beside its screw. So the foot is a FLANGE, its depth the plate's own (BACK_PLATE_T: each pin engages the cock as deep as it
+  // engages the plate), bored for the screw and the two pins. The pins stand on a diameter of the foot, each in a LOBE of
+  // the flange just outside the leg's foot (the pin and a §50 floor of metal round it, a floor from the leg's foot too), and
+  // carry the twist as a couple, F = Tq / (2·r_p). The flange is the old pad's disc and the two lobes, not one disc round
+  // them all: measured, a round flange big enough to hold the pins (r 4.06) found no seat at the foot's 40° and moved the
+  // cock to 232° and reach 26.5, which hid the cone back to 75%. The pins' AZIMUTH about the foot is the scan's freedom. Each pin's radius is the largest of
+  // its own SHEAR (the one steel, SPRING_TAU_Y_PA, 4F/(π·d²)), its BEARING in the nickel silver of the plate and of the
+  // flange (F/(d·t), the same t both sides) and the §50 floor; the flange grows until both fit with a stock floor of metal
+  // round them, and the column scan sizes the foot by that flange. The screw's clamp friction is not counted on: the pins
+  // carry the whole twist, which is the conservative side.
+  const FLANGE_T = BACK_PLATE_T;
+  const legBotOf = (legR) => legR * 1.15;   // boredLegGeometry's foot radius: makeEscapeBridge's rBot
+  const pinsFor = (x, y, legR) => {
+    const Tq = momentAt(x, y, true), rb = legBotOf(legR), t = FLANGE_T * OSC_U;
+    const padR = legR * 1.5;   // the core: makeEscapeBridge's pad radius, as before
+    let pinR = STOCK_MIN_U / 2, rp = 0, F = 0;
+    for (let k = 0; k < 60; k++) {
+      rp = rb + pinR + STOCK_MIN_U;
+      F = Tq / (2 * rp);   // N (Tq in N·u, rp in u)
+      const dShear = Math.sqrt((4 * F) / (Math.PI * SPRING_TAU_Y_PA)) / OSC_U;
+      const dBear = F / (sigmaY * t) / OSC_U;
+      const r = Math.max(STOCK_MIN_U / 2, dShear / 2, dBear / 2);
+      if (Math.abs(r - pinR) < 1e-12) { pinR = r; break; }
+      pinR = r;
+    }
+    const d = 2 * pinR * OSC_U;
+    return { pinR, padR, lobeR: pinR + STOCK_MIN_U, rp, F, Tq, shear: (4 * F) / (Math.PI * d * d), bear: F / (d * t) };
+  };
+  // the lobes' best azimuth at a foot: the pair (φ, φ + π) whose two lobes stand clearest of the column's walls
+  const lobesAt = (x, y, pins) => {
+    let best = { c: -Infinity, who: null, phi: 0 };
+    for (let k = 0; k < 36; k++) {
+      const phi = (k / 36) * Math.PI;
+      let c = Infinity, who = null;
+      for (const q of [phi, phi + Math.PI]) {
+        const r = columnClear(x + pins.rp * Math.cos(q), y + pins.rp * Math.sin(q), pins.lobeR);
+        if (r.c < c) { c = r.c; who = r.who; }
+      }
+      if (c > best.c) best = { c, who, phi };
+    }
+    return best;
+  };
   const postH = FUSEE_COCK_TOP - FUSEE_BOSS_BOT;
   // THE SEAT'S PENDANT (§336 landing 3): a round column of cock metal hanging from the crank's underside to the plate's old
   // underside, the stud planted in its foot. The stud's force passes through the star's pivot, on the pendant's axis, so it
@@ -50779,13 +50823,14 @@ const FUSEE_COCK = await (async () => {
       if (best && reach >= best.reach - 1e-9) break;
       if (!(sStep > bossR)) break;               // no post fits inside the window's air beyond the boss
       const x = C.x + cs * reach, y = C.y + sn * reach;
-      const legR = legRFor(x, y), padR = legR * 1.5, holeR = legR * 1.15 + CLEAR_MARGIN;
+      const legR = legRFor(x, y), pins = pinsFor(x, y, legR), padR = pins.padR, holeR = legR * 1.15 + CLEAR_MARGIN;
       const hw = widthAtP(x, y, true) / 2;         // the arm's root
       const nodeR = Math.max(legR * 1.35, hw);
       if (reach < sStep + postR + nodeR + CLEAR_MARGIN) continue;
       const mPlate = plateEdge(x, y) - Math.max(nodeR, padR) - STOCK_MIN_U;
       if (mPlate < 0) break;   // past the rim, every farther reach is too
-      const col = columnClear(x, y, padR);
+      let col = columnClear(x, y, padR);
+      if (col.c >= 0) { const lb = lobesAt(x, y, pins); pins.phi = lb.phi; if (lb.c < col.c) col = { c: lb.c, who: `${lb.who} (a steady pin's lobe)` }; }
       const hole = plateHoleClear(x, y, holeR);
       let mBar = Infinity, barWho = null;
       const take = (r) => { if (r.c < mBar) { mBar = r.c; barWho = r.who; } return mBar >= 0; };
@@ -50812,7 +50857,7 @@ const FUSEE_COCK = await (async () => {
         { const a1 = barClear(x, y, nodeR, crankKeeps), a2 = slotLand(x, y, nodeR); take(least([a1.c, a1.who], [a2.c, a2.who])); }
       }
       const short = Math.min(mPlate, col.c, hole.c, mBar);
-      const row = { x, y, a, reach, short, hw, postR, sStep, legR, nodeR, padR, holeR, mPlate, mColumn: col.c, colWho: col.who, mHole: hole.c, holeWho: hole.who, mBar, barWho };
+      const row = { x, y, a, reach, short, hw, postR, sStep, legR, nodeR, padR, pins, holeR, mPlate, mColumn: col.c, colWho: col.who, mHole: hole.c, holeWho: hole.who, mBar, barWho };
       series.push([reach, +short.toFixed(3), +col.c.toFixed(3), col.who, +hole.c.toFixed(3), hole.who, mBar === Infinity ? null : +mBar.toFixed(3), barWho]);
       if (!near || short > near.short) near = row;
       if (!bearingNear || short > bearingNear.short) bearingNear = row;
@@ -50847,6 +50892,42 @@ const FUSEE_COCK = await (async () => {
   });
   upper.position.set(0, 0, FUSEE_COCK_MID);
   cock.add(upper);
+  // §336 landing 4 — the FOOT FLANGE and its two STEADY PINS (pinsFor, above), in place of the builder's thin pad: the
+  // flange bored for the screw (the leg's own bore) and for both pins, the pins pressed through the base plate (flush with
+  // its back face) and up into the flange to its top.
+  const pinSet = foot.pins;
+  {
+    const pad = upper.children.find((o) => o.name === 'bridgeFoot');
+    if (pad) { upper.remove(pad); pad.geometry.dispose(); }
+    const zBase = BACK_PLATE_Z + BACK_PLATE_T / 2;
+    pinSet.at = [pinSet.phi, pinSet.phi + Math.PI].map((q) => ({ x: foot.x + pinSet.rp * Math.cos(q), y: foot.y + pinSet.rp * Math.sin(q) }));
+    // the flange's outline: the core disc and the two lobes, unioned (layout.js unionLoops, as the slot)
+    const discPts = (cx, cy, r, n) => Array.from({ length: n }, (_, k) => { const q = (2 * Math.PI * k) / n; return [cx + r * Math.cos(q), cy + r * Math.sin(q)]; });
+    const outline = unionLoops([discPts(foot.x, foot.y, pinSet.padR, 64), ...pinSet.at.map((q) => discPts(q.x, q.y, pinSet.lobeR, 32))]);
+    const loop = Array.isArray(outline[0][0]) ? outline.reduce((m, L) => (L.length > m.length ? L : m)) : outline;
+    if (Array.isArray(outline[0][0]) && outline.length !== 1) console.warn(`§336: the steady pins' flange unioned into ${outline.length} loops — the lobes do not meet the core`);
+    const sh = new THREE.Shape(); loop.forEach(([px, py], k) => (k ? sh.lineTo(px, py) : sh.moveTo(px, py))); sh.closePath();
+    for (const [hx, hy, hr] of [[foot.x, foot.y, bore], ...pinSet.at.map((q) => [q.x, q.y, pinSet.pinR])]) {
+      const h = new THREE.Path(); h.absarc(hx, hy, hr, 0, 2 * Math.PI, true); sh.holes.push(h);
+    }
+    const flange = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: FLANGE_T, bevelEnabled: false, curveSegments: 24 }), MATS.ribbedNickel);
+    flange.name = 'bridgeFoot';   // PLATE_SEATS cites the foot by this name, as it did the pad
+    flange.position.z = zBase;
+    cock.add(flange);
+    const pinH = BACK_PLATE_T + FLANGE_T;
+    for (const q of pinSet.at) {
+      const pin = new THREE.Mesh(new THREE.CylinderGeometry(pinSet.pinR, pinSet.pinR, pinH, 24), MATS.steel);
+      pin.geometry.rotateX(Math.PI / 2);
+      pin.name = 'steadyPin';
+      pin.position.set(q.x, q.y, zBase - BACK_PLATE_T + pinH / 2);
+      cock.add(pin);
+      BACK_PLATE_LATE_HOLES.push({ x: q.x, y: q.y, r: pinSet.pinR });
+      // TODO 184's land rule for a late hole, held here because the base plate's land pass ran long before this cock
+      const land = Math.hypot(q.x - foot.x, q.y - foot.y) - pinSet.pinR - COCK_PLATE_TAP_R;
+      if (land < STOCK_MIN_U - 1e-9)
+        console.warn(`§336: a fusee cock steady pin leaves ${land.toFixed(3)} of base plate to the foot screw's tapped hole — need STOCK_MIN_U ${STOCK_MIN_U.toFixed(3)}`);
+    }
+  }
   // The boss: the bush, the same builder's pivot boss (a chain of one node).
   const lower = G.makeEscapeBridge({ chain: [{ x: C.x, y: C.y, r: bossR, bore: bushBore }], thickness: T, footDrop: 0 });
   lower.position.set(0, 0, FUSEE_BOSS_MID);
@@ -50951,6 +51032,8 @@ const FUSEE_COCK = await (async () => {
     boss: { r_u: bossR }, post: { r_u: foot.postR, s_u: foot.sStep, h_u: postH, sigma_Pa: columnSigma(foot.postR, postH, R + Fs, momentAt(step.x, step.y, true), 0) },
     leg: { r_u: foot.legR, h_u: legH, sigma_Pa: legSigma(foot.legR, foot.x, foot.y), yield_Pa: sigmaY },
     footTwist_Nmm: rootM * UNIT_MM,
+    pins: { r_u: pinSet.pinR, rp_u: pinSet.rp, flangeR_u: pinSet.padR, lobeR_u: pinSet.lobeR, phi: pinSet.phi, flangeT_u: FLANGE_T, F_N: pinSet.F, twist_Nu: pinSet.Tq,
+      shear_Pa: pinSet.shear, shearYield_Pa: SPRING_TAU_Y_PA, bearing_Pa: pinSet.bear, bearingYield_Pa: sigmaY, at: pinSet.at },
     landscape,
   };
 })();

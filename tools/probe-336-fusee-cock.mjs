@@ -20,11 +20,15 @@
 //  · the cock shows MORE cone than the plate did: the share of the cone's
 //    vertices with a clear path up past the plate AND the cock is over §322's
 //    73.7% (the boss and three webs);
+//  · THE STEADY PINS (§336 landing 4, TODO 286) carry the foot's twist: their couple 2·F·r_p IS the arm's moment about the
+//    leg (the record's twist), each pin's shear is under the steel's shear yield and its bearing in the plate and the flange
+//    under the nickel silver's, there are two of them, each through the base plate's whole depth and the flange's, and each
+//    leaves a §50 floor of plate to the foot screw's tapped hole;
 //  · the foot screw measures engaged, and at rest the cock keeps CLEAR_MARGIN
 //    from the three-quarter plate it stands in (landing 2: a slot merged with the cone window), and from the
 //    centre wheel and the chain its leg stands beside (the fusee itself runs
 //    in the boss: that is the declared bearing, not a clearance).
-// CONTROLS (fatal): the stress law reads OVER the yield at half the root width
+// CONTROLS (fatal): a pin of half the radius reads over the steel's shear yield; the stress law reads OVER the yield at half the root width
 // (a check that cannot fail passes everything); the cone's reveal test reads a
 // vertex under the cock's boss as COVERED (a reveal that cannot see the cock
 // counts the boss's shadow as view).
@@ -121,6 +125,15 @@ const out = await page.evaluate(async () => {
   });
   const win = clock.tqWindows.find((w) => w.name === 'fusee');
   const joints = clock.frameJoints().filter((j) => j.joint === 'Fusee cock ⇄ base plate');
+  // the steady pins as built: their z spans against the base plate's and the flange's, and where they stand
+  const pinRows = [];
+  let flangeZ = null;
+  cockE.obj.traverse((o) => {
+    if (o.name === 'steadyPin') { const b = new THREE.Box3().setFromObject(o); pinRows.push({ x: (b.min.x + b.max.x) / 2, y: (b.min.y + b.max.y) / 2, z0: b.min.z, z1: b.max.z }); }
+    if (o.name === 'bridgeFoot') { const b = new THREE.Box3().setFromObject(o); flangeZ = [b.min.z, b.max.z]; }
+  });
+  // the base plate's faces as main.js places it: its top face at z 0 (BACK_PLATE_Z = −BACK_PLATE_T/2), its back face −BACK_PLATE_T
+  const basePlateZ = [-L.BACK_PLATE_T, 0];
   const rest = {};
   // (not 'Fusee & great wheel': the staff RUNS in the boss's bore, the declared bearing)
   for (const nme of ['Three-quarter plate', 'Center wheel', 'Chain']) rest[nme] = I.clearanceAt(clock, 'Fusee cock', nme);
@@ -128,6 +141,7 @@ const out = await page.evaluate(async () => {
     CLEAR_MARGIN: L.CLEAR_MARGIN, yield: L.NICKEL_SILVER_SIGMA_Y_PA, unitMM: L.UNIT_MM, stockMin: L.STOCK_MIN_U, fc, cone: { n, underPlate, clearAll }, ctlCovered,
     staffTop, squareBot, bossBore, arms, barrel: P.barrel, win: { cut: win.cut, boss: win.boss, sectors: win.sectors.length },
     joints: joints.map((j) => ({ at: j.site, engagedMM: j.measuredMM, requiredMM: j.requiredMM })), rest,
+    pinRows, flangeZ, basePlateZ, backPlateT: L.BACK_PLATE_T,
     pivotR: 0.5,
   };
 });
@@ -169,7 +183,30 @@ for (const [what, r] of [['leg', fc.leg], ['post', fc.post]])
   if (!out.arms.length) fail('no arm outline read');
   else if (worst > 1e-3) fail(`the built arms depart from the taper law by up to ${worst.toFixed(4)}`); else ok(`the arms are cut to the taper (${out.arms.length} outline vertices, worst ${worst.toExponential(2)})`);
 }
-console.log(`  foot twist ${fc.footTwist_Nmm.toFixed(2)} N·mm through one screw's clamp — reported, not gated (§336 files it)`);
+// --- the steady pins (TODO 286)
+{
+  const pn = fc.pins;
+  console.log(`steady pins: r ${pn.r_u.toFixed(3)} at r_p ${pn.rp_u.toFixed(3)} (azimuth ${(pn.phi * 180 / Math.PI).toFixed(0)}°), ${pn.F_N.toFixed(2)} N each; shear ${(pn.shear_Pa / 1e6).toFixed(1)} of ${(pn.shearYield_Pa / 1e6).toFixed(1)} MPa, bearing ${(pn.bearing_Pa / 1e6).toFixed(1)} of ${(pn.bearingYield_Pa / 1e6).toFixed(0)} MPa; twist ${fc.footTwist_Nmm.toFixed(2)} N·mm`);
+  const couple = 2 * pn.F_N * pn.rp_u;
+  if (Math.abs(couple - pn.twist_Nu) > 1e-9 * pn.twist_Nu) fail(`the pins' couple ${couple} is not the foot's twist ${pn.twist_Nu}`); else ok('the pins\' couple is the foot\'s twist');
+  if (Math.abs(pn.twist_Nu * out.unitMM - fc.footTwist_Nmm) > 1e-9 * fc.footTwist_Nmm) fail('the pins were sized to a different twist than the record\'s'); else ok('the pins carry the record\'s twist');
+  const d = 2 * pn.r_u * UM, t = pn.flangeT_u * UM;
+  const shear = (4 * pn.F_N) / (Math.PI * d * d), bear = pn.F_N / (d * t);
+  if (!(shear <= pn.shearYield_Pa * (1 + 1e-6))) fail(`pin shear ${(shear / 1e6).toFixed(1)} MPa over the steel's ${(pn.shearYield_Pa / 1e6).toFixed(1)}`); else ok(`each pin's shear is under the steel's shear yield (${(shear / 1e6).toFixed(1)} MPa)`);
+  if (!(bear <= pn.bearingYield_Pa * (1 + 1e-6))) fail(`pin bearing ${(bear / 1e6).toFixed(1)} MPa over the nickel silver's ${(pn.bearingYield_Pa / 1e6).toFixed(0)}`); else ok(`each pin's bearing in the plate and the flange is under the nickel silver's yield (${(bear / 1e6).toFixed(1)} MPa)`);
+  if (!((4 * pn.F_N) / (Math.PI * (d / 2) ** 2) > pn.shearYield_Pa)) fail('control: a pin of half the radius does not read over the shear yield — the law cannot fail'); else ok('control: a pin of half the radius reads over the shear yield');
+  if (out.pinRows.length !== 2) fail(`${out.pinRows.length} steady pins built, expected 2`);
+  else {
+    let worstZ = 0, worstLand = Infinity;
+    for (const q of out.pinRows) {
+      worstZ = Math.max(worstZ, Math.abs(q.z0 - out.basePlateZ[0]), Math.abs(q.z1 - out.flangeZ[1]));
+      worstLand = Math.min(worstLand, Math.hypot(q.x - fc.foot.x, q.y - fc.foot.y) - pn.r_u);
+    }
+    if (worstZ > 1e-4) fail(`a pin does not span the base plate's back face to the flange's top (off by ${worstZ.toFixed(5)})`); else ok('both pins run from the base plate\'s back face to the flange\'s top');
+    if (Math.abs(out.flangeZ[1] - out.flangeZ[0] - out.backPlateT) > 1e-4) fail(`the flange is ${(out.flangeZ[1] - out.flangeZ[0]).toFixed(4)} deep, not the plate's ${out.backPlateT}`); else ok('the flange is the plate\'s own depth (each pin engages both alike)');
+    console.log(`  pin to foot axis less its radius: ${worstLand.toFixed(3)} (the build warns if that leaves under a §50 floor to the tapped hole)`);
+  }
+}
 
 // --- the bearing
 const bossMid = fc.bossMid;
