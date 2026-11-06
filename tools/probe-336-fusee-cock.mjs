@@ -21,7 +21,7 @@
 //    vertices with a clear path up past the plate AND the cock is over §322's
 //    73.7% (the boss and three webs);
 //  · the foot screw measures engaged, and at rest the cock keeps CLEAR_MARGIN
-//    from the three-quarter plate it passes over and through, and from the
+//    from the three-quarter plate it stands in (landing 2: a slot merged with the cone window), and from the
 //    centre wheel and the chain its leg stands beside (the fusee itself runs
 //    in the boss: that is the declared bearing, not a clearance).
 // CONTROLS (fatal): the stress law reads OVER the yield at half the root width
@@ -32,7 +32,8 @@
 // Boot must be silent (rule 6).
 //
 //   cd tools && node probe-336-fusee-cock.mjs
-//   QUERY='arrest=stopwork' node probe-336-fusee-cock.mjs   (a spec point)
+//   QUERY='reserveh=24' node probe-336-fusee-cock.mjs   (a spec point; the default query is arrest=stop-iron, because since
+//   §329's flip the plain default builds the stop-work on the plate's island and carries no cock)
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { dirname, join } from 'node:path';
@@ -55,7 +56,8 @@ page.on('console', (m) => {
   if (m.type() === 'warning' || m.type() === 'error') warns.push(t);
 });
 page.on('pageerror', (e) => warns.push('PAGEERROR ' + String(e)));
-await page.goto(`http://127.0.0.1:${port}/index.html${process.env.QUERY ? `?${process.env.QUERY}` : ''}`, { waitUntil: 'load', timeout: 180000 });
+const QUERY = process.env.QUERY ?? 'arrest=stop-iron';
+await page.goto(`http://127.0.0.1:${port}/index.html?${QUERY}`, { waitUntil: 'load', timeout: 180000 });
 await page.waitForFunction(() => !!window.__clock && (!window.__clock.boot || window.__clock.boot.done !== false), null, { timeout: 400000 });
 await page.waitForTimeout(1000);
 
