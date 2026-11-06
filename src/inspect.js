@@ -629,9 +629,8 @@ const STOPWORK_ARREST = STOPWORK_BUILT;   // §329: the stop-work's build, deriv
 // §336 — THE FUSEE'S TOP BUSH. On §47's build it runs in the FUSEE COCK, which
 // stands on the base plate outside the great wheel with its arm carried over
 // this plate: the plate keeps no boss over the cone. On the stop-work's build
-// the bush stays in the three-quarter plate, because the stop-work's stud is
-// planted in plate over the cone (the webs §336 removes) and has no site
-// without it — TODO 288 owns re-siting it.
+// the bush stays in the three-quarter plate's island and webs, because the stop-work's stud is planted in a web (the
+// owner's choice, TODO 288 closed). Since §329's flip that is the default build; the cock is the stop iron's.
 const FUSEE_COCK_BUILT = !STOPWORK_ARREST;
 if (FUSEE_COCK_BUILT) {
   MECH_GRAPH.support.push(['Fusee & great wheel', 'Fusee cock'], ['Fusee cock', 'plate']);

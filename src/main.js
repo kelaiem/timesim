@@ -5144,10 +5144,9 @@ for (const arbor of [centerArbor, thirdArbor, fourthArbor]) {
 // LETDOWN_H − CLEAR_MARGIN deep (COCK_T's 0.8 stood 0.05 over it and put the
 // free case's form 0.046 mm over CASE_HEIGHT_MAX_MM). The width carries the load.
 //
-// AND ONLY ON §47'S BUILD. The stop-work (`?arrest=stopwork`, §329) plants its
-// star's stud in plate over the cone — the webs this removes — and finds no
-// site without them, so on that build the bush stays in the plate exactly as
-// before; TODO 288 owns re-siting the stud.
+// AND ONLY ON §47'S BUILD. The stop-work (§329, the default arrest since the flip) plants its star's stud in a web of the
+// plate over the cone, the metal this removes, so on its build the bush stays in the plate's island and webs: the owner's
+// choice (TODO 288, closed), not a debt. The cock stands on `?arrest=stop-iron` and wherever the stop-work does not stand.
 const FUSEE_COCK_BUILT = !STOPWORK;
 const LETDOWN_H = 0.9; // proud of its face: enough engagement for a let-down key
 const FUSEE_COCK_T = LETDOWN_H - CLEAR_MARGIN;
