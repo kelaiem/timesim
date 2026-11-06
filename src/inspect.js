@@ -38,7 +38,7 @@ import { ZERO_AREA_MAX, CLEAR_MARGIN, HANDOFF_TRACK_TOL, UNIT_MM, Z_DIAL, SLENDE
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME, SPEC,                                    // §36 Apply: the same predicate that builds the unit, and the same name
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, rigidSplit,
-  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R_SPEC, BALANCE_R_REF, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
+  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R_SPEC, BALANCE_R_REF, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG, STOPWORK_BUILT } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 import { auditLubrication, LUBRICATION, LUBRICATION_DEBT, LUBRICATION_WAIVERS } from './lubrication.js';   // §247 tier one
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
@@ -625,13 +625,12 @@ if (FRAME_LANDS) {
 // 'Winding arrest' is not built and 'Winding stop-work' is. Its rows are the metal's: the star's stud is planted in the
 // three-quarter plate's underside, and the pin the cone carries drives the star both ways. The condition is the SPEC key main.js
 // builds on, for FRAME_LANDS' reason (checkGraph fails both ways). Every table below that names §47's unit is filtered the same way.
-const STOPWORK_ARREST = SPEC.arrest === 'stopwork';
+const STOPWORK_ARREST = STOPWORK_BUILT;   // §329: the stop-work's build, derived once in layout.js (the shipped arrest where it stands)
 // §336 — THE FUSEE'S TOP BUSH. On §47's build it runs in the FUSEE COCK, which
 // stands on the base plate outside the great wheel with its arm carried over
 // this plate: the plate keeps no boss over the cone. On the stop-work's build
-// the bush stays in the three-quarter plate, because the stop-work's stud is
-// planted in plate over the cone (the webs §336 removes) and has no site
-// without it — TODO 288 owns re-siting it.
+// the bush stays in the three-quarter plate's island and webs, because the stop-work's stud is planted in a web (the
+// owner's choice, TODO 288 closed). Since §329's flip that is the default build; the cock is the stop iron's.
 const FUSEE_COCK_BUILT = !STOPWORK_ARREST;
 if (FUSEE_COCK_BUILT) {
   MECH_GRAPH.support.push(['Fusee & great wheel', 'Fusee cock'], ['Fusee cock', 'plate']);

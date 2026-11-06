@@ -19,7 +19,7 @@ const page = await browser.newPage();
 page.on('pageerror', (e) => console.log('PAGEERROR', String(e)));
 const warns = [];
 page.on('console', (m) => { if (m.type() === 'warning' || m.type() === 'error') warns.push(m.text()); });
-await page.goto(`http://127.0.0.1:${port}/index.html`, { waitUntil: 'load', timeout: 90000 });
+await page.goto(`http://127.0.0.1:${port}/index.html?arrest=stop-iron`, { waitUntil: 'load', timeout: 90000 });   // §329: §47's arrest, which the default no longer builds
 await page.waitForFunction(() => !!window.__clock, null, { timeout: 90000 });
 
 // the shared in-page helpers, installed once

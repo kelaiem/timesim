@@ -10,7 +10,7 @@ import { bootMany } from './boot-pool.mjs';
 import { genevaDims } from '../src/stopwork-arrest.js';
 import { CLEAR_MARGIN } from '../src/layout.js';
 
-const SPECS = process.argv.length > 2 ? process.argv.slice(2) : [''];
+const SPECS = process.argv.length > 2 ? process.argv.slice(2) : ['arrest=stop-iron'];   // §329: this reads §47's lug band, which the default no longer builds
 const EXPR = `(async () => {
   const c = window.__clock, wa = c.windArrest, C = c.P.barrel;
   const zlo = wa.lugZ[0], zhi = wa.lugZ[1], zs = [zlo, (zlo + zhi) / 2, zhi];

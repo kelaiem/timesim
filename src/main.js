@@ -92,6 +92,7 @@ import {
   SLENDER_MAX,                                // §54's CEILING, distinct from SLENDER_TARGET above: TODO 117's line derives the reader pin's length against the ceiling (what the check refuses), not the target (what new metal aims at)
   MOVEMENT_SENSE, ALARM_SENSE,                // TODO 115: the two trains' hands — the going train's, and the alarm's own motor's; every direction-committed cut is checked against one of them
   BACK_PLATE_T, KEYLESS_STACK_R,              // TODO 211: the plate's thickness (hoisted — the keyless plane derives from its dial face) and the stem stack's reach that plane is cut against
+  STOPWORK_BUILT,                             // §329: the Geneva stop-work is the shipped arrest where it stands — the one derived answer
 } from './layout.js';
 import { genevaDims as swDims, PIN_FLOOR_U as SW_PIN_FLOOR, STUD_FLOOR_U as SW_STUD_FLOOR, chooseStopwork, starAngle as swStarAngle, engagementArc as swEngagementArc, travelTurns as swTravelTurns } from './stopwork-arrest.js';   // §329 landing 4: option B, the Geneva stop-work's line
 import { solveTrailingArrest, r1For as trailR1For, psi2ForThrow as trailPsi2ForThrow, epsOf as trailEpsOf, D_MIN as TRAIL_D_MIN, R1_MIN as TRAIL_R1_MIN } from './trailing-arrest.js';   // §329: the trailing arrest's line
@@ -1237,7 +1238,7 @@ const FUSEE_F_ACTIVE = FUSEE_WRAP_TURNS / FUSEE_GROOVE_TURNS; // 0.875 — the w
 // second number: tick() banks against engageTurns, so a lug whose clocking
 // drifted from the wrap would be caught at boot, not discovered as overwind.
 const WIND_ARREST = { engageTurns: FUSEE_WRAP_TURNS };
-const STOPWORK = SPEC.arrest === 'stopwork';   // §329 landing 4: option B's Geneva stop-work replaces §47's finger, beak and lug (its build is in §47's block)
+const STOPWORK = STOPWORK_BUILT;   // §329 landing 4: option B's Geneva stop-work replaces §47's finger, beak and lug (its build is in §47's block)
 // (The cone's z stack — groove width and depth, base collar, center-wheel bind, band, pitch,
 // base and groove start — is declared below, beside the spring constants it needs:
 // the groove's width carries the plate's twist off the helicoid walls, which is a
@@ -5143,10 +5144,9 @@ for (const arbor of [centerArbor, thirdArbor, fourthArbor]) {
 // LETDOWN_H − CLEAR_MARGIN deep (COCK_T's 0.8 stood 0.05 over it and put the
 // free case's form 0.046 mm over CASE_HEIGHT_MAX_MM). The width carries the load.
 //
-// AND ONLY ON §47'S BUILD. The stop-work (`?arrest=stopwork`, §329) plants its
-// star's stud in plate over the cone — the webs this removes — and finds no
-// site without them, so on that build the bush stays in the plate exactly as
-// before; TODO 288 owns re-siting the stud.
+// AND ONLY ON §47'S BUILD. The stop-work (§329, the default arrest since the flip) plants its star's stud in a web of the
+// plate over the cone, the metal this removes, so on its build the bush stays in the plate's island and webs: the owner's
+// choice (TODO 288, closed), not a debt. The cock stands on `?arrest=stop-iron` and wherever the stop-work does not stand.
 const FUSEE_COCK_BUILT = !STOPWORK;
 const LETDOWN_H = 0.9; // proud of its face: enough engagement for a let-down key
 const FUSEE_COCK_T = LETDOWN_H - CLEAR_MARGIN;
@@ -18846,6 +18846,8 @@ arrest47: {   // labelled: §329 landing 4's stop-work branch leaves it before �
     const rejects = { root: 0, line: 0, plate: 0, chain: 0, drum: 0 };
     let site = null;
     for (let i = 0; i < 720; i++) {
+      // a seam per azimuth: the default build runs this scan since §329's flip, and §47's own seams are past its `break`
+      await breathe(379);
       const azS = (i / 720) * TAU2;
       const pinAzW = azS - OMEGA * E / 2;   // the pin's world azimuth at full wind: θ = −E/2, entering the upper stop's notch
       // the pin and its orbit, solved together: the pin sized at the orbit's load, the orbit the root's metal less the pin
@@ -19013,6 +19015,9 @@ arrest47: {   // labelled: §329 landing 4's stop-work branch leaves it before �
     const discR = new Float64Array(NA);
     let reliefMin = Infinity;
     for (let i = 0; i < NA; i++) {
+      // a seam per azimuth of the relief: each carves ~100 radii against the star's whole outline at every passage pose,
+      // about a second for the disc in one stretch (boot-yield read 968 ms held on the flipped default)
+      await breathe(380);
       const al = (i / NA) * TAU2;
       let r = R_L;
       // the relief is a SLIDING fit inside one mechanism (the star's flanks pass the disc's edge as the lock arcs do), so it is
@@ -64153,7 +64158,7 @@ window.__clock = {
       // §329 landing 2a — the trailing arrest's site (null unless ?arrest=trailing): the line, the best site over every pad candidate,
       // and the reasons summed over all of them
       trailing: (() => {
-        if (!SPEC.arrest) return null;
+        if (SPEC.arrest !== 'trailing') return null;
         const rows = (WIND_ARREST.candidateScan || []).filter((c) => c.trailing);
         let best = null; const why = {};
         for (const c of rows) {

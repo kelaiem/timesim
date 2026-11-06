@@ -27,7 +27,7 @@
 // UNDECLARED_CLEARANCE_DEBT sense: a joint outside both tables fails, a key that
 // has been answered while still listed fails (the fix deletes its entry), and no
 // entry may be added by a later change. It shrinks; it never grows.
-import { FRICTION, SPEC } from './layout.js';
+import { FRICTION, STOPWORK_BUILT } from './layout.js';
 
 export const LUBRICATION_REGIMES = Object.freeze(['dry', 'oil-fine', 'oil-medium', 'grease', 'escapement', 'friction']);
 
@@ -119,10 +119,10 @@ const LUBRICATION_ROWS = {
   'Alarm setting wheel > Alarm disc':   L('friction', 'the alarm disc is carried on a friction hub: its drag and hold are priced at MU_STEEL (TODO 144), and at every corner of muTooth’s dry-steel band against the ramp’s climb (TODO 260)', { cites: 'TODO 144 (the disc\'s priced drag and hold)', src: 'roadmap §247 seed table' }),
   'Hour wheel > Alarm disc':            L('friction', 'the disc rides the hour wheel on the same friction hub (TODO 141/144)', { cites: 'TODO 144 (the disc\'s priced drag and hold)', src: 'roadmap §247 seed table' }),
 };
-// §329 — ?arrest=stopwork builds the Geneva stop-work INSTEAD of §47's arrest (main.js), so 'Winding arrest' is no joint of
+// §329 — the Geneva stop-work, built INSTEAD of §47's arrest where it stands (layout.js STOPWORK_BUILT), so 'Winding arrest' is no joint of
 // MECH_GRAPH and 'Winding stop-work' is: its rows replace §47's under the same key inspect.js swaps the graph on, and a §47 row
 // left in would read stale (a row naming no metal answers nothing).
-const STOPWORK_ARREST = SPEC.arrest === 'stopwork';
+const STOPWORK_ARREST = STOPWORK_BUILT;   // §329: the stop-work's build, derived once in layout.js
 if (STOPWORK_ARREST) {
   delete LUBRICATION_ROWS['Winding arrest :: bearing'];
   // the star turns on its planted stud, a plain bore at the §50 pivot floor, slowly and a few degrees at a time — §47's
