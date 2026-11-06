@@ -1368,12 +1368,30 @@ export const SPRING_TAU_Y_PA = SPRING_SIGMA_Y_PA / Math.sqrt(3);
 // / CDA C75200). A BAND over the alloy's published tempers, never one number —
 // FRICTION's rule for what the movement cannot measure — and a member is held to
 // its LOW end, the annealed temper, because nothing specifies the cock's stock as
-// work-hardened. The figures are CDA's C75200 temper table as recalled
-// (annealed ≈ 25 ksi, half hard ≈ 74 ksi); §336's record names them for a
-// source check.
+// work-hardened.
+//
+// THE SOURCES (checked 2026-11-06; the primary tables, ASTM B122/B151 for the US
+// tempers and EN 1652 for the European grades, are paywalled and NOT read, so the
+// band rests on secondary sheets that agree with each other, not on a standard):
+//   · the LOW end, 172 MPa (25 ksi, the annealed temper), is the lower bound of
+//     the published yield range for C75200, 172–621 MPa across tempers (Alfa
+//     Chemistry, "Cupronickel (with Zn) C75200");
+//   · EN 1652's softest CuNi18Zn20 strip grade, R380, and R450 both quote
+//     Rp0.2 250 MPa (Gnee Steel's CW409J sheet; an Industrial Manufacturing
+//     materials page for R380): so the low end is conservative by about 30%
+//     against the European annealed grade, the side a floor should err on;
+//   · Fisk Alloy's C752 datasheet gives TENSILE only, by temper: annealed 53–63
+//     ksi (365–434 MPa), half hard H02 66–80 ksi rolled flat, 83–97 ksi wire. An
+//     annealed yield of 172–250 MPa under a 365 MPa tensile is the ordinary ratio
+//     for an annealed copper alloy, and nothing contradicts the low end;
+//   · the HIGH end, 510 MPa at half hard, is NOT confirmed by any source read
+//     (the published range runs to 621 MPa at the hardest tempers); no member
+//     reads it, so it only describes the band.
+// The members it sizes scale as σ^(−1/2) (the cock's arm) and σ^(−1/3) (its leg
+// and post): at R380's 250 MPa they would come out 17% and 12% smaller.
 export const NICKEL_SILVER_SIGMA_Y_BAND = Object.freeze({
   low: 172e6, high: 510e6,
-  why: 'CuNi18Zn20 (CDA C75200): annealed ≈ 172 MPa to half hard ≈ 510 MPa yield; the low end governs',
+  why: 'CuNi18Zn20 (CDA C75200): annealed ≈ 172 MPa (the published range\'s low end; EN 1652 R380 quotes Rp0.2 250) to half hard ≈ 510 MPa (unconfirmed); the low end governs',
 });
 export const NICKEL_SILVER_SIGMA_Y_PA = NICKEL_SILVER_SIGMA_Y_BAND.low;
 export const STOCK = Object.freeze({
