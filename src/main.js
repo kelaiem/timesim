@@ -65091,6 +65091,14 @@ window.__clock = {
   },
   // §337 — the three-quarter plate's windows AS CUT (the final solve, §62, with §336's merged opening), named, in plan: the geared stop-work folds into the
   // cone window's air, so its site search and its probe read the same outline the plate was cut to
+  // §337 landing 2 — the plate's LAND FIELD at (x, y): how far a point stands from the nearest plate opening, pivot boss or rim,
+  // less the land (TQ_LAND_MIN) a window's edge must keep from them. A disc of radius r centred where it reads at least r can be
+  // bulged into the cone window without a land going short. The cone's own windows (merged with the cock's slot) are not counted:
+  // the bulge joins them. Read by tools/probe-337-bulge.mjs.
+  plateLandAt(x, y) {
+    const edges = tqWindowEdges(TQ_WINDOWS.polys.filter((w) => w.name !== 'fusee' && w.name !== 'fusee gears'), null, P.barrel.x, P.barrel.y, plateR * 2);
+    return Math.min(tqOpeningClearance(x, y), tqKeepClearanceIn(NO_KEEPS, x, y), tqEdgeLand(edges, x, y)) - TQ_LAND_MIN;
+  },
   get tqWindowPolys() { return (TQ_WINDOWS.polys || []).map((w) => ({ name: w.name, pts: w.pts.map(([x, y]) => [x, y]) })); },   // tqWindows (above) is the solver's report
   declaredTravels,   // §36 job A: the pose laws sampling cannot recover
   declaredRestoring, // §48: what brings each reciprocating part back
