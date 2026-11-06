@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as G from './geometry.js';
+import { chooseGearedStopwork, MODULE_MIN_U as GG_MODULE_U } from './geared-geneva.js';   // §337 landing 2b
 import * as SC from './slide-cam.js';   // §325 landing 8 — the minute hand's lazy-tongs, solved in free space (pure)
 import { leverEscapement, pinNotchSteps, LOCK_DEG, RUN_DEG, EMBRACE_DEG, TOOTH_RAKE_DEG } from './escapement.js';   // TODO 226 step 3: the lever escapement's one solve
 import { MeshBVH } from '../vendor/three-mesh-bvh.module.js';   // TODO 151: the jumper's siting solve measures the real metal with the battery's own closest-point machinery
@@ -92,6 +93,7 @@ import {
   SLENDER_MAX,                                // §54's CEILING, distinct from SLENDER_TARGET above: TODO 117's line derives the reader pin's length against the ceiling (what the check refuses), not the target (what new metal aims at)
   MOVEMENT_SENSE, ALARM_SENSE,                // TODO 115: the two trains' hands — the going train's, and the alarm's own motor's; every direction-committed cut is checked against one of them
   BACK_PLATE_T, KEYLESS_STACK_R,              // TODO 211: the plate's thickness (hoisted — the keyless plane derives from its dial face) and the stem stack's reach that plane is cut against
+  GEARED_BUILT,                               // §337 landing 2b: ?arrest=geared builds the geared Geneva where the direct one does not stand
   STOPWORK_BUILT,                             // §329: the Geneva stop-work is the shipped arrest where it stands — the one derived answer
   unionLoops, filletReflexCorners,            // §336 landing 2: the flush cock's opening, merged from the windows it crosses
 } from './layout.js';
@@ -18862,6 +18864,14 @@ for (const j of FRAME_JOINTS) {
 // thrown beak and the engagement turn count IS FUSEE_WRAP_TURNS.
 arrest47: {   // labelled: §329 landing 4's stop-work branch leaves it before §47's arrest is solved
   const C = { x: P.barrel.x, y: P.barrel.y };
+  if (GEARED_BUILT) {
+    // §337 landing 2b — the geared Geneva replaces §47's arrest here, and is built LATE (after the fusee cock it hangs from, at
+    // §62's re-cut, where the windows are final). Until it has metal this leaves the arrest as the stop-work's no-site path does.
+    WIND_ARREST.pose = () => {};
+    WIND_ARREST.unit = fusee;
+    WIND_ARREST.stopwork = { built: false, geared: true };
+    break arrest47;
+  }
   const TAU2 = Math.PI * 2;
   const GROOVE = fusee.userData.groove; // the cut's own closures (floorAt takes cone-local z)
   const coneLocalZ = (zWorld) => zWorld - (L_BARREL + FUSEE_BASE_Z);
@@ -51072,6 +51082,71 @@ const FUSEE_COCK = await (async () => {
       TQ_WINDOWS.polys = [...TQ_WINDOWS.polys.filter((w) => !merged.includes(w)), { name: 'fusee', pts: loop, merged: merged.map((w) => w.name) }];
     }
   }
+  // §337 landing 2b — THE GEARED GENEVA'S SITE, searched against the windows as cut. The finger (a pinion and a crank on its own
+  // arbor, at the pair's centre distance from the cone's axis) and the star (a from the finger) each stand a disc in the cone
+  // window's air; where a disc would pass the window's edge the window BULGES to hold it, which the plate's land field allows
+  // (`plateLandAt`: the distance to the nearest opening, pivot boss or rim, less TQ_LAND_MIN). The finger's and star's studs hang
+  // from the cock, so a branch arm runs boss → finger → star in the cock's plane, a cantilever from the boss at the cock bar's own
+  // law (b = √(6·M/(T·σ_y)), M the pin's and mesh's forces times their distances from the boss, uniform at its root width as an
+  // upper bound). The search is probe-337-bulge's: every (m, n) the line offers at its least k and four larger, every finger
+  // direction and every star direction (3°), the arrangement of the LEAST BULGE (how far the worst disc or the arm stands past the
+  // window as cut), of equals the more margin. It RECORDS the arrangement (WIND_ARREST.geared) and builds nothing yet.
+  if (GEARED_BUILT && FUSEE_COCK_SLOT) {
+    const win = TQ_WINDOWS.polys.find((w) => w.name === 'fusee')?.pts;
+    if (!win) console.warn('§337: the geared Geneva found no cone window at the re-cut');
+    else {
+      const C = P.barrel, M = CLEAR_MARGIN, keep = TRAIN_STAFF_R + M;
+      const hours = SPEC.reserveHours, stallNmm = GOING_POWER.fuseeTorque_Nm * 1000;
+      const coneMesh = fusee.getObjectByName('fuseeCone');
+      const coneTop = new THREE.Box3().setFromObject(coneMesh).max.z;
+      const bandZ = (FUSEE_BOSS_BOT - M) - (coneTop + M), needZ = 3 * STOCK_MIN_U + 2 * M;
+      const otherEdges = tqWindowEdges(TQ_WINDOWS.polys.filter((w) => w.name !== 'fusee' && w.name !== 'fusee gears'), null, C.x, C.y, plateR * 2);
+      const landAt = (x, y) => Math.min(tqOpeningClearance(x, y), tqKeepClearanceIn(NO_KEEPS, x, y), tqEdgeLand(otherEdges, x, y)) - TQ_LAND_MIN;
+      const segD = (x, y, a, b) => { const vx = b[0] - a[0], vy = b[1] - a[1], L2 = vx * vx + vy * vy || 1e-12; const t = clamp(((x - a[0]) * vx + (y - a[1]) * vy) / L2, 0, 1); return Math.hypot(x - a[0] - t * vx, y - a[1] - t * vy); };
+      const inWin = (x, y) => { let k = false; for (let i = 0, j = win.length - 1; i < win.length; j = i++) { const [xi, yi] = win[i], [xj, yj] = win[j]; if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) k = !k; } return k; };
+      const edgeD = (x, y) => { let d = Infinity; for (let i = 0, j = win.length - 1; i < win.length; j = i++) d = Math.min(d, segD(x, y, win[j], win[i])); return inWin(x, y) ? d : -d; };
+      const room = (x, y) => Math.max(edgeD(x, y), landAt(x, y));   // the window as cut, or the bulge the land allows
+      const prot = (x, y, rad) => Math.max(0, rad + M - edgeD(x, y));
+      const { rows } = chooseGearedStopwork(hours, { stallNmm, coneBoreR: TRAIN_STAFF_R });
+      const STEP = (3 * Math.PI) / 180;
+      let best = null, tried = 0;
+      for (const row of rows) {
+        if (row.direct) continue;
+        for (let kk = row.k; kk <= row.k + 4; kk++) {
+          await breathe(383);
+          const zc = row.num * kk, zf = row.den * kk, D = (GG_MODULE_U * (zc + zf)) / 2, g = row.geneva;
+          const coneTip = (GG_MODULE_U * (zc + 2)) / 2, pinTip = (GG_MODULE_U * (zf + 2)) / 2, crankR = g.r1 + g.rPin;
+          const fRad = Math.max(pinTip, crankR, g.lockHi);
+          const mCone = room(C.x, C.y) - coneTip - M;
+          if (mCone < 0) continue;
+          const Ff = g.F + (stallNmm / (row.num / row.den)) / ((GG_MODULE_U * zf / 2) * UNIT_MM), Fs = g.F;   // N: the pin's force plus the mesh's, and the pin's
+          for (let p = 0; p < 2 * Math.PI - 1e-9; p += STEP) {
+            const Fx = C.x + D * Math.cos(p), Fy = C.y + D * Math.sin(p), eF = room(Fx, Fy);
+            const mF = Math.min(eF - fRad - M, D - crankR - keep);
+            if (mF < 0) continue;
+            for (let q = 0; q < 2 * Math.PI - 1e-9; q += STEP) {
+              const Sx = Fx + g.a * Math.cos(q), Sy = Fy + g.a * Math.sin(q), dS = Math.hypot(Sx - C.x, Sy - C.y);
+              const mS = Math.min(room(Sx, Sy) - g.rTip - M, dS - g.rTip - keep);
+              if (mS < 0) continue;
+              tried++;
+              const armW = Math.sqrt((6 * (Ff * D + Fs * dS) * UNIT_MM) / ((FUSEE_COCK_T * UNIT_MM) * (NICKEL_SILVER_SIGMA_Y_PA / 1e6))) / UNIT_MM;
+              let mA = Infinity, armProt = 0;
+              for (const [ax, ay, bx, by] of [[C.x, C.y, Fx, Fy], [Fx, Fy, Sx, Sy]])
+                for (let u = 0; u <= 12; u++) { const x = ax + ((bx - ax) * u) / 12, y = ay + ((by - ay) * u) / 12; mA = Math.min(mA, room(x, y) - armW / 2 - M); armProt = Math.max(armProt, prot(x, y, armW / 2 - M)); }
+              const m = Math.min(mF, mS, mCone, mA);
+              if (m < 0) continue;
+              const bulge = Math.max(prot(Fx, Fy, fRad), prot(Sx, Sy, g.rTip), prot(C.x, C.y, coneTip), armProt);
+              if (!best || bulge < best.bulge - 1e-9 || (Math.abs(bulge - best.bulge) <= 1e-9 && m > best.m))
+                best = { bulge, m, armW, n: row.n, mm: row.m, zCone: zc, zFinger: zf, k: kk, D, fingerAz: p, starAz: q, F: { x: Fx, y: Fy }, S: { x: Sx, y: Sy }, pairForce: { Ff, Fs } };
+            }
+          }
+        }
+      }
+      WIND_ARREST.geared = { built: false, reserveHours: hours, bandZ, needZ, tried, site: best };
+      if (!(bandZ >= needZ)) console.warn(`§337: the cone window's air is ${bandZ.toFixed(3)} deep against the ${needZ.toFixed(3)} the geared Geneva's three layers need`);
+      if (!best) console.warn(`§337: no site for the geared Geneva at ${hours} h (${tried} arrangements cleared the land)`);
+    }
+  }
   await breathe(298);
   const next = buildTqPlateGeometry();
   await breathe(299);
@@ -64702,7 +64777,7 @@ window.__clock = {
   // re-deriving it.
   get windArrest() {
     return {
-      engageTurns: WIND_ARREST.engageTurns, tTouch: WIND_ARREST.tTouch,
+      engageTurns: WIND_ARREST.engageTurns, tTouch: WIND_ARREST.tTouch, geared: WIND_ARREST.geared ?? null,   // §337 landing 2b
       padAz: WIND_ARREST.padAz, beakAz: WIND_ARREST.beakAz,
       studAz: WIND_ARREST.studAz, studR: WIND_ARREST.studR,
       padRestR: WIND_ARREST.padRestR, beakThrow: WIND_ARREST.beakThrow,

@@ -407,6 +407,7 @@ export const SPEC = (() => {
   const arrest = raw.arrest === 'trailing' ? 'trailing'
     : raw.arrest === 'stopwork-site' ? 'stopwork-site'
     : raw.arrest === 'stop-iron' ? (stopworkStands ? 'stop-iron' : null)
+    : raw.arrest === 'geared' ? (stopworkStands ? null : 'geared')   // §337 landing 2b: the geared Geneva (src/geared-geneva.js); folds to null at 30 h, where the direct stop-work stands
     : null;
   const drumAzDeg = raw.drumAzDeg !== undefined && raw.drumAzDeg !== null && raw.drumAzDeg !== '' && Number.isFinite(Number(raw.drumAzDeg))
     ? ((Number(raw.drumAzDeg) % 360) + 360) % 360 : null;
@@ -498,6 +499,10 @@ export function configKey({ spec = SPEC, route = null, tuned = [] } = {}) {
 }
 // §329 — is the Geneva stop-work BUILT (main.js, in §47's block), instead of §47's stop iron? The one question every reader asks
 // (main.js, inspect.js, lubrication.js, the action groups below), derived from the spec so all of them agree before the build.
+// §337 landing 2b — ?arrest=geared builds the GEARED Geneva stop-work (src/geared-geneva.js) at the reserves where the direct one
+// does not stand, behind a key until the battery vouches for it (the direct stop-work's own staging). It replaces §47's arrest
+// there, so the §47 block is left as the stop-work's no-site path leaves it.
+export const GEARED_BUILT = SPEC.arrest === 'geared';
 export const STOPWORK_BUILT = SPEC.arrest === 'stopwork-site'
   || (SPEC.arrest === null && stopworkReaches(SPEC.reserveHours) && STOPWORK_SITED_HOURS.includes(SPEC.reserveHours));
 export const SPEC_RATES = Object.freeze(Object.keys(RATE_TABLE).map(Number));
