@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// §337 landing 2b — HOW BIG A BULGE THE CONE WINDOW NEEDS for the geared Geneva, and whether the plate's lands allow it. A REPORT.
+// §337 landing 2a — HOW BIG A BULGE THE CONE WINDOW NEEDS for the geared Geneva, and whether the plate's lands allow it. A REPORT.
 //
 // probe-337-fold-site found six reserves short in plan against the window AS SOLVED (the star's edge reaching the rim by up to
 // 0.16, 39 h by 0.78). The owner chose to GROW the window locally instead of bending the line. A bulge is a disc round each
