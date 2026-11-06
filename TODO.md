@@ -118,7 +118,7 @@ Item numbers are permanent IDs cited as `TODO 117`, never by file or line.
 
 | Item | State | Title |
 |---|---|---|
-| [288](docs/todo/0288.md) | CLOSED (the owner's choice: the plate island) | The stop-work variant keeps the fusee's plate bush: its star stud has no site once the fusee cock opens the cone window |
+| [288](docs/todo/0288.md) | CLOSED (§329) | The stop-work variant keeps the fusee's plate bush: its star stud has no site once the fusee cock opens the cone window |
 | [283](docs/todo/0283.md) | DONE | The free form case's band is not bored for its tubes: its sleeves stand in solid band metal |
 | [282](docs/todo/0282.md) | CLOSED | meshClearance reads a positive clearance through real crossings when a mesh carries long sliver triangles |
 | [281](docs/todo/0281.md) | CLOSED | The free outline's port faces are raster staircases, not flats |
