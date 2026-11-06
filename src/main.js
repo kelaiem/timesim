@@ -7410,6 +7410,73 @@ const MW_CAP_CORNER_SPEC = G.bevelToothSpec({ module: BEVEL_MODULE, teeth: BEVEL
 // margin — the least gap at which the corner under the cap clears the cap.
 const MW_CAP_APEX_GAP = SETTING_CAP_REACH + MW_CAP_CORNER_SPEC.tipR + CLEAR_MARGIN;   // 0.860 + 1.696 + 0.15 = 2.706
 const Z_CAP_CORNER = Z_SETTING_CAP - MW_CAP_APEX_GAP;                                // −6.016
+// TODO 289 — THE TAIL'S BEARINGS. Until this item no rod of the fold ran in
+// anything: every blank was keyed to a rod whose only other constraint was
+// the bevel mesh at its far end, and a mesh is a line contact that holds no
+// shaft (`support` is declared per unit, so a floating member inside the
+// seated keyless works passed it in silence). The rise, the stub and the cap
+// arbor each take a plain BUSH now, and the cap arbor a JEWEL above the cap;
+// the two traverses stay filed (TODO 289's residue). Every number here is a
+// constraint's:
+//   · bore — PIVOT_BORE_CLEAR over the journal, the one running fit this
+//     movement cuts for a pivot in a bore (the alarm link's 0.02 is the
+//     inherited number §137 flagged, and is not copied);
+//   · wall and the hanger's section — STOCK_MIN_U, §50's floor: the bush and
+//     its bracket carry the bevel mesh's separating force under the hand-set
+//     torque, which no section at the floor can fail;
+//   · LENGTH — the overhung-bevel rule: where a bush is the ONLY bearing a
+//     load has, the bearing spread is at least twice the overhang (Dudley,
+//     Handbook of Practical Gear Design, overhung bevel mounting: 2×, 2.5×
+//     preferred), the overhang read from the bush's end to the blank's load
+//     point, the mean cone distance's axial station (coneR + coneRi)/2 · cos γ;
+//     a straddled load (the cap pinion and its blank, between the jewel and
+//     the bush) asks only a plain journal's own L/D ≥ 1 of the bush (plain
+//     journal bearings run L/D 0.5–2; the floor of that band is the least a
+//     bush is);
+//   · the hanger's SEAT — a planted post seats at least its own section deep
+//     (the alarm tower's columns plant 0.5 at 0.2 square, §112's stud 0.5), so
+//     the column is let into the plate's dial face by MW_HANGER_S;
+//   · the column stands off its bush by at least one section, so the weld to
+//     the arm is a face and never a line on the bush's cylinder.
+// Where each bush STANDS is solved in buildSettingMetal (siteTailBearings):
+// a rod's two blanks leave no run between them (solveCapLeg cuts every rod to
+// the least length at which its blanks' envelopes clear), so the rise's bush
+// rides a shouldered pivot past E, the cap arbor's an extension past D —
+// through the empty cone-distance sphere every bevel pair leaves round its
+// apex — and the stub is lengthened for its bush by the floor stubSolve takes.
+const MW_BUSH_WALL = STOCK_MIN_U;
+const MW_HANGER_S = STOCK_MIN_U;
+const MW_HANGER_SEAT = MW_HANGER_S;
+const MW_BUSH_LD_MIN = 1;
+const MW_BEVEL_OVERHANG_K = 2;
+const MW_CAP_JEWEL_R = 1.0;   // the keyless works' dial-side settings (addDialSidePivot: the setting lever's and the yoke's)
+const bevelLoadZ = (spec) => ((spec.coneR + spec.coneRi) / 2) * Math.cos(spec.gamma);
+// a bush's length for the journal it carries and the overhangs it alone bears (0 for a straddled load)
+const bushLengthFor = (journalR, overhangs) => Math.max(2 * journalR * MW_BUSH_LD_MIN, MW_BEVEL_OVERHANG_K * Math.max(0, ...overhangs));
+// the stub's bush and the floor it puts under the stub's length: the bush between the foot
+// corner's outboard blank and the cap corner's inboard one, a margin off each web
+const stubBushFor = (footSpec) => {
+  const len = bushLengthFor(MW_RISE_R, [footSpec.zWebHi + CLEAR_MARGIN - bevelLoadZ(footSpec),
+    MW_CAP_CORNER_SPEC.zWebHi + CLEAR_MARGIN - bevelLoadZ(MW_CAP_CORNER_SPEC)]);
+  // each web a margin off the bush, as the envelope judge CERTIFIES it: revolvedBlankDiscClearance samples the
+  // blank's surface at its own resolution and reads a bush exactly a margin off a web as short, so the pad past
+  // the margin is the least the judge signs for (scanned at its finest step), per blank
+  const padF = webPadFor(footSpec, len), padC = webPadFor(MW_CAP_CORNER_SPEC, len);
+  return { len, padF, padC, floor: footSpec.zWebHi + CLEAR_MARGIN + padF + len + padC + CLEAR_MARGIN + MW_CAP_CORNER_SPEC.zWebHi };
+};
+const _webPadMemo = new Map();
+function webPadFor(spec, len) {   // the least pad past the margin at which a bush of the stub's radius, coaxial beyond the blank's back web, certifies the margin
+  const key = `${spec.module}|${spec.shaftAngle}|${len}`;
+  if (_webPadMemo.has(key)) return _webPadMemo.get(key);
+  const env = G.bevelBlankEnvelope(spec), r = MW_RISE_R + PIVOT_BORE_CLEAR + MW_BUSH_WALL, f = { o: [0, 0, 0], a: [0, 0, 1] };
+  let pad = 0;
+  while (!G.revolvedBlankDiscClearance(env, f, { o: [0, 0, 0], a: [0, 0, 1], r, zLo: spec.zWebHi + CLEAR_MARGIN + pad, zHi: spec.zWebHi + CLEAR_MARGIN + pad + len }, CLEAR_MARGIN).ok) {
+    pad += G.ENVELOPE_DELTA_FINE;
+    if (pad > CLEAR_MARGIN) break;   // a pad past a whole margin is not resolution: the build's own warn names it
+  }
+  _webPadMemo.set(key, pad);
+  return pad;
+}
 // φ (the rise's tilt off vertical, toward the cap) and the stub's length are
 // NOT constants: both depend on where B stands (the cap's bearing from B sets
 // the rise corner's shaft angle, and the stub's length moves the cap along the
@@ -8854,9 +8921,13 @@ function stubSolve(phi, moduleFoot) {
     if (!rL.ok) { lo = L; break; }
     hi = L; r = rL;
   }
-  if (lo === null) return hi;
-  while (hi - lo > G.ENVELOPE_DELTA_FINE) { const m = (lo + hi) / 2; if (at(m).ok) hi = m; else lo = m; }
-  return hi;
+  if (lo !== null) while (hi - lo > G.ENVELOPE_DELTA_FINE) { const m = (lo + hi) / 2; if (at(m).ok) hi = m; else lo = m; }
+  // TODO 289 — and no shorter than its bush needs: the foot corner's outboard
+  // web, a margin, the bush, a margin, the cap corner's inboard web (the same
+  // spec the corners are cut from, at this φ's shaft angle and module)
+  const sF = G.bevelToothSpec({ module: moduleFoot, teeth: BEVEL_TEETH, mateTeeth: BEVEL_TEETH,
+    shaftAngleDeg: 90 + phi / DEG2RAD, boreR: MW_RISE_R, mateBoreR: MW_RISE_R, quiet: true });
+  return Math.max(hi, stubBushFor(sF).floor);
 }
 // THE TILT — TODO 185, TODO 157's objective with the motion works in view. A
 // φ is FEASIBLE when the rise corner's blanks clear the foot corner's and the
@@ -8957,6 +9028,196 @@ async function solveCapLeg(B, F) {
   best.gridScores = grid.map((g) => ({ phiDeg: g.phi / DEG2RAD, ok: g.ok, score: g.score }));
   return best;
 }
+// TODO 289 — WHERE THE TAIL'S BEARINGS STAND, solved for a leg geometry `g`
+// (capLegAt's answer for the B being built) before any rod is cut, because
+// the rods' ends depend on it: the rise's pivot passes through E, so the stub
+// starts clear of it; the cap arbor's extension passes through D, so the stub
+// ends clear of it. Every placement is scanned, least first, against what the
+// fold itself puts there — every blank's swept envelope (the certified bound
+// the leg solve reads), the rods as segments, the cap pinion's swept tip, the
+// motion works' two discs and the plate's opening — and the cap-bearing scan
+// then builds the result into every candidate's scratch metal, so the reserve
+// train's own swing solve judges the bearings with the fold they hold.
+// Geometry only: the meshes are cut in buildSettingMetal from this record.
+const segSegDist3 = (p1, q1, p2, q2) => {   // Ericson, Real-Time Collision Detection §5.1.9: the least distance between two segments
+  const d1 = q1.clone().sub(p1), d2 = q2.clone().sub(p2), r = p1.clone().sub(p2);
+  const a = d1.dot(d1), e = d2.dot(d2), f = d2.dot(r);
+  let s, t;
+  if (a <= 1e-12 && e <= 1e-12) return p1.distanceTo(p2);
+  if (a <= 1e-12) { s = 0; t = Math.min(1, Math.max(0, f / e)); }
+  else {
+    const c = d1.dot(r);
+    if (e <= 1e-12) { t = 0; s = Math.min(1, Math.max(0, -c / a)); }
+    else {
+      const b = d1.dot(d2), den = a * e - b * b;
+      s = den !== 0 ? Math.min(1, Math.max(0, (b * f - c * e) / den)) : 0;
+      t = (b * s + f) / e;
+      if (t < 0) { t = 0; s = Math.min(1, Math.max(0, -c / a)); }
+      else if (t > 1) { t = 1; s = Math.min(1, Math.max(0, (b - c) / a)); }
+    }
+  }
+  return p1.clone().addScaledVector(d1, s).distanceTo(p2.clone().addScaledVector(d2, t));
+};
+async function siteTailBearings(B, F, g, cap) {
+  const m = CLEAR_MARGIN;
+  const { t3, d1, E, D, sigmaB, sigmaE, moduleRise, moduleFoot } = g;
+  const phi = g.phi;
+  const spec = (module, sigma, boreR, mateBoreR) => G.bevelToothSpec({ module, teeth: BEVEL_TEETH, mateTeeth: BEVEL_TEETH,
+    shaftAngleDeg: sigma, boreR, mateBoreR, quiet: true });
+  const sRiseOut = spec(moduleRise, sigmaB, MW_RISE_R, MW_LEG2_R), sFoot = spec(moduleFoot, sigmaE, MW_RISE_R, MW_RISE_R), sCap = MW_CAP_CORNER_SPEC;
+  const C = capLegCorners(B, F, g);
+  // every blank of the fold as [envelope, frame] — the three tail corners from the leg's own rows, the drop and
+  // fold corners from the fold (far from the tail, kept so the columns are judged against the whole fold)
+  const blanks = [...C.rise, ...C.foot, ...C.capc].map(([e, f, , name]) => ({ e, f, name }));
+  blanks.push({ e: bevelEnv(90, BEVEL_MODULE, SETTING_ROD_R, MW_LEG1_R), f: { o: vArr(settingA), a: [0, 0, -1] }, name: 'mwCornerDropIn' },
+    { e: bevelEnv(90, BEVEL_MODULE, MW_LEG1_R, SETTING_ROD_R), f: { o: vArr(settingA), a: vArr(F.leg1U) }, name: 'mwCornerDropOut' },
+    { e: bevelEnv(F.shaftAngleDeg, foldModuleFor(F.shaftAngleDeg), MW_LEG1_R, MW_LEG2_R), f: { o: vArr(F.K), a: vArr(F.leg1U.clone().negate()) }, name: 'mwCornerFoldIn' },
+    { e: bevelEnv(F.shaftAngleDeg, foldModuleFor(F.shaftAngleDeg), MW_LEG2_R, MW_LEG1_R), f: { o: vArr(F.K), a: vArr(F.leg2U) }, name: 'mwCornerFoldOut' });
+  const blanksClear = (disc, target) => { for (const b of blanks) if (!G.revolvedBlankDiscClearance(b.e, b.f, disc, target).ok) return b.name; return null; };
+  const capTipR = G.gearOuterR({ module: MW_MODULE_1, teeth: SETTING_CAP_TEETH, thickness: SETTING_CAP_T, mates: [{ teeth: MW_MINUTE_TEETH, mates: MW_MINUTE_MATES }] });
+  // --- the rise's pivot: shouldered to the largest radius the stub's start admits. The stub must reach the foot
+  // corner's outboard web (zWebLo from E) while starting clear of the pivot's cylinder through E, so the pivot is
+  // at most zWebLo·cosφ − (the stub's radius) − margin; the rod's own radius where that is more.
+  // …and no wider than passes the foot corner's outboard blank by the margin: the pivot leaves E at 90° + φ to
+  // that blank's axis, inside its tooth cone's reach (θ_tip 60° at Σ_E 106°), so a journal at the rod's own radius
+  // grazes the teeth (measured 0.065 at 0.382). The largest journal the judge certifies, bisected from the stub's
+  // bound; a pivot under the train pivots' own radius is refused.
+  const pivotDisc = (r) => ({ o: vArr(E), a: vArr(d1), r, zLo: 0, zHi: 2 * sFoot.coneR });
+  // The rise's bearing is BEST EFFORT, never a clause on the cap bearing: an arrangement whose dial band leaves no
+  // room under E (the no-alarm dial stands nearer the plate; ?barrelstep=-140&alarm=0) builds the rise UNBORNE and
+  // warns — that arrangement's point declares the warning as its debt — rather than refusing every B for a bearing
+  // the fold's own clauses never asked about.
+  let riseWhy = null;
+  let risePivotR = Math.min(MW_RISE_R, sFoot.zWebLo * Math.cos(phi) - MW_RISE_R - m);
+  if (blanksClear(pivotDisc(risePivotR), m)) {
+    let hi = risePivotR, lo = TRAIN_PIVOT_R;
+    if (blanksClear(pivotDisc(lo), m)) riseWhy = `no rise pivot down to r ${lo.toFixed(4)} passes ${blanksClear(pivotDisc(lo), m)} by the margin`;
+    else { while (hi - lo > 1e-4) { const mid = (lo + hi) / 2; if (blanksClear(pivotDisc(mid), m)) hi = mid; else lo = mid; } risePivotR = lo; }
+  }
+  if (!riseWhy && !(risePivotR >= TRAIN_PIVOT_R)) riseWhy = `the rise's pivot would be r ${risePivotR.toFixed(4)} to let the stub reach the foot corner's web — under the train pivots' ${TRAIN_PIVOT_R.toFixed(4)}`;
+  // the stub starts clear of the rise's pivot through E and ends clear of the cap arbor's extension through D —
+  // where those exist (an unborne rise ends at E and an unborne arbor starts at D, and the stub meets them at the apex as before)
+  const stubStartFor = (pivotR) => (pivotR + MW_RISE_R + m) / Math.cos(phi);   // along t3 from E
+  const stubEndFor = (ext) => ext ? 2 * MW_RISE_R + m : 0;                     // short of D along t3 (the cap arbor's extension is the rod's own radius)
+  const riseLen = B.distanceTo(E);
+  const riseBore = risePivotR + PIVOT_BORE_CLEAR, riseBushR = riseBore + MW_BUSH_WALL;
+  // the longest bush the dial band leaves under E, less the rule's own demand where the band has that much
+  // (the bush's rim hangs bushR·sinφ below its axis end on a tilted journal, so the band is read at the rim)
+  const riseRoom = (E.z - Z_DIAL - m - riseBushR * Math.sin(phi)) / Math.cos(phi);
+  const riseBushLenAt = (s0) => Math.min(bushLengthFor(risePivotR, [riseLen - bevelLoadZ(sRiseOut) + s0, s0 + bevelLoadZ(sFoot)]), riseRoom - s0);
+  const riseDisc = (s0) => ({ o: vArr(E), a: vArr(d1), r: riseBushR, zLo: s0, zHi: s0 + riseBushLenAt(s0) });
+  // (judged against the stub as it will be cut beside a sited pivot; the cap's end is settled below and only moves the stub's far end)
+  const stubA0 = E.clone().addScaledVector(t3, stubStartFor(risePivotR)), stubB0 = D.clone().addScaledVector(t3, -stubEndFor(true));
+  const riseBushClear = (s0) => riseBushLenAt(s0) > 0 && !blanksClear(riseDisc(s0), m)
+    && segSegDist3(E.clone().addScaledVector(d1, s0), E.clone().addScaledVector(d1, s0 + riseBushLenAt(s0)), stubA0, stubB0) >= riseBushR + MW_RISE_R + m;
+  // --- the cap arbor's bush below D, the arbor's own radius: the stub ends short of the arbor, the cap corner's
+  // inboard blank trails away along the stub, so the scan starts at the apex and walks down
+  const capBore = MW_RISE_R + PIVOT_BORE_CLEAR, capBushR = capBore + MW_BUSH_WALL;
+  const capBushLen = bushLengthFor(MW_RISE_R, []);   // straddled: the blank and the cap sit between this bush and the jewel
+  { const hit = blanksClear({ o: vArr(D), a: [0, 0, -1], r: MW_RISE_R, zLo: 0, zHi: 2 * sCap.coneR }, m);
+    if (hit) console.warn(`TODO 289: the cap arbor's extension below D passes ${hit} under the margin`); }
+  const DOWN = [0, 0, -1];
+  const capDisc = (s0) => ({ o: vArr(D), a: DOWN, r: capBushR, zLo: s0, zHi: s0 + capBushLen });
+  const capBushClear = (s0) => !blanksClear(capDisc(s0), m)
+    && segSegDist3(new THREE.Vector3(D.x, D.y, D.z - s0), new THREE.Vector3(D.x, D.y, D.z - s0 - capBushLen), stubA0, stubB0) >= capBushR + MW_RISE_R + m
+    && D.z - s0 - capBushLen >= Z_DIAL + m;
+  // least s0 that clears: a step of half a margin (a distance moves no faster than the thing measured), then bisected
+  const leastClear = async (clear, lim) => {
+    let s = 0;
+    while (!clear(s)) { s += m / 2; await breathe(381); if (s > lim) return null; }
+    let lo = Math.max(0, s - m / 2), hi = s;
+    if (s > 0) while (hi - lo > 1e-3) { const mid = (lo + hi) / 2; if (clear(mid)) hi = mid; else lo = mid; }
+    return hi;
+  };
+  const riseS0 = riseWhy ? null : await leastClear(riseBushClear, riseRoom);
+  if (riseS0 === null && !riseWhy) riseWhy = 'no station under E clears the rise\'s bush within the dial band';
+  // …and the cap arbor's bush the same: where the dial band leaves no room under D the arbor keeps its jewel alone
+  let capWhy = null;
+  const capS0 = await leastClear(capBushClear, D.z - Z_DIAL);
+  if (capS0 === null) capWhy = 'no station under D clears the cap arbor\'s bush within the dial band';
+  const riseBushLen = riseS0 === null ? 0 : riseBushLenAt(riseS0);
+  const stubStart = stubStartFor(riseWhy ? 0 : risePivotR) * (riseWhy ? 0 : 1), stubEnd = stubEndFor(!capWhy);
+  const stubA = E.clone().addScaledVector(t3, stubStart), stubB = D.clone().addScaledVector(t3, -stubEnd);
+  if (!(stubStart <= sFoot.zWebLo + 1e-9) || !(stubEnd <= sCap.zWebLo + 1e-9))
+    console.warn(`TODO 289: the stub's ends (${stubStart.toFixed(4)} past E, ${stubEnd.toFixed(4)} short of D) do not reach its blanks' webs (${sFoot.zWebLo.toFixed(4)}, ${sCap.zWebLo.toFixed(4)})`);
+  const stubBush = stubBushFor(sFoot);
+  // --- the stub's bush, centred in the run its lengthened stub leaves between its two webs
+  const stubRun = [sFoot.zWebHi + m + stubBush.padF, g.stub - sCap.zWebHi - m - stubBush.padC];
+  if (stubRun[1] - stubRun[0] < stubBush.len - 1e-9)
+    console.warn(`TODO 289: the stub's run between its webs (${(stubRun[1] - stubRun[0]).toFixed(4)}) is under its bush (${stubBush.len.toFixed(4)}) — stubSolve's floor did not hold`);
+  const stubBushMid = (stubRun[0] + stubRun[1]) / 2;
+  {   // rule 6: the stub's bush, placed by the run alone, must still clear every other blank (the rise's blanks lean over the stub's start)
+    const stubBushR = MW_RISE_R + PIVOT_BORE_CLEAR + MW_BUSH_WALL;
+    const hit = blanksClear({ o: vArr(E), a: vArr(t3), r: stubBushR, zLo: stubBushMid - stubBush.len / 2, zHi: stubBushMid + stubBush.len / 2 }, m);
+    if (hit) console.warn(`TODO 289: the stub's bush at ${stubBushMid.toFixed(4)} along the stub stands under the margin off ${hit}`);
+  }
+  // --- the jewel above the cap: sunk one margin under the pocket's floor, so the cap's top keeps the margin it
+  // stands off the floor by whatever the ruler reads of the collar's rim (the rim is flush at floor + margin)
+  const stone = G.jewelStone(MW_CAP_JEWEL_R);
+  const jewelZ = MW_SINK_FLOOR + m + stone.rimTop;   // the setting's origin; turned through π, local z runs DOWN
+  const stoneTopZ = jewelZ - stone.top, stoneBotZ = jewelZ - stone.bottom;   // world: the stone's dial-side face, and its far face
+  const arborTop = new THREE.Vector3(cap.x, cap.y, stoneBotZ);
+  const arborBot = capWhy ? D.clone() : new THREE.Vector3(D.x, D.y, D.z - capS0 - capBushLen);
+  // --- the hangers: each bush's arm leaves it OUTWARD from the motion works' axis (inward is the minute wheel,
+  // which fills the plate's underside), the column rising from the arm to the plate's dial face. The standoff is
+  // the least that clears every blank, the cap's swept tip, the motion works' discs, every rod, the hangers
+  // already placed, and foots the column on plate metal outside the merged pocket-and-bore opening.
+  const nOut = (() => { const n = Z_UP.clone().cross(t3).normalize(); const r = new THREE.Vector2(E.x - MW_WORLD.x, E.y - MW_WORLD.y); return (n.x * r.x + n.y * r.y) >= 0 ? n : n.negate(); })();
+  const colR = MW_HANGER_S * Math.SQRT1_2, colTop = PLATE_BACK + MW_HANGER_SEAT;
+  const rods = [   // every rod of the fold, as it will be cut: [a, b, r]
+    [settingA, new THREE.Vector3(settingA.x, settingA.y, SETTING_SPUR_Z), SETTING_ROD_R], [settingA, F.K, MW_LEG1_R], [F.K, B, MW_LEG2_R],
+    [B, E, MW_RISE_R], ...(riseWhy ? [] : [[E, E.clone().addScaledVector(d1, riseS0 + riseBushLen), risePivotR]]), [stubA, stubB, MW_RISE_R], [arborBot, arborTop, MW_RISE_R]];
+  const pocketR = capTipR + m + plateR * G.PLATE_BEVEL_F + SEAT_LAND_LAP;   // MW_CAP_POCKET's finished radius, its bevel at the face and its floor's lapped collar
+  const boreRB = spec(moduleRise, sigmaB, MW_LEG2_R, MW_RISE_R).coneR + m + plateR * G.PLATE_BEVEL_F;   // MW_RISE_PLATE_HOLE's law, with the slab's bevel at the face
+  const placed = [];
+  const hangerFor = async (what, c, u, bushR, bushLen) => {
+    const zBot = c.z - MW_HANGER_S / 2;
+    const ownRod = (a, b) => segSegDist3(c.clone().addScaledVector(u, -bushLen / 2), c.clone().addScaledVector(u, bushLen / 2), a, b) < 1e-6;   // collinear with the bush: the journal it bears
+    const clearAt = (off) => {
+      const fx = c.x + nOut.x * off, fy = c.y + nOut.y * off;
+      const col0 = new THREE.Vector3(fx, fy, zBot), col1 = new THREE.Vector3(fx, fy, colTop);
+      const colDisc = { o: [fx, fy, zBot], a: [0, 0, 1], r: colR, zLo: 0, zHi: colTop - zBot };
+      const armA = c.clone().addScaledVector(nOut, bushR), armB = new THREE.Vector3(fx, fy, c.z);
+      if (blanksClear(colDisc, m)) return false;
+      const capZ = [Z_SETTING_CAP - SETTING_CAP_REACH, Z_SETTING_CAP + SETTING_CAP_REACH];
+      if (!(colTop < capZ[0] || zBot > capZ[1]) && Math.hypot(fx - cap.x, fy - cap.y) < capTipR + colR + m) return false;
+      for (const d of MW_FOLD_OBSTACLES) if (!(colTop < d.zLo || zBot > d.zHi) && Math.hypot(fx - d.o[0], fy - d.o[1]) < d.r + colR + m) return false;
+      for (const [a, b, r] of rods) {
+        if (segSegDist3(col0, col1, a, b) < r + colR + m) return false;
+        if (!ownRod(a, b) && segSegDist3(armA, armB, a, b) < r + colR + m) return false;   // the arm is welded to the bush round its own journal
+      }
+      for (const p of placed) for (const [a, b, r] of p.segs) if (segSegDist3(col0, col1, a, b) < r + colR + m || segSegDist3(armA, armB, a, b) < r + colR + m) return false;
+      if (Math.hypot(fx - cap.x, fy - cap.y) < pocketR + colR + m || Math.hypot(fx - B.x, fy - B.y) < boreRB + colR + m) return false;
+      return true;
+    };
+    let off = bushR + MW_HANGER_S + MW_HANGER_S / 2;   // the arm at least one section long
+    const lim = off + 12;
+    while (!clearAt(off)) { off += m / 2; await breathe(382); if (off > lim) return null; }
+    { let lo = off - m / 2, hi = off; if (lo >= bushR + MW_HANGER_S * 1.5) while (hi - lo > 1e-3) { const mid = (lo + hi) / 2; if (clearAt(mid)) hi = mid; else lo = mid; } off = hi; }
+    const fx = c.x + nOut.x * off, fy = c.y + nOut.y * off;
+    const h = { what, c, u, bushR, bushLen, off, armLen: off - MW_HANGER_S / 2 - bushR, foot: { x: fx, y: fy }, zBot, colTop,
+      segs: [[c.clone().addScaledVector(u, -bushLen / 2), c.clone().addScaledVector(u, bushLen / 2), bushR],
+        [c.clone().addScaledVector(nOut, bushR), new THREE.Vector3(fx, fy, c.z), colR], [new THREE.Vector3(fx, fy, zBot), new THREE.Vector3(fx, fy, colTop), colR]] };
+    placed.push(h);
+    return h;
+  };
+  const riseC = E.clone().addScaledVector(d1, riseS0 + riseBushLen / 2);
+  const stubC = E.clone().addScaledVector(t3, stubBushMid);
+  const capC = new THREE.Vector3(D.x, D.y, D.z - capS0 - capBushLen / 2);
+  const rise = riseWhy ? null : await hangerFor('rise', riseC, d1, riseBushR, riseBushLen);
+  if (!rise && !riseWhy) riseWhy = 'no hanger standoff outward of the rise\'s bush clears the fold';
+  let stubWhy = null;
+  const stub = await hangerFor('stub', stubC, t3, MW_RISE_R + PIVOT_BORE_CLEAR + MW_BUSH_WALL, stubBush.len);
+  if (!stub) stubWhy = 'no hanger standoff outward of the stub\'s bush clears the fold';
+  const capH = capWhy ? null : await hangerFor('cap', capC, Z_UP, capBushR, capBushLen);
+  if (!capH && !capWhy) capWhy = 'no hanger standoff outward of the cap arbor\'s bush clears the fold';
+  return {
+    nOut, riseWhy, stubWhy, capWhy, risePivotR, riseS0, riseBushLen, riseRoom, riseLen, stubStart, stubEnd, stubA, stubB, stubBush: { ...stubBush, mid: stubBushMid, run: stubRun },
+    capS0, capBushLen, jewelZ, stoneTopZ, stoneBotZ, arborTop, arborBot, capTipR, pocketR,
+    overhang: { rise: riseLen - bevelLoadZ(sRiseOut) + riseS0, stub: Math.max(sFoot.zWebHi + m - bevelLoadZ(sFoot), sCap.zWebHi + m - bevelLoadZ(sCap)) },
+    hangers: { rise, stub, cap: capH },
+  };
+}
 // §234 fold — THE SETTING METAL FROM ITS CAP CORNER, ONE BUILDER. Everything
 // between the minute arbor's corner at A and the cap pinion at B is a
 // function of B alone: the fold (solveSettingFold), the two legs, the rise,
@@ -9013,14 +9274,22 @@ async function buildSettingMetal(B, parent, { candidate = false } = {}) {
   parent.add(leg1, leg2);
   // a refused shipped B still builds (the battery judges it): the leg at the
   // scan's least-tilt ceiling, straight down, with a nominal stub
-  const { capXY, t3, d1, E, D, sigmaB, sigmaE, moduleRise, moduleFoot } = S && !S.refused ? S
-    : capLegAt(B, F, 0, 2 * MW_CAP_ENV.R + CLEAR_MARGIN);
+  const g = S && !S.refused ? S : capLegAt(B, F, 0, 2 * MW_CAP_ENV.R + CLEAR_MARGIN);
+  const { capXY, t3, d1, E, D, sigmaB, sigmaE, moduleRise, moduleFoot } = g;
   const cap = new THREE.Vector3(capXY.x, capXY.y, Z_SETTING_CAP);
+  // TODO 289 — the tail's bearings are SITED before its rods are cut, because the rods' ends follow them: the
+  // rise's shouldered pivot passes through E and the cap arbor's extension through D, so the stub is cut clear of
+  // both. A B whose tail no bearing fits is refused like one whose leg no tilt clears.
+  const T = await siteTailBearings(B, F, g, cap);
+  if (T.refused) {
+    if (candidate) return { F, refused: T.refused, noFold };
+    console.warn(`TODO 289: ${T.refused} — building the tail without them; the battery judges it`);
+  }
   const rise = makeRodSegment(B, E, MW_RISE_R);
   rise.name = 'settingRise';
-  const stub = makeRodSegment(E, D, MW_RISE_R);
+  const stub = T.refused ? makeRodSegment(E, D, MW_RISE_R) : makeRodSegment(T.stubA, T.stubB, MW_RISE_R);
   stub.name = 'settingStub';
-  const capArbor = makeRodSegment(D, cap, MW_RISE_R);
+  const capArbor = T.refused ? makeRodSegment(D, cap, MW_RISE_R) : makeRodSegment(T.arborBot, T.arborTop, MW_RISE_R);
   capArbor.name = 'settingCapArbor';
   parent.add(rise, stub, capArbor);
   // rise → traverse and traverse → drop: two corners, both exactly 90°. The
@@ -9081,8 +9350,54 @@ async function buildSettingMetal(B, parent, { candidate = false } = {}) {
   settingCap.traverse((o) => { if (o.isMesh) o.name = 'settingCap'; });
   settingCap.position.set(cap.x, cap.y, Z_SETTING_CAP);
   parent.add(settingCap);
+  // TODO 289 — THE TAIL'S BEARINGS, cut from the siting record: the rise's shouldered pivot past E and its bush,
+  // the stub's bush between its webs, the cap arbor's bush below D and its jewel above the cap, and a hanger
+  // (arm and column to the plate's dial face) under each bush. Every mesh is named for the inspector's rows.
+  const bearings = {};
+  if (!T.refused) {
+    for (const [k, why] of [['rise', T.riseWhy], ['stub', T.stubWhy], ['cap arbor', T.capWhy]])
+      if (why && !candidate) console.warn(`TODO 289: ${why} — the ${k} runs unborne on this arrangement`);
+    if (!T.riseWhy) {
+      const pivotLen = T.riseS0 + T.riseBushLen;
+      const risePivot = makeRodSegment(E, E.clone().addScaledVector(d1, pivotLen), T.risePivotR);
+      risePivot.name = 'settingRisePivot';
+      parent.add(risePivot);
+      bearings.risePivot = risePivot;
+    }
+    for (const [key, h, bore] of [['rise', T.hangers.rise, T.risePivotR + PIVOT_BORE_CLEAR], ['stub', T.hangers.stub, MW_RISE_R + PIVOT_BORE_CLEAR], ['cap', T.hangers.cap, MW_RISE_R + PIVOT_BORE_CLEAR]].filter(([, h]) => h)) {
+      const tag = key === 'cap' ? 'settingCap' : key === 'stub' ? 'settingStub' : 'settingRise';
+      const bush = new THREE.Mesh(ringGeo(bore, h.bushR, h.bushLen), MATS.nickel);
+      bush.name = `${tag}Bush`;
+      bush.position.copy(h.c);
+      bush.quaternion.setFromUnitVectors(Z_UP, h.u);   // ringGeo stands along z; the bush along its journal
+      // the arm: a bar along nOut from the bush's cylinder to the column's inner face, one section square in the
+      // (t3, z) frame — square to the column, so a tilted journal still meets a flat weld face
+      const armFrame = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(T.nOut, Z_UP.clone().cross(T.nOut), Z_UP));
+      // lapped into the bush by its 40-gon's flat sag (RING_GEO_SEG), so the weld is metal on metal and not a
+      // hairline over a flat: the arm's inner face sits at the polygon's flat, where the metal is
+      const sag = h.bushR * (1 - Math.cos(Math.PI / RING_GEO_SEG));
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(h.armLen + sag, MW_HANGER_S, MW_HANGER_S), MATS.nickel);
+      arm.name = `${tag}Arm`;
+      arm.position.copy(h.c).addScaledVector(T.nOut, h.bushR - sag + (h.armLen + sag) / 2);
+      arm.quaternion.copy(armFrame);
+      const col = new THREE.Mesh(new THREE.BoxGeometry(MW_HANGER_S, MW_HANGER_S, h.colTop - h.zBot), MATS.nickel);
+      col.name = `${tag}Column`;
+      col.position.set(h.foot.x, h.foot.y, (h.zBot + h.colTop) / 2);
+      col.quaternion.copy(armFrame);
+      parent.add(bush, arm, col);
+      bearings[key] = { bush, arm, col };
+    }
+    // the jewel: the dial-side setting, turned through π like addDialSidePivot's, its hole the arbor's running
+    // fit, sunk a margin under the cap pocket's floor (siteTailBearings' jewelZ)
+    const jewel = G.makeJewelSetting({ r: MW_CAP_JEWEL_R, holeR: MW_RISE_R + PIVOT_BORE_CLEAR });
+    jewel.rotation.x = Math.PI;
+    jewel.position.set(cap.x, cap.y, T.jewelZ);
+    jewel.traverse((o) => { if (o.isMesh) o.name = 'settingCapJewel'; });
+    parent.add(jewel);
+    bearings.jewel = jewel;
+  }
   return { F, module, leg1, leg2, rise, stub, capArbor, cornerDrop, cornerFold, cornerRise, cornerFoot, cornerCap, settingCap, capXY,
-    leg: S && !S.refused ? S : null, E, D };
+    leg: S && !S.refused ? S : null, E, D, tail: T, bearings };
 }
 // TODO 157 — B STAYS FIRST-FEASIBLE, on purpose, and here is why. The bearing
 // is the route choice with the widest cascade (the fold, the plate's recesses,
@@ -9627,6 +9942,43 @@ registerSub('Keyless works', 'Setting traverse', SETTING_METAL.leg2);
 // leg and the two segments that carry it the rest of the way to the cap).
 registerSub('Keyless works', 'Setting rise', SETTING_METAL.stub);
 registerSub('Keyless works', 'Setting rise', SETTING_METAL.capArbor);
+// TODO 289 — the tail's bearings: the rise's shouldered pivot is the rise's
+// (one body), the three bushes with their hangers and the cap's jewel are
+// 'Setting bearings', so a hover names what holds the rod rather than the rod.
+if (SETTING_METAL.bearings.jewel) {
+  const borne = ['rise', 'stub', 'cap'].filter((k) => SETTING_METAL.bearings[k]);   // the rise's is best effort (siteTailBearings: riseWhy)
+  if (SETTING_METAL.bearings.risePivot) registerSub('Keyless works', 'Setting rise', SETTING_METAL.bearings.risePivot);
+  for (const k of borne) for (const part of ['bush', 'arm', 'col']) registerSub('Keyless works', 'Setting bearings', SETTING_METAL.bearings[k][part]);
+  registerSub('Keyless works', 'Setting bearings', SETTING_METAL.bearings.jewel);
+  // §54 — the rods DECLARE where they are held (userData.bearings, geometry-local along the cylinder's own y,
+  // measured from each mesh's centre): the rise's pivot at its bush, the stub at its bush, the cap arbor at its
+  // bush and at the stone. The two traverses declare nothing: nothing holds them (TODO 289's residue).
+  const T = SETTING_METAL.tail, E = SETTING_METAL.E, D = SETTING_METAL.D;
+  const alongY = (mesh, p) => {   // where world point p falls along the mesh's own y, from its centre (the rod's quaternion maps +y to its direction)
+    const u = new THREE.Vector3(0, 1, 0).applyQuaternion(mesh.quaternion);
+    return p.clone().sub(mesh.position).dot(u);
+  };
+  if (SETTING_METAL.bearings.risePivot) SETTING_METAL.bearings.risePivot.userData.bearings = { axis: 'y', stations: [alongY(SETTING_METAL.bearings.risePivot, T.hangers.rise.c)] };
+  if (T.hangers.stub) SETTING_METAL.stub.userData.bearings = { axis: 'y', stations: [alongY(SETTING_METAL.stub, T.hangers.stub.c)] };
+  SETTING_METAL.capArbor.userData.bearings = { axis: 'y', stations: [...(T.hangers.cap ? [alongY(SETTING_METAL.capArbor, T.hangers.cap.c)] : []),
+    alongY(SETTING_METAL.capArbor, new THREE.Vector3(SETTING_CAP_XY.x, SETTING_CAP_XY.y, (T.stoneTopZ + T.stoneBotZ) / 2))].sort((a, b) => a - b) };
+  // rule 6 — the derivations, re-read off the cut metal: each bush's bore is its journal plus the one running fit,
+  // each bush as long as its law says, the rise's pivot inside the dial band by the margin, the arm one section
+  // long at least, and the column's foot inside the plate's slab by the seat (the plate itself is cut far below;
+  // plateSeats holds the foot ON plate metal over the pose net)
+  for (const [k, journalR, want] of [['rise', T.risePivotR, T.riseBushLen], ['stub', MW_RISE_R, T.stubBush.len], ['cap', MW_RISE_R, T.capBushLen]].filter(([k]) => borne.includes(k))) {
+    const b = SETTING_METAL.bearings[k].bush, pr = b.geometry.parameters, h = T.hangers[k];
+    const bore = Math.min(...pr.points.map((q) => q.x)), outer = Math.max(...pr.points.map((q) => q.x)), len = Math.max(...pr.points.map((q) => q.y)) - Math.min(...pr.points.map((q) => q.y));
+    if (Math.abs(bore - (journalR + PIVOT_BORE_CLEAR)) > 1e-9 || Math.abs(outer - bore - MW_BUSH_WALL) > 1e-9 || Math.abs(len - want) > 1e-9)
+      console.warn(`TODO 289: the ${k} bush is cut bore ${bore.toFixed(4)} / wall ${(outer - bore).toFixed(4)} / length ${len.toFixed(4)} against its law ${(journalR + PIVOT_BORE_CLEAR).toFixed(4)} / ${MW_BUSH_WALL.toFixed(4)} / ${want.toFixed(4)}`);
+    if (!(h.armLen >= MW_HANGER_S - 1e-9)) console.warn(`TODO 289: the ${k} hanger's arm is ${h.armLen.toFixed(4)} long, under its own section ${MW_HANGER_S.toFixed(4)}`);
+    if (Math.abs(h.colTop - (PLATE_BACK + MW_HANGER_SEAT)) > 1e-9) console.warn(`TODO 289: the ${k} hanger's column tops at ${h.colTop.toFixed(4)}, not the seat ${(PLATE_BACK + MW_HANGER_SEAT).toFixed(4)}`);
+  }
+  if (T.riseS0 !== null && !(E.z - (T.riseS0 + T.riseBushLen) * Math.cos(SETTING_METAL.leg?.phi ?? 0) >= Z_DIAL + CLEAR_MARGIN - 1e-9))
+    console.warn(`TODO 289: the rise's pivot ends ${(E.z - (T.riseS0 + T.riseBushLen) * Math.cos(SETTING_METAL.leg?.phi ?? 0)).toFixed(4)}, inside the dial's margin at ${(Z_DIAL + CLEAR_MARGIN).toFixed(4)}`);
+  if (!(T.jewelZ - G.jewelStone(MW_CAP_JEWEL_R).rimTop - (Z_SETTING_CAP + SETTING_CAP_REACH) >= CLEAR_MARGIN - 1e-9))
+    console.warn(`TODO 289: the cap's jewel rim stands ${(T.jewelZ - G.jewelStone(MW_CAP_JEWEL_R).rimTop - (Z_SETTING_CAP + SETTING_CAP_REACH)).toFixed(4)} over the cap's top — under the margin`);
+}
 
 // ---------------------------------------------------------------------------
 // Setting-lever linkage — the visible actuation chain behind the crown pull.
@@ -11122,9 +11474,15 @@ await breathe(90);
 // leave a 0.2148 land, under STOCK_MIN_U, and their drawn rings overlap.
 const MW_CANNON_POCKET = { x: P.dial.x, y: P.dial.y, depth: MW_PLATE_SINK, lap: SEAT_LAND_LAP,
   r: G.gearOuterR({ module: MW_MODULE_1, teeth: cannonPinionTeeth, thickness: 1e3, mates: [{ teeth: MW_MINUTE_TEETH, mates: MW_MINUTE_MATES }] }) + CLEAR_MARGIN };
-const MW_CAP_POCKET = { x: SETTING_CAP_XY.x, y: SETTING_CAP_XY.y, depth: MW_PLATE_SINK, lap: SEAT_LAND_LAP,
-  r: G.gearOuterR({ module: MW_MODULE_1, teeth: SETTING_CAP_TEETH, thickness: 1e3, mates: [{ teeth: MW_MINUTE_TEETH, mates: MW_MINUTE_MATES }] }) + CLEAR_MARGIN,
-  through: MW_RISE_PLATE_HOLE };
+const MW_CAP_POCKET_R = G.gearOuterR({ module: MW_MODULE_1, teeth: SETTING_CAP_TEETH, thickness: 1e3, mates: [{ teeth: MW_MINUTE_TEETH, mates: MW_MINUTE_MATES }] }) + CLEAR_MARGIN;
+// TODO 289 — the rise corner's bore joins the cap's pocket as ONE opening only where the two overlap (TODO 172's
+// case, a 0.2148 land): the stub lengthened for its bush carries the cap along the mesh circle, and where the bore's
+// disc stands clear of the pocket's floor collar (the builder's own crescent condition, r + bevel + lap) it is cut
+// as its own hole, with §62's land rule between them.
+const MW_CAP_BORE_MERGED = Math.hypot(settingB.x - SETTING_CAP_XY.x, settingB.y - SETTING_CAP_XY.y)
+  < MW_CAP_POCKET_R + plateR * G.PLATE_BEVEL_F + SEAT_LAND_LAP + MW_RISE_PLATE_HOLE.r;
+const MW_CAP_POCKET = { x: SETTING_CAP_XY.x, y: SETTING_CAP_XY.y, depth: MW_PLATE_SINK, lap: SEAT_LAND_LAP, r: MW_CAP_POCKET_R,
+  ...(MW_CAP_BORE_MERGED ? { through: MW_RISE_PLATE_HOLE } : {}) };
 // TODO 184 — the cut's arguments are ONE object, so the late re-cut below
 // (recutBackPlate) cuts the same plate with its late openings added rather
 // than restating this list.
@@ -11144,7 +11502,8 @@ const BACK_PLATE_CUT = {
     ...BACK_PLATE_HOLES,
     MW_FOLD_PLATE_HOLE,   // §234 fold — the third motion-works corner's blanks, A's precedent
     MW_DROP_PLATE_HOLE,   // TODO 150 item 1 — the drop corner's own recess at A, same precedent
-    // (MW_RISE_PLATE_HOLE is cut with the cap's pocket — MW_CAP_POCKET.through)
+    // (MW_RISE_PLATE_HOLE is cut with the cap's pocket — MW_CAP_POCKET.through — where the two overlap; TODO 289)
+    ...(MW_CAP_BORE_MERGED ? [] : [MW_RISE_PLATE_HOLE]),
     // §307 landing 2 — NOT under FORM: these bores pass the §186 clamp
     // screws through the round RIM, and the form plate has no rim (the outline
     // replaces it) and the form case builds no clamps (form-case.js) — a
@@ -62297,7 +62656,10 @@ const JMP_SITE = await (async () => {
   // in it — the fact a late re-cut (TODO 160's filed design) would need.
   const bDepRoots = [SETTING_METAL.leg1, SETTING_METAL.leg2, SETTING_METAL.rise, SETTING_METAL.stub, SETTING_METAL.capArbor,
     SETTING_METAL.cornerDrop, SETTING_METAL.cornerFold, SETTING_METAL.cornerRise, SETTING_METAL.cornerFoot, SETTING_METAL.cornerCap,
-    SETTING_METAL.settingCap, reserveTrain].filter(Boolean);
+    SETTING_METAL.settingCap, reserveTrain,
+    // TODO 289 — the tail's bearings are B's too: sited off the leg B's tilt solve cut
+    SETTING_METAL.bearings.risePivot, SETTING_METAL.bearings.jewel,
+    ...['rise', 'stub', 'cap'].filter((k) => SETTING_METAL.bearings[k]).flatMap((k) => [SETTING_METAL.bearings[k].bush, SETTING_METAL.bearings[k].arm, SETTING_METAL.bearings[k].col])].filter(Boolean);
   const isBDep = (o) => bDepRoots.some((r) => under(o, r));
   const staticBDep = [], plateBDep = [];
   // TODO 161 — THE LAWED MOVERS are judged over their own travel, not as
@@ -63867,6 +64229,21 @@ window.__clock = {
     scan: CAP_SOLVE.scan.map((r) => ({ ...r })),
     // TODO 151's (d) landing — the cap's leg as solved for the shipped B
     // (solveCapLeg), for tools/probe-150-fold-sense.mjs / probe-151-cap-plane.mjs
+    // TODO 289 — the tail's bearings as sited (siteTailBearings), for tools/probe-fold-bearings.mjs: the rise's
+    // pivot radius and station, each bush's length and the overhang its law was fed, each hanger's standoff
+    // and foot, the jewel's planes. The achieved overhang ratio is a REPORT where the dial band capped the bush.
+    bearings: SETTING_METAL.tail && !SETTING_METAL.tail.refused ? (() => {
+      const T = SETTING_METAL.tail;
+      const H = (h) => h && ({ centre: vArr(h.c), axis: vArr(h.u), bushR: h.bushR, bushLen: h.bushLen, standoff: h.off, armLen: h.armLen, foot: { ...h.foot }, zBot: h.zBot, colTop: h.colTop });
+      return {
+        nOut: vArr(T.nOut), riseWhy: T.riseWhy, stubWhy: T.stubWhy, capWhy: T.capWhy, risePivotR: T.risePivotR, riseS0: T.riseS0, riseBushLen: T.riseBushLen, riseRoom: T.riseRoom,
+        stubStart: T.stubStart, stubEnd: T.stubEnd, stubBush: { len: T.stubBush.len, floor: T.stubBush.floor, mid: T.stubBush.mid, run: [...T.stubBush.run] },
+        capS0: T.capS0, capBushLen: T.capBushLen, jewelZ: T.jewelZ, stoneTopZ: T.stoneTopZ, stoneBotZ: T.stoneBotZ, jewelR: MW_CAP_JEWEL_R,
+        arborTop: vArr(T.arborTop), arborBot: vArr(T.arborBot), pocketR: T.pocketR,
+        overhang: { ...T.overhang }, overhangK: MW_BEVEL_OVERHANG_K, ldMin: MW_BUSH_LD_MIN, wall: MW_BUSH_WALL, boreClear: PIVOT_BORE_CLEAR, hangerS: MW_HANGER_S, seat: MW_HANGER_SEAT,
+        hangers: { rise: H(T.hangers.rise), stub: H(T.hangers.stub), cap: H(T.hangers.cap) },
+      };
+    })() : null,
     capLeg: SETTING_METAL.leg && {
       phiDeg: SETTING_METAL.leg.phiDeg, stub: SETTING_METAL.leg.stub, chord: SETTING_METAL.leg.chord,
       sigmaBDeg: SETTING_METAL.leg.sigmaB, sigmaEDeg: SETTING_METAL.leg.sigmaE,

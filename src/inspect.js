@@ -3728,6 +3728,20 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Keyless works', a: 'mwCornerCapIn', b: 'settingStub', why: 'TODO 151\'s (d) landing — the cap corner\'s inboard bevel, the stub\'s other end' },
   { unit: 'Keyless works', a: 'mwCornerCapOut', b: 'settingCapArbor', why: 'TODO 151\'s (d) landing — the cap corner\'s outboard bevel, keyed to the vertical arbor up to the cap' },
   { unit: 'Keyless works', a: 'mwCornerRiseOut', b: 'settingRise', why: 'the rise corner\'s outboard bevel, keyed to the vertical rod it drives (measures MARGINAL \u2014 the flag flips run-to-run at the d\u22481e-4 boundary; the joint is real either way)' },
+  // TODO 289 — THE TAIL'S BEARINGS: each rod's running fit in its bush (PIVOT_BORE_CLEAR, so the pair reads the
+  // fit, never a foul), the bush welded to its arm, the arm to its column (face on face), and the cap arbor
+  // through the jewel's stone; the rise's shouldered pivot is one body with its rod.
+  { unit: 'Keyless works', a: 'settingRisePivot', b: 'settingRise', why: 'TODO 289: the rise\'s shouldered pivot, turned on the rod\'s own end past E — one body' },
+  { unit: 'Keyless works', a: 'settingRisePivot', b: 'settingRiseBush', why: 'TODO 289: the rise\'s pivot running in its bush below E, at PIVOT_BORE_CLEAR' },
+  { unit: 'Keyless works', a: 'settingRiseBush', b: 'settingRiseArm', why: 'TODO 289: the bush welded to its hanger\'s arm (the arm\'s inner face on the bush\'s cylinder)' },
+  { unit: 'Keyless works', a: 'settingRiseArm', b: 'settingRiseColumn', why: 'TODO 289: the arm\'s outer face on the column\'s inner face — one welded hanger' },
+  { unit: 'Keyless works', a: 'settingStub', b: 'settingStubBush', why: 'TODO 289: the stub running in its bush between its two blanks, at PIVOT_BORE_CLEAR' },
+  { unit: 'Keyless works', a: 'settingStubBush', b: 'settingStubArm', why: 'TODO 289: the bush welded to its hanger\'s arm' },
+  { unit: 'Keyless works', a: 'settingStubArm', b: 'settingStubColumn', why: 'TODO 289: the arm on its column' },
+  { unit: 'Keyless works', a: 'settingCapArbor', b: 'settingCapBush', why: 'TODO 289: the cap arbor\'s extension below D running in its bush, at PIVOT_BORE_CLEAR' },
+  { unit: 'Keyless works', a: 'settingCapBush', b: 'settingCapArm', why: 'TODO 289: the bush welded to its hanger\'s arm' },
+  { unit: 'Keyless works', a: 'settingCapArm', b: 'settingCapColumn', why: 'TODO 289: the arm on its column' },
+  { unit: 'Keyless works', a: 'settingCapArbor', b: 'settingCapJewel', why: 'TODO 289: the cap arbor\'s upper pivot through the stone of a jewel set in the cap pocket\'s floor, at PIVOT_BORE_CLEAR' },
   // §99 found the other two joints of the same cluster, the same way the
   // declared row below found its first: the two wheels keyed to the long
   // keyless arbor sit at the measurement boundary and the flag flips
@@ -5101,6 +5115,11 @@ export const PLATE_SEATS = [
   { unit: "Alarm winding arrest", mesh: "subIdlerArbor", kind: "pivot", why: "an arbor's lower pivot" },
   { unit: "Alarm winding arrest", mesh: "alarmArrestFingerArbor", kind: "pivot", why: "an arbor's lower pivot" },
   { unit: "Alarm winding arrest", mesh: "alarmArrestStud", kind: "planted", why: "the arrest's stud, planted in the plate" },
+  { unit: "Keyless works", mesh: "settingRiseColumn", kind: "planted", why: "TODO 289: the rise bush's hanger, let one section into the plate's dial face" },
+  { unit: "Keyless works", mesh: "settingStubColumn", kind: "planted", why: "TODO 289: the stub bush's hanger, the same seat" },
+  { unit: "Keyless works", mesh: "settingCapColumn", kind: "planted", why: "TODO 289: the cap arbor bush's hanger, the same seat" },
+  { unit: "Keyless works", mesh: "settingCapArbor", kind: "pivot", why: "TODO 289: the cap arbor's upper pivot, run up through the cap and its jewel's stone into the plate (the jewel's recess, not cut from the slab — the train pivots' construction)" },
+  { unit: "Keyless works", mesh: "settingCapJewel", kind: "housed", why: "TODO 289: the cap arbor's jewel, its setting sunk in the cap pocket's floor a margin under the face" },
   { unit: "Alarm link", mesh: "alarmLinkHanger1", kind: "planted", why: "a hanger, standing on the plate" },
   { unit: "Alarm link", mesh: "alarmLinkHanger2", kind: "planted", why: "a hanger, standing on the plate" },
   { unit: "Alarm link", mesh: "alarmLinkHanger3Upper", kind: "planted", why: "§261 2c: hanger 3's upper column — jogged round the beak's bar — standing on the plate" },
