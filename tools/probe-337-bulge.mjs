@@ -78,7 +78,7 @@ for (let i = 0; i < HOURS.length; i++) {
     for (let kk = row.k; kk <= row.k + 4; kk++) {
       const zc = row.num * kk, zf = row.den * kk, D = (MODULE_MIN_U * (zc + zf)) / 2;
       const g = row.geneva, coneTip = (MODULE_MIN_U * (zc + 2)) / 2, pinTip = (MODULE_MIN_U * (zf + 2)) / 2;
-      const crankR = g.r1 + g.rPin, keep = staffR + M;
+      const crankR = g.r1 + g.rPin + STOCK_MIN_U, keep = staffR + M;   // the crank's outer edge: the pin's radius and a §50 wall round it (stage 2 built it)
       const mCone = cap(r.C.x, r.C.y) - coneTip - M;
       for (let pd = 0; pd < 360; pd += 2) {
         const p = (pd * Math.PI) / 180, Fx = r.C.x + D * Math.cos(p), Fy = r.C.y + D * Math.sin(p);

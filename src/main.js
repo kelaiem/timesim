@@ -51151,10 +51151,12 @@ const FUSEE_COCK = await (async () => {
   // opening (the plate builder cuts no overlapping holes: ExtrudeGeometry triangulates them into phantom plate), their union
   // taken exactly (layout.js unionLoops). Every other window stands as solved; the bar's scan held the slot a plate land
   // from all of them, so the merge opens nothing the land rule did not already clear.
+  let COCK_MERGE_PTS = null;
   if (FUSEE_COCK_SLOT) {
     const inP = (pts, x, y) => { let k = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, yi] = pts[i], [xj, yj] = pts[j]; if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) k = !k; } return k; };
     const overlaps = (pts) => FUSEE_COCK_SLOT.some(([x, y]) => inP(pts, x, y)) || pts.some(([x, y]) => inP(FUSEE_COCK_SLOT, x, y));
     const merged = TQ_WINDOWS.polys.filter((w) => w.name === 'fusee' || (w.name === 'fusee gears' && overlaps(w.pts)));
+    COCK_MERGE_PTS = merged.map((w) => w.pts);   // §337 landing 2b: the geared Geneva's bulge is merged into the same opening
     if (!merged.some((w) => w.name === 'fusee')) console.warn('§336 landing 2: the cone window is not among the plate\'s windows at the re-cut — the cock\'s slot opens into nothing');
     else {
       // the merge's new corners are sharp convex corners of plate, which the plate's extrude bevel pushes out along their bisectors
@@ -51183,7 +51185,8 @@ const FUSEE_COCK = await (async () => {
       const coneMesh = fusee.getObjectByName('fuseeCone');
       const coneTop = new THREE.Box3().setFromObject(coneMesh).max.z;
       const bandZ = (FUSEE_BOSS_BOT - M) - (coneTop + M), needZ = 3 * STOCK_MIN_U + 2 * M;
-      const otherEdges = tqWindowEdges(TQ_WINDOWS.polys.filter((w) => w.name !== 'fusee' && w.name !== 'fusee gears'), null, C.x, C.y, plateR * 2);
+      // every window but the cone's own (the gear windows the cock's slot touched are already merged into it; the rest keep their land)
+      const otherEdges = tqWindowEdges(TQ_WINDOWS.polys.filter((w) => w.name !== 'fusee'), null, C.x, C.y, plateR * 2);
       const landAt = (x, y) => Math.min(tqOpeningClearance(x, y), tqKeepClearanceIn(NO_KEEPS, x, y), tqEdgeLand(otherEdges, x, y)) - TQ_LAND_MIN;
       const segD = (x, y, a, b) => { const vx = b[0] - a[0], vy = b[1] - a[1], L2 = vx * vx + vy * vy || 1e-12; const t = clamp(((x - a[0]) * vx + (y - a[1]) * vy) / L2, 0, 1); return Math.hypot(x - a[0] - t * vx, y - a[1] - t * vy); };
       const inWin = (x, y) => { let k = false; for (let i = 0, j = win.length - 1; i < win.length; j = i++) { const [xi, yi] = win[i], [xj, yj] = win[j]; if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) k = !k; } return k; };
@@ -51198,7 +51201,7 @@ const FUSEE_COCK = await (async () => {
         for (let kk = row.k; kk <= row.k + 4; kk++) {
           await breathe(383);
           const zc = row.num * kk, zf = row.den * kk, D = (GG_MODULE_U * (zc + zf)) / 2, g = row.geneva;
-          const coneTip = (GG_MODULE_U * (zc + 2)) / 2, pinTip = (GG_MODULE_U * (zf + 2)) / 2, crankR = g.r1 + g.rPin;
+          const coneTip = (GG_MODULE_U * (zc + 2)) / 2, pinTip = (GG_MODULE_U * (zf + 2)) / 2, crankR = g.r1 + g.rPin + STOCK_MIN_U;   // the crank's outer edge: the pin's radius and a §50 wall round it
           const fRad = Math.max(pinTip, crankR, g.lockHi);
           const mCone = room(C.x, C.y) - coneTip - M;
           if (mCone < 0) continue;
@@ -51220,7 +51223,7 @@ const FUSEE_COCK = await (async () => {
               if (m < 0) continue;
               const bulge = Math.max(prot(Fx, Fy, fRad), prot(Sx, Sy, g.rTip), prot(C.x, C.y, coneTip), armProt);
               if (!best || bulge < best.bulge - 1e-9 || (Math.abs(bulge - best.bulge) <= 1e-9 && m > best.m))
-                best = { bulge, m, armW, n: row.n, mm: row.m, zCone: zc, zFinger: zf, k: kk, D, fingerAz: p, starAz: q, F: { x: Fx, y: Fy }, S: { x: Sx, y: Sy }, pairForce: { Ff, Fs } };
+                best = { bulge, m, armW, n: row.n, mm: row.m, zCone: zc, zFinger: zf, k: kk, D, fingerAz: p, starAz: q, F: { x: Fx, y: Fy }, S: { x: Sx, y: Sy }, pairForce: { Ff, Fs }, g, coneTip, fRad };
             }
           }
         }
@@ -51228,6 +51231,296 @@ const FUSEE_COCK = await (async () => {
       WIND_ARREST.geared = { built: false, reserveHours: hours, bandZ, needZ, tried, site: best };
       if (!(bandZ >= needZ)) console.warn(`§337: the cone window's air is ${bandZ.toFixed(3)} deep against the ${needZ.toFixed(3)} the geared Geneva's three layers need`);
       if (!best) console.warn(`§337: no site for the geared Geneva at ${hours} h (${tried} arrangements cleared the land)`);
+      if (best && COCK_MERGE_PTS) {
+        // §337 landing 2b, stage 2 — THE GEARED GENEVA'S METAL. Three layers in the cone window's air, from the cone's top face up to
+        // the cock's boss (a margin at each end and between): the GEAR layer (the cone's wheel fast on the fusee's top staff, the
+        // finger's pinion on its stud), the CRANK layer (the crank carrying the pin at r1) and the STAR layer (the star, and the
+        // finger's lock disc beside the pin). Both studs hang from the cock's BRANCH ARM, boss → finger → star, in the cock's plane.
+        // The star's outline, pose law and lock-disc relief below are the direct stop-work's (§329 landing 4), pasted in a scope
+        // where the finger's axis is `C` and the finger turns against the cone: one derivation, two sites.
+        const TAU2 = Math.PI * 2, RUN = 0.01, t = STOCK_MIN_U;
+        const OMEGA = MOVEMENT_SENSE;                       // the finger's sense: the cone's while winding is −MOVEMENT_SENSE, a mesh reverses it
+        const ratio = best.zCone / best.zFinger;            // finger turns per cone turn, from the tooth counts
+        const T = ratio * FUSEE_WRAP_TURNS;                 // the finger's turns over the wind: the star's travel exactly (src/geared-geneva.js)
+        const datumC = barrelMeshAngle(0);                  // the cone's world angle at full wind
+        const datum = 0;                                    // the finger's frame is the world's at full wind
+        const gd = best.g;
+        const C = { x: best.F.x, y: best.F.y };             // (the pasted Geneva is about the finger's axis, not the cone's)
+        const S = { x: best.S.x, y: best.S.y };
+        const azS = Math.atan2(S.y - C.y, S.x - C.x);
+        const r1 = gd.r1, rPin = gd.rPin, SW_STUD_R = gd.studR;
+        const sw = { ...gd, n: best.n, m: best.mm };
+        const E = swEngagementArc(best.n);
+            const zA = coneTop + M;
+        const zG = zA + t / 2, zC = zA + t + M + t / 2, zS = zA + 2 * t + 2 * M + t / 2;   // the three layers' mid-planes
+        const zArm = FUSEE_BOSS_BOT;                                                         // the branch arm's underside: the studs hang from it
+        const coneLocalZ = (zWorld) => zWorld - (L_BARREL + FUSEE_BASE_Z);
+        const sigmaMPa = SPRING_SIGMA_Y_PA / 1e6;
+        const cantR = (F, L) => Math.cbrt((32 * F * L * UNIT_MM) / (Math.PI * sigmaMPa)) / 2 / UNIT_MM;
+        // the finger's stud carries the pin's force and the mesh's (an upper bound: their sum), at the longest lever to the gear layer
+        const studFr = Math.max(gd.studR, cantR(best.pairForce.Ff, zArm - zG));
+        const hubR = Math.max(PIVOT_MIN_U + t, studFr + RUN + t);
+        const STUD_F_R = studFr;
+        const n = sw.n, m = sw.m, a = sw.a, rTip = sw.rTip;
+            if (Math.abs(swTravelTurns(m, n) - T) > 1e-9)
+              console.warn(`§329: the stop-work travels ${swTravelTurns(m, n).toFixed(4)} turns against a wind of ${T.toFixed(4)} — trim ${(swTravelTurns(m, n) - T).toFixed(4)} is not built`);
+            const En = swEngagementArc(n);
+            if (Math.abs(En - E) > 1e-12) console.warn(`§329: the pin was clocked for n = 4 and the line chose n = ${n}`);
+            // --- the star, in its own frame: x̂ toward the cone's axis at its run-down rest (ρ = 0) -----------------------------
+            const W = rPin + RUN;                          // a slot's half-width: the pin and its running fit
+            const R_L = sw.lockHi, R_ARC = R_L + RUN;      // the lock disc, and the star's concave arcs that ride it
+            const slotAz = (k) => OMEGA * (Math.PI / n + k * (TAU2 / n));   // k = 0 the open slot; 1..n−1 closed notches
+            const floorOf = (k) => (k < m ? sw.rIn : sw.r2 - rPin);         // open: the pin's closest approach less the margin; closed: the stop
+            const cornerA = Math.asin(W / rTip);
+            const cosD = (a * a + rTip * rTip - R_ARC * R_ARC) / (2 * a * rTip);
+            const delta = Math.acos(Math.max(-1, Math.min(1, cosD)));
+            if (!(delta < Math.PI / n - cornerA - 1e-6))
+              console.warn(`§329: the lock arcs (±${(delta * 180 / Math.PI).toFixed(2)}°) reach the slots' corners (${((Math.PI / n - cornerA) * 180 / Math.PI).toFixed(2)}°) — no tooth tip is left between them`);
+            const outline = [];
+            const tipArc = (b0, b1) => { const k = Math.max(2, Math.ceil(Math.abs(b1 - b0) / 0.03)); for (let j = 0; j <= k; j++) { const b = b0 + (b1 - b0) * (j / k); outline.push([rTip * Math.cos(b), rTip * Math.sin(b)]); } };
+            const lockArc = (bL) => {   // the concave arc about the cone's axis at its rest, from β = bL − δ to bL + δ through its innermost point
+              const cx = a * Math.cos(bL), cy = a * Math.sin(bL);
+              const p1 = [rTip * Math.cos(bL - delta), rTip * Math.sin(bL - delta)], p2 = [rTip * Math.cos(bL + delta), rTip * Math.sin(bL + delta)];
+              let g1 = Math.atan2(p1[1] - cy, p1[0] - cx), g2 = Math.atan2(p2[1] - cy, p2[0] - cx);
+              // the arc about c from p1 to p2 that passes the point nearest the star's centre (angle bL + π about c), going the way β increases
+              while (g2 > g1) g2 -= TAU2;   // β increasing along the star's edge runs the arc about c CLOCKWISE (c lies outside, beyond the edge)
+              const k = 48; for (let j = 0; j <= k; j++) { const g = g1 + (g2 - g1) * (j / k); outline.push([cx + R_ARC * Math.cos(g), cy + R_ARC * Math.sin(g)]); }
+            };
+            const slot = (bS, f) => {
+              const d = [Math.cos(bS), Math.sin(bS)], nn = [-Math.sin(bS), Math.cos(bS)], sTip = Math.sqrt(rTip * rTip - W * W);
+              const P = (s, w) => [s * d[0] + w * nn[0], s * d[1] + w * nn[1]];
+              outline.push(P(sTip, -W), P(f, -W), P(f, W), P(sTip, W));
+            };
+            const feats = [];
+            for (let k = 0; k < n; k++) { feats.push({ b: k * (TAU2 / n), kind: 'lock' }); feats.push({ b: slotAz(k), kind: 'slot', k }); }
+            for (const f of feats) f.b = ((f.b % TAU2) + TAU2) % TAU2;
+            feats.sort((p, q) => p.b - q.b);
+            // walk β upward: each lock arc spans [b − δ, b + δ], each slot [b − cornerA, b + cornerA]; tip arcs fill between
+            let prevEnd = null, firstStart = null;
+            for (const f of feats) {
+              const s0 = f.kind === 'lock' ? f.b - delta : f.b - cornerA;
+              if (prevEnd !== null) tipArc(prevEnd, s0); else firstStart = s0;
+              if (f.kind === 'lock') lockArc(f.b); else slot(f.b, floorOf(f.k));
+              prevEnd = f.kind === 'lock' ? f.b + delta : f.b + cornerA;
+            }
+            tipArc(prevEnd, firstStart + TAU2);
+            // each tip arc ends exactly where the next slot or lock arc begins (both on the tip circle at the same β), so every
+            // junction was written twice: sixteen zero-length edges, a seam the `outlines` gate fails (found flipping the default
+            // arrest to the stop-work). One point per junction, and the loop's last point is not its first.
+            for (let j = outline.length - 1; j > 0; j--)
+              if (Math.hypot(outline[j][0] - outline[j - 1][0], outline[j][1] - outline[j - 1][1]) < 1e-9) outline.splice(j, 1);
+            if (Math.hypot(outline[outline.length - 1][0] - outline[0][0], outline[outline.length - 1][1] - outline[0][1]) < 1e-9) outline.pop();
+            const starShape = new THREE.Shape();
+            starShape.moveTo(outline[0][0], outline[0][1]);
+            for (let j = 1; j < outline.length; j++) starShape.lineTo(outline[j][0], outline[j][1]);
+            starShape.closePath();
+            const bore = new THREE.Path(); bore.absarc(0, 0, SW_STUD_R + RUN, 0, TAU2, true); starShape.holes.push(bore);
+            // --- the pose law: the star's turn from the cone's, through the Geneva -----------------------------------------------
+            const PHI_HI = (m + 1) * TAU2 - En / 2;     // the finger angle at full wind (the upper stop); the lower stop is En/2
+            const rhoAt = (phi) => {                    // the star's CCW turn from its run-down rest, for finger angle phi
+              let rho = 0;
+              for (let k = 1; k <= m; k++) {
+                const th = phi - k * TAU2;
+                if (th >= En / 2) rho += -OMEGA * (TAU2 / n);
+                else if (th > -En / 2) rho += -OMEGA * (swStarAngle(n, r1, th, a) + Math.PI / n);
+              }
+              return rho;
+            };
+            const azU = azS + Math.PI;                  // the star frame's x̂: from its pivot toward the cone's axis
+            const phiOfTension = (tension) => PHI_HI - TAU2 * T * (1 - clamp(tension, 0, 1));
+            // the pin's world position at finger angle phi (θ about the line of centres, its passage's)
+            const pinAt = (phi) => { const ang = azS + OMEGA * (phi - PHI_HI) - OMEGA * En / 2; return { x: C.x + r1 * Math.cos(ang), y: C.y + r1 * Math.sin(ang) }; };
+            const toStar = (p, rho) => { const dx = p.x - S.x, dy = p.y - S.y, c0 = Math.cos(-(azU + rho)), s0 = Math.sin(-(azU + rho)); return [dx * c0 - dy * s0, dx * s0 + dy * c0]; };
+            // A — the construction, measured: through every passage the pin's centre lies on the open slot's centreline, and at the two
+            // stops it sits on a closed notch's centreline at its floor plus its own radius (a derivation over the pose law — boot has no pose)
+            {
+              let worst = 0;
+              for (let k = 1; k <= m; k++) for (let j = 0; j <= 40; j++) {
+                const phi = k * TAU2 - En / 2 + (j / 40) * En;
+                const [u, v] = toStar(pinAt(phi), rhoAt(phi));
+                const b = slotAz(k - 1), off = Math.abs(-u * Math.sin(b) + v * Math.cos(b));
+                worst = Math.max(worst, off);
+              }
+              const stopOff = (phi, k) => { const [u, v] = toStar(pinAt(phi), rhoAt(phi)); const b = slotAz(k); return [Math.abs(-u * Math.sin(b) + v * Math.cos(b)), Math.abs(u * Math.cos(b) + v * Math.sin(b) - (floorOf(k) + rPin))]; };
+              const up = stopOff(PHI_HI, m), lo = stopOff(En / 2, n - 1);
+              if (!(worst < 1e-9 && Math.max(...up, ...lo) < 1e-9))
+                console.warn(`§329: the stop-work is not the construction it claims — pin off the open slot by ${worst.toExponential(2)}, upper stop off by ${up.map((x) => x.toExponential(2))}, lower by ${lo.map((x) => x.toExponential(2))}`);
+            }
+            // --- the lock disc and its relief, in the cone's own frame -------------------------------------------------------------
+            const starPts = outline;
+            const distStar = (u, v) => {   // signed distance to the star's outline (negative inside)
+              let d = Infinity, inside = false;
+              for (let i = 0, j = starPts.length - 1; i < starPts.length; j = i++) {
+                const [xi, yi] = starPts[i], [xj, yj] = starPts[j];
+                if ((yi > v) !== (yj > v) && u < ((xj - xi) * (v - yi)) / (yj - yi) + xi) inside = !inside;
+                const ex = xi - xj, ey = yi - yj, L = ex * ex + ey * ey || 1e-12, tt = clamp(((u - xj) * ex + (v - yj) * ey) / L, 0, 1);
+                d = Math.min(d, Math.hypot(u - xj - tt * ex, v - yj - tt * ey));
+              }
+              return inside ? -d : d;
+            };
+            // The disc sits fast on the cone's TOP FACE, its bore around the fusee's top staff (no hub ring of its own): a hub's §50 wall
+            // would stand out to 0.817, and the star's teeth come in to a − rTip (0.764 on the lands preview), so where the star's sweep
+            // reaches the bore the disc is OPEN there — a C, carried by the face it sits on. The teeth then clear the staff itself, which
+            // the pin's floor R1_LO holds by the margin.
+            const DISC_IN = STUD_F_R + RUN;   // the geared finger's disc is bored for the finger's own stud (the direct one for the fusee's top staff)
+            const NA = 360, poses = [];
+            for (let k = 1; k <= m; k++) for (let j = 0; j <= 24; j++) { const phi = k * TAU2 - En / 2 + (j / 24) * En; poses.push({ rho: rhoAt(phi), coneAng: datum + OMEGA * (phi - PHI_HI) }); }
+            const discR = new Float64Array(NA);
+            let reliefMin = Infinity;
+            for (let i = 0; i < NA; i++) {
+              // a seam per azimuth of the relief: each carves ~100 radii against the star's whole outline at every passage pose,
+              // about a second for the disc in one stretch (boot-yield read 968 ms held on the flipped default)
+              await breathe(384);
+              const al = (i / NA) * TAU2;
+              let r = R_L;
+              // the relief is a SLIDING fit inside one mechanism (the star's flanks pass the disc's edge as the lock arcs do), so it is
+              // cut at the running fit, never the structural margin: cut at CLEAR_MARGIN it ate the disc under the lock arcs at both ends
+              // of the passage, where they run at RUN, and left the star unlocked over 228° of the finger's 540° of dwell (measured).
+              const R_STEP = 0.01;
+              for (let rr = DISC_IN + RUN; rr <= R_L + 1e-9; rr += R_STEP) {
+                let hit = false;
+                for (const ps of poses) {
+                  const wx = C.x + rr * Math.cos(al + ps.coneAng), wy = C.y + rr * Math.sin(al + ps.coneAng);
+                  if (Math.hypot(wx - S.x, wy - S.y) > rTip + RUN) continue;
+                  const [u, v] = toStar({ x: wx, y: wy }, ps.rho);
+                  if (distStar(u, v) < RUN - 1e-9) { hit = true; break; }
+                }
+                if (hit) { r = rr - R_STEP; break; }
+              }
+              discR[i] = r; reliefMin = Math.min(reliefMin, r);
+            }
+            // where the relief leaves less than a §50 wall outside the bore, the disc is cut through to it: those azimuths are the C's opening
+            const open = Array.from(discR, (r) => r < DISC_IN + STOCK_MIN_U);
+            // Metal BETWEEN two openings touches only the bore, so it is a loose sliver, not a member: the opening is the smallest arc
+            // that covers every open azimuth (measured on the default stop-work: 338–354° and 2–18°, with the open slot's shadow left
+            // standing between them out to ~1.0). It is the complement of the longest run of metal.
+            if (open.some(Boolean)) {
+              let bestS = -1, bestL = 0;
+              for (let i = 0; i < NA; i++) if (!open[i] && open[(i + NA - 1) % NA]) { let L = 0; while (!open[(i + L) % NA] && L < NA) L++; if (L > bestL) { bestL = L; bestS = i; } }
+              for (let k = bestL; k < NA; k++) open[(bestS + k) % NA] = true;
+              if (bestL < NA / 2) console.warn(`§329: the lock disc's opening spans ${((NA - bestL) * 360 / NA).toFixed(0)}° — more than half the disc`);
+            }
+            const runs = []; for (let i = 0; i < NA; i++) if (open[i] && !open[(i + NA - 1) % NA]) runs.push(i);
+            // the lock holds through every dwell: the disc is whole under the azimuth the star faces whenever the pin is out of a slot
+            // A concave arc riding a convex disc holds the star both ways only while there is disc metal under the arc on BOTH sides of
+            // the azimuth it faces (metal on one side blocks one sense of turn and lets the other go). The arc spans ±GAMMA about the
+            // cone's axis: the angle, seen from the axis, of the arc's ends on the star's tip circle.
+            const GAMMA = Math.atan2(rTip * Math.sin(delta), a - rTip * Math.cos(delta));
+            const fullAt = (al) => { let q = Math.round((al / TAU2) * NA) % NA; if (q < 0) q += NA; return discR[q] >= R_L - 1e-9; };
+            const sideHeld = (al, sgn) => { for (let k = 1; k <= Math.ceil(GAMMA / (TAU2 / NA)); k++) if (fullAt(al + sgn * k * (TAU2 / NA))) return true; return false; };
+            let unlockedDeg = 0;
+            const DWELL_N = 720, dPhi = (PHI_HI - En / 2) / (DWELL_N - 1);
+            for (let j = 0; j < DWELL_N; j++) {
+              const phi = En / 2 + j * dPhi;
+              let inPass = false; for (let k = 1; k <= m; k++) if (Math.abs(phi - k * TAU2) < En / 2) inPass = true;
+              if (inPass) continue;
+              const coneAng = datum + OMEGA * (phi - PHI_HI);
+              let al = (azS - coneAng) % TAU2; if (al < 0) al += TAU2;
+              if (!(sideHeld(al, 1) && sideHeld(al, -1))) unlockedDeg += (dPhi * 180) / Math.PI;
+            }
+            if (unlockedDeg > 1e-9)
+              console.warn(`§329: the lock disc lets the star go for ${unlockedDeg.toFixed(1)}° of the finger's dwell — its relief reaches under both ends of the lock arc`);
+            const discShape = new THREE.Shape();
+            const P_AT = (i, r) => { const al = (i / NA) * TAU2; return [r * Math.cos(al), r * Math.sin(al)]; };
+            if (!runs.length) {   // whole: an outline and a bore
+              for (let i = 0; i < NA; i++) { const [x, y] = P_AT(i, discR[i]); if (i === 0) discShape.moveTo(x, y); else discShape.lineTo(x, y); }
+              discShape.closePath();
+              const discBore = new THREE.Path(); discBore.absarc(0, 0, DISC_IN, 0, TAU2, true); discShape.holes.push(discBore);
+            } else {              // a C: the outline over the metal's azimuths, then back round the bore
+              const s0 = runs[0]; let e0 = s0; while (open[(e0 + 1) % NA] && e0 - s0 < NA) e0++;   // the opening is s0..e0
+              const first = (e0 + 1) % NA, count = NA - (e0 - s0 + 1);
+              for (let k = 0; k < count; k++) { const i = (first + k) % NA; const [x, y] = P_AT(i, discR[i]); if (k === 0) discShape.moveTo(x, y); else discShape.lineTo(x, y); }
+              for (let k = count - 1; k >= 0; k--) { const i = (first + k) % NA; const [x, y] = P_AT(i, DISC_IN); discShape.lineTo(x, y); }
+              discShape.closePath();
+            }
+        // where the dwell is unlocked (a report: the finger angle's range, and the azimuth the star then faces, in the disc's frame)
+        const unlockedAt = [];
+        for (let j = 0; j < DWELL_N; j++) {
+          const phi = En / 2 + j * dPhi;
+          let inPass = false; for (let k = 1; k <= m; k++) if (Math.abs(phi - k * TAU2) < En / 2) inPass = true;
+          if (inPass) continue;
+          const coneAng = datum + OMEGA * (phi - PHI_HI);
+          let al = (azS - coneAng) % TAU2; if (al < 0) al += TAU2;
+          if (!(sideHeld(al, 1) && sideHeld(al, -1))) unlockedAt.push([+(phi / TAU2).toFixed(3), +((al * 180) / Math.PI).toFixed(1), sideHeld(al, 1), sideHeld(al, -1)]);
+        }
+        const fullArcs = []; { let st = null; for (let i2 = 0; i2 <= NA; i2++) { const f = i2 < NA && discR[i2] >= R_L - 1e-9; if (f && st === null) st = i2; if (!f && st !== null) { fullArcs.push([st * 360 / NA, (i2 - 1) * 360 / NA]); st = null; } } }
+        // --- the metal --------------------------------------------------------------------------------------------------------
+        const swUnit = new THREE.Group();
+        swUnit.name = 'gearedStopworkUnit';
+        movement.add(swUnit);
+        // the cone's wheel, fast on the fusee's top staff (it turns with the fusee group)
+        const coneWheel = G.makeGear({ name: 'gearedConeWheel', module: GG_MODULE_U, teeth: best.zCone, thickness: t, boreR: TRAIN_STAFF_R, mates: [best.zFinger], material: MATS.steel });
+        coneWheel.position.set(0, 0, coneLocalZ(zG));
+        fusee.add(coneWheel);
+        // the finger: pinion, crank and lock disc, one body on its stud, turning with the finger group
+        const fingerGroup = new THREE.Group();
+        fingerGroup.name = 'gearedFinger';
+        fingerGroup.position.set(C.x, C.y, 0);
+        swUnit.add(fingerGroup);
+        const pinion = G.makePinion({ name: 'gearedPinion', module: GG_MODULE_U, teeth: best.zFinger, thickness: t, material: MATS.steel, boreR: studFr + RUN, mates: [best.zCone] });
+        pinion.position.z = zG;
+        // the pinion's phase: a GAP of the pinion faces a TOOTH of the cone's wheel across the line of centres at full wind (the repo's
+        // meshPhaseTarget, which is local to an earlier block: Q's tooth centre points at psi + π − (frac((psi − pPhase)·pN/2π) + ½)·2π/qN)
+        const meshPhase = (() => { const psi = Math.atan2(C.y - P.barrel.y, C.x - P.barrel.x), fr = (psi - datumC) * best.zCone / TAU2; return psi + Math.PI - ((fr - Math.floor(fr)) + 0.5) * (TAU2 / best.zFinger); })();
+        pinion.rotation.z = meshPhase;
+        fingerGroup.add(pinion);
+        const pinAz0 = azS - OMEGA * E / 2, pinX = r1 * Math.cos(pinAz0), pinY = r1 * Math.sin(pinAz0);
+        // a polygon round (cx, cy): CIRCUMSCRIBED (its edges tangent to r) for an opening, which must hold the disc, and INSCRIBED
+        // (its vertices on r) for a part, which must not stand past r
+        const discPoly = (cx, cy, r, k, inscribed = false) => Array.from({ length: k }, (_, i) => { const a2 = (TAU2 * i) / k, R2 = inscribed ? r : r / Math.cos(Math.PI / k); return [cx + R2 * Math.cos(a2), cy + R2 * Math.sin(a2)]; });
+        const polyShape = (pts, boreR2) => { const sh = new THREE.Shape(); pts.forEach(([x, y], i) => (i ? sh.lineTo(x, y) : sh.moveTo(x, y))); sh.closePath(); if (boreR2) { const b = new THREE.Path(); b.absarc(0, 0, boreR2, 0, TAU2, true); sh.holes.push(b); } return sh; };
+        const capR = rPin + t;
+        const crankOutline = unionLoops([discPoly(0, 0, hubR, 40, true), discPoly(pinX, pinY, capR, 32, true),
+          (() => { const L = Math.hypot(pinX, pinY), ux = pinX / L, uy = pinY / L, w = Math.min(capR, hubR); return [[-uy * w, ux * w], [pinX - uy * w, pinY + ux * w], [pinX + uy * w, pinY - ux * w], [uy * w, -ux * w]]; })()]);
+        const crank = new THREE.Mesh(new THREE.ExtrudeGeometry(polyShape(crankOutline, studFr + RUN), { depth: t, bevelEnabled: false }), MATS.steel);
+        crank.name = 'gearedCrank'; crank.position.z = zC - t / 2; fingerGroup.add(crank);
+        const lockDisc = new THREE.Mesh(new THREE.ExtrudeGeometry(discShape, { depth: t, bevelEnabled: false }), MATS.steel);
+        lockDisc.name = 'stopworkLockDisc'; lockDisc.position.z = zS - t / 2; fingerGroup.add(lockDisc);
+        const pinMesh = new THREE.Mesh(new THREE.CylinderGeometry(rPin, rPin, (zS + t / 2) - (zC - t / 2), 16), MATS.blueSteel);
+        pinMesh.name = 'stopworkPin'; pinMesh.rotation.x = Math.PI / 2; pinMesh.position.set(pinX, pinY, ((zS + t / 2) + (zC - t / 2)) / 2); fingerGroup.add(pinMesh);
+        // the studs: from the branch arm's underside (and a stock into it) down to the layers they carry
+        const studOf = (name, x, y, r, zBot) => { const z1 = FUSEE_BOSS_MID, mesh = new THREE.Mesh(new THREE.CylinderGeometry(r, r, z1 - zBot, 16), MATS.blueSteel); mesh.name = name; mesh.rotation.x = Math.PI / 2; mesh.position.set(x, y, (z1 + zBot) / 2); swUnit.add(mesh); };
+        studOf('gearedFingerStud', C.x, C.y, studFr, zA - 0.0);
+        studOf('stopworkStud', S.x, S.y, SW_STUD_R, zS - t / 2 - RUN);
+        const starPivot = new THREE.Group();
+        starPivot.position.set(S.x, S.y, 0);
+        swUnit.add(starPivot);
+        const star = new THREE.Mesh(new THREE.ExtrudeGeometry(starShape, { depth: t, bevelEnabled: false, curveSegments: 24 }), MATS.steel);
+        star.name = 'stopworkStar'; star.position.z = zS - t / 2; starPivot.add(star);
+        // the BRANCH ARM, in the cock's plane: boss → finger → star, a pad round each stud, the cock bar's width at its root
+        const Cc = P.barrel, armHW = best.armW / 2;
+        const strip = (ax, ay, bx, by, hw) => { const L = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / L, uy = (by - ay) / L; return [[ax - uy * hw, ay + ux * hw], [bx - uy * hw, by + ux * hw], [bx + uy * hw, by - ux * hw], [ax + uy * hw, ay - ux * hw]]; };
+        const padF = Math.max(armHW, studFr + t), padS = Math.max(armHW * 0.7, SW_STUD_R + t);
+        const branchPieces = [strip(Cc.x, Cc.y, C.x, C.y, armHW), strip(C.x, C.y, S.x, S.y, Math.max(padS, armHW * 0.7)), discPoly(C.x, C.y, padF, 40), discPoly(S.x, S.y, padS, 40)];
+        const branchOutline = unionLoops(branchPieces);
+        const branchShape = new THREE.Shape(); branchOutline.forEach(([x, y], i) => (i ? branchShape.lineTo(x, y) : branchShape.moveTo(x, y))); branchShape.closePath();
+        const branch = new THREE.Mesh(new THREE.ExtrudeGeometry(branchShape, { depth: FUSEE_COCK_T, bevelEnabled: false }), MATS.ribbedNickel);
+        branch.name = 'fuseeCockBranch'; branch.position.z = FUSEE_BOSS_BOT; FUSEE_COCK.obj.add(branch);
+        // THE BULGE: the cone window gains the discs the layers need and the branch arm's slot, offset a margin (and the float tie
+        // the cock's slot carries), merged into the one opening the cock's slot already makes
+        const tie = M + 2 * Math.pow(2, -23) * 64;
+        const bulgePolys = [...branchPieces.map((pc) => G.offsetPolygon(pc, tie)), discPoly(Cc.x, Cc.y, best.coneTip + tie, 64), discPoly(C.x, C.y, best.fRad + tie, 64), discPoly(S.x, S.y, gd.rTip + tie, 64)];
+        const bulged = filletReflexCorners(unionLoops([...COCK_MERGE_PTS, FUSEE_COCK_SLOT, ...bulgePolys]), 2 * G.PLATE_BEVEL);
+        TQ_WINDOWS.polys = TQ_WINDOWS.polys.map((w) => (w.name === 'fusee' ? { ...w, pts: bulged } : w));
+        // --- pose + the public object ------------------------------------------------------------------------------------------
+        // the finger's turn is the cone's through the tooth counts (a mesh reverses it); the star follows the finger through the Geneva
+        WIND_ARREST.pose = (tension) => {
+          const phi = phiOfTension(tension);
+          fingerGroup.rotation.z = OMEGA * (phi - PHI_HI);
+          starPivot.rotation.z = azU + rhoAt(phi);
+        };
+        WIND_ARREST.unit = swUnit;
+        WIND_ARREST.stopwork = { built: true, geared: true, n, m, travel: swTravelTurns(m, n), wind: T, ratio, r1, rPin, a, rTip, lockR: R_L, reliefMin, unlockedDeg,
+          lockArcDeg: (GAMMA * 180) / Math.PI, discOpenDeg: (open.filter(Boolean).length * 360) / NA, discRuns: runs.length, openRun: runs.map((r0) => { let e = r0; while (open[(e + 1) % NA] && e - r0 < NA) e++; return [(r0 * 360) / NA, (e * 360) / NA]; }), unlockedAt: unlockedAt.filter((_, i2) => i2 % 8 === 0).slice(0, 12), nUnlocked: unlockedAt.length, fullArcs, studFr, z: [zA, zA + 3 * t + 2 * M], branchW: best.armW };
+        WIND_ARREST.geared.built = true;
+        WIND_ARREST.pose(1);
+        registerLabel('Winding stop-work', swUnit);
+        registerExplode(swUnit, 0, 9);
+        declareTravel('Winding stop-work', (TAU2 / n) * m, 'the star turns 2π/n per passage of the pin, m passages between its two stops — the Geneva law, the finger geared off the cone');
+        declareRestoring('Winding stop-work', 'stopworkStar', 'two-way',
+          'the pin carries the star forward as the crown winds the cone and back as the mainspring unwinds it; between passages the lock disc holds it',
+          ['input:the going crown', 'Mainspring drum/mainspringRibbon']);
+      }
     }
   }
   await breathe(298);
@@ -58450,7 +58743,7 @@ const UNIT_GROUPS = new Map([
     ['Fusee & great wheel', null], ['Chain', null], ['Mainspring drum', null],
     ['Maintaining detent', null], ['Set-up work', null],
     ['Fusee cock', null],   // §336 — the fusee's top bush is in it
-    [STOPWORK ? 'Winding stop-work' : 'Winding arrest', null], // §47 — the chain-thrown finger and its lug live with the cone they arrest (§329 landing 4: or the stop-work, under its key)
+    [(STOPWORK || GEARED_BUILT) ? 'Winding stop-work' : 'Winding arrest', null], // §47 — the chain-thrown finger and its lug live with the cone they arrest (§329 landing 4: or the stop-work, under its key)
   ])],
   ['Keyless & winding', new Map([
     ['Keyless works', null], ['Setting lever', null], ['Yoke', null],
@@ -59839,7 +60132,7 @@ const TOUR_STEPS = [
     caption: 'Winding hauls the chain up the fusee cone; its rising radius keeps the drive torque steady', dwell: 2.4 },
   { // §47 — the winding arrest. camera is a GETTER: TOUR_STEPS is built
     // before frameOn exists, and the step only reads it at enter time.
-    get camera() { return frameOn(STOPWORK ? 'Winding stop-work' : 'Winding arrest', [0.35, -0.5, 0.75], 4.6); },   // §329 landing 4: the stop-work under its key
+    get camera() { return frameOn((STOPWORK || GEARED_BUILT) ? 'Winding stop-work' : 'Winding arrest', [0.35, -0.5, 0.75], 4.6); },   // §329 landing 4: the stop-work under its key
     scale: 1, xray: true,
     caption: 'Full wind ends on metal: the last coil lifts a finger, its beak drops before a stop on the cone, and the crown stands still', dwell: 5.0 },
   { preset: 'Train', scale: 1, powerflow: true,
@@ -65254,7 +65547,7 @@ window.__clock = {
   // bulged into the cone window without a land going short. The cone's own windows (merged with the cock's slot) are not counted:
   // the bulge joins them. Read by tools/probe-337-bulge.mjs.
   plateLandAt(x, y) {
-    const edges = tqWindowEdges(TQ_WINDOWS.polys.filter((w) => w.name !== 'fusee' && w.name !== 'fusee gears'), null, P.barrel.x, P.barrel.y, plateR * 2);
+    const edges = tqWindowEdges(TQ_WINDOWS.polys.filter((w) => w.name !== 'fusee'), null, P.barrel.x, P.barrel.y, plateR * 2);   // the gear windows the cock's slot touched are already merged into 'fusee'
     return Math.min(tqOpeningClearance(x, y), tqKeepClearanceIn(NO_KEEPS, x, y), tqEdgeLand(edges, x, y)) - TQ_LAND_MIN;
   },
   get tqWindowPolys() { return (TQ_WINDOWS.polys || []).map((w) => ({ name: w.name, pts: w.pts.map(([x, y]) => [x, y]) })); },   // tqWindows (above) is the solver's report
