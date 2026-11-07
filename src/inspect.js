@@ -3110,7 +3110,7 @@ dropArrestRows(EXPECTED_CONTACT_FLOORS, (r) => [r.a, r.b]);   // §329 landing 4
 // the three-quarter plate and 0.071 over the cone's top face (main.js GAP, less than its stock plus two margins, which the owner
 // accepted). They are excused here and held OPEN at every stop-work pose by WIND_ARREST_HANDOFFS below, the hourTube⇄cannonNose
 // pattern (a running fit declared here, held by an instrument).
-if (STOPWORK_ARREST) EXPECTED_CONTACT_FLOORS.push(
+if (STOPWORK_ARREST && !GEARED_BUILT) EXPECTED_CONTACT_FLOORS.push(
   {
     // §336 landing 3: the stud is planted in the fusee cock's seat, a pendant hanging from the crank to where the plate's
     // underside was (the plate's web until then), so the star rides the same running gap under the pendant's foot.
@@ -3125,6 +3125,29 @@ if (STOPWORK_ARREST) EXPECTED_CONTACT_FLOORS.push(
     contacts: [
       ['stopworkStar', 'stopworkPin'],           // the pin in the slots and on a closed notch's floor at each stop — the arrest itself
       ['stopworkStar', 'stopworkLockDisc'],      // the lock arcs riding the disc through every dwell, at the running fit
+      ['stopworkStar', 'fuseeCone'],             // the star's running gap over the cone's top face (held open by the handoff row)
+    ],
+  },
+);
+
+// §337 landing 2b, stage 3 — THE GEARED STOP-WORK'S TWO PAIRS. Its metal hangs from the cock's branch arm: the finger's stud and the
+// star's stud are planted in the cock (crank and branch arm) at their tops; the finger's pinion meshes the cone's wheel (a mesh, so
+// tooth flanks touch: declared here, held to a real mesh by meshCoverage / meshPhase / transmits); the lock disc is fast on the
+// cone's top face; the star rides a running gap over the cone's top face (held open by the hand-off row).
+if (GEARED_BUILT) EXPECTED_CONTACT_FLOORS.push(
+  {
+    a: 'Winding stop-work', b: 'Fusee cock', min: CLEAR_MARGIN,
+    contacts: [
+      ['gearedFingerStud', 'fuseeCockCrank'], ['gearedFingerStud', 'fuseeCockBranch'], ['gearedFingerStud', 'fuseeCockPost'], ['gearedFingerStud', 'fuseeCockArm'],   // the finger's stud planted in the arm
+      ['stopworkStud', 'fuseeCockCrank'], ['stopworkStud', 'fuseeCockBranch'], ['stopworkStud', 'fuseeCockPost'], ['stopworkStud', 'fuseeCockArm'],   // the star's stud planted in the arm
+    ],
+  },
+  {
+    a: 'Winding stop-work', b: 'Fusee & great wheel', min: CLEAR_MARGIN,
+    contacts: [
+      ['gearedPinion', 'gearedConeWheel'],       // the mesh: the finger's pinion in the cone's wheel
+      ['stopworkLockDisc', 'fuseeCone'],         // the disc fast on the cone's top face
+      ['stopworkLockDisc', 'fuseeUpperPivot'],   // its bore on the fusee's top staff
       ['stopworkStar', 'fuseeCone'],             // the star's running gap over the cone's top face (held open by the handoff row)
     ],
   },
@@ -4011,6 +4034,9 @@ dropArrestRows(INTRA_UNIT_CONTACTS, (r) => [r.unit]);   // §329 landing 4 (see 
 // and the staff stands under the arbor, so the MF tier read the seat as a mover in a fixture (found flipping the default
 // arrest to the stop-work); DECLARED_CONTACT_REACH holds the row to a real touch.
 if (STOPWORK_ARREST) INTRA_UNIT_CONTACTS.push({ unit: 'Fusee & great wheel', a: 'stopworkLockDisc', b: 'fuseeUpperPivot', why: '§329: the lock disc is fast on the cone\'s top face, its bore on the fusee\'s top staff — one body with the cone, as the cone is with its staff' });
+if (GEARED_BUILT) INTRA_UNIT_CONTACTS.push(   // §337 landing 2b, stage 3
+  { unit: 'Fusee & great wheel', a: 'gearedConeWheel', b: 'fuseeUpperPivot', why: '§337: the cone\'s wheel is fast on the fusee\'s top staff, its bore on the staff — one body with the cone' },
+  { unit: 'Winding stop-work', a: 'gearedPinion', b: 'gearedFingerStud', why: '§337: the finger\'s pinion turns on its stud at the running fit' });
 // Accepted debt, §50's convention — red in the report, cited, not silenced:
 export const INTRA_UNIT_WAIVERS = [
   // TODO 107's row (genevaFingerDisc ⇄ alarmArrestFingerArbor) stood here and
@@ -6835,7 +6861,7 @@ if (STOPWORK_ARREST) {
     ['dwellHi', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 0.75 }],
     ['dwellLo', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 0.25 }],
     ['empty', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 0 }]);
-  WIND_ARREST_HANDOFFS.push(
+  if (!GEARED_BUILT) WIND_ARREST_HANDOFFS.push(
     { label: 'pin ⇄ closed notch (the stop)', unitA: 'Fusee & great wheel', meshA: 'stopworkPin', unitB: 'Winding stop-work', meshB: 'stopworkStar',
       expect: { full: 'contact', dwellHi: 'free', dwellLo: 'free', empty: 'contact' } },
     // §336 landing 3: the star's running gap is under the cock's seat pendant now (its foot where the plate's underside was)
@@ -6844,6 +6870,16 @@ if (STOPWORK_ARREST) {
     { label: 'star ⇄ cone face (running gap)', unitA: 'Winding stop-work', meshA: 'stopworkStar', unitB: 'Fusee & great wheel', meshB: 'fuseeCone',
       expect: { full: 'free', dwellHi: 'free', dwellLo: 'free', empty: 'free' } });
 }
+
+// §337 landing 2b, stage 3 — the geared stop-work's hand-offs: the pin is the finger's (in the stop-work's own unit now, not the cone's),
+// the star's running gaps are over the cone's face and under the cock's branch arm.
+if (GEARED_BUILT) WIND_ARREST_HANDOFFS.push(
+  { label: 'pin ⇄ closed notch (the stop)', unitA: 'Winding stop-work', meshA: 'stopworkPin', unitB: 'Winding stop-work', meshB: 'stopworkStar',
+    expect: { full: 'contact', dwellHi: 'free', dwellLo: 'free', empty: 'contact' } },
+  { label: 'star ⇄ branch arm (running gap)', unitA: 'Winding stop-work', meshA: 'stopworkStar', unitB: 'Fusee cock', meshB: 'fuseeCockBranch',
+    expect: { full: 'free', dwellHi: 'free', dwellLo: 'free', empty: 'free' } },
+  { label: 'star ⇄ cone face (running gap)', unitA: 'Winding stop-work', meshA: 'stopworkStar', unitB: 'Fusee & great wheel', meshB: 'fuseeCone',
+    expect: { full: 'free', dwellHi: 'free', dwellLo: 'free', empty: 'free' } });
 
 // TODO 50 — the stem clutch's handoff rows, a SIBLING registration in the
 // windArrestHandoff pattern (never widen another mechanism's tables — its
@@ -7226,6 +7262,20 @@ function ringRecoilGap(clock, beaks, rings) {
     best = Math.min(best, d * rTip);
   }
   return { sep: best };
+}
+
+// §337 landing 2b, stage 3 — the geared stop-work's dwell poses come from ITS (m, n): the finger's turn is linear in tension from E/2
+// (empty) to (m + 1)·2π − E/2 (full wind), the passages sit at k·2π ± E/2 for k = 1..m, and the free dwells that bracket them are
+// centred at π (the first) and (m + ½)·2π (the last). At m = 1 these are within 0.125π of §329's ¾ and ¼; at m = 3 the fixed ¾ and ¼
+// stand in a passage (the pin 0.012 off a notch), which is why the poses are derived.
+function windArrestPosesFor(clock) {
+  if (!GEARED_BUILT) return WIND_ARREST_POSES;
+  const sw = clock.windArrest && clock.windArrest.stopwork;
+  if (!sw || !(sw.m >= 1) || !(sw.n >= 3)) return WIND_ARREST_POSES;
+  const TAU_ = Math.PI * 2, E_ = Math.PI - TAU_ / sw.n, hi = (sw.m + 1) * TAU_ - E_ / 2, lo = E_ / 2;
+  const at = (phi) => (phi - lo) / (hi - lo);
+  const pose = (tension) => ({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension });
+  return [['full', pose(1)], ['dwellHi', pose(at((sw.m + 0.5) * TAU_))], ['dwellLo', pose(at(Math.PI))], ['empty', pose(0)]];
 }
 
 export function checkAlarmHandoffs(clock, { tol = HANDOFF_TRACK_TOL, poses = ALARM_HANDOFF_POSES, handoffs = ALARM_HANDOFFS } = {}) {
@@ -15290,7 +15340,7 @@ const CHECKS = {
   // sibling registration rather than a widened alarm table, so the alarm's
   // rows stay bit-identical under the report diff.
   windArrestHandoff: (clock, opts) => checkAlarmHandoffs(clock,
-    { poses: WIND_ARREST_POSES, handoffs: WIND_ARREST_HANDOFFS, ...opts }),
+    { poses: windArrestPosesFor(clock), handoffs: WIND_ARREST_HANDOFFS, ...opts }),
   // TODO 50 — the stem clutch's coupling, same instrument, own tables:
   // contact at every engaged parity (the spring holds the one-sided
   // constraint closed), free pulled out.
