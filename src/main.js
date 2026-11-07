@@ -51620,16 +51620,18 @@ const FUSEE_COCK = await (async () => {
         swUnit.name = 'gearedStopworkUnit';
         movement.add(swUnit);
         // the cone's wheel, fast on the fusee's top staff (it turns with the fusee group)
-        const coneWheel = G.makeGear({ name: 'gearedConeWheel', module: GG_MODULE_U, teeth: best.zCone, thickness: t, boreR: TRAIN_STAFF_R, mates: [best.zFinger], material: MATS.steel });
+        const coneWheel = G.makeGear({ name: 'gearedConeWheel', module: GG_MODULE_U, teeth: best.zCone, thickness: t, boreR: TRAIN_STAFF_R, mates: [best.zFinger], material: MATS.steel, bevel: false, hub: false });   // nor a hub ring (1.5 × the thickness: 0.079 proud of the face toward the crank, measured 0.0708 of 0.15 at 36 h)   // no edge bevel: it stands past the layer's face and spends the margin (measured 0.1056 of 0.15), and the band has no room for it
         coneWheel.position.set(0, 0, coneLocalZ(zG));
+        coneWheel.traverse((o) => { if (o.isMesh && !o.name) o.name = 'gearedConeWheel'; });   // the contact rows name the wheel's mesh
         fusee.add(coneWheel);
         // the finger: pinion, crank and lock disc, one body on its stud, turning with the finger group
         const fingerGroup = new THREE.Group();
         fingerGroup.name = 'gearedFinger';
         fingerGroup.position.set(C.x, C.y, 0);
         swUnit.add(fingerGroup);
-        const pinion = G.makePinion({ name: 'gearedPinion', module: GG_MODULE_U, teeth: best.zFinger, thickness: t, material: MATS.steel, boreR: studFr + RUN, mates: [best.zCone] });
+        const pinion = G.makePinion({ name: 'gearedPinion', module: GG_MODULE_U, teeth: best.zFinger, thickness: t, material: MATS.steel, boreR: studFr + RUN, mates: [best.zCone], bevel: false });
         pinion.position.z = zG;
+        pinion.traverse((o) => { if (o.isMesh && !o.name) o.name = 'gearedPinion'; });
         // the pinion's phase: a GAP of the pinion faces a TOOTH of the cone's wheel across the line of centres at full wind (the repo's
         // meshPhaseTarget, which is local to an earlier block: Q's tooth centre points at psi + π − (frac((psi − pPhase)·pN/2π) + ½)·2π/qN)
         const meshPhase = (() => { const psi = Math.atan2(C.y - P.barrel.y, C.x - P.barrel.x), fr = (psi - datumC) * best.zCone / TAU2; return psi + Math.PI - ((fr - Math.floor(fr)) + 0.5) * (TAU2 / best.zFinger); })();
