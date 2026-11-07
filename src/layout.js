@@ -4844,7 +4844,7 @@ export const FORM_ACTION_GROUPS = Object.freeze([
       Object.freeze({ name: 'centre pinion on the great wheel', at: 'P.center', pin: 'power', edge: 'Fusee & great wheel → Center wheel' }),
     ]) }),
   Object.freeze({ id: 'power', name: 'barrel, fusee and chain',
-    units: Object.freeze(['Mainspring drum', 'Set-up work', 'Chain', 'Fusee & great wheel', 'Maintaining detent', STOPWORK_BUILT ? 'Winding stop-work' : 'Winding arrest']),   // §329 landing 4: the stop-work replaces the arrest under its key
+    units: Object.freeze(['Mainspring drum', 'Set-up work', 'Chain', 'Fusee & great wheel', 'Maintaining detent', (STOPWORK_BUILT || GEARED_BUILT) ? 'Winding stop-work' : 'Winding arrest']),   // §329 landing 4: the stop-work replaces the arrest under its key
     reason: 'drive mainspring → Mainspring drum → Chain → Fusee & great wheel (→ Maintaining detent); Chain → Winding arrest; the set-up work is the drum\'s arbor',
     anchors: Object.freeze([
       Object.freeze({ name: 'great wheel on the centre pinion', at: 'P.barrel', pin: 'going', edge: 'Fusee & great wheel → Center wheel' }),

@@ -4,8 +4,8 @@
 
 # The instruments
 
-397 scripts. **274 are ACCEPTANCE tests** — they decide and exit non-zero.
-**123 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
+398 scripts. **274 are ACCEPTANCE tests** — they decide and exit non-zero.
+**124 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
 **Grep this file by what you want to know, not by section number.** The names encode
@@ -260,6 +260,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-336-fusee-cock.mjs` | §336 | acceptance | §336 — THE FUSEE COCK, measured off a real boot: does the cock that took the fusee's top bush out of the three-quarter plate carry it as matter, does the arbor actually end in its boss, and does it show more of the cone than the plate's boss and three webs did? |
 | `probe-337-bulge.mjs` | §337 | report | §337 landing 2a — HOW BIG A BULGE THE CONE WINDOW NEEDS for the geared Geneva, and whether the plate's lands allow it. A REPORT. |
 | `probe-337-fold-site.mjs` | §337 | report | §337 landing 2a — WHERE THE GEARED GENEVA CAN FOLD: under the fusee cock, in the cone window's air. A REPORT (it prints and judges nothing; the fold's build is what will be gated). |
+| `probe-337-geared-build.mjs` | §337 | report | §337 landing 2b, stage 2 — THE GEARED GENEVA'S METAL, measured off a boot of ?arrest=geared. A REPORT (it prints and judges nothing; stage 3 gates what it shows). |
 | `probe-337-geared-geneva.mjs` | §337 | acceptance | §337 landing 1 — THE GEARED GENEVA'S LINE, HELD. ACCEPTANCE (exits non-zero on a failure). |
 | `probe-36-apply.mjs` | §36 | acceptance | §36 Apply — the acceptance, and the only place the APPLIED tree is judged. |
 | `probe-50-clutch.mjs` | §50 | report | TODO 50 — the stem clutch, measured in the movement. |
