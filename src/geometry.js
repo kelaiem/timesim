@@ -12281,7 +12281,7 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   // unscrews, exactly like the tubes — and the tapped holes they sit in are
   // the same declared CSG debt as every thread in this case (the Case unit
   // stays outside INTRA_TIER_SCOPE for exactly this family of joints).
-  // Same head/shaft stock as the back screws: one screw vocabulary per case.
+  // Their stock is the caller's (main.js CASE_CLAMP_SHAFT_D/HEAD_D): Ø0.8 mm on the round no-alarm case since §325 landing 11.
   for (const a of clampAz) {
     const cx = Math.cos(a) * clampR, cy = Math.sin(a) * clampR;
     const head = new THREE.Mesh(

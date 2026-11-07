@@ -3858,8 +3858,16 @@ const CASE_R_OUT_FRONT = CASE_R_IN + CASE_BAND_T;
 // on the ledge (BASE_RIM_R's fit and bevel taken off) — rounded UP to the 0.01 grid so both hold past float noise, and
 // the band keeps its one wall. The round case only: a form case's back follows its own fitted outline, and its readers
 // of CASE_R_OUT (the back envelope's bins, the footprint's fallback box) keep the cap they were generated against.
+// §325 landing 11 — THE CLAMP SCREWS' OWN STOCK. §186 cut the clamps from the case's one screw vocabulary
+// (CASE_SCREW_SHAFT_D, Ø1.0 mm, which is also the pillars' thread, TODO 69, and the plate screws' head basis), and where
+// the back band is the 40 mm cap that costs nothing. Without the alarm the clamp's thread wall IS the bore's governing floor
+// (landing 10), so the clamps step down to the next catalogue watch-screw stock, Ø0.8 mm, the head carrying §186's own
+// 1.8:1 head-to-shaft proportion (Ø1.44 mm). Only the clamps change: the pillar thread and the plate screws keep their stock.
+// Engagement stays §3's 0.7 mm (CASE_CLAMP_ENG), now 0.875 D into the ledge rather than 0.7 D.
+const CASE_CLAMP_SHAFT_D = ALARM_BUILT || FORM ? CASE_SCREW_SHAFT_D : 0.8 / UNIT_MM;
+const CASE_CLAMP_HEAD_D = CASE_CLAMP_SHAFT_D * (CASE_SCREW_HEAD_D / CASE_SCREW_SHAFT_D);
 const CASE_R_BORE_BACK_FLOOR = Math.ceil(100 * Math.max(
-  CASE_R_IN + CLEAR_MARGIN + CASE_SCREW_HEAD_D / 2 + CASE_SCREW_SHAFT_D / 2 + CASE_SCREW_SHAFT_D / 4,   // the clamp thread's wall
+  CASE_R_IN + CLEAR_MARGIN + CASE_CLAMP_HEAD_D / 2 + CASE_CLAMP_SHAFT_D / 2 + CASE_CLAMP_SHAFT_D / 4,   // the clamp thread's wall
   CASE_R_IN + 1 / UNIT_MM + G.SEAT_FIT + plateR * G.PLATE_BEVEL_F,                                      // the rim's bearing
 )) / 100;
 const CASE_R_OUT = ALARM_BUILT || FORM ? CASE_WIDTH_MAX : CASE_R_BORE_BACK_FLOOR + CASE_BAND_T;
@@ -3925,7 +3933,7 @@ const BASE_RIM_R = R_BORE_BACK - G.SEAT_FIT - plateR * G.PLATE_BEVEL_F;
 // ledge's own metal below it. The circle stands one CLEAR_MARGIN off the
 // bore wall by the head's radius — as far outboard as the head can bear,
 // which maximises the rim bearing inboard of it.
-const R_CLAMP = R_BORE_BACK - CLEAR_MARGIN - CASE_SCREW_HEAD_D / 2;
+const R_CLAMP = R_BORE_BACK - CLEAR_MARGIN - CASE_CLAMP_HEAD_D / 2;
 // Three screws: a plane is three points — the kinematic definition of the
 // bearing the clamps must define — and a lapped ring joint gains nothing
 // from over-constraint (real casing clamps run 2–4). Stations are a tripod,
@@ -3959,7 +3967,7 @@ const CASE_NOTCHES = [
 // THROUGH a member wants a clearance hole at the screw-through fit (§148's
 // two-holes rule — the rim is not what holds the screw, the tapped ledge
 // metal is).
-const CASE_CLAMP_BORE_R = CASE_SCREW_SHAFT_D / 2 + G.SEAT_FIT;
+const CASE_CLAMP_BORE_R = CASE_CLAMP_SHAFT_D / 2 + G.SEAT_FIT;
 // Thread engagement below the ledge face — the §3 precedent the caseback
 // screws set (0.7 mm into a 1.0 mm wall).
 const CASE_CLAMP_ENG = 0.7 / UNIT_MM;
@@ -3996,15 +4004,15 @@ const CASE_CLAMP_AZ = (() => {
       worst = Math.min(worst, Math.sin(Math.min(d, Math.PI / 2)) * R_CLAMP);
     }
   }
-  const need = CASE_NOTCH_HALFW + CASE_SCREW_HEAD_D / 2 + CLEAR_MARGIN;
+  const need = CASE_NOTCH_HALFW + CASE_CLAMP_HEAD_D / 2 + CLEAR_MARGIN;
   if (worst < need)
     console.warn(`§186: a clamp station stands ${worst.toFixed(3)} u off a crown notch's line — the head `
-      + `needs ${need.toFixed(3)} (notch ${CASE_NOTCH_HALFW.toFixed(3)} + head ${(CASE_SCREW_HEAD_D / 2).toFixed(3)} + margin)`);
+      + `needs ${need.toFixed(3)} (notch ${CASE_NOTCH_HALFW.toFixed(3)} + head ${(CASE_CLAMP_HEAD_D / 2).toFixed(3)} + margin)`);
   // The tapped hole's inboard thread wall: from the hole's wall to the case
   // bore, at least one thread pitch of metal (pitch ≈ Ø/4 for watch screws —
   // the same rule screwShankR encodes as head ≈ 2×thread).
-  const wall = (R_CLAMP - CASE_SCREW_SHAFT_D / 2) - CASE_R_IN;
-  const pitch = CASE_SCREW_SHAFT_D / 4;
+  const wall = (R_CLAMP - CASE_CLAMP_SHAFT_D / 2) - CASE_R_IN;
+  const pitch = CASE_CLAMP_SHAFT_D / 4;
   if (wall < pitch)
     console.warn(`§186: the clamp thread's inboard wall is ${wall.toFixed(3)} u — under the one-pitch `
       + `floor ${pitch.toFixed(3)} u; the thread would break into the case bore`);
@@ -4013,12 +4021,12 @@ const CASE_CLAMP_AZ = (() => {
   // least a head-RADIUS of the head's diameter lands on the rim's lid face
   // (authored outline BASE_RIM_R — the lid carries the authored shape, the
   // mid-depth bulge is what fits the bore).
-  if (R_CLAMP + CASE_SCREW_HEAD_D / 2 > R_BORE_BACK - CLEAR_MARGIN + 1e-9)
+  if (R_CLAMP + CASE_CLAMP_HEAD_D / 2 > R_BORE_BACK - CLEAR_MARGIN + 1e-9)
     console.warn('§186: a clamp head reaches within CLEAR_MARGIN of the bore wall — R_CLAMP regressed');
-  const overlap = Math.min(R_CLAMP + CASE_SCREW_HEAD_D / 2, BASE_RIM_R) - (R_CLAMP - CASE_SCREW_HEAD_D / 2);
-  if (overlap < CASE_SCREW_HEAD_D / 2)
+  const overlap = Math.min(R_CLAMP + CASE_CLAMP_HEAD_D / 2, BASE_RIM_R) - (R_CLAMP - CASE_CLAMP_HEAD_D / 2);
+  if (overlap < CASE_CLAMP_HEAD_D / 2)
     console.warn(`§186: a clamp head overlaps the rim's lid by ${overlap.toFixed(3)} u — under the `
-      + `half-diameter floor ${(CASE_SCREW_HEAD_D / 2).toFixed(3)}; the head is clamping air`);
+      + `half-diameter floor ${(CASE_CLAMP_HEAD_D / 2).toFixed(3)}; the head is clamping air`);
   // The bearing the rim actually gets: from the ledge's inner edge to the
   // rim's authored outline, held to the 1 mm the old seat step gave (the
   // precedent floor — a mount must not bear LESS than the seat it replaces).
@@ -31035,7 +31043,7 @@ const GONG_BAND_FLOOR = await (async () => {
   for (const o of walkBandFloor) { await breathe(204); visitBandFloor(o); }
   // the clamp heads, analytically: three stations on R_CLAMP, 0.4 mm proud
   for (const az of CASE_CLAMP_AZ) {
-    const dAz = Math.asin(Math.min(1, (CASE_SCREW_HEAD_D / 2) / R_CLAMP));
+    const dAz = Math.asin(Math.min(1, (CASE_CLAMP_HEAD_D / 2) / R_CLAMP));
     for (const s of [-1, 0, 1]) {
       const q = { x: Math.cos(az + s * dAz) * R_CLAMP, y: Math.sin(az + s * dAz) * R_CLAMP };
       if (inSwath(q) && GONG_RIM_Z + 0.4 / UNIT_MM > top) { top = GONG_RIM_Z + 0.4 / UNIT_MM; owner = 'case clamp head'; }
@@ -31091,7 +31099,7 @@ const GONG_FOOT_OBSTACLES = await (async () => {
   movement.traverse((o) => walkFootObstacle.push(o));
   for (const o of walkFootObstacle) { await breathe(207); visitFootObstacle(o); }
   for (const az of CASE_CLAMP_AZ) {
-    const h = CASE_SCREW_HEAD_D / 2, cx = Math.cos(az) * R_CLAMP, cy = Math.sin(az) * R_CLAMP;
+    const h = CASE_CLAMP_HEAD_D / 2, cx = Math.cos(az) * R_CLAMP, cy = Math.sin(az) * R_CLAMP;
     boxes.push({ x0: cx - h, x1: cx + h, y0: cy - h, y1: cy + h, name: 'case clamp head' });
   }
   return boxes;
@@ -51693,7 +51701,7 @@ const CASE_SECTORS = (() => {
     const inClampHead = (q) => {
       if (q.z < headBand[0] || q.z > headBand[1]) return false;
       for (const az of CASE_CLAMP_AZ)
-        if (Math.hypot(q.x - Math.cos(az) * R_CLAMP, q.y - Math.sin(az) * R_CLAMP) < CASE_SCREW_HEAD_D / 2 + CLEAR_MARGIN) return true;
+        if (Math.hypot(q.x - Math.cos(az) * R_CLAMP, q.y - Math.sin(az) * R_CLAMP) < CASE_CLAMP_HEAD_D / 2 + CLEAR_MARGIN) return true;
       return false;
     };
     const exempt = (q) => {
@@ -52637,7 +52645,7 @@ const CASE_DIMS = (() => {
     gasketD: CASE_GASKET_D, gasketSeat: CASE_GASKET_SEAT, crystT: CASE_CRYSTAL_T,
     // §187 — screwShaftD/HeadD stay for the §186 CLAMP screws; the six
     // caseback screws died with the flange.
-    screwShaftD: CASE_SCREW_SHAFT_D, screwHeadD: CASE_SCREW_HEAD_D,
+    screwShaftD: CASE_CLAMP_SHAFT_D, screwHeadD: CASE_CLAMP_HEAD_D,
     tubeD: CASE_TUBE_D, pusherD: CASE_PUSHER_D,
     stemAz: stemAngle, alarmAz: ALARM_BUILT ? alarmStemAngle : null, pusherAz: ALARM_BUILT ? ALARM_PUSH_AZ : null,   // §325 landing 3: null = not built, no bore
     // An azimuth locates a RADIUS; the pusher runs on a line PARALLEL to one.
@@ -53672,7 +53680,7 @@ const SCHEMATIC = { proxies: [], on: false };
     // §186 — the clamp screws, drawn as the back screws are: head circles at
     // their own stations on the rim's back face.
     for (const a of clampAz) {
-      const s = new THREE.Line(circGeo(CASE_SCREW_HEAD_D / 2, 24), rim);
+      const s = new THREE.Line(circGeo(CASE_CLAMP_HEAD_D / 2, 24), rim);
       s.position.set(Math.cos(a) * clampR, Math.sin(a) * clampR, rimBack); put(s);
     }
 
