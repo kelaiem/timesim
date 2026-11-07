@@ -3870,6 +3870,10 @@ const CASE_CLAMP_HEAD_D = CASE_CLAMP_SHAFT_D * (CASE_SCREW_HEAD_D / CASE_SCREW_S
 const CASE_R_BORE_BACK_FLOOR = Math.ceil(100 * Math.max(
   CASE_R_IN + CLEAR_MARGIN + CASE_CLAMP_HEAD_D / 2 + CASE_CLAMP_SHAFT_D / 2 + CASE_CLAMP_SHAFT_D / 4,   // the clamp thread's wall
   CASE_R_IN + 1 / UNIT_MM + G.SEAT_FIT + plateR * G.PLATE_BEVEL_F,                                      // the rim's bearing
+  // the thread's wall again, with the circle held in by the rim's land (R_CLAMP's second term): the rim (fit and bevel
+  // off the bore), the land, the bore drawn at r + bevel, then the shaft's half and a pitch to CASE_R_IN
+  CASE_R_IN + CASE_CLAMP_SHAFT_D / 4 + CASE_CLAMP_SHAFT_D / 2 + STOCK_MIN_U + (CASE_CLAMP_SHAFT_D / 2 + G.SEAT_FIT)
+    + 2 * plateR * G.PLATE_BEVEL_F + G.SEAT_FIT,
 )) / 100;
 // §325 landing 12 — AND WITH THE ALARM TOO. The gong's radius is SOLVED off R_ANNULUS_OUT and the hammer is sited off the
 // gong, so the strike group follows the bore inward by its own laws (the gong ring 49.65 → 47.30, the hammer's spiral
@@ -3939,7 +3943,15 @@ const BASE_RIM_R = R_BORE_BACK - G.SEAT_FIT - plateR * G.PLATE_BEVEL_F;
 // ledge's own metal below it. The circle stands one CLEAR_MARGIN off the
 // bore wall by the head's radius — as far outboard as the head can bear,
 // which maximises the rim bearing inboard of it.
-const R_CLAMP = R_BORE_BACK - CLEAR_MARGIN - CASE_CLAMP_HEAD_D / 2;
+// §325 landing 13 — AND NO FURTHER OUT THAN THE RIM'S LAND ALLOWS. The screw passes through a clearance bore in the
+// rim, and the metal between that bore and the rim's edge is a LAND, owed §62's STOCK_MIN_U like any web between two
+// openings. The plate's extrude grows the rim outward and the bore inward through its depth, but its two FACES keep the
+// contours as drawn (TODO 175), so the land at a face is the drawn one: the rim's authored radius less the bore drawn
+// at r + bevelSize. Off the 40 mm cap the outboard rule left 0.36 of it. When the bore came in, Ø0.8 clamps left a
+// 0.17 sliver (0.064 mm), passing only because the rings did not quite cross, and Ø0.6 crossed them. So the circle is the
+// lesser of the two, and the floor below the bore (CASE_R_BORE_BACK_FLOOR) carries the thread wall at this term too.
+const R_CLAMP = Math.min(R_BORE_BACK - CLEAR_MARGIN - CASE_CLAMP_HEAD_D / 2,
+  BASE_RIM_R - (CASE_CLAMP_SHAFT_D / 2 + G.SEAT_FIT) - plateR * G.PLATE_BEVEL_F - STOCK_MIN_U);
 // Three screws: a plane is three points — the kinematic definition of the
 // bearing the clamps must define — and a lapped ring joint gains nothing
 // from over-constraint (real casing clamps run 2–4). Stations are a tripod,
@@ -4033,6 +4045,10 @@ const CASE_CLAMP_AZ = (() => {
   if (overlap < CASE_CLAMP_HEAD_D / 2)
     console.warn(`§186: a clamp head overlaps the rim's lid by ${overlap.toFixed(3)} u — under the `
       + `half-diameter floor ${(CASE_CLAMP_HEAD_D / 2).toFixed(3)}; the head is clamping air`);
+  // §325 landing 13: the rim's land outboard of each clearance bore, at the face (the drawn contours)
+  const land = BASE_RIM_R - (R_CLAMP + CASE_CLAMP_BORE_R + plateR * G.PLATE_BEVEL_F);
+  if (land < STOCK_MIN_U - 1e-9)
+    console.warn(`§325: the rim keeps ${land.toFixed(3)} u of land outboard of a clamp's bore — under §62's ${STOCK_MIN_U.toFixed(3)}`);
   // The bearing the rim actually gets: from the ledge's inner edge to the
   // rim's authored outline, held to the 1 mm the old seat step gave (the
   // precedent floor — a mount must not bear LESS than the seat it replaces).
