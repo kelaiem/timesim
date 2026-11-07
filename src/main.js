@@ -3865,7 +3865,11 @@ const CASE_R_OUT_FRONT = CASE_R_IN + CASE_BAND_T;
 // (landing 10; with the alarm too since landing 12), so the clamps step down to the next catalogue watch-screw stock, Ø0.8 mm, the head carrying §186's own
 // 1.8:1 head-to-shaft proportion (Ø1.44 mm). Only the clamps change: the pillar thread and the plate screws keep their stock.
 // Engagement stays §3's 0.7 mm (CASE_CLAMP_ENG), now 0.875 D into the ledge rather than 0.7 D.
-const CASE_CLAMP_SHAFT_D = FORM ? CASE_SCREW_SHAFT_D : 0.8 / UNIT_MM;
+// §325 landing 14 — and without the alarm, Ø0.6 mm, the next stock down again (engagement 1.17 D). There the clamp's floor
+// sits under the rim's 1 mm bearing, so the bearing sets the bore (Ø37.78 mm), and the annulus holds nothing else. With the
+// alarm the strike group binds first: measured at Ø0.6 the ring stood at r 45.26 and the hammer's cranked tail found no
+// riser station clear of the plate's rim. So the alarm build keeps Ø0.8 (Ø38.22).
+const CASE_CLAMP_SHAFT_D = FORM ? CASE_SCREW_SHAFT_D : (ALARM_BUILT ? 0.8 : 0.6) / UNIT_MM;
 const CASE_CLAMP_HEAD_D = CASE_CLAMP_SHAFT_D * (CASE_SCREW_HEAD_D / CASE_SCREW_SHAFT_D);
 const CASE_R_BORE_BACK_FLOOR = Math.ceil(100 * Math.max(
   CASE_R_IN + CLEAR_MARGIN + CASE_CLAMP_HEAD_D / 2 + CASE_CLAMP_SHAFT_D / 2 + CASE_CLAMP_SHAFT_D / 4,   // the clamp thread's wall
