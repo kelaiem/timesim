@@ -30759,11 +30759,31 @@ const gongPostRFor = (L_m) => Math.max(GONG_WIRE_R + STOCK_MIN_U,
 // not. The inner solve is Newton on f₁ ∝ L⁻², the straight bar's exponent,
 // which the arch's few-percent deviation leaves a contraction too.
 await breathe(201);
+const HAMMER_POST_R = 0.6;
+// §268: the hammer's COLLET, bored the running fit over the post with a pivot
+// floor of wall. Declared beside the post because the crank's riser (TODO 267)
+// must leave its cranked root long enough to cover it. (Hoisted to the gong's
+// design since §325 landing 13: the ring's radius reads it, below.)
+const ALARM_HSPIRAL_COLLET_BORE = HAMMER_POST_R + PIVOT_BORE_CLEAR;
+const ALARM_HSPIRAL_COLLET_R = ALARM_HSPIRAL_COLLET_BORE + PIVOT_MIN_U;
+// §325 landing 13 — THE RING'S SECOND CAP: THE HAMMER'S BOSS BESIDE THE SKIRT. The hammer is sited off the ring (its
+// pivot on the tangent at the face: r = hypot(face, √(arm² − headR²))), and its collet, the boss on that pivot, rises
+// to the tail's root past the caseback skirt's bottom. So the boss stands BESIDE the skirt and is held off it radially.
+// The skirt is a CASE_LATHE_SEG lathe, so its inner wall's facets stand inside CASE_SKIRT_ID by up to
+// ID·(1 − cos(π/SEG)), and §262's rule holds a margin at the inscribed circle. Off the cap the ring sat clear of this by
+// 0.05. When the bore came in, the station did too, a little more slowly than the bore (the hypot), and the designed
+// arrangement's facet phase read the boss 0.1491 off the skirt. The cap is the largest ring whose hammer's boss reaches
+// no further than that circle less the margin. The round build only: a form case's back is not this skirt.
+const GONG_R_SKIRT_CAP = FORM ? Infinity : (() => {
+  const reach = CASE_SKIRT_ID * Math.cos(Math.PI / G.CASE_LATHE_SEG) - CLEAR_MARGIN - ALARM_HSPIRAL_COLLET_R;   // the pivot's ceiling
+  const tan = Math.sqrt(STRIKE_REF.armLen ** 2 - ALARM_HEAD_R ** 2);
+  return Math.sqrt(Math.max(0, reach * reach - tan * tan)) + GONG_WIRE_R + HAMMER_HEAD_GAP;                  // face → the wire's centre
+})();
 const GONG_DESIGN = (() => {
   const k_m = GONG_WIRE_R * OSC_U / 2;
   let L = GONG_STRAIGHT_LEN_M, R = 0, m1 = null, outer = 0, inner = 0, closed = false;
   for (outer = 1; outer <= 8 && !closed; outer++) {
-    R = R_ANNULUS_OUT - gongPostRFor(L);
+    R = Math.min(R_ANNULUS_OUT - gongPostRFor(L), GONG_R_SKIRT_CAP);   // §325 landing 13: and the hammer's boss off the skirt
     const R_m = R * OSC_U, S = (R / (GONG_WIRE_R / 2)) ** 2;
     let Lk = L;
     for (let j = 0; j < 40; j++) {
@@ -30791,10 +30811,12 @@ if (GONG_R - GONG_POST_R < R_ANNULUS_IN - 1e-9)
     + `${R_ANNULUS_IN.toFixed(3)}–${R_ANNULUS_OUT.toFixed(3)}`);
 const GONG_ARC_DESIGN = GONG_DESIGN_LEN_M / (GONG_R * OSC_U);       // rad — the pitch's length at this radius
 // §325 landing 12: the shipped arc is the ROUND build's derivation, and a form case cut against the 40 mm cap's annulus
-// derives another (61.14° at r 48.19). A form build seats its gong (src/gong-seats.js) and reads no arc, so it is not
-// held to this one. Its 'arc' comparison mode does read the arc and stays held, so it warns, honestly, that the arc it
-// rings is the round build's.
-if ((!FORM || GONG_SEAT_MODE === 'arc') && Math.abs(aesthetics.gong.arcDeg - GONG_ARC_DESIGN / DEG2RAD) > 0.05)
+// derives another (61.14° at r 48.19). A form build seats its gong (src/gong-seats.js) and reads no arc. Its 'arc'
+// comparison mode is there to compare §198's arc, which is the arc that rings the note in the annulus it stands in, so
+// it rings its OWN derivation (gongArcDeg). The editable aesthetic is the round build's, and only the round build is
+// held to it. (Read as the round build's, arrangement-308's arc rang 1894 Hz.)
+const gongArcDeg = () => (FORM ? GONG_ARC_DESIGN / DEG2RAD : aesthetics.gong.arcDeg);
+if (!FORM && Math.abs(aesthetics.gong.arcDeg - GONG_ARC_DESIGN / DEG2RAD) > 0.05)
   console.warn(`§198: aesthetics.gong.arcDeg ${aesthetics.gong.arcDeg} is not the ${(GONG_ARC_DESIGN / DEG2RAD).toFixed(2)}° that rings `
     + `${GONG_NOTE_NAME} (${GONG_F1_TARGET_HZ.toFixed(3)} Hz) on a ${GONG_STOCK_MM[1]} mm wire at r ${GONG_R.toFixed(2)} — the shipped default must BE the derivation`);
 // THE BLOW IS RADIAL, and the head is INBOARD of the wire. Between the
@@ -30957,6 +30979,9 @@ const hammerPiv = GONG_SEATED ? (() => {
   return { x: h.x, y: h.y, psi: h.psi };   // the CCW root
 })();
 const HAMMER_PIV_AZ = Math.atan2(hammerPiv.y, hammerPiv.x);
+if (!FORM && Math.hypot(hammerPiv.x, hammerPiv.y) + ALARM_HSPIRAL_COLLET_R > CASE_SKIRT_ID * Math.cos(Math.PI / G.CASE_LATHE_SEG) - CLEAR_MARGIN + 1e-9)
+  console.warn(`§325: the hammer's boss reaches ${(Math.hypot(hammerPiv.x, hammerPiv.y) + ALARM_HSPIRAL_COLLET_R).toFixed(4)} — past the skirt's inscribed wall less the margin, `
+    + `${(CASE_SKIRT_ID * Math.cos(Math.PI / G.CASE_LATHE_SEG) - CLEAR_MARGIN).toFixed(4)}; GONG_R_SKIRT_CAP no longer holds the station`);
 // The free (ringing) end — the hammer strikes here. The pivot stands on the
 // tangent at the FACE (so the blow's line of action is exactly radial where
 // it lands), the eye ALARM_HEAD_R behind the face on that line: the tangent
@@ -30990,7 +31015,7 @@ if (Math.abs(Math.hypot(headRest.x - hammerPiv.x, headRest.y - hammerPiv.y) - AL
 // annulus solve keeps that topology, so the wire runs CW from the free end,
 // under the pusher's stem and on round the rim.)
 const GONG_HAND = Math.sign(Math.atan2(Math.sin(GONG_A1 - HAMMER_PIV_AZ), Math.cos(GONG_A1 - HAMMER_PIV_AZ))) || 1;
-GONG_A0 = GONG_A1 + GONG_HAND * aesthetics.gong.arcDeg * DEG2RAD;   // fixed (foot) end
+GONG_A0 = GONG_A1 + GONG_HAND * gongArcDeg() * DEG2RAD;   // fixed (foot) end
 // §310 landing 2 — A SEAT'S WIRE as samples, FOOT first (the arch solve's own
 // order, θ from the foot), a quarter unit apart along its analytic centreline:
 // what the mesh is swept along, what the band floor's swath is read off, and
@@ -31290,12 +31315,7 @@ const alarmHammerUnit = new THREE.Group();
 movement.add(alarmHammerUnit);
 registerLabel('Alarm hammer', alarmHammerUnit);
 registerExplode(alarmHammerUnit, 0, 9); // baseZ 0: children carry world z
-const HAMMER_POST_R = 0.6;
-// §268: the hammer's COLLET, bored the running fit over the post with a pivot
-// floor of wall. Declared beside the post because the crank's riser (TODO 267)
-// must leave its cranked root long enough to cover it.
-const ALARM_HSPIRAL_COLLET_BORE = HAMMER_POST_R + PIVOT_BORE_CLEAR;
-const ALARM_HSPIRAL_COLLET_R = ALARM_HSPIRAL_COLLET_BORE + PIVOT_MIN_U;
+// (HAMMER_POST_R and the collet's section are hoisted above GONG_DESIGN since §325 landing 13: the ring's radius reads the collet.)
 const HAMMER_POST_BOT = GONG_RIM_Z - GONG_RIM_PLANT;
 // §278 landing 2 — the staff stops at the CRANKED tail's plane, ALARM_TAIL_DROP
 // under the lever's: the tail's root rides there, outboard of the aperture.
@@ -49098,7 +49118,7 @@ function askTour(onProceed) {
       // §198: the foot walks the annulus's rim by the same clear-station rule
       // the boot applied, live edits included (§197's applier never re-ran
       // the walk — that residue is closed here, since the rule is a function).
-      let az = GONG_A1 + GONG_HAND * aesthetics.gong.arcDeg * DEG2RAD, walked = 0;
+      let az = GONG_A1 + GONG_HAND * gongArcDeg() * DEG2RAD, walked = 0;
       const step = CLEAR_MARGIN / GONG_R;
       while (gongFootClearAt(az) && walked < 60 * DEG2RAD) { az += GONG_HAND * step; walked += step; }
       GONG_A0 = az;
