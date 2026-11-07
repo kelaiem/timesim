@@ -220,6 +220,12 @@ const SPEC_BOOT_RATIO = Object.freeze({
   'alarmaz=175': 2.1,    // 25.4 s
   'stopwork-140': 1.9,   // 22.2 s
   'alarmaz=180': 1.8,    // 21.2 s
+  // §337 stage 3's two geared points, measured the same way on 2026-11-07, M2 Max, two solo passes each (the default 13.7
+  // and 13.9 s on the same two passes; each ratio is the slowest point over the fastest default, rounded up to a tenth, as
+  // every row above): a geared reserve re-solves the Geneva line, scans every finger and star direction at 3° for the least
+  // bulge, and re-cuts the cone window round it.
+  'geared-36': 3.1,      // 40.9 / 41.4 s
+  'geared-24': 2.3,      // 31.2 / 31.1 s
 });
 const specBootTimeoutMs = (name) => Math.round(BOOT_TIMEOUT_MS * Math.max(1, SPEC_BOOT_RATIO[name] ?? 1));
 
@@ -1384,6 +1390,45 @@ const SPEC_POINTS = [
   // itself), and §47's stop iron is the supported alternative, `?arrest=stop-iron`: swept here so it stays buildable.
   { name: 'stop-iron', q: 'arrest=stop-iron', expect: 'silent', sweep: true,
     why: '§329 — §47\'s stop iron on the default build: the shipped arrest until the stop-work became the default (2026-11-05), kept buildable and swept' },
+  // §337 landing 2b stage 3 — THE GEARED GENEVA, BOOTED. `?arrest=geared` gears a finger wheel off the cone so a reserve
+  // whose direct star has no exact stop gets one. BOTH ROWS CARRY A RESERVE, and that is the whole reason they exist as a
+  // pair: the bare key is the DEFAULT MOVEMENT. At 30 h the line is `direct` (g = 1), the key folds to null and §329's own
+  // stop-work stands — measured, `windArrest.stopwork` field for field the default's, which is what §337's record means by
+  // "folds to null at 30 h". So `arrest=geared` alone would be the default build under a DIFFERENT configuration key, the
+  // mirror of `reconf=1` (same build, the default's own key, and so not marked for a sweep the default already does): a
+  // point there holds nothing and a sweep there would re-sweep the default. The geared metal stands only where a gear is
+  // needed, and stage 3 has metal for two of those reserves.
+  //
+  // WHAT THEY HOLD IS MORE THAN LIVENESS. `?reserveh=24` ALONE boots TWELVE rows and `?reserveh=36` THIRTEEN, and six of
+  // each go away under the key. FIVE are the winding arrest giving up on that reserve — §47 finds no wrap station's section
+  // spanning the pad's mid-height, no legal beak azimuth at ANY pad azimuth (11 of them at 24 h, 26 at 36 h), a reaction
+  // moment about the stud in the DISENGAGING sense, and no riser station (24 h) or bank-pin station (36 h) that clears,
+  // while §151's pad arm passes 0.000 of the flying span — and the sixth is TODO 53's second row, the one where
+  // CHAIN_TQ_REACH's closed form stops bounding the discrete top. What is left is the reserve's OWN standing debt: the six
+  // (24 h) and seven (36 h) prefixes below, nothing of the arrest's. So the declared set IS §337's claim — the geared line
+  // gives these reserves an arrest where §47 has no site — held exactly both ways: a further row says the line stopped
+  // covering what it covers, and a stale prefix says the reserve's debt moved and nobody re-read these rows.
+  //
+  // NOT SWEPT, and the restraint is the honest half. The geared build re-cuts the cone window out to its bulge, hangs the
+  // finger's and star's studs off the fusee cock on an arm it gains, and re-sizes the crank — a sweep is most of the
+  // movement, at a reserve carrying twelve red rows of its own before the key is read. Stage 3 makes no clean-sweep claim
+  // and this table must not imply one (validated-configs takes only clean rows). A boot, at the cost of a boot: 31.2 s and
+  // 41.4 s solo against the default's 13.7 (M2 Max, 2026-11-07), which is what SPEC_BOOT_RATIO's two rows carry.
+  { name: 'geared-24', q: 'arrest=geared&reserveh=24', expect: 'declared',
+    expectWarns: ['TODO 53: the drum\'s hook plane', 'TODO 221 detent beak: the face flank\'s relief is not bracketed',
+      'TODO 192: AMPLITUDE_CLAIM_DEG', 'TODO 207/242: BAL_RIM_F',
+      'TODO 206 arming spring: follower-B\'s seat sits at the nose\'s margin',
+      '§325: the strike group\'s notch in the round three-quarter plate'],
+    why: '§337 landing 2b stage 3 — the geared Geneva at 24 h, cone : finger 25 : 20, where §47\'s arrest has no legal site; boots exactly ?reserveh=24\'s own six rows, the arrest\'s six gone' },
+  // 36 h is the reserve that EARNED THE RANGE SWEEP: its worst pressure angle falls at an interior −5.81° of a ±15.49°
+  // range, which stage 3's two-endpoint sweep would have missed (24 h's lands on the endpoint, so one of the two would
+  // have read right by luck). Its set is 24 h's plus §254's flank-slope row, which a 36 h wrap carries on its own.
+  { name: 'geared-36', q: 'arrest=geared&reserveh=36', expect: 'declared',
+    expectWarns: ['fusee §254: flank slope', 'TODO 53: the drum\'s hook plane', 'TODO 221 detent beak: the face flank\'s relief is not bracketed',
+      'TODO 192: AMPLITUDE_CLAIM_DEG', 'TODO 207/242: BAL_RIM_F',
+      'TODO 206 arming spring: follower-B\'s seat sits at the nose\'s margin',
+      '§325: the strike group\'s notch in the round three-quarter plate'],
+    why: '§337 landing 2b stage 3 — the geared Geneva at 36 h, 25 : 14, the reserve whose worst pressure angle is INTERIOR to its range; boots exactly ?reserveh=36\'s own seven rows, the arrest\'s six gone' },
 ];
 // A SPEC_BOOT_RATIO row naming no declared point is a stale measurement (the waiver tables' rule): it fails here,
 // before any browser starts, rather than quietly applying to nothing.
