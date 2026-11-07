@@ -50585,7 +50585,11 @@ const FUSEE_COCK = await (async () => {
   // bound whatever their directions, the energy column's ADDED rule). The width at p holds that moment at the yield, never
   // under the shear floor of the forces it carries. With no stud it is widthAt of the distance from the bush, exactly.
   const Fs = seat ? seat.F : 0;
-  const momentAt = (px, py, past) => R * Math.hypot(px - C.x, py - C.y) + (past && seat ? Fs * Math.hypot(px - seat.x, py - seat.y) : 0);
+  // §337 landing 2b, stage 3 — ON THE GEARED BUILD THE STOP HANGS FROM THE COCK: its forces close inside the cock as a COUPLE, the going
+  // torque, and a couple does not fall toward the boss as R·s does, so every section from the boss out carries it. It is known here
+  // though the site is not (the torque, not the arrangement, sets it); the residual force is inside the stop bound R already holds.
+  const STOP_COUPLE = GEARED_BUILT ? torque / OSC_U : 0;   // N·u
+  const momentAt = (px, py, past) => R * Math.hypot(px - C.x, py - C.y) + STOP_COUPLE + (past && seat ? Fs * Math.hypot(px - seat.x, py - seat.y) : 0);
   const widthAtP = (px, py, past) => Math.max(STOCK_MIN_U, shearOf(R + (past ? Fs : 0)), Math.sqrt(6 * momentAt(px, py, past) * OSC_U / (T_m * sigmaY)) / OSC_U);
   const bore = G.screwBoreR(COCK_SCREW_HEAD_R);
   // the side load's line of action is the bush's plane, so that is the leg's lever arm
@@ -51045,6 +51049,31 @@ const FUSEE_COCK = await (async () => {
     pins: { r_u: pinSet.pinR, rp_u: pinSet.rp, flangeR_u: pinSet.padR, lobeR_u: pinSet.lobeR, phi: pinSet.phi, flangeT_u: FLANGE_T, F_N: pinSet.F, twist_Nu: pinSet.Tq,
       shear_Pa: pinSet.shear, shearYield_Pa: SPRING_TAU_Y_PA, bearing_Pa: pinSet.bear, bearingYield_Pa: sigmaY, at: pinSet.at },
     landscape,
+    // §337 landing 2b, stage 3 — THE SECTIONS AS CUT, UNDER A LOAD THEY WERE NOT SIZED FOR: the geared stop-work is built after this
+    // cock, so its stop and its studs are read back through the same formulas (forces ADDED, this block's rule). `stopM` is the stop's
+    // moment about the lower bush; each stud is { x, y, F }.
+    stall: (stopM, studs, vectors = null) => {
+      // the arm is a fully stressed taper for a moment that falls to nothing at the boss, and a couple does not fall: so the bar is read
+      // along its whole length, each section at the width it was cut to, not at its root alone
+      const barWorst = (Mat) => { let w = { Pa: 0, s_u: 0, width_u: 0 }; const N = 60;
+        const look = (ax, ay, bx, by, past) => { for (let k = 0; k <= N; k++) { const px = ax + (bx - ax) * (k / N), py = ay + (by - ay) * (k / N), d = Math.hypot(px - C.x, py - C.y); if (d < bossR) continue; const b = widthAtP(px, py, past), Pa = 6 * Mat(px, py) * OSC_U / (T_m * (b * OSC_U) ** 2); if (Pa > w.Pa) w = { Pa, s_u: d, width_u: b }; } };
+        for (const [A0, B0, past] of crankSegsBuilt) look(A0.x, A0.y, B0.x, B0.y, past);
+        look(C.x + cs * foot.sStep, C.y + sn * foot.sStep, C.x + cs * L, C.y + sn * L, true);
+        return w; };
+      const read = (Rr, Fside, Mat) => { const Mroot = Mat(foot.x, foot.y), bw = barWorst(Mat); return { R_N: Rr, Fside_N: Fside, rootMoment_Nu: Mroot,
+        bar_Pa: bw.Pa, barAt_u: bw.s_u, barWidth_u: bw.width_u, barRoot_Pa: 6 * Mroot * OSC_U / (T_m * (rootW * OSC_U) ** 2), leg_Pa: columnSigma(foot.legR, legH, Fside, Mroot, bore),
+        post_Pa: columnSigma(foot.postR, postH, Fside, Mat(step.x, step.y), 0), pinShear_Pa: pinSet.shear * (Mroot / pinSet.Tq) }; };
+      const Rr = (chain.m + gear.m + stopM + wind.m) / span, Fsum = studs.reduce((a, q) => a + q.F, 0);
+      const added = read(Rr, Rr + Fsum, (x, y) => Rr * Math.hypot(x - C.x, y - C.y) + studs.reduce((a, q) => a + q.F * Math.hypot(x - q.x, y - q.y), 0));
+      // the stop-work's own forces with their DIRECTIONS (the going loads stay added, their directions being free): what reaches a
+      // section is the resultant of the loads on the cock and its moment about that section
+      let statics = null;
+      if (vectors) {
+        const Rg = (chain.m + gear.m + wind.m) / span, fx = vectors.reduce((a, v) => a + v.fx, 0), fy = vectors.reduce((a, v) => a + v.fy, 0);
+        statics = read(Rg, Rg + Math.hypot(fx, fy), (x, y) => Rg * Math.hypot(x - C.x, y - C.y) + Math.abs(vectors.reduce((a, v) => a + (v.x - x) * v.fy - (v.y - y) * v.fx, 0)));
+      }
+      return { yield_Pa: sigmaY, pinShearYield_Pa: SPRING_TAU_Y_PA, designMoment_Nu: rootM, added, statics };
+    },
   };
 })();
 // ---------------------------------------------------------------------------
@@ -51248,7 +51277,7 @@ const FUSEE_COCK = await (async () => {
         const C = { x: best.F.x, y: best.F.y };             // (the pasted Geneva is about the finger's axis, not the cone's)
         const S = { x: best.S.x, y: best.S.y };
         const azS = Math.atan2(S.y - C.y, S.x - C.x);
-        const r1 = gd.r1, rPin = gd.rPin, SW_STUD_R = gd.studR;
+        const r1 = gd.r1, rPin = gd.rPin;
         const sw = { ...gd, n: best.n, m: best.mm };
         const E = swEngagementArc(best.n);
             const zA = coneTop + M;
@@ -51259,6 +51288,9 @@ const FUSEE_COCK = await (async () => {
         const cantR = (F, L) => Math.cbrt((32 * F * L * UNIT_MM) / (Math.PI * sigmaMPa)) / 2 / UNIT_MM;
         // the finger's stud carries the pin's force and the mesh's (an upper bound: their sum), at the longest lever to the gear layer
         const studFr = Math.max(gd.studR, cantR(best.pairForce.Ff, zArm - zG));
+        // the star's stud at its REAL length: from the arm's underside to the star's mid-plane (the row sized it at one layer's lever)
+        const SW_STUD_R = Math.max(gd.studR, cantR(best.pairForce.Fs, zArm - zS));
+        if (!(gd.rIn >= SW_STUD_R + RUN + t)) console.warn(`§337: the star's stud at its real length (r ${SW_STUD_R.toFixed(3)}) leaves the open slot's floor (${gd.rIn.toFixed(3)}) less than a wall`);
         const hubR = Math.max(PIVOT_MIN_U + t, studFr + RUN + t);
         const STUD_F_R = studFr;
         const n = sw.n, m = sw.m, a = sw.a, rTip = sw.rTip;
@@ -51482,8 +51514,14 @@ const FUSEE_COCK = await (async () => {
         pinMesh.name = 'stopworkPin'; pinMesh.rotation.x = Math.PI / 2; pinMesh.position.set(pinX, pinY, ((zS + t / 2) + (zC - t / 2)) / 2); fingerGroup.add(pinMesh);
         // the studs: from the branch arm's underside (and a stock into it) down to the layers they carry
         const studOf = (name, x, y, r, zBot) => { const z1 = FUSEE_BOSS_MID, mesh = new THREE.Mesh(new THREE.CylinderGeometry(r, r, z1 - zBot, 16), MATS.blueSteel); mesh.name = name; mesh.rotation.x = Math.PI / 2; mesh.position.set(x, y, (z1 + zBot) / 2); swUnit.add(mesh); };
-        studOf('gearedFingerStud', C.x, C.y, studFr, zA - 0.0);
-        studOf('stopworkStud', S.x, S.y, SW_STUD_R, zS - t / 2 - RUN);
+        // each stud ends in a retaining head under the lowest part it carries: §47's lip over the bore, at the §50 pivot floor (it
+        // retains; it carries no stop load), a running fit below the part
+        const HEAD_T = PIVOT_MIN_U;
+        const headOf = (name, x, y, r, zPart) => { const h = new THREE.Mesh(new THREE.CylinderGeometry(r + 0.06, r + 0.06, HEAD_T, 16), MATS.blueSteel); h.name = name; h.rotation.x = Math.PI / 2; h.position.set(x, y, zPart - RUN - HEAD_T / 2); swUnit.add(h); };
+        studOf('gearedFingerStud', C.x, C.y, studFr, zA - RUN - HEAD_T);
+        headOf('gearedFingerStudHead', C.x, C.y, studFr, zA);
+        studOf('stopworkStud', S.x, S.y, SW_STUD_R, zS - t / 2 - RUN - HEAD_T);
+        headOf('stopworkStudHead', S.x, S.y, SW_STUD_R, zS - t / 2);
         const starPivot = new THREE.Group();
         starPivot.position.set(S.x, S.y, 0);
         swUnit.add(starPivot);
@@ -51512,8 +51550,32 @@ const FUSEE_COCK = await (async () => {
           starPivot.rotation.z = azU + rhoAt(phi);
         };
         WIND_ARREST.unit = swUnit;
+        // §337 stage 3 — THE COCK AT THE STALL, as built: the stop on the cone is the mesh's force at the cone's wheel, and the two studs
+        // bring the finger's and the star's reactions into the branch arm, which the cock's sections were not sized for
+        const rpCone = (GG_MODULE_U * best.zCone) / 2, Fmesh = (GOING_POWER.fuseeTorque_Nm * 1000) / (rpCone * UNIT_MM);
+        // The stop-work hangs wholly from the cock, so its forces are known in direction at each stop and mostly close inside it: the
+        // mesh on the pinion, the pin's reaction through the star's pivot (the crank square to the line pin → star at a stop), the cone
+        // wheel's reaction shared by the two bushes in proportion to its height. The finger's balance gives the pin's force.
+        const K = P.barrel, eD = Math.hypot(C.x - K.x, C.y - K.y), ex = (C.x - K.x) / eD, ey = (C.y - K.y) / eD, Qx = K.x + ex * rpCone, Qy = K.y + ey * rpCone;
+        const uBush = (zG - FUSEE_COCK.load.zLow) / (FUSEE_COCK.bossMid - FUSEE_COCK.load.zLow), PRESS = (20 * Math.PI) / 180;
+        const stopVectors = (pinAz, sgn, pa) => {
+          const px = C.x + r1 * Math.cos(pinAz), py = C.y + r1 * Math.sin(pinAz), dL = Math.hypot(S.x - px, S.y - py), dx = (S.x - px) / dL, dy = (S.y - py) / dL;
+          const ta = Math.atan2(ex, -ey) + pa, mx = sgn * Fmesh * Math.cos(ta), my = sgn * Fmesh * Math.sin(ta);          // the mesh on the pinion
+          const tqM = (Qx - C.x) * my - (Qy - C.y) * mx, lever = (px - C.x) * dy - (py - C.y) * dx, Fp = -tqM / lever;     // the pin on the crank: F·d
+          const fpx = Fp * dx, fpy = Fp * dy;
+          return [{ x: C.x, y: C.y, fx: mx + fpx, fy: my + fpy }, { x: S.x, y: S.y, fx: -fpx, fy: -fpy }, { x: K.x, y: K.y, fx: -uBush * mx, fy: -uBush * my }];
+        };
+        const pinFull = azS - OMEGA * E / 2, pinEmpty = pinFull + OMEGA * (En / 2 - PHI_HI);
+        const studsAdded = [{ x: C.x, y: C.y, F: best.pairForce.Ff }, { x: S.x, y: S.y, F: best.pairForce.Fs }];
+        let cockStall = null;
+        for (const az of [pinFull, pinEmpty]) for (const pa of [PRESS, -PRESS]) for (const sgn of [1, -1]) {
+          const r = FUSEE_COCK.stall(Fmesh * (zG - FUSEE_COCK.load.zLow), studsAdded, stopVectors(az, sgn, pa));
+          if (!cockStall || r.statics.rootMoment_Nu > cockStall.statics.rootMoment_Nu) cockStall = r;
+        }
+        const over = (q) => [['bar', q.bar_Pa, cockStall.yield_Pa], ['leg', q.leg_Pa, cockStall.yield_Pa], ['post', q.post_Pa, cockStall.yield_Pa], ['steady pins', q.pinShear_Pa, cockStall.pinShearYield_Pa]].filter(([, v, y]) => v > y);
+        if (over(cockStall.statics).length) console.warn(`§337: at the stall the fusee cock stands over its yield: ${over(cockStall.statics).map(([k, v, y]) => `${k} ${(v / y).toFixed(2)}×`).join(', ')} — it was sized before the studs existed`);
         WIND_ARREST.stopwork = { built: true, geared: true, n, m, travel: swTravelTurns(m, n), wind: T, ratio, r1, rPin, a, rTip, lockR: R_L, reliefMin, unlockedDeg,
-          lockArcDeg: (GAMMA * 180) / Math.PI, discOpenDeg: (open.filter(Boolean).length * 360) / NA, discRuns: runs.length, openRun: runs.map((r0) => { let e = r0; while (open[(e + 1) % NA] && e - r0 < NA) e++; return [(r0 * 360) / NA, (e * 360) / NA]; }), unlockedAt: unlockedAt.filter((_, i2) => i2 % 8 === 0).slice(0, 12), nUnlocked: unlockedAt.length, fullArcs, studFr, z: [zA, zA + 3 * t + 2 * M], branchW: best.armW };
+          lockArcDeg: (GAMMA * 180) / Math.PI, discOpenDeg: (open.filter(Boolean).length * 360) / NA, discRuns: runs.length, openRun: runs.map((r0) => { let e = r0; while (open[(e + 1) % NA] && e - r0 < NA) e++; return [(r0 * 360) / NA, (e * 360) / NA]; }), unlockedAt: unlockedAt.filter((_, i2) => i2 % 8 === 0).slice(0, 12), nUnlocked: unlockedAt.length, fullArcs, studFr, studSr: SW_STUD_R, Fmesh, pairForce: best.pairForce, cockStall, z: [zA, zA + 3 * t + 2 * M], branchW: best.armW };
         WIND_ARREST.geared.built = true;
         WIND_ARREST.pose(1);
         registerLabel('Winding stop-work', swUnit);
