@@ -234,8 +234,10 @@ try { _stored = localStorage.getItem('uiLang'); } catch { /* storage may be bloc
 // matcher takes 'ces' (ISO 639-2/T) and 'cze' (639-2/B), both of which Intl
 // canonicalizes to 'cs', and is anchored: 'csb' (Kashubian) and 'cu' (Church
 // Slavonic) are other languages. Czech's toUpperCase is the root mapping (ř → Ř,
-// ů → Ů, measured), so no case audit is owed. THE FIRST ROW TO DECLARE `surfaces`:
-// chrome and primer, no explainer.
+// ů → Ů, measured), so no case audit is owed. It was THE FIRST ROW TO DECLARE
+// `surfaces` (chrome and primer, no explainer, §273 landing one); its explainer
+// landed second (§273 landing two), so the row now says nothing and means all
+// three, like every other.
 // §274 — A ROW'S `surfaces` is which of the app's three translatable surfaces
 // the locale CARRIES: 'chrome' (this file's table, the panel and HUD), 'primer'
 // and 'explainer' (the two static pages' tables). It is omitted for the full
@@ -266,7 +268,7 @@ export const LOCALES = [
   { code: 'lv', face: 'Latviešu', tag: 'lv-LV', match: (v) => /^(lv|lav|lvs)(-|$)/.test(v) },
   { code: 'hu', face: 'Magyar', tag: 'hu-HU', match: (v) => /^(hu|hun)(-|$)/.test(v) },
   // §273 — chrome + primer only (§274): the explainer is not translated, and says so.
-  { code: 'cs', face: 'Čeština', tag: 'cs-CZ', surfaces: ['chrome', 'primer'], match: (v) => /^(cs|ces|cze)(-|$)/.test(v) },
+  { code: 'cs', face: 'Čeština', tag: 'cs-CZ', match: (v) => /^(cs|ces|cze)(-|$)/.test(v) },
   { code: 'hi', face: 'हिन्दी', tag: 'hi-IN', match: (v) => /^hi(-|$)/.test(v) },
   { code: 'ja', face: '日本語', tag: 'ja-JP', match: (v) => v.startsWith('ja') },
   { code: 'zh-Hant', face: '繁體中文', tag: 'zh-Hant', match: (v) => /^zh-(hant|tw|hk|mo)\b/.test(v) },
