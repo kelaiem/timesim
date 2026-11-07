@@ -2890,11 +2890,25 @@ const FREE_RC = CASE_CLEAR + 2 * CASE_BAND_T;
 // §325 landing 7: `hands` moves no metal of the movement, so no movement-keyed lookup below carries it
 const FREE_KEY = SPEC.caseShape === 'free' ? configKey({ spec: { ...SPEC, hands: null, formRectSpec: null, gongSeat: null, arrest: SPEC.arrest === 'trailing' ? null : SPEC.arrest } }) : null;   // §329 landing 4: ?arrest=stopwork moves metal the outline is fitted to, so it keys its own outline; ?arrest=trailing (2a) moves none, so it reads the outline the build without it was fitted to
 const FREE_ROW = FREE_KEY ? FREE_OUTLINES[FREE_KEY] ?? null : null;
+// §310 — A BOX FORM CASE WITH NO ?formrect= IS CUT TO ITS GONG SEAT'S FIT. The seat (src/gong-seats.js) was solved inside the
+// case fitted to the counted metal (its row's `formrect`, tools/gong-seats.mjs's fixed point), so a seated gong only stands
+// in its case at that fit. Bare ?case=rect fell back to the solvers' formPlate, which counts neither the gong nor the strike
+// group, and the spiral wire stood 8.78 inside the outline, through the case middle (the boot's §310 warning named the fit
+// to boot at, and nothing booted at it). So the fit is the default exactly where the seat applies: a box kind, the alarm
+// built, a seated mode (not ?gong=arc, which the generator's first boot uses to measure the bare case), and a row
+// generated for this very spec. An explicit ?formrect= still wins. Free outlines take their fit from FREE_ROW already.
+const FORM_SEAT_FIT = (() => {
+  if (!SPEC.caseShape || SPEC.caseShape === 'free' || SPEC.formRectSpec || !ALARM_BUILT || SPEC.gongSeat === 'arc') return null;
+  const base = { ...SPEC, hands: null, strapMm: null, arrest: null, frame: null, formRectSpec: null, gongSeat: null };
+  const seats = GONG_SEATS_ARRANGED[configKey({ spec: { ...base, caseShape: null } })] ?? GONG_SEATS;   // ALARM_ARR_KEY's rule, read early
+  const row = seats[SPEC.caseShape]?.[SPEC.gongSeat ?? defaultSeatMode(seats, SPEC.caseShape)];
+  return row?.formrect && row.specKey === configKey({ spec: { ...base, caseShape: SPEC.caseShape } }) ? Object.freeze([...row.formrect]) : null;
+})();
 const FORM = !SPEC.caseShape ? null
   : SPEC.caseShape === 'free'
     ? (FREE_ROW ? freeShapeOf(FREE_ROW.pts, { c: FREE_ROW.c, rc: FREE_ROW.rc, margin: FREE_ROW.margin, need: FREE_ROW.need, flat: FREE_ROW.flat })
       : freeShapeOf([[formPlate.xMin, formPlate.yMin], [formPlate.xMax, formPlate.yMin], [formPlate.xMax, formPlate.yMax], [formPlate.xMin, formPlate.yMax]], { c: P.dial.x }))
-  : formShapeOf(SPEC.caseShape, SPEC.formRectSpec, formPlate);
+  : formShapeOf(SPEC.caseShape, SPEC.formRectSpec ?? FORM_SEAT_FIT, formPlate);
 // §325 — THE FREE OUTLINE'S PINS: every point a build-time check holds a distance inside the outline (a plate
 // opening's circle and its land, a dial well's wall, the gong's wire, a stud's seat, the strike opening's land),
 // with the distance it needs. A box-fitted kind leaves those checks slack; the free outline hugs the metal, so it
