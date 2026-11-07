@@ -118,6 +118,11 @@ translation runs.
    read (the primer, `probe-chrome-honesty`), until the day the explainer is
    declared. Czech's `m` is `modelov` and never a bare `model` (the credit line's
    "AI model" and the tagline's 3D "models" are the nouns it must not swallow).
+   Hold the stem to the VERB's own shapes and TEST it against the noun's
+   cases, its adjective and its compounds: Finnish's first `mallin[nt]` and
+   Polish's first `modelow` were each satisfied by a noun (*mallintiedosto*,
+   *plików modelowych*) in a translation that dropped the honesty word, and
+   shipped as `mallinn|mallinta[amnv]` and `modelowa[nć]|modeluj` (§217, §249).
 6. **Roster mirrors in tools**:
    - `tools/offline-check.mjs`: the locale list, and the expected precache
      count rises by two (one explainer table, one primer table).

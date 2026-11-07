@@ -119,6 +119,31 @@ export const QUESTIONS = {
     { term: 'taitto', en: 'fold / fork (project words)', q: 'The explainer coins «taitto» for a fold (a straight design packed into the space) and «haara» for a fork (a declared departure from the line\'s numbers). Do they read as distinct acts?' },
     { term: 'mallinnettu', en: 'modelled / simulated', q: 'The honesty pair is «mallinnettu» (described) and «simuloitu» (driven), and the noun «malli» is kept for the AI model alone. Please check each paragraph keeps the two words apart.' },
   ],
+  // §249 chunk C — Ukrainian: written as Ukrainian, not adapted from the Russian table.
+  uk: [
+    { term: 'фузея', en: 'fusee', q: 'The fusee is «фузея» (конус фузеї, ланцюжок фузеї). Is that the Ukrainian workshop word, or is another used?' },
+    { term: 'анкерна', en: 'pallet fork / governor anchor', q: 'The pallet fork is «анкерна вилка» and the alarm governor\'s anchor «анкер регулятора». Do the two read as distinct parts?' },
+    { term: 'ходове', en: 'escape wheel', q: 'The escape wheel is «ходове колесо», the Russian tradition\'s word, and the escapement «спуск». Is «анкерне колесо» what a Ukrainian watchmaker says instead?' },
+    { term: 'волосок', en: 'balance / hairspring', q: 'The balance is «баланс» and the hairspring «волосок». Are those the trade words in Ukrainian, rather than «спіраль»?' },
+    { term: 'ремонтуар', en: 'keyless works', q: 'The keyless works are «ремонтуар», the loan the Russian tradition uses. Is there a Ukrainian term a workshop prefers?' },
+    { term: 'регулятор', en: 'alarm governor', q: 'The alarm governor is always «регулятор будильника», never a bare «регулятор», and the timekeeping regulator is «градусник». Does each read as the part it is?' },
+    { term: 'півколивання', en: 'beat', q: 'A beat is «півколивання» and the beat rate «частота». Is «півколивань за годину» how a Ukrainian spec states 18,000 A/h?' },
+    { term: 'позиція', en: 'station (project word)', q: 'The project\'s «station» (a part\'s chosen position along something) is «позиція», which is also the everyday word for a position; the explainer says «розташування» for the everyday sense. Does «позиція» read as the coined term?' },
+    { term: 'складання', en: 'fold / fork (project words)', q: 'The explainer coins «складання» for a fold and «відгалуження» for a fork (a declared departure from the line\'s numbers). Do they read as distinct acts?' },
+    { term: 'змодельовано', en: 'modelled / simulated', q: 'The honesty pair is «змодельовано» (described) and «симульовано» (driven), and the noun «модель» is kept for the AI model alone. Please check each paragraph keeps the two words apart.' },
+  ],
+  // §249 chunk C — Polish.
+  pl: [
+    { term: 'fusee', en: 'fusee', q: 'The fusee is the indeclinable loan «fusee» (stożek fusee, łańcuszek fusee), because «ślimak» is the snail cam. Is there an established Polish trade word for the fusee?' },
+    { term: 'kotwica', en: 'pallet fork / governor anchor', q: '«kotwica» is the pallet fork AND the alarm governor\'s anchor («kotwica regulatora»). Does a Polish workshop keep one word for both?' },
+    { term: 'włos', en: 'balance / hairspring', q: 'The balance is «balans» and the hairspring «włos». Are those the trade words, rather than «sprężyna włosowa»?' },
+    { term: 'ćwiertnik', en: 'cannon pinion', q: 'The cannon pinion is «ćwiertnik», the minute wheel «koło zmianowe» and the regulator index «rakietka». Are those the workshop\'s words?' },
+    { term: 'regulator', en: 'alarm governor', q: 'The alarm governor is always «regulator budzika», never a bare «regulator». Does it read as the strike-speed governor, not the timekeeping regulator?' },
+    { term: 'półwahnięci', en: 'beat', q: 'A beat is «półwahnięcie» and the beat rate «częstotliwość». Is «półwahnięć na godzinę» how a Polish spec states 18,000 A/h?' },
+    { term: 'obszar', en: 'annulus / throw (project words)', q: 'Two project words take two-word forms because the one-word ones are everyday Polish: an annulus is «obszar pierścieniowy» (not «pierścień», which is any ring) and a throw «skok roboczy» (not «skok», a jump or a stroke). Do they read naturally?' },
+    { term: 'złożenie', en: 'fold / fork (project words)', q: 'The explainer coins «złożenie» for a fold and «odgałęzienie» for a fork. «złożony» also means "complex"; does «złożenie» still read as the design act?' },
+    { term: 'zamodelowane', en: 'modelled / simulated', q: 'The honesty pair is «zamodelowane» (described) and «symulowane» (driven), and the noun «model» is kept for the AI model alone. Please check each paragraph keeps the two words apart.' },
+  ],
   hi: [
     { term: 'पैलेट फोर्क', en: 'part names', q: 'Part names are transliterated loanwords («पैलेट फोर्क», «हेयरस्प्रिंग», «बैलेंस व्हील»), as Hindi engineering prose usually writes them. Is that the right side of the register split for these terms?' },
     { term: 'बलाघूर्ण', en: 'torque', q: 'Physical quantities use the standard scientific words («बलाघूर्ण» for torque, «जड़त्व» for inertia, «आयाम» for amplitude). Do they read naturally beside the loanword part names?' },
