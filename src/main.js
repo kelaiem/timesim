@@ -3871,9 +3871,17 @@ const CASE_R_OUT_FRONT = CASE_R_IN + CASE_BAND_T;
 // riser station clear of the plate's rim. So the alarm build keeps Ø0.8 (Ø38.22).
 const CASE_CLAMP_SHAFT_D = FORM ? CASE_SCREW_SHAFT_D : (ALARM_BUILT ? 0.8 : 0.6) / UNIT_MM;
 const CASE_CLAMP_HEAD_D = CASE_CLAMP_SHAFT_D * (CASE_SCREW_HEAD_D / CASE_SCREW_SHAFT_D);
+// §325 landing 15 — THE LEDGE'S BEARING IS A LAND, not a precedent. §186 held the rim's bearing on the ledge to "the 1 mm
+// the seat it replaces provided", a number carried from the part it replaced rather than derived. What the bearing does is
+// carry the movement and the clamps' preload into the band, and the load that would size it is shock, which this movement has
+// no specification for: TODO 192's honest residue, the same reason the pivots are sized by their own floors. So it is held
+// to the floor every land in this repo is held to, §62's STOCK_MIN_U (0.12 mm), a sliver of brass that carries any
+// load the movement can put on it many times over. It does not bind: the clamps' land floor governs both builds (the rim
+// bears 1.12 mm with the alarm and 1.02 without).
+const CASE_LEDGE_BEARING_MIN = STOCK_MIN_U;
 const CASE_R_BORE_BACK_FLOOR = Math.ceil(100 * Math.max(
   CASE_R_IN + CLEAR_MARGIN + CASE_CLAMP_HEAD_D / 2 + CASE_CLAMP_SHAFT_D / 2 + CASE_CLAMP_SHAFT_D / 4,   // the clamp thread's wall
-  CASE_R_IN + 1 / UNIT_MM + G.SEAT_FIT + plateR * G.PLATE_BEVEL_F,                                      // the rim's bearing
+  CASE_R_IN + CASE_LEDGE_BEARING_MIN + G.SEAT_FIT + plateR * G.PLATE_BEVEL_F,                          // the rim's bearing (§325 landing 15)
   // the thread's wall again, with the circle held in by the rim's land (R_CLAMP's second term): the rim (fit and bevel
   // off the bore), the land, the bore drawn at r + bevel, then the shaft's half and a pitch to CASE_R_IN
   CASE_R_IN + CASE_CLAMP_SHAFT_D / 4 + CASE_CLAMP_SHAFT_D / 2 + STOCK_MIN_U + (CASE_CLAMP_SHAFT_D / 2 + G.SEAT_FIT)
@@ -4054,11 +4062,10 @@ const CASE_CLAMP_AZ = (() => {
   if (land < STOCK_MIN_U - 1e-9)
     console.warn(`§325: the rim keeps ${land.toFixed(3)} u of land outboard of a clamp's bore — under §62's ${STOCK_MIN_U.toFixed(3)}`);
   // The bearing the rim actually gets: from the ledge's inner edge to the
-  // rim's authored outline, held to the 1 mm the old seat step gave (the
-  // precedent floor — a mount must not bear LESS than the seat it replaces).
-  if (BASE_RIM_R - CASE_R_IN < 1 / UNIT_MM)
-    console.warn(`§186: the rim bears ${((BASE_RIM_R - CASE_R_IN) * UNIT_MM).toFixed(2)} mm on the ledge — `
-      + 'under the 1 mm the seat step it replaces provided');
+  // rim's authored outline, held to CASE_LEDGE_BEARING_MIN (§325 landing 15; §186's 1 mm precedent before it).
+  if (BASE_RIM_R - CASE_R_IN < CASE_LEDGE_BEARING_MIN - 1e-9)
+    console.warn(`§186: the rim bears ${((BASE_RIM_R - CASE_R_IN) * UNIT_MM).toFixed(3)} mm on the ledge — `
+      + `under the ${(CASE_LEDGE_BEARING_MIN * UNIT_MM).toFixed(3)} mm land a ledge is owed`);
 }
 // (The z stations live in CASE_DIMS — they are measured from the metal once
 // the movement exists, and the dial side is −z, which the first cut of this
