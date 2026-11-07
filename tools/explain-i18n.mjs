@@ -291,6 +291,11 @@ const MARKS = {
   // §273 — cs-CZ: Russian's row, measured in Chromium 141 and Node's ICU alike
   // (30,0 · 0,024 · 1 000 · 18 000, a U+00A0 group on four digits).
   cs: { group: ['\u00a0', '\u202f', '\u2009'], dec: ',' },
+  // §217 — fi-FI: Czech's row, measured in Chromium 153 and Node's ICU 78
+  // alike (30,0 · 0,024 · 1 000 · 18 000, a U+00A0 group on four digits). A
+  // case ending attached with a COLON (18 000:n) stops the parse at the colon,
+  // so the value reads 18000: the colon is in no token class here.
+  fi: { group: ['\u00a0', '\u202f', '\u2009'], dec: ',' },
 };
 
 // ---- honesty vocabulary: modelled vs simulated (§241 area C) ----------------
@@ -407,6 +412,15 @@ const HONESTY = {
   // Simulated is simulov- (simulovaný, simulováno, simulace is a noun and not
   // counted: the pair is the participles the glossary entry declares).
   cs:        { m: /modelov/i, s: /simul/i },
+  // §217 — the verb mallintaa, NEVER the noun malli, which Finnish says for the
+  // credit line's "AI model" (tekoälymalli, mallin, mallia). The stem is the
+  // verb's own two shapes: mallinn- (mallinnettu, mallinnus, mallinnetaan) and
+  // mallinta- before a, m, n or v (mallintaa, mallintaminen, mallintanut,
+  // mallintavat). A looser mallin[nt] was the first draft and is WRONG: the
+  // noun's genitive opens compounds (mallintiedosto, "a model file"), and a
+  // translator satisfied it with one — measured, in the chrome's "no models".
+  // Simulated is the loan simuloida / simulaatio.
+  fi:        { m: /mallinn|mallinta[amnv]/i, s: /simul/i },
   zh:        { m: /建模|模型化/,    s: /仿真|模拟/ },
   'zh-Hant': { m: /建模|模型化/,    s: /模擬|擬真/ },
 };

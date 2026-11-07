@@ -48043,11 +48043,21 @@ function setBarState(id, on) {
 // §216's Hungarian measured 182.6 on its first pass, on "Menü / Nézet /
 // Vezérlés" — 6.0 over English's 176.6 in the same container, so it needed no
 // word chosen against it either.
+// §273's Czech measured 202.3, on "Nabídka / Pohled / Ovládání", and §217's
+// Finnish 203.5 — "Valikko / Näkymä / Ohjaimet", the WIDEST yet, 26.9 over
+// English's 176.6 and 3.4 past German's 200.1 measured in the same run. Both
+// pass the fit probe (every header one line, no bar over a panel's header),
+// so neither needed a word chosen against the bar. Finnish's HUD labels read
+// Aika 20.5 and Soi klo 31.6 px against the 150 px box, one line each, and no
+// Finnish label reached the panel column's 240 px `anywhere` allowance, so
+// the wrap rule stays and no `hyphens: auto` (a per-platform dictionary) is
+// owed.
 // §212's Hindi measured 150.0 — "नियंत्रण / दृश्य / डायल", narrower than every
 // Latin-script locale including English, because Devanagari spends its
 // complexity vertically rather than horizontally: the same script that is the
 // TALLEST in ink (probe-212-devanagari-vert) is among the narrowest here.
-// German is still the widest. The bar is also the one piece of chrome
+// German is no longer the widest: Finnish and Czech are, by a few px. The
+// bar is also the one piece of chrome
 // that does NOT mirror under dir="rtl": it is pinned to the viewport's
 // top-right, a fact about the screen rather than about the script. So the
 // two rules below read the bar's OWN rect:

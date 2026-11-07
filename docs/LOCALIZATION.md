@@ -87,7 +87,11 @@ translation runs.
      comment. Region subtags change the decimal mark, and some languages need
      `-u-nu-latn` to keep Western digits.
    - `match` must be **anchored**, because three-letter codes collide with
-     other languages (`hu` yes, `hup` Hupa no).
+     other languages (`hu` yes, `hup` Hupa no). A two-letter code can be the
+     PREFIX of another row's code: `fi` (Finnish) begins `fil` (Tagalog), so a
+     bare `startsWith('fi')` placed above Tagalog hands a Filipino reader a
+     legible Finnish page with no error anywhere. The ladder assert catches it
+     only if the lookalikes are in its table, so add them (§217).
    - **Array position matters.** First match wins, so a script-subtag row
      (`zh-Hant`) goes above its bare language (`zh`).
 2. **The ladder assert** in `src/i18n.js` (the table of
@@ -206,8 +210,11 @@ the chrome, so a new locale lands its wiring and its chrome together.
   is an existing table's keys. That is also the blind spot: a key added since
   that table was built is in none of them, so the coverage probe finds it.
 - Pages: `--extract` the keys, translate the blocks. Quoted identifiers stay
-  in `<code>`. In agglutinative languages, put case endings OUTSIDE the span
-  (`<code>X</code>-ban`).
+  in `<code>`. In agglutinative languages, put case endings OUTSIDE the span:
+  Hungarian hyphenates (`<code>X</code>-ban`), Finnish takes a colon
+  (`<code>X</code>:n`, `18 000:n`). On the primer a colon after a number stops
+  the value parse, so `18 000:n` reads 18000 (§217 planted it to show so).
+  Czech needed neither and put a noun before the token instead.
 - Digits spelled in words in English stay words in the translation. The number
   gate compares digit glyphs as a multiset outside `<code>`.
 - `.gloss-variants` rows in the explainer's glossary list only the inflected
