@@ -3861,16 +3861,21 @@ const CASE_R_OUT_FRONT = CASE_R_IN + CASE_BAND_T;
 // §325 landing 11 — THE CLAMP SCREWS' OWN STOCK. §186 cut the clamps from the case's one screw vocabulary
 // (CASE_SCREW_SHAFT_D, Ø1.0 mm, which is also the pillars' thread, TODO 69, and the plate screws' head basis), and where
 // the back band is the 40 mm cap that costs nothing. Without the alarm the clamp's thread wall IS the bore's governing floor
-// (landing 10), so the clamps step down to the next catalogue watch-screw stock, Ø0.8 mm, the head carrying §186's own
+// (landing 10; with the alarm too since landing 12), so the clamps step down to the next catalogue watch-screw stock, Ø0.8 mm, the head carrying §186's own
 // 1.8:1 head-to-shaft proportion (Ø1.44 mm). Only the clamps change: the pillar thread and the plate screws keep their stock.
 // Engagement stays §3's 0.7 mm (CASE_CLAMP_ENG), now 0.875 D into the ledge rather than 0.7 D.
-const CASE_CLAMP_SHAFT_D = ALARM_BUILT || FORM ? CASE_SCREW_SHAFT_D : 0.8 / UNIT_MM;
+const CASE_CLAMP_SHAFT_D = FORM ? CASE_SCREW_SHAFT_D : 0.8 / UNIT_MM;
 const CASE_CLAMP_HEAD_D = CASE_CLAMP_SHAFT_D * (CASE_SCREW_HEAD_D / CASE_SCREW_SHAFT_D);
 const CASE_R_BORE_BACK_FLOOR = Math.ceil(100 * Math.max(
   CASE_R_IN + CLEAR_MARGIN + CASE_CLAMP_HEAD_D / 2 + CASE_CLAMP_SHAFT_D / 2 + CASE_CLAMP_SHAFT_D / 4,   // the clamp thread's wall
   CASE_R_IN + 1 / UNIT_MM + G.SEAT_FIT + plateR * G.PLATE_BEVEL_F,                                      // the rim's bearing
 )) / 100;
-const CASE_R_OUT = ALARM_BUILT || FORM ? CASE_WIDTH_MAX : CASE_R_BORE_BACK_FLOOR + CASE_BAND_T;
+// §325 landing 12 — AND WITH THE ALARM TOO. The gong's radius is SOLVED off R_ANNULUS_OUT and the hammer is sited off the
+// gong, so the strike group follows the bore inward by its own laws (the gong ring 49.65 → 47.30, the hammer's spiral
+// 48.38 → 46.06; the alarm stem and pusher are cut to the wall wherever it stands). Measured on that build, the annulus
+// holds them inside the floor's bore with nothing in the band at any pose (probe-case-relief). So the cap no longer holds
+// the round case out anywhere: the alarm's room is what the clamps leave.
+const CASE_R_OUT = FORM ? CASE_WIDTH_MAX : CASE_R_BORE_BACK_FLOOR + CASE_BAND_T;
 // The back band's bore: one wall inside the body outer — the same 1 mm
 // dress-watch wall the front keeps, and the gasket annulus keeps exactly
 // its old proportions inside it.
@@ -52038,7 +52043,13 @@ const BACK_SWEPT_REGIONS = [
   // annulus below the plate top too (the skirt descends there now), and that
   // is what read the liner 0.650 over the bin's build-pose 7.964. The skirt
   // drops 10.23 → 8.77, and the pane floor (the hammer's plane) takes the band.
-  ...(ALARM_BUILT ? [{ unit: 'Alarm switch', r0: 48.3, r1: 50.1, z: ALARM_SWITCH_SKIRT_ROW_Z }] : []),
+  // §325 landing 12 — THE ROW MOVES WITH THE WALL. The liner is cut to the case wall on the pusher's line (TODO 268's
+  // caseWallAlong), so when the bore came in off the 40 mm cap the liner came in with it and stood inside a row still
+  // written at the cap's bore (50.139): the skirt read only the liner's build-pose bin and dropped under the hammer's
+  // crank. The band §261 2c measured (48.3–50.1 against that bore) is kept as its offsets off the bore it stands in;
+  // its z is the stroke's, which the bore does not move. probe-back-envelope holds the sweep under it.
+  ...(ALARM_BUILT ? (() => { const cap = CASE_WIDTH_MAX - CASE_BAND_T;   // the bore §261 2c measured the row against
+    return [{ unit: 'Alarm switch', r0: R_BORE_BACK - (cap - 48.3), r1: R_BORE_BACK - (cap - 50.1), z: ALARM_SWITCH_SKIRT_ROW_Z }]; })() : []),
   // §314 — THE LET-DOWN SQUARE turns with the fusee, so its corners sweep the
   // annulus its half-diagonal reaches about the fusee's axis, and at the
   // arrangement's −20° barrel step the axis stands where the build pose's
