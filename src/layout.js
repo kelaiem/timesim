@@ -4273,6 +4273,69 @@ export function polyArea(pts) {
 // crossings are new points. (A first cut traced the union on a field, and its half-cell offset ate 0.034 of lands that stood
 // exactly at TQ_LAND_MIN.) The largest loop by area is returned; a union that would leave a hole returns its outer loop, which
 // is what an opening's outline is. Edges that overlap collinearly are not handled; openings meeting at a crossing are.
+// §325 landing 16 — A DISC LESS ONE CONVEX OPENING ACROSS ITS RIM: the round three-quarter plate notched round the strike
+// group. Its boundary is the circle's arc outside the opening, run counter-clockwise from where the circle leaves the opening (X)
+// to where it enters it (Y), then the opening's own boundary inside the disc, run back from Y to X against the opening's
+// counter-clockwise order. That keeps the loop counter-clockwise with the notch cut inward. The crossings are exact
+// (circle ∩ edge), the opening's vertices survive untouched, and the arc is sampled at `segs` per turn. Returns null
+// when the opening does not cross the rim exactly twice (wholly inside it is a hole, not a notch).
+export function discLessConvex(R, hull, segs = 720, round = 0) {
+  const H = polyArea(hull) < 0 ? hull.slice().reverse() : hull, n = H.length;
+  const insideH = (x, y) => { for (let i = 0; i < n; i++) { const [ax, ay] = H[i], [bx, by] = H[(i + 1) % n]; if ((bx - ax) * (y - ay) - (by - ay) * (x - ax) < 0) return false; } return true; };
+  const hits = [];
+  for (let i = 0; i < n; i++) {
+    const [ax, ay] = H[i], [bx, by] = H[(i + 1) % n], dx = bx - ax, dy = by - ay;
+    const A = dx * dx + dy * dy, B = 2 * (ax * dx + ay * dy), C = ax * ax + ay * ay - R * R, D = B * B - 4 * A * C;
+    if (D <= 0 || A === 0) continue;
+    for (const t of [(-B - Math.sqrt(D)) / (2 * A), (-B + Math.sqrt(D)) / (2 * A)])
+      if (t >= 0 && t < 1) { const x = ax + t * dx, y = ay + t * dy; hits.push({ i, t, x, y, phi: Math.atan2(y, x) }); }
+  }
+  if (hits.length !== 2) return null;
+  const d = 1e-6;
+  const cls = hits.map((h) => ({ ...h, enters: insideH(R * Math.cos(h.phi + d), R * Math.sin(h.phi + d)) }));
+  const Y = cls.find((h) => h.enters), X = cls.find((h) => !h.enters);
+  if (!X || !Y) return null;
+  // `round` > 0 rounds the two junctions, which are sharp convex corners of the PLATE (the opening's edge meeting the rim),
+  // by an arc of that radius tangent to the rim and to the opening, cut into the plate. Its centre stands on the circle of
+  // radius R − round, at the bearing where its distance to the OPENING (the whole hull, not one edge: a hull of many short
+  // edges has its tangent point several edges along) is exactly round. A plate's extrude bevel otherwise pushes a sharp corner
+  // out along its bisector by bevel/sin(β/2) and folds the offset outline over itself (§336 landing 2's finding at the cock's
+  // opening).
+  const closest = (x, y) => {   // the hull boundary's nearest point to (x, y): its edge, param and distance
+    let best = { d: Infinity };
+    for (let i = 0; i < n; i++) {
+      const [ax, ay] = H[i], [bx, by] = H[(i + 1) % n], vx = bx - ax, vy = by - ay, L2 = vx * vx + vy * vy || 1e-18;
+      const t = Math.max(0, Math.min(1, ((x - ax) * vx + (y - ay) * vy) / L2)), px = ax + t * vx, py = ay + t * vy, d = Math.hypot(x - px, y - py);
+      if (d < best.d) best = { d, i, t, p: [px, py] };
+    }
+    return best;
+  };
+  const fillet = (h, dir) => {   // dir +1: the plate lies CCW of the junction (X); −1: CW of it (Y)
+    const rr = R - round, f = (ph) => { const x = rr * Math.cos(ph), y = rr * Math.sin(ph); return (insideH(x, y) ? -1 : 1) * closest(x, y).d - round; };
+    let lo = h.phi, hi = h.phi; for (let k = 0; k < 200 && f(hi) < 0; k++) hi += dir * 0.005;
+    if (f(hi) < 0) return null;
+    for (let k = 0; k < 60; k++) { const m = (lo + hi) / 2; if (f(m) < 0) lo = m; else hi = m; }
+    const c = { x: rr * Math.cos(hi), y: rr * Math.sin(hi) }, q = closest(c.x, c.y);
+    return { c, onCircle: [R * Math.cos(hi), R * Math.sin(hi)], phi: hi, q };
+  };
+  const arc = (c, p0, p1, m = 8) => {
+    const a0 = Math.atan2(p0[1] - c.y, p0[0] - c.x); let d = Math.atan2(p1[1] - c.y, p1[0] - c.x) - a0;
+    while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+    const o = []; for (let k = 0; k <= m; k++) o.push([c.x + round * Math.cos(a0 + (d * k) / m), c.y + round * Math.sin(a0 + (d * k) / m)]); return o;
+  };
+  const fX = round > 0 ? fillet(X, +1) : null, fY = round > 0 ? fillet(Y, -1) : null;
+  if (round > 0 && (!fX || !fY)) return null;
+  const phi0 = fX ? fX.phi : X.phi, phi1 = fY ? fY.phi : Y.phi;
+  const out = fX ? arc(fX.c, fX.q.p, fX.onCircle) : [[X.x, X.y]];
+  let span = phi1 - phi0; while (span <= 0) span += 2 * Math.PI;
+  const k0 = Math.ceil((phi0 * segs) / (2 * Math.PI) + 1e-9);
+  for (let k = k0; ; k++) { const ang = (2 * Math.PI * k) / segs; let off = ang - phi0; while (off < 0) off += 2 * Math.PI; if (off >= span - 1e-9) break; if (off > 1e-9) out.push([R * Math.cos(ang), R * Math.sin(ang)]); }
+  if (fY) out.push(...arc(fY.c, fY.onCircle, fY.q.p)); else out.push([Y.x, Y.y]);
+  // back along the opening, inside the disc, from just past Y's tangent point to just before X's
+  const iY = fY ? fY.q.i : Y.i, iX = fX ? fX.q.i : X.i;
+  for (let i = iY; i !== iX; i = (i - 1 + n) % n) out.push([H[i][0], H[i][1]]);
+  return out;
+}
 export function unionLoops(polys) {
   const ccw = polys.map((P) => (polyArea(P) < 0 ? P.slice().reverse() : P));
   const inside = (P, x, y) => { let k = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, yi] = P[i], [xj, yj] = P[j]; if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) k = !k; } return k; };
