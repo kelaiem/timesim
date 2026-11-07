@@ -48190,8 +48190,13 @@ function setBarState(id, on) {
 // Latin-script locale including English, because Devanagari spends its
 // complexity vertically rather than horizontally: the same script that is the
 // TALLEST in ink (probe-212-devanagari-vert) is among the narrowest here.
-// German is no longer the widest: Finnish and Czech are, by a few px. The
-// bar is also the one piece of chrome
+// §249 chunk C's Ukrainian measured 205.5, on "Меню / Вигляд / Керування" —
+// the WIDEST yet, 2.0 past Finnish and 9.0 past Russian's 196.5 in the same run;
+// Polish measured 198.3, on "Menu / Widok / Sterowanie". Both pass the fit
+// probe, so neither needed a word chosen against the bar; the HUD labels read
+// Час 18.3 / Дзвонить о 55.8 and Czas 23.7 / Dzwoni o 43.9 px, one line each.
+// German is no longer the widest: Ukrainian, Finnish and Czech are, by a few
+// px. The bar is also the one piece of chrome
 // that does NOT mirror under dir="rtl": it is pinned to the viewport's
 // top-right, a fact about the screen rather than about the script. So the
 // two rules below read the bar's OWN rect:
