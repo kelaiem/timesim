@@ -30776,7 +30776,11 @@ if (GONG_R - GONG_POST_R < R_ANNULUS_IN - 1e-9)
   console.warn(`§198: the gong block (r ${GONG_POST_R.toFixed(3)} at ${GONG_R.toFixed(3)}) does not fit the annulus `
     + `${R_ANNULUS_IN.toFixed(3)}–${R_ANNULUS_OUT.toFixed(3)}`);
 const GONG_ARC_DESIGN = GONG_DESIGN_LEN_M / (GONG_R * OSC_U);       // rad — the pitch's length at this radius
-if (Math.abs(aesthetics.gong.arcDeg - GONG_ARC_DESIGN / DEG2RAD) > 0.05)
+// §325 landing 12: the shipped arc is the ROUND build's derivation, and a form case cut against the 40 mm cap's annulus
+// derives another (61.14° at r 48.19). A form build seats its gong (src/gong-seats.js) and reads no arc, so it is not
+// held to this one. Its 'arc' comparison mode does read the arc and stays held, so it warns, honestly, that the arc it
+// rings is the round build's.
+if ((!FORM || GONG_SEAT_MODE === 'arc') && Math.abs(aesthetics.gong.arcDeg - GONG_ARC_DESIGN / DEG2RAD) > 0.05)
   console.warn(`§198: aesthetics.gong.arcDeg ${aesthetics.gong.arcDeg} is not the ${(GONG_ARC_DESIGN / DEG2RAD).toFixed(2)}° that rings `
     + `${GONG_NOTE_NAME} (${GONG_F1_TARGET_HZ.toFixed(3)} Hz) on a ${GONG_STOCK_MM[1]} mm wire at r ${GONG_R.toFixed(2)} — the shipped default must BE the derivation`);
 // THE BLOW IS RADIAL, and the head is INBOARD of the wire. Between the
@@ -31335,16 +31339,57 @@ registerSub('Alarm hammer', 'Hammer', alarmHammerPivot);
 //    at r 40). So the head's LENGTH is the whole radial room at REST, and
 //    its HEIGHT is capped by the plate's underside less the margin, which
 //    the swing then owes at every pose (the battery's pair sweep holds it).
-const ALARM_HEAD_L = ALARM_HEAD_FACE_R - GONG_BLOW * R_ANNULUS_IN;
+const ALARM_HEAD_L_REST = ALARM_HEAD_FACE_R - GONG_BLOW * R_ANNULUS_IN;   // the whole radial room at rest
 const ALARM_HEAD_SILHOUETTE = 0.55 + 0.45 * (1 + 0.6) / 2;    // cheeks 0.55 L at full H, peen 0.45 L tapering to 0.6 H
-const ALARM_HEAD_H_MATCH = (() => {
+const alarmHeadHMatch = (L) => {
   const wireM = OSC_STEEL_RHO * Math.PI * (GONG_WIRE_R * OSC_U) ** 2 * GONG_DESIGN_LEN_M;   // kg, the design wire
   const headU3 = (wireM * GONG_DESIGN.modalFrac) / OSC_STEEL_RHO / OSC_U ** 3;            // u³ the match wants (§253: the arc fundamental's fraction, ¼ for a straight bar)
-  return Math.sqrt(headU3 / (ALARM_HEAD_L * ALARM_HEAD_SILHOUETTE));
-})();
+  return Math.sqrt(headU3 / (L * ALARM_HEAD_SILHOUETTE));
+};
 const ALARM_HEAD_H_BAND = 2 * Math.min(Z_GONG - GONG_BAND_FLOOR.z, (TQ_BOT_Z - CLEAR_MARGIN - 0.01) - Z_GONG);
+// §325 landing 12 — AND THE DRAW CLEARS THE FRAME, as a law. The paragraph above relied on one measurement, for §198's
+// azimuth ("the nearest pillar seat at r 40"), for the draw clearing the base plate's tenants. When the ring came in off
+// the 40 mm cap the station moved, and the drawn head stood in the 45° quadrant's land (plateSeats: 3 poses in contact):
+// at full draw the peen's end alone came 0.52 u inside the seat's disc plus the margin. So the frame is a law. The head's
+// plan footprint runs from the face to the peen along the blow and ±H/2 across it, because it is square across the wire
+// (extruded H wide). Over the swing (−ALARM_STRIKE_AMP to ALARM_DRAW_RAD about hammerPiv, in the hammer's own sense,
+// sampled finer than the battery's net) it must stand CLEAR_MARGIN off every pillar seat's widest disc (pillarSeats,
+// PILLAR_CAP_R, the footprint the frame publishes to every later siting solve). These are full-height members, so the plan
+// alone decides it. The head is the LONGEST, up to the radial room at rest, whose footprint clears at the section the match
+// and the band then give it. A shorter head wants a deeper section for the same mass, so width and length are judged together.
+const ALARM_HEAD_FRAME_PTS = (() => {
+  const phi = GONG_BLOW_AZ + (GONG_BLOW > 0 ? Math.PI : 0), ux = Math.cos(phi), uy = Math.sin(phi);   // u: behind the face
+  const pts = [], NS = 128;
+  for (let k = 0; k <= NS; k++) {
+    const th = -ALARM_HAM_LIFT_SIGN * (-ALARM_STRIKE_AMP + (ALARM_DRAW_RAD + ALARM_STRIKE_AMP) * k / NS), c = Math.cos(th), s = Math.sin(th);
+    for (const p of pillarSeats) {
+      const dx = p.x - hammerPiv.x, dy = p.y - hammerPiv.y;   // the seat turned by −θ about the pivot = the head turned by +θ
+      const rx = hammerPiv.x + c * dx - s * dy - headFace.x, ry = hammerPiv.y + s * dx + c * dy - headFace.y;
+      pts.push({ u: rx * ux + ry * uy, w: -rx * uy + ry * ux });
+    }
+  }
+  return pts;
+})();
+const alarmHeadFrameClear = (L, H) => Math.min(...ALARM_HEAD_FRAME_PTS.map(({ u, w }) =>
+  Math.hypot(Math.max(0, -u, u - L), Math.max(0, Math.abs(w) - H / 2)) - PILLAR_CAP_R));
+const ALARM_HEAD_DIMS = (() => {
+  const hOf = (L) => Math.min(alarmHeadHMatch(L), ALARM_HEAD_H_BAND);
+  if (alarmHeadFrameClear(ALARM_HEAD_L_REST, hOf(ALARM_HEAD_L_REST)) >= CLEAR_MARGIN)
+    return { L: ALARM_HEAD_L_REST, lOwner: 'the radial room at rest' };
+  const N = 400;   // the scan steps the length down; the footprint is not monotone in L, since the section deepens as L falls
+  for (let i = 1; i <= N; i++) {
+    const L = ALARM_HEAD_L_REST * (1 - i / N);
+    if (alarmHeadFrameClear(L, hOf(L)) >= CLEAR_MARGIN) return { L, lOwner: 'frame (the drawn head off the pillar seats)' };
+  }
+  return { L: 0, lOwner: 'frame — no length clears' };
+})();
+const ALARM_HEAD_L = ALARM_HEAD_DIMS.L;
+const ALARM_HEAD_L_OWNER = ALARM_HEAD_DIMS.lOwner;
+const ALARM_HEAD_H_MATCH = alarmHeadHMatch(ALARM_HEAD_L);
 const ALARM_HEAD_H = Math.min(ALARM_HEAD_H_MATCH, ALARM_HEAD_H_BAND);
 const ALARM_HEAD_H_OWNER = ALARM_HEAD_H_MATCH <= ALARM_HEAD_H_BAND ? 'impedance match' : 'band (plate underside)';
+if (!(alarmHeadFrameClear(ALARM_HEAD_L, ALARM_HEAD_H) >= CLEAR_MARGIN - 1e-9))
+  console.warn(`§325: the drawn hammer head stands ${alarmHeadFrameClear(ALARM_HEAD_L, ALARM_HEAD_H).toFixed(3)} off a pillar seat — under CLEAR_MARGIN at every length`);
 if (!(ALARM_HEAD_L > ALARM_HEAD_R + CLEAR_MARGIN))
   console.warn(`§198: the head's length ${ALARM_HEAD_L.toFixed(3)} does not reach past its own eye — no room between rim and ring`);
 {
@@ -34022,7 +34067,7 @@ const GONG_ACOUSTICS = (() => {
       designModalMass_mg: OSC_STEEL_RHO * Math.PI * aW * aW * GONG_DESIGN_LEN_M * GONG_DESIGN.modalFrac * 1e6,
       straightLen_mm: GONG_STRAIGHT_LEN_M * 1000, straightLaw_Hz, arcRad: alpha, S: GONG_SEATED ? GS.sOf(L, 2 * aW) : (GONG_R / (GONG_WIRE_R / 2)) ** 2,
       designFixedPoint: { rounds: GONG_DESIGN.outer, solves: GONG_DESIGN.inner, closed: GONG_DESIGN.closed } },
-    hammer: { headH_u: ALARM_HEAD_H, headL_u: ALARM_HEAD_L, headHOwner: ALARM_HEAD_H_OWNER, headHMatch_u: ALARM_HEAD_H_MATCH,
+    hammer: { headH_u: ALARM_HEAD_H, headL_u: ALARM_HEAD_L, headLOwner: ALARM_HEAD_L_OWNER, headHOwner: ALARM_HEAD_H_OWNER, headHMatch_u: ALARM_HEAD_H_MATCH,
       headMass_mg: mHead * 1e6, blow: GONG_BLOW, liftSign: ALARM_HAM_LIFT_SIGN, faceR_u: ALARM_HEAD_FACE_R, restGap_u: HAMMER_HEAD_GAP,
       mass_mg: mRotor * 1e6, I_kgm2: I_h, effMass_mg: mEff * 1e6,
       pivotR_u: Math.hypot(hammerPiv.x, hammerPiv.y), pivotAzDeg: HAMMER_PIV_AZ / DEG2RAD, freeEndAzDeg: GONG_A1 / DEG2RAD,
