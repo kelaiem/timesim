@@ -3607,15 +3607,16 @@
       match. The two that are not spent are the ledger's — TODO 128, about 26 dB, and
       TODO 126, about 30 dB — and in every in-band row of the sweep the fundamental sits under
       5 dBA: a bare wire never rings its own note audibly, which is TODO 126 per octave.</p>
-      <p>§325 landing 12 brought the round case in off its 40 mm cap. The annulus the ring lives in was the cap's
-      leftover, and now the clamp screws' thread wall sets the case bore: Ø0.8 mm screws, bore r 47.79, the body
-      Ø38.22 mm. The ring re-solves itself to the smaller annulus, the same C7 on the same 1.1 mm wire, at
-      <b>r 45.84</b> in place of 48.19. The tighter curve wants a longer angle, so the design arc is <b>64.35°</b>
-      (63.54° on the straight law), and the overtone falls to 11.3 kHz. The hammer's station follows the ring in, and at full
-      draw its head reached the frame's 45° land. The land yields (TODO 290): the drawn head's footprint is declared ahead of
-      the frame, as a form case's seat already declares its strike group, and the land steps round from 40° to 36°. The
-      head keeps the whole radial room, 2.33 u at <b>39.4 mg</b>, its section set by the band's height (μ 1.01 against the
-      40 mm build's 1.19). The modelled level reads 0.23 dB under the 40 mm case's.</p>
+      <p>§325 brought the round case in off its 40 mm cap (landings 10–16). The annulus the ring lives in was the cap's
+      leftover, and now the clamp screws set the case bore: Ø0.6 mm screws, their thread wall and the rim's land outboard of
+      their bores, bore r 47.28, the body Ø37.83 mm. The ring re-solves itself to the smaller annulus, the same C7 on the
+      same 1.1 mm wire, at <b>r 45.33</b> in place of 48.19. The tighter curve wants a longer angle, so the design arc is
+      <b>65.11°</b> (64.26° on the straight law), and the overtone falls to 11.2 kHz. The hammer pays nothing for it. Its
+      station follows the ring in, and the frame's 45° land steps round from 40° to 36° to clear its draw (TODO 290). Where
+      the annulus can no longer hold the tail's crank, the three-quarter plate is notched round the strike group, as a form
+      case's plate is opened. The head runs under the plate's rim to the length its matched mass wants: 2.71 u at
+      <b>45.8 mg</b>, the match exactly (the rotor's μ 1.17 against the 40 mm build's 1.19). The modelled level reads
+      0.26 dB under the 40 mm case's.</p>
       <p>§268 built the spring. TODO 128's blade was redrawn each frame from a fixed stud to a
       bearing point that moved, so it changed length by 36% of itself over the draw and no
       rate could be read off it; the hammer's fall was a chosen time with an angular frequency
@@ -3708,28 +3709,28 @@
         <div class="fig-head"><span class="fig-no">PLATE 2</span><span class="fig-title">Dimension the wire, then strike it — the pitch its dimensions imply</span></div>
         <div class="controls">
           <label>arc
-            <input type="range" id="gongArc" min="25" max="120" value="64.35" step="0.01" aria-label="Gong arc in degrees, measured back from the free end">
+            <input type="range" id="gongArc" min="25" max="120" value="65.11" step="0.01" aria-label="Gong arc in degrees, measured back from the free end">
           </label>
           <label>wire Ø
             <input type="range" id="gongDia" min="4000" max="30000" value="29028" step="1" aria-label="Gong wire diameter in ten-thousandths of a unit">
           </label>
           <button id="gongStrike" style="background: rgba(255,255,255,0.06); border: 1px solid var(--hairline-strong); color: var(--text); border-radius: 6px; padding: 5px 12px; font: 11px system-ui, sans-serif; cursor: pointer;">STRIKE</button>
-          <span class="readout" id="gongReadout">arc 64.35° · Ø 2.90 u</span>
+          <span class="readout" id="gongReadout">arc 65.11° · Ø 2.90 u</span>
           <span class="chip ride" id="gongChip">SHIPPED VOICE</span>
         </div>
         <div class="fig-body">
           <svg viewBox="0 0 780 280" width="780" height="280" role="img"
                aria-label="Interactive plan view of the gong arc in the annulus between the three-quarter plate's rim and the case bore: the free end and hammer stay fixed while the arc slider moves the foot, and the wire slider thickens the wire; frequencies of the first two modes update from the beam law and the STRIKE button plays them">
-            <circle cx="390" cy="140" r="108.7" fill="none" stroke="var(--line)" stroke-width="0.75" stroke-dasharray="3 3"/>
-            <circle cx="390" cy="140" r="125.1" fill="none" stroke="var(--line)" stroke-width="0.75" stroke-dasharray="3 3"/>
+            <circle cx="390" cy="140" r="109.9" fill="none" stroke="var(--line)" stroke-width="0.75" stroke-dasharray="3 3"/>
+            <circle cx="390" cy="140" r="125.2" fill="none" stroke="var(--line)" stroke-width="0.75" stroke-dasharray="3 3"/>
             <text class="val" x="24" y="28">dashed: the plate's rim, and the case bore</text>
             <text class="val" x="24" y="42">the ring lives between them</text>
             <text class="val" x="24" y="56">— no balance opening out here (§198)</text>
             <line x1="380" y1="140" x2="400" y2="140" stroke="var(--line)" stroke-width="1"/>
             <line x1="390" y1="130" x2="390" y2="150" stroke="var(--line)" stroke-width="1"/>
-            <text class="val" x="300" y="166">movement axis · GONG_R 45.84</text>
+            <text class="val" x="300" y="166">movement axis · GONG_R 45.33</text>
             <path id="gongGhost" fill="none" stroke="var(--line)" stroke-width="1" stroke-dasharray="4 4"/>
-            <text class="val" x="560" y="128" id="gongGhostLbl">shipped arc 64.35°</text>
+            <text class="val" x="560" y="128" id="gongGhostLbl">shipped arc 65.11°</text>
             <path id="gongGlow" fill="none" stroke="var(--brass)" stroke-linecap="round" opacity="0"/>
             <path id="gongWire" fill="none" stroke="var(--steel)" stroke-linecap="round"/>
             <g id="gongFootG">
@@ -3749,7 +3750,7 @@
         <figcaption>The sound is the law run live — since §253 the arch's in-plane modes,
         <code>Ω = ρAω²R⁴/EI</code> solved for the arc's <code>S = (R/k)²</code> and angle, with
         steel's <code>E/ρ = 200 GPa / 7850</code>, <code>k = d/4</code> and
-        <code>R = GONG_R·UNIT_MM</code> (GONG_R 45.84, UNIT_MM 0.379) — <code>GONG_ARCH</code>
+        <code>R = GONG_R·UNIT_MM</code> (GONG_R 45.33, UNIT_MM 0.379) — <code>GONG_ARCH</code>
         ported verbatim, so the readout at the defaults IS the shipped voice, and the ratio
         beside f₂ is the arc's at that arc, not a constant. STRIKE plays what the sim plays on
         a hammer hit: the same two partials through <code>sndTone</code>'s envelope, each a
@@ -5859,7 +5860,7 @@
       // ring sits as far out in the annulus as its own block allows, the wall
       // being the bore's inscribed circle since §262; 48.2208 from §198 to §253). Only the two aesthetics knobs vary — same
       // domain as the sim.
-      var GONG_R = 45.8430, UNIT_MM = 0.72 / 1.9;
+      var GONG_R = 45.3262, UNIT_MM = 0.72 / 1.9;
       var GONG_STEEL_C = Math.sqrt(200e9 / 7850);
       var BL = [1.87510407, 4.69409113, 7.85475744];
       function mul(A, B, C) {
@@ -5928,12 +5929,12 @@
       var footLbl = document.getElementById('gongFootLbl');
       var fEls = [document.getElementById('gongF1'), document.getElementById('gongF2'), document.getElementById('gongF3')];
 
-      // Plan view: world az CCW from +x, y up; free end fixed at GONG_A1 (39.38°
+      // Plan view: world az CCW from +x, y up; free end fixed at GONG_A1 (40.12°
       // since §325 landing 12 — derived from the hammer pivot the lifting lever
       // sites, no longer a declared 15°), the foot at GONG_A1 − arc (measured back
       // from the free end, §56's trick). The frame shows the whole circle now, with
-      // the plate's rim (r 41.52) and the case bore (r 47.79) dashed at scale.
-      var CX = 390, CY = 140, RPX = 120, A1 = 39.38;
+      // the plate's rim (r 41.52) and the case bore (r 47.28) dashed at scale.
+      var CX = 390, CY = 140, RPX = 120, A1 = 40.12;
       function pt(azDeg, r) {
         var a = azDeg * Math.PI / 180;
         return [CX + (r || RPX) * Math.cos(a), CY - (r || RPX) * Math.sin(a)];
@@ -5946,7 +5947,7 @@
         }
         return d.join(' ');
       }
-      var SHIPPED_ARC = 64.35, SHIPPED_DIA = 2.9028;   // the derived defaults (aesthetics.gong — C7's arc on §253's arch law (§262), walked 0°, on stock-ceiling wire)
+      var SHIPPED_ARC = 65.11, SHIPPED_DIA = 2.9028;   // the derived defaults (aesthetics.gong — C7's arc on §253's arch law (§262), walked 0°, on stock-ceiling wire)
       ghost.setAttribute('d', arcPath(A1 - SHIPPED_ARC, A1));
 
       function fmtHz(f) {

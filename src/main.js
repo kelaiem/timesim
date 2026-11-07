@@ -95,7 +95,7 @@ import {
   BACK_PLATE_T, KEYLESS_STACK_R,              // TODO 211: the plate's thickness (hoisted — the keyless plane derives from its dial face) and the stem stack's reach that plane is cut against
   GEARED_BUILT,                               // §337 landing 2b: ?arrest=geared builds the geared Geneva where the direct one does not stand
   STOPWORK_BUILT,                             // §329: the Geneva stop-work is the shipped arrest where it stands — the one derived answer
-  unionLoops, filletReflexCorners,            // §336 landing 2: the flush cock's opening, merged from the windows it crosses
+  unionLoops, filletReflexCorners, discLessConvex,            // §336 landing 2: the flush cock's opening, merged from the windows it crosses
 } from './layout.js';
 import { genevaDims as swDims, PIN_FLOOR_U as SW_PIN_FLOOR, STUD_FLOOR_U as SW_STUD_FLOOR, chooseStopwork, starAngle as swStarAngle, engagementArc as swEngagementArc, travelTurns as swTravelTurns } from './stopwork-arrest.js';   // §329 landing 4: option B, the Geneva stop-work's line
 import { solveTrailingArrest, r1For as trailR1For, psi2ForThrow as trailPsi2ForThrow, epsOf as trailEpsOf, D_MIN as TRAIL_D_MIN, R1_MIN as TRAIL_R1_MIN } from './trailing-arrest.js';   // §329: the trailing arrest's line
@@ -3865,11 +3865,27 @@ const CASE_R_OUT_FRONT = CASE_R_IN + CASE_BAND_T;
 // (landing 10; with the alarm too since landing 12), so the clamps step down to the next catalogue watch-screw stock, Ø0.8 mm, the head carrying §186's own
 // 1.8:1 head-to-shaft proportion (Ø1.44 mm). Only the clamps change: the pillar thread and the plate screws keep their stock.
 // Engagement stays §3's 0.7 mm (CASE_CLAMP_ENG), now 0.875 D into the ledge rather than 0.7 D.
-const CASE_CLAMP_SHAFT_D = FORM ? CASE_SCREW_SHAFT_D : 0.8 / UNIT_MM;
+// §325 landing 14 — and without the alarm, Ø0.6 mm, the next stock down again (engagement 1.17 D). There the clamp's floor
+// sits under the rim's 1 mm bearing, so the bearing sets the bore (Ø37.78 mm), and the annulus holds nothing else. With the
+// alarm the strike group binds first: measured at Ø0.6 the ring stood at r 45.26 and the hammer's cranked tail found no
+// riser station clear of the plate's rim. So the alarm build keeps Ø0.8 (Ø38.22).
+const CASE_CLAMP_SHAFT_D = FORM ? CASE_SCREW_SHAFT_D : 0.6 / UNIT_MM;
 const CASE_CLAMP_HEAD_D = CASE_CLAMP_SHAFT_D * (CASE_SCREW_HEAD_D / CASE_SCREW_SHAFT_D);
+// §325 landing 15 — THE LEDGE'S BEARING IS A LAND, not a precedent. §186 held the rim's bearing on the ledge to "the 1 mm
+// the seat it replaces provided", a number carried from the part it replaced rather than derived. What the bearing does is
+// carry the movement and the clamps' preload into the band, and the load that would size it is shock, which this movement has
+// no specification for: TODO 192's honest residue, the same reason the pivots are sized by their own floors. So it is held
+// to the floor every land in this repo is held to, §62's STOCK_MIN_U (0.12 mm), a sliver of brass that carries any
+// load the movement can put on it many times over. It does not bind: the clamps' land floor governs both builds (the rim
+// bears 1.12 mm with the alarm and 1.02 without).
+const CASE_LEDGE_BEARING_MIN = STOCK_MIN_U;
 const CASE_R_BORE_BACK_FLOOR = Math.ceil(100 * Math.max(
   CASE_R_IN + CLEAR_MARGIN + CASE_CLAMP_HEAD_D / 2 + CASE_CLAMP_SHAFT_D / 2 + CASE_CLAMP_SHAFT_D / 4,   // the clamp thread's wall
-  CASE_R_IN + 1 / UNIT_MM + G.SEAT_FIT + plateR * G.PLATE_BEVEL_F,                                      // the rim's bearing
+  CASE_R_IN + CASE_LEDGE_BEARING_MIN + G.SEAT_FIT + plateR * G.PLATE_BEVEL_F,                          // the rim's bearing (§325 landing 15)
+  // the thread's wall again, with the circle held in by the rim's land (R_CLAMP's second term): the rim (fit and bevel
+  // off the bore), the land, the bore drawn at r + bevel, then the shaft's half and a pitch to CASE_R_IN
+  CASE_R_IN + CASE_CLAMP_SHAFT_D / 4 + CASE_CLAMP_SHAFT_D / 2 + STOCK_MIN_U + (CASE_CLAMP_SHAFT_D / 2 + G.SEAT_FIT)
+    + 2 * plateR * G.PLATE_BEVEL_F + G.SEAT_FIT,
 )) / 100;
 // §325 landing 12 — AND WITH THE ALARM TOO. The gong's radius is SOLVED off R_ANNULUS_OUT and the hammer is sited off the
 // gong, so the strike group follows the bore inward by its own laws (the gong ring 49.65 → 47.30, the hammer's spiral
@@ -3939,7 +3955,15 @@ const BASE_RIM_R = R_BORE_BACK - G.SEAT_FIT - plateR * G.PLATE_BEVEL_F;
 // ledge's own metal below it. The circle stands one CLEAR_MARGIN off the
 // bore wall by the head's radius — as far outboard as the head can bear,
 // which maximises the rim bearing inboard of it.
-const R_CLAMP = R_BORE_BACK - CLEAR_MARGIN - CASE_CLAMP_HEAD_D / 2;
+// §325 landing 13 — AND NO FURTHER OUT THAN THE RIM'S LAND ALLOWS. The screw passes through a clearance bore in the
+// rim, and the metal between that bore and the rim's edge is a LAND, owed §62's STOCK_MIN_U like any web between two
+// openings. The plate's extrude grows the rim outward and the bore inward through its depth, but its two FACES keep the
+// contours as drawn (TODO 175), so the land at a face is the drawn one: the rim's authored radius less the bore drawn
+// at r + bevelSize. Off the 40 mm cap the outboard rule left 0.36 of it. When the bore came in, Ø0.8 clamps left a
+// 0.17 sliver (0.064 mm), passing only because the rings did not quite cross, and Ø0.6 crossed them. So the circle is the
+// lesser of the two, and the floor below the bore (CASE_R_BORE_BACK_FLOOR) carries the thread wall at this term too.
+const R_CLAMP = Math.min(R_BORE_BACK - CLEAR_MARGIN - CASE_CLAMP_HEAD_D / 2,
+  BASE_RIM_R - (CASE_CLAMP_SHAFT_D / 2 + G.SEAT_FIT) - plateR * G.PLATE_BEVEL_F - STOCK_MIN_U);
 // Three screws: a plane is three points — the kinematic definition of the
 // bearing the clamps must define — and a lapped ring joint gains nothing
 // from over-constraint (real casing clamps run 2–4). Stations are a tripod,
@@ -4033,12 +4057,15 @@ const CASE_CLAMP_AZ = (() => {
   if (overlap < CASE_CLAMP_HEAD_D / 2)
     console.warn(`§186: a clamp head overlaps the rim's lid by ${overlap.toFixed(3)} u — under the `
       + `half-diameter floor ${(CASE_CLAMP_HEAD_D / 2).toFixed(3)}; the head is clamping air`);
+  // §325 landing 13: the rim's land outboard of each clearance bore, at the face (the drawn contours)
+  const land = BASE_RIM_R - (R_CLAMP + CASE_CLAMP_BORE_R + plateR * G.PLATE_BEVEL_F);
+  if (land < STOCK_MIN_U - 1e-9)
+    console.warn(`§325: the rim keeps ${land.toFixed(3)} u of land outboard of a clamp's bore — under §62's ${STOCK_MIN_U.toFixed(3)}`);
   // The bearing the rim actually gets: from the ledge's inner edge to the
-  // rim's authored outline, held to the 1 mm the old seat step gave (the
-  // precedent floor — a mount must not bear LESS than the seat it replaces).
-  if (BASE_RIM_R - CASE_R_IN < 1 / UNIT_MM)
-    console.warn(`§186: the rim bears ${((BASE_RIM_R - CASE_R_IN) * UNIT_MM).toFixed(2)} mm on the ledge — `
-      + 'under the 1 mm the seat step it replaces provided');
+  // rim's authored outline, held to CASE_LEDGE_BEARING_MIN (§325 landing 15; §186's 1 mm precedent before it).
+  if (BASE_RIM_R - CASE_R_IN < CASE_LEDGE_BEARING_MIN - 1e-9)
+    console.warn(`§186: the rim bears ${((BASE_RIM_R - CASE_R_IN) * UNIT_MM).toFixed(3)} mm on the ledge — `
+      + `under the ${(CASE_LEDGE_BEARING_MIN * UNIT_MM).toFixed(3)} mm land a ledge is owed`);
 }
 // (The z stations live in CASE_DIMS — they are measured from the metal once
 // the movement exists, and the dial side is −z, which the first cut of this
@@ -16814,14 +16841,33 @@ const tqStrikeOpeningDist = (x, y) => {
   }
   return inside ? -d : d;
 };
+// The strike opening's bounding circle, for tqOpeningClearance's exact skip (§325 landing 16): keyed on the opening object,
+// which the re-cut replaces.
+let _tqSodCircle = null;
+const tqStrikeOpeningBound = () => {
+  const O = STRIKE_PLATE_OPENING;
+  if (_tqSodCircle?.of !== O) {
+    let cx = 0, cy = 0; for (const [x, y] of O.pts) { cx += x; cy += y; } cx /= O.pts.length; cy /= O.pts.length;
+    let rho = 0; for (const [x, y] of O.pts) rho = Math.max(rho, Math.hypot(x - cx, y - cy));
+    _tqSodCircle = { of: O, cx, cy, rho };
+  }
+  return _tqSodCircle;
+};
 const tqOpeningClearance = (x, y) => {
   let c = Math.min(inCutClearance(x, y), FORM ? formInset(x, y) : plateR - Math.hypot(x, y));
-  if (STRIKE_PLATE_OPENING) c = Math.min(c, tqStrikeOpeningDist(x, y));
   for (const h of tqHoles) c = Math.min(c, Math.hypot(x - h.x, y - h.y) - h.r);
   for (const s of tqSlots) {
     const vx = s.bx - s.ax, vy = s.by - s.ay, L2 = vx * vx + vy * vy || 1e-9;
     const t = clamp(((x - s.ax) * vx + (y - s.ay) * vy) / L2, 0, 1);
     c = Math.min(c, Math.hypot(x - s.ax - t * vx, y - s.ay - t * vy) - s.r);
+  }
+  // §325 landing 16 — the strike opening LAST, and only where it can matter. Its distance from a point outside its bounding
+  // circle is at least |p − centre| − ρ, so where that already stands no nearer than the minimum of the other terms, the exact
+  // walk round the hull cannot change the answer. Exact, not approximate: the round build's opening made the re-cut's window
+  // re-solve walk its 225 vertices 242,697 times in one synchronous stretch (2.2 s held, boot-yield's 550 ms ceiling).
+  if (STRIKE_PLATE_OPENING) {
+    const B = tqStrikeOpeningBound();
+    if (Math.hypot(x - B.cx, y - B.cy) - B.rho < c) c = Math.min(c, tqStrikeOpeningDist(x, y));
   }
   return c;
 };
@@ -17103,6 +17149,8 @@ let ALARM_LINKAGE_STUDS = null;
 let ARREST_WINDOW = null;
 // TODO 266 — the strike group's opening in a FORM plate, cut at the re-cut (null on the round build)
 let STRIKE_PLATE_OPENING = null;
+let ROUND_TQ_OUTLINE = null;   // §325 landing 16 — the round three-quarter plate notched round the strike group, set at the re-cut
+let ALARM_TAIL_RISER_OPENS_PLATE = false;   // §325 landing 16 — the round riser found no station in the annulus, so the plate is notched
 
 // TODO 242 — the edges of windows already cut, as one flat list, kept only
 // where they can come within `reach` of (cx, cy): the land a later opening owes
@@ -17827,7 +17875,7 @@ const polySignedDist = (pts, x, y) => {
 // ROUND_STRIKE_KEEP_MEASURED) and generated here (src/strike-keep-round.js, tools/strike-keep-round.mjs) under the
 // gong's spec key, since the hammer is cut ~13,000 lines after this scan. A table for another spec is not read.
 let ROUND_STRIKE_KEEP_MEASURED = null;
-const ROUND_STRIKE_KEEP = !FORM && ALARM_BUILT && STRIKE_KEEP_ROUND?.specKey === GONG_SPEC_KEY ? STRIKE_KEEP_ROUND : null;
+const ROUND_STRIKE_KEEP = !FORM && ALARM_BUILT ? (STRIKE_KEEP_ROUND?.[GONG_SPEC_KEY] ?? null) : null;   // §325 landing 16: one row per spec that must boot clean
 const PILLAR_STRIKE_KEEP = (() => {
   if (ROUND_STRIKE_KEEP) return { hull: ROUND_STRIKE_KEEP.hull };   // TODO 290: the round build declares the drawn head alone
   const row = GONG_SEAT_LOOKUP && !GONG_SEAT_LOOKUP.refused ? GONG_SEAT_LOOKUP.row : null;
@@ -18696,7 +18744,7 @@ for (const s of pillarRivetSites) {
 const threeQuarterPlate = new THREE.Group();
 const buildTqPlateGeometry = () => G.makeThreeQuarterPlate({
   radius: plateR, thickness: TQ_T, cut: TQ_CUT,
-  ...(FORM ? { outline: FORM.loop() } : {}), // §307/§308 — the same shape as the base plate
+  ...(FORM ? { outline: FORM.loop() } : ROUND_TQ_OUTLINE ? { outline: ROUND_TQ_OUTLINE } : {}), // §307/§308 — the same shape as the base plate; §325 landing 16: the round plate's notch
   // The chaton sites' circles are drawn by their merged outline instead —
   // see tqHoles, where both representations are built and asserted equal.
   // §307 — every opening held inside the rectangle (formFilter; no-op round).
@@ -31373,7 +31421,7 @@ registerSub('Alarm hammer', 'Hammer', alarmHammerPivot);
 //    at r 40). So the head's LENGTH is the whole radial room at REST, and
 //    its HEIGHT is capped by the plate's underside less the margin, which
 //    the swing then owes at every pose (the battery's pair sweep holds it).
-const ALARM_HEAD_L_REST = ALARM_HEAD_FACE_R - GONG_BLOW * R_ANNULUS_IN;   // the whole radial room at rest
+const ALARM_HEAD_L_ROOM = ALARM_HEAD_FACE_R - GONG_BLOW * R_ANNULUS_IN;   // the whole radial room at rest
 const ALARM_HEAD_SILHOUETTE = 0.55 + 0.45 * (1 + 0.6) / 2;    // cheeks 0.55 L at full H, peen 0.45 L tapering to 0.6 H
 const alarmHeadHMatch = (L) => {
   const wireM = OSC_STEEL_RHO * Math.PI * (GONG_WIRE_R * OSC_U) ** 2 * GONG_DESIGN_LEN_M;   // kg, the design wire
@@ -31381,6 +31429,19 @@ const alarmHeadHMatch = (L) => {
   return Math.sqrt(headU3 / (L * ALARM_HEAD_SILHOUETTE));
 };
 const ALARM_HEAD_H_BAND = 2 * Math.min(Z_GONG - GONG_BAND_FLOOR.z, (TQ_BOT_Z - CLEAR_MARGIN - 0.01) - Z_GONG);
+// §325 landing 16 — THE HEAD MAY RUN UNDER THE PLATE'S RIM. The length law took the radial room between the face and the
+// three-quarter plate's rim, but the head rides at the ring's plane, under that plate: its height is already capped by the
+// plate's underside (ALARM_HEAD_H_BAND), and the rim is no wall at its plane. Its draw already carries it under the
+// rim (the paragraph above). So on the round build the head is as long as the room at rest or as long as the band-capped
+// section needs to reach the impedance match, whichever is longer. A head the match outgrows the annulus for runs inboard
+// under the plate, where its true tenants hold it: the frame's lands by ALARM_HEAD_DIMS and the strike keep (TODO 290),
+// everything else by the battery's sweeps. Brought in off the cap, the annulus left the head 1.81 u and 30.6 mg against a
+// 45.6 mg match (μ 0.78) at the Ø0.6 clamps' bore.
+const ALARM_HEAD_L_MATCH = (() => {
+  const wireM = OSC_STEEL_RHO * Math.PI * (GONG_WIRE_R * OSC_U) ** 2 * GONG_DESIGN_LEN_M;
+  return (wireM * GONG_DESIGN.modalFrac) / OSC_STEEL_RHO / OSC_U ** 3 / (ALARM_HEAD_SILHOUETTE * ALARM_HEAD_H_BAND ** 2);
+})();
+const ALARM_HEAD_L_REST = FORM ? ALARM_HEAD_L_ROOM : Math.max(ALARM_HEAD_L_ROOM, ALARM_HEAD_L_MATCH);
 // §325 landing 12 — AND THE DRAW CLEARS THE FRAME, as a law. The paragraph above relied on one measurement, for §198's
 // azimuth ("the nearest pillar seat at r 40"), for the draw clearing the base plate's tenants. When the ring came in off
 // the 40 mm cap the station moved, and the drawn head stood in the 45° quadrant's land (plateSeats: 3 poses in contact):
@@ -31409,7 +31470,7 @@ const alarmHeadFrameClear = (L, H) => Math.min(...ALARM_HEAD_FRAME_PTS.map(({ u,
 const ALARM_HEAD_DIMS = (() => {
   const hOf = (L) => Math.min(alarmHeadHMatch(L), ALARM_HEAD_H_BAND);
   if (alarmHeadFrameClear(ALARM_HEAD_L_REST, hOf(ALARM_HEAD_L_REST)) >= CLEAR_MARGIN)
-    return { L: ALARM_HEAD_L_REST, lOwner: 'the radial room at rest' };
+    return { L: ALARM_HEAD_L_REST, lOwner: ALARM_HEAD_L_REST > ALARM_HEAD_L_ROOM ? 'the match at the band (under the plate\'s rim)' : 'the radial room at rest' };
   const N = 400;   // the scan steps the length down; the footprint is not monotone in L, since the section deepens as L falls
   for (let i = 1; i <= N; i++) {
     const L = ALARM_HEAD_L_REST * (1 - i / N);
@@ -32235,33 +32296,41 @@ const ALARM_TAIL_RISER = (() => {
   // derived through the round chain (CASE_DIMS' skirt arm and pane floor), so
   // tall metal outboard of STRIKE_R_ALLOW would deepen the form case too.
   const ok = (ac) => {
-    if (FORM && !(ac - T / 2 > ALARM_HSPIRAL_COLLET_R)) return false;
+    if (!wall && !(ac - T / 2 > ALARM_HSPIRAL_COLLET_R)) return false;
     for (const th of thetas) {
       for (const x of xs(ac - T / 2, len)) for (const y of [-h, h]) if (!(rAt(x, y, th) < STRIKE_R_ALLOW)) return false;
-      if (!FORM) for (const x of xs(0, ac + T / 2)) for (const y of [-h, h]) if (!(rAt(x, y, th) >= R_ANNULUS_IN)) return false;
+      if (wall) for (const x of xs(0, ac + T / 2)) for (const y of [-h, h]) if (!(rAt(x, y, th) >= R_ANNULUS_IN)) return false;
     }
     return true;
   };
+  // §325 landing 16 — THE ROUND PLATE IS OPENED ONLY WHEN THE ANNULUS CANNOT HOLD THE CRANK. The rim wall is kept wherever it
+  // still admits a station, and only when it admits none does the round build take the form rule: the root runs under the
+  // plate past its rim, and the plate is notched round the metal (ROUND_TQ_OUTLINE, cut from this very sweep). Opening it
+  // regardless set the riser in the middle of the wider window, deep under the plate. The notch then reached a bore that the
+  // designed arrangement's annulus never needed opened.
+  let wall = !FORM;
   const hi = ALARM_LIFT_CONTACT_SPAN.lo - ALARM_LIFT_TIP_R - CLEAR_MARGIN - T / 2;
   // The window is one interval (the bar runs monotonically inward from the
   // pivot over the swing): a coarse walk finds a station inside it, and each
   // edge is then bisected to 1e-9 — a fine walk paid ~13 M radius reads in a
   // build that must yield every 40 ms (§239), and found the same window.
   const STEP = T / 25;
-  let seed = null;
-  for (let ac = T / 2; ac <= hi + 1e-12; ac += STEP) if (ok(ac)) { seed = ac; break; }
-  let lo0 = null, hi0 = null;
-  if (seed !== null) {
+  const search = () => {
+    let seed = null;
+    for (let ac = T / 2; ac <= hi + 1e-12; ac += STEP) if (ok(ac)) { seed = ac; break; }
+    if (seed === null) return [null, null];
     const edge = (inside, outside) => {   // bisect the ok/not-ok boundary between two stations
       let a = inside, b = outside;
       while (Math.abs(b - a) > 1e-9) { const m = (a + b) / 2; if (ok(m)) a = m; else b = m; }
       return a;
     };
-    lo0 = ok(T / 2) ? T / 2 : edge(seed, T / 2);
-    hi0 = ok(hi) ? hi : edge(seed, hi);
+    const lo = ok(T / 2) ? T / 2 : edge(seed, T / 2), hi1 = ok(hi) ? hi : edge(seed, hi);
     // the interval's claim, checked rather than assumed: its middle is a station too
-    if (!ok((lo0 + hi0) / 2)) { lo0 = null; hi0 = null; }
-  }
+    return ok((lo + hi1) / 2) ? [lo, hi1] : [null, null];
+  };
+  let [lo0, hi0] = search();
+  if (lo0 === null && wall) { wall = false; [lo0, hi0] = search(); }   // §325 landing 16: open the round plate
+  ALARM_TAIL_RISER_OPENS_PLATE = !FORM && !wall;
   if (lo0 === null) {
     console.warn(FORM ? `§278/TODO 267: no riser station on the hammer's tail stands inside r ${STRIKE_R_ALLOW.toFixed(4)} above and past the collet (r ${ALARM_HSPIRAL_COLLET_R.toFixed(4)}) below over the swing — the crank cannot be cut`
       : `§278: no riser station on the hammer's tail stands inside r ${STRIKE_R_ALLOW.toFixed(4)} above and outside r ${R_ANNULUS_IN.toFixed(4)} below over the swing — the crank cannot be cut`);
@@ -50546,7 +50615,7 @@ let STRIKE_PLATE_VERTS = 0;
 // (one margin either side) and the opening, with the post at the wire's foot.
 // tools/gong-seats.mjs writes it into the seat row as `keep`.
 let STRIKE_KEEP_MEASURED = null;
-if (FORM && ALARM_BUILT) {   // §325 landing 3: no strike group to open the plate for without the alarm
+if (ALARM_BUILT) {   // §325 landing 3: no strike group to open the plate for without the alarm; §325 landing 16: the round plate is opened too
   const z0 = TQ_BOT_Z - CLEAR_MARGIN, z1 = TQ_TOP_Z + CLEAR_MARGIN, xs = [], ys = [], v = new THREE.Vector3();
   const pz0 = PLATE_BACK_FACE - CLEAR_MARGIN, pz1 = TQ_BOT_Z + CLEAR_MARGIN, pxs = [], pys = [];
   const keepRot = alarmHammerPivot.rotation.z, N = 12;
@@ -51306,6 +51375,27 @@ const FUSEE_COCK = await (async () => {
   // the bearing collars, the plate screws, §71's occluder (which shares this
   // very geometry, and is built below) — follows without being rebuilt.
   // TODO 266/270 — the strike opening's lands, against the windows as re-solved round it
+  // §325 landing 16 — ON THE ROUND BUILD THE OPENING IS A NOTCH. The strike group stands at the round plate's rim, so its
+  // opening crosses the outline: the plate is cut as the disc less the opening (layout.js discLessConvex) rather than
+  // given a hole, and its lands are held exactly as a form plate's are (every bore, pivot boss, slot, window and the lifting
+  // lever's post TQ_LAND_MIN off the opening's edge; the outline term is the notch itself).
+  if (!FORM && STRIKE_PLATE_OPENING && ALARM_TAIL_RISER_OPENS_PLATE) {
+    const pts = STRIKE_PLATE_OPENING.pts;
+    const edgeD = (x, y) => tqStrikeOpeningDist(x, y);
+    const lands = [];
+    for (const hh of tqHoles) lands.push({ what: `bore (${hh.x.toFixed(2)}, ${hh.y.toFixed(2)})`, d: edgeD(hh.x, hh.y) - hh.r });
+    for (const p of tqPivots) lands.push({ what: `pivot boss (${p.x.toFixed(2)}, ${p.y.toFixed(2)})`, d: edgeD(p.x, p.y) - pivotBossR(p) });
+    for (const sl of tqSlots) for (let q = 0; q <= 8; q++) { const x = sl.ax + (sl.bx - sl.ax) * q / 8, y = sl.ay + (sl.by - sl.ay) * q / 8; lands.push({ what: 'slot', d: edgeD(x, y) - sl.r }); }
+    for (const w of TQ_WINDOWS.polys) for (const [x, y] of w.pts) lands.push({ what: `window '${w.name}'`, d: edgeD(x, y) });
+    lands.push({ what: 'the lifting lever\'s post', d: edgeD(LIFT_PIV.x, LIFT_PIV.y) - ALARM_LIFT_POST_R });
+    const worst = lands.reduce((a, b) => (b.d < a.d ? b : a), { d: Infinity });
+    if (worst.d < TQ_LAND_MIN - 1e-9)
+      console.warn(`§325: the strike group's notch in the round three-quarter plate leaves ${worst.d.toFixed(3)} of plate to ${worst.what} — need TQ_LAND_MIN ${TQ_LAND_MIN.toFixed(3)}`);
+    const notch = discLessConvex(plateR, pts, 720, 2 * G.PLATE_BEVEL);   // the junctions rounded as §336 rounds the cock's corners
+    if (notch) ROUND_TQ_OUTLINE = notch;
+    else if (pts.every(([x, y]) => Math.hypot(x, y) < plateR)) tqPolyHoles.push({ name: 'strike group (§325 landing 16)', pts });
+    STRIKE_PLATE_OPENING = Object.freeze({ pts, land: worst.d, landTo: worst.what, verts: STRIKE_PLATE_VERTS, notch: !!notch });
+  }
   if (FORM && STRIKE_PLATE_OPENING) {
     const pts = STRIKE_PLATE_OPENING.pts;
     {
