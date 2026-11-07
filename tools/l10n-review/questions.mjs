@@ -100,6 +100,24 @@ export const QUESTIONS = {
     { term: 'budík', en: 'alarm', q: 'The alarm is «budík», and the alarm\'s «regulátor» (governor) must not read as a timekeeping regulator. Does «regulátor budíku» read as the strike-speed governor?' },
     { term: 'půlkmit', en: 'beat', q: 'A beat is «půlkmit» (half-oscillation), with «frekvence» for the beat rate. Is «půlkmity za hodinu» how a Czech watch spec states 18,000 A/h?' },
     { term: 'modelováno', en: 'modelled / simulated', q: 'The honesty pair is «modelováno» (described) and «simulováno» (driven). Please check each paragraph keeps the two words apart.' },
+    // §273 landing two — the explainer's coined project words, and one seam it opened with the primer.
+    { term: 'zalomení', en: 'fold / fork', q: 'The explainer coins «zalomení» for a fold (packaging a straight design into the space) and «odbočka» for a fork (a declared departure from the line\'s numbers), avoiding «překlad», which is a translation. Do the two read as distinct acts to a Czech engineer?' },
+    { term: 'zámek', en: 'lock (escapement)', q: 'The explainer says «zámek» / «zamykací plocha» / «odemknutí» for the escapement\'s lock, as the chrome\'s «zámková páka» does; the primer says «zajištěno» / «odjištění» for the same contact. Which does a Czech watchmaker say, so the two pages can agree?' },
+    { term: 'ovin', en: 'wrap / coil (chain)', q: 'A wrap of chain on the fusee cone is «ovin» and a coil on the drum «vinutí», with «stoupání» for a groove\'s helical pitch and «rozteč» for a tooth pitch. Are those the workshop\'s words?' },
+  ],
+  // §217 — Finnish: the terms the landing coined or chose without a workshop's word.
+  fi: [
+    { term: 'fusee', en: 'fusee', q: 'The fusee is kept as the loan «fusee», compounded with a hyphen (fusee-kartio, fusee-ketju). Is there a Finnish trade word, or is the loan right?' },
+    { term: 'ankkuri', en: 'pallet fork / governor anchor', q: '«ankkuri» is the pallet fork AND the alarm governor\'s anchor, and the escape wheel is «ankkuripyörä». Does a Finnish workshop keep one word for both parts?' },
+    { term: 'käynti', en: 'escapement / rate', q: 'The escapement is «käynti» (the lever escapement «ankkurikäynti») and the rate «käyntinopeus». Do the two read apart, or does «käynti» alone already mean the rate to a watchmaker?' },
+    { term: 'pinioni', en: 'pinion', q: 'A pinion is the loan «pinioni». Is that the workshop\'s word, or is a native term (a small «hammaspyörä», «ratas») used?' },
+    { term: 'liipotin', en: 'balance / hairspring', q: 'The balance is «liipotin» and the hairspring «hiusjousi». Are those the trade words, rather than «tasapainopyörä» or «spiraalijousi»?' },
+    { term: 'Veto: paina sisään', en: 'pull / wind', q: 'Finnish says «vetää» for both PULL and WIND, so the crown\'s two strokes are worded apart («Asetus: vedä ulos» / «Veto: paina sisään») and winding is «veto». Do they read unambiguously?' },
+    { term: 'herätyksen säädin', en: 'alarm governor', q: 'The alarm governor is always «herätyksen säädin», never a bare «säädin», so it does not read as the timekeeping regulator («hienosäädin»). Does it read as the strike-speed governor?' },
+    { term: 'puolivärähdy', en: 'beat', q: 'A beat is «puolivärähdys» and the beat rate «värähdystaajuus». Is «puolivärähdystä tunnissa» how a Finnish spec states 18,000 A/h?' },
+    { term: 'syöte', en: 'axis (project word)', q: 'The project\'s «axis» (one input swept end to end) is «syöte», because «akseli» is the arbor. Does «syöte» read as an input swept, not as a data feed?' },
+    { term: 'taitto', en: 'fold / fork (project words)', q: 'The explainer coins «taitto» for a fold (a straight design packed into the space) and «haara» for a fork (a declared departure from the line\'s numbers). Do they read as distinct acts?' },
+    { term: 'mallinnettu', en: 'modelled / simulated', q: 'The honesty pair is «mallinnettu» (described) and «simuloitu» (driven), and the noun «malli» is kept for the AI model alone. Please check each paragraph keeps the two words apart.' },
   ],
   hi: [
     { term: 'पैलेट फोर्क', en: 'part names', q: 'Part names are transliterated loanwords («पैलेट फोर्क», «हेयरस्प्रिंग», «बैलेंस व्हील»), as Hindi engineering prose usually writes them. Is that the right side of the register split for these terms?' },

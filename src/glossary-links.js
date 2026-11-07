@@ -108,7 +108,15 @@ const esc = (s) => s.replace(/[/\\^$*+?.()|[\]{}]/g, '\\$&');
 // letter and can never hold — every non-Latin locale would match nothing at
 // all, silently, while English looked healthy.
 //
-//   'latin'   Latin and digits: `\b` at both ends, as ever.
+//   'latin'   Latin and digits: a WHOLE word, bounded by non-letters at both
+//             ends — the same rule as 'word' below, since §273 landing two.
+//             It was `\b` at both ends until the Czech explainer measured it:
+//             `\b` is ASCII, so it HOLDS between `zdvih` and `á`, and the
+//             throw link wrapped the first five letters of `zdvihátka` (a
+//             follower) and `zdvihací` (lifting) in six entries, and
+//             `odvozený` the stem of `odvozeným`. Any Latin locale with
+//             diacritics could carry the same class of wrong claim, which is
+//             why the fix is the rule and not a Czech exception.
 //   'cjk'     Han, Hiragana, Katakana: no spaces exist, so no boundary can be
 //             asked for in either direction and the form matches as a plain
 //             substring. These scripts do not inflect, so the form IS the word.
@@ -129,7 +137,7 @@ const scriptOf = (f) => (/^[A-Za-z0-9]/.test(f) ? 'latin'
   : /\p{Script=Hangul}/u.test(f[0]) ? 'hangul' : 'word');
 const bound = (f) => {
   switch (scriptOf(f)) {
-    case 'latin': return '\\b' + esc(f) + (/[A-Za-z0-9]$/.test(f) ? '\\b' : '');
+    case 'latin': return '(?<![\\p{L}\\p{N}])' + esc(f) + '(?![\\p{L}\\p{M}\\p{N}])';
     case 'cjk': return esc(f);
     case 'hangul': return '(?<!\\p{L})' + esc(f);
     default: return '(?<!\\p{L})' + esc(f) + '(?![\\p{L}\\p{M}])';

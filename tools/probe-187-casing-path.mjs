@@ -215,9 +215,13 @@ for (const s of res.slices) {
   last = key;
 }
 let ok = true;
-if (res.slices.length === 0 || !res.slices.some((s) => Math.abs(s.bore - 50.14) < 0.5)) {
+// The wall the control looks for is read off the RIM, not typed: §186 cuts the rim to the bore less SEAT_FIT (geometry.js,
+// 0.08), its reach measured above with the bevel in, so the bore stands at reach + SEAT_FIT (50.14 on the 40 mm cap, and
+// wherever §325 landing 12's floor puts it since). A typed 50.14 failed the control the day the bore moved.
+const BORE_EXPECT = res.rimReach + 0.08;
+if (res.slices.length === 0 || !res.slices.some((s) => Math.abs(s.bore - BORE_EXPECT) < 0.5)) {
   ok = false;
-  console.log('\nCONTROL FAIL: no slice reads a bore near the §186 back-bore wall (~50.14) — the scan measured nothing it can vouch for');
+  console.log(`\nCONTROL FAIL: no slice reads a bore near the §186 back-bore wall (~${BORE_EXPECT.toFixed(2)}) — the scan measured nothing it can vouch for`);
 } else {
   console.log('\nCONTROL PASS: the back bore wall is seen by the scan');
 }
