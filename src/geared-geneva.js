@@ -61,11 +61,18 @@ export function gearPair(reserveHours, m, n, { coneBoreR, module = MODULE_MIN_U 
 // a cantilever's radius at yield for force F (N) at free length L (units)
 const cantR = (F, L) => Math.cbrt((32 * F * L * UNIT_MM) / (Math.PI * (SPRING_SIGMA_Y_PA / 1e6))) / 2 / UNIT_MM;
 
+// The lock disc holds the star through the dwell only while its relief (cut against the star's sweep) leaves metal under both
+// ends of the lock arc, within GAMMA of the azimuth the star faces. Measured by sweeping r1 through the disc's own relief code
+// (tools/probe-337-geared-build.mjs reads the result as `unlocked`): n = 3 never holds, n = 4 holds from r1 2.65, n = 5 from 2.50
+// (m and the pin's size move it by less than the 0.05 step). Floors carry one step of margin above the first r1 that held.
+export const LOCK_R1_MIN = { 4: 2.7, 5: 2.55 };
+const lockR1Min = (n) => (n < 4 ? Infinity : (LOCK_R1_MIN[n] ?? LOCK_R1_MIN[5]));
+
 // the Geneva at its smallest orbit for a finger holding `fingerNmm`: sizes, dims and the floors it met
 export function sizeGeneva(n, fingerNmm, { r1Max = 12, step = 0.005 } = {}) {
   const L = LINE_LAYER_GAP_U + STOCK_MIN_U / 2;
   const hubR = PIVOT_MIN_U + STOCK_MIN_U;                    // the finger's arbor at the pivot floor and a wall
-  for (let r1 = step; r1 <= r1Max; r1 += step) {
+  for (let r1 = Math.max(step, lockR1Min(n)); r1 <= r1Max; r1 += step) {
     const F = fingerNmm / (r1 * UNIT_MM);
     const rPin = Math.max(PIN_FLOOR_U, cantR(F, L)), studR = Math.max(STUD_FLOOR_U, cantR(F, L));
     const d = genevaDims(n, r1, { rPin, studR });
