@@ -51706,7 +51706,8 @@ const FUSEE_COCK = await (async () => {
         // 20°, which is the INVOLUTE convention: these teeth are cycloidal by §136's choice, where the pressure angle is 0 at the pitch
         // point and greatest at the tip, so there is no such constant to borrow. gearToothSpec now derives each face's own maximum from
         // the law that already cut it, and the worse of the pair is this mesh's bound. What the 20° was hiding: it is CONSERVATIVE at the
-        // two reserves built here (13.90° at 24 h on 20:16, 15.49° at 36 h on 25:14) and OPTIMISTIC at the reserves whose finger the
+        // two reserves built here (MEASURED off a boot: 10.24° at 24 h on 25:20 — stage 2's record says 20:16, which the lock fix's
+        // LOCK_R1_MIN moved — and 15.49° at 36 h on 25:14) and OPTIMISTIC at the reserves whose finger the
         // line gives few leaves — chooseGearedStopwork accepts PINION_LEAVES_MIN (6), and §337 landing 1's own table reads 15:6 at 12 h
         // (37.22°), 12:6 at 15 h (36.35°) and 15:9 at 18 h (27.73°). The remaining eleven reserves would have been read at half the
         // real angle.
@@ -51723,7 +51724,9 @@ const FUSEE_COCK = await (async () => {
         const pinFull = azS - OMEGA * E / 2, pinEmpty = pinFull + OMEGA * (En / 2 - PHI_HI);
         const studsAdded = [{ x: C.x, y: C.y, F: best.pairForce.Ff }, { x: S.x, y: S.y, F: best.pairForce.Fs }];
         // the sweep walks the WHOLE range to the bound, not its two ends: the worst section is not monotonic in the angle, because the
-        // pin's force follows from the finger's balance about its stud and the mesh's line turns with it.
+        // pin's force follows from the finger's balance about its stud and the mesh's line turns with it. MEASURED, and it is not academic:
+        // at 36 h the worst falls at −5.81° of a ±15.49° range — an INTERIOR angle a two-endpoint sweep would have walked straight past.
+        // At 24 h it does land on the endpoint (−10.24°), so one reserve of the two would have read right by luck.
         let cockStall = null, worstPress = 0;
         for (const az of [pinFull, pinEmpty]) for (let i2 = -PRESS_STEPS; i2 <= PRESS_STEPS; i2++) for (const sgn of [1, -1]) {
           const pa = (PRESS_MAX * i2) / PRESS_STEPS;
