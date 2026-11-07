@@ -16841,14 +16841,33 @@ const tqStrikeOpeningDist = (x, y) => {
   }
   return inside ? -d : d;
 };
+// The strike opening's bounding circle, for tqOpeningClearance's exact skip (§325 landing 16): keyed on the opening object,
+// which the re-cut replaces.
+let _tqSodCircle = null;
+const tqStrikeOpeningBound = () => {
+  const O = STRIKE_PLATE_OPENING;
+  if (_tqSodCircle?.of !== O) {
+    let cx = 0, cy = 0; for (const [x, y] of O.pts) { cx += x; cy += y; } cx /= O.pts.length; cy /= O.pts.length;
+    let rho = 0; for (const [x, y] of O.pts) rho = Math.max(rho, Math.hypot(x - cx, y - cy));
+    _tqSodCircle = { of: O, cx, cy, rho };
+  }
+  return _tqSodCircle;
+};
 const tqOpeningClearance = (x, y) => {
   let c = Math.min(inCutClearance(x, y), FORM ? formInset(x, y) : plateR - Math.hypot(x, y));
-  if (STRIKE_PLATE_OPENING) c = Math.min(c, tqStrikeOpeningDist(x, y));
   for (const h of tqHoles) c = Math.min(c, Math.hypot(x - h.x, y - h.y) - h.r);
   for (const s of tqSlots) {
     const vx = s.bx - s.ax, vy = s.by - s.ay, L2 = vx * vx + vy * vy || 1e-9;
     const t = clamp(((x - s.ax) * vx + (y - s.ay) * vy) / L2, 0, 1);
     c = Math.min(c, Math.hypot(x - s.ax - t * vx, y - s.ay - t * vy) - s.r);
+  }
+  // §325 landing 16 — the strike opening LAST, and only where it can matter. Its distance from a point outside its bounding
+  // circle is at least |p − centre| − ρ, so where that already stands no nearer than the minimum of the other terms, the exact
+  // walk round the hull cannot change the answer. Exact, not approximate: the round build's opening made the re-cut's window
+  // re-solve walk its 225 vertices 242,697 times in one synchronous stretch (2.2 s held, boot-yield's 550 ms ceiling).
+  if (STRIKE_PLATE_OPENING) {
+    const B = tqStrikeOpeningBound();
+    if (Math.hypot(x - B.cx, y - B.cy) - B.rho < c) c = Math.min(c, tqStrikeOpeningDist(x, y));
   }
   return c;
 };
