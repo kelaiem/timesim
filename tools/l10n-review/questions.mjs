@@ -100,6 +100,10 @@ export const QUESTIONS = {
     { term: 'budík', en: 'alarm', q: 'The alarm is «budík», and the alarm\'s «regulátor» (governor) must not read as a timekeeping regulator. Does «regulátor budíku» read as the strike-speed governor?' },
     { term: 'půlkmit', en: 'beat', q: 'A beat is «půlkmit» (half-oscillation), with «frekvence» for the beat rate. Is «půlkmity za hodinu» how a Czech watch spec states 18,000 A/h?' },
     { term: 'modelováno', en: 'modelled / simulated', q: 'The honesty pair is «modelováno» (described) and «simulováno» (driven). Please check each paragraph keeps the two words apart.' },
+    // §273 landing two — the explainer's coined project words, and one seam it opened with the primer.
+    { term: 'zalomení', en: 'fold / fork', q: 'The explainer coins «zalomení» for a fold (packaging a straight design into the space) and «odbočka» for a fork (a declared departure from the line\'s numbers), avoiding «překlad», which is a translation. Do the two read as distinct acts to a Czech engineer?' },
+    { term: 'zámek', en: 'lock (escapement)', q: 'The explainer says «zámek» / «zamykací plocha» / «odemknutí» for the escapement\'s lock, as the chrome\'s «zámková páka» does; the primer says «zajištěno» / «odjištění» for the same contact. Which does a Czech watchmaker say, so the two pages can agree?' },
+    { term: 'ovin', en: 'wrap / coil (chain)', q: 'A wrap of chain on the fusee cone is «ovin» and a coil on the drum «vinutí», with «stoupání» for a groove\'s helical pitch and «rozteč» for a tooth pitch. Are those the workshop\'s words?' },
   ],
   hi: [
     { term: 'पैलेट फोर्क', en: 'part names', q: 'Part names are transliterated loanwords («पैलेट फोर्क», «हेयरस्प्रिंग», «बैलेंस व्हील»), as Hindi engineering prose usually writes them. Is that the right side of the register split for these terms?' },

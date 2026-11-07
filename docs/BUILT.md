@@ -91,7 +91,7 @@ that band's swept footprint.
 | [§276](built/0276.md) | The jumper's siting scan puts first the check that refuses most per millisecond; `?d4=16` boots inside the spec-boot window again | 1 |
 | [§275](built/0275.md) | Sound is always off at load; the boot screen's button is the opt-in | 1 |
 | [§274](built/0274.md) | Declared locale coverage: a row says which pages it carries, and the gates hold it both ways | 1 |
-| [§273](built/0273.md) | Czech: the chrome and the primer, the first locale to declare fewer than three surfaces | 1 |
+| [§273](built/0273.md) | Czech: the chrome and the primer, the first locale to declare fewer than three surfaces | 2 |
 | [§272](built/0272.md) | The public roadmap: in-progress items, published by explicit act | 1 |
 | [§269](built/0269.md) | The case as the gong's radiator: the foot's reaction, the rigid watch, the structure-borne path measured | 1 |
 | [§268](built/0268.md) | The hammer spring is a spring: a torsion spiral on the hammer's post, the fall √(k/I) | 1 |
