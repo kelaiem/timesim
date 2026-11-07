@@ -15,15 +15,24 @@
 //   G  the Geneva's floors hold at its orbit (a lock window, a hub round the star's bore), the star's tips clear the finger's
 //      own hub by a margin, and the pin and stud, re-derived here as cantilevers at the line's free length, stand at or under
 //      SPRING_SIGMA_Y_PA at the pin's load (stall / g / r1);
-//   M  the orbit is the SMALLEST that holds: one step (0.005) less fails a floor or a stress.
+//   M  the orbit is the SMALLEST THE LINE MAY TAKE: one step (0.005) in is under the LOCK FLOOR, or fails a Geneva floor,
+//      the hub clearance or a stress — and the probe names WHICH, per reserve, so an orbit that stops being the binding
+//      floor is visible rather than merely red.
 // Controls: a pair one tooth off misses the travel (E); a five-leaf pinion is refused (C); a module under the floor cuts a
 // tooth thinner than stock (C); the orbit one step in fails (M).
+//
+// RULE M WAS STALE FROM §337 landing 2b's LOCK FIX until stage 3, and nothing ran this probe to say so. The fix made
+// sizeGeneva start its scan at LOCK_R1_MIN, so the orbit the line takes is the smallest that holds the lock AS WELL as the
+// floors — and at every one of the thirteen reserves it is now the lock floor exactly (2.700 at n = 4). M read only the
+// floors, so "a step in still holds" was TRUE at all thirteen and this probe exited 1 on main for as long as the fix had
+// been in. Stage 3 fixed the rule; the .github/workflows/battery.yml wiring that would keep it from recurring is written
+// but NOT LANDED, so until it is, this probe is still a local boot and nothing fails when it goes red.
 //   node tools/probe-337-geared-geneva.mjs [--par N]
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { bootMany } from './boot-pool.mjs';
-import { chooseGearedStopwork, gearPair, windTurns, MODULE_MIN_U, DEDENDUM_F, LINE_LAYER_GAP_U } from '../src/geared-geneva.js';
+import { chooseGearedStopwork, gearPair, windTurns, lockR1Min, MODULE_MIN_U, DEDENDUM_F, LINE_LAYER_GAP_U } from '../src/geared-geneva.js';
 import { simulateStops, travelTurns, genevaDims, floorsHold, PIN_FLOOR_U, STUD_FLOOR_U } from '../src/stopwork-arrest.js';
 import { STOCK_MIN_U, PIVOT_MIN_U, CLEAR_MARGIN, PINION_LEAVES_MIN, SPRING_SIGMA_Y_PA, UNIT_MM } from '../src/layout.js';
 
@@ -40,6 +49,8 @@ let failed = 0;
 const pass = (m) => console.log(`PASS  ${m}`);
 const fail = (m) => { failed++; console.log(`FAIL  ${m}`); };
 const f3 = (x) => x.toFixed(3);
+const STEP = 0.005;                      // sizeGeneva's own scan step: what "one step in" means
+const bindsAt = [];                      // M: which floor binds each reserve's orbit, so the rule reports and does not merely pass
 const sigma = (F, L, r) => (32 * F * L * UNIT_MM) / (Math.PI * (2 * r * UNIT_MM) ** 3);   // N/mm² = MPa
 const yieldMPa = SPRING_SIGMA_Y_PA / 1e6;
 
@@ -71,16 +82,24 @@ for (const { h, stallNmm, b } of lines) {
   const sPin = sigma(F, L, g.rPin), sStud = sigma(F, L, g.studR);
   if (!(floorsHold(g) && g.a - g.rTip >= hubR + CLEAR_MARGIN - 1e-12 && sPin <= yieldMPa * (1 + 1e-9) && sStud <= yieldMPa * (1 + 1e-9) && Math.abs(F - g.F) < 1e-9))
     fail(`G ${h} h: floors ${floorsHold(g)}, tip-to-hub ${f3(g.a - g.rTip - hubR)}, pin ${f3(sPin)} MPa, stud ${f3(sStud)} MPa (yield ${yieldMPa})`);
-  // M: one step in
-  const r1 = g.r1 - 0.005, F1 = stallNmm / b.g / (r1 * UNIT_MM);
+  // M: one step in — against ALL FOUR of the floors the line scans from, the lock's among them since landing 2b's fix
+  const r1 = g.r1 - STEP, F1 = stallNmm / b.g / (r1 * UNIT_MM);
   const cr = (Fx) => Math.cbrt((32 * Fx * L * UNIT_MM) / (Math.PI * yieldMPa)) / 2 / UNIT_MM;
-  const d1 = genevaDims(b.n, r1, { rPin: Math.max(PIN_FLOOR_U, cr(F1)), studR: Math.max(STUD_FLOOR_U, cr(F1)) });
-  if (floorsHold(d1) && d1.a - d1.rTip >= hubR + CLEAR_MARGIN) fail(`M ${h} h: the orbit ${f3(r1)}, a step in, still holds — the line did not take the smallest`);
+  const rPin1 = Math.max(PIN_FLOOR_U, cr(F1)), studR1 = Math.max(STUD_FLOOR_U, cr(F1));
+  const d1 = genevaDims(b.n, r1, { rPin: rPin1, studR: studR1 });
+  const binds = r1 < lockR1Min(b.n) - 1e-12 ? 'the lock floor'
+    : !floorsHold(d1) ? 'a Geneva floor'
+      : !(d1.a - d1.rTip >= hubR + CLEAR_MARGIN) ? 'the hub clearance'
+        : (sigma(F1, L, rPin1) > yieldMPa * (1 + 1e-9) || sigma(F1, L, studR1) > yieldMPa * (1 + 1e-9)) ? 'a stress'
+          : null;
+  if (!binds) fail(`M ${h} h: the orbit ${f3(r1)}, a step in, breaks nothing — the line did not take the smallest`);
+  else bindsAt.push(`${h} h ${binds}`);
 }
 if (!failed) pass(`E every finger travels exactly its star's m + ½ + 1/n, and every star's simulated count agrees`);
 if (!failed) pass(`C every pair is cuttable: pinions ≥ ${PINION_LEAVES_MIN} leaves, module ${f3(MODULE_MIN_U)} (the §50 floor), the cone's wheel bored over its ${coneBoreR} arbor with a wall`);
 if (!failed) pass(`G every Geneva holds its floors and clears its hub, its pin and stud at or under ${yieldMPa} MPa at the stall`);
-if (!failed) pass(`M every orbit is the smallest that holds`);
+if (!failed) pass(`M every orbit is the smallest the line may take, one ${STEP} step above what binds it — ${
+  [...new Set(bindsAt.map((x) => x.split(' h ')[1]))].map((w) => `${w} at ${bindsAt.filter((x) => x.endsWith(w)).length} reserve(s)`).join(', ')}`);
 
 // controls
 {
