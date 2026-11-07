@@ -448,13 +448,29 @@ const cyPsiAtH = (R, rho, h) => {
   return (lo + hi) / 2;
 };
 const cyRetreat = (R, rho, h) => cyEpi(R, rho, cyPsiAtH(R, rho, h))[3];
-const cyArc = (R, rho, h) => {
+// §337 — THE CONTACT ARC'S CENTRAL ANGLE on the generating circle, from the pitch
+// point to where the face reaches height h. Factored out of cyArc (which is rho
+// times it) so the PRESSURE ANGLE below reads the same law rather than a second
+// copy of it — CLAUDE.md's recurring defect is one law written down twice with only
+// one copy carrying a change.
+const cyContactAngle = (R, rho, h) => {
   if (h <= 0) return 0;
   const c = ((R + rho) ** 2 + rho ** 2 - (R + h) ** 2) / (2 * rho * (R + rho));
-  if (c <= -1) return rho * Math.PI;
+  if (c <= -1) return Math.PI;
   if (c >= 1) return 0;
-  return rho * Math.acos(c);
+  return Math.acos(c);
 };
+const cyArc = (R, rho, h) => rho * cyContactAngle(R, rho, h);
+// §337 — A CYCLOIDAL FACE'S MAXIMUM PRESSURE ANGLE, DERIVED. These teeth are
+// cycloidal by §136's choice, so the involute 20° convention is not theirs and this
+// repo rightly has no constant for it. The contact point rides the generating circle
+// held tangent at the pitch point (constraint 3's own construction), so the common
+// normal at a contact point is the CHORD from the pitch point to it — and by the
+// tangent–chord angle, the angle that chord makes with the pitch circles' common
+// tangent is HALF the arc's central angle. The pressure angle is therefore 0 at the
+// pitch point and greatest where contact leaves the face, at the tip: the member's
+// own addendum gives its maximum, and a pair's bound is the worse of the two.
+const cyPressureAngleMax = (R, rho, h) => cyContactAngle(R, rho, h) / 2;
 // The pair solve: both members' faces on the PAIR's exact conjugate circles,
 // larger member first. Returns the two addenda.
 //
@@ -563,6 +579,7 @@ export function gearToothSpec({ module: m, teeth, mates }) {
     addendum: h, dedendum: ded, tipR: Rp + h, rootR: Rp - ded,
     halfThickAng: ((Math.PI * m) / 2 - cyBacklash(m) / 2) / 2 / Rp,
     backlash: cyBacklash(m), clearance: cyClear(m), chordErr: cyEps(m),
+    maxPressureAngle: cyPressureAngleMax(Rp, faceGenR, h),   // §337: radians, at the tip — this face's own worst
     infeasible,
   };
 }
