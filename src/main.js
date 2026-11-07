@@ -3849,7 +3849,20 @@ const CASE_R_IN = plateR + CASE_CLEAR;       // 1 mm movement-ring clearance
 // minimal today would be re-grown by that entry tomorrow. The cap assert
 // below stays as the tripwire; equality is legal by construction.
 const CASE_R_OUT_FRONT = CASE_R_IN + CASE_BAND_T;
-const CASE_R_OUT = CASE_WIDTH_MAX;
+// §325 landing 10 — WITHOUT THE ALARM THE BACK BAND IS SIZED TO ITS TENANTS. The cap is spent whole because §198
+// hangs the gong in the annulus between the plate and this bore (the gong's radius is solved off R_ANNULUS_OUT), and
+// with the alarm unbuilt that annulus holds nothing but what the bore itself places: the plate's mounting rim and the
+// clamp screws (measured on a booted ?alarm=0, every mesh outside plateR). So the bore comes in to the larger of the two
+// floors the §186 block below already asserts — the clamp thread's inboard wall (one pitch, Ø/4, of metal between the
+// tapped hole and CASE_R_IN, R_CLAMP standing CLEAR_MARGIN plus a head radius off the bore) and the rim's 1 mm bearing
+// on the ledge (BASE_RIM_R's fit and bevel taken off) — rounded UP to the 0.01 grid so both hold past float noise, and
+// the band keeps its one wall. The round case only: a form case's back follows its own fitted outline, and its readers
+// of CASE_R_OUT (the back envelope's bins, the footprint's fallback box) keep the cap they were generated against.
+const CASE_R_BORE_BACK_FLOOR = Math.ceil(100 * Math.max(
+  CASE_R_IN + CLEAR_MARGIN + CASE_SCREW_HEAD_D / 2 + CASE_SCREW_SHAFT_D / 2 + CASE_SCREW_SHAFT_D / 4,   // the clamp thread's wall
+  CASE_R_IN + 1 / UNIT_MM + G.SEAT_FIT + plateR * G.PLATE_BEVEL_F,                                      // the rim's bearing
+)) / 100;
+const CASE_R_OUT = ALARM_BUILT || FORM ? CASE_WIDTH_MAX : CASE_R_BORE_BACK_FLOOR + CASE_BAND_T;
 // The back band's bore: one wall inside the body outer — the same 1 mm
 // dress-watch wall the front keeps, and the gasket annulus keeps exactly
 // its old proportions inside it.
