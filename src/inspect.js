@@ -9164,6 +9164,8 @@ export const STOCK_KIND_BY_MESH = {
   // SW_STUD_R / SW_HEAD_T = PIVOT_MIN_U): pin-class, as §47's are. Read 'wheel' by default, the head's 0.07 mm failed the
   // 0.12 mm sheet floor it was never cut to (found flipping the default arrest to the stop-work).
   stopworkStud: 'pivot',         // the planted stud the star turns on
+  gearedFingerStud: 'pivot',     // §337: the planted stud the finger turns on
+  gearedFingerStudHead: 'pivot', // its retaining head
   stopworkStudHead: 'pivot',     // its retaining head
   stopworkPin: 'pivot',          // the finger's pin, in the cone's top face
   // §99 — the alarm barrel's own click:
