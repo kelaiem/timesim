@@ -51701,7 +51701,18 @@ const FUSEE_COCK = await (async () => {
         // mesh on the pinion, the pin's reaction through the star's pivot (the crank square to the line pin → star at a stop), the cone
         // wheel's reaction shared by the two bushes in proportion to its height. The finger's balance gives the pin's force.
         const K = P.barrel, eD = Math.hypot(C.x - K.x, C.y - K.y), ex = (C.x - K.x) / eD, ey = (C.y - K.y) / eD, Qx = K.x + ex * rpCone, Qy = K.y + ey * rpCone;
-        const uBush = (zG - FUSEE_COCK.load.zLow) / (FUSEE_COCK.bossMid - FUSEE_COCK.load.zLow), PRESS = (20 * Math.PI) / 180;
+        const uBush = (zG - FUSEE_COCK.load.zLow) / (FUSEE_COCK.bossMid - FUSEE_COCK.load.zLow);
+        // §337 stage 3 — THE MESH'S PRESSURE ANGLE IS DERIVED, NOT ASSUMED (the owner's call, 2026-11-07). It stood at an assumed
+        // 20°, which is the INVOLUTE convention: these teeth are cycloidal by §136's choice, where the pressure angle is 0 at the pitch
+        // point and greatest at the tip, so there is no such constant to borrow. gearToothSpec now derives each face's own maximum from
+        // the law that already cut it, and the worse of the pair is this mesh's bound. What the 20° was hiding: it is CONSERVATIVE at the
+        // two reserves built here (13.90° at 24 h on 20:16, 15.49° at 36 h on 25:14) and OPTIMISTIC at the reserves whose finger the
+        // line gives few leaves — chooseGearedStopwork accepts PINION_LEAVES_MIN (6), and §337 landing 1's own table reads 15:6 at 12 h
+        // (37.22°), 12:6 at 15 h (36.35°) and 15:9 at 18 h (27.73°). The remaining eleven reserves would have been read at half the
+        // real angle.
+        const PRESS_MAX = Math.max(G.gearToothSpec({ module: GG_MODULE_U, teeth: best.zCone, mates: [best.zFinger] }).maxPressureAngle,
+          G.gearToothSpec({ module: GG_MODULE_U, teeth: best.zFinger, mates: [best.zCone] }).maxPressureAngle);
+        const PRESS_STEPS = Math.max(4, Math.ceil((PRESS_MAX * 180) / Math.PI));   // about one degree a step
         const stopVectors = (pinAz, sgn, pa) => {
           const px = C.x + r1 * Math.cos(pinAz), py = C.y + r1 * Math.sin(pinAz), dL = Math.hypot(S.x - px, S.y - py), dx = (S.x - px) / dL, dy = (S.y - py) / dL;
           const ta = Math.atan2(ex, -ey) + pa, mx = sgn * Fmesh * Math.cos(ta), my = sgn * Fmesh * Math.sin(ta);          // the mesh on the pinion
@@ -51711,15 +51722,33 @@ const FUSEE_COCK = await (async () => {
         };
         const pinFull = azS - OMEGA * E / 2, pinEmpty = pinFull + OMEGA * (En / 2 - PHI_HI);
         const studsAdded = [{ x: C.x, y: C.y, F: best.pairForce.Ff }, { x: S.x, y: S.y, F: best.pairForce.Fs }];
-        let cockStall = null;
-        for (const az of [pinFull, pinEmpty]) for (const pa of [PRESS, -PRESS]) for (const sgn of [1, -1]) {
+        // the sweep walks the WHOLE range to the bound, not its two ends: the worst section is not monotonic in the angle, because the
+        // pin's force follows from the finger's balance about its stud and the mesh's line turns with it.
+        let cockStall = null, worstPress = 0;
+        for (const az of [pinFull, pinEmpty]) for (let i2 = -PRESS_STEPS; i2 <= PRESS_STEPS; i2++) for (const sgn of [1, -1]) {
+          const pa = (PRESS_MAX * i2) / PRESS_STEPS;
           const r = FUSEE_COCK.stall(Fmesh * (zG - FUSEE_COCK.load.zLow), studsAdded, stopVectors(az, sgn, pa));
-          if (!cockStall || r.statics.rootMoment_Nu > cockStall.statics.rootMoment_Nu) cockStall = r;
+          if (!cockStall || r.statics.rootMoment_Nu > cockStall.statics.rootMoment_Nu) { cockStall = r; worstPress = pa; }
         }
         const over = (q) => [['bar', q.bar_Pa, cockStall.yield_Pa], ['leg', q.leg_Pa, cockStall.yield_Pa], ['post', q.post_Pa, cockStall.yield_Pa], ['steady pins', q.pinShear_Pa, cockStall.pinShearYield_Pa]].filter(([, v, y]) => v > y);
         if (over(cockStall.statics).length) console.warn(`§337: at the stall the fusee cock stands over its yield: ${over(cockStall.statics).map(([k, v, y]) => `${k} ${(v / y).toFixed(2)}×`).join(', ')} — it was sized before the studs existed`);
+        // §337 stage 3 — WHICH READING GATES, and the waiver is AUDITED rather than silent (the owner's call, 2026-11-07). The gate is
+        // STATICS. The ADDED rule is this file's bound for loads whose DIRECTIONS ARE UNKNOWN — the cock's own sizing block says exactly
+        // that — and the stop-work hangs WHOLLY from this cock: its forces close inside it as a couple, so adding their magnitudes bounds
+        // a net force the mechanism cannot apply. §336 landing 3 set the precedent on this same cock, one landing earlier: on the
+        // stop-work's build the stop is KNOWN, not bounded. Reading it as statics is also what FOUND the crank's real defect (a couple
+        // does not fall toward the boss, 8× yield), so it is the more discriminating instrument, not the laxer one. Both readings stay
+        // in the record so the relaxation is legible, and the guard below is the audit: the day the cock holds the stall under ADDED too,
+        // this waiver has stopped being needed and says so rather than sitting here forever.
+        const stallWaiver = { reading: 'statics',
+          why: '§337: the stop-work hangs wholly from the cock, so its forces close inside it as a couple — the ADDED rule would bound a net force the mechanism cannot apply',
+          addedOver: over(cockStall.added).map(([k, v, y]) => [k, Math.round((v / y) * 100) / 100]),
+          staticsOver: over(cockStall.statics).map(([k, v, y]) => [k, Math.round((v / y) * 100) / 100]) };
+        if (!stallWaiver.addedOver.length) console.warn('§337: the fusee cock now holds the stall under the ADDED rule as well — the statics waiver is no longer needed and should be retired');
         WIND_ARREST.stopwork = { built: true, geared: true, n, m, travel: swTravelTurns(m, n), wind: T, ratio, r1, rPin, a, rTip, lockR: R_L, reliefMin, unlockedDeg,
-          lockArcDeg: (GAMMA * 180) / Math.PI, discOpenDeg: (open.filter(Boolean).length * 360) / NA, discRuns: runs.length, openRun: runs.map((r0) => { let e = r0; while (open[(e + 1) % NA] && e - r0 < NA) e++; return [(r0 * 360) / NA, (e * 360) / NA]; }), unlockedAt: unlockedAt.filter((_, i2) => i2 % 8 === 0).slice(0, 12), nUnlocked: unlockedAt.length, fullArcs, studFr, studSr: SW_STUD_R, Fmesh, pairForce: best.pairForce, cockStall, z: [zA, zA + 3 * t + 2 * M], branchW: best.armW };
+          lockArcDeg: (GAMMA * 180) / Math.PI, discOpenDeg: (open.filter(Boolean).length * 360) / NA, discRuns: runs.length, openRun: runs.map((r0) => { let e = r0; while (open[(e + 1) % NA] && e - r0 < NA) e++; return [(r0 * 360) / NA, (e * 360) / NA]; }), unlockedAt: unlockedAt.filter((_, i2) => i2 % 8 === 0).slice(0, 12), nUnlocked: unlockedAt.length, fullArcs, studFr, studSr: SW_STUD_R, Fmesh, pairForce: best.pairForce, cockStall, stallWaiver,
+          pressureAngle: { maxDeg: (PRESS_MAX * 180) / Math.PI, steps: PRESS_STEPS, worstDeg: (worstPress * 180) / Math.PI, derived: 'gearToothSpec.maxPressureAngle, the worse face of the pair' },
+          z: [zA, zA + 3 * t + 2 * M], branchW: best.armW };
         WIND_ARREST.geared.built = true;
         WIND_ARREST.pose(1);
         registerLabel('Winding stop-work', swUnit);

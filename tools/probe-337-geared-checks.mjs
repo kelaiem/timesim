@@ -25,7 +25,10 @@ const [r] = await bootMany([`arrest=geared&reserveh=${hours}`], EXPR, { concurre
 console.log(`== ${hours} h ==  boot ${r.bootError ?? 'ok'}, ${r.warnings.length} warning(s)`);
 for (const w of r.warnings) if (/§337|§329|§336/.test(w)) console.log('  warn:', String(w).slice(0, 240));
 const { sw, ...results } = r.extra ?? {};
-if (sw) console.log('  studs: finger', sw.studFr, 'star', sw.studSr, 'forces', JSON.stringify(sw.pairForce), 'mesh', sw.Fmesh, '\n  cock at the stall:', JSON.stringify(sw.cockStall));
+if (sw) console.log('  studs: finger', sw.studFr, 'star', sw.studSr, 'forces', JSON.stringify(sw.pairForce), 'mesh', sw.Fmesh,
+  '\n  pressure angle (derived, \u00a7337 stage 3):', JSON.stringify(sw.pressureAngle),
+  '\n  stall waiver:', JSON.stringify(sw.stallWaiver),
+  '\n  cock at the stall:', JSON.stringify(sw.cockStall));
 for (const [name, res] of Object.entries(results)) {
   const s = JSON.stringify(res);
   console.log(`\n-- ${name} (${s.length} chars)\n${s.slice(0, 1500)}${s.length > 1500 ? ' …' : ''}`);
