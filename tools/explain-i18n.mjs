@@ -296,6 +296,11 @@ const MARKS = {
   // case ending attached with a COLON (18 000:n) stops the parse at the colon,
   // so the value reads 18000: the colon is in no token class here.
   fi: { group: ['\u00a0', '\u202f', '\u2009'], dec: ',' },
+  // §249 chunk C — uk-UA: Russian's row (30,0 · 0,024 · 1 000 · 18 000); pl-PL:
+  // the same characters with four digits bare (1000 · 18 000), Hungarian's
+  // shape. Both measured in Chromium 153 and Node's ICU 78 alike.
+  uk: { group: ['\u00a0', '\u202f', '\u2009'], dec: ',' },
+  pl: { group: ['\u00a0', '\u202f', '\u2009'], dec: ',' },
 };
 
 // ---- honesty vocabulary: modelled vs simulated (§241 area C) ----------------
@@ -421,6 +426,20 @@ const HONESTY = {
   // translator satisfied it with one — measured, in the chrome's "no models".
   // Simulated is the loan simuloida / simulaatio.
   fi:        { m: /mallinn|mallinta[amnv]/i, s: /simul/i },
+  // §249 chunk C — Ukrainian: the verb моделювати's shapes (моделювання,
+  // моделюється, змодельовано, модельований), NEVER the noun модель, which
+  // Ukrainian says for the credit line's "AI model" (модель ШІ, моделі,
+  // моделлю — the instrumental doubles the л, so моделю- cannot reach it).
+  // Russian's row is the bare stem модел- and does not set the precedent here.
+  uk:        { m: /моделю|модельов/i, s: /симул/i },
+  // §249 chunk C — Polish: the verb modelować's own shapes, modelowa- before n or
+  // ć (modelowany, modelowanie, zamodelowane, modelować) and the present
+  // modeluj- (modeluje, modelując), NEVER the noun model (model, modelu, modeli)
+  // or its adjective modelowy (modelowa, modelowe, modelowych), which a looser
+  // modelow- matched — measured, a translator satisfied it with «plików
+  // modelowych» ("model files") in the chrome's "no models", Finnish's trap a
+  // second time. Simulated is symulowany / symulacja.
+  pl:        { m: /modelowa[nć]|modeluj/i, s: /symul/i },
   zh:        { m: /建模|模型化/,    s: /仿真|模拟/ },
   'zh-Hant': { m: /建模|模型化/,    s: /模擬|擬真/ },
 };
