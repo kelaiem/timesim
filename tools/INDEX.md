@@ -4,8 +4,8 @@
 
 # The instruments
 
-412 scripts. **286 are ACCEPTANCE tests** — they decide and exit non-zero.
-**126 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
+413 scripts. **286 are ACCEPTANCE tests** — they decide and exit non-zero.
+**127 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
 **Grep this file by what you want to know, not by section number.** The names encode
@@ -15,6 +15,7 @@ when a question was asked; the summaries are what it answered.
 |---|---|---|---|
 | `battery-checks.mjs` |  | report | §152 — WHAT A CHECK COMPUTES, split from the harness that schedules it. |
 | `battery-native.mjs` |  | acceptance | §338 landing 3 — THE BATTERY, NATIVELY: the same checks, the same gates, no browser. |
+| `battery-plan.mjs` |  | report | THE BATTERY'S PLAN, shared: the measured cost column and the partition that balances it. Moved here verbatim from tools/ci-battery.mjs (§338 landing 3) so that a second harness, tools/battery-native.mjs, plans its shards from the SAME column and the SAME rule rather than a copy of either; ci-battery.mjs imports both back. Pure data and a pure function: importing this runs nothing. |
 | `battery-points.mjs` |  | report | TODO 186 B1 — THE SILENT SPEC POINTS, SWEPT, and kept swept incrementally. |
 | `battery-promote.mjs` |  | acceptance | §227 — MAY THIS PUSH PROMOTE A PULL REQUEST'S BATTERY INSTEAD OF RE-RUNNING? |
 | `battery-split.mjs` |  | report | §127 — the battery's partition atom, and the reassembly that makes it legal. |
