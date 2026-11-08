@@ -208,5 +208,76 @@ console.log(`  REPORT the reference read 0 for ${refFalseZero} pair(s) the kerne
   line(Math.abs(ref - w) <= 1e-12 && !(w * 1.001 <= ub + 1e-12 && Math.abs(ref - w * 1.001) <= 1e-12),
     `control: a kernel answer 0.1% long (${(w * 1.001).toFixed(6)} for ${w.toFixed(6)}) fails the agreement test the real one passes`);
 }
-console.log(`\n${fails.length ? `FAIL — ${fails.length} gate(s)` : 'PASS — the compiled distance is the reference\'s, and exact where the reference reads a false 0'}`);
+// ---------------------------------------------------------------------------
+// §338 landing 6 — the BOOLEAN. src/kernel.js' wasm `intersects` against:
+//   · analytic pairs (an edge piercing a face, apart, coplanar overlapping, two
+//     triangles sharing one corner, coplanar 1 apart, one face exactly on the
+//     other's plane but beside it);
+//   · random soups under random affine maps, against three-mesh-bvh's
+//     intersectsGeometry and an independent BRUTE FORCE written here (every pair's
+//     six edges against the other triangle, Möller–Trumbore in JS). Where the
+//     reference and the kernel part, the brute force and the reference's own
+//     nonzero distance decide; a reference `true` they both refute is its
+//     recorded false-positive mode, counted and reported, never held against wasm;
+//   · consistency: the kernel's boolean is exactly "its distance is 0".
+{
+  const ANALYTIC_B = [
+    ['an edge piercing a face', geo(tri), geo([[0.25, 0.25, -1], [0.25, 0.25, 1], [0.5, 0.25, 1]]), new T.Matrix4(), true],
+    ['parallel faces 0.5 apart', geo(tri), geo(tri), tr(0, 0, 0.5), false],
+    ['coplanar, overlapping', geo(tri), geo(tri), tr(0.125, 0.125, 0), true],
+    ['two triangles sharing one corner', geo(tri), geo([[1, 0, 0], [2, 0, 1], [2, 1, 1]]), new T.Matrix4(), true],
+    ['coplanar, 1 apart', geo(tri), geo(tri), tr(2, 0, 0), false],
+    ['crossing the plane beside the face', geo(tri), geo([[2, 0.25, -1], [2, 0.25, 1], [2.5, 0.25, 1]]), new T.Matrix4(), false],
+  ];
+  let badB = 0;
+  for (const [name, a, b, m, want] of ANALYTIC_B) {
+    const got = K.wasmIntersects(a, b, m.elements);
+    if (got !== want) { badB++; console.log(`          ${name}: ${got}, want ${want}`); }
+  }
+  line(badB === 0, `boolean, analytic: ${ANALYTIC_B.length} pairs answer as constructed`);
+
+  const brute = (A, B, m) => {
+    const tris = (g, M) => { const p = g.attributes.position, out = []; const v = new T.Vector3();
+      for (let t = 0; t < p.count; t += 3) { const c = []; for (let k = 0; k < 3; k++) { v.fromBufferAttribute(p, t + k); if (M) v.applyMatrix4(M); c.push([v.x, v.y, v.z]); } out.push(c); } return out; };
+    const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    const cr = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+    const pierce = (p, q, [a, b, c]) => { const d = sub(q, p), e1 = sub(b, a), e2 = sub(c, a), h = cr(d, e2), det = dot(e1, h); if (det === 0) return false;
+      const s0 = sub(p, a), u = dot(s0, h) / det; if (u < 0 || u > 1) return false; const qq = cr(s0, e1), v = dot(d, qq) / det; if (v < 0 || u + v > 1) return false; const t = dot(e2, qq) / det; return t >= 0 && t <= 1; };
+    const TA = tris(A, null), TB = tris(B, m);
+    for (const a of TA) for (const b of TB) for (let i = 0; i < 3; i++) if (pierce(a[i], a[(i + 1) % 3], b) || pierce(b[i], b[(i + 1) % 3], a)) return true;
+    return false;
+  };
+  let agreeB = 0, refFalsePos = 0, kernelWrong = 0, inconsistent = 0, metB = 0;
+  const whyB = [];
+  for (let k = 0; k < PAIRS; k++) {
+    const A = soup(k % 2 ? 12 : 30, [0, 0, 0], 2), B = soup(k % 2 ? 40 : 30, [0, 0, 0], 2);
+    const m = new T.Matrix4().makeRotationFromEuler(new T.Euler(rnd() * 6.3, rnd() * 6.3, rnd() * 6.3)).setPosition(0.6 + rnd() * 2.4, (rnd() - 0.5) * 0.5, (rnd() - 0.5) * 0.5);
+    if (k % 5 === 0) m.multiply(new T.Matrix4().set(1 + rnd(), 0.4 * rnd(), 0, 0, 0, 1, 0.3 * rnd(), 0, 0.2 * rnd(), 0, 0.6 + rnd(), 0, 0, 0, 0, 1));
+    A.computeBoundsTree(); B.computeBoundsTree();
+    const w = K.wasmIntersects(A, B, m.elements);
+    const ref = A.boundsTree.intersectsGeometry(B, m);
+    const dW = K.wasmDistance(A, B, m.elements, Infinity);
+    if (w !== (dW === 0)) { inconsistent++; whyB.push(`pair ${k}: intersects ${w}, distance ${dW}`); }
+    if (w) metB++;
+    if (w === ref) { agreeB++; continue; }
+    const bf = brute(A, B, m);
+    const hit = A.boundsTree.closestPointToGeometry(B, m, {}, {}, 0, Infinity);
+    const refD = hit ? hit.distance : Infinity;
+    if (ref && !w && !bf && refD > 0) { refFalsePos++; continue; }   // the reference's false positive, refuted twice
+    kernelWrong++; whyB.push(`pair ${k}: js ${ref}, wasm ${w}, brute force ${bf}, js distance ${refD}`);
+  }
+  for (const s0 of whyB.slice(0, 6)) console.log(`          ${s0}`);
+  line(kernelWrong === 0, `boolean, random: wasm agrees with the reference, or both the brute force and the reference's distance side with it (${PAIRS} pairs, ${metB} meeting, ${agreeB} agree)`);
+  line(inconsistent === 0, `boolean, random: the kernel's boolean is exactly "its distance is 0" (${PAIRS} pairs)`);
+  console.log(`  REPORT the reference's intersectsGeometry said true for ${refFalsePos} pair(s) the brute force and its own distance put apart`);
+  // control: the gate must fail a kernel that answers the opposite on one meeting pair
+  {
+    const A = geo(tri), B = geo([[0.25, 0.25, -1], [0.25, 0.25, 1], [0.5, 0.25, 1]]);
+    A.computeBoundsTree(); B.computeBoundsTree();
+    const m = new T.Matrix4(), ref = A.boundsTree.intersectsGeometry(B, m), w = K.wasmIntersects(A, B, m.elements);
+    line(ref === true && w === true && brute(A, B, m) === true, `boolean control: a piercing pair reads true on the reference, the kernel and the brute force, so a kernel answering false there would be caught`);
+  }
+}
+
+console.log(`\n${fails.length ? `FAIL — ${fails.length} gate(s)` : 'PASS — the compiled distance and boolean are the reference\'s, and exact where the reference is not'}`);
 process.exit(fails.length ? 1 : 0);

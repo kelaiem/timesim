@@ -1091,6 +1091,9 @@ importing nothing; never edit it). A new check writes its query in JS through
 `Kernel` and lands; never call the compiled module from a check.
 `probe-338-kernel-parity.mjs` holds it (G3): the same verdicts, no gap read
 larger, and the leaves it reads smaller listed (the reference's false 0).
+Since landing 6 it also answers `Kernel.intersects`, the exact boolean the
+penetration bisections ask; CONTACT (`Kernel.touches`, `meshesIntersect`'s
+question, which counts a running fit) stays the reference in every mode.
 
 State (camera pose, wind, τ) persists via the dev server's `/__state` temp
 file, falling back to `localStorage`. **Back it up before clearing it** —
@@ -1441,12 +1444,16 @@ lengthens the critical path), the file must carry exactly the sibling's half,
 and `mergeSpecHalves` re-proves the whole (`probe-tiers-spec-hand.mjs`).
 The point tier needs the same point code, whole, every point full. A dead
 sibling or a fetcher that gave up runs THAT tier here, so the worst case is the
-run as it was. On the same path the three post-battery probes (case relief,
-casing path, back envelope) run on a fourth hosted job, `battery probes`, from
-t=0, and the `battery` job's last gate step reads that job's conclusion off the
-run: anything but `success` fails `battery` (the required check, §259's rule
+run as it was. On the same path the post-battery probes run on hosted jobs of
+their own from t=0: `battery probes` (case relief, casing path, back envelope,
+the lands, the clearance witness, the geared Geneva's line and its record) and,
+since TODO 294, `battery geared invariant` alone, because its thirteen geared
+boots cost more wall than the other seven together. The `battery` job's last
+gate step reads BOTH jobs' conclusions off the run and passes only when every
+one is `success`: anything else fails `battery` (the required check, §259's rule
 that the job named `battery` is the one that gates) before provenance or
-seeding can run. **Since §330 a hosted, unsplit PULL REQUEST takes the same
+seeding can run. A probe job whose name is not in that step's `NEED` list is a
+gate nothing enforces, so adding one means adding it there. **Since §330 a hosted, unsplit PULL REQUEST takes the same
 fan-out**: its shards stay incremental against the base's baseline, but its
 point tier is the sibling's, swept FULL with no ceiling (the one the sibling path
 accepts), so it drops `--points-pr` and `--points-base`. #866's single process
