@@ -6993,6 +6993,29 @@ function discLessDisc(A, B, n = 144) {   // CCW points of disc A less disc B (B 
   arc(B, B.r, phi + Math.PI + t2, phi + Math.PI - t2);
   return pts;
 }
+// CCW points of the union of a disc K and satellites that each overlap K and not each other (TODO 289 landing 3: a
+// corner's bore with a bearing block's pocket on either side). Walking K CCW, each satellite is entered where its
+// circle crosses K on the clockwise side and left where it crosses on the counter-clockwise side; between, the walk
+// follows the satellite's own arc outside K — discUnionRing's construction, once per satellite.
+function discChainRing(K, sats, n = 144) {
+  const xs = sats.map((S) => {
+    const d = Math.hypot(S.x - K.x, S.y - K.y), psi = Math.atan2(S.y - K.y, S.x - K.x);
+    const t2 = Math.acos((d * d + K.r * K.r - S.r * S.r) / (2 * d * K.r));   // half-angle on K inside S
+    const t1 = Math.acos((d * d + S.r * S.r - K.r * K.r) / (2 * d * S.r));   // half-angle on S inside K
+    return { S, psi: ((psi % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI), t1, t2 };
+  }).sort((a, b) => a.psi - b.psi);
+  const pts = [];
+  const arc = (c, R, a0, a1) => { const k = Math.max(2, Math.ceil(Math.abs(a1 - a0) / (2 * Math.PI) * n));
+    for (let i = 0; i < k; i++) { const a = a0 + (a1 - a0) * i / k; pts.push(new THREE.Vector2(c.x + R * Math.cos(a), c.y + R * Math.sin(a))); } };
+  for (let i = 0; i < xs.length; i++) {
+    const x = xs[i], nx = xs[(i + 1) % xs.length];
+    arc(x.S, x.S.r, x.psi + Math.PI + x.t1, x.psi + 3 * Math.PI - x.t1);   // the satellite, outside K
+    let a0 = x.psi + x.t2, a1 = nx.psi - nx.t2;                              // K, from this satellite's exit to the next's entry
+    while (a1 <= a0) a1 += 2 * Math.PI;
+    arc(K, K.r, a0, a1);
+  }
+  return pts;
+}
 // outline (§307): a closed CCW loop of [x, y] points in the plate's own frame,
 // the last point not repeated — layout.js's formLoop, a rounded rectangle,
 // simple by construction — that REPLACES the outer circle. `radius` is still
@@ -7083,7 +7106,18 @@ export function makeBackPlate({ radius, thickness, holes = [], slots = [], secto
     p.closePath();
     shape.holes.push(p);
   }
+  // TODO 289 landing 3 — pockets that name the SAME through-bore (two bearing blocks either side of one corner's
+  // bore) are one opening: their rings and the bore's are cut as one ring round all of them (discChainRing).
+  const throughKey = (t) => `${t.x},${t.y},${t.r}`;
+  const shared = new Map();
+  for (const pk of pockets) if (pk.through) { const k = throughKey(pk.through); shared.set(k, [...(shared.get(k) ?? []), pk]); }
+  for (const [, group] of shared) if (group.length > 1) {
+    const t = group[0].through, K = { x: t.x, y: t.y, r: t.r + bevelSize };
+    const sats = group.map((pk) => ({ x: pk.x, y: pk.y, r: pk.r + bevelSize }));
+    const p = new THREE.Path(); p.setFromPoints(discChainRing(K, sats).reverse()); shape.holes.push(p);   // CW: a hole
+  }
   for (const pk of pockets) {
+    if (pk.through && shared.get(throughKey(pk.through)).length > 1) continue;   // cut with its group above
     const A = { x: pk.x, y: pk.y, r: pk.r + bevelSize };
     const B = pk.through ? { x: pk.through.x, y: pk.through.y, r: pk.through.r + bevelSize } : null;
     const p = new THREE.Path();
@@ -7101,7 +7135,16 @@ export function makeBackPlate({ radius, thickness, holes = [], slots = [], secto
   {
     const discs = [];
     holes.forEach((h, i) => discs.push({ what: `hole ${i} (${h.x.toFixed(2)}, ${h.y.toFixed(2)}) r ${h.r.toFixed(3)}`, d: [h] }));
-    pockets.forEach((pk, i) => discs.push({ what: `pocket ${i} (${pk.x.toFixed(2)}, ${pk.y.toFixed(2)}) r ${pk.r.toFixed(3)}${pk.through ? ' + through r ' + pk.through.r.toFixed(3) : ''}`, d: [pk, ...(pk.through ? [pk.through] : [])] }));
+    {   // a pocket and its through-bore are one opening, and so are pockets sharing one through-bore (landing 3)
+      const byThrough = new Map();
+      pockets.forEach((pk, i) => {
+        const k = pk.through ? `${pk.through.x},${pk.through.y},${pk.through.r}` : `pocket ${i}`;
+        const e = byThrough.get(k);
+        if (e) { e.d.push(pk); e.what += ` + pocket ${i}`; }
+        else byThrough.set(k, { what: `pocket ${i} (${pk.x.toFixed(2)}, ${pk.y.toFixed(2)}) r ${pk.r.toFixed(3)}${pk.through ? ' + through r ' + pk.through.r.toFixed(3) : ''}`, d: [pk, ...(pk.through ? [pk.through] : [])] });
+      });
+      for (const e of byThrough.values()) discs.push(e);
+    }
     const polys = [];
     for (const sl of slots) { const q = new THREE.Path(); const dx = sl.bx - sl.ax, dy = sl.by - sl.ay, d = Math.hypot(dx, dy), ang = Math.atan2(d > 1e-9 ? dy : 0, d > 1e-9 ? dx : 1);
       q.absarc(sl.bx, sl.by, sl.r, ang + Math.PI / 2, ang - Math.PI / 2, true); q.absarc(sl.ax, sl.ay, sl.r, ang - Math.PI / 2, ang - Math.PI * 1.5, true); polys.push({ what: 'slot', p: q.getPoints(72) }); }

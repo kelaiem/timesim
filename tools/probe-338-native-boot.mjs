@@ -55,9 +55,15 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { prepPage, virginBoot } from './battery-checks.mjs';
+import { matchDeclaredWarns } from './battery-points.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
-const SPECS = ['', 'arrangement=designed'];   // the identity, and ci-battery's first silent swept spec point
+const SPECS = ['', 'arrangement=designed'];   // the identity, and ci-battery's first swept spec point
+// Each spec's boot is held to EXACTLY its declared warning set, ci-battery's own rule (matchDeclaredWarns, by
+// prefix): the identity's is empty; `designed` declares TODO 289 landing 3's leg-2 K-block row (LEG2_K_ROW on its
+// SPEC_POINTS row in tools/ci-battery.mjs, copied here because importing that file runs the battery). A warning
+// beyond the set, or a declared row that stops firing, fails in either host.
+const DECLARED = { '': [], 'arrangement=designed': ['TODO 289: leg 2\'s K block'] };
 const JSON_OUT = (() => { const i = process.argv.indexOf('--json'); return i > 0 ? process.argv[i + 1] : null; })();
 
 async function loadPlaywright() {
@@ -176,8 +182,11 @@ const gate = (ok, what) => { console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${what}`); 
 for (const q of SPECS) {
   const a = chrome[q], b = native[q], name = q || 'identity';
   console.log(`\n${name}`);
-  gate(a.warns.length === 0, `Chromium boot silent (${a.warns.length} warning(s)${a.warns.length ? ': ' + a.warns.join(' | ') : ''})`);
-  gate(b.warns.length === 0, `native boot silent (${b.warns.length} warning(s)${b.warns.length ? ': ' + b.warns.join(' | ') : ''})`);
+  for (const [host, r] of [['Chromium', a], ['native', b]]) {
+    const { unmatched, stale } = matchDeclaredWarns(DECLARED[q], r.warns);
+    gate(!unmatched.length && !stale.length, `${host} boot warns exactly its declared set (${DECLARED[q].length ? DECLARED[q].join(' | ') : 'silent'})`
+      + (unmatched.length ? ` — undeclared: ${unmatched.join(' | ')}` : '') + (stale.length ? ` — declared but silent: ${stale.join(' | ')}` : ''));
+  }
   gate(JSON.stringify(a.roster) === JSON.stringify(b.roster) && JSON.stringify(a.spec) === JSON.stringify(b.spec),
     `the build read one roster (${b.roster.length} keys) and one spec ${JSON.stringify(b.spec)} in both hosts`);
   gate(a.fingerprint.hash === b.fingerprint.hash && a.fingerprint.units === b.fingerprint.units,

@@ -91,7 +91,7 @@ const LUBRICATION_ROWS = {
   'crown > Setting lever':              L('grease', 'the setting lever is moved by the stem\'s groove', { src: 'roadmap §247 seed table' }),
   'Setting lever > Yoke':               L('grease', 'the lever\'s flank drives the yoke\'s tail pin', { src: 'roadmap §247 seed table' }),
   'Yoke > Winding clutch':              L('grease', 'the yoke\'s prong in the clutch\'s groove', { src: 'roadmap §247 seed table' }),
-  'Keyless works :: bearing':           L('grease', 'crown wheel, winding pinion and stem bushing: sliding steel; since TODO 289 the setting fold\'s three bushes and the cap arbor\'s jewel, since its landing 1 the drop\'s and the rise\'s upper bushes in the plate, and since landing 2 the two blocks leg 1 runs in, which carry the hand-set\'s slow, light turns', { src: 'roadmap §247 seed table; TODO 289' }),
+  'Keyless works :: bearing':           L('grease', 'crown wheel, winding pinion and stem bushing: sliding steel; since TODO 289 the setting fold\'s three bushes and the cap arbor\'s jewel, since its landing 1 the drop\'s and the rise\'s upper bushes in the plate, and since landings 2 and 3 the four blocks the two traverse legs run in, which carry the hand-set\'s slow, light turns', { src: 'roadmap §247 seed table; TODO 289' }),
   'Winding clutch :: bearing':          L('grease', 'the clutch slides on the stem', { src: 'roadmap §247 seed table' }),
   'Setting lever :: bearing':           L('grease', 'pivots on the plate, with the lever\'s sliding contacts', { src: 'roadmap §247 seed table' }),
   'Yoke :: bearing':                    L('grease', 'pivots on the plate, with the clutch it moves', { src: 'roadmap §247 seed table' }),
