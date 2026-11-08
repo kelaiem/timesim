@@ -457,7 +457,7 @@ const cyRetreat = (R, rho, h) => cyEpi(R, rho, cyPsiAtH(R, rho, h))[3];
 // one copy carrying a change.
 const cyContactAngle = (R, rho, h) => {
   if (h <= 0) return 0;
-  const c = ((R + rho) ** 2 + rho ** 2 - (R + h) ** 2) / (2 * rho * (R + rho));
+  const c = (Math.pow(R + rho, 2) + Math.pow(rho, 2) - Math.pow(R + h, 2)) / (2 * rho * (R + rho));
   if (c <= -1) return Math.PI;
   if (c >= 1) return 0;
   return Math.acos(c);
@@ -1892,7 +1892,7 @@ export function makeEscapeWheel({ teeth = 15, radius, thickness, rakeDeg = 0, un
       const n = [-Math.cos(th), -Math.sin(th)], back = [W * Math.sin(th), -W * Math.cos(th)];
       const dir = [Math.cos(rk) * n[0] + Math.sin(rk) * back[0], Math.cos(rk) * n[1] + Math.sin(rk) * back[1]];
       // |T + s·dir| = radius − undercut, the root nearer the tip
-      const b2 = 2 * (T[0] * dir[0] + T[1] * dir[1]), c2 = radius * radius - (radius - undercut) ** 2;
+      const b2 = 2 * (T[0] * dir[0] + T[1] * dir[1]), c2 = radius * radius - Math.pow(radius - undercut, 2);
       const sDist = (-b2 - Math.sqrt(b2 * b2 - 4 * c2)) / 2;
       U = [T[0] + sDist * dir[0], T[1] + sDist * dir[1]];
     }
@@ -2691,7 +2691,7 @@ export function makePalletFork({ span, seat, guard: guardSeat, thickness, stoneZ
       const k = 1 + n1[0] * n2[0] + n1[1] * n2[1];
       const ex = p.x + bevel * (n1[0] + n2[0]) / Math.max(k, 0.1), ey = p.y + bevel * (n1[1] + n2[1]) / Math.max(k, 0.1);
       let best = null, bd = Infinity;
-      for (const q of ring) { const dd = (q[0] - ex) ** 2 + (q[1] - ey) ** 2; if (dd < bd) { bd = dd; best = q; } }
+      for (const q of ring) { const dd = Math.pow(q[0] - ex, 2) + Math.pow(q[1] - ey, 2); if (dd < bd) { bd = dd; best = q; } }
       return best;
     });
   })();
@@ -4208,7 +4208,7 @@ export function* makeHairspringSteps(plan) {
   g.userData.devLen = restDevLen;
   g.userData.section = (() => {
     const a = ribbonR, c = Math.max(height / 2, ribbonR);
-    return { shape: 'rhombus4', a, c, I_u4: (a ** 3) * c / 3 };
+    return { shape: 'rhombus4', a, c, I_u4: (Math.pow(a, 3)) * c / 3 };
   })();
   if (overcoil) {
     // §218 tier two — the stud clamps the OVERCOIL's end, in the raised plane.
@@ -4333,7 +4333,7 @@ export function genevaSpec({ N, stockMin, pivotMin, margin, studR, arborR }) {
     // instead — the fat arm a continuously-running Geneva carries — buries the
     // pin at the ceiling rather than stopping it there, because the pin
     // arrives from OUTSIDE: measured, −0.2945 into metal at the stop.
-    bankTh: Math.acos((a * a + d * d - (b + pivotMin) ** 2) / (2 * a * d)),
+    bankTh: Math.acos((a * a + d * d - Math.pow(b + pivotMin, 2)) / (2 * a * d)),
     slotInner: d - a,                 // where the pin bottoms
     hollowR: lockR + margin * 0.5,    // the hollow is cut over the disc, with running room
     web: d - a - hubR,
@@ -6827,8 +6827,8 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
       // diagonal, the section four tube segments cut.)
       section: (() => {
         const a = sRibbon, c = Math.max((height * 0.7) / 2, sRibbon);
-        return strip ? { shape: 'strip', a, c, I_u4: 4 * (a ** 3) * c / 3 }
-          : { shape: 'rhombus4', a, c, I_u4: (a ** 3) * c / 3 };
+        return strip ? { shape: 'strip', a, c, I_u4: 4 * (Math.pow(a, 3)) * c / 3 }
+          : { shape: 'rhombus4', a, c, I_u4: (Math.pow(a, 3)) * c / 3 };
       })(),
     };
     setWind(wind.sweepFull);   // built fully wound, which is where the sim boots

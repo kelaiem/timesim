@@ -35,6 +35,12 @@
 //   the default build) that reorder those geometries' index buffers in place,
 //   so §152's SHAPE digest, which hashes the live index, is not comparable
 //   across the two hosts even where the metal is identical.
+// - the maths: src/det-math-boot.js, imported by installHost before main.js is,
+//   exactly as the page's entry imports it first (§338 landing 2).
+//   `detMath: false` leaves the engine's own Math in place. It exists for ONE
+//   caller, tools/probe-338-native-boot.mjs' control, which must see the metal
+//   diverge and main.js warn without it; a build booted that way is not the
+//   build and says so at boot.
 // - the spec: src/spec-fields.js' publishSpec over `query`, the same table
 //   index.html now imports, so the two hosts cannot read different rosters.
 //
@@ -84,7 +90,7 @@ function makeElement(tag = 'div') {
 }
 
 let installed = false;
-export function installHost({ query = '', width = 1000, height = 700 } = {}) {
+export async function installHost({ query = '', width = 1000, height = 700, detMath = true } = {}) {
   if (installed) throw new Error('installHost: one host per process (main.js is a module and evaluates once)');
   installed = true;
   BOX.right = BOX.width = width; BOX.bottom = BOX.height = height;
@@ -134,12 +140,13 @@ export function installHost({ query = '', width = 1000, height = 700 } = {}) {
     throw new Error(`native host: unexpected fetch ${url} — the build reads something new; serve it or say why it may 404`);
   };
   publishSpec(loc.search, g);
+  if (detMath) await import('../../src/det-math-boot.js');
 }
 
 // Boot the build. Resolves once main.js has evaluated and published __clock;
 // rejects with the build's own fatal error (TODO 30's surface) otherwise.
 export async function bootNative(opts = {}) {
-  installHost(opts);
+  await installHost(opts);
   const t0 = performance.now();
   await import('../../src/main.js');
   const ms = performance.now() - t0;

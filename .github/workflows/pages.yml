@@ -282,6 +282,11 @@ jobs:
             if [ -d "$d/vendor/ldraw" ]; then
               [ -f "$d/vendor/LICENSE-ldraw.txt" ] || fail "$d/vendor/LICENSE-ldraw.txt is missing — a site carrying LDraw parts must carry their licence"
             fi
+            # §338 landing 2: the deterministic maths, where a tree carries it
+            # (tags cut before it do not, so the rule is conditional)
+            if [ -f "$d/vendor/det-math.module.js" ]; then
+              [ -f "$d/vendor/LICENSE-stdlib.txt" ] || fail "$d/vendor/LICENSE-stdlib.txt is missing — a site carrying the stdlib-js maths must carry its licence"
+            fi
           done
 
           # §242's film: the page and at least one sheet per view it names,

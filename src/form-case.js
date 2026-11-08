@@ -468,7 +468,7 @@ function annulusPrism(outerLoop, hole, zA, zB) {
   const zLo = Math.min(zA, zB), zHi = Math.max(zA, zB);
   const n = A.length, m = B.length, tris = [];
   const P = (p, z) => [p[0], p[1], z];
-  const d2 = (p, q) => (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2;
+  const d2 = (p, q) => Math.pow(p[0] - q[0], 2) + Math.pow(p[1] - q[1], 2);
   // start the hole's walk at its point nearest the outer's first
   let j0 = 0;
   for (let j = 1; j < m; j++) if (d2(B[j], A[0]) < d2(B[j0], A[0])) j0 = j;
