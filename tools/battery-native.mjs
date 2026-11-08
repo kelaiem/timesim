@@ -153,6 +153,10 @@ if (!isMainThread) {
     console.log(KERNEL === 'shadow'
       ? `kernel shadow: ${sum('calls')} distance calls, ${sum('both')} under the bound on both, max |js − wasm| ${worst.maxAbs.toExponential(2)}${worst.maxAt ? ` (js ${worst.maxAt.ref}, wasm ${worst.maxAt.kernel}, bound ${worst.maxAt.upper})` : ''}; js 0 where wasm > 0: ${sum('refFalseZero')}; under the bound for wasm only: ${sum('kernelOnly')}, js only: ${sum('refOnly')}; js answered at or over the bound: ${sum('refAtOrOverBound')}; time js ${(sum('refMs') / 1000).toFixed(1)} s, wasm ${(sum('wasmMs') / 1000).toFixed(1)} s`
       : `kernel: ${KERNEL}`);
+    if (KERNEL === 'shadow') {
+      const bs = (k) => ks.reduce((a, x) => a + ((x.bool && x.bool[k]) || 0), 0);
+      console.log(`kernel shadow, boolean: ${bs('calls')} intersection calls, ${bs('agree')} agree; js true where wasm false: ${bs('refOnly')}; js false where wasm true: ${bs('kernelOnly')}; time js ${(bs('refMs') / 1000).toFixed(1)} s, wasm ${(bs('wasmMs') / 1000).toFixed(1)} s`);
+    }
     if (KERNEL === 'shadow') for (const x of ks.flatMap((k) => k.samples || []).slice(0, 8)) console.log(`  disagreement: js ${x.ref} wasm ${x.kernel} bound ${x.upper} (${x.nA} × ${x.nB} triangles)`);
   }
   const wall = Date.now() - t0;

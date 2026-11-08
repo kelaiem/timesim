@@ -48,7 +48,7 @@ import { auditLubrication, LUBRICATION, LUBRICATION_DEBT, LUBRICATION_WAIVERS } 
 // is the one main.js already evaluated: importing it here re-runs no boot
 // handshake and arms no marker.
 import { aesthetics, mergeAesthetics } from './aesthetics.js';
-import { kernelMode, wasmDistance, shadowTally } from './kernel.js';   // §338 landing 5
+import { kernelMode, wasmDistance, shadowTally, wasmIntersects, shadowTallyBool } from './kernel.js';   // §338 landings 5 and 6
 export { useKernel, kernelMode, kernelStats } from './kernel.js';
 
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
@@ -1023,7 +1023,8 @@ function bakedGeometry(src, L) {
 // for goes through `Kernel`, and its JS body (three-mesh-bvh) is the REFERENCE: a
 // new check writes its query here, in JS, and lands (§338's first design rule).
 // src/kernel.js may answer a primitive with the compiled kernel instead, held to
-// this body by tools/probe-338-kernel-parity.mjs; today it can answer `distance`.
+// this body by tools/probe-338-kernel-parity.mjs; it can answer `distance`
+// (landing 5) and `intersects` (landing 6).
 const Kernel = {
   // The closest distance between `gA` (its own frame) and `gB` placed by `m`
   // (B's frame → A's), or a value at or over `upper` (Infinity included) when no
@@ -1038,6 +1039,17 @@ const Kernel = {
     const d = hit ? hit.distance : Infinity;
     if (k === 'shadow') shadowTally(gA, gB, m.elements, upper, d, performance.now() - t0);
     return d;
+  },
+  // Does any triangle of `gA` (its own frame) meet any triangle of `gB` placed
+  // by `m`? An incidence predicate, so `m` may be any invertible affine map —
+  // the three boolean sites pass world matrices as they stand.
+  intersects(gA, gB, m) {
+    const k = kernelMode();
+    if (k === 'wasm') return wasmIntersects(gA, gB, m.elements);
+    const t0 = k === 'shadow' ? performance.now() : 0;
+    const r = bvhForGeometry(gA).intersectsGeometry(gB, m);
+    if (k === 'shadow') shadowTallyBool(gA, gB, m.elements, r, performance.now() - t0);
+    return r;
   },
 };
 
@@ -1109,7 +1121,7 @@ function _meshesIntersectInner(a, b, raw = false) {
   const bvhA = bvhFor(a);
   bvhFor(b); // intersectsGeometry needs the other side indexed; building its tree indexes it
   _mat.copy(a.matrixWorld).invert().multiply(b.matrixWorld);
-  if (!bvhA.intersectsGeometry(b.geometry, _mat)) return false;
+  if (!Kernel.intersects(a.geometry, b.geometry, _mat)) return false;
   // §122 fix two — `raw` trusts the positive WITHOUT arbitration. Only
   // runInspection may pass it, and only for a declared-EXPECTED pair whose
   // contact on the current axis has already been arbitrated once (the
@@ -5615,7 +5627,7 @@ function stoneIntersectsWheel(bvh, wheelMatrixWorld, stoneMesh, stoneGeometry, w
   const t = new THREE.Matrix4().makeTranslation(worldOffset.x, worldOffset.y, worldOffset.z);
   const worldM = t.multiply(stoneMesh.matrixWorld);
   const local = wheelMatrixWorld.clone().invert().multiply(worldM);
-  return bvh.intersectsGeometry(stoneGeometry, local);
+  return Kernel.intersects(bvh.geometry, stoneGeometry, local);
 }
 
 // Minimum-translation-distance: smallest push, over a spread of candidate
@@ -5681,7 +5693,7 @@ export function sawRideDepth(A, B) {
     q.setFromAxisAngle(ax, phi);
     R.makeRotationFromQuaternion(q);
     M.copy(T2).multiply(R).multiply(T1).multiply(A.matrixWorld);
-    return bvh.intersectsGeometry(A.geometry, M.premultiply(invB));
+    return Kernel.intersects(bvh.geometry, A.geometry, M.premultiply(invB));
   };
   if (!hits(0)) return 0;
   // the teeth's mean radius, off A's own vertices about the shared axis —
