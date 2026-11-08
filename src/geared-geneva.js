@@ -66,7 +66,9 @@ const cantR = (F, L) => Math.cbrt((32 * F * L * UNIT_MM) / (Math.PI * (SPRING_SI
 // (tools/probe-337-geared-build.mjs reads the result as `unlocked`): n = 3 never holds, n = 4 holds from r1 2.65, n = 5 from 2.50
 // (m and the pin's size move it by less than the 0.05 step). Floors carry one step of margin above the first r1 that held.
 export const LOCK_R1_MIN = { 4: 2.7, 5: 2.55 };
-const lockR1Min = (n) => (n < 4 ? Infinity : (LOCK_R1_MIN[n] ?? LOCK_R1_MIN[5]));
+// Exported because this floor is now part of what "the smallest orbit" MEANS, and tools/probe-337-geared-geneva.mjs's
+// rule M has to read the same function sizeGeneva scans from rather than a second copy of the table (§337 stage 3).
+export const lockR1Min = (n) => (n < 4 ? Infinity : (LOCK_R1_MIN[n] ?? LOCK_R1_MIN[5]));
 
 // the Geneva at its smallest orbit for a finger holding `fingerNmm`: sizes, dims and the floors it met
 export function sizeGeneva(n, fingerNmm, { r1Max = 12, step = 0.005 } = {}) {
