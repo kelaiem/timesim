@@ -9292,7 +9292,63 @@ async function siteTailBearings(B, F, g, cap) {
   // the legs as they will be cut: each stops clear of the upper pivot that leaves its apex
   const leg1A = upper.drop.why ? settingA.clone() : settingA.clone().addScaledVector(F.leg1U, upper.drop.legCut);
   const leg2B = upper.rise.why ? B.clone() : B.clone().addScaledVector(F.leg2U, -upper.rise.legCut);
+  // --- TODO 289 landing 2: LEG 1'S TWO BEARINGS. Leg 1 carries the hand-set's torque between its two corners, so a
+  // bearing on it runs on the leg's own 0.55 (a neck there is a torsion section no load path has sized), and the
+  // only wall near it is the base plate's dial face, one margin over its top (MW_LEG1_R's own law): a bush at the
+  // running fit and §50's wall reaches STOCK_MIN_U + PIVOT_BORE_CLEAR − CLEAR_MARGIN into the slab. So each bearing is
+  // a BLOCK LET INTO THE PLATE: a bar of square section, bored for the leg at PIVOT_BORE_CLEAR, its wall STOCK_MIN_U
+  // all round, its top face seated on the floor of a pocket cut into the dial face exactly as deep as the block
+  // stands proud of it (the pocket's opening clears the block's corners by the margin; its collar laps SEAT_LAND_LAP
+  // into the slab, TODO 172's construction). Length: a plain journal's L/D 1 (the blank at each end is carried by
+  // the PAIR of blocks). Where: one block near each corner — the least station past A and the greatest short of K
+  // whose block passes every fold blank by the margin (its square section judged as its circumscribed cylinder)
+  // and whose pocket leaves §62's land (STOCK_MIN_U) to the corner's own plate opening. The overhung-bevel rule is
+  // then the pair's: spread between the blocks ≥ MW_BEVEL_OVERHANG_K × the larger overhang to a blank's load point;
+  // a pair that misses it warns with both numbers (rule 6).
+  const leg1Blocks = (() => {
+    const r = MW_LEG1_R, bore = r + PIVOT_BORE_CLEAR, half = bore + MW_BUSH_WALL, len = 2 * r * MW_BUSH_LD_MIN;
+    const topZ = Z_SETTING + half, depth = topZ - PLATE_BACK;
+    const pocketR = Math.hypot(len / 2, half) + m;
+    const circR = half * Math.SQRT2;
+    const sDropOut = spec(BEVEL_MODULE, 90, MW_LEG1_R, SETTING_ROD_R);
+    const sFoldIn = spec(foldModuleFor(F.shaftAngleDeg), F.shaftAngleDeg, MW_LEG1_R, MW_LEG2_R);
+    const dropHoleR = sDropOut.coneR + m, foldHoleR = sFoldIn.coneR + m;   // MW_DROP_PLATE_HOLE's and MW_FOLD_PLATE_HOLE's laws
+    const lenAK = settingA.distanceTo(F.K);
+    const sStart = settingA.distanceTo(leg1A);
+    const at = (s) => settingA.clone().addScaledVector(F.leg1U, s);
+    const bev = plateR * G.PLATE_BEVEL_F;   // makeBackPlate swells every opening by this at the face
+    const common = (s) => s - len / 2 >= sStart - 1e-9 && s + len / 2 <= lenAK + 1e-9
+      && !blanksClear({ o: vArr(settingA), a: vArr(F.leg1U), r: circR, zLo: s - len / 2, zHi: s + len / 2 }, m);
+    // Each block's pocket and its corner's plate opening are cut as ONE opening — §62's land rule's own remedy
+    // (makeBackPlate's pocket + `through`): kept a land apart, the two rings left the A block 2.67 from its blank
+    // and the pair 5.54 apart against the overhung rule's 5.73. The block then needs only its end face outside the
+    // corner bore's FINISHED radius (the slab's bevel at the face), so its seat is all on its own pocket's floor. The
+    // drop's bore is BLIND since landing 1, so A's `through` carries that bore's depth (makeBackPlate: a through of
+    // its own depth); K's fold bore is a through-bore.
+    const okA = (s) => common(s) && s - len / 2 >= dropHoleR + bev - 1e-9;
+    const okK = (s) => common(s) && lenAK - s - len / 2 >= foldHoleR + bev - 1e-9;
+    // the least station from A and the greatest toward K, stepped at half a margin and bisected to 1e-3
+    const walk = (from, dir) => {
+      const ok = dir > 0 ? okA : okK;
+      let s = from;
+      while (!ok(s)) { s += dir * m / 2; if (s < sStart || s > lenAK) return null; }
+      let lo = s - dir * m / 2, hi = s;   // lo fails, hi passes
+      if (ok(lo)) return s;
+      while (Math.abs(hi - lo) > 1e-3) { const mid = (lo + hi) / 2; if (ok(mid)) hi = mid; else lo = mid; }
+      return hi;
+    };
+    const sA = walk(sStart + len / 2, +1), sK = walk(lenAK - len / 2, -1);
+    if (sA === null || sK === null || !(sK - sA >= len)) return { why: 'no pair of stations on leg 1 clears its blanks and its corners\' plate openings' };
+    const overA = (sA - len / 2) - bevelLoadZ(sDropOut), overK = (lenAK - bevelLoadZ(sFoldIn)) - (sK + len / 2);
+    const spread = sK - sA;
+    const dropBlind = upper.drop.why ? {} : { depth: upper.drop.floorZ - PLATE_BACK };
+    const blocks = [sA, sK].map((s, i) => ({ s, centre: at(s), pocket: { x: at(s).x, y: at(s).y, r: pocketR, depth, lap: SEAT_LAND_LAP,
+      through: i === 0 ? { x: settingA.x, y: settingA.y, r: dropHoleR, ...dropBlind } : { x: F.K.x, y: F.K.y, r: foldHoleR } } }));
+    return { why: null, r, bore, half, len, topZ, depth, pocketR, circR, blocks, spread, overhang: [overA, overK], dropHoleR, foldHoleR,
+      endToDropBore: sA - len / 2 - dropHoleR - bev, endToFoldBore: lenAK - sK - len / 2 - foldHoleR - bev };
+  })();
   const rods = [   // every rod of the fold, as it will be cut: [a, b, r]
+    ...(leg1Blocks.why ? [] : leg1Blocks.blocks.map((b) => [b.centre.clone().addScaledVector(F.leg1U, -leg1Blocks.len / 2), b.centre.clone().addScaledVector(F.leg1U, leg1Blocks.len / 2), leg1Blocks.circR])),
     ...['drop', 'rise'].filter((k) => !upper[k].why).map((k) => [upper[k].o, upper[k].o.clone().addScaledVector(upper[k].u, upper[k].sEnd), upper[k].r]),
     [settingA, new THREE.Vector3(settingA.x, settingA.y, SETTING_SPUR_Z), SETTING_ROD_R], [leg1A, F.K, MW_LEG1_R], [F.K, leg2B, MW_LEG2_R],
     [B, E, MW_RISE_R], ...(riseWhy ? [] : [[E, E.clone().addScaledVector(d1, riseS0 + riseBushLen), risePivotR]]), [stubA, stubB, MW_RISE_R], [arborBot, arborTop, MW_RISE_R]];
@@ -9341,7 +9397,7 @@ async function siteTailBearings(B, F, g, cap) {
   const capH = capWhy ? null : await hangerFor('cap', capC, Z_UP, capBushR, capBushLen);
   if (!capH && !capWhy) capWhy = 'no hanger standoff outward of the cap arbor\'s bush clears the fold';
   return {
-    upper, leg1A, leg2B,
+    upper, leg1A, leg2B, leg1Blocks,
     nOut, riseWhy, stubWhy, capWhy, risePivotR, riseS0, riseBushLen, riseRoom, riseLen, stubStart, stubEnd, stubA, stubB, stubBush: { ...stubBush, mid: stubBushMid, run: stubRun },
     capS0, capBushLen, jewelZ, stoneTopZ, stoneBotZ, arborTop, arborBot, capTipR, pocketR,
     overhang: { rise: riseLen - bevelLoadZ(sRiseOut) + riseS0, stub: Math.max(sFoot.zWebHi + m - bevelLoadZ(sFoot), sCap.zWebHi + m - bevelLoadZ(sCap)) },
@@ -9541,6 +9597,28 @@ async function buildSettingMetal(B, parent, { candidate = false } = {}) {
       bush.quaternion.setFromUnitVectors(Z_UP, U.u);
       parent.add(pivot, bush);
       bearings[`${k}Top`] = { pivot, bush };
+    }
+    // TODO 289 landing 2 — leg 1's two bearing blocks, let into the plate (siteTailBearings: leg1Blocks): a square
+    // bar bored for the leg, its section an extrude of the square less the bore, laid along the leg with its top
+    // face horizontal, seated on its pocket's floor
+    const LB = T.leg1Blocks;
+    if (LB.why) { if (!candidate) console.warn(`TODO 289: ${LB.why} — leg 1 runs unborne on this arrangement`); }
+    else {
+      const sq = new THREE.Shape();
+      sq.moveTo(-LB.half, -LB.half); sq.lineTo(LB.half, -LB.half); sq.lineTo(LB.half, LB.half); sq.lineTo(-LB.half, LB.half); sq.closePath();
+      const hole = new THREE.Path(); hole.absarc(0, 0, LB.bore, 0, Math.PI * 2, true); sq.holes.push(hole);
+      const ax = F.leg1U.clone(), up = Z_UP.clone(), side = up.clone().cross(ax).normalize();
+      const frame = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(side, up, ax));
+      bearings.leg1 = LB.blocks.map((b, i) => {
+        const g = new THREE.ExtrudeGeometry(sq, { depth: LB.len, bevelEnabled: false, curveSegments: RING_GEO_SEG });
+        g.translate(0, 0, -LB.len / 2);
+        const block = new THREE.Mesh(g, MATS.nickel);
+        block.name = i === 0 ? 'settingTraverseBlockA' : 'settingTraverseBlockK';
+        block.position.copy(b.centre);
+        block.quaternion.copy(frame);
+        parent.add(block);
+        return block;
+      });
     }
   }
   return { F, module, leg1, leg2, rise, stub, capArbor, cornerDrop, cornerFold, cornerRise, cornerFoot, cornerCap, settingCap, capXY,
@@ -10109,6 +10187,20 @@ if (SETTING_METAL.bearings.jewel) {
   if (T.hangers.stub) SETTING_METAL.stub.userData.bearings = { axis: 'y', stations: [alongY(SETTING_METAL.stub, T.hangers.stub.c)] };
   SETTING_METAL.capArbor.userData.bearings = { axis: 'y', stations: [...(T.hangers.cap ? [alongY(SETTING_METAL.capArbor, T.hangers.cap.c)] : []),
     alongY(SETTING_METAL.capArbor, new THREE.Vector3(SETTING_CAP_XY.x, SETTING_CAP_XY.y, (T.stoneTopZ + T.stoneBotZ) / 2))].sort((a, b) => a - b) };
+  // TODO 289 landing 2 — leg 1's two blocks are bearings, and the leg declares their stations (§54 reads its span)
+  if (SETTING_METAL.bearings.leg1) {
+    for (const b of SETTING_METAL.bearings.leg1) registerSub('Keyless works', 'Setting bearings', b);
+    SETTING_METAL.leg1.userData.bearings = { axis: 'y', stations: T.leg1Blocks.blocks.map((b) => alongY(SETTING_METAL.leg1, b.centre)).sort((a, b) => a - b) };
+    // rule 6: each block's section re-read off its cut outline — the bore is the leg's running fit, the wall §50's floor,
+    // and its top stands exactly as proud of the face as its pocket is deep
+    for (const b of SETTING_METAL.bearings.leg1) {
+      const sh = b.geometry.parameters.shapes, pts = sh.getPoints(), hp = sh.holes[0].getPoints();
+      const half = Math.max(...pts.map((p) => p.x)), bore = Math.max(...hp.map((p) => Math.hypot(p.x, p.y)));
+      const LB = T.leg1Blocks;
+      if (Math.abs(bore - (MW_LEG1_R + PIVOT_BORE_CLEAR)) > 1e-6 || Math.abs(half - bore - MW_BUSH_WALL) > 1e-6 || Math.abs(b.position.z + half - (PLATE_BACK + LB.depth)) > 1e-9)
+        console.warn(`TODO 289: leg 1's ${b.name} is cut bore ${bore.toFixed(4)} / wall ${(half - bore).toFixed(4)} / top ${(b.position.z + half).toFixed(4)} against ${(MW_LEG1_R + PIVOT_BORE_CLEAR).toFixed(4)} / ${MW_BUSH_WALL.toFixed(4)} / its pocket's floor ${(PLATE_BACK + LB.depth).toFixed(4)}`);
+    }
+  }
   // TODO 289 landing 1 — the upper pivots over A and B: the pivot is its rod's (one body), the bush is a bearing;
   // the pivot declares its bush's station, and rule 6 re-reads each law off the cut metal
   for (const [k, sub] of [['drop', 'Setting drop'], ['rise', 'Setting rise']]) {
@@ -11666,11 +11758,26 @@ const MW_BLIND_BORES = (() => {
   if (out.rise && MW_CAP_BORE_MERGED) console.warn('TODO 289: the rise corner\'s bore is sited blind but the plate merges it into the cap\'s pocket');
   return out;
 })();
+// TODO 289 landing 2 — leg 1's two bearing blocks, each let into its own pocket in the dial face (siteTailBearings:
+// leg1Blocks), as deep as the block stands proud of the face, its opening a margin round the block's corners
+const MW_LEG1_POCKETS = (() => {
+  const LB = SETTING_METAL.tail?.leg1Blocks;
+  if (!LB || LB.why) return [];
+  if (!(LB.depth > 0 && LB.depth < BACK_PLATE_T - STOCK_MIN_U))
+    console.warn(`TODO 289: leg 1's bearing pockets would be ${LB.depth.toFixed(4)} deep in a ${BACK_PLATE_T} plate, leaving under STOCK_MIN_U`);
+  if (!(LB.spread >= MW_BEVEL_OVERHANG_K * Math.max(...LB.overhang) - 1e-9))
+    console.warn(`TODO 289: leg 1's blocks stand ${LB.spread.toFixed(4)} apart against ${MW_BEVEL_OVERHANG_K}× the larger overhang ${Math.max(...LB.overhang).toFixed(4)}`);
+  for (const [p, hole, blind] of [[LB.blocks[0].pocket, MW_DROP_PLATE_HOLE, MW_BLIND_BORES.drop], [LB.blocks[1].pocket, MW_FOLD_PLATE_HOLE, null]])
+    if (Math.abs(p.through.r - hole.r) > 1e-9 || (blind && Math.abs(p.through.depth - blind.depth) > 1e-9))
+      console.warn(`TODO 289: leg 1's block pocket was sited against a corner bore of r ${p.through.r.toFixed(4)} depth ${p.through.depth}, but the plate cuts it at r ${hole.r.toFixed(4)} depth ${blind?.depth}`);
+  return LB.blocks.map((b) => b.pocket);
+})();
 // TODO 184 — the cut's arguments are ONE object, so the late re-cut below
 // (recutBackPlate) cuts the same plate with its late openings added rather
 // than restating this list.
 const BACK_PLATE_CUT = {
-  pockets: [MW_CANNON_POCKET, MW_CAP_POCKET, ...Object.values(MW_BLIND_BORES)],
+  // (the drop's blind bore is cut with leg 1's A-side block pocket — that pocket's `through` — where the block is sited)
+  pockets: [MW_CANNON_POCKET, MW_CAP_POCKET, ...Object.entries(MW_BLIND_BORES).filter(([k]) => !(k === 'drop' && MW_LEG1_POCKETS.length)).map(([, v]) => v), ...MW_LEG1_POCKETS],
   radius: plateR, thickness: BACK_PLATE_T,
   // §307 — under ?case=rect the plate's outline is the form rectangle (the
   // movement frame is the plate's own: backPlate sits at the origin). The
@@ -11683,9 +11790,11 @@ const BACK_PLATE_CUT = {
   rim: { r: BASE_RIM_R, notches: CASE_NOTCHES },
   holes: [
     ...BACK_PLATE_HOLES,
-    MW_FOLD_PLATE_HOLE,   // §234 fold — the third motion-works corner's blanks, A's precedent
+    // §234 fold — the third motion-works corner's blanks, A's precedent (since TODO 289 landing 2 cut as ONE opening
+    // with leg 1's K-side bearing pocket, that pocket's `through`, where the block is sited)
+    ...(MW_LEG1_POCKETS.some((p) => p.through) ? [] : [MW_FOLD_PLATE_HOLE]),
     // TODO 150 item 1 — the drop corner's own recess at A, same precedent (BLIND since TODO 289 landing 1, a pocket)
-    ...(MW_BLIND_BORES.drop ? [] : [MW_DROP_PLATE_HOLE]),
+    ...(MW_BLIND_BORES.drop || MW_LEG1_POCKETS.length ? [] : [MW_DROP_PLATE_HOLE]),
     // (MW_RISE_PLATE_HOLE is cut with the cap's pocket — MW_CAP_POCKET.through — where the two overlap; TODO 289;
     // and blind, a pocket of its own, where the rise's upper pivot is sited over it — landing 1)
     ...(MW_CAP_BORE_MERGED || MW_BLIND_BORES.rise ? [] : [MW_RISE_PLATE_HOLE]),
@@ -65429,6 +65538,8 @@ window.__clock = {
           return [k, U.why ? { why: U.why } : { why: null, apex: vArr(U.o), axis: vArr(U.u), r: U.r, bore: U.bore, outer: U.outer, s0: U.s0, len: U.len, room: U.room,
             sEnd: U.sEnd, centre: vArr(U.centre), floorZ: U.floorZ, coneR: U.coneR, legCut: U.legCut, straddled: U.straddled }]; })),
         leg1A: vArr(T.leg1A), leg2B: vArr(T.leg2B), plateTop: PLATE_TOP_FACE,
+        // TODO 289 landing 2 — leg 1's bearing blocks, let into the plate
+        leg1Blocks: T.leg1Blocks.why ? { why: T.leg1Blocks.why } : (({ blocks, ...LB }) => ({ ...LB, blocks: blocks.map((b) => ({ s: b.s, centre: vArr(b.centre), pocket: { ...b.pocket } })) }))(T.leg1Blocks),
       };
     })() : null,
     capLeg: SETTING_METAL.leg && {

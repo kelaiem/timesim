@@ -3776,6 +3776,9 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Keyless works', a: 'settingDropTopPivot', b: 'settingDropTopBush', why: 'TODO 289 landing 1: the drop\'s upper pivot in its bush in the blind bore\'s floor over A, at PIVOT_BORE_CLEAR' },
   { unit: 'Keyless works', a: 'settingRiseTopPivot', b: 'settingRise', why: 'TODO 289 landing 1: the rise\'s upper pivot, turned on the rod\'s own end up past B against its tilt — one body' },
   { unit: 'Keyless works', a: 'settingRiseTopPivot', b: 'settingRiseTopBush', why: 'TODO 289 landing 1: the rise\'s upper pivot in its bush in the blind bore\'s floor over B, at PIVOT_BORE_CLEAR' },
+  // TODO 289 landing 2 — leg 1 running in its two blocks, each let into a pocket in the plate's dial face
+  { unit: 'Keyless works', a: 'settingTraverse1', b: 'settingTraverseBlockA', why: 'TODO 289 landing 2: leg 1 in its bearing block near A, at PIVOT_BORE_CLEAR' },
+  { unit: 'Keyless works', a: 'settingTraverse1', b: 'settingTraverseBlockK', why: 'TODO 289 landing 2: leg 1 in its bearing block near K, at PIVOT_BORE_CLEAR' },
   // §99 found the other two joints of the same cluster, the same way the
   // declared row below found its first: the two wheels keyed to the long
   // keyless arbor sit at the measurement boundary and the flag flips
@@ -5160,6 +5163,8 @@ export const PLATE_SEATS = [
   { unit: "Keyless works", mesh: "settingDropTopBush", kind: "housed", why: "TODO 289 landing 1: the drop's upper bush, pressed into the blind bore's floor over A" },
   { unit: "Keyless works", mesh: "settingRiseTopPivot", kind: "pivot", why: "TODO 289 landing 1: the rise's upper pivot, run up into the blind bore's floor over B" },
   { unit: "Keyless works", mesh: "settingRiseTopBush", kind: "housed", why: "TODO 289 landing 1: the rise's upper bush, pressed into the blind bore's floor over B" },
+  { unit: "Keyless works", mesh: "settingTraverseBlockA", kind: "planted", why: "TODO 289 landing 2: leg 1's bearing block near A, its top face seated on its pocket's floor in the dial face" },
+  { unit: "Keyless works", mesh: "settingTraverseBlockK", kind: "planted", why: "TODO 289 landing 2: leg 1's bearing block near K, seated on the floor of the pocket cut as one opening with the fold corner's bore" },
   { unit: "Alarm link", mesh: "alarmLinkHanger1", kind: "planted", why: "a hanger, standing on the plate" },
   { unit: "Alarm link", mesh: "alarmLinkHanger2", kind: "planted", why: "a hanger, standing on the plate" },
   { unit: "Alarm link", mesh: "alarmLinkHanger3Upper", kind: "planted", why: "§261 2c: hanger 3's upper column — jogged round the beak's bar — standing on the plate" },

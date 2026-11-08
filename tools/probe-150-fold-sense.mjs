@@ -264,7 +264,9 @@ const out = await page.evaluate(async ({ bases, tauBases }) => {
   const BEARINGS = ['settingRisePivot', 'settingRiseBush', 'settingRiseArm', 'settingRiseColumn', 'settingStubBush', 'settingStubArm',
     'settingStubColumn', 'settingCapBush', 'settingCapArm', 'settingCapColumn', 'settingCapJewel',
     // TODO 289 landing 1 — the upper pivots over A and B (one body with the drop and the rise) and their bushes in the blind floors
-    'settingDropTopPivot', 'settingDropTopBush', 'settingRiseTopPivot', 'settingRiseTopBush'];
+    'settingDropTopPivot', 'settingDropTopBush', 'settingRiseTopPivot', 'settingRiseTopBush',
+    // TODO 289 landing 2 — leg 1's two blocks, let into the plate
+    'settingTraverseBlockA', 'settingTraverseBlockK'];
   const FOLD = new Set(['settingDrop', 'mwCornerDropIn', 'mwCornerDropOut', 'settingTraverse1', 'mwCornerFoldIn',
     'mwCornerFoldOut', 'settingTraverse2', ...MOVED, ...BEARINGS]);
   const labelOf = (o) => { for (let q = o; q; q = q.parent) if (q.name) return q.name; return '(unnamed)'; };
