@@ -6,12 +6,15 @@
 // warning. Then it holds §204's two claims:
 //   1. the identity row boots SILENT (standing rule 6, the fingerprint's own
 //      precondition);
-//   2. the 36,000 row's warning SET equals the 28,800 row's — the same
-//      structural asserts and no member added. "Closes exactly as well as the
-//      menu already does" is the claim §204 shipped on, and set equality is
-//      what it means: a 36,000 row that trips an assert 28,800 does not is the
-//      naive 6/120-at-0.21 row this probe exists to keep out (5 warnings, the
-//      plate past §187's aperture and through §186's clamp thread).
+//   2. (TODO 292, which retired §204's set-equality claim) every UNDRIVEN row —
+//      a rate whose gear train stands but whose balance the honest mainspring
+//      (TODO 291) cannot drive to the target — is REFUSED: booted with its
+//      ?vph=, the build is the 18,000 watch (SPEC.vph 18000, the 1/10 fourth
+//      row) and its warnings name TODO 292. The control is the menu: no
+//      undriven rate may be offered (SPEC_RATES), and every one must be listed
+//      in SPEC_RATES_UNDRIVEN. §204's claim compared the 36,000 row's warning
+//      set with the 28,800 row's; both are refused now, so equal sets would say
+//      nothing about either.
 // A warning is identified by the ASSERT that raised it — its § tag and the
 // subject clause up to the first number — never by what it measured: the
 // clamp wall reading 0.112 → 0.315 u is the same warning, and so is the gong
@@ -47,7 +50,7 @@ async function boot(vph) {
     const P = c.P || {};
     const f = L.TRAIN.fourth;
     return {
-      rates: L.SPEC_RATES, vph: L.SPEC.vph, row: `${f.pinion}/${f.teeth} @ ${f.module}`, fourthR: +(f.module * f.teeth / 2).toFixed(3),
+      rates: L.SPEC_RATES, undriven: L.SPEC_RATES_UNDRIVEN, vph: L.SPEC.vph, row: `${f.pinion}/${f.teeth} @ ${f.module}`, fourthR: +(f.module * f.teeth / 2).toFixed(3),
       plateR: c.plateR == null ? null : +c.plateR.toFixed(3),
       escape: P.escape ? `(${P.escape.x.toFixed(3)}, ${P.escape.y.toFixed(3)})` : null,
       ribbonMm: c.oscillator ? +c.oscillator.spring.h_mm.toFixed(4) : null,
@@ -63,6 +66,8 @@ async function boot(vph) {
 const identity = await boot(null);
 const rows = { [identity.vph]: identity };
 for (const vph of identity.rates) if (!rows[vph]) rows[vph] = await boot(vph);
+const refused = {};
+for (const vph of identity.undriven) refused[vph] = await boot(vph);
 await browser.close();
 srv.kill();
 
@@ -77,10 +82,12 @@ for (const vph of Object.keys(rows).map(Number).sort((a, b) => a - b)) {
 let fail = 0;
 if (identity.bootWarns.length || identity.consoleWarns.length) { fail++; console.log(`FAIL identity: ${identity.bootWarns.length} boot warning(s), ${identity.consoleWarns.length} console warning(s)`); }
 else console.log('OK   identity boots silent');
-const setOf = (r) => new Set(r.bootWarns.map(mask));
-const a = setOf(rows[28800]), b = setOf(rows[36000]);
-const added = [...b].filter((k) => !a.has(k)), dropped = [...a].filter((k) => !b.has(k));
-if (!rows[28800] || !rows[36000]) { fail++; console.log('FAIL the 28,800 or 36,000 row is not in SPEC_RATES'); }
-else if (added.length || dropped.length) { fail++; console.log(`FAIL 36,000 vs 28,800 warning sets differ — added ${JSON.stringify(added)}, dropped ${JSON.stringify(dropped)}`); }
-else console.log(`OK   36,000 trips the same ${b.size} structural assert(s) as 28,800, none added`);
+if (!identity.undriven.length) console.log('OK   no rate is undriven');
+for (const vph of identity.undriven) {
+  const r = refused[vph], named = [...r.bootWarns, ...r.consoleWarns].some((w) => /TODO 292/.test(w));
+  if (identity.rates.includes(vph)) { fail++; console.log(`FAIL ${vph} is undriven and still offered in SPEC_RATES`); }
+  else if (r.vph !== 18000 || r.row !== rows[18000].row) { fail++; console.log(`FAIL ?vph=${vph} built SPEC.vph ${r.vph}, fourth row ${r.row} — not refused to the 18,000 watch (${rows[18000].row})`); }
+  else if (!named) { fail++; console.log(`FAIL ?vph=${vph} was refused in silence — no warning names TODO 292`); }
+  else console.log(`OK   ?vph=${vph} is refused: the 18,000 watch, its warning names TODO 292`);
+}
 process.exit(fail ? 1 : 0);

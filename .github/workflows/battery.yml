@@ -616,9 +616,24 @@ jobs:
           # sweep the points FULL with no ceiling on ubuntu-latest: a push, and a
           # dispatch that stayed hosted, which is the same whole run and is
           # how the hand-off is exercised from a branch before it merges. Not
-          # a PR (its points are incremental and ceilinged, and §259's matrix
-          # already spreads them), and not the host's dispatch or nightly (a
-          # second job would take its second slot, which §260 keeps free).
+          # the host's dispatch or nightly (a second job would take its second
+          # slot, which §260 keeps free).
+          #
+          # §330 — AND A HOSTED PULL REQUEST. A PR ran every stage in one
+          # process (#866: 33.8 min, of which the spec tier 7.7, the point tier
+          # 10.5 and the probes 5.2), and its point tier was CEILINGED to
+          # POINT_PR_BUDGET_MS only to bound that one process's wall: #866's
+          # ceiling skipped `designed` and `form-rect`, so the PR verified one
+          # point of three. On the fan-out the point tier runs on its own
+          # runner, so it costs the PR no wall beyond the slowest sibling, and
+          # it is swept FULL with no ceiling, exactly the push's tier: the
+          # sibling path takes nothing else (pointsRefusal). The PR's own
+          # shards stay incremental against its base's baseline; only its point
+          # tier stops inheriting. Hosted only: on the host the tiers would
+          # take three more slots (§260), and a PR's matrix opt-in already
+          # spreads both tiers across its workers. The runner minutes are free
+          # (a public repository's hosted Linux minutes are not billed); what a
+          # PR spends is four concurrent hosted jobs where it held one.
           #
           # §263 — and only when the run is NOT split. A split run (a hosted
           # dispatch with `split: true`, or a PR's opt-in) already spreads both
@@ -626,7 +641,7 @@ jobs:
           # hand-off's consumer is the single process's (the flags refuse
           # --matrix).
           tiers_job=false; pwhy=""
-          if [ "$run" = true ] && [ "$matrix" != true ] && [ "$host" = ubuntu-latest ] && { [ "$EVENT" = push ] || [ "$EVENT" = workflow_dispatch ]; }; then
+          if [ "$run" = true ] && [ "$matrix" != true ] && [ "$host" = ubuntu-latest ] && { [ "$EVENT" = push ] || [ "$EVENT" = workflow_dispatch ] || [ "$EVENT" = pull_request ]; }; then
             tiers_job=true
             pwhy="the spec boots and the point tier are measured by the parallel 'battery spec' and 'battery points' jobs and handed to the battery before it judges; the case and casing probes run on 'battery probes', whose conclusion the battery gates on"
           fi
@@ -787,13 +802,65 @@ jobs:
   # conclusion — `battery` still fails when a probe does (see that step).
   #
   # The cap: setup ~26 s plus the probes' 194 s is ~3.7 min, times the 1.66x
-  # same-tree spread, 6.1 -> 7. The battery's gate step waits the same 7.
+  # same-tree spread, 6.1 -> 7. §328 added the lands probe; since step 1b it
+  # boots the round, rect and free builds and two pillar twins and sweeps
+  # three, 226 s measured uncontended in a dev container (re-derive from this
+  # job's own timing once it has run): ~26 + 194 + 226 s is ~7.4 min, times
+  # 1.66, 12.3 -> 13. The battery's gate step waits the same 13.
+  #
+  # 13 -> 18 -> 21 for §337 stage 3's geared-Geneva line. The 21 is the honest
+  # number; the 18 this row first carried was derived the wrong way round, and
+  # the correction is kept here because the mistake is an easy one to repeat.
+  #
+  # MEASURED ON THE RUNNER, the first run that ever executed the probe in CI
+  # (run 42432485347, job 128584226352, PR #918, 2026-11-08):
+  # probe-337-geared-geneva.mjs took 228.3 s of this job's wall, and the job as
+  # a whole 744.0 s, 12.4 min, of which these probes without §337's are 515.7 s.
+  #
+  # THE CAP: 744.0 s times the 1.66x same-tree spread this file's header
+  # measured is 1235 s, 20.6 min, rounded up to 21 - NOT 18. The 18 came from a
+  # projection, and when the measurement landed the instinct was to keep it
+  # because 744.0 s "fits" 18 with 336 s spare. That is the exact error the
+  # header warns about in capitals: a cap has to clear its SLOW TAIL, one run
+  # cannot measure a spread, and a green run is what makes a too-tight cap look
+  # justified until it fires on a healthy build. 744.0 s is ONE SAMPLE, with no
+  # telling whether that run was a fast one or a slow one; against the measured
+  # tail, 18 is short by 155 s.
+  #
+  # AND THE 1.66x IS NOT A DEV-TO-RUNNER CONVERSION, which is the other thing
+  # the first attempt at this row got wrong. It is the spread between two CI
+  # runs OF THE SAME TREE (2459.1 s against 4082.8 s). Setting it against
+  # 515.7 / 446 = 1.16x - a dev-container sum against one runner wall - is a
+  # category error; the header says there is no dev-vs-CI ratio to correct for,
+  # only a distribution. So nothing measured here says 1.66 is loose, and the
+  # live caps derived through it (the tiers cap, and the battery job's 125 and
+  # 150) are untouched and not in question.
+  #
+  # What DOES carry forward: "13 min already covers ~740 s of runner wall" was
+  # never an observation - that 740 was the dev-container sum times 1.66, and
+  # the real figure is 515.7 s. The two rows above are superseded revisions of
+  # THIS number, not separate caps. Derive from measured wall times the spread,
+  # as here.
+  #
+  # SAMPLES OF THIS JOB'S WALL. Append a run here rather than replacing the
+  # figure above: the 1.66x exists because this job has a DISTRIBUTION, and a
+  # distribution needs a population. One run is what got the 18 wrong.
+  #   744.0 s  run 42432485347  PR #918  2026-11-08  (the 21 above derives from this)
+  #   763.0 s  run 42435601495  PR #919  2026-11-08
+  # Those two sit 19 s apart, 1.026x, and that says NOTHING about whether 1.66
+  # is loose - both landed on healthy runners, while the 1.66 came from a run
+  # that took 4082.8 s against 2459.1 s on the same tree. Do not read a narrow
+  # pair as a narrow tail; that is the same mistake in the other direction.
+  # Strict rounding off the slower sample gives 22, not 21, over by 7 s. Left at
+  # 21 on purpose: a timeout is a one-line revert, 763.0 s uses 61% of it, and
+  # two samples cannot tell a fast run from a slow one. Revisit when these rows
+  # outnumber the guesses - with more wall times, not another projection.
   battery-probes:
     name: battery probes
     needs: route
     if: needs.route.outputs.tiers_job == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 7
+    timeout-minutes: 21
     steps:
       - uses: actions/checkout@v4
 
@@ -814,11 +881,14 @@ jobs:
       - name: Install Chromium
         uses: ./.github/actions/install-chromium   # bounded apt from cached .debs, then the cached browser
 
-      - name: Case relief, casing path and back envelope (§186, §187)
+      - name: Case relief, casing path, back envelope, lands, the clearance witness and the geared Geneva's line (§186, §187, §328, TODO 282, §337)
         run: |
           node tools/probe-case-relief.mjs
           node tools/probe-187-casing-path.mjs
           node tools/probe-back-envelope.mjs
+          node tools/probe-328-lands.mjs
+          node tools/probe-282-witness.mjs
+          node tools/probe-337-geared-geneva.mjs
 
   battery:
     needs: route
@@ -1034,10 +1104,16 @@ jobs:
         run: |
           args=""
           why=""
-          # TODO 186 — every PR's points run under the ceiling; they inherit
+          # TODO 186 — a PR's points run under the ceiling; they inherit
           # only where the default would (same cache entry, no full-battery
           # ask), and the harness decides FULL or INCREMENTAL per point.
-          if [ "$EVENT" = "pull_request" ]; then args="--points-pr"; fi
+          # §330 — except on the fan-out (TIERS_JOB): there `battery points`
+          # sweeps every point FULL on its own runner, and the battery takes
+          # its file, so this process takes no --points-pr and no --points-base
+          # (the harness refuses --tiers-from beside --points-pr).
+          pts_pr=""; pts_base=""
+          if [ "$EVENT" = "pull_request" ] && [ "$TIERS_JOB" != true ]; then pts_pr="--points-pr"; pts_base=" --points-base .battery-baseline/points.json"; fi
+          args="$pts_pr"
           if [ "$EVENT" != "pull_request" ]; then
             why="not a pull request — this run IS the baseline, so it is always whole (and every spec point is swept full)"
           elif [ "$HIT" != "true" ]; then
@@ -1047,7 +1123,7 @@ jobs:
           elif printf '%s' "$TITLE" | grep -qF '[full battery]'; then
             why="[full battery] in the PR title — running everything"
           else
-            args="$args --baseline .battery-baseline/report.json --digests-base .battery-baseline/digests.json --points-base .battery-baseline/points.json"
+            args="$args --baseline .battery-baseline/report.json --digests-base .battery-baseline/digests.json$pts_base"
             why="incremental if the check-code digest also matches; the harness decides and logs which"
           fi
           echo "args=$args" >> "$GITHUB_OUTPUT"
@@ -1221,13 +1297,17 @@ jobs:
       # therefore holds exactly as a failing probe step after the harness did:
       # the report is still uploaded, nothing is published or seeded.
       #
-      # Its cap is the probes job's own (7 min): the battery reaches it ~12 min
-      # in, so a probes job that started as late as ~5 min after the battery
-      # still finishes, or is killed, inside it. A step killed at the cap fails,
-      # which is the safe side.
-      - name: The case relief, casing path and back envelope probes passed (§186, §187)
+      # Its cap is the probes job's own (21 min since §337 stage 3's measured
+      # re-derivation; see that job's comment for why not 18): the battery
+      # reaches it ~12 min in and may now wait past its own ~19 min, so
+      # a probes job that started with the battery finishes, or is killed,
+      # inside this step either way. A step killed at the cap fails, which is
+      # the safe side, and the battery job's own cap (95-150 min) is nowhere
+      # near. The two must move together: a wait shorter than the probes job's
+      # cap would fail a probe that was still running and had not yet failed.
+      - name: The case relief, casing path, back envelope, lands, witness and geared-line probes passed (§186, §187, §328, TODO 282, §337)
         if: env.TIERS_JOB == 'true' && env.MATRIX != 'true'
-        timeout-minutes: 7
+        timeout-minutes: 21
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -1244,7 +1324,7 @@ jobs:
               completed:success)
                 echo "§186/§187: 'battery probes' passed" | tee -a "$GITHUB_STEP_SUMMARY"; exit 0 ;;
               completed:*)
-                echo "::error::'battery probes' ended $st — case relief, casing path or back envelope failed (see that job); this battery does not pass"
+                echo "::error::'battery probes' ended $st — case relief, casing path, back envelope, lands, the clearance witness or the geared Geneva's line failed (see that job); this battery does not pass"
                 echo "§186/§187: 'battery probes' ended $st — the battery FAILS" >> "$GITHUB_STEP_SUMMARY"
                 exit 1 ;;
             esac
@@ -1289,6 +1369,52 @@ jobs:
         run: |
           node tools/probe-187-casing-path.mjs
           node tools/probe-back-envelope.mjs
+
+      # ---- §328: the lands, which no sweep reads
+      #
+      # Since §328 step 1b the back plate stands on lands the base plate raises,
+      # on every case kind (`?frame=pillars` keeps the applied pillars). A land
+      # is the base plate's own metal, a HELD fixture in no pair sweep, so
+      # inspection, clearances and undeclaredClearance cannot see a part
+      # standing in one, and plateSeats excuses every part with a seat row (the
+      # case clamp screws among them). This boots the round, rect and free
+      # builds (and the round and rect `?frame=pillars` twins) and holds every
+      # labelled mesh off every land over the pose net, the lands on the
+      # pillars' seats and the rim the case seats on unmoved; acceptance, exit 1
+      # on a finding.
+      - name: Lands (§328)
+        if: (env.MATRIX != 'true' || matrix.worker == 1) && env.TIERS_JOB != 'true'   # on the fan-out path the `battery probes` job runs it
+        run: node tools/probe-328-lands.mjs
+
+      # TODO 282 — the clearance query's pass-through witness, held against the rule as it was: a rod through a
+      # doubled-face slab must read 0 (the old "exactly two faces" closedness read it clear), a rod through an open
+      # sheet must still be refused, the closedness census must be monotone, and the case bodies a stem passes
+      # through must have no odd edge. It is a check on the INSTRUMENT the sweeps above trust, so it rides with them;
+      # three boots, acceptance, exit 1 on a finding.
+      - name: Clearance witness (TODO 282)
+        if: (env.MATRIX != 'true' || matrix.worker == 1) && env.TIERS_JOB != 'true'   # on the fan-out path the `battery probes` job runs it
+        run: node tools/probe-282-witness.mjs
+
+      # ---- §337 stage 3: the geared Geneva's line, which no gate read
+      #
+      # §337's spec points boot the geared stop-work's METAL at the two reserves
+      # it is built for; this holds the LINE src/geared-geneva.js designs at all
+      # thirteen (12..48 h) - every finger's travel exactly its star's
+      # m + ½ + 1/n against a slot-by-slot simulation, every pair cuttable, every
+      # Geneva's floors and hub clearance and its pin and stud under yield, and
+      # every orbit the smallest the line may take. It boots each reserve only to
+      # read that reserve's OWN fusee stall torque; the rules are pure math over
+      # the module, so nothing here duplicates a sweep.
+      #
+      # IT WAS RED ON MAIN and nothing ran it: landing 2b's lock fix made
+      # sizeGeneva scan from LOCK_R1_MIN, so rule M - "the orbit is the smallest
+      # that holds" - stopped describing the code, and the probe exited 1 at all
+      # thirteen reserves for as long as the fix had been in. Stage 3 fixed the
+      # rule to read the lock floor as well; this step is why that cannot rot
+      # again. Acceptance, exit 1 on a finding.
+      - name: The geared Geneva's line (§337)
+        if: (env.MATRIX != 'true' || matrix.worker == 1) && env.TIERS_JOB != 'true'   # on the fan-out path the `battery probes` job runs it
+        run: node tools/probe-337-geared-geneva.mjs
 
       # ---- §227: what this run measured, so a merge can tell ----------------
       #

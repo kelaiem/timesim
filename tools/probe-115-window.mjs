@@ -190,7 +190,7 @@ for (const r of out.rows) {
   const closed = [];
   for (let i = 0; i < 360; i++) if (r.rOut[i] <= 0) closed.push(i);
   if (closed.length) console.log(`  closed at: ${closed.join(',')}`);
-  if (r.name === 'governor' || r.late) {
+  if ((r.name === 'governor' || r.late) && r.rOut?.length === 360) {   // a yielded or deferred row has no outline
     const t = [];
     for (let i = 0; i < 360; i += 10) t.push(`${i}:${r.rOut[i].toFixed(2)}`);
     console.log(`  rOut/10°: ${t.join(' ')}`);

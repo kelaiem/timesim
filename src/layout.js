@@ -72,26 +72,33 @@
 // escapement from rest (BALANCE_DRIVE.selfStart). `equalisation` row 15 holds
 // both, and that one step heavier fails one of them. `claimDeg` and `peakDeg`
 // are AMPLITUDE_CLAIM_DEG and AMPLITUDE_PEAK_DEG for that balance (row 14).
-// Measured (the record's own step test, nominal corner, hanging):
-//   18,000  0.645  200.36°  (0.650: 199.09°)   both start
-//   21,600  0.485  200.14°  (0.490: 198.58°)   both start
-//   28,800  0.270  201.75°  (0.275: 199.68°)   both start
-//   36,000  0.250  201.93°  (0.255: 199.75°)   both start   balanceR 7.5
-// — the target binds every row; the start, which a lighter balance makes
-// easier, does not. A row without them is the 18,000 balance's.
-// `balanceR` is the balance's RADIUS (BALANCE_R_SPEC), and only 36,000 moves
-// it: at r 9 the lightest rim the metal allows (balanceWheelDims' floor,
-// 0.2305) sustains about 162° there. The radius is the largest in steps of a
-// quarter that still reaches the target on a rim inside the metal (7.75
-// reaches 199.21° at the lightest grid rim, 0.235), and a smaller balance
-// re-solves the escapement it drives — the roller, the escape-to-balance
-// distance and so the notch, bank and knock (298.27° at r 7.5, so peakDeg
-// 299) all scale off BALANCE_R; the escape wheel and the angles do not.
+// Measured (the record's own step test, nominal corner, hanging), since TODO 291
+// re-proportioned the mainspring to the packing rule (55% of the old ribbon's
+// energy; the old rims were 0.645, 0.485, 0.27 and 0.25 at r 7.5):
+//   18,000  0.36   201.65°  (0.365: 199.43°)   both start
+//   21,600  0.26   200.98°  (0.265: 198.69°)   both start
+// — the target binds both; the start does not. A row without them is the 18,000
+// balance's.
+// TODO 292 — the two FAST rows have no balance the honest spring can drive. At
+// 28,800 the lightest rim on the grid (0.235) sustains 144.75° at r 9 and
+// 150.44° at 8.75, and neither starts; at 36,000 it sustains 138.95° at r 7.5
+// and 152.89° at 7, and neither starts. Each quarter smaller gains a few
+// degrees and costs an escapement re-solve, and the start has not come back at
+// any radius tried. So those rows keep their GEAR TRAINS (the mesh is real and
+// §204's cut stands) and carry no balance: `undriven` names why, SPEC refuses
+// them (it builds the 18,000 watch and says so), and the rate menu does not
+// offer them. They return when the spring's energy does (BACKLOG §339's second
+// drum, or a larger one).
+// `balanceR` is the balance's RADIUS (BALANCE_R_SPEC). The 36,000 row carried
+// r 7.5 under the old spring (the largest quarter step that reached the target
+// at the lightest grid rim), and a smaller balance re-solves the escapement it
+// drives — the roller, the escape-to-balance distance and so the notch, bank and
+// knock all scale off BALANCE_R; the escape wheel and the angles do not.
 const RATE_TABLE = {
-  18000: { fourthTeeth: 80, escPinion: 8, balanceR: 9, rimF: 0.645, claimDeg: 126, peakDeg: 311 }, // 8/80 = 1/10 — the shipped movement
-  21600: { fourthTeeth: 96, escPinion: 8, balanceR: 9, rimF: 0.485, claimDeg: 128, peakDeg: 311 }, // 8/96 = 1/12
-  28800: { fourthTeeth: 96, escPinion: 6, balanceR: 9, rimF: 0.27, claimDeg: 132, peakDeg: 311 }, // 6/96 = 1/16
-  36000: { fourthTeeth: 120, escPinion: 6, module: 0.168, balanceR: 7.5, rimF: 0.25, claimDeg: 133, peakDeg: 299 }, // 6/120 = 1/20 — §204: at 0.168 the wheel keeps the 96-tooth rows' pitch radius
+  18000: { fourthTeeth: 80, escPinion: 8, balanceR: 9, rimF: 0.36, claimDeg: 126, peakDeg: 311 }, // 8/80 = 1/10 — the shipped movement
+  21600: { fourthTeeth: 96, escPinion: 8, balanceR: 9, rimF: 0.26, claimDeg: 128, peakDeg: 311 }, // 8/96 = 1/12
+  28800: { fourthTeeth: 96, escPinion: 6, undriven: 'TODO 292 — no balance the honest mainspring (TODO 291) drives to AMPLITUDE_TARGET_DEG and starts at this rate' }, // 6/96 = 1/16
+  36000: { fourthTeeth: 120, escPinion: 6, module: 0.168, undriven: 'TODO 292 — no balance the honest mainspring (TODO 291) drives to AMPLITUDE_TARGET_DEG and starts at this rate' }, // 6/120 = 1/20 — §204: at 0.168 the wheel keeps the 96-tooth rows' pitch radius
 };
 // The row a rate's balance reads: its own, or the shipped movement's.
 const rateBalanceRow = (vph) => (RATE_TABLE[vph].rimF !== undefined ? RATE_TABLE[vph] : RATE_TABLE[18000]);
@@ -120,13 +127,44 @@ export const CASE_KINDS = Object.freeze([...FORM_KINDS, 'free']);
 // arrangement key null), exactly as before §314. Written out as numbers, as a URL would carry them, so a default
 // build and the same build spelled in full share one configKey — and the `arrangement` marker itself is NOT a spec
 // field, so the designed train and its variants keep the configKeys they were validated under.
+// The strap the case is cut for, in mm, and it is the owner's pick (2026-11-01: 19 mm, down from the 20 mm the cap itself allowed): the
+// INTERIOR gap between the lugs' facing walls, which is the size a strap is bought in and the spring bar's free length. It sits
+// UNDER the cap, never over it (the cap IS the bar's free length, main.js warns on a spec past it). `?strap=` / SPEC.strapMm
+// adjusts it; null = this default, so every key that names no strap is the one the default was validated under.
+export const STRAP_MM_DEFAULT = 19;
+// The narrowest strap the pickers offer (index.html's boot prefs, main.js's spec panel), whole millimetres up to the
+// cap — a picker's RANGE, not a limit (?strap= takes any width). One declaration, because the free case's generated
+// outlines (src/free-outlines.js) must cover every width offered, and probe-325-free-case.mjs S holds that against it.
+export const STRAP_PICK_MIN_MM = 14;
 export const ARRANGEMENT = Object.freeze({ barrelStepDeg: -20, rsvAzDeg: 0, alarmModAzDeg: 50, rsvIdlers: 2 });
+// The fusee's own gearing: the great wheel on the fusee into the centre pinion, TRAIN.barrel's tooth counts (its derivation is
+// there). Named here, above SPEC, because the spec's parse needs the fusee's turns per hour (§329's arrest key, below) before
+// TRAIN is declared; TRAIN.barrel reads them, so the two cannot part.
+export const GREAT_WHEEL_TEETH = 120, CENTRE_PINION_LEAVES = 7;
+// §329 — WHERE THE STOP-WORK STANDS. Two facts decide it, and only the first is arithmetic. A Geneva of n slots, m of them open,
+// travels (m + 1) − E/2π = m + ½ + 1/n finger turns between its stops (src/stopwork-arrest.js travelTurns), and the cone's wind
+// is reserveHours·pinion/teeth turns, so the LINE reaches a reserve only where those are equal (exact, with no trim). Of the
+// reserves the spec offers it reaches 30 h (n 4, m 1) and 45 h (n 8, m 2). The second fact is the build's: whether the cone's top
+// face leaves an orbit for the pin and the plate a seat for the star (main.js, §329's site search). That is MEASURED, so it is a
+// declared list, held to the metal by tools/probe-329-stopwork-reserves.mjs: every reserve the line reaches must find a site
+// exactly when it is listed. 45 h does not (every one of 720 azimuths refused at the pin's root, on main before §329's P1).
+export const stopworkReaches = (reserveHours) => {
+  const T = (reserveHours * CENTRE_PINION_LEAVES) / GREAT_WHEEL_TEETH;
+  for (let n = 3; n <= 12; n++) for (let m = 1; m <= Math.ceil(T) + 1; m++) if (Math.abs(m + 0.5 + 1 / n - T) < 1e-9) return true;
+  return false;
+};
+export const STOPWORK_SITED_HOURS = Object.freeze([30]);
 export const SPEC = (() => {
   const raw0 = (typeof globalThis !== 'undefined' && globalThis.__WATCH_SPEC) || {};
   const given = (v) => v !== undefined && v !== null && v !== '';
   const designed = raw0.arrangement === 'designed';
   const raw = !designed && !Object.keys(ARRANGEMENT).some((k) => given(raw0[k])) ? { ...raw0, ...ARRANGEMENT } : raw0;
-  const vph = RATE_TABLE[raw.vph] ? Number(raw.vph) : 18000;
+  // TODO 292 — a rate whose row carries no balance the spring can drive is REFUSED, loudly: the build is the 18,000
+  // watch, never a stale balance quietly claiming the target at the asked rate.
+  const vphAsked = RATE_TABLE[raw.vph] ? Number(raw.vph) : 18000;
+  if (RATE_TABLE[vphAsked].undriven)
+    console.warn(`TODO 292: ?vph=${vphAsked} is refused — ${RATE_TABLE[vphAsked].undriven}; this build is the 18000 A/h watch`);
+  const vph = RATE_TABLE[vphAsked].undriven ? 18000 : vphAsked;
   // Reserve clamped to what the STRUCTURE accepts: below ~12 h the fusee
   // loses its reason to exist; above 48 h the cone's groove stack (0.7 u per
   // turn, one turn per 8 h) grows past what the plate floor can absorb —
@@ -315,6 +353,15 @@ export const SPEC = (() => {
   // take: FORM_KINDS ('rect', 'cushion', 'tonneau', and §317's 'fitted').
   // Anything else is round.
   const caseShape = CASE_KINDS.includes(raw.caseShape) ? raw.caseShape : null;   // §325: and the free outline
+  // §325 landing 6 / §328 — THE FRAME'S CONSTRUCTION. null is the frame on LANDS the base plate raises (the default on every
+  // case kind since §328 step 1b: the owner's CNC construction); 'pillars' is the traditional frame on four applied pillars
+  // riveted into the plate, kept as a supported style. The default is null rather than a name so every default build keeps
+  // its configKey and its URL; an old `?frame=lands` link reads the default, which is what it asked for
+  const frame = raw.frame === 'pillars' ? 'pillars' : null;
+  // §325 landing 7 — 'slide' builds the central hands TELESCOPING (geometry.js makeSlideHand): an arm to the nearest reach
+  // and a slider the cam runs out to the rest. Meaningful only on a form face, whose dial has a track to follow; the
+  // round face keeps its hands whatever is asked, and every existing key stays as it was.
+  const hands = raw.hands === 'slide' && caseShape ? 'slide' : null;
   // §307 landing 2 — THE MEASURED FORM RECTANGLE, `xMin,xMax,yMin,yMax` in
   // movement units: the footprint of the whole built movement (every part the
   // build placed inside the round case's bore, the case-path gong excepted)
@@ -345,7 +392,38 @@ export const SPEC = (() => {
   // their plate openings). false, or null — the alarm, as designed — so every configuration that names no `alarm`
   // keeps the configKey it was validated under.
   const alarm = raw.alarm === 0 ? false : null;
-  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, rsvIdlers, alarmr, subdialr, dialr, studr, caseShape, formRectSpec, gongSeat, alarm });
+  // 2026-11-01 — THE STRAP WIDTH, mm between the lugs (STRAP_MM_DEFAULT when null). Any positive finite number is kept as asked,
+  // like every other station spec: main.js warns past CASE_LUG_SPAN_MAX (the bar cannot be longer than the cap) rather than a clamp
+  // here silently building a different watch than the URL named. A value equal to the default is null, so ?strap=19 is the default's
+  // own configKey, not a second spelling of it.
+  const strapMm = Number.isFinite(Number(raw.strapMm)) && raw.strapMm !== null && raw.strapMm !== '' && Number(raw.strapMm) > 0
+    && Number(raw.strapMm) !== STRAP_MM_DEFAULT ? Number(raw.strapMm) : null;
+  // §75 step 1 — THE DRUM'S AZIMUTH about the fusee, an ABSOLUTE angle in degrees in the movement frame (P's x/y: atan2 of the
+  // drum's direction off P.barrel, counter-clockwise from +x). null keeps drumDirOf's blended direction (the shipped watch, bit-exact).
+  // An absolute angle is the honest dimension (§75): the 0.45 blend is how the default was found, not something to reason about.
+  // Normalised to [0, 360) so one placement has one configKey.
+  // §329 landing 2a — ?arrest=trailing asks the winding arrest's solve for the TRAILING-SIDE arrest's site (a measurement under
+  // __clock.windArrest.trailing; no metal moves yet). null = §47's arrest, as built, so every configKey without it is unchanged.
+  // §329 landing 4 — ?arrest=stopwork builds option B: a Geneva stop-work on the fusee (src/stopwork-arrest.js) INSTEAD of §47's
+  // finger, beak and lug. It moves metal, so unlike 'trailing' it is part of every configuration key that is about the movement.
+  // §329 — THE DEFAULT ARREST IS THE GENEVA STOP-WORK WHERE IT STANDS (stopworkReaches and STOPWORK_SITED_HOURS above say where,
+  // and why), and §47's stop iron everywhere else: the owner's flip, 2026-11-05, after landing 4 built it behind a key and the
+  // landings since swept it, fixed the gates only the default runs, priced it at P1 and held its contacts. So the key's null is
+  // the shipped arrest, as every other key's null is, and the default's configuration key does not move with the metal (every
+  // landing changes the default's metal under one key). `stopwork` is accepted and normalised to that null. `stop-iron` builds
+  // §47's arrest at every reserve (the old default, kept buildable and swept), and folds to null where the stop-work does not
+  // stand anyway, the same build. `trailing` measures §47's trailing side and so builds §47. `stopwork-site` is a MEASUREMENT key
+  // (the reserves probe): the stop-work's site search at any reserve, with no fold. Whether the stop-work is BUILT is the
+  // derived STOPWORK_BUILT below, which every reader asks instead of comparing this key.
+  const stopworkStands = stopworkReaches(reserveHours) && STOPWORK_SITED_HOURS.includes(reserveHours);
+  const arrest = raw.arrest === 'trailing' ? 'trailing'
+    : raw.arrest === 'stopwork-site' ? 'stopwork-site'
+    : raw.arrest === 'stop-iron' ? (stopworkStands ? 'stop-iron' : null)
+    : raw.arrest === 'geared' ? (stopworkStands ? null : 'geared')   // §337 landing 2b: the geared Geneva (src/geared-geneva.js); folds to null at 30 h, where the direct stop-work stands
+    : null;
+  const drumAzDeg = raw.drumAzDeg !== undefined && raw.drumAzDeg !== null && raw.drumAzDeg !== '' && Number.isFinite(Number(raw.drumAzDeg))
+    ? ((Number(raw.drumAzDeg) % 360) + 360) % 360 : null;
+  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, rsvIdlers, alarmr, subdialr, dialr, studr, caseShape, frame, hands, formRectSpec, gongSeat, alarm, strapMm, drumAzDeg, arrest });
 })();
 // §325 landing 3 — whether this build carries the alarm complication (SPEC.alarm above)
 export const ALARM_BUILT = SPEC.alarm !== false;
@@ -431,7 +509,18 @@ export function configKey({ spec = SPEC, route = null, tuned = [] } = {}) {
   const t = [...tuned].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
   return `cfg1:${JSON.stringify({ spec: s, route: route ?? null, tuned: t })}`;
 }
-export const SPEC_RATES = Object.freeze(Object.keys(RATE_TABLE).map(Number));
+// §329 — is the Geneva stop-work BUILT (main.js, in §47's block), instead of §47's stop iron? The one question every reader asks
+// (main.js, inspect.js, lubrication.js, the action groups below), derived from the spec so all of them agree before the build.
+// §337 landing 2b — ?arrest=geared builds the GEARED Geneva stop-work (src/geared-geneva.js) at the reserves where the direct one
+// does not stand, behind a key until the battery vouches for it (the direct stop-work's own staging). It replaces §47's arrest
+// there, so the §47 block is left as the stop-work's no-site path leaves it.
+export const GEARED_BUILT = SPEC.arrest === 'geared';
+export const STOPWORK_BUILT = SPEC.arrest === 'stopwork-site'
+  || (SPEC.arrest === null && stopworkReaches(SPEC.reserveHours) && STOPWORK_SITED_HOURS.includes(SPEC.reserveHours));
+// The rates the menu offers: every row with a balance the spring drives (TODO 292). The refused rows are listed beside
+// them, for the probe that holds the refusal.
+export const SPEC_RATES = Object.freeze(Object.keys(RATE_TABLE).map(Number).filter((r) => !RATE_TABLE[r].undriven));
+export const SPEC_RATES_UNDRIVEN = Object.freeze(Object.keys(RATE_TABLE).map(Number).filter((r) => RATE_TABLE[r].undriven));
 
 // ---------------------------------------------------------------------------
 // Kinematic constants (see SPEC.md "Gear train" + "Escapement behavior")
@@ -761,6 +850,10 @@ export const CASE_PUSHER_D = 1.2 / UNIT_MM;
 // is a styling input in the strap width's own standing — the look is chosen,
 // the section that carries it is derived.
 export const CASE_LUG_T = 1.0 / UNIT_MM;
+// §317 — a form case's straight ENDS run at least the lug pair's outboard reach (makeFormCase's `need`): the strap's
+// interior span plus one lug, halved, plus half a lug, so the flat lugs weld to straight metal. One law for the
+// build's fit (main.js FITTED_FLAT_MIN), the free outlines' tool and the probe that holds every strap's row to it.
+export const fittedFlatMin = (strapMm) => (strapMm / UNIT_MM + CASE_LUG_T) / 2 + CASE_LUG_T / 2;
 export const CASE_LUG_ROOT = 0.8 / UNIT_MM;   // embed into the band — the welded foot sinks into the wall it is fused to (a 0.3 mm first cut read as floating at screen scale)
 // TODO 209 — the foot's depth is bounded by the wall it is welded INTO. The
 // lugs stand ±(span + T)/2 off the pair axis, where the back band's bore has
@@ -778,7 +871,7 @@ export const caseLugRootR = (off, rOut, rBore) => {
   const boreR = Math.sqrt(Math.max(rBore * rBore - xIn * xIn, 0));
   return Math.max(surfR - CASE_LUG_ROOT, boreR + STOCK_MIN_U);
 };
-export const CASE_SPRING_BAR_D = 1.5 / UNIT_MM; // Ø1.5 mm — the standard double-flanged spring bar for a 20 mm strap
+export const CASE_SPRING_BAR_D = 1.5 / UNIT_MM; // Ø1.5 mm — the standard double-flanged spring bar for a 19–20 mm strap
 // The wrap gap — owner spec 2026-09-01: at least 2.0 mm between case metal
 // and the bar's surface everywhere on the wrap path, the thickness of strap
 // that can wrap the bar (two-piece ends run 1.2–1.8 mm there; a one-piece/
@@ -1205,7 +1298,7 @@ export function caseLugPlan({ rOut, rBore, off, zWallLo, zWallHi, zBack, arcSegs
   if (!(dz <= armU)) warn.push(`the drop ${dz.toFixed(3)} outgrew the radial arm ${armU.toFixed(3)} — the section was solved on the wrong arm`);
   if (!(bearing <= CASE_LUG_SIGMA_Y_PA)) warn.push(`the tip pin bears ${(bearing / 1e6).toFixed(1)} MPa on its hole, over the yield`);
   return {
-    W, T, R, rf, alpha: al, zR, zB, uBar, uTip, uC, surfOut, surfIn, rootU,
+    W, T, R, rf, alpha: al, zR, zB, footTopZ, uBar, uTip, uC, surfOut, surfIn, rootU,
     outline: out, hole: { u: uBar, z: zB, r: CASE_LUG_HOLE_D / 2 },
     rows: {
       armU, drop: dz, sigma, sigmaY: CASE_LUG_SIGMA_Y_PA, governs: CASE_LUG_YIELD_GOVERNS,
@@ -1290,6 +1383,37 @@ export const SPRING_TAU_Y_PA = SPRING_SIGMA_Y_PA / Math.sqrt(3);
 // figure by a fraction of a decibel; a grade NOBODY would accept (brass at
 // steel's modulus) would move it by whole ones, which is why the row names
 // its source. materials.js's `stockKeyOf` maps each material here.
+// §336 — THE PLATE METAL'S YIELD, which no member asked for until a cock had
+// to carry the fusee: the frame's nickel silver (STOCK.nickelSilver, CuNi18Zn20
+// / CDA C75200). A BAND over the alloy's published tempers, never one number —
+// FRICTION's rule for what the movement cannot measure — and a member is held to
+// its LOW end, the annealed temper, because nothing specifies the cock's stock as
+// work-hardened.
+//
+// THE SOURCES (checked 2026-11-06; the primary tables, ASTM B122/B151 for the US
+// tempers and EN 1652 for the European grades, are paywalled and NOT read, so the
+// band rests on secondary sheets that agree with each other, not on a standard):
+//   · the LOW end, 172 MPa (25 ksi, the annealed temper), is the lower bound of
+//     the published yield range for C75200, 172–621 MPa across tempers (Alfa
+//     Chemistry, "Cupronickel (with Zn) C75200");
+//   · EN 1652's softest CuNi18Zn20 strip grade, R380, and R450 both quote
+//     Rp0.2 250 MPa (Gnee Steel's CW409J sheet; an Industrial Manufacturing
+//     materials page for R380): so the low end is conservative by about 30%
+//     against the European annealed grade, the side a floor should err on;
+//   · Fisk Alloy's C752 datasheet gives TENSILE only, by temper: annealed 53–63
+//     ksi (365–434 MPa), half hard H02 66–80 ksi rolled flat, 83–97 ksi wire. An
+//     annealed yield of 172–250 MPa under a 365 MPa tensile is the ordinary ratio
+//     for an annealed copper alloy, and nothing contradicts the low end;
+//   · the HIGH end, 510 MPa at half hard, is NOT confirmed by any source read
+//     (the published range runs to 621 MPa at the hardest tempers); no member
+//     reads it, so it only describes the band.
+// The members it sizes scale as σ^(−1/2) (the cock's arm) and σ^(−1/3) (its leg
+// and post): at R380's 250 MPa they would come out 17% and 12% smaller.
+export const NICKEL_SILVER_SIGMA_Y_BAND = Object.freeze({
+  low: 172e6, high: 510e6,
+  why: 'CuNi18Zn20 (CDA C75200): annealed ≈ 172 MPa (the published range\'s low end; EN 1652 R380 quotes Rp0.2 250) to half hard ≈ 510 MPa (unconfirmed); the low end governs',
+});
+export const NICKEL_SILVER_SIGMA_Y_PA = NICKEL_SILVER_SIGMA_Y_BAND.low;
 export const STOCK = Object.freeze({
   steel:        { rho: 7850,  E: STEEL_E_PA, nu: STEEL_NU, why: 'carbon/spring steel — §56\'s density, §137\'s modulus' },
   brass:        { rho: 8500,  E: 100e9, nu: 0.34, why: 'CuZn37 wrought brass (CDA C27400): 8400–8730 kg/m³, E 97–110 GPa' },
@@ -1329,6 +1453,18 @@ export const MAINSPRING_SIGMA_Y_BAND = Object.freeze({
   why: 'Nivaflex 45/18 (DIN 2.4782) Rp0.2 after hardening, 1800–2550 MPa by degree of cold work; Rm up to 3000 MPa (Hempel Metals / VACUUMSCHMELZE data)',
 });
 export const MAINSPRING_SIGMA_Y_PA = MAINSPRING_SIGMA_Y_BAND.low;
+// TODO 291 — THE PACKING: how thick a mainspring may be for the arbor it is wound on. The innermost coils' bending round
+// the arbor is what sets or breaks a spring, so the trade sizes the strip's thickness e to the innermost coil's radius r
+// as a ratio α = r/e. David Ichim, "In-Depth: Balancing Mainspring Dimensions Inside the Barrel" (SJX Watches,
+// 7 November 2025): Defossez suggests 16, the old lower limit was about 14, and "the lower limit today is more in the
+// vicinity of 10" with modern alloys and manufacture. A BAND, FRICTION's rule, because the movement does not say which
+// school drew its spring. The solve and the gate read the LOW end, the permissive one, so no verdict rests on the
+// strictest figure. It is a rule of the trade, not a measured property of the alloy, and the record says so.
+export const MAINSPRING_ALPHA_BAND = Object.freeze({
+  low: 10, historical: 14, defossez: 16,
+  why: 'r/e, the innermost coil\'s radius over the strip\'s thickness: ~10 today, ~14 historically, 16 per Defossez (D. Ichim, SJX Watches, 2025-11-07)',
+});
+export const MAINSPRING_ALPHA_MIN = MAINSPRING_ALPHA_BAND.low;
 // TODO 221 — THE CLICK STEEL, named, and why a CONTACT needs it where a beam
 // does not. The maintaining detent's beak bears the whole hold (the going
 // torque on the ring's face, ~2.2 N) across a line one click-thickness long
@@ -1645,7 +1781,10 @@ export const L_HAIRSPRING = L_BALANCE + 1.2;
 // gate holds the result inside real stock; a real hairspring of this
 // thickness runs about this tall.
 export const HAIRSPRING_H_REF = 0.6;   // the height the train's datum was solved at (TRAIN_CEILING_Z)
-export const HAIRSPRING_H = 0.3726;
+// TODO 291 — 0.3726 → 0.2015: the honest mainspring (r/e at the trade's floor) re-solved the 18,000 rim 0.645 → 0.36,
+// which takes k from 7.6628e-8 to 4.1441e-8 N·m/rad (×0.54081, read off both builds' balanceDriveModel), so the
+// height follows it, 0.3726 × 0.54081, to keep §218's 0.0239 mm ribbon.
+export const HAIRSPRING_H = 0.2015;
 // BALANCE COCK: a LOW bridge riding one margin over the hairspring
 // stack, wherever that stack lands — with the low escapement that is
 // ~4 under the three-quarter plate's band, so the cock (and the
@@ -1677,7 +1816,23 @@ export const SPRING_TOP_Z = L_HAIRSPRING + HAIRSPRING_OVERCOIL_RAISE + HAIRSPRIN
 // shorter ribbon it is sprung with are not a reason to re-cut the mainspring
 // either, so the datum is the reference ribbon's.
 export const TRAIN_CEILING_Z = L_HAIRSPRING + HAIRSPRING_H_REF * 0.7;
-export const COCK_SLAB_BOT = SPRING_TOP_Z + CLEAR_MARGIN;
+// TODO 291 applies the rule a THIRD time, one level up. The honest mainspring
+// lightened the balance again (rim 0.645 → 0.36) and the hairspring lost height
+// with it (HAIRSPRING_H 0.3726 → 0.2015), which would lower SPRING_TOP_Z by
+// 1.5·ΔH = 0.257 and with it the cock, the plate floor and every quoted length
+// stacked on them. Booted that way, the stop-work star over the fusee cone lost
+// its running fit (−0.057 a side, §329): the cone stands on the train's datum and
+// the plate came down onto it. A lighter balance is not a reason to re-cut the
+// plate stack, so the stack above the balance keeps the height it was solved at
+// (TODO 207's spring), and the overcoil itself is cut at the real height, which
+// leaves the cock that much more clearance over the spring. The depth the lower
+// spring could buy is real, and spending it is a re-layout of the plate floor
+// against the cone, not part of this fix.
+export const HAIRSPRING_H_STACK = 0.3726;
+export const SPRING_STACK_TOP_Z = L_HAIRSPRING + (HAIRSPRING_H_STACK + CLEAR_MARGIN) + HAIRSPRING_H_STACK / 2;
+if (!(SPRING_TOP_Z <= SPRING_STACK_TOP_Z + 1e-12))
+  console.warn(`TODO 291: the hairspring's top ${SPRING_TOP_Z.toFixed(4)} stands over the stack datum ${SPRING_STACK_TOP_Z.toFixed(4)} — the spring grew past the height the cock and the plate floor were solved at`);
+export const COCK_SLAB_BOT = SPRING_STACK_TOP_Z + CLEAR_MARGIN;
 export const COCK_SLAB_TOP = COCK_SLAB_BOT + COCK_T;
 export const COCK_MID_Z = COCK_SLAB_BOT + COCK_T / 2;
 // Dial plane (watch front, −z side). Part of the same depth budget: the
@@ -1819,7 +1974,7 @@ export const TRAIN = {
   // wheel's pitch radius grows 14.40 → 15.307 and the 7-leaf pinion runs a
   // module inside the movement's existing practice (the escape mesh is cut
   // at 0.21).
-  barrel: { module: (2 * 16.2) / (120 + 7), teeth: 120, pinion: 7 }, // great wheel → center pinion
+  barrel: { module: (2 * 16.2) / (GREAT_WHEEL_TEETH + CENTRE_PINION_LEAVES), teeth: GREAT_WHEEL_TEETH, pinion: CENTRE_PINION_LEAVES }, // great wheel → center pinion
   center: { module: 0.30, teeth: 75, pinion: 10 }, // center wheel → third pinion
   third:  { module: 0.24, teeth: 80, pinion: 10 }, // third wheel → fourth pinion
   // fourth wheel → escape pinion: the ONE mesh the beat-rate spec re-gears
@@ -4157,6 +4312,190 @@ export function polyArea(pts) {
   return A / 2;
 }
 // Douglas–Peucker on a closed loop, every dropped vertex within tol of its chord.
+// THE UNION OF CLOSED POLYGONS, as one outer loop, EXACT (§336 landing 2: an opening merged from several). Every edge of every
+// polygon is split where it crosses another's, each piece is kept when its midpoint stands outside every other polygon, and the
+// kept pieces (each polygon walked CCW, so the union's boundary runs CCW too) are stitched end to start into loops. The inputs'
+// own vertices survive untouched, so an edge that held a land before the merge holds the same land after it; only the
+// crossings are new points. (A first cut traced the union on a field, and its half-cell offset ate 0.034 of lands that stood
+// exactly at TQ_LAND_MIN.) The largest loop by area is returned; a union that would leave a hole returns its outer loop, which
+// is what an opening's outline is. Edges that overlap collinearly are not handled; openings meeting at a crossing are.
+// §325 landing 16 — A DISC LESS ONE CONVEX OPENING ACROSS ITS RIM: the round three-quarter plate notched round the strike
+// group. Its boundary is the circle's arc outside the opening, run counter-clockwise from where the circle leaves the opening (X)
+// to where it enters it (Y), then the opening's own boundary inside the disc, run back from Y to X against the opening's
+// counter-clockwise order. That keeps the loop counter-clockwise with the notch cut inward. The crossings are exact
+// (circle ∩ edge), the opening's vertices survive untouched, and the arc is sampled at `segs` per turn. Returns null
+// when the opening does not cross the rim exactly twice (wholly inside it is a hole, not a notch).
+export function discLessConvex(R, hull, segs = 720, round = 0) {
+  const H = polyArea(hull) < 0 ? hull.slice().reverse() : hull, n = H.length;
+  const insideH = (x, y) => { for (let i = 0; i < n; i++) { const [ax, ay] = H[i], [bx, by] = H[(i + 1) % n]; if ((bx - ax) * (y - ay) - (by - ay) * (x - ax) < 0) return false; } return true; };
+  const hits = [];
+  for (let i = 0; i < n; i++) {
+    const [ax, ay] = H[i], [bx, by] = H[(i + 1) % n], dx = bx - ax, dy = by - ay;
+    const A = dx * dx + dy * dy, B = 2 * (ax * dx + ay * dy), C = ax * ax + ay * ay - R * R, D = B * B - 4 * A * C;
+    if (D <= 0 || A === 0) continue;
+    for (const t of [(-B - Math.sqrt(D)) / (2 * A), (-B + Math.sqrt(D)) / (2 * A)])
+      if (t >= 0 && t < 1) { const x = ax + t * dx, y = ay + t * dy; hits.push({ i, t, x, y, phi: Math.atan2(y, x) }); }
+  }
+  if (hits.length !== 2) return null;
+  const d = 1e-6;
+  const cls = hits.map((h) => ({ ...h, enters: insideH(R * Math.cos(h.phi + d), R * Math.sin(h.phi + d)) }));
+  const Y = cls.find((h) => h.enters), X = cls.find((h) => !h.enters);
+  if (!X || !Y) return null;
+  // `round` > 0 rounds the two junctions, which are sharp convex corners of the PLATE (the opening's edge meeting the rim),
+  // by an arc of that radius tangent to the rim and to the opening, cut into the plate. Its centre stands on the circle of
+  // radius R − round, at the bearing where its distance to the OPENING (the whole hull, not one edge: a hull of many short
+  // edges has its tangent point several edges along) is exactly round. A plate's extrude bevel otherwise pushes a sharp corner
+  // out along its bisector by bevel/sin(β/2) and folds the offset outline over itself (§336 landing 2's finding at the cock's
+  // opening).
+  const closest = (x, y) => {   // the hull boundary's nearest point to (x, y): its edge, param and distance
+    let best = { d: Infinity };
+    for (let i = 0; i < n; i++) {
+      const [ax, ay] = H[i], [bx, by] = H[(i + 1) % n], vx = bx - ax, vy = by - ay, L2 = vx * vx + vy * vy || 1e-18;
+      const t = Math.max(0, Math.min(1, ((x - ax) * vx + (y - ay) * vy) / L2)), px = ax + t * vx, py = ay + t * vy, d = Math.hypot(x - px, y - py);
+      if (d < best.d) best = { d, i, t, p: [px, py] };
+    }
+    return best;
+  };
+  const fillet = (h, dir) => {   // dir +1: the plate lies CCW of the junction (X); −1: CW of it (Y)
+    const rr = R - round, f = (ph) => { const x = rr * Math.cos(ph), y = rr * Math.sin(ph); return (insideH(x, y) ? -1 : 1) * closest(x, y).d - round; };
+    let lo = h.phi, hi = h.phi; for (let k = 0; k < 200 && f(hi) < 0; k++) hi += dir * 0.005;
+    if (f(hi) < 0) return null;
+    for (let k = 0; k < 60; k++) { const m = (lo + hi) / 2; if (f(m) < 0) lo = m; else hi = m; }
+    const c = { x: rr * Math.cos(hi), y: rr * Math.sin(hi) }, q = closest(c.x, c.y);
+    return { c, onCircle: [R * Math.cos(hi), R * Math.sin(hi)], phi: hi, q };
+  };
+  const arc = (c, p0, p1, m = 8) => {
+    const a0 = Math.atan2(p0[1] - c.y, p0[0] - c.x); let d = Math.atan2(p1[1] - c.y, p1[0] - c.x) - a0;
+    while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+    const o = []; for (let k = 0; k <= m; k++) o.push([c.x + round * Math.cos(a0 + (d * k) / m), c.y + round * Math.sin(a0 + (d * k) / m)]); return o;
+  };
+  const fX = round > 0 ? fillet(X, +1) : null, fY = round > 0 ? fillet(Y, -1) : null;
+  if (round > 0 && (!fX || !fY)) return null;
+  const phi0 = fX ? fX.phi : X.phi, phi1 = fY ? fY.phi : Y.phi;
+  const out = fX ? arc(fX.c, fX.q.p, fX.onCircle) : [[X.x, X.y]];
+  let span = phi1 - phi0; while (span <= 0) span += 2 * Math.PI;
+  const k0 = Math.ceil((phi0 * segs) / (2 * Math.PI) + 1e-9);
+  for (let k = k0; ; k++) { const ang = (2 * Math.PI * k) / segs; let off = ang - phi0; while (off < 0) off += 2 * Math.PI; if (off >= span - 1e-9) break; if (off > 1e-9) out.push([R * Math.cos(ang), R * Math.sin(ang)]); }
+  if (fY) out.push(...arc(fY.c, fY.onCircle, fY.q.p)); else out.push([Y.x, Y.y]);
+  // back along the opening, inside the disc, from just past Y's tangent point to just before X's
+  const iY = fY ? fY.q.i : Y.i, iX = fX ? fX.q.i : X.i;
+  for (let i = iY; i !== iX; i = (i - 1 + n) % n) out.push([H[i][0], H[i][1]]);
+  return out;
+}
+export function unionLoops(polys) {
+  const ccw = polys.map((P) => (polyArea(P) < 0 ? P.slice().reverse() : P));
+  const inside = (P, x, y) => { let k = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, yi] = P[i], [xj, yj] = P[j]; if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) k = !k; } return k; };
+  const boxes = ccw.map((P) => { let a = Infinity, b = -Infinity, c = Infinity, d = -Infinity; for (const [x, y] of P) { a = Math.min(a, x); b = Math.max(b, x); c = Math.min(c, y); d = Math.max(d, y); } return [a, b, c, d]; });
+  const pieces = [];
+  for (let p = 0; p < ccw.length; p++) {
+    const P = ccw[p];
+    for (let i = 0; i < P.length; i++) {
+      const a = P[i], b = P[(i + 1) % P.length], ts = [0, 1];
+      const ex0 = Math.min(a[0], b[0]), ex1 = Math.max(a[0], b[0]), ey0 = Math.min(a[1], b[1]), ey1 = Math.max(a[1], b[1]);
+      for (let q = 0; q < ccw.length; q++) {
+        if (q === p) continue;
+        const [bx0, bx1, by0, by1] = boxes[q];
+        if (ex1 < bx0 || ex0 > bx1 || ey1 < by0 || ey0 > by1) continue;
+        const Q = ccw[q];
+        for (let k = 0; k < Q.length; k++) {
+          const c = Q[k], d = Q[(k + 1) % Q.length];
+          if (Math.max(c[0], d[0]) < ex0 || Math.min(c[0], d[0]) > ex1 || Math.max(c[1], d[1]) < ey0 || Math.min(c[1], d[1]) > ey1) continue;
+          const rx = b[0] - a[0], ry = b[1] - a[1], sx = d[0] - c[0], sy = d[1] - c[1], den = rx * sy - ry * sx;
+          if (Math.abs(den) < 1e-15) continue;
+          const t = ((c[0] - a[0]) * sy - (c[1] - a[1]) * sx) / den, u = ((c[0] - a[0]) * ry - (c[1] - a[1]) * rx) / den;
+          if (t > 1e-12 && t < 1 - 1e-12 && u >= 0 && u <= 1) ts.push(t);
+        }
+      }
+      ts.sort((x, y) => x - y);
+      for (let k = 0; k + 1 < ts.length; k++) {
+        const t0 = ts[k], t1 = ts[k + 1];
+        if (t1 - t0 < 1e-12) continue;
+        const m = (t0 + t1) / 2, mx = a[0] + (b[0] - a[0]) * m, my = a[1] + (b[1] - a[1]) * m;
+        if (ccw.some((Q, q) => q !== p && inside(Q, mx, my))) continue;
+        pieces.push([[a[0] + (b[0] - a[0]) * t0, a[1] + (b[1] - a[1]) * t0], [a[0] + (b[0] - a[0]) * t1, a[1] + (b[1] - a[1]) * t1]]);
+      }
+    }
+  }
+  const key = ([x, y]) => `${Math.round(x * 1e7)},${Math.round(y * 1e7)}`;
+  const byStart = new Map();
+  for (const pc of pieces) { const k = key(pc[0]); if (!byStart.has(k)) byStart.set(k, []); byStart.get(k).push(pc); }
+  const used = new Set(), loops = [];
+  for (const pc of pieces) {
+    if (used.has(pc)) continue;
+    const loop = [];
+    for (let cur = pc; cur && !used.has(cur);) {
+      used.add(cur); loop.push(cur[0]);
+      const nxt = (byStart.get(key(cur[1])) || []).find((q) => !used.has(q));
+      cur = nxt;
+    }
+    if (loop.length >= 3) loops.push(loop);
+  }
+  loops.sort((x, y) => Math.abs(polyArea(y)) - Math.abs(polyArea(x)));
+  return loops[0] ?? [];
+}
+// ROUND AN OPENING'S SHARP REFLEX CORNERS (§336 landing 2): where an opening's outline turns by more than `minTurn` the wrong
+// way (its interior angle over 180°, a CONVEX corner of the plate round it), replace the corner by an arc of radius r tangent to
+// both runs, the arc cut into the plate, so the opening grows there. Why: the plate's extrude bevel moves a straight edge by
+// PLATE_BEVEL but a sharp convex corner of metal along its bisector by PLATE_BEVEL/sin(β/2), so a corner a merge creates
+// stands proud of the edge the clearances were solved to (measured: 0.103 against 0.15 at the cock's slot meeting the cone
+// window). A corner rounded at r ≥ PLATE_BEVEL offsets as its edges do. The tangent points are found by arc length along the
+// outline, so a corner between curved runs (a polygonised circle) is rounded the same way.
+export function filletReflexCorners(pts, r, minTurn = (20 * Math.PI) / 180) {
+  const n = pts.length; if (n < 4) return pts.slice();
+  const ccw = polyArea(pts) > 0, sgn = ccw ? 1 : -1;
+  const turn = (i) => {
+    const a = pts[(i - 1 + n) % n], b = pts[i], c = pts[(i + 1) % n];
+    const ux = b[0] - a[0], uy = b[1] - a[1], vx = c[0] - b[0], vy = c[1] - b[1];
+    return Math.atan2(ux * vy - uy * vx, ux * vx + uy * vy) * sgn;   // + left (convex for a CCW opening), − right (reflex)
+  };
+  const walk = (i, dist, dir) => {   // the point `dist` along the outline from vertex i, going dir (+1 forward, −1 back)
+    let j = i, left = dist;
+    for (let k = 0; k < n; k++) {
+      const a = pts[j], b = pts[(j + dir + n) % n], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (L >= left) return { pt: [a[0] + ((b[0] - a[0]) * left) / L, a[1] + ((b[1] - a[1]) * left) / L], idx: j, dir };
+      left -= L; j = (j + dir + n) % n;
+    }
+    return null;
+  };
+  const corners = [];
+  for (let i = 0; i < n; i++) { const t = turn(i); if (t < -minTurn) corners.push({ i, t: -t }); }
+  if (!corners.length) return pts.slice();
+  const drop = new Set(), insert = new Map();
+  for (const { i, t } of corners) {
+    const beta = Math.PI - t;                              // the plate's corner angle
+    const tan = r / Math.tan(beta / 2);
+    const p1 = walk(i, tan, -1), p2 = walk(i, tan, +1);
+    if (!p1 || !p2) continue;
+    // drop every vertex strictly between the two tangent points, and put the arc in their place
+    // the tangent points lie on the segments that START at p1.idx (going back) and p2.idx (going forward), so every vertex from
+    // p1.idx to p2.idx lies between them and is replaced by the arc (the corner itself, i, by the arc's insertion)
+    // the centre is where the normals at the two tangent points cross (on the plate's side, the right of the outline's travel
+    // for a CCW opening), and the arc runs from p1 to p2 EXACTLY, its radius eased from one normal's length to the other's.
+    // A centre set off the corner's bisector at r/sin(β/2) holds only where both runs are straight to the corner; where one
+    // is a polygonised curve the arc's end missed its tangent point (measured 0.0003 into the cock's slot)
+    const seg1a = pts[(p1.idx - 1 + n) % n], seg1b = pts[p1.idx], seg2a = pts[p2.idx], seg2b = pts[(p2.idx + 1) % n];
+    const nrm = (a, c) => { const fx = c[0] - a[0], fy = c[1] - a[1], L = Math.hypot(fx, fy) || 1e-12; return [(sgn * fy) / L, (-sgn * fx) / L]; };
+    const n1 = nrm(seg1a, seg1b), n2 = nrm(seg2a, seg2b), den = n1[0] * -n2[1] - n1[1] * -n2[0];
+    if (Math.abs(den) < 1e-9) continue;
+    const ex = p2.pt[0] - p1.pt[0], ey = p2.pt[1] - p1.pt[1];
+    const r1 = (ex * -n2[1] - ey * -n2[0]) / den, r2 = (n1[0] * ey - n1[1] * ex) / den;
+    if (!(r1 > 0 && r2 > 0)) continue;
+    const cx = p1.pt[0] + r1 * n1[0], cy = p1.pt[1] + r1 * n1[1];
+    const a1 = Math.atan2(p1.pt[1] - cy, p1.pt[0] - cx);
+    let da = Math.atan2(p2.pt[1] - cy, p2.pt[0] - cx) - a1; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI;
+    const steps = Math.max(2, Math.ceil(Math.abs(da) / ((10 * Math.PI) / 180))), arc = [p1.pt];
+    for (let k = 1; k < steps; k++) { const a = a1 + (da * k) / steps, rk = r1 + ((r2 - r1) * k) / steps; arc.push([cx + rk * Math.cos(a), cy + rk * Math.sin(a)]); }
+    arc.push(p2.pt);
+    for (let j = (p1.idx + n) % n; j !== (p2.idx + 1) % n; j = (j + 1) % n) drop.add(j);
+    insert.set(i, arc);
+  }
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    if (insert.has(i)) { out.push(...insert.get(i)); continue; }
+    if (!drop.has(i)) out.push(pts[i]);
+  }
+  return out;
+}
 export function simplifyLoop(pts, tol) {
   const n = pts.length;
   if (n < 8) return pts.slice();
@@ -4463,8 +4802,36 @@ export function fitFreeCase(polys, { margin = PLATE_RIM_MARGIN, rc, need, c, pin
   // of a straight run IS straight (the transform below a flat edge is the vertical distance alone), so nothing more is
   // snapped: a vertex moved up onto the line from the corner's arc would leave a KINK there, a corner of no radius,
   // which the band's outside rounds only by its own grow and the bezel's deeper offset then folds (§289)
+  // THE PORT FACES (TODO 281): a lug end runs along a raster axis, so the cell transform below it is exact and its
+  // contour comes out straight; a port's face is SLANTED, and the same contour reads it as a staircase — measured on
+  // the pusher's, every vertex within 0.027 u of the face and none on it, which TODO 275's guard reads as a wall
+  // standing proud of the button's seat plane wherever the raster happens to fall. So each port's face is snapped as
+  // the ends are: inside its strip (|t| ≤ half, where the block's face runs — its corner round starts at the strip's
+  // edge, so no arc vertex is moved and no kink is made), a vertex within half a cell of the face (FREE_H / 2: the
+  // cell-centre transform's worst miss) is moved OUT along u onto it. Where two strips overlap (the pusher and the
+  // winding stem stand 8° apart) a vertex goes to the face it is NEAREST, never onto a neighbour's line, which would
+  // stand it proud of its own face. Outward only, so the metal stays held; freeWorst re-reads it after every snap.
+  const snapPorts = (q) => {
+    if (!ports.length) return q;
+    const geo = ports.map(({ o: [ox, oy], u: [ux, uy], half }) => {
+      const vx = -uy, vy = ux;
+      const sOf = ([x, y]) => (x - ox) * ux + (y - oy) * uy, tOf = ([x, y]) => (x - ox) * vx + (y - oy) * vy;
+      let face = -Infinity;
+      for (const p of q) if (Math.abs(tOf(p)) <= half && sOf(p) > 0) face = Math.max(face, sOf(p));
+      return { ux, uy, half, sOf, tOf, face };
+    });
+    return q.map((p) => {
+      let best = null, bestDev = h / 2;
+      for (const g of geo) {
+        if (!Number.isFinite(g.face) || Math.abs(g.tOf(p)) > g.half) continue;
+        const dev = g.face - g.sOf(p);
+        if (dev >= 0 && dev <= bestDev) { best = g; bestDev = dev; }
+      }
+      return best ? [p[0] + best.ux * bestDev, p[1] + best.uy * bestDev] : p;
+    });
+  };
   const snap = (loop) => {
-    let q = loop.map((p) => p.slice()), top = -Infinity, bot = Infinity;
+    let q = snapPorts(loop.map((p) => p.slice())), top = -Infinity, bot = Infinity;
     const inStrip = (x) => Math.abs(x - c) <= need + rc;
     for (const [x, y] of q) if (inStrip(x)) { top = Math.max(top, y); bot = Math.min(bot, y); }
     for (const p of q) if (inStrip(p[0])) { if (top - p[1] <= 1e-7) p[1] = top; else if (p[1] - bot <= 1e-7) p[1] = bot; }
@@ -4586,7 +4953,7 @@ export const FORM_ACTION_GROUPS = Object.freeze([
       Object.freeze({ name: 'centre pinion on the great wheel', at: 'P.center', pin: 'power', edge: 'Fusee & great wheel → Center wheel' }),
     ]) }),
   Object.freeze({ id: 'power', name: 'barrel, fusee and chain',
-    units: Object.freeze(['Mainspring drum', 'Set-up work', 'Chain', 'Fusee & great wheel', 'Maintaining detent', 'Winding arrest']),
+    units: Object.freeze(['Mainspring drum', 'Set-up work', 'Chain', 'Fusee & great wheel', 'Maintaining detent', (STOPWORK_BUILT || GEARED_BUILT) ? 'Winding stop-work' : 'Winding arrest']),   // §329 landing 4: the stop-work replaces the arrest under its key
     reason: 'drive mainspring → Mainspring drum → Chain → Fusee & great wheel (→ Maintaining detent); Chain → Winding arrest; the set-up work is the drum\'s arbor',
     anchors: Object.freeze([
       Object.freeze({ name: 'great wheel on the centre pinion', at: 'P.barrel', pin: 'going', edge: 'Fusee & great wheel → Center wheel' }),
@@ -4672,6 +5039,18 @@ export function reserveSectorLoop(cx, cy, r, hubR, midRad, halfRad, n = 96) {
   for (let i = 0; i <= nHub; i++) { const a = a1 + (i / nHub) * (2 * Math.PI - 2 * halfRad); pts.push([cx + hubR * Math.cos(a), cy + hubR * Math.sin(a)]); }
   return pts;
 }
+// §327 — THE DRUM'S DIRECTION off the barrel (the fusee): perpendicular to the stem, blended OUTWARD along it so the
+// chain's span clears the train (main.js' drumPos, whose comment keeps the reasoning). One law for the drum's
+// placement and for the form rectangle's reach to it: before this the rectangle was built from the P stations
+// alone, and the drum — not a station — stood up to 10 u outside the box a first form boot cut the plates to.
+export const DRUM_OUTWARD_BLEND = 0.45;
+// §75 step 1 — `azDeg` (SPEC.drumAzDeg) overrides the blend with an absolute direction in the movement frame; null keeps it.
+export function drumDirOf(uWind, vPerp, sideSign, azDeg = null) {
+  if (azDeg !== null) { const a = (azDeg * Math.PI) / 180; return { x: Math.cos(a), y: Math.sin(a) }; }
+  const x = -sideSign * vPerp.x + uWind.x * DRUM_OUTWARD_BLEND, y = -sideSign * vPerp.y + uWind.y * DRUM_OUTWARD_BLEND;
+  const l = Math.hypot(x, y) || 1;
+  return { x: x / l, y: y / l };
+}
 export function solveKeyless({
   P,              // solveLayout's position table (shifted, centre-arbor origin)
   outline,        // { barrel, center, third, fourth, escape, balance, fork, dial } — outline radii for the plate bound
@@ -4684,6 +5063,7 @@ export function solveKeyless({
   subDialRadius = null, // §97/§125 Tier B — the SECONDS well's radius (the wells split; the reserve's is its station's derivation); null = the derived ceiling, bit-exact
   dialR = null,     // §125 step 3 — the dial's radius; null = the movement's own diameter (dialRadius = plateR)
   printFrame = null, // §125 margins tweak — the printed furniture's world fractions { markerInnerF, railInnerF }, measured by the caller from geometry.js's print constants; null = no furniture bound (the wells run to their centre-bore ceilings)
+  drum = null,      // §327 — { dist, r }: the mainspring drum's centre distance from the barrel and its outermost metal's radius (the chain coil on its wall); null = left out of the form rectangle, bit-exact
   warn = () => {},
 }) {
   const barrelDist = Math.hypot(P.barrel.x, P.barrel.y) || 1;
@@ -4940,7 +5320,15 @@ export function solveKeyless({
   // outside every circle by construction — nothing to assert, and nothing
   // typed. Not centred on the hands: the rectangle is the tightest one, and
   // a form calibre's centre need not be its case's.
+  // §327 — the drum is NOT a P station (main.js places it after this solve), so the rectangle took no account of it
+  // and its metal, the chain coil on its wall, stood outside the box a first form boot cut the plates to. Its circle
+  // enters under the same rim margin as every station, at the place main.js puts it (drumDirOf, the one law).
+  const drumCircle = drum ? (() => {
+    const d = drumDirOf(uWind, vPerp, sideSign, SPEC.drumAzDeg);
+    return [{ x: P.barrel.x + d.x * drum.dist, y: P.barrel.y + d.y * drum.dist, r: drum.r, rim: PLATE_RIM_MARGIN }];
+  })() : [];
   const formPlate = formRect([
+    ...drumCircle,
     ...Object.keys(P).map((key) => ({ x: P[key].x, y: P[key].y, r: outline[key] || 0, rim: PLATE_RIM_MARGIN })),
     { x: uWind.x * swDist, y: uWind.y * swDist, r: settingWheelR + 1, rim: 0 },
     { x: minuteArborXY.x, y: minuteArborXY.y, r: minuteWheelR + 1, rim: 0 },
@@ -5105,8 +5493,18 @@ export function solveKeyless({
   // gap between its ring and the dial centre the owner asked for (inner
   // edge 3.55 → ~11.8, since the well no longer grows from the keep-out).
   // The centre-bore ceiling (TODO 33) remains the hard cap on both.
-  const markerInnerR = printFrame ? dialRadius * printFrame.markerInnerF : Infinity;
-  const railInnerR = printFrame ? dialRadius * printFrame.railInnerF : Infinity;
+  // THE PRINT FOLLOWS THE CASE (the free case only, when the caller passes `secondsFloor`): the round print — its marker
+  // band and railroad, and with them the hands main.js cuts to them — is scaled down from the plate's round face until
+  // the seconds well, which grows to the railroad's inner rail less the ring wall and margin (the ceiling below), stands
+  // at `secondsFloor`, the smallest seconds face whose figures and caption read at their acuity floors
+  // (geometry.js secondsFaceFloorMm). The case is the quantity being minimised and every printed size here is a
+  // function of it, so the print takes the smallest scale its most demanding sub-dial reads at, never larger than
+  // the round face (a scale over 1 would grow the case to suit the print). 1 exactly on every other build.
+  const printScale = printFrame && printFrame.secondsFloor != null
+    ? Math.min(1, (-SECONDS_LOCAL.y + printFrame.secondsFloor + DIAL_WALL_HALF + CLEAR_MARGIN) / (dialRadius * printFrame.railInnerF))
+    : 1;
+  const markerInnerR = printFrame ? dialRadius * printFrame.markerInnerF * printScale : Infinity;
+  const railInnerR = printFrame ? dialRadius * printFrame.railInnerF * printScale : Infinity;
   const secondsWellCeil = Math.min(
     -SECONDS_LOCAL.y - SUBDIAL_INBOARD_CLEAR,
     railInnerR - DIAL_WALL_HALF - CLEAR_MARGIN - -SECONDS_LOCAL.y,
@@ -5296,6 +5694,7 @@ export function solveKeyless({
     settingLeverPivot, settingLeverAngleAt, tailPostWorldAt, postEng, postRel,
     kwPostBow, yokePivot, yokeAngleAt, slMidAlong, canonToWorld,
     plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, reserveWellR, secondsWellR, secondsWellCeil, alarmCornerR, rsvrWindow,
+    printScale,   // the print-follows-case scale on the round print (1 unless the free case passed secondsFloor)
     reserveStationR, reserveWellLaw, railOuterR, // §308 L4 option A
     reserveSector, // §308 L4 option B — the fan well's derivation (null unless the law is 'sector')
     formPlate, // §307 — the form rectangle (read only under ?case=rect)

@@ -20,8 +20,9 @@
 // `formRect` was solved in; `main.js` adds the group to `movement`.
 //
 // PROTOTYPE, and every line that is one says so: the back is a plain plate
-// (no thread, no gasket), the band is not bored for the tubes (the round
-// case's declared CSG debt, kept), and the step the round midcase carries at
+// (no thread, no gasket), the band is bored for the tubes only on a convex
+// form (§331: boredBand; the free outline's band is not yet, and its sleeves
+// stand in solid band metal), and the step the round midcase carries at
 // zStep is not cut — the outer wall is one plane from the bezel to the back.
 //
 // Every body is a CLOSED solid wound outward (the parity raycast in
@@ -115,6 +116,31 @@ export function rayExitNormal(loop, dir, base = [0, 0]) {
 // shape grown: one vertex per vertex, so the rounds, the seat the crystal is
 // pressed into and the crystal itself are one polygon at each depth, and the
 // hairlines (formCaseLines) lie on the metal's own vertices.
+// §331 — A STRAIGHT RUN IS CUT AT THE SPACING ITS OWN CURVES ARE. `form.loop` samples a corner as an arc and emits a
+// straight side as ONE edge, so a rectangle's side became one wall quad and its caps' triangulation joined points a
+// side apart: on `case=rect` the middle carried 420 triangles with an edge over 20 u (to 90.5 u, the case's width) and
+// the back 210, where the round case carries none. A triangle that long has a bounding box across half the case,
+// which no BVH query near it can prune, and that was ~93% of `form-rect`'s undeclaredClearance cost (Case pairs at
+// 50–850 ms a clearance call against the round case's ~9). So every edge longer than the loop's MEDIAN edge (on a
+// rectangle, the corners' arc chord) is split into equal pieces no longer than it. The points are collinear: the
+// outline, every mitre offset of it (each edge moves exactly t inward, a split edge's pieces with it) and every ray's
+// exit are what they were; only the triangulation is finer. A loop with no long edge comes back unchanged.
+export function densifyLoop(pts) {
+  const n = pts.length;
+  if (n < 3) return pts;
+  const len = pts.map(([ax, ay], i) => { const [bx, by] = pts[(i + 1) % n]; return Math.hypot(bx - ax, by - ay); });
+  const sorted = [...len].sort((a, b) => a - b), med = sorted[Math.floor(n / 2)];
+  if (!(med > 0) || !len.some((L) => L > med * (1 + 1e-9))) return pts;
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const [ax, ay] = pts[i], [bx, by] = pts[(i + 1) % n];
+    out.push([ax, ay]);
+    const k = Math.ceil(len[i] / med - 1e-9);
+    for (let j = 1; j < k; j++) out.push([ax + (bx - ax) * (j / k), ay + (by - ay) * (j / k)]);
+  }
+  return out;
+}
+
 export function formCaseLoops(form) {
   const G = CASE_CLEAR + CASE_BAND_T;
   // §325 — the FREE outline is a polyline, and a polyline grown G turns at every vertex on an arc of radius G: the
@@ -132,7 +158,7 @@ export function formCaseLoops(form) {
     };
     return { plate: form.loop({ grow: 0 }), bore: ring(CASE_BAND_T), outer, opening: ring(G + 1 / UNIT_MM), crystal: ring(G + 0.5 / UNIT_MM), ring };
   }
-  const outer = form.loop({ grow: G });
+  const outer = densifyLoop(form.loop({ grow: G }));   // §331: the straight runs at the corners' spacing
   const ring = (t) => inward(outer, t);
   return {
     plate: form.loop({ grow: 0 }),
@@ -308,7 +334,8 @@ function ringExtrude(outerR, innerR, thickness, seg = 32) {
 // holes: each a loop wound the other way (CW), or a round hole { r } about the
 // origin. Extruded between two z planes, whichever order they come in.
 const toVec2 = (loop) => loop.map(([x, y]) => new THREE.Vector2(x, y));
-function prism(outer, holes, zA, zB, { seg = ROUND_SEG } = {}) {
+function prism(outer, holes, zA, zB, { seg = ROUND_SEG, stitch = false } = {}) {
+  if (stitch && holes.length === 1) return annulusPrism(outer, holes[0], zA, zB);
   const shape = new THREE.Shape(toVec2(outer));
   for (const h of holes) {
     if (Array.isArray(h)) shape.holes.push(new THREE.Path(toVec2(h.slice().reverse())));
@@ -317,6 +344,158 @@ function prism(outer, holes, zA, zB, { seg = ROUND_SEG } = {}) {
   const zLo = Math.min(zA, zB), zHi = Math.max(zA, zB);
   const g = new THREE.ExtrudeGeometry(shape, { depth: zHi - zLo, bevelEnabled: false, curveSegments: seg });
   g.translate(0, 0, zLo);
+  return g;
+}
+// §331 — THE BAND, BORED FOR ITS TUBES. Until §331 the form band was "not bored for the tubes" (this file's own header,
+// kept as declared CSG debt) and every crown stem passed through solid band metal: on `case=rect` the winding stem
+// crossed the middle 96 times (an exact edge–triangle count), which the clearance sweep read as 2.29 u clear because the
+// band's 90 u slivers blinded `meshClearance`. The round case bores its band (makeCase's BORED sectors), and this is the
+// same rule on the form's loops: a bore is the strip of perpendicular half-width `ap` (the sleeve's outer radius, the
+// tubeAt expression) round the tube's line, over the z window z ± ap, and the opening in a wall of thickness is the
+// union of the strip's crossings on the two walls (the round `boreWindow`'s rule). `A` is the outer loop and `B` the
+// bore, index-aligned (B = inward(A)): both are split exactly where any strip crosses either wall — each split point
+// interpolated on its OWN wall's edge, so it is on that wall's surface — and the band is built cell by cell, a cell
+// (A[i], A[i+1], B[i+1], B[i]) carrying metal over [zLo, zHi] less the windows of the strips its walls fall in. Radial
+// faces stand only where two neighbouring cells' metal differs, so the body stays closed. Non-indexed, flat normals.
+function boredBand(A0, B0, zLo, zHi, bores) {
+  if (A0.length !== B0.length) throw new Error(`boredBand: the outer (${A0.length}) and bore (${B0.length}) loops are not index-aligned`);
+  const n0 = A0.length;
+  const lineOf = (b) => ({ ...b, dir: [Math.cos(b.az), Math.sin(b.az)], perp: [-Math.sin(b.az), Math.cos(b.az)] });
+  const L = bores.map(lineOf);
+  const pOf = (b, q) => q[0] * b.perp[0] + q[1] * b.perp[1];
+  const alongOf = (b, q) => (q[0] - b.perp[0] * b.off) * b.dir[0] + (q[1] - b.perp[1] * b.off) * b.dir[1];
+  // the splits: per edge i, the fractions where a strip edge (p = off ± ap) crosses A's or B's edge i, ahead of the line's origin
+  const cuts = Array.from({ length: n0 }, () => []);
+  for (const b of L) for (const W of [A0, B0]) for (let i = 0; i < n0; i++) {
+    const q0 = W[i], q1 = W[(i + 1) % n0], p0 = pOf(b, q0), p1 = pOf(b, q1);
+    for (const p of [b.off - b.ap, b.off + b.ap]) {
+      if ((p0 - p) * (p1 - p) >= 0 || p1 === p0) continue;
+      const t = (p - p0) / (p1 - p0);
+      if (t > 1e-9 && t < 1 - 1e-9 && alongOf(b, [q0[0] + (q1[0] - q0[0]) * t, q0[1] + (q1[1] - q0[1]) * t]) > 0) cuts[i].push(t);
+    }
+  }
+  const A = [], B = [];
+  const lerp = (q0, q1, t) => [q0[0] + (q1[0] - q0[0]) * t, q0[1] + (q1[1] - q0[1]) * t];
+  for (let i = 0; i < n0; i++) {
+    A.push(A0[i]); B.push(B0[i]);
+    for (const t of [...new Set(cuts[i])].sort((x, y) => x - y)) {
+      A.push(lerp(A0[i], A0[(i + 1) % n0], t)); B.push(lerp(B0[i], B0[(i + 1) % n0], t));
+    }
+  }
+  const n = A.length;
+  // each cell's metal: [zLo, zHi] less the windows of every strip either wall's edge-midpoint falls in (ahead of the line)
+  const inStrip = (b, q) => alongOf(b, q) > 0 && Math.abs(pOf(b, q) - b.off) < b.ap;
+  const metal = [];
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n, mA = lerp(A[i], A[j], 0.5), mB = lerp(B[i], B[j], 0.5);
+    const wins = L.filter((b) => inStrip(b, mA) || inStrip(b, mB))
+      .map((b) => [Math.max(zLo, b.z - b.ap), Math.min(zHi, b.z + b.ap)]).filter(([a, c]) => c > a).sort((x, y) => x[0] - y[0]);
+    const pieces = [];
+    let z = zLo;
+    for (const [a, c] of wins) { if (a > z) pieces.push([z, a]); z = Math.max(z, c); }
+    if (z < zHi) pieces.push([z, zHi]);
+    metal.push(pieces);
+  }
+  const tris = [];
+  const P = (q, z) => [q[0], q[1], z];
+  // TODO 282 — EDGE-CONFORMING. Every vertical line A[i]–B[i] carries the z breakpoints of BOTH cells beside it, and
+  // every wall and radial face on that line is split at them: a wall that ran its neighbour's full height past a bored
+  // cell's window edge left a T-junction there, an edge on one face, and 48 such edges made the band read OPEN to
+  // `boundsASolid`, which refuses it the pass-through witness — the blindness TODO 282 closed. Each wall is a zipper
+  // between its two lines' breakpoints, so the band has no edge on an odd number of faces (probe-282-witness holds it).
+  const brk = Array.from({ length: n }, (_, i) => {
+    const zs = new Set([zLo, zHi]);
+    for (const c of [metal[(i + n - 1) % n], metal[i]]) for (const [z0, z1] of c) { zs.add(z0); zs.add(z1); }
+    return [...zs].sort((x, y) => x - y);
+  });
+  const within = (zs, z0, z1) => zs.filter((z) => z >= z0 && z <= z1);
+  // a strip between two vertical chains, L (left) and R (right), each ascending, wound as the quad
+  // [L0, R0, R1], [L0, R1, L1] is: every triangle advances one chain one step, the lower next step first
+  const zipper = (L, R) => {
+    for (let a = 0, b = 0; a < L.length - 1 || b < R.length - 1;) {
+      if (b < R.length - 1 && (a === L.length - 1 || R[b + 1][2] <= L[a + 1][2])) { tris.push([L[a], R[b], R[b + 1]]); b++; }
+      else { tris.push([L[a], R[b], L[a + 1]]); a++; }
+    }
+  };
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n, a0 = A[i], a1 = A[j], b0 = B[i], b1 = B[j];
+    for (const [z0, z1] of metal[i]) {
+      tris.push([P(a0, z1), P(a1, z1), P(b1, z1)], [P(a0, z1), P(b1, z1), P(b0, z1)]);   // front face of the piece, +z
+      tris.push([P(a0, z0), P(b1, z0), P(a1, z0)], [P(a0, z0), P(b0, z0), P(b1, z0)]);   // back face of the piece, −z
+      const zl = within(brk[i], z0, z1), zr = within(brk[j], z0, z1);
+      zipper(zl.map((z) => P(a0, z)), zr.map((z) => P(a1, z)));   // the outer wall, out
+      zipper(zr.map((z) => P(b1, z)), zl.map((z) => P(b0, z)));   // the bore wall, in
+    }
+  }
+  // radial faces on the line A[i]–B[i], between cell i−1 (behind) and cell i (ahead), where exactly one side is metal
+  const minus = (S, T) => {   // S \ T, both sorted disjoint interval lists
+    const out = [];
+    for (const [s0, s1] of S) {
+      let cur = s0;
+      for (const [t0, t1] of T) { if (t1 <= cur || t0 >= s1) continue; if (t0 > cur) out.push([cur, t0]); cur = Math.max(cur, t1); }
+      if (cur < s1) out.push([cur, s1]);
+    }
+    return out;
+  };
+  for (let i = 0; i < n; i++) {
+    const behind = metal[(i + n - 1) % n], ahead = metal[i], a = A[i], b = B[i];
+    // split at the line's breakpoints, so its vertical edges meet the walls' (TODO 282)
+    const steps = (z0, z1) => { const zs = within(brk[i], z0, z1), out = []; for (let k = 0; k + 1 < zs.length; k++) out.push([zs[k], zs[k + 1]]); return out; };
+    for (const [w0, w1] of minus(behind, ahead)) for (const [z0, z1] of steps(w0, w1))
+      tris.push([P(a, z0), P(b, z0), P(b, z1)], [P(a, z0), P(b, z1), P(a, z1)]);   // faces ahead
+    for (const [w0, w1] of minus(ahead, behind)) for (const [z0, z1] of steps(w0, w1))
+      tris.push([P(a, z0), P(b, z1), P(b, z0)], [P(a, z0), P(a, z1), P(b, z1)]);   // faces behind
+  }
+  const pos = new Float32Array(tris.length * 9);
+  tris.forEach((t, k) => t.forEach((v, l) => pos.set(v, k * 9 + l * 3)));
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
+}
+
+// §331 — A CONVEX FORM'S ANNULUS, CAPPED BY STITCHING ITS TWO LOOPS. earcut triangulates a thin annulus whose straight
+// runs carry collinear points as long fans along those runs (measured on `case=rect`: 2,364 middle triangles over 20 u
+// once the loops were densified, against 420 before). Here both loops are densified (densifyLoop), and each cap is
+// stitched between them the way a loft joins two contours: march round both, each step advancing the loop whose next
+// diagonal is the shorter, so every triangle spans the band and one spacing. The walls are a quad per edge. Both
+// loops CCW (a hole is given CCW, as the Shape path took it before its reverse), or a round hole { r } on ROUND_SEG.
+// Non-indexed with flat normals, as ExtrudeGeometry's own output is once merged.
+function annulusPrism(outerLoop, hole, zA, zB) {
+  const A = densifyLoop(outerLoop);
+  const B = Array.isArray(hole) ? densifyLoop(hole)
+    : Array.from({ length: ROUND_SEG }, (_, k) => { const a = (2 * Math.PI * k) / ROUND_SEG; return [hole.r * Math.cos(a), hole.r * Math.sin(a)]; });
+  const zLo = Math.min(zA, zB), zHi = Math.max(zA, zB);
+  const n = A.length, m = B.length, tris = [];
+  const P = (p, z) => [p[0], p[1], z];
+  const d2 = (p, q) => (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2;
+  // start the hole's walk at its point nearest the outer's first
+  let j0 = 0;
+  for (let j = 1; j < m; j++) if (d2(B[j], A[0]) < d2(B[j0], A[0])) j0 = j;
+  const cap = [];   // CCW seen from +z: [outer, outer, hole] advances, [outer, hole, hole] advances
+  for (let i = 0, j = 0; i < n || j < m;) {
+    const a = A[i % n], b = B[(j0 + j) % m];
+    const aN = A[(i + 1) % n], bN = B[(j0 + j + 1) % m];
+    const advA = j >= m || (i < n && d2(aN, b) <= d2(a, bN));
+    if (advA) { cap.push([a, aN, b]); i++; } else { cap.push([a, bN, b]); j++; }
+  }
+  for (const [p, q, r] of cap) {
+    tris.push([P(p, zHi), P(q, zHi), P(r, zHi)]);   // front cap, normal +z
+    tris.push([P(p, zLo), P(r, zLo), P(q, zLo)]);   // back cap, normal −z
+  }
+  for (let i = 0; i < n; i++) {   // the outer wall, facing out
+    const a = A[i], b = A[(i + 1) % n];
+    tris.push([P(a, zLo), P(b, zLo), P(b, zHi)], [P(a, zLo), P(b, zHi), P(a, zHi)]);
+  }
+  for (let j = 0; j < m; j++) {   // the hole's wall, facing into the hole
+    const a = B[j], b = B[(j + 1) % m];
+    tris.push([P(b, zLo), P(a, zLo), P(a, zHi)], [P(b, zLo), P(a, zHi), P(b, zHi)]);
+  }
+  const pos = new Float32Array(tris.length * 9);
+  tris.forEach((t, k) => t.forEach((v, l) => pos.set(v, k * 9 + l * 3)));
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.computeVertexNormals();
   return g;
 }
 // A round disc about the origin between two z planes, on ROUND_SEG.
@@ -345,7 +524,7 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   const {
     UNIT_MM: U, z0, zMidBack, zStep, zBandFront, zCrystInner, zCrystOuter, zBezelOuter,
     crystT, tubeD, pusherD, stemAz, alarmAz, pusherAz, pusherOff, stemZ, alarmZ, pusherZ,
-    lugSpanInner, apertureR, glassEdgeR, formApertureGrow = null, formGlassGrow = null, bezelFlat,
+    lugSpanInner, apertureR, glassEdgeR, formApertureGrow = null, formGlassGrow = null, bezelFlat, plateFloors,
   } = dims;
   // §307 landing 2 — THE BACK'S WINDOW IS THE PLATE'S SHAPE: main.js derives
   // it as grows of the plate's outline (the three-quarter plate's measured
@@ -398,7 +577,23 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   }
   const sweep = mergeGeos(bezel.runs.map((run) => { const r = sweepRun(loops.ring, run); r.computeVertexNormals(); return r; }));
   if (signedVolume(sweep) < 0) flipWinding(sweep);
-  const middleGeo = mergeGeos([sweep, prism(loops.outer, [loops.bore], zBandFront, formApertureGrow === null ? z0 : zMidBack)]);   // §321: the band ends where the back's round begins
+  // §331 — the band is BORED for its tubes (boredBand), from the same line, offset, sleeve radius and z tubeAt builds each
+  // sleeve on below. TODO 283: the FREE outline too, which §331 left an unbored prism with the winding stem standing in
+  // its metal. Its two loops are index-aligned by construction (formCaseLoops projects every ring onto the outer loop's
+  // vertices), and boredBand splits each wall at EVERY crossing of a strip's edge and judges each cell by its own
+  // midpoint, so a concave wall the strip crosses four times takes two windows with no special case.
+  const BAND_BORES = [
+    { az: stemAz, off: 0, ap: tubeD / 2 + TUBE_WALL, z: stemZ },
+    ...(alarmAz !== null ? [{ az: alarmAz, off: 0, ap: tubeD / 2 + TUBE_WALL, z: alarmZ }] : []),
+    ...(pusherAz !== null ? [{ az: pusherAz, off: pusherOff, ap: pusherD / 2 + TUBE_WALL, z: pusherZ }] : []),
+  ];
+  const zBandEnd = formApertureGrow === null ? z0 : zMidBack;   // §321: the band ends where the back's round begins
+  const band = boredBand(loops.outer, loops.bore, Math.min(zBandFront, zBandEnd), Math.max(zBandFront, zBandEnd), BAND_BORES);
+  for (const b of BAND_BORES)
+    if (!(b.z - b.ap > Math.min(zBandFront, zBandEnd) && b.z + b.ap < Math.max(zBandFront, zBandEnd)))
+      console.warn(`makeFormCase §331: a bore window (z ${(b.z - b.ap).toFixed(3)}..${(b.z + b.ap).toFixed(3)}) reaches past the band's own wall `
+        + `(${Math.min(zBandFront, zBandEnd).toFixed(3)}..${Math.max(zBandFront, zBandEnd).toFixed(3)})`);
+  const middleGeo = mergeGeos([sweep, band]);   // §321: the band ends where the back's round begins
   holdWound(middleGeo, 'the case middle');
   // §289 — the bezel's metal is the part in front of the seat plane
   // zBandFront, and the brush shader (materials.js, CASE_POLISH_ATTR) polishes
@@ -480,8 +675,8 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   // glass's outer face, the lip over it (polished with the rim).
   const backOuter = backRound ? loops.ring(backRound.reach) : loops.outer;
   const backParts = [   // [geometry, polished]
-    [prism(backOuter, [glassLoop ?? { r: glassEdgeR }], zMidBack, zCrystOut), false],
-    [prism(backOuter, [apHole], zCrystOut, z0), true],
+    [prism(backOuter, [glassLoop ?? { r: glassEdgeR }], zMidBack, zCrystOut, { stitch: form.kind !== 'free' }), false],
+    [prism(backOuter, [apHole], zCrystOut, z0, { stitch: form.kind !== 'free' }), true],
   ];
   if (backRound) {
     const { reach, ell } = backRound;
@@ -520,21 +715,24 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   // stem's own line at the stem's own z: `az` the line's azimuth, `off` its
   // perpendicular offset from the centre (the pusher runs PARALLEL to a
   // radius, ALARM_PUSH_CHORD off it; both crowns are radial, off = 0).
-  //   · The INBOARD end stops short of the plate by CLEAR_MARGIN: the plate
-  //     loop's exit along the tube's axis AND its two in-plane rim lines (the
-  //     end face's extreme points against a prismatic wall — makeCase's
-  //     "the rim's nearest point clears the plate" rule), the farthest taken,
-  //     swelled by the plate's extrude bevel (PLATE_BEVEL_F — the round
-  //     plate's fraction, standing in until the form plate's own bevel is
-  //     measured; CASE_DIMS.tubeClearR's rule). A flush bore instead lands
+  //   · The INBOARD end stops short of the plate by CLEAR_MARGIN, MEASURED
+  //     and not reconstructed: `plateFloors[n]`, the plate's widest
+  //     METAL along this stem's line within the sleeve's section (main.js
+  //     PLATE_RIM, bevel and facets and all), plus CLEAR_MARGIN. It was
+  //     `reach · (1 + PLATE_BEVEL_F)` on the plate LOOP, which it stays where
+  //     the measure falls short of the loop — the round plate's
+  //     fraction of a radius standing in for a form plate's bevel, which is a
+  //     constant and offsets the outline perpendicular to itself — and a stem
+  //     line leaving far from the centre stood its sleeve too far off (§325
+  //     landing 6: the −140° arrangement's, 0.556 against support's 0.5).
+  //     A flush bore instead lands
   //     SEAT_EMBED into the BORE wall (makeCase §187: the pusher's sleeve
   //     lines the band's own hole and nothing more).
   //   · The OUTBOARD end is the axis's exit from the OUTER loop
   //     (makeCase's `alongAt(R_OUT)`), plus TUBE_PROUD for a crown; flush for
   //     the pusher.
-  // TODO (§307, prototype): the band is NOT bored for them — the sleeve
-  // stands in solid band metal, the same declared CSG debt the round case
-  // carries for its radial bores.
+  // §331: the band is BORED for them (boredBand, from these same lines and radii); since TODO 283 on the free outline too.
+  const STEM_FLOOR = { caseCrownTube: 0, caseAlarmTube: 1 };   // PLATE_RIM.floors is indexed by CASE_NOTCHES: the crown, then the alarm stem
   const tubeAt = (az, d, z, name, flush = false, off = 0) => {
     const r = d / 2, rw = r + TUBE_WALL;
     const dir = [Math.cos(az), Math.sin(az)], perp = [-Math.sin(az), Math.cos(az)];
@@ -543,9 +741,14 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
     if (flush) {
       inboard = rayExit(loops.bore, dir, lineAt(0)) - SEAT_EMBED;
     } else {
+      // §325 landing 6 — the plate's metal on THIS stem's line is MEASURED off the built plate (main.js PLATE_RIM.floors, within the
+      // sleeve's section, bevel and all), so the tube stands CLEAR_MARGIN off exactly the number main.js's §186 assert holds it to.
+      // A floor SHORT of the plate loop's own exit is a walk that missed metal (the rect form reads 25 mm on a 45.7 mm plate, and the
+      // sleeve then stood in the keyless and alarm work): the loop rule stands there, as it always did.
       let reach = -Infinity;
       for (const k of [-rw, 0, rw]) reach = Math.max(reach, rayExit(loops.plate, dir, lineAt(k)));
-      inboard = reach * (1 + PLATE_BEVEL_F) + CLEAR_MARGIN;
+      const floor = plateFloors[STEM_FLOOR[name]];
+      inboard = (floor >= reach ? floor : reach * (1 + PLATE_BEVEL_F)) + CLEAR_MARGIN;
     }
     const outerExit = rayExit(loops.outer, dir, lineAt(0));
     const outboard = flush ? outerExit : outerExit + TUBE_PROUD;
@@ -568,10 +771,15 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
     // square end on a wall the line meets at 18.3° (rect) stood up to 0.78 u
     // proud of it on one side, where the button then landed on it. In the pivot's frame +X is −perp, so the plane through the
     // exit rises (n·perp)/(n·dir) per unit of x.
+    // `endSlope` is that rise, kept on the tube's record: a line on the bore at
+    // perpendicular offset k ends at outboard − endSlope·(k − off), and the
+    // drawing must end its lines there (they ended square at `outboard` and
+    // stood up to 0.88 u past the metal on one wall and short of it on the other).
+    let endSlope = 0;
     if (flush) {
       const [nx, ny] = rayExitNormal(loops.outer, dir, lineAt(0));
-      cutEndOnPlane(sleeve.geometry, 'y', Math.max(len, 1e-6) / 2, 'x',
-        (nx * perp[0] + ny * perp[1]) / (nx * dir[0] + ny * dir[1]));
+      endSlope = (nx * perp[0] + ny * perp[1]) / (nx * dir[0] + ny * dir[1]);
+      cutEndOnPlane(sleeve.geometry, 'y', Math.max(len, 1e-6) / 2, 'x', endSlope);
     }
     sleeve.position.y = inboard + len / 2;
     sleeve.name = `${name}Sleeve`;
@@ -588,7 +796,7 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
     const grp = new THREE.Group();
     grp.add(pivot);
     grp.name = name;
-    grp.userData.tube = { az, off, inboard, outboard, len, d, z };   // the drawing (formCaseLines) reads the built tube, never the dims again
+    grp.userData.tube = { az, off, inboard, outboard, len, d, z, endSlope };   // the drawing (formCaseLines) reads the built tube, never the dims again
     middleAsm.add(grp);
     return grp;
   };
@@ -720,7 +928,7 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
 // TUBES are read from each tube group's own `userData.tube`: two lines at ±d/2
 // (the bore's walls, the round drawing's convention) from the built inboard end
 // to the built outboard end, on the tube's own line (`off` carries the pusher's
-// chord). LUGS are the plans makeFormCase built (`userData.lugPlans`, each with
+// chord); a flush bore's lines each end on its built end plane (`endSlope`). LUGS are the plans makeFormCase built (`userData.lugPlans`, each with
 // the azimuth that placed it): the outline and the hole at each lug's centre
 // plane — makeRoundedSlab's straight wall, so the outline IS the section there
 // — and the spring bar as its AXIS between the two lugs (an axis line, the one
@@ -775,8 +983,11 @@ export function formCaseLines(g, dims) {
     const dir = [Math.cos(t.az), Math.sin(t.az)], perp = [-Math.sin(t.az), Math.cos(t.az)];
     for (const s of [-1, 1]) {
       const k = t.off + s * t.d / 2;
+      // A flush bore's end is cut on the wall's tangent plane (TODO 275), so
+      // each wall line ends where IT meets that plane, not at the axis's exit.
+      const out = t.outboard - (t.endSlope ?? 0) * (k - t.off);
       seg('tube', [dir[0] * t.inboard + perp[0] * k, dir[1] * t.inboard + perp[1] * k, t.z],
-                  [dir[0] * t.outboard + perp[0] * k, dir[1] * t.outboard + perp[1] * k, t.z]);
+                  [dir[0] * out + perp[0] * k, dir[1] * out + perp[1] * k, t.z]);
     }
   });
   // The lugs, as planned.

@@ -87,7 +87,11 @@ translation runs.
      comment. Region subtags change the decimal mark, and some languages need
      `-u-nu-latn` to keep Western digits.
    - `match` must be **anchored**, because three-letter codes collide with
-     other languages (`hu` yes, `hup` Hupa no).
+     other languages (`hu` yes, `hup` Hupa no). A two-letter code can be the
+     PREFIX of another row's code: `fi` (Finnish) begins `fil` (Tagalog), so a
+     bare `startsWith('fi')` placed above Tagalog hands a Filipino reader a
+     legible Finnish page with no error anywhere. The ladder assert catches it
+     only if the lookalikes are in its table, so add them (§217).
    - **Array position matters.** First match wins, so a script-subtag row
      (`zh-Hant`) goes above its bare language (`zh`).
 2. **The ladder assert** in `src/i18n.js` (the table of
@@ -101,7 +105,8 @@ translation runs.
    existing file's header), plus a `LOADERS` entry in each of
    `src/explain-i18n.js` and `src/primer-i18n.js`. A page the row leaves
    undeclared gets neither (§274): no file, no loader, and it adds nothing to the
-   precache count, so a chrome+primer locale (Czech) raises it by one, not two.
+   precache count, so a chrome+primer locale raises it by one, not two (Czech
+   landed that way, then its explainer raised it by the second one).
    Use a **literal** `import()` specifier. The stamper's module walk and the
    service-worker precache only see quoted strings.
 5. **`tools/explain-i18n.mjs`** — a `MARKS` row (which characters the locale
@@ -113,6 +118,11 @@ translation runs.
    read (the primer, `probe-chrome-honesty`), until the day the explainer is
    declared. Czech's `m` is `modelov` and never a bare `model` (the credit line's
    "AI model" and the tagline's 3D "models" are the nouns it must not swallow).
+   Hold the stem to the VERB's own shapes and TEST it against the noun's
+   cases, its adjective and its compounds: Finnish's first `mallin[nt]` and
+   Polish's first `modelow` were each satisfied by a noun (*mallintiedosto*,
+   *plików modelowych*) in a translation that dropped the honesty word, and
+   shipped as `mallinn|mallinta[amnv]` and `modelowa[nć]|modeluj` (§217, §249).
 6. **Roster mirrors in tools**:
    - `tools/offline-check.mjs`: the locale list, and the expected precache
      count rises by two (one explainer table, one primer table).
@@ -159,9 +169,12 @@ Stage order for a new locale: wiring and the chrome together (the chrome table
 must be complete the moment the row exists, below), with the surfaces declared as
 `['chrome']`; then declare `primer` and add its table; then `explainer` last. Each
 stage can land alone. Say in the PR which surfaces the row declares. Czech
-(§273) is the worked example: `surfaces: ['chrome', 'primer']`, a primer loader,
-no explainer file and no explainer loader, and the English explainer under the
-notice.
+(§273) is the worked example, both ways: it landed as `surfaces: ['chrome',
+'primer']` with a primer loader, no explainer file and no explainer loader, and
+the English explainer under the notice; its second landing added the explainer
+table and its loader and DROPPED the field, which is how a staged locale ends.
+The chrome's notice key may stay in the table once nothing shows it
+(`probe-chrome-parity` exempts exactly that key).
 
 **The pickers hide incomplete locales behind a toggle (owner's ruling).** A
 locale that does not carry all three surfaces is *incomplete*. The chrome alone
@@ -202,8 +215,11 @@ the chrome, so a new locale lands its wiring and its chrome together.
   is an existing table's keys. That is also the blind spot: a key added since
   that table was built is in none of them, so the coverage probe finds it.
 - Pages: `--extract` the keys, translate the blocks. Quoted identifiers stay
-  in `<code>`. In agglutinative languages, put case endings OUTSIDE the span
-  (`<code>X</code>-ban`).
+  in `<code>`. In agglutinative languages, put case endings OUTSIDE the span:
+  Hungarian hyphenates (`<code>X</code>-ban`), Finnish takes a colon
+  (`<code>X</code>:n`, `18 000:n`). On the primer a colon after a number stops
+  the value parse, so `18 000:n` reads 18000 (§217 planted it to show so).
+  Czech needed neither and put a noun before the token instead.
 - Digits spelled in words in English stay words in the translation. The number
   gate compares digit glyphs as a multiset outside `<code>`.
 - `.gloss-variants` rows in the explainer's glossary list only the inflected

@@ -36,9 +36,9 @@ import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from '../ven
 // default and should not add a fourth copy of the number.
 import { ZERO_AREA_MAX, CLEAR_MARGIN, HANDOFF_TRACK_TOL, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MAX_U, CHAIN_PITCH,
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
-  ROUTE_SPEC, ROUTE_UNIT_NAME,                                    // §36 Apply: the same predicate that builds the unit, and the same name
+  ROUTE_SPEC, ROUTE_UNIT_NAME, SPEC,                                    // §36 Apply: the same predicate that builds the unit, and the same name
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, rigidSplit,
-  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R_SPEC, BALANCE_R_REF, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
+  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, MAINSPRING_ALPHA_MIN, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R_SPEC, BALANCE_R_REF, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG, STOPWORK_BUILT, GEARED_BUILT } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 import { auditLubrication, LUBRICATION, LUBRICATION_DEBT, LUBRICATION_WAIVERS } from './lubrication.js';   // §247 tier one
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
@@ -102,7 +102,8 @@ export const MECH_GRAPH = {
     // on the base plate instead.)
     ['Three-quarter plate', 'pillars'],
     ['pillars', 'plate'],
-    ['Fusee & great wheel', 'Three-quarter plate'], // upper pivots, jewelled bores
+    // (§336: the fusee's top bush — in the FUSEE COCK on §47's build, in this
+    // plate on the stop-work's — is pushed below, once STOPWORK_ARREST is known.)
     ['Center wheel', 'Three-quarter plate'],
     ['Third wheel', 'Three-quarter plate'],
     ['Fourth wheel', 'Three-quarter plate'],
@@ -609,6 +610,38 @@ export const MECH_GRAPH = {
 // the simulation fiction CLAUDE.md names: an edge with no force behind it.
 if (ROUTE_SPEC) MECH_GRAPH.support.push([ROUTE_UNIT_NAME, 'plate']);
 
+// §325 landing 6 / §328 — THE FRAME ON LANDS, the default since §328 step 1b (`?frame=pillars` builds the applied pillars).
+// The back plate is screwed onto lands the base plate raises, so the unit 'pillars' is not built and its two support rows
+// are replaced by the one the metal makes: the back plate stands on the base plate. Like the route's row the condition is
+// the SPEC key main.js builds on, since checkGraph fails both ways (a declared unit that was not built, a built unit that
+// was not declared); the tables below that name 'pillars' are the pillar frame's, and are kept for `?frame=pillars`.
+const FRAME_LANDS = SPEC.frame !== 'pillars';
+if (FRAME_LANDS) {
+  MECH_GRAPH.support = MECH_GRAPH.support.filter(([a, b]) => a !== 'pillars' && b !== 'pillars');
+  MECH_GRAPH.support.push(['Three-quarter plate', 'plate']);
+}
+
+// §329 landing 4 — ?arrest=stopwork builds the Geneva stop-work INSTEAD of §47's arrest (main.js, in §47's block), so the unit
+// 'Winding arrest' is not built and 'Winding stop-work' is. Its rows are the metal's: the star's stud is planted in the
+// three-quarter plate's underside, and the pin the cone carries drives the star both ways. The condition is the SPEC key main.js
+// builds on, for FRAME_LANDS' reason (checkGraph fails both ways). Every table below that names §47's unit is filtered the same way.
+const STOPWORK_ARREST = STOPWORK_BUILT || GEARED_BUILT;   // §337 landing 2b: the geared Geneva is the same unit, hung from the cock   // §329: the stop-work's build, derived once in layout.js (the shipped arrest where it stands)
+// §336 — THE FUSEE'S TOP BUSH runs in the FUSEE COCK, which stands on the base plate outside the great wheel, island in this
+// plate: the plate keeps no boss over the cone. On every build since landing 3 (the stop-work's stud is planted in the
+// cock's crank; until then the stop-work's build kept the bush in the plate's island and webs).
+MECH_GRAPH.support.push(['Fusee & great wheel', 'Fusee cock'], ['Fusee cock', 'plate']);
+MECH_GRAPH.bridges.push('Fusee cock');
+const dropArrestRows = (rows, names) => {
+  if (!STOPWORK_ARREST) return;
+  for (let i = rows.length - 1; i >= 0; i--) if (names(rows[i]).includes('Winding arrest')) rows.splice(i, 1);
+};
+dropArrestRows(MECH_GRAPH.support, (r) => r);
+dropArrestRows(MECH_GRAPH.drive, (r) => r);
+if (STOPWORK_ARREST) {
+  MECH_GRAPH.support.push(['Winding stop-work', 'Fusee cock']);   // §336 landing 3: the star's stud is planted in the cock's crank
+  MECH_GRAPH.drive.push(['Fusee & great wheel', 'Winding stop-work']);
+}
+
 // Shared anchor-point extractor: the mesh CENTRE within `unitEntry` nearest
 // to any mesh centre in `targetEntry` — i.e. "whichever part of this unit is
 // actually meant to reach the target." Cheap (mesh-count², not
@@ -693,7 +726,7 @@ const EXPECTED_PAIRS = [
   // on the base plate — TODO 184.) Everything else in
   // the movement must CLEAR it — which is the point of listing these
   // explicitly rather than excluding the plate from the sweep.
-  ['Fusee & great wheel', 'Three-quarter plate'],
+  // (§336: the fusee's top bush — see the push beside STOPWORK_ARREST.)
   // The pillars are a labelled unit now (they were a bare structure node,
   // invisible to this sweep — which is how a re-seated pillar ended up
   // inside the hack collar's swing without a single check firing). The one
@@ -874,6 +907,12 @@ const EXPECTED_PAIRS = [
   ['Alarm governor anchor', 'plate'],// §107's stud, §112's face
   ['Alarm governor', 'Alarm governor anchor'],    // §107: the saw's tooth face on the pallet face — the governing contact itself
 ];
+dropArrestRows(EXPECTED_PAIRS, (r) => r);   // §329 landing 4 (see STOPWORK_ARREST)
+if (STOPWORK_ARREST) EXPECTED_PAIRS.push(['Winding stop-work', 'Fusee cock'], ['Winding stop-work', 'Fusee & great wheel']);   // §336 landing 3: the stud's seat is the cock's crank
+// §336 — the fusee's top bush: in the cock's boss (its staff crosses the plate's cone window in air), or the plate's on the stop-work's build
+EXPECTED_PAIRS.push(['Fusee & great wheel', 'Fusee cock']);   // the stud's seat; the pin in the star's slot and the lock disc in its arcs
+// §325 landing 6 — the plate sits on the base plate's lands, not on pillar caps (the plate is a held fixture, in no sweep's pairs)
+if (FRAME_LANDS) for (let i = EXPECTED_PAIRS.length - 1; i >= 0; i--) if (EXPECTED_PAIRS[i].includes('pillars')) EXPECTED_PAIRS.splice(i, 1);
 // Same rigid assembly / coaxial stacks — not meaningful to test.
 const IGNORED_PAIRS = [
   ['Balance', 'Hairspring'],
@@ -1999,7 +2038,16 @@ const _closedCache = new WeakMap();
 function boundsASolid(geom) {
   let v = _closedCache.get(geom);
   if (v !== undefined) return v;
-  v = surfaceEdgeCensus(geom).bad === 0;   // manifold: every edge shared by exactly 2 faces
+  // TODO 282 — CLOSED MEANS NO BOUNDARY, i.e. every edge on an EVEN number of faces. The witness's argument
+  // ("crossed twice, so the segment was inside between") needs only that the surface bounds a region: a face DOUBLED
+  // inside the metal (the form case's bezel sweep and band share the seat plane, §289; the chain's links touch along
+  // edges) shares its edges four ways and still has no boundary, and a segment can reach it only from inside the
+  // metal, so n ≥ 2 crossings still means it was inside. "Exactly two" refused all six such meshes in the movement
+  // (`caseMiddle`, `caseBack`, `chainRun`, `star` and two unnamed), and with no sample point in the metal
+  // `meshClearance` replaced the library's correct 0 with a vertex distance: on `case=rect` before §331 the winding
+  // stem read 2.289 u clear of the band it crossed 96 times. An ODD count is a real hole or an open sheet (the
+  // springs, the hands' tips, the sub-dials: 19 meshes), and those stay refused.
+  v = surfaceEdgeCensus(geom).odd === 0;
   _closedCache.set(geom, v);
   return v;
 }
@@ -2008,7 +2056,9 @@ function boundsASolid(geom) {
 // closedness (probe-165-witness, probe-mesh-closedness-census) read THIS law
 // rather than carrying a copy of it. `bad` is the number of position-keyed
 // edges not shared by exactly two faces, `over` those shared by three or more
-// (bad − over are holes); `collapsed` the triangles skipped as segments (below).
+// (bad − over are holes); `odd` those shared by an ODD number of faces, the surface's boundary mod 2, which is what
+// boundsASolid reads (TODO 282); `collapsed` the triangles skipped as segments (below). meshIntegrity's held-fixture
+// gate reads `bad` and `over` and is unchanged by `odd`.
 export function surfaceEdgeCensus(geom) {
   const pos = geom.attributes.position, idx = geom.index;
   const n = idx ? idx.count : pos.count;
@@ -2049,9 +2099,9 @@ export function surfaceEdgeCensus(geom) {
       edge.set(kk, (edge.get(kk) || 0) + 1);
     }
   }
-  let bad = 0, over = 0;
-  for (const c of edge.values()) { if (c !== 2) bad++; if (c > 2) over++; }
-  return { edges: edge.size, bad, over, collapsed };
+  let bad = 0, over = 0, odd = 0;
+  for (const c of edge.values()) { if (c !== 2) bad++; if (c > 2) over++; if (c % 2) odd++; }
+  return { edges: edge.size, bad, over, odd, collapsed };
 }
 
 const _pierceRay = new THREE.Ray(), _pierceDir = new THREE.Vector3();
@@ -3054,6 +3104,54 @@ export const EXPECTED_CONTACT_FLOORS = [
     ],
   },
 ];
+dropArrestRows(EXPECTED_CONTACT_FLOORS, (r) => [r.a, r.b]);   // §329 landing 4 (see STOPWORK_ARREST)
+// §329 — THE STOP-WORK'S TWO PAIRS, each with exactly the contacts its design claims; everything else between them owes the
+// one margin (§47's rule above). Two of the claimed contacts are RUNNING GAPS rather than touches: the star rides 0.071 under
+// the three-quarter plate and 0.071 over the cone's top face (main.js GAP, less than its stock plus two margins, which the owner
+// accepted). They are excused here and held OPEN at every stop-work pose by WIND_ARREST_HANDOFFS below, the hourTube⇄cannonNose
+// pattern (a running fit declared here, held by an instrument).
+if (STOPWORK_ARREST && !GEARED_BUILT) EXPECTED_CONTACT_FLOORS.push(
+  {
+    // §336 landing 3: the stud is planted in the fusee cock's seat, a pendant hanging from the crank to where the plate's
+    // underside was (the plate's web until then), so the star rides the same running gap under the pendant's foot.
+    a: 'Winding stop-work', b: 'Fusee cock', min: CLEAR_MARGIN,
+    contacts: [
+      ['stopworkStud', 'fuseeCockSeat'],         // the stud planted in the seat's pendant — the support joint
+      ['stopworkStar', 'fuseeCockSeat'],         // the star's running gap under the pendant's foot (held open by the handoff row)
+    ],
+  },
+  {
+    a: 'Winding stop-work', b: 'Fusee & great wheel', min: CLEAR_MARGIN,
+    contacts: [
+      ['stopworkStar', 'stopworkPin'],           // the pin in the slots and on a closed notch's floor at each stop — the arrest itself
+      ['stopworkStar', 'stopworkLockDisc'],      // the lock arcs riding the disc through every dwell, at the running fit
+      ['stopworkStar', 'fuseeCone'],             // the star's running gap over the cone's top face (held open by the handoff row)
+    ],
+  },
+);
+
+// §337 landing 2b, stage 3 — THE GEARED STOP-WORK'S TWO PAIRS. Its metal hangs from the cock's branch arm: the finger's stud and the
+// star's stud are planted in the cock (crank and branch arm) at their tops; the finger's pinion meshes the cone's wheel (a mesh, so
+// tooth flanks touch: declared here, held to a real mesh by meshCoverage / meshPhase / transmits); the lock disc is fast on the
+// cone's top face; the star rides a running gap over the cone's top face (held open by the hand-off row).
+if (GEARED_BUILT) EXPECTED_CONTACT_FLOORS.push(
+  {
+    a: 'Winding stop-work', b: 'Fusee cock', min: CLEAR_MARGIN,
+    contacts: [
+      ['gearedFingerStud', 'fuseeCockCrank'], ['gearedFingerStud', 'fuseeCockBranch'], ['gearedFingerStud', 'fuseeCockPost'], ['gearedFingerStud', 'fuseeCockArm'],   // the finger's stud planted in the arm
+      ['stopworkStud', 'fuseeCockCrank'], ['stopworkStud', 'fuseeCockBranch'], ['stopworkStud', 'fuseeCockPost'], ['stopworkStud', 'fuseeCockArm'],   // the star's stud planted in the arm
+    ],
+  },
+  {
+    a: 'Winding stop-work', b: 'Fusee & great wheel', min: CLEAR_MARGIN,
+    contacts: [
+      ['gearedPinion', 'gearedConeWheel'],       // the mesh: the finger's pinion in the cone's wheel
+      ['stopworkLockDisc', 'fuseeCone'],         // the disc fast on the cone's top face
+      ['stopworkLockDisc', 'fuseeUpperPivot'],   // its bore on the fusee's top staff
+      ['stopworkStar', 'fuseeCone'],             // the star's running gap over the cone's top face (held open by the handoff row)
+    ],
+  },
+);
 
 // TODO 6's check: sweep each row's unit pair with its declared contacts
 // EXCLUDED, and hold the remainder to the row's floor. REPORT-first (§50's
@@ -3571,8 +3669,7 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Keyless works', a: 'crownWheel', b: 'transferArbor', why: '§47: the crown wheel keyed on its arbor — the arbor passes through the wheel it drives' },
   { unit: 'Keyless works', a: 'crownWheel', b: 'cwScrew', why: '§47: the same wheel seated on the blued screw below it — the axial seat that seats the wheel on its shoulder' },
   { unit: 'Keyless works', a: 'transferWheel', b: 'transferArbor', why: '§47: the TRANSFER wheel at the plate-top end of the same arbor — keyed to it, which is why tick() poses the two wheels from one angle' },
-  { unit: 'Fusee & great wheel', a: 'maintPawl', b: 'CylinderGeometry#15', why: '§47: a maintaining pawl on its own pivot pin — the pawl rides the pin it rocks about (both pawls carry the same mesh name, so this row covers the pair the check reports). (#14 until TODO 219 hung the spring\'s pin, a cylinder, from the ring)' },
-  { unit: 'Fusee & great wheel', a: 'maintPawl', b: 'CylinderGeometry#17', why: '§47: the second maintaining pawl on its own pin — the same joint at the other station (#16 until TODO 219)' },
+  { unit: 'Fusee & great wheel', a: 'maintPawl', b: 'maintPawlStud', why: '§47: each maintaining pawl on its own pivot stud — the pawl rides the stud it rocks about. Both pawls and both studs carry one name each, so this one row covers both stations (it was two rows by index, #15 and #17, until §329\'s stop-work pin shifted the indices and orphaned them)' },
   // §47 — the arrest's own declared joints: the finger on its stud (a bored
   // hub, running clearance), under its retaining head, seated on its bank
   // by the blade whose fixed end bears its post.
@@ -3651,6 +3748,20 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Keyless works', a: 'mwCornerCapIn', b: 'settingStub', why: 'TODO 151\'s (d) landing — the cap corner\'s inboard bevel, the stub\'s other end' },
   { unit: 'Keyless works', a: 'mwCornerCapOut', b: 'settingCapArbor', why: 'TODO 151\'s (d) landing — the cap corner\'s outboard bevel, keyed to the vertical arbor up to the cap' },
   { unit: 'Keyless works', a: 'mwCornerRiseOut', b: 'settingRise', why: 'the rise corner\'s outboard bevel, keyed to the vertical rod it drives (measures MARGINAL \u2014 the flag flips run-to-run at the d\u22481e-4 boundary; the joint is real either way)' },
+  // TODO 289 — THE TAIL'S BEARINGS: each rod's running fit in its bush (PIVOT_BORE_CLEAR, so the pair reads the
+  // fit, never a foul), the bush welded to its arm, the arm to its column (face on face), and the cap arbor
+  // through the jewel's stone; the rise's shouldered pivot is one body with its rod.
+  { unit: 'Keyless works', a: 'settingRisePivot', b: 'settingRise', why: 'TODO 289: the rise\'s shouldered pivot, turned on the rod\'s own end past E — one body' },
+  { unit: 'Keyless works', a: 'settingRisePivot', b: 'settingRiseBush', why: 'TODO 289: the rise\'s pivot running in its bush below E, at PIVOT_BORE_CLEAR' },
+  { unit: 'Keyless works', a: 'settingRiseBush', b: 'settingRiseArm', why: 'TODO 289: the bush welded to its hanger\'s arm (the arm\'s inner face on the bush\'s cylinder)' },
+  { unit: 'Keyless works', a: 'settingRiseArm', b: 'settingRiseColumn', why: 'TODO 289: the arm\'s outer face on the column\'s inner face — one welded hanger' },
+  { unit: 'Keyless works', a: 'settingStub', b: 'settingStubBush', why: 'TODO 289: the stub running in its bush between its two blanks, at PIVOT_BORE_CLEAR' },
+  { unit: 'Keyless works', a: 'settingStubBush', b: 'settingStubArm', why: 'TODO 289: the bush welded to its hanger\'s arm' },
+  { unit: 'Keyless works', a: 'settingStubArm', b: 'settingStubColumn', why: 'TODO 289: the arm on its column' },
+  { unit: 'Keyless works', a: 'settingCapArbor', b: 'settingCapBush', why: 'TODO 289: the cap arbor\'s extension below D running in its bush, at PIVOT_BORE_CLEAR' },
+  { unit: 'Keyless works', a: 'settingCapBush', b: 'settingCapArm', why: 'TODO 289: the bush welded to its hanger\'s arm' },
+  { unit: 'Keyless works', a: 'settingCapArm', b: 'settingCapColumn', why: 'TODO 289: the arm on its column' },
+  { unit: 'Keyless works', a: 'settingCapArbor', b: 'settingCapJewel', why: 'TODO 289: the cap arbor\'s upper pivot through the stone of a jewel set in the cap pocket\'s floor, at PIVOT_BORE_CLEAR' },
   // §99 found the other two joints of the same cluster, the same way the
   // declared row below found its first: the two wheels keyed to the long
   // keyless arbor sit at the measurement boundary and the flag flips
@@ -3917,6 +4028,15 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Case', a: 'caseBackCrystal', b: 'caseBackCrystalGasket', why: 'TODO 122: the pane\'s edge on its I-ring — the interference that fixes the glass in every direction the lip does not, drawn at the gasket\'s compressed section' },
   { unit: 'Case', a: 'caseBackCrystalGasket', b: 'caseBack', why: 'TODO 122: the I-ring compressed against the channel\'s wall and squeezed under the lip — the channel is cut to the gasket\'s compressed wall (glassEdgeR = skirtID − 0.8·stock), so the fit IS the press' },
 ];
+dropArrestRows(INTRA_UNIT_CONTACTS, (r) => [r.unit]);   // §329 landing 4 (see STOPWORK_ARREST)
+// §329 — the stop-work's lock disc is FAST on the cone's top face, its bore cut at the fusee's top staff (main.js DISC_IN =
+// TRAIN_STAFF_R): one body with the cone, as the cone is with its staff (the §254 row above). The disc is posed with the cone
+// and the staff stands under the arbor, so the MF tier read the seat as a mover in a fixture (found flipping the default
+// arrest to the stop-work); DECLARED_CONTACT_REACH holds the row to a real touch.
+if (STOPWORK_ARREST) INTRA_UNIT_CONTACTS.push({ unit: 'Fusee & great wheel', a: 'stopworkLockDisc', b: 'fuseeUpperPivot', why: '§329: the lock disc is fast on the cone\'s top face, its bore on the fusee\'s top staff — one body with the cone, as the cone is with its staff' });
+if (GEARED_BUILT) INTRA_UNIT_CONTACTS.push(   // §337 landing 2b, stage 3
+  { unit: 'Fusee & great wheel', a: 'gearedConeWheel', b: 'fuseeUpperPivot', why: '§337: the cone\'s wheel is fast on the fusee\'s top staff, its bore on the staff — one body with the cone' },
+  { unit: 'Winding stop-work', a: 'gearedPinion', b: 'gearedFingerStud', why: '§337: the finger\'s pinion turns on its stud at the running fit' });
 // Accepted debt, §50's convention — red in the report, cited, not silenced:
 export const INTRA_UNIT_WAIVERS = [
   // TODO 107's row (genevaFingerDisc ⇄ alarmArrestFingerArbor) stood here and
@@ -4889,7 +5009,16 @@ const FASTENED_EDGES = {
   'Balance cock ⇄ base plate': ['Balance cock', 'plate'],
   'Fork cock ⇄ base plate': ['Fork cock', 'plate'],
   'Escape cock ⇄ base plate': ['Escape cock', 'plate'],   // §322
+  'Fusee cock ⇄ base plate': ['Fusee cock', 'plate'],     // §336
 };
+// §325 landing 6 — the frame without pillars has ONE fastened edge where the pillars had two: the back plate's screws thread
+// into the base plate's own lands (there is no rivet, because there is no second part to rivet), and FRAME_JOINTS rows named
+// for it must MEASURE engaged in the lands' tapped bores like any thread
+if (FRAME_LANDS) {
+  delete FASTENED_EDGES['Three-quarter plate ⇄ pillar'];
+  delete FASTENED_EDGES['Pillar ⇄ base plate'];
+  FASTENED_EDGES['Three-quarter plate ⇄ rim land'] = ['Three-quarter plate', 'plate'];
+}
 const ENGAGE_TIE_MM = 1e-4;   // the probe's metal-vs-declaration tolerance; a cut short by a real amount reads 0.01+
 
 // TODO 202 step 4 — THE PLATE'S SEATS, a clearance tier between the base plate
@@ -4933,7 +5062,7 @@ export const PLATE_SEATS = [
   // kind: pivot (an arbor end running in the plate), planted (a stud, post or
   // foot set into or onto it), fastened (a frame joint's leg, screw or tenon),
   // housed (the case and the crown stem's sleeve, which hold the plate's rim).
-  { unit: "Fusee & great wheel", mesh: "CylinderGeometry#12", kind: "pivot", why: "the fusee arbor's lower pivot, seated mid-plate (PIVOT_SEAT_Z) — #11 until TODO 219's spring pin, a cylinder, moved its index label one on" },
+  { unit: "Fusee & great wheel", mesh: "fuseeLowerStaff", kind: "pivot", why: "the fusee arbor's lower pivot, seated mid-plate (PIVOT_SEAT_Z) — named since §329 (it was CylinderGeometry#12, #11 before TODO 219: every mesh the fusee gained moved its index label)" },
   { unit: "Center wheel", mesh: "trainPivot", kind: "pivot", why: "the lower pivot, seated mid-plate in its bore" },
   { unit: "Third wheel", mesh: "trainPivot", kind: "pivot", why: "the lower pivot, seated mid-plate in its bore" },
   { unit: "Fourth wheel", mesh: "trainPivot", kind: "pivot", why: "the lower pivot, seated mid-plate in its bore" },
@@ -4949,6 +5078,10 @@ export const PLATE_SEATS = [
   { unit: "Escape cock", mesh: "bridgeLeg", kind: "fastened", why: "§322: the cock's leg, bored for its screw" },
   { unit: "Escape cock", mesh: "bridgeFoot", kind: "fastened", why: "§322: the leg's foot, on the plate face" },
   { unit: "Escape cock", mesh: "screwShanks", kind: "fastened", why: "§322: the cock's foot screw, tapped through the plate" },
+  { unit: "Fusee cock", mesh: "bridgeLeg", kind: "fastened", why: "§336: the cock's leg, bored for its screw" },
+  { unit: "Fusee cock", mesh: "bridgeFoot", kind: "fastened", why: "§336: the leg's foot flange, on the plate face (bored for the screw and the steady pins since landing 4)" },
+  { unit: "Fusee cock", mesh: "screwShanks", kind: "fastened", why: "§336: the cock's foot screw, tapped through the plate" },
+  { unit: "Fusee cock", mesh: "steadyPin", kind: "planted", why: "§336 landing 4 (TODO 286): the foot's two steady pins, pressed through the plate — they key the cock against its arm's twist" },
   { unit: "Keyless works", mesh: "TorusGeometry#30", kind: "housed", why: "the crown stem's bushing, in the plate rim's notch (§186)" },
   { unit: "Keyless works", mesh: "BoxGeometry#31", kind: "housed", why: "the crown-stem sleeve, standing in the plate rim's notch" },
   { unit: "Setting lever", mesh: "CylinderGeometry#8", kind: "pivot", why: "the lever's pivot, seated mid-plate (#7 until TODO 214's boss, lug and screw renumbered the unit)" },
@@ -5004,6 +5137,11 @@ export const PLATE_SEATS = [
   { unit: "Alarm winding arrest", mesh: "subIdlerArbor", kind: "pivot", why: "an arbor's lower pivot" },
   { unit: "Alarm winding arrest", mesh: "alarmArrestFingerArbor", kind: "pivot", why: "an arbor's lower pivot" },
   { unit: "Alarm winding arrest", mesh: "alarmArrestStud", kind: "planted", why: "the arrest's stud, planted in the plate" },
+  { unit: "Keyless works", mesh: "settingRiseColumn", kind: "planted", why: "TODO 289: the rise bush's hanger, let one section into the plate's dial face" },
+  { unit: "Keyless works", mesh: "settingStubColumn", kind: "planted", why: "TODO 289: the stub bush's hanger, the same seat" },
+  { unit: "Keyless works", mesh: "settingCapColumn", kind: "planted", why: "TODO 289: the cap arbor bush's hanger, the same seat" },
+  { unit: "Keyless works", mesh: "settingCapArbor", kind: "pivot", why: "TODO 289: the cap arbor's upper pivot, run up through the cap and its jewel's stone into the plate (the jewel's recess, not cut from the slab — the train pivots' construction)" },
+  { unit: "Keyless works", mesh: "settingCapJewel", kind: "housed", why: "TODO 289: the cap arbor's jewel, its setting sunk in the cap pocket's floor a margin under the face" },
   { unit: "Alarm link", mesh: "alarmLinkHanger1", kind: "planted", why: "a hanger, standing on the plate" },
   { unit: "Alarm link", mesh: "alarmLinkHanger2", kind: "planted", why: "a hanger, standing on the plate" },
   { unit: "Alarm link", mesh: "alarmLinkHanger3Upper", kind: "planted", why: "§261 2c: hanger 3's upper column — jogged round the beak's bar — standing on the plate" },
@@ -5016,6 +5154,15 @@ export const PLATE_SEATS = [
   { unit: "Case", mesh: "caseMiddle", kind: "housed", why: "the case middle's ledge, which the plate's rim sits on" },
   { unit: "Case", mesh: "caseClampScrew", kind: "fastened", why: "the clamp screws, through the rim's bores (§186)" },
 ];
+// §325 landing 6 — no pillars, no row for them (a row naming a unit that is not built is a stale selector, and fails)
+if (FRAME_LANDS) for (let i = PLATE_SEATS.length - 1; i >= 0; i--) if (PLATE_SEATS[i].unit === 'pillars') PLATE_SEATS.splice(i, 1);
+// …and the back plate bears on the base plate's lands, through the ring its screw head is sunk in and by the thread it
+// cuts into the land's bore; those two meshes are the only metal of its own that the base plate's metal meets
+if (FRAME_LANDS) PLATE_SEATS.push(
+  { unit: "Three-quarter plate", mesh: "plateScrewLand", kind: "fastened", why: "the land ring under each screw head, bearing on the base plate's rim land (§325 landing 6)" },
+  { unit: "Three-quarter plate", mesh: "screwShanks", kind: "fastened", why: "the back plate's screws, threaded into the lands' tapped bores (§325 landing 6)" },
+  { unit: "Three-quarter plate", mesh: "threeQuarterPlate", kind: "fastened", why: "the slab itself, which the screws hold on the lands: it stands a bevel's width off each land's rim, inside CLEAR_MARGIN by construction (§325 landing 6)" },
+);
 export const PLATE_CLEARANCE_DEBT = [
   // Frozen at the arrival depth (the measured minimum over digestPoses, rounded
   // DOWN to 1e-4), each citing TODO 209's fix path. TODO 211 retired the
@@ -5076,7 +5223,11 @@ export async function checkPlateSeats(clock, { seats = PLATE_SEATS, debtTable = 
   clock.resetInputs();
   clock.setPose(poses[0]);
   clock.scene.updateMatrixWorld(true);
-  const tqClear = tq ? Math.min(...tq.meshes.flatMap((m) => plate.map((h) => meshClearance(m, h)))) : null;
+  // §325 landing 6 — on the frame without pillars the back plate BEARS on the base plate's lands, through its screw-land rings
+  // and the screws; the must-miss is then the slab itself (the metal that is neither), which must stand clear of the plate
+  // except where it is sat on — read as out of contact, not as CLEAR_MARGIN away
+  const tqBody = tq ? (FRAME_LANDS ? tq.meshes.filter((m) => m.name !== 'plateScrewLand' && m.name !== 'screwShanks') : tq.meshes) : null;
+  const tqClear = tq ? Math.min(...tqBody.flatMap((m) => plate.map((h) => meshClearance(m, h)))) : null;
 
   const out = [...rows.values()].map((r) => ({ ...r, min: +r.min.toFixed(6), seated: seats.some((s) => plateRowKey(s.unit, s.mesh) === plateRowKey(r.unit, r.mesh)) }))
     .sort((a, b) => a.min - b.min);
@@ -5105,7 +5256,7 @@ export async function checkPlateSeats(clock, { seats = PLATE_SEATS, debtTable = 
   const contactSeen = out.some((r) => r.min <= 0);
   const control = problems.length ? `FAIL — ${problems.map((p) => p.problem).join('; ')}`
     : !contactSeen ? 'FAIL — no mesh measured in contact with the plate: the must-hit never fired'
-    : !(tqClear >= CLEAR_MARGIN) ? `FAIL — the three-quarter plate read ${tqClear} from the base plate: the must-miss did not miss`
+    : !(FRAME_LANDS ? tqClear > 0 : tqClear >= CLEAR_MARGIN) ? `FAIL — the three-quarter plate read ${tqClear} from the base plate: the must-miss did not miss`
     : `PASS (must-hit: ${out.filter((r) => r.min <= 0).length} parts in contact; must-miss: three-quarter plate ${tqClear.toFixed(3)} clear)`;
   return {
     ok: control.startsWith('PASS') && !violations.length && !malformed.length && !staleSeats.length && !regressed.length && !staleDebt.length,
@@ -6236,6 +6387,7 @@ const PENETRATION_BUDGETS = [
     },
   },
 ];
+dropArrestRows(PENETRATION_BUDGETS, (r) => r.pair || []);   // §329 landing 4 (see STOPWORK_ARREST)
 
 // §61 helper — worst radial burial of a mesh below an axisymmetric surface
 // r = floorAt(z, az), in the surface's own frame. Samples every vertex AND each
@@ -6697,6 +6849,37 @@ export const WIND_ARREST_HANDOFFS = [
     expect: { full: 'contact', slack: 'free' },
   },
 ];
+dropArrestRows(WIND_ARREST_HANDOFFS, (r) => [r.unitA, r.unitB]);   // §329 landing 4 (see STOPWORK_ARREST)
+// §329 — THE STOP-WORK'S OWN HAND-OFFS, on its own wind states (§47's 'slack' would sit mid-passage: at tension ½ the 30 h star's
+// one passage is centred, the pin in the open slot). The pin meets a closed notch's floor at BOTH stops, full wind and the end
+// of the reserve, so it is held in contact at both and free in the dwells either side of the passage (tension ¾ and ¼, finger
+// angles 2.875π and 1.125π against the passage's 1.75π–2.25π for n 4, m 1). The two running gaps are held FREE at every pose:
+// the star never closes on the plate above it or the cone below it.
+if (STOPWORK_ARREST) {
+  WIND_ARREST_POSES.splice(0, WIND_ARREST_POSES.length,
+    ['full', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1 }],
+    ['dwellHi', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 0.75 }],
+    ['dwellLo', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 0.25 }],
+    ['empty', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 0 }]);
+  if (!GEARED_BUILT) WIND_ARREST_HANDOFFS.push(
+    { label: 'pin ⇄ closed notch (the stop)', unitA: 'Fusee & great wheel', meshA: 'stopworkPin', unitB: 'Winding stop-work', meshB: 'stopworkStar',
+      expect: { full: 'contact', dwellHi: 'free', dwellLo: 'free', empty: 'contact' } },
+    // §336 landing 3: the star's running gap is under the cock's seat pendant now (its foot where the plate's underside was)
+    { label: 'star ⇄ seat pendant (running gap)', unitA: 'Winding stop-work', meshA: 'stopworkStar', unitB: 'Fusee cock', meshB: 'fuseeCockSeat',
+      expect: { full: 'free', dwellHi: 'free', dwellLo: 'free', empty: 'free' } },
+    { label: 'star ⇄ cone face (running gap)', unitA: 'Winding stop-work', meshA: 'stopworkStar', unitB: 'Fusee & great wheel', meshB: 'fuseeCone',
+      expect: { full: 'free', dwellHi: 'free', dwellLo: 'free', empty: 'free' } });
+}
+
+// §337 landing 2b, stage 3 — the geared stop-work's hand-offs: the pin is the finger's (in the stop-work's own unit now, not the cone's),
+// the star's running gaps are over the cone's face and under the cock's branch arm.
+if (GEARED_BUILT) WIND_ARREST_HANDOFFS.push(
+  { label: 'pin ⇄ closed notch (the stop)', unitA: 'Winding stop-work', meshA: 'stopworkPin', unitB: 'Winding stop-work', meshB: 'stopworkStar',
+    expect: { full: 'contact', dwellHi: 'free', dwellLo: 'free', empty: 'contact' } },
+  { label: 'star ⇄ branch arm (running gap)', unitA: 'Winding stop-work', meshA: 'stopworkStar', unitB: 'Fusee cock', meshB: 'fuseeCockBranch',
+    expect: { full: 'free', dwellHi: 'free', dwellLo: 'free', empty: 'free' } },
+  { label: 'star ⇄ cone face (running gap)', unitA: 'Winding stop-work', meshA: 'stopworkStar', unitB: 'Fusee & great wheel', meshB: 'fuseeCone',
+    expect: { full: 'free', dwellHi: 'free', dwellLo: 'free', empty: 'free' } });
 
 // TODO 50 — the stem clutch's handoff rows, a SIBLING registration in the
 // windArrestHandoff pattern (never widen another mechanism's tables — its
@@ -7079,6 +7262,20 @@ function ringRecoilGap(clock, beaks, rings) {
     best = Math.min(best, d * rTip);
   }
   return { sep: best };
+}
+
+// §337 landing 2b, stage 3 — the geared stop-work's dwell poses come from ITS (m, n): the finger's turn is linear in tension from E/2
+// (empty) to (m + 1)·2π − E/2 (full wind), the passages sit at k·2π ± E/2 for k = 1..m, and the free dwells that bracket them are
+// centred at π (the first) and (m + ½)·2π (the last). At m = 1 these are within 0.125π of §329's ¾ and ¼; at m = 3 the fixed ¾ and ¼
+// stand in a passage (the pin 0.012 off a notch), which is why the poses are derived.
+function windArrestPosesFor(clock) {
+  if (!GEARED_BUILT) return WIND_ARREST_POSES;
+  const sw = clock.windArrest && clock.windArrest.stopwork;
+  if (!sw || !(sw.m >= 1) || !(sw.n >= 3)) return WIND_ARREST_POSES;
+  const TAU_ = Math.PI * 2, E_ = Math.PI - TAU_ / sw.n, hi = (sw.m + 1) * TAU_ - E_ / 2, lo = E_ / 2;
+  const at = (phi) => (phi - lo) / (hi - lo);
+  const pose = (tension) => ({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension });
+  return [['full', pose(1)], ['dwellHi', pose(at((sw.m + 0.5) * TAU_))], ['dwellLo', pose(at(Math.PI))], ['empty', pose(0)]];
 }
 
 export function checkAlarmHandoffs(clock, { tol = HANDOFF_TRACK_TOL, poses = ALARM_HANDOFF_POSES, handoffs = ALARM_HANDOFFS } = {}) {
@@ -8963,6 +9160,14 @@ export const STOCK_KIND_BY_MESH = {
   windArrestStudHead: 'pivot',    // its retaining head
   windArrestBank: 'pivot',        // the seat pin
   windArrestSpringPost: 'pivot',  // the blade's anchor pin
+  // §329 — the Geneva stop-work (?arrest=stopwork), cut to the same §50 pivot floor as §47's stud and head (main.js
+  // SW_STUD_R / SW_HEAD_T = PIVOT_MIN_U): pin-class, as §47's are. Read 'wheel' by default, the head's 0.07 mm failed the
+  // 0.12 mm sheet floor it was never cut to (found flipping the default arrest to the stop-work).
+  stopworkStud: 'pivot',         // the planted stud the star turns on
+  gearedFingerStud: 'pivot',     // §337: the planted stud the finger turns on
+  gearedFingerStudHead: 'pivot', // its retaining head
+  stopworkStudHead: 'pivot',     // its retaining head
+  stopworkPin: 'pivot',          // the finger's pin, in the cone's top face
   // §99 — the alarm barrel's own click:
   alarmClickPawl: 'spring',    // the click blade — same spring-tempered pawl stock as the going side's
   alarmClickSpring: 'spring',  // the solved-arc torus (tube ⌀ 0.2 u) — spring stock
@@ -10762,8 +10967,20 @@ export function checkOscillator(clock) {
 //     ribbon's release over the arbor's turning) times each corner's stages up
 //     to the fourth arbor's pivots, the ceiling the adverse corner's, and the
 //     reset rod's mean load at it inside the 50 mN its transfer row prices.
+// 19. THE RIBBONS' PACKING (TODO 291) — each ribbon's α = r/e (its collar over
+//     its strip's thickness) re-derived from the record's section and held to
+//     MAINSPRING_ALPHA_MIN, the low end of the trade's band. A ribbon under it is
+//     waived by NAME in RIBBON_PACKING_WAIVERS, and a waiver whose ribbon meets
+//     it is STALE. The control is the going ribbon as it stood before TODO 291
+//     (a 0.22008 half-thickness on the 1.5 collar, α 3.41), which the same rule
+//     must refuse.
 // TODO 193 — the ribbons over their alloy, by name. A row cites the TODO whose
 // fix path brings it under, and FAILS when its ribbon already is (stale).
+// TODO 291 — the ribbons under the packing band, by name; RIBBON_STRESS_WAIVERS' convention.
+export const RIBBON_PACKING_WAIVERS = {
+  // (going: never waived — TODO 291 solved its collar to the band)
+  alarm: 'TODO 201 — α 3.12 on its 0.594 collar (TODO 291 measured it); the ribbon is re-proportioned and re-cut as a strip together with §104\'s governor solve, and that solve takes MAINSPRING_ALPHA_MIN beside the stress',
+};
 export const RIBBON_STRESS_WAIVERS = {
   // (going: RETIRED by TODO 192 step 3 — the ribbon is proportioned to the limit, so its waiver went stale and the gate said so)
   alarm: 'TODO 201 — over the alloy\'s TENSILE strength at full wind; the ribbon is re-proportioned and re-cut as a strip together with §104\'s governor solve',
@@ -11185,6 +11402,23 @@ export function checkEqualisation(clock) {
       failures.push({ what: 'ribbon over its alloy at full wind', ribbon: half, sigma_MPa: st.sigma_Pa[1] / 1e6, limit_MPa: MAINSPRING_SIGMA_Y_PA / 1e6 });
     if (!over && waiver)
       failures.push({ what: 'stale ribbon stress waiver', ribbon: half, cites: waiver, sigma_MPa: st.sigma_Pa[1] / 1e6 });
+  }
+  // Row 19 (TODO 291) — THE RIBBONS' PACKING.
+  const packs = (rCollar, a) => rCollar / (2 * a) >= MAINSPRING_ALPHA_MIN - 1e-9;
+  if (packs(1.5, 0.22007610004803033))
+    failures.push({ what: 'ribbon packing control', note: 'the pre-TODO 291 going ribbon (α 3.41) passed the packing rule — the rule measures nothing' });
+  for (const [half, R] of [['going', g], ['alarm', a]]) {
+    const pk = R.packing;
+    if (!pk) { failures.push({ what: 'ribbon packing rows', ribbon: half, note: 'equalisation.' + half + '.packing is missing' }); continue; }
+    if (!(rel(pk.thicknessU, 2 * R.section.a) <= 1e-12 && rel(pk.alpha, pk.collarR / (2 * R.section.a)) <= 1e-12))
+      failures.push({ what: 'ribbon packing identity', ribbon: half, record: pk, section_a: R.section.a });
+    if (!(pk.limit === MAINSPRING_ALPHA_MIN))
+      failures.push({ what: 'ribbon packing limit', ribbon: half, record: pk.limit, layout: MAINSPRING_ALPHA_MIN });
+    const under = !packs(pk.collarR, R.section.a), waiver = RIBBON_PACKING_WAIVERS[half];
+    if (under && !waiver)
+      failures.push({ what: 'ribbon under the packing band', ribbon: half, alpha: pk.alpha, limit: MAINSPRING_ALPHA_MIN });
+    if (!under && waiver)
+      failures.push({ what: 'stale ribbon packing waiver', ribbon: half, cites: waiver, alpha: pk.alpha });
   }
   // the going ribbon's k IS its strip at the alloy's modulus — the identity
   // that makes "the shape cancels" true of this record and not just of algebra
@@ -15137,7 +15371,7 @@ const CHECKS = {
   // sibling registration rather than a widened alarm table, so the alarm's
   // rows stay bit-identical under the report diff.
   windArrestHandoff: (clock, opts) => checkAlarmHandoffs(clock,
-    { poses: WIND_ARREST_POSES, handoffs: WIND_ARREST_HANDOFFS, ...opts }),
+    { poses: windArrestPosesFor(clock), handoffs: WIND_ARREST_HANDOFFS, ...opts }),
   // TODO 50 — the stem clutch's coupling, same instrument, own tables:
   // contact at every engaged parity (the spring holds the one-sided
   // constraint closed), free pulled out.

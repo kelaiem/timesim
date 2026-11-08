@@ -27,7 +27,7 @@
 // UNDECLARED_CLEARANCE_DEBT sense: a joint outside both tables fails, a key that
 // has been answered while still listed fails (the fix deletes its entry), and no
 // entry may be added by a later change. It shrinks; it never grows.
-import { FRICTION } from './layout.js';
+import { FRICTION, STOPWORK_BUILT } from './layout.js';
 
 export const LUBRICATION_REGIMES = Object.freeze(['dry', 'oil-fine', 'oil-medium', 'grease', 'escapement', 'friction']);
 
@@ -57,7 +57,7 @@ const L = (regime, why, extra = {}) => Object.freeze({ regime, why, ...extra });
 // `mu` names the FRICTION row the energy column prices the joint with, where it
 // does; `epilame` marks surfaces treated so the oil stays put; `sink` names the oil
 // sink of an oiled bearing; `cites` is a friction row's slip-torque derivation.
-export const LUBRICATION = Object.freeze({
+const LUBRICATION_ROWS = {
   // ---- the going train: teeth run dry, pivots in oiled stones ----
   'Fusee & great wheel > Center wheel': L('dry', 'train teeth run dry: oil on a tooth collects abrasive, and every mesh efficiency in the energy column assumes dry steel on brass', { mu: 'muTooth', src: 'roadmap §247 seed table' }),
   'Center wheel > Third wheel':         L('dry', 'train teeth run dry (as the first stage)', { mu: 'muTooth', src: 'roadmap §247 seed table' }),
@@ -91,7 +91,7 @@ export const LUBRICATION = Object.freeze({
   'crown > Setting lever':              L('grease', 'the setting lever is moved by the stem\'s groove', { src: 'roadmap §247 seed table' }),
   'Setting lever > Yoke':               L('grease', 'the lever\'s flank drives the yoke\'s tail pin', { src: 'roadmap §247 seed table' }),
   'Yoke > Winding clutch':              L('grease', 'the yoke\'s prong in the clutch\'s groove', { src: 'roadmap §247 seed table' }),
-  'Keyless works :: bearing':           L('grease', 'crown wheel, winding pinion and stem bushing: sliding steel', { src: 'roadmap §247 seed table' }),
+  'Keyless works :: bearing':           L('grease', 'crown wheel, winding pinion and stem bushing: sliding steel; since TODO 289 the setting fold\'s three bushes and the cap arbor\'s jewel, which carry the hand-set\'s slow, light turns', { src: 'roadmap §247 seed table; TODO 289' }),
   'Winding clutch :: bearing':          L('grease', 'the clutch slides on the stem', { src: 'roadmap §247 seed table' }),
   'Setting lever :: bearing':           L('grease', 'pivots on the plate, with the lever\'s sliding contacts', { src: 'roadmap §247 seed table' }),
   'Yoke :: bearing':                    L('grease', 'pivots on the plate, with the clutch it moves', { src: 'roadmap §247 seed table' }),
@@ -118,7 +118,22 @@ export const LUBRICATION = Object.freeze({
   'Alarm release lifter :: bearing':    L('oil-fine', 'hammer, feeler and lifter pivots are oil-fine', { sink: 'plain-bush', src: 'roadmap §247 seed table' }),
   'Alarm setting wheel > Alarm disc':   L('friction', 'the alarm disc is carried on a friction hub: its drag and hold are priced at MU_STEEL (TODO 144), and at every corner of muTooth’s dry-steel band against the ramp’s climb (TODO 260)', { cites: 'TODO 144 (the disc\'s priced drag and hold)', src: 'roadmap §247 seed table' }),
   'Hour wheel > Alarm disc':            L('friction', 'the disc rides the hour wheel on the same friction hub (TODO 141/144)', { cites: 'TODO 144 (the disc\'s priced drag and hold)', src: 'roadmap §247 seed table' }),
-});
+};
+// §329 — the Geneva stop-work, built INSTEAD of §47's arrest where it stands (layout.js STOPWORK_BUILT), so 'Winding arrest' is no joint of
+// MECH_GRAPH and 'Winding stop-work' is: its rows replace §47's under the same key inspect.js swaps the graph on, and a §47 row
+// left in would read stale (a row naming no metal answers nothing).
+const STOPWORK_ARREST = STOPWORK_BUILT;   // §329: the stop-work's build, derived once in layout.js
+if (STOPWORK_ARREST) {
+  delete LUBRICATION_ROWS['Winding arrest :: bearing'];
+  // the star turns on its planted stud, a plain bore at the §50 pivot floor, slowly and a few degrees at a time — §47's
+  // finger pivot's service, and its regime
+  LUBRICATION_ROWS['Winding stop-work :: bearing'] = L('oil-fine', 'the star turns on its planted stud, a plain bore: slow, intermittent, lightly loaded between the stops', { sink: 'plain-bush', src: 'derived: §47\'s finger pivot\'s service (its row above), the same pivot floor' });
+  // the pin rides the slot and the star's lock arcs slide on the disc through every dwell: sliding steel on steel, loaded at
+  // the stops by the going spring's stall — the keyless and maintaining work's service, so their regime
+  LUBRICATION_ROWS['Fusee & great wheel > Winding stop-work'] = L('grease', 'the cone\'s pin in the star\'s slots and the star\'s lock arcs on the disc: sliding steel, loaded at the two stops', { src: 'derived: sliding steel under load, as the maintaining work above' });
+}
+export const LUBRICATION = Object.freeze(LUBRICATION_ROWS);
+
 
 // A bearing whose regime is oil but whose sink is 'none' is malformed unless it is
 // WAIVED here, citing the item that owns the missing part. The waiver goes stale
@@ -132,6 +147,7 @@ export const LUBRICATION_WAIVERS = Object.freeze({
 // fails. Written once from the audit's own `unanswered` list (the check's payload
 // carries it); entries only ever leave.
 export const LUBRICATION_DEBT = Object.freeze([
+  // (§47's chain-to-arrest contact leaves the inventory under ?arrest=stopwork, below: there is no such joint to answer)
   'Alarm barrel :: bearing',
   'Alarm click :: bearing',
   'Alarm crown :: bearing',
@@ -193,7 +209,7 @@ export const LUBRICATION_DEBT = Object.freeze([
   'Alarm detector arbor > Alarm release reader',
   'Alarm release disc > Alarm release reader',
   'Alarm release reader > Alarm release feeler',
-]);
+].filter((key) => !(STOPWORK_ARREST && key === 'Chain > Winding arrest')));
 
 export const INPUT_NODES = Object.freeze(['mainspring', 'crown', 'alarm mainspring']);
 

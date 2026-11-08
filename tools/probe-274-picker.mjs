@@ -9,7 +9,8 @@
 // probe PLANTS an incomplete `de` in flight (the served i18n.js is rewritten, as
 // probe-chrome-coverage's control does) and asserts each clause against the live
 // <select>, with the unmodified file as the control: whatever the SHIPPED roster
-// declares incomplete (Czech, since §273) is hidden and the toggle offered.
+// declares incomplete is hidden and the toggle offered (Czech, from §273's
+// first landing until its second declared the explainer; no row, since).
 //
 //   node tools/probe-274-picker.mjs
 //
@@ -42,10 +43,11 @@ const read = (p) => p.evaluate(() => [...document.querySelectorAll('#lang-select
 const has = (o, v) => o.some((x) => x.v === v);
 const open = async (ctx, page, lang, planted) => { const p = await ctx.newPage(); if (planted) await plant(p); await p.goto(`${base}/${page}?lang=${lang}`); await p.waitForSelector('#lang-select option', { state: 'attached' }); return p; };
 
-// The control: the SHIPPED roster, unmodified. Whatever it declares incomplete (Czech, since §273,
-// which carries no explainer) must be hidden by default with the toggle offered; if every row were
-// whole the toggle would be absent and every locale listed, and the picker unchanged. Either way the
-// listed codes are computed from the live roster, not pinned here.
+// The control: the SHIPPED roster, unmodified. Whatever it declares incomplete (Czech between §273's
+// two landings, while it carried no explainer) must be hidden by default with the toggle offered; if
+// every row is whole (every row, since §273 landing two) the toggle is absent and every locale listed,
+// and the picker unchanged. Either way the listed codes are computed from the live roster, not pinned
+// here.
 {
   const ctx = await browser.newContext();
   const p = await open(ctx, 'primer.html', 'en', false);

@@ -21,12 +21,16 @@
 // so a scan cut short keeps what it measured.
 //
 //   node tools/free-arrangement-scan.mjs [--from -180 --to 180 --step 20] [--par 2] [--extra 'k=v&…']
-//                                        [--idlers 2] [--stemoff 0,-30,30] [--out rows.jsonl]
+//                                        [--idlers 2] [--stemoff 0,-30,30] [--out rows.jsonl] [--disc 24.3,40.79]
+//   --disc: ALSO fit each arrangement with a disc of that hand length about the hands' axis added as a keep-in (a REPORT of what the
+//   hands' sweep would cost it; see tools/probe-325-hands-keep-in.mjs). The disc enters at L + CLEAR_MARGIN + g − M (the fit grows
+//   polygons by the rim margin M; g = DISC_G, how far the opening stands inside the outline, measured once on the lands preview).
+//   It cannot say whether the layout still CLOSES with the larger outline: that is the build's, and a refusal here is unchanged.
 import { readFile, appendFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, normalize, extname } from 'node:path';
-import { fitFreeCase, UNIT_MM } from '../src/layout.js';
+import { fitFreeCase, UNIT_MM, CLEAR_MARGIN } from '../src/layout.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const arg = (f, d) => { const i = process.argv.indexOf(f); return i > 0 ? process.argv[i + 1] : d; };
@@ -35,6 +39,8 @@ const EXTRA = arg('--extra', '');
 // the reserve's idler PAIRS (§313: 0, 2, 4 or 6 idlers) — a free choice of the layout, so each bearing tries each count
 const IDLERS = arg('--idlers', '2').split(',').map(Number);
 const STEMOFF = arg('--stemoff', '0').split(',').map(Number), OUT = arg('--out', null);
+const DISCS = arg('--disc', '').split(',').filter(Boolean).map(Number), DISC_G = 2.62;
+const discPoly = (R, n = 192) => Array.from({ length: n }, (_, i) => { const a = (i / n) * 2 * Math.PI, r = R / Math.cos(Math.PI / n); return [r * Math.cos(a), r * Math.sin(a)]; });
 const EXPECTED = /^§186: the rim-to-bore fit|^§261: cased assembly|^§325: no free outline is generated/;
 const mm2 = UNIT_MM * UNIT_MM, SCAN_U = 2.5, TOL_U = 0.05;
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.json': 'application/json', '.css': 'text/css' };
@@ -57,7 +63,14 @@ const boot = async (q) => {
   await page.goto(`http://127.0.0.1:${srv.address().port}/index.html?hud=0&sync=0&${q}`);
   await page.waitForFunction(() => !!window.__clock || !!window.__bootError, null, { timeout: 900000, polling: 1000 });
   const out = await page.evaluate(() => (window.__bootError ? { bootError: String(window.__bootError.message || window.__bootError) }
-    : { free: JSON.parse(JSON.stringify(window.__clock.formFootprint.free)), depth: window.__clock.casedDepthMm }));
+    : { free: JSON.parse(JSON.stringify(window.__clock.formFootprint.free)), depth: window.__clock.casedDepthMm,
+        // the hands' axis is the dial frame's origin: how far the counted metal's hull stands from it along each ray (§325
+        // landing 8 — the REACH a telescoping hand has to cover; the case is this plus its margin)
+        reach: (() => { const hx = window.__clock.formFootprint.hull.map((p) => (Array.isArray(p) ? p : [p.x, p.y])); let lo = Infinity, hi = 0;
+          for (let i = 0; i < 720; i++) { const az = (i / 720) * 2 * Math.PI, dx = Math.cos(az), dy = Math.sin(az); let best = 0;
+            for (let j = 0; j < hx.length; j++) { const a = hx[j], b = hx[(j + 1) % hx.length], ex = b[0] - a[0], ey = b[1] - a[1], den = dx * ey - dy * ex;
+              if (Math.abs(den) < 1e-12) continue; const t = (a[0] * ey - a[1] * ex) / den, u = (a[0] * dy - a[1] * dx) / den; if (t > 0 && u >= 0 && u <= 1) best = Math.max(best, t); }
+            lo = Math.min(lo, best); hi = Math.max(hi, best); } return { lo, hi }; })() }));
   await ctx.close();
   return { ...out, warnings };
 };
@@ -93,14 +106,19 @@ const run = async ([d, idl, so]) => {
   if (b.bootError) { await keep({ d, idl, so, refused: `boot failed: ${b.bootError}` }); console.log(`${tag}  BOOT FAILED ${b.bootError.slice(0, 160)}`); return; }
   const extra = b.warnings.filter((w) => !EXPECTED.test(w));
   let ax; try { ax = solveAxis(b.free); } catch (e) { ax = { c: NaN, area: NaN }; extra.push(`fit failed: ${e.message}`); }
-  const row = { d, idl, so, area: ax.area * mm2, c: ax.c, depth: b.depth, warns: extra };
+  const mg = b.free.margin, ratio = (b.reach.hi + mg) / (b.reach.lo + mg);   // the case stands the margin outside the metal
+  const row = { d, idl, so, area: ax.area * mm2, c: ax.c, depth: b.depth, reachLo: b.reach.lo, reachHi: b.reach.hi, caseRatio: ratio, warns: extra };
+  for (const L of DISCS) { try { const a2 = solveAxis({ ...b.free, polys: [...b.free.polys, discPoly(L + CLEAR_MARGIN + DISC_G - b.free.margin)] }); row[`areaDisc${L}`] = a2.area * mm2; row[`cDisc${L}`] = a2.c; } catch (e) { row[`areaDisc${L}`] = NaN; } }
   await keep(row);
-  console.log(`${tag}  ${Number.isFinite(row.area) ? row.area.toFixed(1) : '—'} mm² (c ${ax.c.toFixed(2)}), depth ${b.depth?.toFixed(3)} mm`
+  console.log(`${tag}  ${Number.isFinite(row.area) ? row.area.toFixed(1) : '—'} mm² (c ${ax.c.toFixed(2)}), depth ${b.depth?.toFixed(3)} mm, reach ${b.reach.lo.toFixed(1)}..${b.reach.hi.toFixed(1)} (case ratio ${ratio.toFixed(2)})`
+    + DISCS.map((L) => `  [disc ${L}: ${Number.isFinite(row[`areaDisc${L}`]) ? row[`areaDisc${L}`].toFixed(1) + ' mm² x' + (row[`areaDisc${L}`] / row.area).toFixed(2) : '—'}]`).join('')
     + (extra.length ? `  REFUSED: ${extra.length} warning(s): ${extra.map((w) => w.slice(0, 110)).join(' | ')}` : ''));
 };
 const jobs = bearings.flatMap((d) => IDLERS.flatMap((idl) => STEMOFF.map((so) => [d, idl, so])));
 for (let i = 0; i < jobs.length; i += PAR) await Promise.all(jobs.slice(i, i + PAR).map(run));
 await browser.close(); srv.close();
 const ok = rows.filter((r) => Number.isFinite(r.area) && !r.warns?.length).sort((a, b) => a.area - b.area);
+console.log(`\nby case reach ratio (smaller is easier for a telescoping hand): ${[...ok].sort((a, b) => a.caseRatio - b.caseRatio).map((r) => `${r.d}°/${r.idl}/${r.so} ${r.caseRatio.toFixed(2)}`).join(', ')}`);
 console.log(`\nranked (closed layouts, round-1 area): ${ok.map((r) => `${r.d}°/${r.idl}/${r.so} ${r.area.toFixed(1)}`).join(', ')}`);
 console.log(`refused: ${rows.filter((r) => !ok.includes(r)).map((r) => `${r.d}°/${r.idl}/${r.so} (${r.warns?.length ?? 'boot'})`).join(', ') || 'none'}`);
+for (const L of DISCS) console.log(`\nranked WITH a ${L} disc (closed layouts): ${[...ok].filter((r) => Number.isFinite(r[`areaDisc${L}`])).sort((a, b) => a[`areaDisc${L}`] - b[`areaDisc${L}`]).map((r) => `${r.d}°/${r.idl}/${r.so} ${r[`areaDisc${L}`].toFixed(1)}`).join(', ')}\nall arrangements, disc ${L}, by area (closed or not): ${[...rows].filter((r) => Number.isFinite(r[`areaDisc${L}`])).sort((a, b) => a[`areaDisc${L}`] - b[`areaDisc${L}`]).slice(0, 8).map((r) => `${r.d}°${r.warns?.length ? '*' : ''} ${r[`areaDisc${L}`].toFixed(0)}`).join(', ')}  (* = refused for unrelated warnings)`);

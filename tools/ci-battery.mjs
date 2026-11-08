@@ -206,6 +206,28 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 // neither timeout.
 const CHECK_TIMEOUT_MS = 35 * 60 * 1000;
 const BOOT_TIMEOUT_MS = 120 * 1000;
+// A SPEC POINT'S OWN BOOT, MEASURED. BOOT_TIMEOUT_MS means "one roughly uncontended boot must build" (the spec tier's pool
+// keeps it so), and that is a statement about the DEFAULT boot. Some points are heavier by construction, and their
+// timeout scales by how much: the ratio of the point's solo boot to the default's, each a headless boot through
+// tools/boot-form.mjs, one at a time (2026-11-05, M2 Max: the default 12.2 s, every one of the 42 declared points timed).
+// Only points over 1.5× are listed, and each ratio is the slowest of its runs, rounded up to a tenth. d4=16 is the one
+// that crossed 120 s: DEAD on the slow hosted runners (the spec tier near 630 s against about 370 s on the fast ones) on
+// the main pushes for #881 and #882 and on #884 and #886, and alive solo and alive locally every time. A stale ratio
+// costs only how long a dead boot is waited for, never a verdict: a point that builds is judged the same either way.
+const SPEC_BOOT_RATIO = Object.freeze({
+  'd4=16': 3.0,          // 32.0 / 33.1 / 36.1 s: the siting scan refuses almost every candidate near the setting cap (see its row)
+  'reconf=1': 2.3,       // 27.4 s
+  'alarmaz=175': 2.1,    // 25.4 s
+  'stopwork-140': 1.9,   // 22.2 s
+  'alarmaz=180': 1.8,    // 21.2 s
+  // §337 stage 3's two geared points, measured the same way on 2026-11-07, M2 Max, two solo passes each (the default 13.7
+  // and 13.9 s on the same two passes; each ratio is the slowest point over the fastest default, rounded up to a tenth, as
+  // every row above): a geared reserve re-solves the Geneva line, scans every finger and star direction at 3° for the least
+  // bulge, and re-cuts the cone window round it.
+  'geared-36': 3.1,      // 40.9 / 41.4 s
+  'geared-24': 2.3,      // 31.2 / 31.1 s
+});
+const specBootTimeoutMs = (name) => Math.round(BOOT_TIMEOUT_MS * Math.max(1, SPEC_BOOT_RATIO[name] ?? 1));
 
 // §81 — THE MEASURED COST COLUMN, AND WHY IT IS DATA. The harness shards the
 // battery across K browser contexts and partitions the tasks by these numbers
@@ -1347,7 +1369,88 @@ const SPEC_POINTS = [
   { name: 'form-rect', q: 'case=rect&formrect=-45.72,45.72,-44.38,44.38', expect: 'declared', sweep: true,
     expectWarns: ['§186: the rim-to-bore fit', '§261: cased assembly'],
     why: '§310 landing 4 / §313 — the rect form case at its default (ARRANGEMENT, the spiral seat since §314) and that seat\'s fit; swept, booting exactly the two rows every form build carries' },
+  // §328 step 1b — THE APPLIED PILLARS. Since step 1b the default frame is the back plate on lands the base plate raises
+  // (step 1's `round-lands` point, `frame=lands`, became the identity and was retired), and the traditional frame on four
+  // applied pillars riveted into the plate is kept as a supported style: `frame=pillars` is the movement every gate here
+  // measured until step 1b, bit for bit (its fingerprint is the old default's), so this point keeps it swept. The lands
+  // themselves are the held plate's metal and no pair sweep reads them; tools/probe-328-lands.mjs does, in battery.yml
+  // beside the case probes.
+  { name: 'pillars', q: 'frame=pillars', expect: 'silent', sweep: true,
+    why: '§328 step 1b — the round build on applied pillars, the default until step 1b and a supported style since; boots silent, swept' },
+  // §329 landing 4 — THE STOP-WORK, SWEPT. `?arrest=stopwork` builds the Geneva stop-work on the fusee cone instead of §47's
+  // finger, beak and lug, and what it buys is the drum's turn on the ALARM-OFF free case: the lands preview (§325's -140°
+  // no-alarm arrangement) with the drum at 140°, the last direction whose drum clears the centre wheel (measured: 145°, 150°
+  // and 160° put the drum into it, and past 140° the outline is already the 810.92 the rest of the metal needs). Its free
+  // outline is committed (src/free-outlines.js, 811.92 mm² against the preview's own 877.33), so it boots fitted, with
+  // exactly the one row every free build carries. This is the first point that is missing units the default has (no alarm):
+  // battery-points.mjs counts a unit absent from either side as changed and drops it from the pairs it measures.
+  // Its first sweep (PR #880) read FINDING, and every row is the ARRANGEMENT's, not the stop-work's: the same four pairs, row
+  // for row, read on the lands preview as it ships (no stop-work, its own drum) — the winding stem through the case middle,
+  // a motion-works corner cap on the hour wheel, a setting traverse on a reserve wheel (Keyless works ⇄ Case / Hour wheel /
+  // Power-reserve train, all 0), Balance cock ⇄ Fork cock at 0.0122. None touches the stop-work, fusee, drum or chain. So
+  // the point joins validated-configs only once the -140° no-alarm arrangement itself sweeps clean (§325's open blocker).
+  // TODO 283 (closed) bored the free band for its tubes, which removed the first (the stem stands 2.507 off the middle);
+  // the setting fold's judge then took the hour wheel and the reserve input pinion as envelopes (FOLD_WHEEL_ENVELOPES in
+  // main.js), which removed the keyless fold's two. The cocks' 0.0122 remains.
+  { name: 'stopwork-140', q: 'case=free&alarm=0&barrelstep=-140&rsvaz=0&rsvidl=2&frame=lands&drumaz=140', expect: 'declared', sweep: true,
+    // TODO 289 — the no-alarm dial stands 1 u nearer the plate (DIAL_RECLAIM_NO_ALARM), and the setting fold's tail hangs its
+    // bearings into that band: here no station under E or under D clears the rise's or the cap arbor's bush, so both run
+    // unborne on this arrangement (the stub's bush and the cap's jewel are built) — debt about the arrangement, declared
+    expectWarns: ['§186: the rim-to-bore fit', 'TODO 289: no station under E clears the rise\'s bush', 'TODO 289: no station under D clears the cap arbor\'s bush'],
+    why: '§329 landing 4 — the stop-work on the alarm-off free case with the drum turned to 140° (−7.5% case area); boots exactly the free build\'s §186 row and TODO 289\'s two unborne-tail rows, swept' },
+  // §329 — THE STOP IRON ON THE DEFAULT BUILD. Since the flip the Geneva stop-work is the default arrest (swept as the default
+  // itself), and §47's stop iron is the supported alternative, `?arrest=stop-iron`: swept here so it stays buildable.
+  { name: 'stop-iron', q: 'arrest=stop-iron', expect: 'silent', sweep: true,
+    why: '§329 — §47\'s stop iron on the default build: the shipped arrest until the stop-work became the default (2026-11-05), kept buildable and swept' },
+  // §337 landing 2b stage 3 — THE GEARED GENEVA, BOOTED. `?arrest=geared` gears a finger wheel off the cone so a reserve
+  // whose direct star has no exact stop gets one. BOTH ROWS CARRY A RESERVE, and that is the whole reason they exist as a
+  // pair: the bare key is the DEFAULT MOVEMENT. At 30 h the line is `direct` (g = 1), the key folds to null and §329's own
+  // stop-work stands — measured, `windArrest.stopwork` field for field the default's, which is what §337's record means by
+  // "folds to null at 30 h". So `arrest=geared` alone would be the default build under a DIFFERENT configuration key, the
+  // mirror of `reconf=1` (same build, the default's own key, and so not marked for a sweep the default already does): a
+  // point there holds nothing and a sweep there would re-sweep the default. The geared metal stands only where a gear is
+  // needed, and stage 3 has metal for two of those reserves.
+  //
+  // WHAT THEY HOLD IS MORE THAN LIVENESS. `?reserveh=24` ALONE boots TWELVE rows and `?reserveh=36` THIRTEEN, and six of
+  // each go away under the key. FIVE are the winding arrest giving up on that reserve — §47 finds no wrap station's section
+  // spanning the pad's mid-height, no legal beak azimuth at ANY pad azimuth (11 of them at 24 h, 26 at 36 h), a reaction
+  // moment about the stud in the DISENGAGING sense, and no riser station (24 h) or bank-pin station (36 h) that clears,
+  // while §151's pad arm passes 0.000 of the flying span — and the sixth is TODO 53's second row, the one where
+  // CHAIN_TQ_REACH's closed form stops bounding the discrete top. What is left is the reserve's OWN standing debt: the six
+  // (24 h) and seven (36 h) prefixes below, nothing of the arrest's. So the declared set IS §337's claim — the geared line
+  // gives these reserves an arrest where §47 has no site — held exactly both ways: a further row says the line stopped
+  // covering what it covers, and a stale prefix says the reserve's debt moved and nobody re-read these rows.
+  //
+  // NOT SWEPT, and the restraint is the honest half. The geared build re-cuts the cone window out to its bulge, hangs the
+  // finger's and star's studs off the fusee cock on an arm it gains, and re-sizes the crank — a sweep is most of the
+  // movement, at a reserve carrying twelve red rows of its own before the key is read. Stage 3 makes no clean-sweep claim
+  // and this table must not imply one (validated-configs takes only clean rows). A boot, at the cost of a boot: 31.2 s and
+  // 41.4 s solo against the default's 13.7 (M2 Max, 2026-11-07), which is what SPEC_BOOT_RATIO's two rows carry.
+  { name: 'geared-24', q: 'arrest=geared&reserveh=24', expect: 'declared',
+    // TODO 291 moved this reserve's own debt by one row each way: the honest spring's lower torque brackets the
+    // detent beak's relief solve (TODO 221's row went), and the 30 h balance it re-solved knocks at 24 h's serviced
+    // corner (TODO 216's row came: 236.50° hanging, 334.00° dial-flat, against the knock at 310.46°).
+    expectWarns: ['TODO 53: the drum\'s hook plane', 'TODO 216: the serviced (nominal) corner knocks',
+      'TODO 192: AMPLITUDE_CLAIM_DEG', 'TODO 207/242: BAL_RIM_F',
+      'TODO 206 arming spring: follower-B\'s seat sits at the nose\'s margin',
+      '§325: the strike group\'s notch in the round three-quarter plate'],
+    why: '§337 landing 2b stage 3 — the geared Geneva at 24 h, cone : finger 25 : 20, where §47\'s arrest has no legal site; boots exactly ?reserveh=24\'s own six rows, the arrest\'s six gone' },
+  // 36 h is the reserve that EARNED THE RANGE SWEEP: its worst pressure angle falls at an interior −5.81° of a ±15.49°
+  // range, which stage 3's two-endpoint sweep would have missed (24 h's lands on the endpoint, so one of the two would
+  // have read right by luck). Its set is 24 h's plus §254's flank-slope row, which a 36 h wrap carries on its own.
+  { name: 'geared-36', q: 'arrest=geared&reserveh=36', expect: 'declared',
+    // TODO 291: TODO 221's row went here too (the lower torque brackets the beak's relief solve).
+    expectWarns: ['fusee §254: flank slope', 'TODO 53: the drum\'s hook plane',
+      'TODO 192: AMPLITUDE_CLAIM_DEG', 'TODO 207/242: BAL_RIM_F',
+      'TODO 206 arming spring: follower-B\'s seat sits at the nose\'s margin',
+      '§325: the strike group\'s notch in the round three-quarter plate'],
+    why: '§337 landing 2b stage 3 — the geared Geneva at 36 h, 25 : 14, the reserve whose worst pressure angle is INTERIOR to its range; boots exactly ?reserveh=36\'s own six rows, the arrest\'s six gone' },
 ];
+// A SPEC_BOOT_RATIO row naming no declared point is a stale measurement (the waiver tables' rule): it fails here,
+// before any browser starts, rather than quietly applying to nothing.
+for (const name of Object.keys(SPEC_BOOT_RATIO))
+  if (!SPEC_POINTS.some((p) => p.name === name)) throw new Error(`SPEC_BOOT_RATIO names '${name}', which is no declared spec point`);
+
 
 // TODO 186 B1 — THE POINTS THE BATTERY SWEEPS, and what each costs.
 //
@@ -1409,7 +1512,21 @@ const POINT_COSTS = {
   // 4-vCPU dev container). Since §314 the round default IS the arrangement, so
   // it changes only the case's units and this row over-reads until a run
   // refreshes it — wall clock, never a verdict.
-  'form-rect': 1344,
+  // §331 — re-measured: 1104 s solo in the dev container on main (undeclaredClearance 676 of it, ~93% Case pairs at
+  // 46 ms a call, the band's 90 u slivers), 426 s once the convex band is cut without slivers and bored for its tubes
+  // (undeclaredClearance 77, Case pairs 4.6 ms). `designed` swept 812 s solo on the same container, so form-rect is no
+  // longer the costliest point and the LPT order puts designed first.
+  'form-rect': 426,
+  // §328 step 1b — against the lands default the pillar build adds the `pillars` unit (four full-height columns past the
+  // train, in every pair sweep) and moves the back plate's screw rings, so its restriction reaches the pillars' and the
+  // Three-quarter plate's pairs; carried at half the designed point's reach until a run writes its own `ms` back (wall
+  // clock, never a verdict).
+  'pillars': 587,
+  // §329 landing 4 — against the round alarm default this build changes most of the movement: no alarm at all, a free case
+  // and plates, the barrel at -140°, the drum turned, the stop-work in §47's place. Carried at the designed point's reach
+  // (its nearest measured kin in scope) until a run writes its own `ms` back — wall clock, never a verdict.
+  'stopwork-140': 1174,
+  'stop-iron': 600,   // a stand-in at the default build's own scale (pillars 587), until a run's --report writes the measured one
 };
 {
   const named = new Set(SWEEP_POINTS.map((p) => p.name));
@@ -1501,15 +1618,15 @@ const NON_FINITE_WALK = () => {
 // carries the state isolation (state.js guards it at the choke point: a trial
 // neither reads nor writes /__state), so these need no serialising against
 // each other and no DELETE — they cannot race the file they never touch.
-async function specBoot(browser, base, q) {
+async function specBoot(browser, base, q, timeoutMs = BOOT_TIMEOUT_MS) {
   const context = await browser.newContext();
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e.message || e)));
   const url = `${base}/index.html?trial=1${q ? `&${q}` : ''}`;
   try {
-    await page.goto(url, { waitUntil: 'load', timeout: BOOT_TIMEOUT_MS });
-    await page.waitForFunction(() => !!window.__clock, null, { timeout: BOOT_TIMEOUT_MS });
+    await page.goto(url, { waitUntil: 'load', timeout: timeoutMs });
+    await page.waitForFunction(() => !!window.__clock, null, { timeout: timeoutMs });
     const warns = await page.evaluate(() => (window.__clock.bootWarns || []).slice());
     const nonFinite = await page.evaluate(NON_FINITE_WALK);
     const config = await page.evaluate(() => window.__clock.config ?? null);   // TODO 158: what the build says it is, and whether it calls itself verified
@@ -2286,7 +2403,7 @@ async function runSpecTier(browser, base, points) {
         const i = next++;
         if (i >= points.length) return;
         const pt = points[i];
-        const r = await specBoot(browser, base, pt.q);
+        const r = await specBoot(browser, base, pt.q, specBootTimeoutMs(pt.name));
         rows[i] = { ...pt, ...r };
       }
     }));

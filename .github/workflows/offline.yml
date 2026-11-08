@@ -13,9 +13,11 @@
 # which deliberately has no worker at all, while this builds two stamped
 # RELEASE trees and serves them. Different subject, different job.
 #
-# The paths filter is what makes it affordable. These files change rarely — the
-# whole point of a release-machinery check is that release machinery is stable —
-# so most PRs never see this job.
+# The paths filter once made it "affordable" by keeping it off most PRs. §96 retired that: every module under src/ and every
+# file under vendor/ can be precached, so a filter that left them out let a PR add a module, pass, and leave the next PR to touch
+# a document to read the moved count (it happened three times in a week: #846, #849, #863). The job takes ~2.5 min against the
+# battery's 20-60, so it now runs on every change to the app's own files. The filter still keeps it off docs-only and
+# roadmap-only PRs, which cannot move what it measures.
 #
 # On the timeout, and on the assumption it was first written with. This file
 # originally said 60 min because "it is ~25 min on a dev container and CI
@@ -44,28 +46,17 @@ on:
       - 'index.html'
       - 'explain.html'
       - 'primer.html'
-      # §304 — the two LEGO pages are adopted documents and their modules are PRECACHED, so each moves the count this job
-      # asserts (landings §300-§302 added modules without a bump and this filter did not see them); the booklet is also booted
-      # offline here
+      # §304, §310 — the adopted documents: the two LEGO pages and the gong bench (each booted offline here)
       - 'technic.html'
       - 'booklet.html'
-      # §310 — the gong bench is an adopted document too: it, its worker and its data are precached
       - 'gong-bench.html'
-      - 'src/gong-bench-*'
-      - 'src/technic-*.js'
-      - 'src/ldraw.js'
-      - 'vendor/ldraw/**'
-      # §95 tier two — the primer's localization is PRECACHED: its tables
-      # arrive by dynamic import, which is the one class of URL that reaches
-      # the manifest through the stamper's module walk rather than a
-      # document's markup. Adding or dropping one moves the precache count
-      # this job asserts, and offline-check boots the German primer, so a
-      # change here is a change to what this job measures.
-      - 'src/page-i18n.js'
-      - 'src/*-i18n*.js'
-      # §236 — the glossary linker is a static import of explain.html, so it
-      # joins the precache manifest and moves the count this job asserts.
-      - 'src/glossary-links.js'
+      # §96 — EVERY module and vendored file. Any of them can be precached (a static import, a dynamic import() the stamper walks,
+      # a quoted ./src/ or ./vendor/ URL in a document), and this job now asserts that the cache covers every URL the offline
+      # journeys request, so a change under either directory is a change to what it measures. (This replaces six narrower globs —
+      # the gong bench's, the LEGO modules', ldraw's, the i18n tables', the glossary linker's — each added after a module slipped
+      # past the one before.)
+      - 'src/**'
+      - 'vendor/**'
       - 'manifest.webmanifest'
       - 'tools/offline-check.mjs'
       - 'tools/stamp-release.mjs'

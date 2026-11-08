@@ -5,6 +5,9 @@
 import * as THREE from 'three';
 import { MATS, CRYSTAL_GLASS, SAPPHIRE_IOR, DIAL_GLASS, XRAY_CLEAR, CASE_POLISH_ATTR, ALLOY_COLORS, STEEL_FINISH } from './materials.js';
 import { aesthetics } from './aesthetics.js';
+import { tongsAt } from './slide-cam.js';
+import { freeCoilLength, ribbonFrameLength, RIBBON_K_MAX, barrelDims, solveRibbon, barrelArborR } from './ribbon-solve.js';   // TODO 291 / §339: the ribbon's laws, pure, so a line spec can call the build's own solve in Node
+export { freeCoilLength, ribbonFrameLength, RIBBON_K_MAX, barrelDims, solveRibbon, barrelArborR };
 import { STOCK_MIN_U, CLEAR_MARGIN, PIVOT_BORE_CLEAR, SLENDER_TARGET, FORK_BEVEL_FRAC, UNIT_MM,
   mmForArcmin, RESOLVE_ARCMIN, IDENTIFY_ARCMIN, GLANCE_ARCMIN, CAP_PER_EM, MOVEMENT_SENSE,
   CASE_LUG_T, CASE_LUG_EDGE_R, CASE_SPRING_BAR_D, CASE_SPRING_BAR_TIP_D, caseLugPlan,
@@ -447,13 +450,29 @@ const cyPsiAtH = (R, rho, h) => {
   return (lo + hi) / 2;
 };
 const cyRetreat = (R, rho, h) => cyEpi(R, rho, cyPsiAtH(R, rho, h))[3];
-const cyArc = (R, rho, h) => {
+// §337 — THE CONTACT ARC'S CENTRAL ANGLE on the generating circle, from the pitch
+// point to where the face reaches height h. Factored out of cyArc (which is rho
+// times it) so the PRESSURE ANGLE below reads the same law rather than a second
+// copy of it — CLAUDE.md's recurring defect is one law written down twice with only
+// one copy carrying a change.
+const cyContactAngle = (R, rho, h) => {
   if (h <= 0) return 0;
   const c = ((R + rho) ** 2 + rho ** 2 - (R + h) ** 2) / (2 * rho * (R + rho));
-  if (c <= -1) return rho * Math.PI;
+  if (c <= -1) return Math.PI;
   if (c >= 1) return 0;
-  return rho * Math.acos(c);
+  return Math.acos(c);
 };
+const cyArc = (R, rho, h) => rho * cyContactAngle(R, rho, h);
+// §337 — A CYCLOIDAL FACE'S MAXIMUM PRESSURE ANGLE, DERIVED. These teeth are
+// cycloidal by §136's choice, so the involute 20° convention is not theirs and this
+// repo rightly has no constant for it. The contact point rides the generating circle
+// held tangent at the pitch point (constraint 3's own construction), so the common
+// normal at a contact point is the CHORD from the pitch point to it — and by the
+// tangent–chord angle, the angle that chord makes with the pitch circles' common
+// tangent is HALF the arc's central angle. The pressure angle is therefore 0 at the
+// pitch point and greatest where contact leaves the face, at the tip: the member's
+// own addendum gives its maximum, and a pair's bound is the worse of the two.
+const cyPressureAngleMax = (R, rho, h) => cyContactAngle(R, rho, h) / 2;
 // The pair solve: both members' faces on the PAIR's exact conjugate circles,
 // larger member first. Returns the two addenda.
 //
@@ -562,6 +581,7 @@ export function gearToothSpec({ module: m, teeth, mates }) {
     addendum: h, dedendum: ded, tipR: Rp + h, rootR: Rp - ded,
     halfThickAng: ((Math.PI * m) / 2 - cyBacklash(m) / 2) / 2 / Rp,
     backlash: cyBacklash(m), clearance: cyClear(m), chordErr: cyEps(m),
+    maxPressureAngle: cyPressureAngleMax(Rp, faceGenR, h),   // §337: radians, at the tip — this face's own worst
     infeasible,
   };
 }
@@ -6357,21 +6377,6 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
 // alarm barrel (§89) exactly as it was.
 // `sense`: the train this spring drives — MOVEMENT_SENSE for the going drum,
 // ALARM_SENSE for the alarm barrel (layout.js says why they are two).
-// TODO 192 step 3 — the FREE coil's developed length: the even-pitch spiral
-// from innerR to outerR over A radians, ∫₀^A √(r² + r′²) da, by the same
-// composite 2-point Gauss–Legendre (128 panels, open) mainspringFrames' arcLen
-// uses for its k = 1 frame — so a ribbon proportioned with this number is
-// priced by the record against the identical length.
-export function freeCoilLength(innerR, outerR, A) {
-  const QN = 128, GX = 1 / Math.sqrt(3), h = A / QN, dr = (outerR - innerR) / A;
-  const f = (a) => Math.hypot(innerR + dr * a, dr);
-  let s = 0;
-  for (let i = 0; i < QN; i++) {
-    const c = (i + 0.5) * h, e = (h / 2) * GX;
-    s += f(c - e) + f(c + e);
-  }
-  return s * (h / 2);
-}
 export function mainspringFrames({ innerR, outerR, coils, ribbonR, sweep, setup = 0,
                                    sense = MOVEMENT_SENSE }) {
   const pBind = ribbonR * 2;              // coil bind — see above
@@ -6401,17 +6406,10 @@ export function mainspringFrames({ innerR, outerR, coils, ribbonR, sweep, setup 
   // different measures was this function's first bug: 0.09% of apparent
   // stretch that was entirely the gap between a t-uniform integral and an
   // arc-length-resampled chord sum.)
-  const QN = 128, GX = 1 / Math.sqrt(3);
-  const arcLen = (A, k) => {
-    const S = slack(A), h = A / QN;
-    const f = (a) => Math.hypot(radiusAt(A, k, S, a), P + (S * k * Math.pow(a / A, k - 1)) / A);
-    let s = 0;
-    for (let i = 0; i < QN; i++) {
-      const c = (i + 0.5) * h, e = (h / 2) * GX;
-      s += f(c - e) + f(c + e);
-    }
-    return s * (h / 2);
-  };
+  // TODO 291 — the law itself lives in ribbonFrameLength (below), so the ribbon
+  // solve in makeBarrel can ask whether a ribbon can take its full wind through
+  // the very integral the frames are solved on, not a second copy of it.
+  const arcLen = (A, k) => ribbonFrameLength(innerR, outerR, ribbonR, A, k);
   const DENSE = 2000;                     // sampling the frame that is actually cut
   const walk = (A, k, n) => {
     const S = slack(A);
@@ -6456,7 +6454,7 @@ export function mainspringFrames({ innerR, outerR, coils, ribbonR, sweep, setup 
   };
   const devLen = arcLen(A_free, 1);
   const solveK = (A) => {
-    let lo = 0.02, hi = 60;               // brackets the whole family; L(k) is monotone falling
+    let lo = 0.02, hi = RIBBON_K_MAX;     // brackets the whole family; L(k) is monotone falling
     for (let i = 0; i < 44; i++) {
       const m = (lo + hi) / 2;
       if (arcLen(A, m) > devLen) lo = m; else hi = m;
@@ -6545,7 +6543,6 @@ export function mainspringFrames({ innerR, outerR, coils, ribbonR, sweep, setup 
 // bore the body turns on is an argument to the builder below — and a
 // proportion that lives in two places is a proportion that will disagree with
 // itself.
-export const barrelArborR = (radius) => radius * 0.09;
 
 // arborH: full length of the central arbor (centred on the body's
 // mid-plane) — the caller sizes it to reach its actual bearings; the
@@ -6632,10 +6629,7 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
   const g = new THREE.Group();
   if (!arbor && arborBoreR === null)
     console.warn('makeBarrel: arbor: false without arborBoreR — the body has nothing to turn on and no bore to turn on it');
-  const pitchR = plain ? radius : pitchRadius(module, teeth);
-  const rootR = plain ? radius : pitchR - module * 1.15;
-  const wallModule = module || radius * 0.06;
-  const drumInnerR = Math.max(rootR - wallModule * 2.2, radius * 0.3);
+  const { pitchR, rootR, wallModule, drumInnerR, springOuter } = barrelDims({ radius, teeth, module, plain });   // ribbon-solve.js: the one law
 
   if (plain) {
     // Smooth drum wall — the chain wraps around this.
@@ -6687,7 +6681,6 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
   g.add(new THREE.Mesh(lidGeo, MATS.brass));
 
   // Spiral mainspring ribbon (tall in Z), hooked to wall & arbor. name='spring'.
-  const springOuter = drumInnerR - wallModule * 0.5;
   // TODO 192 step 3 — `ribbonSolve` PROPORTIONS the ribbon to its material and
   // its drum instead of to a fraction (the going drum passes it; the alarm
   // barrel, TODO 201, does not and keeps the legacy fraction below).
@@ -6708,28 +6701,28 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
   // radius is the arbor plus a), so each candidate is a fixed point, iterated
   // to 1e-12. `freeCoilLength` is the builder's own quadrature for the free
   // frame, so the stress the record later computes from devLen is this one.
-  const solved = (() => {
-    if (!(ribbonSolve && springArborR !== null && springWindSweep > 0)) return null;
-    const thetaF = springSetupSweep + springWindSweep;
-    const kappa = ribbonSolve.sigmaOverE / thetaF;
-    const area = Math.PI * (springOuter ** 2 - springArborR ** 2);
-    let best = null;
-    for (let n = 1; n <= 40; n++) {
-      let a = 0.1;
-      for (let it = 0; it < 200; it++) {
-        const L = freeCoilLength(springArborR + a, springOuter, n * Math.PI * 2);
-        const next = kappa * L;
-        if (Math.abs(next - a) < 1e-12) { a = next; break; }
-        a = next;
-      }
-      const L = freeCoilLength(springArborR + a, springOuter, n * Math.PI * 2);
-      const fill = (2 * a * L) / area;
-      if (fill > 0.5) break;
-      best = { coils: n, ribbonR: a, devLen: L, fill, kappa, thetaF };
-    }
-    if (!best) console.warn('TODO 192: no whole number of coils keeps the solved ribbon inside half the barrel');
-    return best;
-  })();
+  //
+  //  · TODO 291 — THE COLLAR from the PACKING, when `ribbonSolve.alphaMin` is
+  //    given. The strip may be no thicker than 1/α of the innermost coil's
+  //    radius r (the collar it bears on), the trade's rule (layout.js,
+  //    MAINSPRING_ALPHA_BAND). With the thickness fixed by the stress
+  //    (a = κ·L), the rule caps the LENGTH too, so the collar is solved, not
+  //    inherited, and `springArborR` is then only its floor (the boss the arbor
+  //    carries). A ribbon must also TAKE its full wind: wound to
+  //    A_full = 2πn + setup + sweep it lies on the collar at coil bind, and a
+  //    ribbon shorter than the tightest frame of mainspringFrames' own family
+  //    (ribbonFrameLength at RIBBON_K_MAX, the k-solve's bracket) cannot be
+  //    wound that far at all. TODO 291's first solve, without that row, chose 5
+  //    coils on a 5.23 collar whose 226 u ribbon could not reach the full wind
+  //    (the frames came out 22% short of it). At a whole number of coils n the
+  //    stored energy, which goes as the ribbon's volume a·L = κ·L², rises with
+  //    r (a larger core lengthens every coil); the half fill and the wind both
+  //    tighten as r grows, and α eases. So each n's collar is the LARGEST that
+  //    keeps the fill and the wind (bisected to 1e-10), n is the one storing
+  //    most whose collar there meets α, and the record names which constraint
+  //    bound. Without `alphaMin` the collar is `springArborR` as before,
+  //    bit-exact.
+  const solved = solveRibbon({ springOuter, springArborR, springWindSweep, springSetupSweep, ribbonSolve });   // ribbon-solve.js
   const sCoils = solved ? solved.coils : 5;
   // The ribbon's section, and with it the inner radius. Legacy form: the inner
   // radius is a fraction of the drum and the section follows. Morph form: the
@@ -6739,11 +6732,12 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
   // — which also closes a 0.036 burial of the ribbon in the collar that the
   // fraction had left standing (an EXPECTED pair, so nothing measured it).
   const morph = springArborR !== null && springWindSweep > 0;
+  const collarR = solved ? solved.collarR : springArborR;   // TODO 291: the solve's collar, or the caller's
   const q = 0.1 / sCoils;
   const sRibbon = solved ? solved.ribbonR : morph
-    ? Math.max((q * (springOuter - springArborR)) / (1 + q), 0.08)
+    ? Math.max((q * (springOuter - collarR)) / (1 + q), 0.08)
     : Math.max(((springOuter - radius * 0.16) / sCoils) * 0.1, 0.08);
-  const springInner = morph ? springArborR + sRibbon : radius * 0.16;
+  const springInner = morph ? collarR + sRibbon : radius * 0.16;
   const wind = morph ? mainspringFrames({
     innerR: springInner, outerR: springOuter, coils: sCoils, ribbonR: sRibbon,
     sweep: springWindSweep, setup: springSetupSweep, sense,
@@ -6817,7 +6811,7 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
       setupSweep: wind.setupSweep,
       innerAnchorAz: wind.sweepFull % (Math.PI * 2),
       innerR: springInner, outerR: springOuter, ribbonR: sRibbon, pBind: wind.pBind,
-      solve: solved, coils: sCoils,
+      solve: solved, coils: sCoils, collarR,
       height: height * 0.7, frames: windGeos.length, segs: wind.segs,
       devLen: wind.devLen, capacity: wind.capacity, minPitch: wind.minPitch,
       maxStep: wind.maxStep, lenErr: wind.lenErr, cutSpread: wind.cutSpread,
@@ -8450,6 +8444,27 @@ export function makePillar({ height, bodyR, tapR = 0, tapDepth = 0, tenonR = 0, 
   return m;
 }
 
+// §325 landing 6 — A RIM LAND: the base plate's own raised boss, the back plate's seat in the frame built WITHOUT
+// pillars (?frame=lands). It is one piece with the plate, so it has no tenon, no shoulder and no rivet: the foot is
+// SUNK `root` into the slab (the pocket floors' lap, so no two walls are coincident) and the column stands `height`
+// above the face to the back plate's underside, the same radius all the way (a land is turned from the plate's
+// stock, not fitted to it) with the plate screw's TAPPED BORE from the top face. Closed, axis +z, the foot at
+// z = −root and the top at z = height; the caller names it 'backPlate' (support resolves the plate by that name).
+export function makeRimLand({ height, root, r, tapR, tapDepth }) {
+  const pts = [
+    new THREE.Vector2(0, -root),
+    new THREE.Vector2(r, -root),
+    new THREE.Vector2(r, height),
+    new THREE.Vector2(tapR, height),
+    new THREE.Vector2(tapR, height - tapDepth),
+    new THREE.Vector2(0, height - tapDepth),
+  ];
+  const geo = new THREE.LatheGeometry(pts, PILLAR_SEGMENTS);
+  geo.rotateX(Math.PI / 2);
+  assertLatheOutward(geo, 'a rim land');
+  return geo;
+}
+
 // TODO 200 — the countersunk land a riveted tenon is set into: a closed ring,
 // axis +z, its bore tenonR from the top face down to the countersink and then
 // a 45° cone out to mouthR at the bottom face (z0), outerR beyond. Travelled
@@ -8855,6 +8870,9 @@ export const SUBDIAL_MAJOR_W_F = 0.055, SUBDIAL_MINOR_W_F = 0.022;
 // The seconds comb's own drawn fractions, exported for the small seconds
 // hand's width floor (main.js), the reserve comb's rule above.
 export const SECONDS_MAJOR_W_F = 0.045, SECONDS_MINOR_W_F = 0.022;
+// The small-seconds face's radial layout, as fractions of its well radius sr (the paint below, kind 'seconds'):
+// the tick circle, the two tick lengths, and the caption's centre below the pivot.
+export const SECONDS_TICK_OUTER_F = 0.92, SECONDS_MAJOR_LEN_F = 0.16, SECONDS_MINOR_LEN_F = 0.09, SECONDS_CAPTION_DY_F = 0.40;
 export const SUBDIAL_MINOR_ARCMIN = RESOLVE_ARCMIN;
 export const SUBDIAL_MAJOR_ARCMIN = 2 * RESOLVE_ARCMIN;
 export const subdialStrokeF = (f, floorArcmin, mmPerSr) =>
@@ -8938,6 +8956,26 @@ function resolvableEm(family, floorF) {
 }
 const SUBDIAL_SANS = '"Helvetica Neue", Helvetica, Arial, sans-serif';
 const SUBDIAL_MONO = 'ui-monospace, "SF Mono", Menlo, Consolas, monospace';
+// §293's seconds-face INK in mm, at its acuity floors, for secondsFaceFloorMm: the figures' cap at the glance floor,
+// the caption's em at the identify floor, and the resolvable gap. FONT-FREE ON PURPOSE: the paint (kind 'seconds')
+// also raises the caption's em to the one where the installed monospace's heaviest weight strokes a resolvable line
+// (resolvableEm, a canvas measurement), and that term differs by platform (§332's first CI run: a Linux font moved
+// the scale, the case and the hands with it, and the build held its metal 0.017 u inside the outline it was cut to).
+// The print scale sets METAL — the case and the hands — so it reads only the arcmin floors; where a platform's
+// monospace needs a hair more em than the identify floor (0.8129 against 0.8115 mm here) the paint's one `fit` factor
+// absorbs it, a fraction of a percent, far above the half where it warns.
+export function secondsFaceInk() {
+  return { capMm: mmForArcmin(GLANCE_ARCMIN), gapMm: mmForArcmin(RESOLVE_ARCMIN), captionEmMm: mmForArcmin(IDENTIFY_ARCMIN) / CAP_PER_EM };
+}
+// THE SMALLEST SECONDS FACE THAT READS (§332): the well radius, in mm, at which the paint's `fit` reaches 1 at the
+// arcmin floors — figures and caption in the run from the major ticks' inner end to the caption's centre, less a
+// resolvable gap at each end:
+//   (TICK_OUTER − MAJOR_LEN − CAPTION_DY)·sr = cap + captionEm·CAP_PER_EM/2 + 2·gap
+// The free case scales its whole print down to the print whose seconds well is this radius, and no further.
+export function secondsFaceFloorMm() {
+  const { capMm, gapMm, captionEmMm } = secondsFaceInk();
+  return (capMm + (captionEmMm * CAP_PER_EM) / 2 + 2 * gapMm) / (SECONDS_TICK_OUTER_F - SECONDS_MAJOR_LEN_F - SECONDS_CAPTION_DY_F);
+}
 
 // §158's FIGURE BAND, the one law (§308 L4 option B lifted it out of the
 // paint so the sector well's extent reads the same three numbers the paint
@@ -9370,7 +9408,7 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null, sh
     // and the strokes take §293's floors. A caller with no physical scale gets
     // the pre-§293 fractions.
     const { mmPerSr = null } = scale;
-    const TICK_OUTER_F = 0.92, MAJOR_LEN_F = 0.16, MINOR_LEN_F = 0.09;
+    const TICK_OUTER_F = SECONDS_TICK_OUTER_F, MAJOR_LEN_F = SECONDS_MAJOR_LEN_F, MINOR_LEN_F = SECONDS_MINOR_LEN_F;
     const MAJOR_W_F = subdialStrokeF(SECONDS_MAJOR_W_F, SUBDIAL_MAJOR_ARCMIN, mmPerSr);
     const MINOR_W_F = subdialStrokeF(SECONDS_MINOR_W_F, SUBDIAL_MINOR_ARCMIN, mmPerSr);
     for (let s = 0; s < 60; s++) {
@@ -9378,7 +9416,7 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null, sh
       tickAt(90 - s * 6, sr * TICK_OUTER_F, sr * (major ? MAJOR_LEN_F : MINOR_LEN_F), sr * (major ? MAJOR_W_F : MINOR_W_F));
     }
     const gapF = mmPerSr ? mmForArcmin(RESOLVE_ARCMIN) / mmPerSr : 0.02;
-    const CAPTION_DY_F = 0.40;   // the caption's centre below the pivot (see caption())
+    const CAPTION_DY_F = SECONDS_CAPTION_DY_F;   // the caption's centre below the pivot (see caption())
     // The caption sets in the monospace, whose cap height is within a few
     // percent of Helvetica's 0.717 (SF Mono 0.70, Menlo 0.73), so one ratio
     // turns both caps into ems.
@@ -9388,10 +9426,12 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null, sh
     // small for both at their floors (?subdialr=8 is 3 mm) scales them by ONE
     // factor, the largest that fits, so neither is spent on the other; under
     // half the floor the print is a smudge and says so, the maker's mark's rule.
-    const capT = mmForArcmin(GLANCE_ARCMIN) / (mmPerSr || 1);
     // The caption is identified at IDENTIFY_ARCMIN, but at that size no weight
     // of the monospace strokes a resolvable line (measured: bold 0.98′), so its
-    // em is also at least the one where its heaviest weight resolves.
+    // em is also at least the one where its heaviest weight resolves
+    // (secondsFaceInk states the arcmin floors in mm for secondsFaceFloorMm, without the font's term; the paint
+    // keeps its own order of operations so its print is bit-identical).
+    const capT = mmForArcmin(GLANCE_ARCMIN) / (mmPerSr || 1);
     const captionT = Math.max(mmForArcmin(IDENTIFY_ARCMIN) / (mmPerSr || 1) / CAP_PER_EM,
       mmPerSr ? resolvableEm(SUBDIAL_MONO, mmForArcmin(RESOLVE_ARCMIN) / mmPerSr) : 0);
     const run = TICK_OUTER_F - MAJOR_LEN_F - 2 * gapF - CAPTION_DY_F;
@@ -9898,7 +9938,7 @@ function plateWall(cx, cy, A, zA, B, zB, outward) {
 // (and on a form face, §307's round track on the rectangular ground).
 export function makeDial({
   radius, subdials = [], subdialRecess = 0.5, centerBoreR = 0, thickness = 0,
-  edgeBreak = 0, subdialBoreR = 1.0, outline = null, track = null,
+  edgeBreak = 0, subdialBoreR = 1.0, outline = null, track = null, fitMarkers = false,
 }) {
   const g = new THREE.Group();
   let mat = null;
@@ -10660,15 +10700,23 @@ export function makeDial({
       });
     };
 
+    // §325 landing 7 — FITTED MARKERS (opt-in, the lands preview). The band is a circle cut for the round face; a
+    // form face whose inner rail stands nearer than the round one's (an axis near one side of a free outline) would
+    // have its numerals hang off the dial there. Each numeral is built at the round size and then scaled ABOUT THE
+    // AXIS by the rail's distance at its bearing over the round rail's, so its outer edge keeps the same relation
+    // to the rail it hugs. A uniform scale about the axis is exact for the sub-dial test too: the wells enter the
+    // numeral's frame divided by it.
+    const roundRailR = 2 * DIAL_CANVAS_FILL_F * radius * DIAL_RAIL_IN_F;
     for (let h = 0; h < 12; h++) {
       const a = (h / 12) * Math.PI * 2;
       const cosA = Math.cos(a), sinA = Math.sin(a);
+      const fit = fitMarkers && track ? Math.min(1, track.inner.exit(Math.PI / 2 - a) / roundRailR) : 1;
       // Sub-dial centres in THIS numeral's local frame (the numeral sits at
       // radius rc, rotated by −a; invert that so a letter's local x can be
       // tested straight against the sub-dial circle).
       const localSubs = subdials.map((sd) => {
-        const dx = sd.x - sinA * rc, dy = sd.y - cosA * rc;
-        return { sx: dx * cosA - dy * sinA, sy: dx * sinA + dy * cosA, R: sd.r + subdialMargin };
+        const dx = sd.x / fit - sinA * rc, dy = sd.y / fit - cosA * rc;
+        return { sx: dx * cosA - dy * sinA, sy: dx * sinA + dy * cosA, R: (sd.r + subdialMargin) / fit };
       });
 
       // Weight-balanced stroke width for THIS numeral (gap scales with it so
@@ -10714,13 +10762,21 @@ export function makeDial({
         p.l.rotation.z = -p.dth;
         numeral.add(p.l);
       }
-      numeral.position.set(sinA * rc, cosA * rc, 0.12 + D / 2);
+      numeral.position.set(sinA * rc * fit, cosA * rc * fit, 0.12 + D / 2);
       numeral.rotation.z = -a;
+      if (fit < 1) numeral.scale.set(fit, fit, 1);
       g.add(numeral);
     }
   }
 
   g.userData.r = radius;
+  // §78's opt-out word for a PLATE: the dial is a slab, drawn in the schematic
+  // as its own extrude's faces and edges (main.js, the `slab` pass), never as a
+  // pitch circle. `r` stays — the placement searches read it as the dial's
+  // radius — but on its own it enrols the dial as a ROTOR, and the rotor pass
+  // drew a brass wheel at the ROUND radius on every case shape. The value names
+  // the mesh whose extrude the pass draws, so the word and its drawing are one.
+  g.userData.slab = 'dialPlate';
   g.userData.sapphire = sapphire; // §3 — what the plate is, for probes and the record
   g.userData.smoke = sapphire ? DIAL_GLASS.opacity : null; // §220 — the coat the plate carries (its recipe's opacity; 0.14 is the clear crystal), for probes
 
@@ -10889,7 +10945,7 @@ export const HAND_RING_FLATS = Math.cos(Math.PI / (2 * HAND_RING_SEG));
 // blade root is bridged to its pipe by real metal (TODO 120: each central
 // hand was two bodies posing as one).
 export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null, bossH: bossHOverride = null,
-  namePrefix = null, subdial = false, halfWidth = null, pipe = null }) {
+  namePrefix = null, subdial = false, halfWidth = null, pipe = null, slider = false, widthLength = null }) {
   // §94 — namePrefix NAMES this hand's four meshes. inspect.js couples by
   // `.name`, and an unnamed mesh only has an index label, which no
   // EXPECTED_CONTACT_FLOORS row can select — so a hand whose contacts a
@@ -10901,7 +10957,9 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
   const handAesthetics = aesthetics.dial.hands;
   const config = handAesthetics[kind];
 
-  const tail = length * config.tailFactor;
+  // §325 landing 7 — a SLIDER is the sliding half of a telescoping hand (makeSlideHand): the bur rod and its tip with a
+  // square rear end, no tail, no pipe and no boss. It rides above an arm that carries those; its section is the arm's.
+  const tail = slider ? 0 : length * config.tailFactor;
   let bossH;        // set per branch: the central law (§188) or the second kind's depth law
   let cwHalf = 0;   // the second kind's counterweight half-thickness, else 0
 
@@ -11044,9 +11102,19 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
     // (the default halfW and the tip taper both read it) while the keel
     // depth drops from length-coupled 0.75/0.64 mm blades to 0.20 mm metal.
     // A sub-dial hand's two bases coincide at the floor, as before.
-    planBase = subdial ? HAND_RBASE_FLOOR : length * config.widthFactor * 0.35;
+    planBase = subdial ? HAND_RBASE_FLOOR : (widthLength ?? length) * config.widthFactor * 0.35;   // widthLength: a telescoping hand's two halves share the nominal hand's plan
     rBase = subdial ? HAND_RBASE_FLOOR : HAND_RBASE_STOCK;
     g.add(burRod(rBase, planBase, pipe ? (pipe.eyeBoreR ?? pipe.boreR) : 0));
+    if (slider) {
+      // The slider's facts are the section's alone: no collet to size, no pipe to stand on.
+      const crownS = rBase * (handAesthetics.fluteFactor ?? -0.3);
+      g.userData.length = length; g.userData.kind = kind; g.userData.rBase = rBase;
+      g.userData.halfW = halfWidth ?? planBase * (Math.sqrt(3) / 2);
+      g.userData.floorDrop = rBase; g.userData.topRise = rBase * 0.5 + Math.max(0, crownS);
+      g.userData.bossR = 0; g.userData.bossH = 0; g.userData.pipe = null;
+      g.userData.sections = [{ name: 'blade', rIn: 0, rOut: Math.max(length + rBase, g.userData.halfW), zLo: -g.userData.floorDrop, zHi: g.userData.topRise }];
+      return g;
+    }
     // The boss must swallow the rod's full circumscribed diameter (2·rBase,
     // ×1.3 land) — and, for the CENTRAL stack, stand at least a real pipe's
     // height (HAND_PIPE_MIN_MM: the friction land the press grips by). The
@@ -11163,6 +11231,177 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
     { name: 'boss', rIn: boreR > 0 ? boreR * HAND_RING_FLATS : 0, rOut: bossR, zLo: -bossH / 2, zHi: bossH / 2 },
     { name: 'blade', rIn: 0, rOut: bladeROut, zLo: -floorDrop, zHi: topRise },
   ];
+  return g;
+}
+
+// §325 landing 7 — A TELESCOPING HAND, for a face whose hands' axis stands near one side of its outline. A round dial
+// gives every bearing the same reach; an eccentric form gives the nearest side a fraction of the farthest (the free
+// −140° outline: 14 u against 58 u), and a hand cut for the round face runs into the case there. The hand is two
+// members:
+//  · the ARM, an ordinary makeHand on its pipe, cut to the shortest reach (`length`);
+//  · the SLIDER, a bare bur rod and tip riding ABOVE the arm, one CLEAR_MARGIN over its top face, its rear end square.
+//    It is `ext + overlap` long: at full extension its rear end is still `overlap` back along the arm, and at rest
+//    (`slide.y = 0`) its tip stands at the arm's. Its section is the arm's — both take the nominal hand's plan width
+//    (`widthLength`) so the two read as one blade.
+// The slider's position is the caller's: `g.userData.slide.group.position.y` is its offset from rest, 0 … `ext`, set
+// each frame by the law that drives it (main.js SLIDE_HANDS: the cam). A hand that never slides is the arm and
+// a slider laid over it. The z of the slider enters `sections`, so the placement site's stacking (coaxialLift) clears
+// the extra layer on its own.
+export function makeSlideHand({ length, kind, namePrefix, pipe, widthLength, ext, overlap }) {
+  const arm = makeHand({ length, kind, namePrefix, pipe, widthLength });
+  const sliderLen = ext + overlap;
+  const slider = makeHand({ length: sliderLen, kind, namePrefix: `${namePrefix}Slide`, slider: true, widthLength, halfWidth: arm.userData.halfW });
+  const z = arm.userData.topRise + CLEAR_MARGIN + slider.userData.floorDrop;
+  const group = new THREE.Group();
+  group.name = `${namePrefix}Slide`;
+  group.add(slider);
+  slider.position.set(0, length - sliderLen, z);   // at rest: the slider's tip on the arm's, its rear end sliderLen back
+  arm.add(group);
+  const sl = slider.userData;
+  arm.userData.slide = { group, slider, ext, overlap, sliderLen, restY: length - sliderLen, z };
+  arm.userData.sections = [...arm.userData.sections,
+    { name: 'slider', rIn: 0, rOut: Math.max(length + ext + sl.rBase, sl.halfW), zLo: z - sl.floorDrop, zHi: z + sl.topRise }];
+  return arm;
+}
+
+// §325 landing 8 — THE LAZY-TONGS MINUTE HAND (src/slide-cam.js is the reference this is folded from). The ARM is an ordinary
+// makeHand cut to the shortest reach; above it, bottom to top, stand
+//   · the BASE PLATE, fixed to the arm, two transverse slots for the base pins (it holds the lattice's foot);
+//   · layer A (bars from +h to −h) and layer B (their mirrors), every pivot a pin through both, an eye at each end and each mid;
+//   · layer C: the TIP PLATE (riveted on the last mid pin) and the BLADE, a bur rod running back from it.
+// The first mid pivot's pin is carried up through layer C to the cam (makeSlideCam), which stands fixed above. Poses are set by
+// `g.userData.tongs.pose(rot, bearing)`; every transform below is a rigid move of a rigid part. The tip is the LAST MID
+// PIVOT, on the axis: the last cell's bars are half bars meeting at it, so the tip needs no closing rail pair (no bridge, no
+// centring debt) and the lattice stays narrow.
+export function makeTongsHand({ geo, length, kind, namePrefix, pipe, widthLength, tipExt }) {
+  const arm = makeHand({ length, kind, namePrefix, pipe, widthLength });
+  const T = STOCK_MIN_U, top = arm.userData.topRise, { n, ell, yb } = geo;
+  const PIN = STOCK_MIN_U / 2, EYE = PIN + PIVOT_BORE_CLEAR + STOCK_MIN_U, W = STOCK_MIN_U;
+  const plateLo = top, plateHi = plateLo + T;                          // stands ON the arm's top face (the cannon nose ends flush with it: a seat any deeper would be inside the nose)
+  const zA = plateHi + CLEAR_MARGIN, zB = zA + T + CLEAR_MARGIN, zC = zB + T + CLEAR_MARGIN;   // plane bottoms
+  const zTop = zC + 2 * T;                                              // the cam: walls T + roof T above layer B
+  const matBar = MATS.bluedHand, matPin = MATS.steel;
+  const g = new THREE.Group(); g.name = `${namePrefix}Tongs`;
+  const slotPlate = (halfX, yc, halfY, h0, h1, z0, name) => {         // a plate with two transverse slots for pins at ±h0..±h1
+    const sh = new THREE.Shape();
+    sh.moveTo(-halfX, yc - halfY); sh.lineTo(halfX, yc - halfY); sh.lineTo(halfX, yc + halfY); sh.lineTo(-halfX, yc + halfY); sh.closePath();
+    const p = PIN + PIVOT_BORE_CLEAR;
+    for (const sg of [1, -1]) {
+      const a = sg * (h0 - p), b = sg * (h1 + p), x0 = Math.min(a, b), x1 = Math.max(a, b), hole = new THREE.Path();
+      hole.moveTo(x0, yc - p); hole.lineTo(x1, yc - p); hole.lineTo(x1, yc + p); hole.lineTo(x0, yc + p); hole.closePath();
+      sh.holes.push(hole);
+    }
+    const m = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: T, bevelEnabled: false }), matBar);
+    m.position.z = z0; m.name = name; return m;
+  };
+  const hMin = geo.hMin, hMax = geo.hMax, halfX = hMax + PIN + PIVOT_BORE_CLEAR + W;
+  g.add(slotPlate(halfX, yb, EYE + 0.3, hMin, hMax, plateLo, `${namePrefix}TongsBase`));
+  // the bars: web + three eyes, built along local +y, centred on the mid pivot
+  const eyeGeo = new THREE.CylinderGeometry(EYE, EYE, T, 20); eyeGeo.rotateX(Math.PI / 2);
+  const webGeo = new THREE.BoxGeometry(W, 2 * ell, T);
+  const bars = [];
+  const halfWebGeo = new THREE.BoxGeometry(W, ell, T);
+  for (let k = 0; k < n; k++) for (const fam of ['A', 'B']) {
+    const half = k === n - 1;                                           // the last cell's bars stop at their crossing: the tip is a point on the axis
+    const b = new THREE.Group(); b.name = `${namePrefix}Tongs${fam}${k}`;
+    const web = new THREE.Mesh(half ? halfWebGeo : webGeo, matBar); web.name = `${namePrefix}TongsBar`;
+    b.add(web);
+    for (const y of (half ? [-ell / 2, ell / 2] : [-ell, 0, ell])) { const e = new THREE.Mesh(eyeGeo, matBar); e.position.y = y; e.name = `${namePrefix}TongsBar`; b.add(e); }
+    b.position.z = (fam === 'A' ? zA : zB) + T / 2;
+    g.add(b); bars.push({ fam, k, group: b });
+  }
+  // the pins: one at every rail pivot and every mid, through both bar layers; the first mid's rises to the cam's floor, and
+  // the base pins go down through the base plate's slots; the far rail pins rise through the bridge
+  const pinGeo = (z0, z1) => { const c = new THREE.CylinderGeometry(PIN, PIN, z1 - z0, 12); c.rotateX(Math.PI / 2); c.translate(0, 0, (z0 + z1) / 2); return c; };
+  const pinMesh = (z0, z1, nm) => { const m = new THREE.Mesh(pinGeo(z0, z1), matPin); m.name = nm; g.add(m); return m; };
+  const rail = [], mid = [];
+  for (let k = 0; k < n; k++) {
+    const lo = k === 0 ? plateLo : zA, hi = zB + T;
+    rail.push([pinMesh(lo, hi, `${namePrefix}TongsPin`), pinMesh(lo, hi, `${namePrefix}TongsPin`)]);
+  }
+  for (let k = 0; k < n; k++) mid.push(pinMesh(zA, k === n - 1 ? zC + T : k === 0 ? zC + T - CLEAR_MARGIN : zB + T, `${namePrefix}TongsPin`));   // first mid rises to the cam; the LAST carries the tip plate
+  // the tip bridge and the blade (layer C)
+  const bridge = new THREE.Group(); bridge.name = `${namePrefix}TongsBridge`;
+  { const tipPlate = new THREE.Mesh(eyeGeo.clone(), matBar); tipPlate.position.z = zC + T / 2; tipPlate.name = `${namePrefix}TongsTipPlate`; bridge.add(tipPlate); }   // one body with the last mid pin (riveted)
+  const bladeLen = Math.max(4, geo.bladeLen ?? 6);
+  const blade = makeHand({ length: bladeLen, kind, namePrefix: `${namePrefix}Blade`, slider: true, widthLength, halfWidth: arm.userData.halfW });
+  blade.position.set(0, tipExt - bladeLen, zC + blade.userData.floorDrop);
+  bridge.add(blade);
+  g.add(bridge);
+  arm.add(g);
+  const sec = { name: 'tongs', rIn: 0, rOut: geo.yb + (2 * n - 1) * Math.sqrt(ell * ell - hMin * hMin) + tipExt + blade.userData.rBase, zLo: plateLo, zHi: zTop };
+  arm.userData.sections = [...arm.userData.sections, sec];
+  arm.userData.tongs = { geo, bars, rail, mid, bridge, zA, zB, zC, zTop, plateLo, tipExt, PIN, EYE, T,
+    // place every rigid part for rail half-width h
+    place(h) {
+      const t = tongsAt({ n, ell, yb, h });
+      for (const b of bars) {
+        const br = t.bars.find((q) => q.fam === b.fam && q.k === b.k), dx = br.to[0] - br.from[0], dy = br.to[1] - br.from[1];
+        b.group.position.x = (br.from[0] + br.to[0]) / 2; b.group.position.y = (br.from[1] + br.to[1]) / 2;   // a half bar's centre is not the crossing
+        b.group.rotation.z = Math.atan2(dy, dx) - Math.PI / 2;
+      }
+      for (let k = 0; k < n; k++) { rail[k][0].position.set(t.rails[k][0][0], t.rails[k][0][1], 0); rail[k][1].position.set(t.rails[k][1][0], t.rails[k][1][1], 0); }
+      for (let k = 0; k < n; k++) mid[k].position.set(t.mids[k][0], t.mids[k][1], 0);
+      bridge.position.set(0, t.tip, 0);
+      return t;
+    } };
+  arm.userData.tongs.place(geo.hMax);
+  return arm;
+}
+
+// §325 landing 8 — THE FIXED CAM (see makeTongsHand): a closed groove whose centre is the polar curve r(θ) = `r[i]` at azimuth
+// i·2π/N in the dial's frame, ridden by the first mid pin. Three parts, bottom to top: two walls (T) either side of the
+// groove, and a roof (T) over it — the pin enters from below and never reaches the roof. A hub bored to the stud (pressed
+// on: bore = the stud's radius) and three spokes carry the band; they stand INSIDE it, where nothing but the pin moves.
+// Offsets are taken along the curve's normal at each vertex (no miter scaling: the groove is 0.21 off its centre).
+export function makeSlideCam({ r, zLo, studR, namePrefix = 'slideCam', decimate = 3 }) {
+  const T = STOCK_MIN_U, PIN = STOCK_MIN_U / 2, GH = PIN + PIVOT_BORE_CLEAR, WALL = STOCK_MIN_U;
+  const N = r.length, pts = [];
+  for (let i = 0; i < N; i += decimate) { const a = (i / N) * 2 * Math.PI; pts.push([r[i] * Math.cos(a), r[i] * Math.sin(a)]); }
+  const M = pts.length, offset = (d) => pts.map((p, i) => {
+    const a = pts[(i + M - 1) % M], b = pts[(i + 1) % M], tx = b[0] - a[0], ty = b[1] - a[1], L = Math.hypot(tx, ty) || 1;
+    return [p[0] + (d * ty) / L, p[1] - (d * tx) / L];
+  });
+  // A normal offset LOOPS where the curve bends tighter than the offset (the cam's min-envelope has corners): the swallowtail is the
+  // part of the offset closer than d to the curve, so it is cut away at its own crossing, which leaves the true offset curve.
+  const segX = (p1, p2, p3, p4) => { const d1x = p2[0] - p1[0], d1y = p2[1] - p1[1], d2x = p4[0] - p3[0], d2y = p4[1] - p3[1], den = d1x * d2y - d1y * d2x;
+    if (Math.abs(den) < 1e-14) return null; const u = ((p3[0] - p1[0]) * d2y - (p3[1] - p1[1]) * d2x) / den, v = ((p3[0] - p1[0]) * d1y - (p3[1] - p1[1]) * d1x) / den;
+    return u > 0 && u < 1 && v > 0 && v < 1 ? [p1[0] + u * d1x, p1[1] + u * d1y] : null; };
+  const untangle = (q0) => {
+    let q = q0;
+    for (let pass = 0; pass < 200; pass++) {
+      const n = q.length; let hit = null;
+      for (let i = 0; i < n && !hit; i++) for (let j = i + 2; j < n; j++) {
+        if (i === 0 && j === n - 1) continue;                               // neighbours across the seam
+        const x = segX(q[i], q[(i + 1) % n], q[j], q[(j + 1) % n]); if (x) { hit = { i, j, x }; break; }
+      }
+      if (!hit) return q;
+      const { i, j, x } = hit, inner = q.slice(i + 1, j + 1), outer = [...q.slice(0, i + 1), ...q.slice(j + 1)];
+      q = inner.length < outer.length ? [...outer.slice(0, i + 1), x, ...outer.slice(i + 1)] : [x, ...inner];   // keep the longer side
+    }
+    throw new Error('makeSlideCam: an offset ring would not untangle');
+  };
+  const loop = (q) => { const sh = new THREE.Shape(); sh.moveTo(q[0][0], q[0][1]); for (let i = 1; i < q.length; i++) sh.lineTo(q[i][0], q[i][1]); sh.closePath(); return sh; };
+  const band = (dIn, dOut, z0, name, mat) => {
+    const sh = loop(untangle(offset(dOut))), hole = new THREE.Path(), q = untangle(offset(dIn)).reverse();
+    hole.moveTo(q[0][0], q[0][1]); for (let i = 1; i < q.length; i++) hole.lineTo(q[i][0], q[i][1]); hole.closePath(); sh.holes.push(hole);
+    const m = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: T, bevelEnabled: false }), mat); m.position.z = z0; m.name = name; return m;
+  };
+  const g = new THREE.Group(); g.name = namePrefix;
+  const mat = MATS.steel;
+  g.add(band(-(GH + WALL), -GH, zLo, `${namePrefix}Band`, mat), band(GH, GH + WALL, zLo, `${namePrefix}Band`, mat),
+    band(-(GH + WALL), GH + WALL, zLo + T, `${namePrefix}Roof`, mat));
+  const hubR = studR + WALL + 0.5, hub = new THREE.Shape(); hub.absarc(0, 0, hubR, 0, Math.PI * 2, false);
+  const bore = new THREE.Path(); bore.absarc(0, 0, studR, 0, Math.PI * 2, true); hub.holes.push(bore);
+  const hubM = new THREE.Mesh(new THREE.ExtrudeGeometry(hub, { depth: 2 * T, bevelEnabled: false, curveSegments: 24 }), mat); hubM.position.z = zLo; hubM.name = `${namePrefix}Hub`;
+  g.add(hubM);
+  for (const deg of [90, 210, 330]) {
+    const a = (deg * Math.PI) / 180, i = Math.round((deg / 360) * N) % N, len = r[i] - GH - WALL - hubR + 0.05;
+    const sp = new THREE.Mesh(new THREE.BoxGeometry(len, 2 * WALL, 2 * T), mat);
+    sp.position.set(Math.cos(a) * (hubR - 0.05 + len / 2), Math.sin(a) * (hubR - 0.05 + len / 2), zLo + T); sp.rotation.z = a; sp.name = `${namePrefix}Spoke`;
+    g.add(sp);
+  }
+  g.userData = { zLo, zHi: zLo + 2 * T, rMax: Math.max(...r) + GH + WALL, hubR };
   return g;
 }
 
@@ -12035,7 +12274,7 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   // unscrews, exactly like the tubes — and the tapped holes they sit in are
   // the same declared CSG debt as every thread in this case (the Case unit
   // stays outside INTRA_TIER_SCOPE for exactly this family of joints).
-  // Same head/shaft stock as the back screws: one screw vocabulary per case.
+  // Their stock is the caller's (main.js CASE_CLAMP_SHAFT_D/HEAD_D): Ø0.8 mm on the round no-alarm case since §325 landing 11.
   for (const a of clampAz) {
     const cx = Math.cos(a) * clampR, cy = Math.sin(a) * clampR;
     const head = new THREE.Mesh(

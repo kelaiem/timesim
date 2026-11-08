@@ -2,6 +2,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as G from './geometry.js';
+import { chooseGearedStopwork, MODULE_MIN_U as GG_MODULE_U } from './geared-geneva.js';   // §337 landing 2b
+import * as SC from './slide-cam.js';   // §325 landing 8 — the minute hand's lazy-tongs, solved in free space (pure)
 import { leverEscapement, pinNotchSteps, LOCK_DEG, RUN_DEG, EMBRACE_DEG, TOOTH_RAKE_DEG } from './escapement.js';   // TODO 226 step 3: the lever escapement's one solve
 import { MeshBVH } from '../vendor/three-mesh-bvh.module.js';   // TODO 151: the jumper's siting solve measures the real metal with the battery's own closest-point machinery
 import { MATS, CRYSTAL_GLASS, stockKeyOf, xrayClearFor, applyDecorationFromAesthetics, applyBrushFromAesthetics, applyCaseMetalFromAesthetics } from './materials.js';
@@ -23,8 +25,8 @@ import {
   SPEC, SPEC_RATES, ALARM_BUILT,
   F_BALANCE, BEAT_DEG, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_STEP, BALANCE_R_REF, BAL_R_STEP, balanceWheelDims, BALANCE_R_SPEC, AMPLITUDE_POSED_DEG, LIFT_DEG, IMPULSE_WIDTH,
   CLEAR_MARGIN, HANDOFF_TRACK_TOL, ZERO_AREA_MAX, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK, FORK_HALF_Z,
-  BAL_T, BAL_RIM_F, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T,
-  SPRING_TOP_Z, TRAIN_CEILING_Z, HAIRSPRING_OVERCOIL_RAISE, COCK_SLAB_BOT, COCK_SLAB_TOP, COCK_MID_Z, Z_DIAL, Z_DIAL_WITH_ALARM, DIAL_RECLAIM, DIAL_T, DIAL_EDGE_BREAK, Z_KEYLESS,
+  BAL_T, BAL_RIM_F, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T, NICKEL_SILVER_SIGMA_Y_PA,
+  SPRING_TOP_Z, SPRING_STACK_TOP_Z, TRAIN_CEILING_Z, HAIRSPRING_OVERCOIL_RAISE, COCK_SLAB_BOT, COCK_SLAB_TOP, COCK_MID_Z, Z_DIAL, Z_DIAL_WITH_ALARM, DIAL_RECLAIM, DIAL_T, DIAL_EDGE_BREAK, Z_KEYLESS,
   // Train ratios (§13 steps 2 + 3c): TRAIN is the ONE table — module, wheel
   // teeth and pinion teeth per mesh. Builders and tick()'s ratio chain
   // (meshOffset / the going-train ratios) both read it; the flat teeth
@@ -42,11 +44,11 @@ import {
   TECHNIC_FORK, technicChainErrors, ratQ, ratMul, ratEq, ratStr, // §219 tier one — the reserve row's target derives from the sweep below
   solveLayout, d4Window,   // §94 tier A: the two-bar's closure window, the d4 handle's refusal
   CROWN_PULL_DIST, SL_C, SL_TAIL, GROOVE_LOCAL, YK_C,
-  solveKeyless,
+  solveKeyless, drumDirOf,
   segCircleClear, solveElbow, solveStopWork, ELBOW_E_MAX,   // §85 step A: the stop work solves like the layout does
   // Backlog (watch case): the schematic-tier case's dimensions — caps and
   // real hardware sizes, all derived in layout.js at the §39 pin.
-  CASE_WIDTH_MAX, CASE_LUG_SPAN_MAX, CASE_HEIGHT_MAX_MM, CASE_HEIGHT_STEP_MM, CASE_CLEAR, CASE_BAND_T, rigidSplit,
+  CASE_WIDTH_MAX, CASE_LUG_SPAN_MAX, STRAP_MM_DEFAULT, STRAP_PICK_MIN_MM, fittedFlatMin, CASE_HEIGHT_MAX_MM, CASE_HEIGHT_STEP_MM, CASE_CLEAR, CASE_BAND_T, rigidSplit,
   CASE_SCREW_SHAFT_D, CASE_SCREW_HEAD_D, CASE_GASKET_D, CASE_GASKET_SEAT, CASE_CRYSTAL_T, CASE_CRYSTAL_CLEAR,
   CASE_TUBE_D, CASE_PUSHER_D,
   CASE_LUG_T, caseLugPlan,                                  // §190/§280: the lug/bar stock and the lug's one outline law — the schematic tier draws the same metal makeCase cuts
@@ -81,7 +83,7 @@ import {
   STOCK, ALLOY_STOCK,                          // §269: the stocks' densities and moduli, for the watch's mass and the receiver's first modes
   STEEL_E_PA, STEEL_G_PA, SPRING_SIGMA_Y_PA, SPRING_TAU_Y_PA, cantileverK_N_per_m,
   CLICK_STEEL_SIGMA_Y_BAND, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU,   // TODO 221: the click steel and the line contact's first yield
-  MAINSPRING_E_PA, MAINSPRING_SIGMA_Y_BAND, MAINSPRING_SIGMA_Y_PA,   // TODO 193: the ribbons' alloy, cited  // §137: the one steel, the one cantilever law; §164 names its other properties beside it
+  MAINSPRING_E_PA, MAINSPRING_SIGMA_Y_BAND, MAINSPRING_SIGMA_Y_PA, MAINSPRING_ALPHA_BAND, MAINSPRING_ALPHA_MIN,   // TODO 193: the ribbons' alloy, cited  // §137: the one steel, the one cantilever law; §164 names its other properties beside it
   MU_STEEL, ALARM_SPRING_HEADROOM,            // TODO 144: the one steel-on-steel friction coefficient, and the drag-against-hold margin — the disc's drag and its seat are priced on both
   FRICTION, FRICTION_CORNERS,                  // TODO 192 / §247 tier two: the friction bands the power budget is priced at — three corners, never one number
   SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N, // §137: the declared envelopes force rows sit inside
@@ -91,7 +93,12 @@ import {
   SLENDER_MAX,                                // §54's CEILING, distinct from SLENDER_TARGET above: TODO 117's line derives the reader pin's length against the ceiling (what the check refuses), not the target (what new metal aims at)
   MOVEMENT_SENSE, ALARM_SENSE,                // TODO 115: the two trains' hands — the going train's, and the alarm's own motor's; every direction-committed cut is checked against one of them
   BACK_PLATE_T, KEYLESS_STACK_R,              // TODO 211: the plate's thickness (hoisted — the keyless plane derives from its dial face) and the stem stack's reach that plane is cut against
+  GEARED_BUILT,                               // §337 landing 2b: ?arrest=geared builds the geared Geneva where the direct one does not stand
+  STOPWORK_BUILT,                             // §329: the Geneva stop-work is the shipped arrest where it stands — the one derived answer
+  unionLoops, filletReflexCorners, discLessConvex,            // §336 landing 2: the flush cock's opening, merged from the windows it crosses
 } from './layout.js';
+import { genevaDims as swDims, PIN_FLOOR_U as SW_PIN_FLOOR, STUD_FLOOR_U as SW_STUD_FLOOR, chooseStopwork, starAngle as swStarAngle, engagementArc as swEngagementArc, travelTurns as swTravelTurns } from './stopwork-arrest.js';   // §329 landing 4: option B, the Geneva stop-work's line
+import { solveTrailingArrest, r1For as trailR1For, psi2ForThrow as trailPsi2ForThrow, epsOf as trailEpsOf, D_MIN as TRAIL_D_MIN, R1_MIN as TRAIL_R1_MIN } from './trailing-arrest.js';   // §329: the trailing arrest's line
 import { LUBRICATION, REGIME_INFO } from './lubrication.js';
 // §267 — the boot bar's table: each seam's measured share of the build,
 // GENERATED by tools/boot-progress.mjs. BUILD_T0 is the zero it is measured
@@ -101,7 +108,8 @@ import { SEAM_ORDER, SEAM_KNOTS } from './boot-progress.js';
 import * as GS from './gong-solve.js';   // §310 — the wire model and the seat's own laws (pure)
 import * as GL from './gong-level.js';   // §320 — the gong's level law's pure leaves (one copy with the volume prototype)
 import { FREE_OUTLINES } from './free-outlines.js';   // §325 — GENERATED by tools/free-outline.mjs: the free outline each movement is cut to
-import { GONG_SEATS, GONG_SEATS_ARRANGED } from './gong-seats.js';   // §310 landing 2 — GENERATED by tools/gong-seats.mjs: where the gong stands in each fitted form case
+import { GONG_SEATS, GONG_SEATS_ARRANGED } from './gong-seats.js';
+import { STRIKE_KEEP_ROUND } from './strike-keep-round.js';   // TODO 290 — GENERATED by tools/strike-keep-round.mjs: the round build's drawn hammer head, for the pillar scan   // §310 landing 2 — GENERATED by tools/gong-seats.mjs: where the gong stands in each fitted form case
 import { caseShapeSearch, defaultSeatMode } from './case-shape.js';   // §310 — the case-shape select's reload, shared with the boot screen
 import { makeSelfieReflection } from './selfie-reflection.js';   // §290
 const BUILD_T0 = performance.now();
@@ -1234,6 +1242,7 @@ const FUSEE_F_ACTIVE = FUSEE_WRAP_TURNS / FUSEE_GROOVE_TURNS; // 0.875 — the w
 // second number: tick() banks against engageTurns, so a lug whose clocking
 // drifted from the wrap would be caught at boot, not discovered as overwind.
 const WIND_ARREST = { engageTurns: FUSEE_WRAP_TURNS };
+const STOPWORK = STOPWORK_BUILT;   // §329 landing 4: option B's Geneva stop-work replaces §47's finger, beak and lug (its build is in §47's block)
 // (The cone's z stack — groove width and depth, base collar, center-wheel bind, band, pitch,
 // base and groove start — is declared below, beside the spring constants it needs:
 // the groove's width carries the plate's twist off the helicoid walls, which is a
@@ -2787,6 +2796,9 @@ const KEYLESS_INPUTS = {
     fourth: fourthWheelR, escape: escapeWheelR, balance: balanceR * 1.35, // + cock
     fork: 4, dial: 0,
   },
+  // §327 — the drum's reach for the form rectangle: its centre distance (FUSEE_DRUM_DIST) and its outermost metal, the
+  // chain coil on the wall, CHAIN_END_R_OUT past DRUM_WRAP_R (the radius TODO 207's plate bound uses). Plain numbers: tools/form-layout.mjs serialises these.
+  drum: { dist: FUSEE_DRUM_DIST, r: DRUM_WRAP_R + CHAIN_END_R_OUT },
   ...(SPEC.stemAzDeg !== null ? { stemAzRad: SPEC.stemAzDeg * DEG2RAD } : {}),
   // §94 tier C — the reserve station's radius spreads in only when present,
   // so identity passes nothing and stays bit-exact (d4's null rule).
@@ -2828,6 +2840,10 @@ const KEYLESS_INPUTS = {
     // everywhere (asserted at the dial build), so the ceilings it derives
     // from it are conservative on a form face, never breached.
     ...(SPEC.caseShape ? {} : { railOuterF: 2 * G.DIAL_CANVAS_FILL_F * G.DIAL_RAIL_OUT_F }),
+    // THE PRINT FOLLOWS THE CASE — on the free case (the one whose outline is minimised) the solver scales this print
+    // down to the smallest whose seconds face reads (geometry.js secondsFaceFloorMm, in units); a spec'd ?subdialr=
+    // pins the seconds well instead, and keeps the round print.
+    ...(SPEC.caseShape === 'free' && SPEC.subdialr === null ? { secondsFloor: G.secondsFaceFloorMm() / UNIT_MM } : {}),
   },
 };
 const {
@@ -2837,6 +2853,7 @@ const {
   settingLeverPivot, settingLeverAngleAt, tailPostWorldAt, postEng, postRel,
   kwPostBow, yokePivot, yokeAngleAt, slMidAlong, canonToWorld,
   plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, reserveWellR, secondsWellR, secondsWellCeil, alarmCornerR, rsvrWindow,
+  printScale,   // the print-follows-case scale (layout.js solveKeyless; 1 except on the free case)
   reserveStationR, reserveWellLaw, // §308 L4 option A — the station's distance, and which side of the chapter its well is cut
   reserveSector,   // §308 L4 option B — the fan well (null unless reserveWellLaw is 'sector')
   formPlate, // §307 — the form rectangle, derived beside plateR from the same members
@@ -2870,13 +2887,28 @@ const {
 // formCaseLoops), where a re-entrant round of radius r becomes r − that grow, so the cut's round is that grow PLUS
 // one band thickness — the band's outside then turns no tighter than the band is thick, rather than to a cusp.
 const FREE_RC = CASE_CLEAR + 2 * CASE_BAND_T;
-const FREE_KEY = SPEC.caseShape === 'free' ? configKey({ spec: { ...SPEC, formRectSpec: null, gongSeat: null } }) : null;
+// §325 landing 7: `hands` moves no metal of the movement, so no movement-keyed lookup below carries it
+const FREE_KEY = SPEC.caseShape === 'free' ? configKey({ spec: { ...SPEC, hands: null, formRectSpec: null, gongSeat: null, arrest: SPEC.arrest === 'trailing' ? null : SPEC.arrest } }) : null;   // §329 landing 4: ?arrest=stopwork moves metal the outline is fitted to, so it keys its own outline; ?arrest=trailing (2a) moves none, so it reads the outline the build without it was fitted to
 const FREE_ROW = FREE_KEY ? FREE_OUTLINES[FREE_KEY] ?? null : null;
+// §310 — A BOX FORM CASE WITH NO ?formrect= IS CUT TO ITS GONG SEAT'S FIT. The seat (src/gong-seats.js) was solved inside the
+// case fitted to the counted metal (its row's `formrect`, tools/gong-seats.mjs's fixed point), so a seated gong only stands
+// in its case at that fit. Bare ?case=rect fell back to the solvers' formPlate, which counts neither the gong nor the strike
+// group, and the spiral wire stood 8.78 inside the outline, through the case middle (the boot's §310 warning named the fit
+// to boot at, and nothing booted at it). So the fit is the default exactly where the seat applies: a box kind, the alarm
+// built, a seated mode (not ?gong=arc, which the generator's first boot uses to measure the bare case), and a row
+// generated for this very spec. An explicit ?formrect= still wins. Free outlines take their fit from FREE_ROW already.
+const FORM_SEAT_FIT = (() => {
+  if (!SPEC.caseShape || SPEC.caseShape === 'free' || SPEC.formRectSpec || !ALARM_BUILT || SPEC.gongSeat === 'arc') return null;
+  const base = { ...SPEC, hands: null, strapMm: null, arrest: null, frame: null, formRectSpec: null, gongSeat: null };
+  const seats = GONG_SEATS_ARRANGED[configKey({ spec: { ...base, caseShape: null } })] ?? GONG_SEATS;   // ALARM_ARR_KEY's rule, read early
+  const row = seats[SPEC.caseShape]?.[SPEC.gongSeat ?? defaultSeatMode(seats, SPEC.caseShape)];
+  return row?.formrect && row.specKey === configKey({ spec: { ...base, caseShape: SPEC.caseShape } }) ? Object.freeze([...row.formrect]) : null;
+})();
 const FORM = !SPEC.caseShape ? null
   : SPEC.caseShape === 'free'
     ? (FREE_ROW ? freeShapeOf(FREE_ROW.pts, { c: FREE_ROW.c, rc: FREE_ROW.rc, margin: FREE_ROW.margin, need: FREE_ROW.need, flat: FREE_ROW.flat })
       : freeShapeOf([[formPlate.xMin, formPlate.yMin], [formPlate.xMax, formPlate.yMin], [formPlate.xMax, formPlate.yMax], [formPlate.xMin, formPlate.yMax]], { c: P.dial.x }))
-  : formShapeOf(SPEC.caseShape, SPEC.formRectSpec, formPlate);
+  : formShapeOf(SPEC.caseShape, SPEC.formRectSpec ?? FORM_SEAT_FIT, formPlate);
 // §325 — THE FREE OUTLINE'S PINS: every point a build-time check holds a distance inside the outline (a plate
 // opening's circle and its land, a dial well's wall, the gong's wire, a stud's seat, the strike opening's land),
 // with the distance it needs. A box-fitted kind leaves those checks slack; the free outline hugs the metal, so it
@@ -3832,7 +3864,49 @@ const CASE_R_IN = plateR + CASE_CLEAR;       // 1 mm movement-ring clearance
 // minimal today would be re-grown by that entry tomorrow. The cap assert
 // below stays as the tripwire; equality is legal by construction.
 const CASE_R_OUT_FRONT = CASE_R_IN + CASE_BAND_T;
-const CASE_R_OUT = CASE_WIDTH_MAX;
+// §325 landing 10 — WITHOUT THE ALARM THE BACK BAND IS SIZED TO ITS TENANTS. The cap is spent whole because §198
+// hangs the gong in the annulus between the plate and this bore (the gong's radius is solved off R_ANNULUS_OUT), and
+// with the alarm unbuilt that annulus holds nothing but what the bore itself places: the plate's mounting rim and the
+// clamp screws (measured on a booted ?alarm=0, every mesh outside plateR). So the bore comes in to the larger of the two
+// floors the §186 block below already asserts — the clamp thread's inboard wall (one pitch, Ø/4, of metal between the
+// tapped hole and CASE_R_IN, R_CLAMP standing CLEAR_MARGIN plus a head radius off the bore) and the rim's 1 mm bearing
+// on the ledge (BASE_RIM_R's fit and bevel taken off) — rounded UP to the 0.01 grid so both hold past float noise, and
+// the band keeps its one wall. The round case only: a form case's back follows its own fitted outline, and its readers
+// of CASE_R_OUT (the back envelope's bins, the footprint's fallback box) keep the cap they were generated against.
+// §325 landing 11 — THE CLAMP SCREWS' OWN STOCK. §186 cut the clamps from the case's one screw vocabulary
+// (CASE_SCREW_SHAFT_D, Ø1.0 mm, which is also the pillars' thread, TODO 69, and the plate screws' head basis), and where
+// the back band is the 40 mm cap that costs nothing. Without the alarm the clamp's thread wall IS the bore's governing floor
+// (landing 10; with the alarm too since landing 12), so the clamps step down to the next catalogue watch-screw stock, Ø0.8 mm, the head carrying §186's own
+// 1.8:1 head-to-shaft proportion (Ø1.44 mm). Only the clamps change: the pillar thread and the plate screws keep their stock.
+// Engagement stays §3's 0.7 mm (CASE_CLAMP_ENG), now 0.875 D into the ledge rather than 0.7 D.
+// §325 landing 14 — and without the alarm, Ø0.6 mm, the next stock down again (engagement 1.17 D). There the clamp's floor
+// sits under the rim's 1 mm bearing, so the bearing sets the bore (Ø37.78 mm), and the annulus holds nothing else. With the
+// alarm the strike group binds first: measured at Ø0.6 the ring stood at r 45.26 and the hammer's cranked tail found no
+// riser station clear of the plate's rim. So the alarm build keeps Ø0.8 (Ø38.22).
+const CASE_CLAMP_SHAFT_D = FORM ? CASE_SCREW_SHAFT_D : 0.6 / UNIT_MM;
+const CASE_CLAMP_HEAD_D = CASE_CLAMP_SHAFT_D * (CASE_SCREW_HEAD_D / CASE_SCREW_SHAFT_D);
+// §325 landing 15 — THE LEDGE'S BEARING IS A LAND, not a precedent. §186 held the rim's bearing on the ledge to "the 1 mm
+// the seat it replaces provided", a number carried from the part it replaced rather than derived. What the bearing does is
+// carry the movement and the clamps' preload into the band, and the load that would size it is shock, which this movement has
+// no specification for: TODO 192's honest residue, the same reason the pivots are sized by their own floors. So it is held
+// to the floor every land in this repo is held to, §62's STOCK_MIN_U (0.12 mm), a sliver of brass that carries any
+// load the movement can put on it many times over. It does not bind: the clamps' land floor governs both builds (the rim
+// bears 1.12 mm with the alarm and 1.02 without).
+const CASE_LEDGE_BEARING_MIN = STOCK_MIN_U;
+const CASE_R_BORE_BACK_FLOOR = Math.ceil(100 * Math.max(
+  CASE_R_IN + CLEAR_MARGIN + CASE_CLAMP_HEAD_D / 2 + CASE_CLAMP_SHAFT_D / 2 + CASE_CLAMP_SHAFT_D / 4,   // the clamp thread's wall
+  CASE_R_IN + CASE_LEDGE_BEARING_MIN + G.SEAT_FIT + plateR * G.PLATE_BEVEL_F,                          // the rim's bearing (§325 landing 15)
+  // the thread's wall again, with the circle held in by the rim's land (R_CLAMP's second term): the rim (fit and bevel
+  // off the bore), the land, the bore drawn at r + bevel, then the shaft's half and a pitch to CASE_R_IN
+  CASE_R_IN + CASE_CLAMP_SHAFT_D / 4 + CASE_CLAMP_SHAFT_D / 2 + STOCK_MIN_U + (CASE_CLAMP_SHAFT_D / 2 + G.SEAT_FIT)
+    + 2 * plateR * G.PLATE_BEVEL_F + G.SEAT_FIT,
+)) / 100;
+// §325 landing 12 — AND WITH THE ALARM TOO. The gong's radius is SOLVED off R_ANNULUS_OUT and the hammer is sited off the
+// gong, so the strike group follows the bore inward by its own laws (the gong ring 49.65 → 47.30, the hammer's spiral
+// 48.38 → 46.06; the alarm stem and pusher are cut to the wall wherever it stands). Measured on that build, the annulus
+// holds them inside the floor's bore with nothing in the band at any pose (probe-case-relief). So the cap no longer holds
+// the round case out anywhere: the alarm's room is what the clamps leave.
+const CASE_R_OUT = FORM ? CASE_WIDTH_MAX : CASE_R_BORE_BACK_FLOOR + CASE_BAND_T;
 // The back band's bore: one wall inside the body outer — the same 1 mm
 // dress-watch wall the front keeps, and the gasket annulus keeps exactly
 // its old proportions inside it.
@@ -3895,7 +3969,15 @@ const BASE_RIM_R = R_BORE_BACK - G.SEAT_FIT - plateR * G.PLATE_BEVEL_F;
 // ledge's own metal below it. The circle stands one CLEAR_MARGIN off the
 // bore wall by the head's radius — as far outboard as the head can bear,
 // which maximises the rim bearing inboard of it.
-const R_CLAMP = R_BORE_BACK - CLEAR_MARGIN - CASE_SCREW_HEAD_D / 2;
+// §325 landing 13 — AND NO FURTHER OUT THAN THE RIM'S LAND ALLOWS. The screw passes through a clearance bore in the
+// rim, and the metal between that bore and the rim's edge is a LAND, owed §62's STOCK_MIN_U like any web between two
+// openings. The plate's extrude grows the rim outward and the bore inward through its depth, but its two FACES keep the
+// contours as drawn (TODO 175), so the land at a face is the drawn one: the rim's authored radius less the bore drawn
+// at r + bevelSize. Off the 40 mm cap the outboard rule left 0.36 of it. When the bore came in, Ø0.8 clamps left a
+// 0.17 sliver (0.064 mm), passing only because the rings did not quite cross, and Ø0.6 crossed them. So the circle is the
+// lesser of the two, and the floor below the bore (CASE_R_BORE_BACK_FLOOR) carries the thread wall at this term too.
+const R_CLAMP = Math.min(R_BORE_BACK - CLEAR_MARGIN - CASE_CLAMP_HEAD_D / 2,
+  BASE_RIM_R - (CASE_CLAMP_SHAFT_D / 2 + G.SEAT_FIT) - plateR * G.PLATE_BEVEL_F - STOCK_MIN_U);
 // Three screws: a plane is three points — the kinematic definition of the
 // bearing the clamps must define — and a lapped ring joint gains nothing
 // from over-constraint (real casing clamps run 2–4). Stations are a tripod,
@@ -3929,7 +4011,7 @@ const CASE_NOTCHES = [
 // THROUGH a member wants a clearance hole at the screw-through fit (§148's
 // two-holes rule — the rim is not what holds the screw, the tapped ledge
 // metal is).
-const CASE_CLAMP_BORE_R = CASE_SCREW_SHAFT_D / 2 + G.SEAT_FIT;
+const CASE_CLAMP_BORE_R = CASE_CLAMP_SHAFT_D / 2 + G.SEAT_FIT;
 // Thread engagement below the ledge face — the §3 precedent the caseback
 // screws set (0.7 mm into a 1.0 mm wall).
 const CASE_CLAMP_ENG = 0.7 / UNIT_MM;
@@ -3966,15 +4048,15 @@ const CASE_CLAMP_AZ = (() => {
       worst = Math.min(worst, Math.sin(Math.min(d, Math.PI / 2)) * R_CLAMP);
     }
   }
-  const need = CASE_NOTCH_HALFW + CASE_SCREW_HEAD_D / 2 + CLEAR_MARGIN;
+  const need = CASE_NOTCH_HALFW + CASE_CLAMP_HEAD_D / 2 + CLEAR_MARGIN;
   if (worst < need)
     console.warn(`§186: a clamp station stands ${worst.toFixed(3)} u off a crown notch's line — the head `
-      + `needs ${need.toFixed(3)} (notch ${CASE_NOTCH_HALFW.toFixed(3)} + head ${(CASE_SCREW_HEAD_D / 2).toFixed(3)} + margin)`);
+      + `needs ${need.toFixed(3)} (notch ${CASE_NOTCH_HALFW.toFixed(3)} + head ${(CASE_CLAMP_HEAD_D / 2).toFixed(3)} + margin)`);
   // The tapped hole's inboard thread wall: from the hole's wall to the case
   // bore, at least one thread pitch of metal (pitch ≈ Ø/4 for watch screws —
   // the same rule screwShankR encodes as head ≈ 2×thread).
-  const wall = (R_CLAMP - CASE_SCREW_SHAFT_D / 2) - CASE_R_IN;
-  const pitch = CASE_SCREW_SHAFT_D / 4;
+  const wall = (R_CLAMP - CASE_CLAMP_SHAFT_D / 2) - CASE_R_IN;
+  const pitch = CASE_CLAMP_SHAFT_D / 4;
   if (wall < pitch)
     console.warn(`§186: the clamp thread's inboard wall is ${wall.toFixed(3)} u — under the one-pitch `
       + `floor ${pitch.toFixed(3)} u; the thread would break into the case bore`);
@@ -3983,18 +4065,21 @@ const CASE_CLAMP_AZ = (() => {
   // least a head-RADIUS of the head's diameter lands on the rim's lid face
   // (authored outline BASE_RIM_R — the lid carries the authored shape, the
   // mid-depth bulge is what fits the bore).
-  if (R_CLAMP + CASE_SCREW_HEAD_D / 2 > R_BORE_BACK - CLEAR_MARGIN + 1e-9)
+  if (R_CLAMP + CASE_CLAMP_HEAD_D / 2 > R_BORE_BACK - CLEAR_MARGIN + 1e-9)
     console.warn('§186: a clamp head reaches within CLEAR_MARGIN of the bore wall — R_CLAMP regressed');
-  const overlap = Math.min(R_CLAMP + CASE_SCREW_HEAD_D / 2, BASE_RIM_R) - (R_CLAMP - CASE_SCREW_HEAD_D / 2);
-  if (overlap < CASE_SCREW_HEAD_D / 2)
+  const overlap = Math.min(R_CLAMP + CASE_CLAMP_HEAD_D / 2, BASE_RIM_R) - (R_CLAMP - CASE_CLAMP_HEAD_D / 2);
+  if (overlap < CASE_CLAMP_HEAD_D / 2)
     console.warn(`§186: a clamp head overlaps the rim's lid by ${overlap.toFixed(3)} u — under the `
-      + `half-diameter floor ${(CASE_SCREW_HEAD_D / 2).toFixed(3)}; the head is clamping air`);
+      + `half-diameter floor ${(CASE_CLAMP_HEAD_D / 2).toFixed(3)}; the head is clamping air`);
+  // §325 landing 13: the rim's land outboard of each clearance bore, at the face (the drawn contours)
+  const land = BASE_RIM_R - (R_CLAMP + CASE_CLAMP_BORE_R + plateR * G.PLATE_BEVEL_F);
+  if (land < STOCK_MIN_U - 1e-9)
+    console.warn(`§325: the rim keeps ${land.toFixed(3)} u of land outboard of a clamp's bore — under §62's ${STOCK_MIN_U.toFixed(3)}`);
   // The bearing the rim actually gets: from the ledge's inner edge to the
-  // rim's authored outline, held to the 1 mm the old seat step gave (the
-  // precedent floor — a mount must not bear LESS than the seat it replaces).
-  if (BASE_RIM_R - CASE_R_IN < 1 / UNIT_MM)
-    console.warn(`§186: the rim bears ${((BASE_RIM_R - CASE_R_IN) * UNIT_MM).toFixed(2)} mm on the ledge — `
-      + 'under the 1 mm the seat step it replaces provided');
+  // rim's authored outline, held to CASE_LEDGE_BEARING_MIN (§325 landing 15; §186's 1 mm precedent before it).
+  if (BASE_RIM_R - CASE_R_IN < CASE_LEDGE_BEARING_MIN - 1e-9)
+    console.warn(`§186: the rim bears ${((BASE_RIM_R - CASE_R_IN) * UNIT_MM).toFixed(3)} mm on the ledge — `
+      + `under the ${(CASE_LEDGE_BEARING_MIN * UNIT_MM).toFixed(3)} mm land a ledge is owed`);
 }
 // (The z stations live in CASE_DIMS — they are measured from the metal once
 // the movement exists, and the dial side is −z, which the first cut of this
@@ -4003,11 +4088,13 @@ const CASE_CLAMP_AZ = (() => {
 // the two lugs' facing walls, which is the size a strap is bought in and
 // exactly the spring bar's free length. Owner spec (2026-08-31): 20 mm, the
 // standard strap width, sitting ON the 20 mm across-the-spring-bar cap
-// rather than under it. (The first cut declared the CENTRE span 18 mm and
+// rather than under it; re-set 2026-11-01 to 19 mm by the owner and made
+// adjustable (`?strap=`, SPEC.strapMm — STRAP_MM_DEFAULT when absent), the cap
+// staying 20 mm. (The first cut declared the CENTRE span 18 mm and
 // the interior came out 16.8 mm — the constant now names the dimension the
 // spec actually constrains; centre-to-centre derives in makeCase as
 // interior + one lug thickness.)
-const CASE_LUG_INNER = 20 / UNIT_MM;
+const CASE_LUG_INNER = (SPEC.strapMm ?? STRAP_MM_DEFAULT) / UNIT_MM;
 if (CASE_R_OUT > CASE_WIDTH_MAX + 1e-9)
   console.warn(`case: body Ø${(2 * CASE_R_OUT * UNIT_MM).toFixed(2)} mm breaks the 40 mm owner cap (body, lugs excluded) — the movement outgrew its housing budget`);
 // The old across-the-lug-tips assert is gone for good (§190): the owner
@@ -4068,8 +4155,8 @@ const BACK_PLATE_HOLES = [
   // corner's own recess is MW_DROP_PLATE_HOLE, sized off the cut blank
   // (cornerDrop.spec.coneR, A's precedent) and pushed into `holes` beside
   // MW_FOLD_PLATE_HOLE, once the corner exists.
-  { x: ALARM_WIND_X, y: ALARM_WIND_Y, r: 0.55 }, // §25 C: the climb arbor's lower bearing IS this bore
-  { x: alarmSwPos.x, y: alarmSwPos.y, r: ALARM_STRIKE_STAFF_R + PIVOT_BORE_CLEAR }, // §261 landing 2a: the striking staff's lower bearing IS this bore — the running fit, through the plate so the staff can carry the stop wheel to the dial side
+  ...(ALARM_BUILT ? [{ x: ALARM_WIND_X, y: ALARM_WIND_Y, r: 0.55 }] : []), // §25 C: the climb arbor's lower bearing IS this bore (no arbor, no bore without the alarm)
+  ...(ALARM_BUILT ? [{ x: alarmSwPos.x, y: alarmSwPos.y, r: ALARM_STRIKE_STAFF_R + PIVOT_BORE_CLEAR }] : []), // §261 landing 2a: the striking staff's lower bearing IS this bore — the running fit, through the plate so the staff can carry the stop wheel to the dial side
   // (§261 2c retired the selector rod's bore here: the rod runs under the dial now, between the folded beak and the lay shaft, and crosses no plate)
 ];
 // A single stud's slot, from the arc it sweeps between the two crown poses:
@@ -4132,7 +4219,7 @@ const TQ_UNDER = [barrelArbor, centerArbor, thirdArbor, fourthArbor, escapeArbor
 // a regression, not a design.
 await breathe(32);
 const TQ_MEASURED_MAX = Math.max(...TQ_UNDER.map((o) => boxOf(o).max.z));
-const TQ_DESIGN_MAX = Math.max(SPRING_TOP_Z, CHAIN_TQ_REACH);
+const TQ_DESIGN_MAX = Math.max(SPRING_STACK_TOP_Z, CHAIN_TQ_REACH);   // TODO 291: the stack's datum, not the lighter spring's top (layout.js)
 if (TQ_MEASURED_MAX > TQ_DESIGN_MAX + 1e-6) {
   console.warn(`3/4 plate floor bound by measured part (${TQ_MEASURED_MAX.toFixed(2)}) above the hairspring stack and the chain's reach (${TQ_DESIGN_MAX.toFixed(2)}) — the balance cock sinks further into the plate band`);
   for (const o of TQ_UNDER) {
@@ -4971,7 +5058,9 @@ const tqPivots = []; // { x, y, staffR, jewelR } — consumed by the plate build
 // parametric ring, and this bore joins it for free. It is also the pivot most
 // worth jewelling: the strike arbor carries the striking wheel, the fastest
 // intermittent load on this plate.
-tqPivots.push({ x: alarmSwPos.x, y: alarmSwPos.y, staffR: 0.75, jewelR: 1.3, boreR: 0.75 + PIVOT_BORE_CLEAR, chaton: true });
+// ?alarm=0 builds no strike arbor, so no chaton either: left in, it was a phantom screwed gold chaton at the alarm's
+// station (10 o'clock dial-facing) bearing nothing.
+if (ALARM_BUILT) tqPivots.push({ x: alarmSwPos.x, y: alarmSwPos.y, staffR: 0.75, jewelR: 1.3, boreR: 0.75 + PIVOT_BORE_CLEAR, chaton: true });
 // TODO 192 — THE STAFFS ARE NAMED, because the power budget prices them. A
 // pivot's friction torque is μ·F·r, linear in this radius, and 0.5 u is
 // 0.379 mm ⌀ — 3–5× the 0.07–0.12 mm §50's own basis for PIVOT_MIN_U calls
@@ -5087,24 +5176,87 @@ for (const arbor of [centerArbor, thirdArbor, fourthArbor]) {
 // The square is the watchmaker's let-down square: a key on it is how the
 // power is safely released at the bench. A winding arbor runs in a plain
 // bushed bore, not a jewel — and no jewel could pass the square anyway.
+//
+// §336 — AND IT IS BORNE BY THE FUSEE COCK, NOT THE PLATE. The owner's ask
+// (2026-11-05): show more of the cone. §322 measured what hides it — the
+// plate's bush boss and the three webs that island it, 26.3% of the cone —
+// and §335 opened the gears round it; the bush itself is the one thing left
+// in the plate over the cone. So the arbor's top bearing moves to a COCK
+// standing on the BASE plate (the frame's rule for a cock, TODO 184: the
+// owner chose it over a cock screwed to this plate), its slab carried over
+// this plate's top face and its single leg down through plate body to the
+// base plate. The plate keeps no boss here; the cone window solves
+// bossless.
+//
+// Its z-band is fixed by two things the cock cannot choose, so it is known
+// HERE, long before the cock is sited: the slab's floor stands one
+// CLEAR_MARGIN over this plate's top face (it may not touch the plate it
+// passes over), and its section is the cocks' own COCK_T — the in-plane width
+// carries the load (§336's sizing, at the cock's build), so the depth stays
+// the frame's. The arbor's staff runs up through the window's air into the
+// cock's boss to the slab's mid-plane, its bearing plane; the windTop
+// continuation carries it on to the slab's top face and the let-down square
+// stands proud of THAT face.
+//
+// AND IT IS CRANKED. A flat slab over the plate put the square 0.95 higher
+// and the cased movement 0.038 mm over CASE_HEIGHT_MAX_MM (§261) — a P3
+// conflict, so it is settled in position space, not by the cap: the BOSS
+// stands in the cone window's AIR (no plate is cut there), its top flush with
+// the plate's top face, so the bearing plane and the let-down square are
+// exactly where the case was fitted to them; a round post at the window's
+// edge carries it up to the bar, which crosses the plate a margin over its
+// face. The boss is the slab's own section (COCK_T) and its underside stands
+// over the cone and the arrest's bracket, which both stay under the plate's
+// underside.
+//
+// The SECTION'S DEPTH is what stands between the plate's margin and the
+// square's top: the square is the tallest thing at this corner and the case is
+// fitted to it, so an arm one CLEAR_MARGIN over the plate may be at most
+// LETDOWN_H − CLEAR_MARGIN deep (COCK_T's 0.8 stood 0.05 over it and put the
+// free case's form 0.046 mm over CASE_HEIGHT_MAX_MM). The width carries the load.
+//
+// ON EVERY BUILD since §336 landing 3 (the owner, 2026-11-06: "cock on default build"). Landings 1 and 2 built it on §47's
+// arrest only, because the stop-work (the default arrest since §329's flip) planted its star's stud in a web of the plate over
+// the cone, the metal the cock removes. The stud is planted in the cock's CRANK now, which doglegs through its seat (the cock's
+// build, below), so the stop-work's build carries the cock too and the plate keeps no boss, web or ring over the fusee there.
+const LETDOWN_H = 0.9; // proud of its face: enough engagement for a let-down key
+const FUSEE_COCK_T = LETDOWN_H - CLEAR_MARGIN;
+const FUSEE_BOSS_TOP = TQ_TOP_Z;
+const FUSEE_BOSS_MID = FUSEE_BOSS_TOP - FUSEE_COCK_T / 2;   // the bush's bearing plane
+const FUSEE_BOSS_BOT = FUSEE_BOSS_TOP - FUSEE_COCK_T;
+// §336 landing 2 — THE COCK IS AN ISLAND IN THE PLATE, flush with its top face (the owner's choice, 2026-11-06): the bar no
+// longer stands over the plate but runs in the plate's own plane, in an opening merged with the cone window and the gear window
+// it crosses (§62's re-cut, below). So the boss, the crank and the bar are one plane, and the bar's z is the boss's.
+const FUSEE_COCK_BOT = FUSEE_BOSS_BOT;
+const FUSEE_COCK_MID = FUSEE_BOSS_MID;
+const FUSEE_COCK_TOP = FUSEE_BOSS_TOP;
+// The bearing plane: the cock boss's mid-plane.
+const FUSEE_BEARING_Z = FUSEE_BOSS_MID;
 {
   // NAMED (TODO 53's landing): the windTop continuation abuts this pivot at
-  // the plate's mid-plane, and the joint is declared in
+  // the cock's mid-plane, and the joint is declared in
   // INTRA_UNIT_CONTACTS — see the windTop build for why it stopped being a
-  // coincidence and became a joint.
-  const staff = addUpperPivot(barrelArbor, { staffR: TRAIN_STAFF_R, jewelR: 0, boreR: TRAIN_STAFF_R + PIVOT_BORE_CLEAR });
-  if (staff) staff.name = 'fuseeUpperPivot';
+  // coincidence and became a joint. Not addUpperPivot: that function's
+  // whole contract is a bearing IN THIS PLATE (its tqPivots row is what cuts
+  // the plate's bore and islands the window's boss), and this bearing is not
+  // in the plate any more.
+  const worldTop = boxOf(barrelArbor).max.z;
+  const len = FUSEE_BOSS_MID - worldTop;
+  const staff = new THREE.Mesh(new THREE.CylinderGeometry(TRAIN_STAFF_R, TRAIN_STAFF_R, len, PIVOT_SEGMENTS), MATS.steel);
+  staff.rotation.x = Math.PI / 2;
+  staff.position.z = (worldTop - barrelArbor.position.z) + len / 2;
+  staff.name = 'fuseeUpperPivot';
+  barrelArbor.add(staff);
 }
 // Square across-corners = staff diameter (0.5·2), so the filed square
-// passes the plate's own bore without opening it.
+// passes the cock's own bore without opening it.
 const FUSEE_SQ_S = 0.5 * Math.SQRT2;
-const LETDOWN_H = 0.9; // proud of the plate face: enough engagement for a let-down key
-const LETDOWN_TOP = TQ_TOP_Z + LETDOWN_H; // tallest thing on the plate top at this corner (rods run LOW now)
+const LETDOWN_TOP = FUSEE_BOSS_TOP + LETDOWN_H; // tallest thing at this corner: the square, on the cock's sunk boss (§336)
 const windTop = new THREE.Group();
 {
-  // Shaft continuation: addUpperPivot's staff stops at the plate's
-  // mid-thickness (its bearing plane); carry the round arbor on to the
-  // plate's top face, where the square begins. It reaches DOWN into the
+  // Shaft continuation: the staff stops at the cock boss's mid-thickness (its
+  // bearing plane, §336); carry the round arbor on to the boss's top face,
+  // where the square begins. It reaches DOWN into the
   // staff by half a §50 stock floor — one shaft in two meshes wants a weld,
   // not a knife-edge: the two caps used to COINCIDE exactly at TQ_MID_Z,
   // which no instrument can arbitrate (coplanar triangles), and the
@@ -5114,13 +5266,13 @@ const windTop = new THREE.Group();
   // makes it seen — row 'arbor through the winding pinion' is the exact
   // precedent.
   const weld = STOCK_MIN_U / 2;
-  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, TQ_TOP_Z - TQ_MID_Z + weld, 12), MATS.steel);
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, FUSEE_BOSS_TOP - FUSEE_BEARING_Z + weld, 12), MATS.steel);
   shaft.name = 'fuseeTopArbor';
   shaft.rotation.x = Math.PI / 2;
-  shaft.position.z = (TQ_MID_Z - weld + TQ_TOP_Z) / 2 - L_BARREL;
+  shaft.position.z = (FUSEE_BEARING_Z - weld + FUSEE_BOSS_TOP) / 2 - L_BARREL;
   windTop.add(shaft);
   const square = new THREE.Mesh(new THREE.BoxGeometry(FUSEE_SQ_S, FUSEE_SQ_S, LETDOWN_H), MATS.steel);
-  square.position.z = TQ_TOP_Z + LETDOWN_H / 2 - L_BARREL;
+  square.position.z = FUSEE_BOSS_TOP + LETDOWN_H / 2 - L_BARREL;
   windTop.add(square);
 }
 barrelArbor.add(windTop); // explodes and labels with 'Fusee & great wheel', which is what it is
@@ -6382,7 +6534,7 @@ const _pivotBox = new THREE.Box3();
 // underside. It no longer reaches mid-plate: the stone is the bearing, and a
 // staff carried on into the plate's bore would have been a second one at the
 // staff's radius. pivotR = staffR is the old construction exactly.
-function addLowerPivot(arbor, { staffR = TRAIN_STAFF_R, pivotR = staffR, jewelR = 1.3, name = 'trainPivot' } = {}) {
+function addLowerPivot(arbor, { staffR = TRAIN_STAFF_R, pivotR = staffR, jewelR = 1.3, name = 'trainPivot', staffName = null } = {}) {
   arbor.updateMatrixWorld(true);
   _pivotBox.setFromObject(arbor);
   const worldBottom = _pivotBox.min.z;
@@ -6398,6 +6550,7 @@ function addLowerPivot(arbor, { staffR = TRAIN_STAFF_R, pivotR = staffR, jewelR 
     const shaft = new THREE.Mesh(new THREE.CylinderGeometry(staffR, staffR, len, PIVOT_SEGMENTS), MATS.steel);
     shaft.rotation.x = Math.PI / 2;
     shaft.position.z = (worldBottom - arbor.position.z) - len / 2; // arbor-local
+    if (staffName) shaft.name = staffName;   // §329: a staff a table names is named, never read by its index among the unit's meshes
     arbor.add(shaft);
   }
   if (shouldered) {
@@ -6416,7 +6569,9 @@ function addLowerPivot(arbor, { staffR = TRAIN_STAFF_R, pivotR = staffR, jewelR 
 // The fusee runs in plain bushes at its staff's size — it carries the chain's
 // pull and the winding torque, and its let-down square must pass its bore.
 await breathe(42);
-addLowerPivot(barrelArbor);
+// NAMED (§329): PLATE_SEATS seats this staff in the base plate, and while it was read as CylinderGeometry#12 any mesh the fusee
+// gained before it (the stop-work's pin) moved its label and orphaned the seat.
+addLowerPivot(barrelArbor, { staffName: 'fuseeLowerStaff' });
 for (const arbor of [centerArbor, thirdArbor, fourthArbor, escapeArbor]) {
   await breathe(43);
   addLowerPivot(arbor, { pivotR: TRAIN_PIVOT_R });
@@ -7322,6 +7477,73 @@ const MW_CAP_CORNER_SPEC = G.bevelToothSpec({ module: BEVEL_MODULE, teeth: BEVEL
 // margin — the least gap at which the corner under the cap clears the cap.
 const MW_CAP_APEX_GAP = SETTING_CAP_REACH + MW_CAP_CORNER_SPEC.tipR + CLEAR_MARGIN;   // 0.860 + 1.696 + 0.15 = 2.706
 const Z_CAP_CORNER = Z_SETTING_CAP - MW_CAP_APEX_GAP;                                // −6.016
+// TODO 289 — THE TAIL'S BEARINGS. Until this item no rod of the fold ran in
+// anything: every blank was keyed to a rod whose only other constraint was
+// the bevel mesh at its far end, and a mesh is a line contact that holds no
+// shaft (`support` is declared per unit, so a floating member inside the
+// seated keyless works passed it in silence). The rise, the stub and the cap
+// arbor each take a plain BUSH now, and the cap arbor a JEWEL above the cap;
+// the two traverses stay filed (TODO 289's residue). Every number here is a
+// constraint's:
+//   · bore — PIVOT_BORE_CLEAR over the journal, the one running fit this
+//     movement cuts for a pivot in a bore (the alarm link's 0.02 is the
+//     inherited number §137 flagged, and is not copied);
+//   · wall and the hanger's section — STOCK_MIN_U, §50's floor: the bush and
+//     its bracket carry the bevel mesh's separating force under the hand-set
+//     torque, which no section at the floor can fail;
+//   · LENGTH — the overhung-bevel rule: where a bush is the ONLY bearing a
+//     load has, the bearing spread is at least twice the overhang (Dudley,
+//     Handbook of Practical Gear Design, overhung bevel mounting: 2×, 2.5×
+//     preferred), the overhang read from the bush's end to the blank's load
+//     point, the mean cone distance's axial station (coneR + coneRi)/2 · cos γ;
+//     a straddled load (the cap pinion and its blank, between the jewel and
+//     the bush) asks only a plain journal's own L/D ≥ 1 of the bush (plain
+//     journal bearings run L/D 0.5–2; the floor of that band is the least a
+//     bush is);
+//   · the hanger's SEAT — a planted post seats at least its own section deep
+//     (the alarm tower's columns plant 0.5 at 0.2 square, §112's stud 0.5), so
+//     the column is let into the plate's dial face by MW_HANGER_S;
+//   · the column stands off its bush by at least one section, so the weld to
+//     the arm is a face and never a line on the bush's cylinder.
+// Where each bush STANDS is solved in buildSettingMetal (siteTailBearings):
+// a rod's two blanks leave no run between them (solveCapLeg cuts every rod to
+// the least length at which its blanks' envelopes clear), so the rise's bush
+// rides a shouldered pivot past E, the cap arbor's an extension past D —
+// through the empty cone-distance sphere every bevel pair leaves round its
+// apex — and the stub is lengthened for its bush by the floor stubSolve takes.
+const MW_BUSH_WALL = STOCK_MIN_U;
+const MW_HANGER_S = STOCK_MIN_U;
+const MW_HANGER_SEAT = MW_HANGER_S;
+const MW_BUSH_LD_MIN = 1;
+const MW_BEVEL_OVERHANG_K = 2;
+const MW_CAP_JEWEL_R = 1.0;   // the keyless works' dial-side settings (addDialSidePivot: the setting lever's and the yoke's)
+const bevelLoadZ = (spec) => ((spec.coneR + spec.coneRi) / 2) * Math.cos(spec.gamma);
+// a bush's length for the journal it carries and the overhangs it alone bears (0 for a straddled load)
+const bushLengthFor = (journalR, overhangs) => Math.max(2 * journalR * MW_BUSH_LD_MIN, MW_BEVEL_OVERHANG_K * Math.max(0, ...overhangs));
+// the stub's bush and the floor it puts under the stub's length: the bush between the foot
+// corner's outboard blank and the cap corner's inboard one, a margin off each web
+const stubBushFor = (footSpec) => {
+  const len = bushLengthFor(MW_RISE_R, [footSpec.zWebHi + CLEAR_MARGIN - bevelLoadZ(footSpec),
+    MW_CAP_CORNER_SPEC.zWebHi + CLEAR_MARGIN - bevelLoadZ(MW_CAP_CORNER_SPEC)]);
+  // each web a margin off the bush, as the envelope judge CERTIFIES it: revolvedBlankDiscClearance samples the
+  // blank's surface at its own resolution and reads a bush exactly a margin off a web as short, so the pad past
+  // the margin is the least the judge signs for (scanned at its finest step), per blank
+  const padF = webPadFor(footSpec, len), padC = webPadFor(MW_CAP_CORNER_SPEC, len);
+  return { len, padF, padC, floor: footSpec.zWebHi + CLEAR_MARGIN + padF + len + padC + CLEAR_MARGIN + MW_CAP_CORNER_SPEC.zWebHi };
+};
+const _webPadMemo = new Map();
+function webPadFor(spec, len) {   // the least pad past the margin at which a bush of the stub's radius, coaxial beyond the blank's back web, certifies the margin
+  const key = `${spec.module}|${spec.shaftAngle}|${len}`;
+  if (_webPadMemo.has(key)) return _webPadMemo.get(key);
+  const env = G.bevelBlankEnvelope(spec), r = MW_RISE_R + PIVOT_BORE_CLEAR + MW_BUSH_WALL, f = { o: [0, 0, 0], a: [0, 0, 1] };
+  let pad = 0;
+  while (!G.revolvedBlankDiscClearance(env, f, { o: [0, 0, 0], a: [0, 0, 1], r, zLo: spec.zWebHi + CLEAR_MARGIN + pad, zHi: spec.zWebHi + CLEAR_MARGIN + pad + len }, CLEAR_MARGIN).ok) {
+    pad += G.ENVELOPE_DELTA_FINE;
+    if (pad > CLEAR_MARGIN) break;   // a pad past a whole margin is not resolution: the build's own warn names it
+  }
+  _webPadMemo.set(key, pad);
+  return pad;
+}
 // φ (the rise's tilt off vertical, toward the cap) and the stub's length are
 // NOT constants: both depend on where B stands (the cap's bearing from B sets
 // the rise corner's shaft angle, and the stub's length moves the cap along the
@@ -7747,7 +7969,18 @@ const RSV_SWING_MAX_DEG = 30;
 // without them, the leg carried the rise corner into the star (0.0727 at the
 // pose net), because those solvers judged only the fold's own corners.
 const FOLD_SAT = 2 * CLEAR_MARGIN;
-async function solveReserveSwing(pts) {
+// TODO 280 — THE STATIC HALF, SIFTED ONCE. CAP_SOLVE asks this solve about
+// `staticPts.concat(candidate)` for every candidate bearing, and the static
+// points (what the keyless works already hold, ~56k) are the same every time:
+// re-sifting and re-measuring them at every swing for every candidate was a
+// third of a walked heading's cost. `reserveSwingStatic(staticPts)` sifts them
+// once and memoizes each band's least clearance per swing; `solveReserveSwing(
+// cand, statics)` then reads exactly what `solveReserveSwing(staticPts.concat(
+// cand))` reads — within each band the static points come first in that concat,
+// and a band's least distance folded in with the same strict `<` sets the same
+// clearance and the same member — so the two calls return the same object.
+function reserveSwingStatic(pts) { return { ...siftReserveBands(pts), at: new Map() }; }
+function siftReserveBands(pts) {
   // Each member's z-band is its FACE REACH AS CUT plus one margin — not its
   // nominal half-thickness. w1 is cut 1.0 thick and p1 1.2, and both
   // generators' extrude bevels stand proud of both faces (`gearFaceReach`,
@@ -7769,6 +8002,10 @@ async function solveReserveSwing(pts) {
     if (q[2] >= hubLo && q[2] <= hubHi) inHub.push(q);
     if (q[2] >= p1LoMax && q[2] <= p1HiMax) inP1.push(q);
   }
+  return { w1Reach, p1Z, inW1, inHub, inP1 };
+}
+async function solveReserveSwing(pts, statics = null) {
+  const { w1Reach, p1Z, inW1, inHub, inP1 } = siftReserveBands(pts);
   // TODO 188 — the sift above reads every obstacle point once (~1.9M for the
   // confirmation call, 100–150 ms), so the thread goes back before the scan.
   await breathe(55);
@@ -7788,17 +8025,40 @@ async function solveReserveSwing(pts) {
     const p1TipR = cutTipR(G.makePinion, { module: m1, teeth: rsvTeethP1, mates: [RSV_P1_MATE], thickness: 1.2, boreR: RSV_W1_BORE_R, material: MATS.steel });
     const p1Reach = G.gearFaceReach({ module: m1, thickness: 1.2, pinion: true }).body;
     const p1Lo = p1Z - p1Reach - CLEAR_MARGIN, p1Hi = p1Z + p1Reach + CLEAR_MARGIN;
-    let c = Infinity, member = 'none';
     // A point either of whose plan legs, less the member's reach, stands at
     // or past the clearance so far cannot lower it (a distance is never under
     // its larger leg; LEG_LO takes the leg 1e-12 down, a thousand times what
     // hypot's rounding could), so it is passed over unmeasured: `c` and the
     // member that set it are the same.
     const LEG_LO = 1 - 1e-12;
-    const far = (q, R) => Math.abs(wx - q[0]) * LEG_LO - R >= c || Math.abs(wy - q[1]) * LEG_LO - R >= c;
-    for (const q of inW1) { if (far(q, rsvW1TipR)) continue; const d = Math.hypot(wx - q[0], wy - q[1]) - rsvW1TipR; if (d < c) { c = d; member = 'w1'; } }
-    for (const q of inHub) { if (far(q, w1Reach.hub.r)) continue; const d = Math.hypot(wx - q[0], wy - q[1]) - w1Reach.hub.r; if (d < c) { c = d; member = 'w1 hub'; } }
-    for (const q of inP1) { if (q[2] < p1Lo || q[2] > p1Hi) continue; if (far(q, p1TipR)) continue; const d = Math.hypot(wx - q[0], wy - q[1]) - p1TipR; if (d < c) { c = d; member = 'p1'; } }
+    // one band's least clearance from `c0` down: the one law both the static
+    // memo and the candidate's points are measured by
+    const seg = (arr, R, c0, zBand) => {
+      let m = c0;
+      for (const q of arr) {
+        if (zBand && (q[2] < p1Lo || q[2] > p1Hi)) continue;
+        if (Math.abs(wx - q[0]) * LEG_LO - R >= m || Math.abs(wy - q[1]) * LEG_LO - R >= m) continue;
+        const d = Math.hypot(wx - q[0], wy - q[1]) - R;
+        if (d < m) m = d;
+      }
+      return m;
+    };
+    let st = null;
+    if (statics) {
+      st = statics.at.get(dl);
+      if (!st) {
+        st = { w1: seg(statics.inW1, rsvW1TipR, Infinity), hub: seg(statics.inHub, w1Reach.hub.r, Infinity), p1: seg(statics.inP1, p1TipR, Infinity, true) };
+        statics.at.set(dl, st);
+      }
+    }
+    let c = Infinity, member = 'none';
+    const take = (v, name) => { if (v < c) { c = v; member = name; } };
+    if (st) take(st.w1, 'w1');
+    take(seg(inW1, rsvW1TipR, c), 'w1');
+    if (st) take(st.hub, 'w1 hub');
+    take(seg(inHub, w1Reach.hub.r, c), 'w1 hub');
+    if (st) take(st.p1, 'p1');
+    take(seg(inP1, p1TipR, c, true), 'p1');
     return { c, member };
   };
   let best = { c: -Infinity, member: 'none', swing: 0 };
@@ -8070,7 +8330,11 @@ const ALARM_FLANGE_OUT = 4.05;                  // the carrier flange's rim (hoi
 // ARRANGEMENT (the key the gong seats use: configKey with the case shape, its fit
 // and the seat mode dropped, since a case cuts nothing the link stands on); a
 // spec with no row takes the designed value and the assert says so.
-const ALARM_ARR_KEY = configKey({ spec: { ...SPEC, caseShape: null, formRectSpec: null, gongSeat: null } });
+// (strapMm: null too — the strap width moves no movement metal, so a non-default strap keeps the arrangement's alarm rows, as `hands` does;
+// and arrest: null — §329 landing 2a's ?arrest=trailing only MEASURES a site, so it keeps every row the build without it reads)
+// (frame: null too, §328 — a land stands on the pillar's seat with the pillar's footprint, so the frame moves no metal the
+// link stands on; measured, the round lands build re-derives the default arrangement's 5.2248 inside the link assert's tolerance — it stays silent)
+const ALARM_ARR_KEY = configKey({ spec: { ...SPEC, hands: null, strapMm: null, arrest: null, frame: null, caseShape: null, formRectSpec: null, gongSeat: null } });
 const ALARM_PINB_SEAT_FIXED = Object.freeze({
   'cfg1:{"spec":{"reserveHours":30,"vph":18000},"route":null,"tuned":[]}': 5.2780,   // §278 landing 6: re-quoted to its fixed point — the reclaim moved the dial-hung column against the held arming blade's corner, and hanger 3's jog, moved beside the blade, lengthened the ground's developed path and with it the section and the room (was 5.2650). TODO 240: re-quoted to its fixed point — the re-aimed lever reflects the blade to the nose by its new ratio, and the pin's journal is charged on the same-side reaction (was 5.4263). mN at the pin — the shared equal margin, re-derived and asserted at the link's arming solve (rounded to 0.1 µN). §261 2c: re-quoted to its fixed point — the folded same-side beak reflects the arming blade to the nose by its own lever (was 5.2502)
   'cfg1:{"spec":{"alarmModAzDeg":60,"barrelStepDeg":0,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":6,"vph":18000},"route":null,"tuned":[]}': 5.1837,   // §313: the swung barrel, the reserve at 12 on six idlers, the module at 60°
@@ -8724,9 +8988,13 @@ function stubSolve(phi, moduleFoot) {
     if (!rL.ok) { lo = L; break; }
     hi = L; r = rL;
   }
-  if (lo === null) return hi;
-  while (hi - lo > G.ENVELOPE_DELTA_FINE) { const m = (lo + hi) / 2; if (at(m).ok) hi = m; else lo = m; }
-  return hi;
+  if (lo !== null) while (hi - lo > G.ENVELOPE_DELTA_FINE) { const m = (lo + hi) / 2; if (at(m).ok) hi = m; else lo = m; }
+  // TODO 289 — and no shorter than its bush needs: the foot corner's outboard
+  // web, a margin, the bush, a margin, the cap corner's inboard web (the same
+  // spec the corners are cut from, at this φ's shaft angle and module)
+  const sF = G.bevelToothSpec({ module: moduleFoot, teeth: BEVEL_TEETH, mateTeeth: BEVEL_TEETH,
+    shaftAngleDeg: 90 + phi / DEG2RAD, boreR: MW_RISE_R, mateBoreR: MW_RISE_R, quiet: true });
+  return Math.max(hi, stubBushFor(sF).floor);
 }
 // THE TILT — TODO 185, TODO 157's objective with the motion works in view. A
 // φ is FEASIBLE when the rise corner's blanks clear the foot corner's and the
@@ -8827,6 +9095,196 @@ async function solveCapLeg(B, F) {
   best.gridScores = grid.map((g) => ({ phiDeg: g.phi / DEG2RAD, ok: g.ok, score: g.score }));
   return best;
 }
+// TODO 289 — WHERE THE TAIL'S BEARINGS STAND, solved for a leg geometry `g`
+// (capLegAt's answer for the B being built) before any rod is cut, because
+// the rods' ends depend on it: the rise's pivot passes through E, so the stub
+// starts clear of it; the cap arbor's extension passes through D, so the stub
+// ends clear of it. Every placement is scanned, least first, against what the
+// fold itself puts there — every blank's swept envelope (the certified bound
+// the leg solve reads), the rods as segments, the cap pinion's swept tip, the
+// motion works' two discs and the plate's opening — and the cap-bearing scan
+// then builds the result into every candidate's scratch metal, so the reserve
+// train's own swing solve judges the bearings with the fold they hold.
+// Geometry only: the meshes are cut in buildSettingMetal from this record.
+const segSegDist3 = (p1, q1, p2, q2) => {   // Ericson, Real-Time Collision Detection §5.1.9: the least distance between two segments
+  const d1 = q1.clone().sub(p1), d2 = q2.clone().sub(p2), r = p1.clone().sub(p2);
+  const a = d1.dot(d1), e = d2.dot(d2), f = d2.dot(r);
+  let s, t;
+  if (a <= 1e-12 && e <= 1e-12) return p1.distanceTo(p2);
+  if (a <= 1e-12) { s = 0; t = Math.min(1, Math.max(0, f / e)); }
+  else {
+    const c = d1.dot(r);
+    if (e <= 1e-12) { t = 0; s = Math.min(1, Math.max(0, -c / a)); }
+    else {
+      const b = d1.dot(d2), den = a * e - b * b;
+      s = den !== 0 ? Math.min(1, Math.max(0, (b * f - c * e) / den)) : 0;
+      t = (b * s + f) / e;
+      if (t < 0) { t = 0; s = Math.min(1, Math.max(0, -c / a)); }
+      else if (t > 1) { t = 1; s = Math.min(1, Math.max(0, (b - c) / a)); }
+    }
+  }
+  return p1.clone().addScaledVector(d1, s).distanceTo(p2.clone().addScaledVector(d2, t));
+};
+async function siteTailBearings(B, F, g, cap) {
+  const m = CLEAR_MARGIN;
+  const { t3, d1, E, D, sigmaB, sigmaE, moduleRise, moduleFoot } = g;
+  const phi = g.phi;
+  const spec = (module, sigma, boreR, mateBoreR) => G.bevelToothSpec({ module, teeth: BEVEL_TEETH, mateTeeth: BEVEL_TEETH,
+    shaftAngleDeg: sigma, boreR, mateBoreR, quiet: true });
+  const sRiseOut = spec(moduleRise, sigmaB, MW_RISE_R, MW_LEG2_R), sFoot = spec(moduleFoot, sigmaE, MW_RISE_R, MW_RISE_R), sCap = MW_CAP_CORNER_SPEC;
+  const C = capLegCorners(B, F, g);
+  // every blank of the fold as [envelope, frame] — the three tail corners from the leg's own rows, the drop and
+  // fold corners from the fold (far from the tail, kept so the columns are judged against the whole fold)
+  const blanks = [...C.rise, ...C.foot, ...C.capc].map(([e, f, , name]) => ({ e, f, name }));
+  blanks.push({ e: bevelEnv(90, BEVEL_MODULE, SETTING_ROD_R, MW_LEG1_R), f: { o: vArr(settingA), a: [0, 0, -1] }, name: 'mwCornerDropIn' },
+    { e: bevelEnv(90, BEVEL_MODULE, MW_LEG1_R, SETTING_ROD_R), f: { o: vArr(settingA), a: vArr(F.leg1U) }, name: 'mwCornerDropOut' },
+    { e: bevelEnv(F.shaftAngleDeg, foldModuleFor(F.shaftAngleDeg), MW_LEG1_R, MW_LEG2_R), f: { o: vArr(F.K), a: vArr(F.leg1U.clone().negate()) }, name: 'mwCornerFoldIn' },
+    { e: bevelEnv(F.shaftAngleDeg, foldModuleFor(F.shaftAngleDeg), MW_LEG2_R, MW_LEG1_R), f: { o: vArr(F.K), a: vArr(F.leg2U) }, name: 'mwCornerFoldOut' });
+  const blanksClear = (disc, target) => { for (const b of blanks) if (!G.revolvedBlankDiscClearance(b.e, b.f, disc, target).ok) return b.name; return null; };
+  const capTipR = G.gearOuterR({ module: MW_MODULE_1, teeth: SETTING_CAP_TEETH, thickness: SETTING_CAP_T, mates: [{ teeth: MW_MINUTE_TEETH, mates: MW_MINUTE_MATES }] });
+  // --- the rise's pivot: shouldered to the largest radius the stub's start admits. The stub must reach the foot
+  // corner's outboard web (zWebLo from E) while starting clear of the pivot's cylinder through E, so the pivot is
+  // at most zWebLo·cosφ − (the stub's radius) − margin; the rod's own radius where that is more.
+  // …and no wider than passes the foot corner's outboard blank by the margin: the pivot leaves E at 90° + φ to
+  // that blank's axis, inside its tooth cone's reach (θ_tip 60° at Σ_E 106°), so a journal at the rod's own radius
+  // grazes the teeth (measured 0.065 at 0.382). The largest journal the judge certifies, bisected from the stub's
+  // bound; a pivot under the train pivots' own radius is refused.
+  const pivotDisc = (r) => ({ o: vArr(E), a: vArr(d1), r, zLo: 0, zHi: 2 * sFoot.coneR });
+  // The rise's bearing is BEST EFFORT, never a clause on the cap bearing: an arrangement whose dial band leaves no
+  // room under E (the no-alarm dial stands nearer the plate; ?barrelstep=-140&alarm=0) builds the rise UNBORNE and
+  // warns — that arrangement's point declares the warning as its debt — rather than refusing every B for a bearing
+  // the fold's own clauses never asked about.
+  let riseWhy = null;
+  let risePivotR = Math.min(MW_RISE_R, sFoot.zWebLo * Math.cos(phi) - MW_RISE_R - m);
+  if (blanksClear(pivotDisc(risePivotR), m)) {
+    let hi = risePivotR, lo = TRAIN_PIVOT_R;
+    if (blanksClear(pivotDisc(lo), m)) riseWhy = `no rise pivot down to r ${lo.toFixed(4)} passes ${blanksClear(pivotDisc(lo), m)} by the margin`;
+    else { while (hi - lo > 1e-4) { const mid = (lo + hi) / 2; if (blanksClear(pivotDisc(mid), m)) hi = mid; else lo = mid; } risePivotR = lo; }
+  }
+  if (!riseWhy && !(risePivotR >= TRAIN_PIVOT_R)) riseWhy = `the rise's pivot would be r ${risePivotR.toFixed(4)} to let the stub reach the foot corner's web — under the train pivots' ${TRAIN_PIVOT_R.toFixed(4)}`;
+  // the stub starts clear of the rise's pivot through E and ends clear of the cap arbor's extension through D —
+  // where those exist (an unborne rise ends at E and an unborne arbor starts at D, and the stub meets them at the apex as before)
+  const stubStartFor = (pivotR) => (pivotR + MW_RISE_R + m) / Math.cos(phi);   // along t3 from E
+  const stubEndFor = (ext) => ext ? 2 * MW_RISE_R + m : 0;                     // short of D along t3 (the cap arbor's extension is the rod's own radius)
+  const riseLen = B.distanceTo(E);
+  const riseBore = risePivotR + PIVOT_BORE_CLEAR, riseBushR = riseBore + MW_BUSH_WALL;
+  // the longest bush the dial band leaves under E, less the rule's own demand where the band has that much
+  // (the bush's rim hangs bushR·sinφ below its axis end on a tilted journal, so the band is read at the rim)
+  const riseRoom = (E.z - Z_DIAL - m - riseBushR * Math.sin(phi)) / Math.cos(phi);
+  const riseBushLenAt = (s0) => Math.min(bushLengthFor(risePivotR, [riseLen - bevelLoadZ(sRiseOut) + s0, s0 + bevelLoadZ(sFoot)]), riseRoom - s0);
+  const riseDisc = (s0) => ({ o: vArr(E), a: vArr(d1), r: riseBushR, zLo: s0, zHi: s0 + riseBushLenAt(s0) });
+  // (judged against the stub as it will be cut beside a sited pivot; the cap's end is settled below and only moves the stub's far end)
+  const stubA0 = E.clone().addScaledVector(t3, stubStartFor(risePivotR)), stubB0 = D.clone().addScaledVector(t3, -stubEndFor(true));
+  const riseBushClear = (s0) => riseBushLenAt(s0) > 0 && !blanksClear(riseDisc(s0), m)
+    && segSegDist3(E.clone().addScaledVector(d1, s0), E.clone().addScaledVector(d1, s0 + riseBushLenAt(s0)), stubA0, stubB0) >= riseBushR + MW_RISE_R + m;
+  // --- the cap arbor's bush below D, the arbor's own radius: the stub ends short of the arbor, the cap corner's
+  // inboard blank trails away along the stub, so the scan starts at the apex and walks down
+  const capBore = MW_RISE_R + PIVOT_BORE_CLEAR, capBushR = capBore + MW_BUSH_WALL;
+  const capBushLen = bushLengthFor(MW_RISE_R, []);   // straddled: the blank and the cap sit between this bush and the jewel
+  { const hit = blanksClear({ o: vArr(D), a: [0, 0, -1], r: MW_RISE_R, zLo: 0, zHi: 2 * sCap.coneR }, m);
+    if (hit) console.warn(`TODO 289: the cap arbor's extension below D passes ${hit} under the margin`); }
+  const DOWN = [0, 0, -1];
+  const capDisc = (s0) => ({ o: vArr(D), a: DOWN, r: capBushR, zLo: s0, zHi: s0 + capBushLen });
+  const capBushClear = (s0) => !blanksClear(capDisc(s0), m)
+    && segSegDist3(new THREE.Vector3(D.x, D.y, D.z - s0), new THREE.Vector3(D.x, D.y, D.z - s0 - capBushLen), stubA0, stubB0) >= capBushR + MW_RISE_R + m
+    && D.z - s0 - capBushLen >= Z_DIAL + m;
+  // least s0 that clears: a step of half a margin (a distance moves no faster than the thing measured), then bisected
+  const leastClear = async (clear, lim) => {
+    let s = 0;
+    while (!clear(s)) { s += m / 2; await breathe(381); if (s > lim) return null; }
+    let lo = Math.max(0, s - m / 2), hi = s;
+    if (s > 0) while (hi - lo > 1e-3) { const mid = (lo + hi) / 2; if (clear(mid)) hi = mid; else lo = mid; }
+    return hi;
+  };
+  const riseS0 = riseWhy ? null : await leastClear(riseBushClear, riseRoom);
+  if (riseS0 === null && !riseWhy) riseWhy = 'no station under E clears the rise\'s bush within the dial band';
+  // …and the cap arbor's bush the same: where the dial band leaves no room under D the arbor keeps its jewel alone
+  let capWhy = null;
+  const capS0 = await leastClear(capBushClear, D.z - Z_DIAL);
+  if (capS0 === null) capWhy = 'no station under D clears the cap arbor\'s bush within the dial band';
+  const riseBushLen = riseS0 === null ? 0 : riseBushLenAt(riseS0);
+  const stubStart = stubStartFor(riseWhy ? 0 : risePivotR) * (riseWhy ? 0 : 1), stubEnd = stubEndFor(!capWhy);
+  const stubA = E.clone().addScaledVector(t3, stubStart), stubB = D.clone().addScaledVector(t3, -stubEnd);
+  if (!(stubStart <= sFoot.zWebLo + 1e-9) || !(stubEnd <= sCap.zWebLo + 1e-9))
+    console.warn(`TODO 289: the stub's ends (${stubStart.toFixed(4)} past E, ${stubEnd.toFixed(4)} short of D) do not reach its blanks' webs (${sFoot.zWebLo.toFixed(4)}, ${sCap.zWebLo.toFixed(4)})`);
+  const stubBush = stubBushFor(sFoot);
+  // --- the stub's bush, centred in the run its lengthened stub leaves between its two webs
+  const stubRun = [sFoot.zWebHi + m + stubBush.padF, g.stub - sCap.zWebHi - m - stubBush.padC];
+  if (stubRun[1] - stubRun[0] < stubBush.len - 1e-9)
+    console.warn(`TODO 289: the stub's run between its webs (${(stubRun[1] - stubRun[0]).toFixed(4)}) is under its bush (${stubBush.len.toFixed(4)}) — stubSolve's floor did not hold`);
+  const stubBushMid = (stubRun[0] + stubRun[1]) / 2;
+  {   // rule 6: the stub's bush, placed by the run alone, must still clear every other blank (the rise's blanks lean over the stub's start)
+    const stubBushR = MW_RISE_R + PIVOT_BORE_CLEAR + MW_BUSH_WALL;
+    const hit = blanksClear({ o: vArr(E), a: vArr(t3), r: stubBushR, zLo: stubBushMid - stubBush.len / 2, zHi: stubBushMid + stubBush.len / 2 }, m);
+    if (hit) console.warn(`TODO 289: the stub's bush at ${stubBushMid.toFixed(4)} along the stub stands under the margin off ${hit}`);
+  }
+  // --- the jewel above the cap: sunk one margin under the pocket's floor, so the cap's top keeps the margin it
+  // stands off the floor by whatever the ruler reads of the collar's rim (the rim is flush at floor + margin)
+  const stone = G.jewelStone(MW_CAP_JEWEL_R);
+  const jewelZ = MW_SINK_FLOOR + m + stone.rimTop;   // the setting's origin; turned through π, local z runs DOWN
+  const stoneTopZ = jewelZ - stone.top, stoneBotZ = jewelZ - stone.bottom;   // world: the stone's dial-side face, and its far face
+  const arborTop = new THREE.Vector3(cap.x, cap.y, stoneBotZ);
+  const arborBot = capWhy ? D.clone() : new THREE.Vector3(D.x, D.y, D.z - capS0 - capBushLen);
+  // --- the hangers: each bush's arm leaves it OUTWARD from the motion works' axis (inward is the minute wheel,
+  // which fills the plate's underside), the column rising from the arm to the plate's dial face. The standoff is
+  // the least that clears every blank, the cap's swept tip, the motion works' discs, every rod, the hangers
+  // already placed, and foots the column on plate metal outside the merged pocket-and-bore opening.
+  const nOut = (() => { const n = Z_UP.clone().cross(t3).normalize(); const r = new THREE.Vector2(E.x - MW_WORLD.x, E.y - MW_WORLD.y); return (n.x * r.x + n.y * r.y) >= 0 ? n : n.negate(); })();
+  const colR = MW_HANGER_S * Math.SQRT1_2, colTop = PLATE_BACK + MW_HANGER_SEAT;
+  const rods = [   // every rod of the fold, as it will be cut: [a, b, r]
+    [settingA, new THREE.Vector3(settingA.x, settingA.y, SETTING_SPUR_Z), SETTING_ROD_R], [settingA, F.K, MW_LEG1_R], [F.K, B, MW_LEG2_R],
+    [B, E, MW_RISE_R], ...(riseWhy ? [] : [[E, E.clone().addScaledVector(d1, riseS0 + riseBushLen), risePivotR]]), [stubA, stubB, MW_RISE_R], [arborBot, arborTop, MW_RISE_R]];
+  const pocketR = capTipR + m + plateR * G.PLATE_BEVEL_F + SEAT_LAND_LAP;   // MW_CAP_POCKET's finished radius, its bevel at the face and its floor's lapped collar
+  const boreRB = spec(moduleRise, sigmaB, MW_LEG2_R, MW_RISE_R).coneR + m + plateR * G.PLATE_BEVEL_F;   // MW_RISE_PLATE_HOLE's law, with the slab's bevel at the face
+  const placed = [];
+  const hangerFor = async (what, c, u, bushR, bushLen) => {
+    const zBot = c.z - MW_HANGER_S / 2;
+    const ownRod = (a, b) => segSegDist3(c.clone().addScaledVector(u, -bushLen / 2), c.clone().addScaledVector(u, bushLen / 2), a, b) < 1e-6;   // collinear with the bush: the journal it bears
+    const clearAt = (off) => {
+      const fx = c.x + nOut.x * off, fy = c.y + nOut.y * off;
+      const col0 = new THREE.Vector3(fx, fy, zBot), col1 = new THREE.Vector3(fx, fy, colTop);
+      const colDisc = { o: [fx, fy, zBot], a: [0, 0, 1], r: colR, zLo: 0, zHi: colTop - zBot };
+      const armA = c.clone().addScaledVector(nOut, bushR), armB = new THREE.Vector3(fx, fy, c.z);
+      if (blanksClear(colDisc, m)) return false;
+      const capZ = [Z_SETTING_CAP - SETTING_CAP_REACH, Z_SETTING_CAP + SETTING_CAP_REACH];
+      if (!(colTop < capZ[0] || zBot > capZ[1]) && Math.hypot(fx - cap.x, fy - cap.y) < capTipR + colR + m) return false;
+      for (const d of MW_FOLD_OBSTACLES) if (!(colTop < d.zLo || zBot > d.zHi) && Math.hypot(fx - d.o[0], fy - d.o[1]) < d.r + colR + m) return false;
+      for (const [a, b, r] of rods) {
+        if (segSegDist3(col0, col1, a, b) < r + colR + m) return false;
+        if (!ownRod(a, b) && segSegDist3(armA, armB, a, b) < r + colR + m) return false;   // the arm is welded to the bush round its own journal
+      }
+      for (const p of placed) for (const [a, b, r] of p.segs) if (segSegDist3(col0, col1, a, b) < r + colR + m || segSegDist3(armA, armB, a, b) < r + colR + m) return false;
+      if (Math.hypot(fx - cap.x, fy - cap.y) < pocketR + colR + m || Math.hypot(fx - B.x, fy - B.y) < boreRB + colR + m) return false;
+      return true;
+    };
+    let off = bushR + MW_HANGER_S + MW_HANGER_S / 2;   // the arm at least one section long
+    const lim = off + 12;
+    while (!clearAt(off)) { off += m / 2; await breathe(382); if (off > lim) return null; }
+    { let lo = off - m / 2, hi = off; if (lo >= bushR + MW_HANGER_S * 1.5) while (hi - lo > 1e-3) { const mid = (lo + hi) / 2; if (clearAt(mid)) hi = mid; else lo = mid; } off = hi; }
+    const fx = c.x + nOut.x * off, fy = c.y + nOut.y * off;
+    const h = { what, c, u, bushR, bushLen, off, armLen: off - MW_HANGER_S / 2 - bushR, foot: { x: fx, y: fy }, zBot, colTop,
+      segs: [[c.clone().addScaledVector(u, -bushLen / 2), c.clone().addScaledVector(u, bushLen / 2), bushR],
+        [c.clone().addScaledVector(nOut, bushR), new THREE.Vector3(fx, fy, c.z), colR], [new THREE.Vector3(fx, fy, zBot), new THREE.Vector3(fx, fy, colTop), colR]] };
+    placed.push(h);
+    return h;
+  };
+  const riseC = E.clone().addScaledVector(d1, riseS0 + riseBushLen / 2);
+  const stubC = E.clone().addScaledVector(t3, stubBushMid);
+  const capC = new THREE.Vector3(D.x, D.y, D.z - capS0 - capBushLen / 2);
+  const rise = riseWhy ? null : await hangerFor('rise', riseC, d1, riseBushR, riseBushLen);
+  if (!rise && !riseWhy) riseWhy = 'no hanger standoff outward of the rise\'s bush clears the fold';
+  let stubWhy = null;
+  const stub = await hangerFor('stub', stubC, t3, MW_RISE_R + PIVOT_BORE_CLEAR + MW_BUSH_WALL, stubBush.len);
+  if (!stub) stubWhy = 'no hanger standoff outward of the stub\'s bush clears the fold';
+  const capH = capWhy ? null : await hangerFor('cap', capC, Z_UP, capBushR, capBushLen);
+  if (!capH && !capWhy) capWhy = 'no hanger standoff outward of the cap arbor\'s bush clears the fold';
+  return {
+    nOut, riseWhy, stubWhy, capWhy, risePivotR, riseS0, riseBushLen, riseRoom, riseLen, stubStart, stubEnd, stubA, stubB, stubBush: { ...stubBush, mid: stubBushMid, run: stubRun },
+    capS0, capBushLen, jewelZ, stoneTopZ, stoneBotZ, arborTop, arborBot, capTipR, pocketR,
+    overhang: { rise: riseLen - bevelLoadZ(sRiseOut) + riseS0, stub: Math.max(sFoot.zWebHi + m - bevelLoadZ(sFoot), sCap.zWebHi + m - bevelLoadZ(sCap)) },
+    hangers: { rise, stub, cap: capH },
+  };
+}
 // §234 fold — THE SETTING METAL FROM ITS CAP CORNER, ONE BUILDER. Everything
 // between the minute arbor's corner at A and the cap pinion at B is a
 // function of B alone: the fold (solveSettingFold), the two legs, the rise,
@@ -8862,10 +9320,14 @@ async function buildSettingMetal(B, parent, { candidate = false } = {}) {
   // above): φ, the stub, the cap's site on the wheel's mesh circle and the two
   // new corners' shaft angles and modules. A B it cannot house is refused
   // before any metal is cut, the same shape as the F clauses above.
+  // §325 landing 5's trigger reads this: the three clauses above are the FOLD's
+  // own (does this heading and bearing give a fold at all?); everything after is
+  // whether that fold's cap leg, arbor and reserve clear.
+  const noFold = !!refused;
   const S = refused ? null : await solveCapLeg(B, F);
   if (S && S.refused) refused = S.refused;
   if (refused) {
-    if (candidate) return { F, refused };
+    if (candidate) return { F, refused, noFold };
     console.warn(`§234 fold: the cap corner B the bearing solve settled on has no fold worth building (${refused}) — building it anyway; the battery judges it`);
   }
 
@@ -8879,14 +9341,22 @@ async function buildSettingMetal(B, parent, { candidate = false } = {}) {
   parent.add(leg1, leg2);
   // a refused shipped B still builds (the battery judges it): the leg at the
   // scan's least-tilt ceiling, straight down, with a nominal stub
-  const { capXY, t3, d1, E, D, sigmaB, sigmaE, moduleRise, moduleFoot } = S && !S.refused ? S
-    : capLegAt(B, F, 0, 2 * MW_CAP_ENV.R + CLEAR_MARGIN);
+  const g = S && !S.refused ? S : capLegAt(B, F, 0, 2 * MW_CAP_ENV.R + CLEAR_MARGIN);
+  const { capXY, t3, d1, E, D, sigmaB, sigmaE, moduleRise, moduleFoot } = g;
   const cap = new THREE.Vector3(capXY.x, capXY.y, Z_SETTING_CAP);
+  // TODO 289 — the tail's bearings are SITED before its rods are cut, because the rods' ends follow them: the
+  // rise's shouldered pivot passes through E and the cap arbor's extension through D, so the stub is cut clear of
+  // both. A B whose tail no bearing fits is refused like one whose leg no tilt clears.
+  const T = await siteTailBearings(B, F, g, cap);
+  if (T.refused) {
+    if (candidate) return { F, refused: T.refused, noFold };
+    console.warn(`TODO 289: ${T.refused} — building the tail without them; the battery judges it`);
+  }
   const rise = makeRodSegment(B, E, MW_RISE_R);
   rise.name = 'settingRise';
-  const stub = makeRodSegment(E, D, MW_RISE_R);
+  const stub = T.refused ? makeRodSegment(E, D, MW_RISE_R) : makeRodSegment(T.stubA, T.stubB, MW_RISE_R);
   stub.name = 'settingStub';
-  const capArbor = makeRodSegment(D, cap, MW_RISE_R);
+  const capArbor = T.refused ? makeRodSegment(D, cap, MW_RISE_R) : makeRodSegment(T.arborBot, T.arborTop, MW_RISE_R);
   capArbor.name = 'settingCapArbor';
   parent.add(rise, stub, capArbor);
   // rise → traverse and traverse → drop: two corners, both exactly 90°. The
@@ -8947,8 +9417,54 @@ async function buildSettingMetal(B, parent, { candidate = false } = {}) {
   settingCap.traverse((o) => { if (o.isMesh) o.name = 'settingCap'; });
   settingCap.position.set(cap.x, cap.y, Z_SETTING_CAP);
   parent.add(settingCap);
+  // TODO 289 — THE TAIL'S BEARINGS, cut from the siting record: the rise's shouldered pivot past E and its bush,
+  // the stub's bush between its webs, the cap arbor's bush below D and its jewel above the cap, and a hanger
+  // (arm and column to the plate's dial face) under each bush. Every mesh is named for the inspector's rows.
+  const bearings = {};
+  if (!T.refused) {
+    for (const [k, why] of [['rise', T.riseWhy], ['stub', T.stubWhy], ['cap arbor', T.capWhy]])
+      if (why && !candidate) console.warn(`TODO 289: ${why} — the ${k} runs unborne on this arrangement`);
+    if (!T.riseWhy) {
+      const pivotLen = T.riseS0 + T.riseBushLen;
+      const risePivot = makeRodSegment(E, E.clone().addScaledVector(d1, pivotLen), T.risePivotR);
+      risePivot.name = 'settingRisePivot';
+      parent.add(risePivot);
+      bearings.risePivot = risePivot;
+    }
+    for (const [key, h, bore] of [['rise', T.hangers.rise, T.risePivotR + PIVOT_BORE_CLEAR], ['stub', T.hangers.stub, MW_RISE_R + PIVOT_BORE_CLEAR], ['cap', T.hangers.cap, MW_RISE_R + PIVOT_BORE_CLEAR]].filter(([, h]) => h)) {
+      const tag = key === 'cap' ? 'settingCap' : key === 'stub' ? 'settingStub' : 'settingRise';
+      const bush = new THREE.Mesh(ringGeo(bore, h.bushR, h.bushLen), MATS.nickel);
+      bush.name = `${tag}Bush`;
+      bush.position.copy(h.c);
+      bush.quaternion.setFromUnitVectors(Z_UP, h.u);   // ringGeo stands along z; the bush along its journal
+      // the arm: a bar along nOut from the bush's cylinder to the column's inner face, one section square in the
+      // (t3, z) frame — square to the column, so a tilted journal still meets a flat weld face
+      const armFrame = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(T.nOut, Z_UP.clone().cross(T.nOut), Z_UP));
+      // lapped into the bush by its 40-gon's flat sag (RING_GEO_SEG), so the weld is metal on metal and not a
+      // hairline over a flat: the arm's inner face sits at the polygon's flat, where the metal is
+      const sag = h.bushR * (1 - Math.cos(Math.PI / RING_GEO_SEG));
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(h.armLen + sag, MW_HANGER_S, MW_HANGER_S), MATS.nickel);
+      arm.name = `${tag}Arm`;
+      arm.position.copy(h.c).addScaledVector(T.nOut, h.bushR - sag + (h.armLen + sag) / 2);
+      arm.quaternion.copy(armFrame);
+      const col = new THREE.Mesh(new THREE.BoxGeometry(MW_HANGER_S, MW_HANGER_S, h.colTop - h.zBot), MATS.nickel);
+      col.name = `${tag}Column`;
+      col.position.set(h.foot.x, h.foot.y, (h.zBot + h.colTop) / 2);
+      col.quaternion.copy(armFrame);
+      parent.add(bush, arm, col);
+      bearings[key] = { bush, arm, col };
+    }
+    // the jewel: the dial-side setting, turned through π like addDialSidePivot's, its hole the arbor's running
+    // fit, sunk a margin under the cap pocket's floor (siteTailBearings' jewelZ)
+    const jewel = G.makeJewelSetting({ r: MW_CAP_JEWEL_R, holeR: MW_RISE_R + PIVOT_BORE_CLEAR });
+    jewel.rotation.x = Math.PI;
+    jewel.position.set(cap.x, cap.y, T.jewelZ);
+    jewel.traverse((o) => { if (o.isMesh) o.name = 'settingCapJewel'; });
+    parent.add(jewel);
+    bearings.jewel = jewel;
+  }
   return { F, module, leg1, leg2, rise, stub, capArbor, cornerDrop, cornerFold, cornerRise, cornerFoot, cornerCap, settingCap, capXY,
-    leg: S && !S.refused ? S : null, E, D };
+    leg: S && !S.refused ? S : null, E, D, tail: T, bearings };
 }
 // TODO 157 — B STAYS FIRST-FEASIBLE, on purpose, and here is why. The bearing
 // is the route choice with the widest cascade (the fold, the plate's recesses,
@@ -8960,6 +9476,62 @@ async function buildSettingMetal(B, parent, { candidate = false } = {}) {
 // (6°) and at most 0.2017 for the other eight — first-feasible IS the argmax
 // today (all ten open bearings, measured while planning TODO 157 by
 // rewriting this scan to run past its first open bearing).
+// §325 / §329 — TWO WHEELS THE FOLD COULD NOT SEE. CAP_SOLVE below judges each candidate fold against the transfer
+// arbor and the reserve's own swing, but two wheels it can land on are built thousands of lines AFTER it: the HOUR WHEEL
+// (dial side, under the motion works) and the reserve's INPUT PINION (fast on the barrel's arbor; the swing solve moves the
+// wheels round it and never reads it). On the default arrangement the fold happens to land clear of both. On the −140°
+// no-alarm arrangement the barrel stands beside the keyless works and the battery measured the fold ON both: the corner
+// cap 0.04 into the hour wheel, the setting traverse 0.02 into the input pinion (stopwork-140's sweep, #880/#881).
+// So the judge reads each as an ENVELOPE — the metal's own tip radius and z extent, MEASURED off the builder with the
+// exact arguments its build uses (cutTipR's rule: "the wall is MEASURED, not modelled"), placed by the same frame law
+// the build places it by. The arguments are one object each, used by the build below as well, so the two cannot part;
+// and each build asserts the envelope it was judged by against its own metal once it exists.
+const MW_HOUR_WHEEL_ARGS = { name: 'mwHourWheel', module: MW_MODULE_2, teeth: MW_HOUR_TEETH, mates: [MW_PINION_TEETH],
+  thickness: MW_WHEEL_T, boreR: HOUR_TUBE_OUTER, spokes: 4, material: MATS.brass, hub: false };   // TODO 144: solved at the stack
+const RSV_P0_ARGS = { name: 'reservePinion0', module: rsvModule0, teeth: rsvTeethP0, mates: [rsvTeethW1], thickness: 1.2,
+  boreR: RSV_ARB_EXT_R, material: MATS.steel };
+function cutEnvelope(builder, args) {   // the part's metal in its own frame: farthest radius from its axis, and its z extent
+  const g = builder(args);
+  g.updateMatrixWorld(true);   // an unparented root: world IS the part's own frame
+  let r = 0, zLo = Infinity, zHi = -Infinity;
+  const v = new THREE.Vector3();
+  g.traverse((o) => { if (!o.isMesh) return; const pos = o.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld); r = Math.max(r, Math.hypot(v.x, v.y)); zLo = Math.min(zLo, v.z); zHi = Math.max(zHi, v.z); }
+    o.geometry.dispose(); });
+  return { r, zLo, zHi };
+}
+// world envelopes. The hour wheel rides dialFace at MW_Z2: dial-local (x, y, z) is world (P.dial.x − x, P.dial.y + y,
+// Z_DIAL − z) (the frame turned 180° about Y under dialGroup at Z_DIAL), so its axis is the dial centre and its band flips.
+// The input pinion is fast on rsvArbor0 at (P.barrel, Z_RSV).
+const FOLD_WHEEL_ENVELOPES = (() => {
+  const h = cutEnvelope(G.makeGear, MW_HOUR_WHEEL_ARGS), p0 = cutEnvelope(G.makePinion, RSV_P0_ARGS);
+  return [
+    { name: 'hour wheel', x: P.dial.x, y: P.dial.y, r: h.r, zLo: Z_DIAL - (MW_Z2 + h.zHi), zHi: Z_DIAL - (MW_Z2 + h.zLo) },
+    { name: 'reserve input pinion', x: P.barrel.x, y: P.barrel.y, r: p0.r, zLo: Z_RSV + p0.zLo, zHi: Z_RSV + p0.zHi },
+  ];
+})();
+// rule 6 — the envelope the fold was judged by must BE the wheel's metal once it exists (its radius about the axis the
+// judge used and its z band in the world; neither moves as the wheel turns, so this is a derivation, not a pose claim)
+const assertFoldEnvelope = (name, root) => {
+  const e = FOLD_WHEEL_ENVELOPES.find((q) => q.name === name);
+  let r = 0, zLo = Infinity, zHi = -Infinity;
+  const v = new THREE.Vector3();
+  root.traverse((o) => { if (!o.isMesh) return; o.updateWorldMatrix(true, false); const pos = o.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld); r = Math.max(r, Math.hypot(v.x - e.x, v.y - e.y)); zLo = Math.min(zLo, v.z); zHi = Math.max(zHi, v.z); } });
+  const off = Math.max(Math.abs(r - e.r), Math.abs(zLo - e.zLo), Math.abs(zHi - e.zHi));
+  if (!(off < 1e-6))
+    console.warn(`setting traverse: the ${name}'s envelope the fold was judged by misses its metal by ${off.toExponential(2)} (r ${r.toFixed(4)} vs ${e.r.toFixed(4)}, z ${zLo.toFixed(4)}..${zHi.toFixed(4)} vs ${e.zLo.toFixed(4)}..${e.zHi.toFixed(4)})`);
+};
+const foldWheelClear = (pts) => {   // the worst 3D clearance of a candidate's points to either envelope, less the margin
+  let m = Infinity, by = null;
+  for (const e of FOLD_WHEEL_ENVELOPES) for (const q of pts) {
+    const dz = q[2] < e.zLo ? e.zLo - q[2] : q[2] > e.zHi ? q[2] - e.zHi : 0;
+    const dr = Math.max(0, Math.hypot(q[0] - e.x, q[1] - e.y) - e.r);
+    const c = Math.hypot(dr, dz) - CLEAR_MARGIN;
+    if (c < m) { m = c; by = e.name; }
+  }
+  return { m, by };
+};
 const CAP_SOLVE = await (async () => {
   const capAt = (dl) => {
     const cs = Math.cos(dl), sn = Math.sin(dl);
@@ -8997,6 +9569,7 @@ const CAP_SOLVE = await (async () => {
     zHi: transferArbor.position.z + transferArbor.geometry.parameters.height / 2 };
   await breathe(76);
   const staticPts = await reserveObstaclePoints(keyless);   // what the keyless works hold before the traverse — the reserve reads these too (no mwCorner* here yet, so this is meshPoints)
+  const rsvStatic = reserveSwingStatic(staticPts);   // TODO 280: the static half sifted once and memoized per swing — the same answer as staticPts.concat(…), see reserveSwingStatic
   const disposeTree = (g) => g.traverse((o) => { if (o.isMesh) o.geometry.dispose(); });
   const arbClear = (pts) => {
     let m = Infinity;
@@ -9007,10 +9580,12 @@ const CAP_SOLVE = await (async () => {
     }
     return m;
   };
+  let foldsSeen = 0;   // candidates past the fold's own clauses (buildSettingMetal's noFold) — the walk's trigger below
   // returns the worst clause margin at the best swing (≥ 0 = open), with the clause named
   const window = async (dl) => {
     const scratch = new THREE.Group();
     const M = await buildSettingMetal(capAt(dl), scratch, { candidate: true });
+    if (!M.noFold) foldsSeen++;
     if (M.refused) return { m: -Infinity, clause: M.refused, s: 0 };
     // TODO 162 — PREFILTER ON PHASE 0, EXACT NOT APPROXIMATE. The multi-phase
     // accept test below requires the candidate clear EVERY phase the corners
@@ -9030,7 +9605,9 @@ const CAP_SOLVE = await (async () => {
     await breathe(77);
     const arbM0 = arbClear(cand0);
     if (arbM0 < 0) { disposeTree(scratch); return { m: arbM0, clause: 'transfer arbor', s: 0 }; }
-    const r0 = await solveReserveSwing(staticPts.concat(cand0));
+    const wh0 = foldWheelClear(cand0);
+    if (wh0.m < 0) { disposeTree(scratch); return { m: wh0.m, clause: wh0.by, s: 0 }; }
+    const r0 = await solveReserveSwing(cand0, rsvStatic);
     if (r0.swing === null) { disposeTree(scratch); return { m: r0.bestC - CLEAR_MARGIN, clause: `reserve ${r0.bestMember}`, s: r0.bestSwing / DEG2RAD }; }
     // Phase 0 clears — only NOW pay for the full multi-phase judgement.
     const cand = await reserveObstaclePoints(scratch);
@@ -9039,9 +9616,11 @@ const CAP_SOLVE = await (async () => {
     const arbM = arbClear(cand);
     await breathe(79);
     if (arbM < 0) return { m: arbM, clause: 'transfer arbor', s: 0 };
-    const r = await solveReserveSwing(staticPts.concat(cand));
+    const wh = foldWheelClear(cand);
+    if (wh.m < 0) return { m: wh.m, clause: wh.by, s: 0 };
+    const r = await solveReserveSwing(cand, rsvStatic);
     if (r.swing === null) return { m: r.bestC - CLEAR_MARGIN, clause: `reserve ${r.bestMember}`, s: r.bestSwing / DEG2RAD };
-    return { m: Math.min(arbM, r.clear - CLEAR_MARGIN), clause: 'open', s: r.swing / DEG2RAD, swing: r.swing };
+    return { m: Math.min(arbM, wh.m, r.clear - CLEAR_MARGIN), clause: 'open', s: r.swing / DEG2RAD, swing: r.swing };
   };
   // every bearing tried is RECORDED (the clause, its margin, the best swing)
   // and published on window.__clock.settingFold for
@@ -9066,11 +9645,17 @@ const CAP_SOLVE = await (async () => {
     return { nearest };
   };
   let found = await searchBearings();
-  // §325 landing 5 — the held heading opened nothing: walk leg 1's heading out from it, nearest first, a degree at a
+  // §325 landing 5 — the held heading opened NO FOLD: walk leg 1's heading out from it, nearest first, a degree at a
   // time to a quarter turn either way (MW_FOLD_LEG1_HEADING_USED_DEG above), each heading's whole bearing scan the one
   // above. The identity train opens at the held heading and never comes here.
-  const heldNearest = found.nearest;
-  for (let k = 1; !found.open && k <= 90; k++)
+  // The trigger is the record's own rule ("held where it opens a fold"): the walk exists for a train swung round its
+  // barrel, where every bearing's rays fail to meet at the held heading (measured: −60°, −120°, −140° and ?d4=16, 0 of
+  // 161 bearings past the fold's clauses). Where the held heading DOES give folds and they are refused on the cap leg,
+  // the arbor or the reserve, the heading is not what refuses them, and walking it bought nothing: measured on
+  // ?barrelstep=-20, ?rsvr=20, ?rsvr=30 and ?reserveh=48&rsvr=27 (73 of 161 past them), every one of 180 headings stayed
+  // shut and the scan cost 93 s of boot, past the battery's 120 s on the hosted runner (TODO 280, which also holds ?d4=16, the walk that still runs long).
+  const heldNearest = found.nearest, heldOpensFold = foldsSeen > 0, heldScan = scan.slice();
+  for (let k = 1; !found.open && !heldOpensFold && k <= 90; k++)
     for (const sgn of [1, -1]) {
       MW_FOLD_LEG1_HEADING_USED_DEG = MW_FOLD_LEG1_HEADING_W_DEG + sgn * k;
       scan.length = 0;
@@ -9079,6 +9664,7 @@ const CAP_SOLVE = await (async () => {
     }
   if (found.open) return found.open;
   MW_FOLD_LEG1_HEADING_USED_DEG = MW_FOLD_LEG1_HEADING_W_DEG;
+  scan.length = 0; scan.push(...heldScan);   // the published scan is the held heading's, the one `nearest` was read off
   const nearest = heldNearest;
   console.warn(`setting traverse: no cap bearing within ±60° leaves the reserve a swing that clears the fold, this corner, the cap and the transfer arbor `
     + `at once — keeping the short way in; the battery judges it. Nearest: ${nearest.d > 0 ? '+' : ''}${nearest.d}° at swing ${nearest.s}°, ${nearest.clause} ${nearest.m.toFixed(3)}`);
@@ -9423,6 +10009,43 @@ registerSub('Keyless works', 'Setting traverse', SETTING_METAL.leg2);
 // leg and the two segments that carry it the rest of the way to the cap).
 registerSub('Keyless works', 'Setting rise', SETTING_METAL.stub);
 registerSub('Keyless works', 'Setting rise', SETTING_METAL.capArbor);
+// TODO 289 — the tail's bearings: the rise's shouldered pivot is the rise's
+// (one body), the three bushes with their hangers and the cap's jewel are
+// 'Setting bearings', so a hover names what holds the rod rather than the rod.
+if (SETTING_METAL.bearings.jewel) {
+  const borne = ['rise', 'stub', 'cap'].filter((k) => SETTING_METAL.bearings[k]);   // the rise's is best effort (siteTailBearings: riseWhy)
+  if (SETTING_METAL.bearings.risePivot) registerSub('Keyless works', 'Setting rise', SETTING_METAL.bearings.risePivot);
+  for (const k of borne) for (const part of ['bush', 'arm', 'col']) registerSub('Keyless works', 'Setting bearings', SETTING_METAL.bearings[k][part]);
+  registerSub('Keyless works', 'Setting bearings', SETTING_METAL.bearings.jewel);
+  // §54 — the rods DECLARE where they are held (userData.bearings, geometry-local along the cylinder's own y,
+  // measured from each mesh's centre): the rise's pivot at its bush, the stub at its bush, the cap arbor at its
+  // bush and at the stone. The two traverses declare nothing: nothing holds them (TODO 289's residue).
+  const T = SETTING_METAL.tail, E = SETTING_METAL.E, D = SETTING_METAL.D;
+  const alongY = (mesh, p) => {   // where world point p falls along the mesh's own y, from its centre (the rod's quaternion maps +y to its direction)
+    const u = new THREE.Vector3(0, 1, 0).applyQuaternion(mesh.quaternion);
+    return p.clone().sub(mesh.position).dot(u);
+  };
+  if (SETTING_METAL.bearings.risePivot) SETTING_METAL.bearings.risePivot.userData.bearings = { axis: 'y', stations: [alongY(SETTING_METAL.bearings.risePivot, T.hangers.rise.c)] };
+  if (T.hangers.stub) SETTING_METAL.stub.userData.bearings = { axis: 'y', stations: [alongY(SETTING_METAL.stub, T.hangers.stub.c)] };
+  SETTING_METAL.capArbor.userData.bearings = { axis: 'y', stations: [...(T.hangers.cap ? [alongY(SETTING_METAL.capArbor, T.hangers.cap.c)] : []),
+    alongY(SETTING_METAL.capArbor, new THREE.Vector3(SETTING_CAP_XY.x, SETTING_CAP_XY.y, (T.stoneTopZ + T.stoneBotZ) / 2))].sort((a, b) => a - b) };
+  // rule 6 — the derivations, re-read off the cut metal: each bush's bore is its journal plus the one running fit,
+  // each bush as long as its law says, the rise's pivot inside the dial band by the margin, the arm one section
+  // long at least, and the column's foot inside the plate's slab by the seat (the plate itself is cut far below;
+  // plateSeats holds the foot ON plate metal over the pose net)
+  for (const [k, journalR, want] of [['rise', T.risePivotR, T.riseBushLen], ['stub', MW_RISE_R, T.stubBush.len], ['cap', MW_RISE_R, T.capBushLen]].filter(([k]) => borne.includes(k))) {
+    const b = SETTING_METAL.bearings[k].bush, pr = b.geometry.parameters, h = T.hangers[k];
+    const bore = Math.min(...pr.points.map((q) => q.x)), outer = Math.max(...pr.points.map((q) => q.x)), len = Math.max(...pr.points.map((q) => q.y)) - Math.min(...pr.points.map((q) => q.y));
+    if (Math.abs(bore - (journalR + PIVOT_BORE_CLEAR)) > 1e-9 || Math.abs(outer - bore - MW_BUSH_WALL) > 1e-9 || Math.abs(len - want) > 1e-9)
+      console.warn(`TODO 289: the ${k} bush is cut bore ${bore.toFixed(4)} / wall ${(outer - bore).toFixed(4)} / length ${len.toFixed(4)} against its law ${(journalR + PIVOT_BORE_CLEAR).toFixed(4)} / ${MW_BUSH_WALL.toFixed(4)} / ${want.toFixed(4)}`);
+    if (!(h.armLen >= MW_HANGER_S - 1e-9)) console.warn(`TODO 289: the ${k} hanger's arm is ${h.armLen.toFixed(4)} long, under its own section ${MW_HANGER_S.toFixed(4)}`);
+    if (Math.abs(h.colTop - (PLATE_BACK + MW_HANGER_SEAT)) > 1e-9) console.warn(`TODO 289: the ${k} hanger's column tops at ${h.colTop.toFixed(4)}, not the seat ${(PLATE_BACK + MW_HANGER_SEAT).toFixed(4)}`);
+  }
+  if (T.riseS0 !== null && !(E.z - (T.riseS0 + T.riseBushLen) * Math.cos(SETTING_METAL.leg?.phi ?? 0) >= Z_DIAL + CLEAR_MARGIN - 1e-9))
+    console.warn(`TODO 289: the rise's pivot ends ${(E.z - (T.riseS0 + T.riseBushLen) * Math.cos(SETTING_METAL.leg?.phi ?? 0)).toFixed(4)}, inside the dial's margin at ${(Z_DIAL + CLEAR_MARGIN).toFixed(4)}`);
+  if (!(T.jewelZ - G.jewelStone(MW_CAP_JEWEL_R).rimTop - (Z_SETTING_CAP + SETTING_CAP_REACH) >= CLEAR_MARGIN - 1e-9))
+    console.warn(`TODO 289: the cap's jewel rim stands ${(T.jewelZ - G.jewelStone(MW_CAP_JEWEL_R).rimTop - (Z_SETTING_CAP + SETTING_CAP_REACH)).toFixed(4)} over the cap's top — under the margin`);
+}
 
 // ---------------------------------------------------------------------------
 // Setting-lever linkage — the visible actuation chain behind the crown pull.
@@ -10918,9 +11541,15 @@ await breathe(90);
 // leave a 0.2148 land, under STOCK_MIN_U, and their drawn rings overlap.
 const MW_CANNON_POCKET = { x: P.dial.x, y: P.dial.y, depth: MW_PLATE_SINK, lap: SEAT_LAND_LAP,
   r: G.gearOuterR({ module: MW_MODULE_1, teeth: cannonPinionTeeth, thickness: 1e3, mates: [{ teeth: MW_MINUTE_TEETH, mates: MW_MINUTE_MATES }] }) + CLEAR_MARGIN };
-const MW_CAP_POCKET = { x: SETTING_CAP_XY.x, y: SETTING_CAP_XY.y, depth: MW_PLATE_SINK, lap: SEAT_LAND_LAP,
-  r: G.gearOuterR({ module: MW_MODULE_1, teeth: SETTING_CAP_TEETH, thickness: 1e3, mates: [{ teeth: MW_MINUTE_TEETH, mates: MW_MINUTE_MATES }] }) + CLEAR_MARGIN,
-  through: MW_RISE_PLATE_HOLE };
+const MW_CAP_POCKET_R = G.gearOuterR({ module: MW_MODULE_1, teeth: SETTING_CAP_TEETH, thickness: 1e3, mates: [{ teeth: MW_MINUTE_TEETH, mates: MW_MINUTE_MATES }] }) + CLEAR_MARGIN;
+// TODO 289 — the rise corner's bore joins the cap's pocket as ONE opening only where the two overlap (TODO 172's
+// case, a 0.2148 land): the stub lengthened for its bush carries the cap along the mesh circle, and where the bore's
+// disc stands clear of the pocket's floor collar (the builder's own crescent condition, r + bevel + lap) it is cut
+// as its own hole, with §62's land rule between them.
+const MW_CAP_BORE_MERGED = Math.hypot(settingB.x - SETTING_CAP_XY.x, settingB.y - SETTING_CAP_XY.y)
+  < MW_CAP_POCKET_R + plateR * G.PLATE_BEVEL_F + SEAT_LAND_LAP + MW_RISE_PLATE_HOLE.r;
+const MW_CAP_POCKET = { x: SETTING_CAP_XY.x, y: SETTING_CAP_XY.y, depth: MW_PLATE_SINK, lap: SEAT_LAND_LAP, r: MW_CAP_POCKET_R,
+  ...(MW_CAP_BORE_MERGED ? { through: MW_RISE_PLATE_HOLE } : {}) };
 // TODO 184 — the cut's arguments are ONE object, so the late re-cut below
 // (recutBackPlate) cuts the same plate with its late openings added rather
 // than restating this list.
@@ -10940,7 +11569,8 @@ const BACK_PLATE_CUT = {
     ...BACK_PLATE_HOLES,
     MW_FOLD_PLATE_HOLE,   // §234 fold — the third motion-works corner's blanks, A's precedent
     MW_DROP_PLATE_HOLE,   // TODO 150 item 1 — the drop corner's own recess at A, same precedent
-    // (MW_RISE_PLATE_HOLE is cut with the cap's pocket — MW_CAP_POCKET.through)
+    // (MW_RISE_PLATE_HOLE is cut with the cap's pocket — MW_CAP_POCKET.through — where the two overlap; TODO 289)
+    ...(MW_CAP_BORE_MERGED ? [] : [MW_RISE_PLATE_HOLE]),
     // §307 landing 2 — NOT under FORM: these bores pass the §186 clamp
     // screws through the round RIM, and the form plate has no rim (the outline
     // replaces it) and the form case builds no clamps (form-case.js) — a
@@ -11598,21 +12228,22 @@ const drumRotAt = (t) => MOVEMENT_SENSE * (SPRING_WIND_FULL - springWindAt(t));
 // spring's inner radius and its section both derive from this number now
 // (previously the spring took `radius · 0.16` and the two disagreed by 0.036,
 // which is how the ribbon came to be buried in the collar it sits on).
-// The 1.5 itself is carried forward unchanged from the as-built seat — a
-// 0.6-thick boss pressed on the drum arbor's 0.9 — so this change moves no
-// geometry it did not have to. It is the one dimension here that is inherited
-// rather than derived; deriving it is a spring-proportion question (arbor core
-// against barrel bore), and it belongs to TODO 32's torque work, where the
-// ribbon's length and section stop being free.
-const MS_COLLAR_R = 1.5;
+// TODO 291 — and the collar is SOLVED now, not inherited. Its 1.5 was carried
+// forward from the as-built seat (a 0.6-thick boss pressed on the drum arbor's
+// 0.9), and on it the solved strip stood at r/e 3.41, three times past the
+// trade's floor (layout.js, MAINSPRING_ALPHA_BAND). The ribbon solve now takes
+// the packing rule beside the stress and the half fill, and returns the collar
+// that stores the most energy under all three (makeBarrel, `ribbonSolve`). This
+// is its FLOOR: the boss on the arbor's working section, which is what the 1.5
+// stood for: the arbor's working section (barrelArborR, 0.964, which the 1.5
+// rounded to 0.9) plus the boss's 0.6 wall, so the collar can grow from here and
+// is never cut thinner than the seat it is.
+const MS_COLLAR_MIN = G.barrelArborR(DRUM_R_ACTUAL) + 0.6;
 // Drum direction: perpendicular-to-stem, blended outward (away from the
 // plate centre) so the chain's span stays clear of the train — the pure
 // perpendicular placement let the span cross the third wheel as the active
 // fusee radius grew (inspector finding).
-const drumDirRawX = -sideSign * vPerp.x + uWind.x * 0.45;
-const drumDirRawY = -sideSign * vPerp.y + uWind.y * 0.45;
-const drumDirL = Math.hypot(drumDirRawX, drumDirRawY) || 1;
-const drumDir = { x: drumDirRawX / drumDirL, y: drumDirRawY / drumDirL };
+const drumDir = drumDirOf(uWind, vPerp, sideSign, SPEC.drumAzDeg);   // §327: layout.js' law, shared with the form rectangle's reach to the drum; §75: ?drumaz= overrides the blend
 const drumPos = {
   // FUSEE_DRUM_DIST is declared with the torque law: the span-aware solve
   // consumes the centre distance before this block runs, and one constant
@@ -11637,7 +12268,9 @@ const drumPos = {
   const reach = (R) => Math.hypot(P.barrel.x + drumDir.x * (D0 + R), P.barrel.y + drumDir.y * (D0 + R)) + R + 2 * CHAIN_END_R_OUT + CLEAR_MARGIN;
   let lo = 0, hi = plateR;
   for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (reach(m) <= plateR) lo = m; else hi = m; }
-  if (!(DRUM_R_ACTUAL <= lo + 1e-9 && lo - DRUM_R_ACTUAL < 0.01))
+  // §75 step 1 — the drum's SIZE was solved along the default direction. A moved drum (?drumaz=) keeps that size, so there
+  // only the fit is held (its chain coil one CLEAR_MARGIN inside the plate); "as large as the plate allows" is the default's claim.
+  if (SPEC.drumAzDeg !== null ? !(DRUM_R_ACTUAL <= lo + 1e-9) : !(DRUM_R_ACTUAL <= lo + 1e-9 && lo - DRUM_R_ACTUAL < 0.01))
     console.warn(`TODO 207: DRUM_R_ACTUAL ${DRUM_R_ACTUAL} is not the plate's bound rounded down — the drum's chain coil may reach ${lo.toFixed(4)} (one CLEAR_MARGIN inside plateR ${plateR.toFixed(3)})`);
 }
 // Drum seat: LIFTED above the great wheel's plane. At the compact 2.5-unit
@@ -11669,20 +12302,32 @@ const barrel = G.makeBarrel({ name: 'barrel',
   // from A_free + SETUP_SWEEP (run down, ratchet still holding 23 clicks)
   // to A_free + SETUP_SWEEP + DRUM_ROT_FULL (full wind). The free coil
   // itself is a bench state, reachable only by letting the set-up down.
-  springArborR: MS_COLLAR_R, springWindSweep: DRUM_ROT_FULL,
+  springArborR: MS_COLLAR_MIN, springWindSweep: DRUM_ROT_FULL,
   springSetupSweep: SETUP_SWEEP,
   // TODO 192 step 3 — the ribbon PROPORTIONED to its alloy and its drum: the
   // half-thickness that puts the full wind on MAINSPRING_SIGMA_Y_PA, and the
   // most coils of it the barrel holds at half fill (makeBarrel's ribbonSolve).
-  ribbonSolve: { sigmaOverE: MAINSPRING_SIGMA_Y_PA / MAINSPRING_E_PA },
+  // TODO 291 — and the PACKING: the strip no thicker than the collar's radius over MAINSPRING_ALPHA_MIN, the collar solved.
+  ribbonSolve: { sigmaOverE: MAINSPRING_SIGMA_Y_PA / MAINSPRING_E_PA, alphaMin: MAINSPRING_ALPHA_MIN },
 });
 await breathe(101);
 const mainspring = barrel.getObjectByName('spring').userData.mainspring;
+const MS_COLLAR_R = mainspring.collarR;   // TODO 291 — the solve's collar (the set-up work cuts it and its hook below)
 // TODO 193 — THE GOING RIBBON'S k, named once. k = E·I/L of the ribbon AS CUT
 // (a strip since TODO 193) at its own alloy's modulus; EQUALISATION quotes this
 // rather than re-deriving it, so the pivots sized below and the record priced
 // later read one number.
 const ribbonK = (sp, E) => E * (sp.section.I_u4 * OSC_U ** 4) / (sp.devLen * OSC_U); // N·m/rad
+// TODO 291 — A RIBBON'S PACKING, read off its own record: the strip's thickness e = 2a, the collar it is wound on
+// (the innermost coil's inner face, innerR − a), α = r/e against MAINSPRING_ALPHA_BAND, r over the spring's outer
+// radius (SJX's ¼–⅓, a report: it describes springs designed for many developing turns, and this one develops 1.6),
+// the half-fill, and, for a solved ribbon, which constraint bound its collar.
+const ribbonPacking = (sp) => {
+  const e = 2 * sp.ribbonR, r = sp.innerR - sp.ribbonR;
+  return { thicknessU: e, collarR: r, alpha: r / e, limit: MAINSPRING_ALPHA_MIN, band: MAINSPRING_ALPHA_BAND,
+    rOverOuter: r / sp.outerR, fill: (e * sp.devLen) / (Math.PI * (sp.outerR ** 2 - r ** 2)), coils: sp.coils,
+    solved: !!sp.solve, binds: sp.solve?.binds ?? null };
+};
 const GOING_K = ribbonK(mainspring, MAINSPRING_E_PA);
 // The train's stages, the ONE list the pivots' loads and the energy column's
 // losses both walk: pinion in, wheel out, tooth counts.
@@ -13441,6 +14086,7 @@ let MAINT_BLADE = null;        // TODO 224: the blade's posed frames, built with
 // barrelMeshAngle's real run against the cut and measures which flank the beak
 // climbs.
 const MAINT_RING_RUN = MOVEMENT_SENSE;
+let MAINT_TIP_OVERHANG = null;   // TODO 291/293 — set when the blade's tip is trimmed to clear the hub land at the stop: how far its face runs past the contact
 let MAINT_RING_POLY = null;   // the ring's cut outline, ring-local — the detent rides THIS, not sawRadiusAt
 {
   const ring = G.makeRatchetAndClick({ radius: MAINT_RING_R, teeth: MAINT_RING_TEETH, thickness: MAINT_RING_T, includeClick: false,
@@ -13469,6 +14115,7 @@ let MAINT_RING_POLY = null;   // the ring's cut outline, ring-local — the dete
     if (MAINT_FLANGE_TOP - CLEAR_MARGIN < MAINT_FLANGE_BOT + MAINT_FLANGE_T * 0.1 + CHAIN_PLATE_T)
       console.warn('maintaining wheel: the pawl stud, stopped a margin under the cone, would no longer reach into the pawl');
     const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, studH, 8), MATS.blueSteel);
+    stud.name = 'maintPawlStud';   // §329: named — INTRA_UNIT_CONTACTS read it by index (#15, #17), which the stop-work's pin shifted
     stud.rotation.x = Math.PI / 2;
     stud.position.set(MAINT_PAWL_PIV, 0, MAINT_RING_TOP + studH / 2 - L_BARREL);
     az.add(stud);
@@ -13484,17 +14131,22 @@ let MAINT_RING_POLY = null;   // the ring's cut outline, ring-local — the dete
   // stands WHILE THE WATCH RUNS, deflected by the working torque: free, its tip
   // would stand MAINT_SPRING.deflWork_u further toward the stop.
   const M = MAINT_SPRING, gm = M.geom;
-  const outline = [[gm.xTip, gm.yB], [gm.xRoot, gm.yB], [gm.xRoot, M.bevel], [gm.xFootOut, M.bevel], [gm.xFootOut, gm.yB + M.t]];
-  const NT = 32;                                        // the taper, sampled from the root to the contact, then the floor to the tip end
-  for (let i = NT; i >= 0; i--) { const xr = (M.L * i) / NT; outline.push([gm.xc + xr, gm.yB + M.tAt(xr)]); }
-  outline.push([gm.xTip, gm.yB + M.tAt(gm.xTip - gm.xc)]);
-  const sh = new THREE.Shape();
-  outline.forEach(([x, y], i) => { const q = M.toGw(x, y); if (i === 0) sh.moveTo(q.x, q.y); else sh.lineTo(q.x, q.y); });
-  sh.closePath();
-  const blade = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: M.b, bevelEnabled: false }), MATS.blueSteel);
-  blade.geometry.translate(0, 0, M.zMid - M.b / 2);   // flush with the wheel's stock faces
-  if (blade.geometry.attributes.position.count / 3 !== 4 * outline.length - 4)
-    console.warn(`TODO 219 maintaining spring: the blade extruded to ${blade.geometry.attributes.position.count / 3} triangles where a simple ${outline.length}-gon gives ${4 * outline.length - 4}`);
+  // The CUT, one law for the first cut and for the re-cut the tip's clearance below may ask for.
+  const cutBlade = () => {
+    const outline = [[gm.xTip, gm.yB], [gm.xRoot, gm.yB], [gm.xRoot, M.bevel], [gm.xFootOut, M.bevel], [gm.xFootOut, gm.yB + M.t]];
+    const NT = 32;                                      // the taper, sampled from the root to the contact, then the floor to the tip end
+    for (let i = NT; i >= 0; i--) { const xr = (M.L * i) / NT; outline.push([gm.xc + xr, gm.yB + M.tAt(xr)]); }
+    outline.push([gm.xTip, gm.yB + M.tAt(gm.xTip - gm.xc)]);
+    const sh = new THREE.Shape();
+    outline.forEach(([x, y], i) => { const q = M.toGw(x, y); if (i === 0) sh.moveTo(q.x, q.y); else sh.lineTo(q.x, q.y); });
+    sh.closePath();
+    const g = new THREE.ExtrudeGeometry(sh, { depth: M.b, bevelEnabled: false });
+    g.translate(0, 0, M.zMid - M.b / 2);              // flush with the wheel's stock faces
+    if (g.attributes.position.count / 3 !== 4 * outline.length - 4)
+      console.warn(`TODO 219 maintaining spring: the blade extruded to ${g.attributes.position.count / 3} triangles where a simple ${outline.length}-gon gives ${4 * outline.length - 4}`);
+    return g;
+  };
+  const blade = new THREE.Mesh(cutBlade(), MATS.blueSteel);
   blade.name = 'maintSpring';
   greatWheel.add(blade);
   // The PIN, hung from the ring's underside into the crossing: pin stock
@@ -13628,6 +14280,32 @@ let MAINT_RING_POLY = null;   // the ring's cut outline, ring-local — the dete
     };
     // the face offset at X under the load at s, relative to the cut
     const dyAt = (X, L) => (L.F * kern(X, L.a) - Fw * kern(X, gm.xc)) / U;
+    // TODO 291 — THE TIP CLEARS THE HUB LAND AT EVERY POSE, not only as cut. MAINT_SPRING stands the tip one
+    // CLEAR_MARGIN off the hub land in the CUT (working) shape, but the hold relaxes the blade toward the stop flank,
+    // and the free end swings inward with it. The stop is the extreme: travel there is the whole run and the load only
+    // the floor, and the posed face moves monotonically with the travel. Under TODO 291's softer spring the run grew
+    // (0.224 → 0.297 rad, the ring 35 → 25 teeth) and the tip's pin-side corner went 0.056 into the hub land by the stop
+    // (intraUnit, maintHold f ≥ 0.67). So the tip is the SHORTEST that keeps that corner, posed at the stop, one margin
+    // off the land, bisected on the posed shape's own law. The stub beyond the contact carries no load (the
+    // compliance runs from the contact to the root), so trimming it moves no spring quantity; it must still reach past
+    // the contact's station at every pose, which the guard holds.
+    {
+      const stopL = loadAt(M.run), need = M.innerMetalR + CLEAR_MARGIN;
+      const cornerR = (X) => Math.hypot(X, gm.yB + dyAt(X, stopL));
+      if (cornerR(gm.xTip) < need) {
+        let lo = gm.xTip, hi = gm.xc;
+        for (let i = 0; i < 80 && hi - lo > 1e-12; i++) { const m = (lo + hi) / 2; if (cornerR(m) >= need) hi = m; else lo = m; }
+        gm.xTip = hi;
+        // The face must still run past the contact at every pose (the pin bears ON it). The cut wanted a pin radius
+        // past it; under the hub that is not available at this run, and the shortfall is TODO 293's, published below.
+        const aMin = Math.min(loadAt(0).a, stopL.a);
+        if (!(gm.xTip < aMin))
+          console.warn(`TODO 291 maintaining spring: the tip that clears the hub land at the stop (x ${gm.xTip.toFixed(4)}) no longer reaches the contact (stations from ${aMin.toFixed(4)})`);
+        MAINT_TIP_OVERHANG = { u: aMin - gm.xTip, wanted_u: gm.rPin, todo: 'TODO 293' };
+        blade.geometry.dispose();
+        blade.geometry = cutBlade();
+      }
+    }
     const step = gm.rPin * (1 - Math.cos(Math.PI / 16));
     const tipSpan = gm.yPin - pinAt(M.run).y;             // the pin's whole fall toward the flank, run 0 → stop
     const K = Math.ceil(tipSpan / step);
@@ -16107,6 +16785,14 @@ function tqKeepVisitor() {
     // band stands CASE_CLEAR off the plate rim by construction. Its meshes
     // opt out on the part (makeCase sets casePart); the check stays generic.
     if (o.userData?.casePart) return;
+    // §336 — NOR IS THE FUSEE COCK. It stands on the BASE plate: its leg
+    // passes this plate through an opening of its own (a tqHoles row, which
+    // every window and opening already keeps a land from), its bar passes
+    // over the top face a margin clear, and its boss and crank stand in the
+    // cone window's AIR, which is what that window was cut for. Read as a
+    // keep, the cranked arm's world box — a rotated bar's — claims plate it
+    // never touches, and a bossless window that pinches anywhere is not cut.
+    if (o.userData?.notPlateLoad) return;
     o.geometry.computeBoundingBox();
     const b = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
     const crosses = b.min.z < TQ_TOP_Z - 1e-6 && b.max.z > TQ_BOT_Z + 1e-6;
@@ -16192,6 +16878,7 @@ const tqKeepClearanceIn = (keeps, x, y) => {
   return c;
 };
 const tqKeepClearance = (x, y) => tqKeepClearanceIn(TQ_KEEPS, x, y);
+const NO_KEEPS = [];   // §335 — tqKeepClearanceIn over no meshes: the pivot bosses alone
 // Distance from (x, y) to the nearest EXISTING opening — the bores, the
 // slots, the balance cut and the rim. A window that came closer than
 // TQ_LAND_MIN to one of these would merge with it, and the strip between
@@ -16216,14 +16903,33 @@ const tqStrikeOpeningDist = (x, y) => {
   }
   return inside ? -d : d;
 };
+// The strike opening's bounding circle, for tqOpeningClearance's exact skip (§325 landing 16): keyed on the opening object,
+// which the re-cut replaces.
+let _tqSodCircle = null;
+const tqStrikeOpeningBound = () => {
+  const O = STRIKE_PLATE_OPENING;
+  if (_tqSodCircle?.of !== O) {
+    let cx = 0, cy = 0; for (const [x, y] of O.pts) { cx += x; cy += y; } cx /= O.pts.length; cy /= O.pts.length;
+    let rho = 0; for (const [x, y] of O.pts) rho = Math.max(rho, Math.hypot(x - cx, y - cy));
+    _tqSodCircle = { of: O, cx, cy, rho };
+  }
+  return _tqSodCircle;
+};
 const tqOpeningClearance = (x, y) => {
   let c = Math.min(inCutClearance(x, y), FORM ? formInset(x, y) : plateR - Math.hypot(x, y));
-  if (STRIKE_PLATE_OPENING) c = Math.min(c, tqStrikeOpeningDist(x, y));
   for (const h of tqHoles) c = Math.min(c, Math.hypot(x - h.x, y - h.y) - h.r);
   for (const s of tqSlots) {
     const vx = s.bx - s.ax, vy = s.by - s.ay, L2 = vx * vx + vy * vy || 1e-9;
     const t = clamp(((x - s.ax) * vx + (y - s.ay) * vy) / L2, 0, 1);
     c = Math.min(c, Math.hypot(x - s.ax - t * vx, y - s.ay - t * vy) - s.r);
+  }
+  // §325 landing 16 — the strike opening LAST, and only where it can matter. Its distance from a point outside its bounding
+  // circle is at least |p − centre| − ρ, so where that already stands no nearer than the minimum of the other terms, the exact
+  // walk round the hull cannot change the answer. Exact, not approximate: the round build's opening made the re-cut's window
+  // re-solve walk its 225 vertices 242,697 times in one synchronous stretch (2.2 s held, boot-yield's 550 ms ceiling).
+  if (STRIKE_PLATE_OPENING) {
+    const B = tqStrikeOpeningBound();
+    if (Math.hypot(x - B.cx, y - B.cy) - B.rho < c) c = Math.min(c, tqStrikeOpeningDist(x, y));
   }
   return c;
 };
@@ -16246,6 +16952,18 @@ const tqOpeningClearance = (x, y) => {
 // circle. What the union costs is that the solve's polar centre is no longer
 // any member's axis: it is a declared point, and the property it must have
 // is written where it is asserted below.
+// §62/§322 — the cone window's reveal: the chain's outer edge where it wraps
+// the cone, or the cone's own measured silhouette, whichever is larger, plus
+// one margin. Named because §335's gear window stands one land outside it.
+function fuseeConeReveal() {
+  let r = 0;
+  for (let i = 0; i <= 64; i++) r = Math.max(r, fuseeGrooveAt((i / 64) * FUSEE_F_ACTIVE).r);
+  const chainEdge = r + CHAIN_END_R_OUT;
+  const cone = fusee.getObjectByName('fuseeCone');
+  const coneEdge = cone ? xyRadiusAbout(cone, P.barrel) : 0;
+  if (!cone) console.warn('§322: the fusee window cannot see the cone mesh (fuseeCone) — sized to the chain alone');
+  return Math.max(chainEdge, coneEdge) + CLEAR_MARGIN;
+}
 const TQ_WINDOW_INTENTS = [
   {
     name: 'fusee',
@@ -16275,15 +16993,14 @@ const TQ_WINDOW_INTENTS = [
     // rotation; the instruments skill's trap, and why this is a vertex
     // measurement.)
     at: () => P.barrel,
-    reveal: () => {
-      let r = 0;
-      for (let i = 0; i <= 64; i++) r = Math.max(r, fuseeGrooveAt((i / 64) * FUSEE_F_ACTIVE).r);
-      const chainEdge = r + CHAIN_END_R_OUT;
-      const cone = fusee.getObjectByName('fuseeCone');
-      const coneEdge = cone ? xyRadiusAbout(cone, P.barrel) : 0;
-      if (!cone) console.warn('§322: the fusee window cannot see the cone mesh (fuseeCone) — sized to the chain alone');
-      return Math.max(chainEdge, coneEdge) + CLEAR_MARGIN;
-    },
+    // §336 landing 3 — AND ON THE STOP-WORK'S BUILD, OUT TO THE GREAT WHEEL. The ring §335 left between this window and the
+    // gear window exists for one part: §47's bracket, which hangs from it over the cone. The stop-work's build has no bracket
+    // (its star's stud is in the cock's crank since this landing), so the ring has no job there, and the owner chose to drop it
+    // ("make window bigger", 2026-11-06): this one window frames the cone and the gears under it, sized to the great wheel's
+    // silhouette as the gear window is, and the gear window is not built. §47's builds keep the ring and both windows.
+    reveal: () => (STOPWORK ? Math.max(fuseeConeReveal(), xyRadiusAbout(greatWheel, P.barrel) + CLEAR_MARGIN) : fuseeConeReveal()),
+    // a reveal that large has openings beside its rays: walk them, as the gear window does (below)
+    walkOpenings: STOPWORK,
     // §308 landing 5 — THE WEBS TURN WITH THE FUSEE. A window open all the way
     // round takes its three webs by an even split that starts at bearing 0 of
     // the MOVEMENT's frame, so under `?barrelstep=` the webs stood still while
@@ -16292,6 +17009,52 @@ const TQ_WINDOW_INTENTS = [
     // lost its only legal stations. The split is phased by the barrel's own
     // turn, which is exactly 0 on the designed train.
     phaseDeg: () => FUSEE_TURN_DEG,
+  },
+  // §335 — THE GEARS UNDER THE CONE. The owner's ask (2026-11-05): "enlarge the
+  // window to show more of the gears". §62 declined to frame the great wheel
+  // ("a frame becomes a hole"); the owner reverses that, and the question is
+  // only HOW.
+  //
+  // Not by growing the cone's window. §47's arrest hangs its bracket from the
+  // plate body just outside that window's rim, reaching in to the stud over
+  // the cone; one window out to the great wheel would move the bracket's foot
+  // from 6.9 to 16.4 off the axis, a cantilever 0.62 wide and ~13 long
+  // carrying the stop's load — a member stretched to pay for a view, which is
+  // P1's forbidden currency. So the cone's window stands exactly as it was,
+  // and the plate keeps ONE LAND of ring outside it (TQ_LAND_MIN, the floor
+  // between two openings) for the bracket to land on; this second window is
+  // the annulus from that ring out to the great wheel, between the SAME three
+  // webs, which now run on to carry the ring as well as the boss. Same centre,
+  // same web width (tqWebWidthFor of a span still under 21.6 is the floor),
+  // same phase, one full run split three ways — so the webs' edges are the
+  // same straight lines in both windows, and a mismatch is asserted below.
+  //
+  // The reveal is the great wheel's silhouette about its own axis, MEASURED
+  // off the built wheel (teeth, crossings and the maintaining blade it
+  // carries; exact for a revolver), plus one margin of reveal. It is still a
+  // WANT: step 1 pulls each bearing back against everything the plate must
+  // carry (the centre and third chatons, the pillar seats, the kidney cut),
+  // so the plate gives up only metal with no job.
+  {
+    name: 'fusee gears',
+    at: () => P.barrel,
+    reveal: () => xyRadiusAbout(greatWheel, P.barrel) + CLEAR_MARGIN,
+    // The inner edge: the cone window's reveal plus the ring's land, plus the
+    // sagitta both outlines' half-degree chords can sag inward by at that
+    // radius, so the land holds between the emitted polygons and not only
+    // between the circles they sample.
+    r0: () => { const r = fuseeConeReveal() + TQ_LAND_MIN; return r + 2 * r * (1 - Math.cos(0.25 * DEG2RAD)); },
+    phaseDeg: () => FUSEE_TURN_DEG,
+    websFrom: 'fusee',   // its sectors are cut at the cone window's web axes (below), so its webs ARE those webs
+    // A REVEAL THIS LARGE HAS OPENINGS BESIDE ITS RAYS. At the cone's 6.3
+    // nothing the plate is cut for stood inside the disc, so a clear ray END
+    // was a clear ray; at the great wheel's 15.8 the kidney cut and the centre
+    // wheel's chaton stand beside the rays' middles, and the first build left
+    // a 1.204 land to the cut on a web edge whose ray ended clear. So the rays
+    // are WALKED — against the plate's own openings and pivot bosses only,
+    // which are the plate's and never a window's tenants. Mesh keeps keep the
+    // early window's end test (the walk is otherwise late-only, below).
+    walkOpenings: true,
   },
   // §148 — THE ESCAPEMENT WINDOW IS WITHDRAWN, and the reason is the thing it
   // was islanding. §115's entry framed the escape wheel by cutting an annulus
@@ -16494,7 +17257,8 @@ const TQ_WINDOW_INTENTS = [
       return null;
     },
   },
-].filter((w) => ALARM_BUILT || (w.name !== 'governor' && w.name !== 'arrest'));   // §325 landing 3: those two windows show the alarm's governor and winding arrest
+].filter((w) => ALARM_BUILT || (w.name !== 'governor' && w.name !== 'arrest'))   // §325 landing 3: those two windows show the alarm's governor and winding arrest
+  .filter((w) => !STOPWORK || w.name !== 'fusee gears');   // §336 landing 3: the stop-work's build frames the gears in the one fusee window
 // §314 — the pusher linkage's studs (planted in this plate), filled in once the linkage is solved
 let ALARM_LINKAGE_STUDS = null;
 // §201 — the late intent's centre. null until the arrest block has placed the
@@ -16506,6 +17270,8 @@ let ARREST_WINDOW = null;
 let ARREST_ENGAGEMENT = null;
 // TODO 266 — the strike group's opening in a FORM plate, cut at the re-cut (null on the round build)
 let STRIKE_PLATE_OPENING = null;
+let ROUND_TQ_OUTLINE = null;   // §325 landing 16 — the round three-quarter plate notched round the strike group, set at the re-cut
+let ALARM_TAIL_RISER_OPENS_PLATE = false;   // §325 landing 16 — the round riser found no station in the annulus, so the plate is notched
 
 // TODO 242 — the edges of windows already cut, as one flat list, kept only
 // where they can come within `reach` of (cx, cy): the land a later opening owes
@@ -16620,7 +17386,18 @@ function solveTqWindows() {
     // CLEAR_MARGIN and left the fusee's bearing collar 0.15 of nickel wide,
     // under both §50's floor and §54's; the land check said so at boot, which
     // is the assert doing its job on the very solve that added it.
-    const r0 = boss ? pivotBossR(boss) + TQ_LAND_MIN : 0;
+    const r0Boss = boss ? pivotBossR(boss) + TQ_LAND_MIN : 0;
+    // §335 — an intent may stand its inner edge farther out than its boss's
+    // land: the gear window starts one land outside the cone window.
+    // §336 — AND IT CARRIES WHAT IT ENCLOSES WHETHER OR NOT A PIVOT IS THERE.
+    // With the fusee's bush in its cock the plate keeps no boss at the axis,
+    // but the ring between the two windows is still plate (the arrest's
+    // bracket lands on it), islanded by this annulus exactly as a boss is. So
+    // a declared inner edge makes the window an ISLAND's: webs, a split, an
+    // inner return, all as for a boss — `island` below, where `boss` alone
+    // used to decide it.
+    const r0 = intent.r0 ? Math.max(r0Boss, intent.r0()) : r0Boss;
+    const island = !!boss || !!intent.r0;
     // §201 — WHAT STANDS INSIDE THE DISC. The bisection below assumes the
     // clearance along a ray is monotone: clear at the centre, blocked once
     // and for good somewhere out toward the rim. A keep standing INSIDE the
@@ -16680,6 +17457,7 @@ function solveTqWindows() {
       });
     const walk = !!intent.late && interior;
     const TQ_RAY_STEP = CLEAR_MARGIN / 2;
+    const openWalk = !!intent.walkOpenings;
     // Step 1 — the outer edge, per degree: the wanted reveal, pulled in by
     // whichever bound binds first at that bearing.
     // Bisect for the largest radius at this bearing whose point still clears
@@ -16698,18 +17476,47 @@ function solveTqWindows() {
       const ok = (r) => tqKeepClearance(c.x + cs * r, c.y + sn * r) >= CLEAR_MARGIN - 1e-9
         && tqOpeningClearance(c.x + cs * r, c.y + sn * r) >= TQ_LAND_MIN - 1e-9
         && (priorEdges.length === 0 || priorLand(c.x + cs * r, c.y + sn * r) >= priorLandAt(r) - 1e-9);
-      if (!walk && ok(want)) return want;      // the end is clear and nothing stands inside: full reach
-      if (!ok(r0)) return 0;                   // pinched shut at this bearing
-      let lo = r0, hi = want;
+      if (!openWalk && !walk && ok(want)) return want;   // the end is clear and nothing stands inside: full reach
+      // §336 landing 3 — a BOSSLESS window that walks its openings starts its rays at its own centre, which stands in its
+      // tenant (the fusee's staff, which the window frames: a keep at the axis). So the ray starts where it first leaves the
+      // keeps it begins in. A window with an inner edge (r0 > 0: a boss's land, or the gear window's ring) starts there, as before.
+      let rIn = r0;
+      if (openWalk && r0 === 0 && !ok(0)) {
+        rIn = Infinity;
+        for (let r = TQ_RAY_STEP; r < want; r += TQ_RAY_STEP) if (ok(r)) { rIn = r; break; }
+        if (!Number.isFinite(rIn)) return 0;
+      }
+      if (!ok(rIn)) return 0;                   // pinched shut at this bearing
+      // §335 — an early window that walks its OPENINGS: the ray's reach is
+      // first cut back to where it meets a plate opening or pivot boss (the
+      // walk below, on those terms only), and the old end test then runs on
+      // what is left. Absent the flag this is the solve as it was.
+      let reach = want;
+      if (openWalk) {
+        const okOpen = (r) => tqKeepClearanceIn(NO_KEEPS, c.x + cs * r, c.y + sn * r) >= CLEAR_MARGIN - 1e-9
+          && tqOpeningClearance(c.x + cs * r, c.y + sn * r) >= TQ_LAND_MIN - 1e-9;
+        let r = r0;
+        while (r < want - 1e-12) {
+          const n = Math.min(r + TQ_RAY_STEP, want);
+          if (!okOpen(n)) {
+            let a = r, b = n;
+            for (let k = 0; k < 20; k++) { const m = (a + b) / 2; if (okOpen(m)) a = m; else b = m; }
+            reach = a; break;
+          }
+          r = n;
+        }
+      }
+      if (openWalk && !walk && ok(reach)) return reach;
+      let lo = rIn, hi = reach;
       if (walk) {
         // walk out; the first failing step brackets the bisection
         let r = r0, blocked = false;
-        while (r < want - 1e-12) {
-          const n = Math.min(r + TQ_RAY_STEP, want);
+        while (r < reach - 1e-12) {
+          const n = Math.min(r + TQ_RAY_STEP, reach);
           if (!ok(n)) { lo = r; hi = n; blocked = true; break; }
           r = n;
         }
-        if (!blocked) return want;
+        if (!blocked) return reach;
       }
       for (let k = 0; k < 20; k++) { const m = (lo + hi) / 2; if (ok(m)) lo = m; else hi = m; }
       return lo;
@@ -16753,7 +17560,7 @@ function solveTqWindows() {
     // The row is still REPORTED, with its rOut, so the numbers survive for
     // the record and the re-cut's shrink-only comparison still has both
     // sides to compare.
-    if (!boss && !(runs.length === 1 && runs[0].a === 0 && runs[0].b === 360)) {
+    if (!island && !(runs.length === 1 && runs[0].a === 0 && runs[0].b === 360)) {
       const shut = [];
       for (let i = 0; i < 360; i++) if (!open[i]) shut.push(i);
       const i0 = shut.length ? shut[0] : 0;
@@ -16775,27 +17582,63 @@ function solveTqWindows() {
     // leaving a 180° stretch with no arm in it, which restrains the boss no
     // better than two arms do. That is the failure this step exists to avoid,
     // and it was the first thing the solve actually did.
-    const webSpan = boss ? wanted - r0 : 0;
-    const webW = boss ? tqWebWidthFor(webSpan) : 0;
+    const webSpan = island ? wanted - r0 : 0;
+    const webW = island ? tqWebWidthFor(webSpan) : 0;
     // §308 landing 5 — a full-round run's even split starts at the intent's
     // own phase (the fusee's: the barrel's turn), never at the movement's 0°.
     // Absent or 0, the run is the one it was; rOut is read modulo 360 below.
     const phaseDeg = intent.phaseDeg ? ((intent.phaseDeg() % 360) + 360) % 360 : 0;
-    if (boss && phaseDeg !== 0 && runs.length === 1 && runs[0].a === 0 && runs[0].b === 360)
+    if (island && phaseDeg !== 0 && runs.length === 1 && runs[0].a === 0 && runs[0].b === 360)
       runs[0] = { a: phaseDeg, b: phaseDeg + 360 };
+    // §335 — A WINDOW THAT CONTINUES ANOTHER'S WEBS (the fusee gear window
+    // outside the cone window) is cut AT THOSE WEBS' AXES rather than split
+    // evenly: an even split agrees with the inner window only while both run
+    // open all the way round, and the form builds pinch the gear window into
+    // runs whose even split put its webs 45° off the cone's. Cut at the axes,
+    // every web of this window is an inner web carried on out, and a pinch
+    // only leaves more plate between the ring and the plate body — never a
+    // member nobody derived. TQ_WEBS_MIN is the inner window's to meet.
+    const webAxes = (() => {
+      if (!island || !intent.websFrom) return null;
+      const src = report.find((r) => r.name === intent.websFrom);
+      if (!src?.cut || !src.boss) return null;   // §336: a bossless source has no webs to continue — split evenly
+      return src.sectors.map((q) => ((q.a / DEG2RAD) % 360 + 360) % 360);
+    })();
+    if (intent.websFrom && island && !webAxes && !report.find((r) => r.name === intent.websFrom)?.cut)
+      console.warn(`§335 window '${intent.name}': the window whose webs it continues ('${intent.websFrom}') is not cut — no webs to continue`);
+    if (webAxes) {
+      if (runs.length === 1 && runs[0].b - runs[0].a >= 360) {
+        const a0 = Math.min(...webAxes);
+        runs[0] = { a: a0, b: a0 + 360 };
+      }
+      const split = [];
+      for (const r of runs) {
+        const cuts = [];
+        for (const x of webAxes) for (let k = -1; k <= 2; k++) {
+          const y = x + 360 * k;
+          if (y > r.a + 1e-9 && y < r.b - 1e-9) cuts.push(y);
+        }
+        cuts.sort((p, q) => p - q);
+        let a = r.a;
+        for (const y of cuts) { split.push({ a, b: y }); a = y; }
+        split.push({ a, b: r.b });
+      }
+      runs.length = 0;
+      runs.push(...split);
+    }
     // A run too narrow to be a window is not a web either — it is a nick in
     // the plate that leaves NO opening once the two web edges have trimmed it.
     // Counting them was how the fusee came back with "three webs" of which one
     // spanned 352° and the other two were a degree wide: the count was right
     // and the boss was still a cantilever. Measured at the reveal radius,
     // because that is where a run is widest and so most likely to survive.
-    if (boss) {
+    if (island) {
       for (let k = runs.length - 1; k >= 0; k--) {
         const arc = wanted * (runs[k].b - runs[k].a) * DEG2RAD;
         if (arc < webW + TQ_LAND_MIN) runs.splice(k, 1);
       }
     }
-    if (boss && runs.length && runs.length < TQ_WEBS_MIN) {
+    if (island && !webAxes && runs.length && runs.length < TQ_WEBS_MIN) {
       const total = runs.reduce((s, r) => s + (r.b - r.a), 0);
       const share = runs.map((r) => ((r.b - r.a) / total) * TQ_WEBS_MIN);
       const pieces = share.map((s) => Math.max(1, Math.floor(s)));
@@ -16890,18 +17733,35 @@ function solveTqWindows() {
         // the lesser lets the sector swallow the web it is bounded by, and
         // the polygon then crosses itself into triangulation garbage (a patch
         // of PHANTOM PLATE, not a hole, which is how this was caught).
-        const rLo = boss
+        const rLo = island
           ? Math.max(r0, webEdge(a - aRaw), webEdge(bRaw - a))
           : 0;
         if (rLo > rHi) continue;          // pinched by a web (or by the shrink)
         outer.push([c.x + Math.cos(a) * rHi, c.y + Math.sin(a) * rHi]);
-        if (boss) inner.push([c.x + Math.cos(a) * rLo, c.y + Math.sin(a) * rLo]);
+        if (island) inner.push([c.x + Math.cos(a) * rLo, c.y + Math.sin(a) * rLo]);
       }
       if (outer.length < 4) continue;     // the webs met: no sector left
       kept.push({ pts: [...outer, ...inner.reverse()], a: aRaw, b: bRaw });
     }
     polys.push(...kept.map((s) => ({ pts: s.pts, name: intent.name })));
-    report.push({ name: intent.name, c, discs, wanted, r0, boss: !!boss, cut: true, late: !!intent.late, interior, walked: walk, webW, webSpan, sectors: kept, rOut });
+    report.push({ name: intent.name, c, discs, wanted, r0, boss: !!boss, island, cut: true, late: !!intent.late, interior, walked: walk, webW, webSpan, sectors: kept, rOut });
+  }
+  // §335 — THE GEAR WINDOW'S WEBS ARE THE CONE WINDOW'S, continued: no gear
+  // sector may span a cone web's axis, or the ring between the two windows
+  // would lose that web's carry outward and the sector would stand where the
+  // inner window's arm needs plate. The cut above makes it so by
+  // construction; this measures the emitted sectors.
+  {
+    const inner = report.find((r) => r.name === 'fusee'), outer = report.find((r) => r.name === 'fusee gears');
+    if (inner?.cut && inner.boss && outer?.cut) {   // §336: a bossless cone window has no webs to carry on
+      const TAU = 2 * Math.PI;
+      for (const q of outer.sectors) for (const w of inner.sectors) {
+        const d = (((w.a - q.a) % TAU) + TAU) % TAU;
+        if (d > 1e-9 && d < q.b - q.a - 1e-9)
+          console.warn(`§335: the fusee gear window's sector ${(q.a / DEG2RAD).toFixed(1)}–${(q.b / DEG2RAD).toFixed(1)}° spans the cone window's web at `
+            + `${(w.a / DEG2RAD).toFixed(1)}° — the ring between them would lose that web's carry`);
+      }
+    }
   }
   return { polys, report };
 }
@@ -17042,14 +17902,14 @@ function checkPlateWindows(stage) {
     // §115 — the all-round rule, re-asserted against the sectors that were
     // BUILT and at every stage, because the re-solve sees keeps the first
     // solve could not and may pinch a window that was open when it was cut.
-    if (!r.boss) {
+    if (!r.boss && !r.island) {   // §336: an island's window (a ring, not a boss) is carried on webs like a boss's
       if (r.sectors.length !== 1)
         console.warn(`§62 window '${r.name}' (${stage}): cut as ${r.sectors.length} sectors with no boss to carry `
           + '— a bossless window is one opening or none');
       continue;
     }
     if (r.sectors.length < TQ_WEBS_MIN) {
-      console.warn(`§62 window '${r.name}' (${stage}): ${r.sectors.length} webs carry its pivot boss — need ${TQ_WEBS_MIN}`);
+      console.warn(`§62 window '${r.name}' (${stage}): ${r.sectors.length} webs carry its ${r.boss ? 'pivot boss' : 'island'} — need ${TQ_WEBS_MIN}`);
       continue;
     }
     // Web azimuths are the gaps BETWEEN sectors: each sector's end and the
@@ -17104,7 +17964,10 @@ const GONG_SEAT_MODE = FORM && ALARM_BUILT ? (SPEC.gongSeat ?? defaultSeatMode(G
 // the seat's spec key, and the ARRANGEMENT's (the spec without the case shape, its fit or the seat mode): an
 // arranged movement (spec knobs that move stations — §308 landing 5's barrel swing and module turn) reads its seats
 // from GONG_SEATS_ARRANGED under that key; the designed movement's are GONG_SEATS
-const GONG_SPEC_KEY = configKey({ spec: { ...SPEC, ...(SEAT_KIND ? { caseShape: SEAT_KIND } : {}), formRectSpec: null, gongSeat: null } });
+// (frame: null, §328 step 1b — tools/gong-seats.mjs solves the seat with the frame left out of its map, pillars and lands
+// alike, and the frame yields to the seat's `keep`; with `frame` in the key `?frame=pillars` was refused its seat, lost the
+// keep, and stood its 315° pillar in the strike group's corner on the rect case)
+const GONG_SPEC_KEY = configKey({ spec: { ...SPEC, hands: null, strapMm: null, arrest: null, frame: null, ...(SEAT_KIND ? { caseShape: SEAT_KIND } : {}), formRectSpec: null, gongSeat: null } });
 const GONG_ARR_KEY = ALARM_ARR_KEY;   // the one arrangement key (§313 reads it first, for the arming fixed point)
 const GONG_SEAT_LOOKUP = (() => {
   if (!FORM || !ALARM_BUILT || GONG_SEAT_MODE === 'arc') return null;
@@ -17125,7 +17988,17 @@ const polySignedDist = (pts, x, y) => {
   }
   return inside ? -d : d;
 };
+// TODO 290 — THE ROUND BUILD'S STRIKE GROUP SETS ITS PILLARS TOO. TODO 272 gave a form build's pillars the seat's `keep`.
+// The round build had none, and its frame was sited blind to the hammer: when §325 landing 12 brought the ring in off the
+// 40 mm cap, the drawn head stood in the 45° land, and the head was cut short to fit (26.1 mg against a 45.6 mg match).
+// The pillar is the freest part on the plate, so it yields. The keep is the hull of the drawn head's plan footprint at its
+// INTENDED length (the radial room at rest) and section, over the whole draw. It is computed by the alarm block (see
+// ROUND_STRIKE_KEEP_MEASURED) and generated here (src/strike-keep-round.js, tools/strike-keep-round.mjs) under the
+// gong's spec key, since the hammer is cut ~13,000 lines after this scan. A table for another spec is not read.
+let ROUND_STRIKE_KEEP_MEASURED = null;
+const ROUND_STRIKE_KEEP = !FORM && ALARM_BUILT ? (STRIKE_KEEP_ROUND?.[GONG_SPEC_KEY] ?? null) : null;   // §325 landing 16: one row per spec that must boot clean
 const PILLAR_STRIKE_KEEP = (() => {
+  if (ROUND_STRIKE_KEEP) return { hull: ROUND_STRIKE_KEEP.hull };   // TODO 290: the round build declares the drawn head alone
   const row = GONG_SEAT_LOOKUP && !GONG_SEAT_LOOKUP.refused ? GONG_SEAT_LOOKUP.row : null;
   if (!row?.keep) return null;
   const c = GS.seatCurve(row.curve), n = Math.max(8, Math.ceil(c.L / 0.25)), wire = [];
@@ -17191,6 +18064,16 @@ const PILLAR_TENON_LEN = PLATE_TOP_FACE - PLATE_BACK_FACE;
 // below is cut through at the mouth with the conical land put back.
 const PILLAR_RIVET_C = STOCK_MIN_U;
 const PILLAR_RIVET_MOUTH_R = PILLAR_TENON_R + PILLAR_RIVET_C;
+// §325 landing 6 / §328 — THE FRAME ON LANDS: the default on every case kind since §328 step 1b (`?frame=pillars` builds the
+// four applied pillars instead, the traditional frame, kept as a supported style).
+// The back plate is screwed straight onto LANDS the base plate raises on its own rim, so no support is a free column
+// past the train and none needs a seat in the open interior. A land is the pillar's seat WITHOUT the pillar's joint:
+// its radius is the cap the pillar scan already keeps clear (PILLAR_CAP_R — the screw head's seat is the widest land
+// the back plate's screw asks of what carries it), its column the same TQ_BOT_Z − PILLAR_BASE_Z, its bore the same
+// tapped bore. What it does not have is a tenon or a rivet: it is turned from the plate's stock, so it owes the plate
+// no joint of its own and its foot only needs a root in the slab (half the plate, the pocket floors' lap).
+const FRAME_LANDS = SPEC.frame !== 'pillars';
+const LAND_ROOT = (PLATE_TOP_FACE - PLATE_BACK_FACE) / 2;
 if (PILLAR_RIVET_C > PILLAR_TENON_LEN - STOCK_MIN_U + 1e-9)
   console.warn(`TODO 200: pillar countersink ${PILLAR_RIVET_C.toFixed(3)} leaves under STOCK_MIN_U of plate round the tenon (plate ${PILLAR_TENON_LEN.toFixed(3)})`);
 if (PILLAR_BODY_R - PILLAR_TAP_R < STOCK_MIN_U - 1e-9)
@@ -17252,12 +18135,32 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
   // far inside its outline. Held only to TQ_LAND_MIN, a pillar the strike group
   // pushed to the rim stood 3.238 inside the cushion and the fit grew the case
   // round it — the frame paying for the gong with the case's size.
-  const PILLAR_RIM_LAND = Math.max(TQ_LAND_MIN, PLATE_RIM_MARGIN);
+  // §325 landing 6: a land is plate, not counted metal, so it owes the case's margin nothing — only the back plate's edge land.
+  // §328 step 1b: that is the FREE outline's rule (its rim is fitted to the counted metal, and the pillars it refused left
+  // the 315° quadrant empty); on every other kind a land takes the pillar's seat, so it is scanned on the pillar's terms
+  const PILLAR_RIM_LAND = FRAME_LANDS && FORM?.kind === 'free' ? TQ_LAND_MIN : Math.max(TQ_LAND_MIN, PLATE_RIM_MARGIN);
+  // §328 step 1b — THE CHAIN, which a full-height support must not stand in. The pillar scan read the train's arbors and
+  // the drum as boxes and never the chain between them: a pillar on the round and form kinds stood far from its run, and
+  // on the free outline the pillars took interior seats, and as the `pillars` unit any pillar that did reach it was in
+  // every pair sweep. A LAND is the held plate's, in no pair sweep, and the free outline's lands take the outermost seat
+  // on the rim: tools/probe-328-lands.mjs found land 1 inside the chain's run (0.0000 at the build pose) on the free
+  // default. The run is sampled the way the beak arms' fold scan samples it (chainLayoutAt over the wind, at a quarter
+  // pitch), wrap included because a column passes the cone too, and each sample owes the link plate's envelope (the
+  // arms' SPAN_ENV law: half a sample spacing along the run, the outer plate's half-width across it).
+  const PILLAR_CHAIN_ENV = Math.hypot(CHAIN_PITCH / 8, CHAIN_END_R_OUT);
+  const PILLAR_CHAIN_PTS = [];
+  for (let ts = 0.1; ts <= 1.0001; ts += 0.025) {
+    await breathe(374);
+    const { curve } = chainLayoutAt(Math.min(ts, 1));
+    curve.arcLengthDivisions = 800;
+    const M = Math.max(Math.round((curve.getLength() / CHAIN_PITCH) * 4), 8);
+    for (const p of curve.getSpacedPoints(M)) PILLAR_CHAIN_PTS.push(p.x, p.y);
+  }
   const seatClearance = (x, y) => {
     // §325 landing 3 — on the FREE outline the rim is the fit to this very metal, which holds the cap exactly the rim
     // margin inside it: the land owed there IS that margin, so the CLEAR_MARGIN every obstacle below adds is handed
     // back (asked of a pillar the fit stood at its margin, it was refused the next round and the frame lost it)
-    let c = Math.min(inCutClearance(x, y), FORM ? formInset(x, y) - PILLAR_RIM_LAND + (FORM.kind === 'free' ? CLEAR_MARGIN : 0) : plateR - Math.hypot(x, y));
+    let c = Math.min(inCutClearance(x, y), FORM ? formInset(x, y) - PILLAR_RIM_LAND + (FORM.kind === 'free' && !FRAME_LANDS ? CLEAR_MARGIN : 0) : plateR - Math.hypot(x, y));
     for (const h of tqHoles) c = Math.min(c, Math.hypot(x - h.x, y - h.y) - h.r);
     const stadium = (s) => {
       const vx = s.bx - s.ax, vy = s.by - s.ay, L2 = vx * vx + vy * vy || 1e-9;
@@ -17305,6 +18208,8 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
     }
     for (const o of LOW_LINKAGE_OBSTACLES)
       c = Math.min(c, o.ax === undefined ? Math.hypot(x - o.x, y - o.y) - o.r : stadium(o));
+    for (let i = 0; i < PILLAR_CHAIN_PTS.length; i += 2)   // §328 step 1b: the chain's run over the wind (above)
+      c = Math.min(c, Math.hypot(x - PILLAR_CHAIN_PTS[i], y - PILLAR_CHAIN_PTS[i + 1]) - PILLAR_CHAIN_ENV);
     // TODO 272 — THE STRIKE GROUP, which the pillar yields to: the hammer's
     // swept metal over the column's height, its opening in the three-quarter
     // plate (owed TQ_LAND_MIN, like a window: the screw seat is a hole in that
@@ -17312,6 +18217,9 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
     if (PILLAR_STRIKE_KEEP) {
       const K = PILLAR_STRIKE_KEEP;
       c = Math.min(c, polySignedDist(K.hull, x, y));
+    }
+    if (PILLAR_STRIKE_KEEP?.opening) {   // TODO 290: a round keep is the hull alone
+      const K = PILLAR_STRIKE_KEEP;
       c = Math.min(c, polySignedDist(K.opening, x, y) - TQ_LAND_MIN);
       let dw = Infinity;
       for (let i = 1; i < K.wire.length; i++) {
@@ -17336,7 +18244,8 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
     // do (the first put the rivet mouth 1.656 into the hack stud's slot). Written as the clearance c is judged on
     // (c − capR ≥ CLEAR_MARGIN), so the seat holds exactly when mouth + land fits.
     if (FORM?.kind === 'free') {
-      const owed = PILLAR_RIVET_MOUTH_R + STOCK_MIN_U - capR - CLEAR_MARGIN;
+      const footR = FRAME_LANDS ? capR : PILLAR_RIVET_MOUTH_R;   // §325 landing 6: a land has no tenon bore, its foot is its own disc
+      const owed = footR + STOCK_MIN_U - capR - CLEAR_MARGIN;
       for (const h of BACK_PLATE_CUT.holes) c = Math.min(c, Math.hypot(x - h.x, y - h.y) - h.r - owed);
       for (const sl of BACK_PLATE_CUT.slots) c = Math.min(c, stadium({ ax: sl.ax, ay: sl.ay, bx: sl.bx, by: sl.by, r: sl.r }) - owed);
       for (const sc of BACK_PLATE_CUT.sectors) c = Math.min(c, Math.hypot(x - sc.cx, y - sc.cy) - sc.r1 - sc.pad - owed);
@@ -17350,7 +18259,7 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
       // pillar is its rivet's opening, owed the same land, and its cap, owed the running clearance
       for (const ps of pillarSeats) {
         const d = Math.hypot(x - ps.x, y - ps.y);
-        c = Math.min(c, d - PILLAR_RIVET_MOUTH_R - owed, d - capR);
+        c = Math.min(c, d - footR - owed, d - capR);
       }
     }
     // §112 — the alarm corner's DECLARED under-plate footprint: its metal
@@ -17387,8 +18296,10 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
   // structure-node name so the graph's support edges resolve to the same
   // meshes either way.
   const pillarsGroup = new THREE.Group();
-  movement.add(pillarsGroup);
-  registerLabel('pillars', pillarsGroup);
+  if (!FRAME_LANDS) {   // §325 landing 6: the frame without pillars has no such unit — its lands are the base plate's own metal
+    movement.add(pillarsGroup);
+    registerLabel('pillars', pillarsGroup);
+  }
   for (const base of [45, 135, 225, 315]) {
     let best = null;
     for (let dA = 0; dA <= 60; dA += 1) {
@@ -17402,21 +18313,26 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
         for (let r = rTop; r >= plateR - 16; r -= 0.5) {
           const x = Math.cos(a) * r, y = Math.sin(a) * r;
           const c = seatClearance(x, y);
-          if (c >= CLEAR_MARGIN && (!best || c > best.c + (FORM?.kind === 'free' ? 1e-9 : 0.5))) best = { x, y, c, dA };
+          // §325 landing 6: a LAND takes the first seat that holds (r runs outward in, so the outermost on the nearest bearing)
+          // — on the FREE outline. §328: on every other kind a land takes the PILLAR's seat (the deepest on the ring, the
+          // scan's own rule), so it stands on exactly the footprint every later siting solve was given (`pillarSeats`, the
+          // cap's disc) and the frame moves nothing else; measured, the outermost rule moved the round 45° seat 3.76 round the
+          // ring, and with the pillar's rule `?frame=pillars` and the default share every seat on all six kinds
+          if (c >= CLEAR_MARGIN && (!best || (!(FRAME_LANDS && FORM?.kind === 'free') && c > best.c + (FORM?.kind === 'free' ? 1e-9 : 0.5)))) best = { x, y, c, dA };
         }
       }
       await breathe(126);
       // nearest feasible bearing to the quadrant's ideal wins — except on the FREE outline (§325 landing 2), where the
       // outline is fitted to the counted metal and a pillar held at the rim land would hold it there every round; there
       // the quadrant's DEEPEST seat (the most clearance within ±45°) wins, a pillar in the plate's open interior
-      if (best && FORM?.kind !== 'free') break;
+      if (best && (FORM?.kind !== 'free' || FRAME_LANDS)) break;
       if (FORM?.kind === 'free' && dA >= 45) break;
     }
     // §325 landing 3 — the ring's inner bound (plateR − 16) is the round build's; on the free outline a quadrant whose
     // ring holds no seat (measured without the alarm: none at 315°) takes the deepest seat further in, on the same
     // clearance law, the plate's open interior being where landing 2 sent the frame
     let nearest = null;
-    if (!best && FORM?.kind === 'free') {
+    if (!best && FORM?.kind === 'free' && !FRAME_LANDS) {   // §325 landing 6: a land is a rim feature — it never takes an interior seat
       for (let dA = 0; dA <= 45; dA += 1) {
         await breathe(373);
         for (const sgn of dA === 0 ? [1] : [1, -1]) {
@@ -17431,10 +18347,23 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
       }
     }
     if (!best) {
-      console.warn('pillar: no seat found near', base, ...(nearest ? [`— the quadrant's best clearance is ${nearest.c.toFixed(3)} at (${nearest.x.toFixed(2)}, ${nearest.y.toFixed(2)}), need CLEAR_MARGIN ${CLEAR_MARGIN}`] : []));
+      console.warn(FRAME_LANDS ? 'pillar: no seat found for a rim land near' : 'pillar: no seat found near', base, ...(nearest ? [`— the quadrant's best clearance is ${nearest.c.toFixed(3)} at (${nearest.x.toFixed(2)}, ${nearest.y.toFixed(2)}), need CLEAR_MARGIN ${CLEAR_MARGIN}`] : []));
       continue;
     }
     const pillarH = TQ_BOT_Z - PILLAR_BASE_Z;
+    if (FRAME_LANDS) {
+      // §325 landing 6 — the land: one piece with the base plate, so a child of it named for it (the pocket floors' and the
+      // rivet lands' convention — `support` resolves the plate by that exact name), standing from a root in the slab to the
+      // back plate's underside. Its footprint is published for the siting solves exactly as a pillar's was.
+      const land = new THREE.Mesh(G.makeRimLand({ height: pillarH, root: LAND_ROOT, r: PILLAR_CAP_R, tapR: PILLAR_TAP_R, tapDepth: PILLAR_TAP_DEPTH }), MATS.perledNickel);
+      land.name = 'backPlate';
+      land.userData.rimLand = true;   // §328: not the rim — PLATE_RIM's walk skips it (see there)
+      land.position.set(best.x, best.y, (PLATE_TOP_FACE - PLATE_BACK_FACE) / 2);   // backPlate-local: x, y the movement's, z = 0 the slab's midplane, +F its face
+      land.userData.planStadium = { ax: best.x, ay: best.y, bx: best.x, by: best.y, r: PILLAR_CAP_R };
+      backPlate.add(land);
+      pillarSeats.push({ x: best.x, y: best.y });
+      continue;
+    }
     const pillar = G.makePillar({ height: pillarH, bodyR: PILLAR_BODY_R, tapR: PILLAR_TAP_R, tapDepth: PILLAR_TAP_DEPTH,
       tenonR: PILLAR_TENON_R, tenonLen: PILLAR_TENON_LEN, rivetC: PILLAR_RIVET_C });
     pillar.name = 'pillar'; // structural node — see checkSupportGeometry
@@ -17889,8 +18818,9 @@ ESCAPE_COCK = await (async () => {
   seatCut();
   checkCutVsPivots();
 }
+let WIND_ARREST_STOP_ARM = null;   // §336: §47's stop lever about the fusee axis, filled in when the lug is cut
 // TODO 184 — THE BASE PLATE'S LATE RE-CUT, run once, after the last late
-// opening is known: the balance cock's tapped holes (step 2) and the pillars'
+// opening is known: the balance cock's tapped holes (step 1b) and the pillars'
 // tenon holes (step 3). Every late hole must leave a LAND to every other
 // opening in the plate — the §62 rule that the strip between two openings is a
 // member, held here at the §50 floor since this plate has no window solver.
@@ -17935,7 +18865,7 @@ for (const s of pillarRivetSites) {
 const threeQuarterPlate = new THREE.Group();
 const buildTqPlateGeometry = () => G.makeThreeQuarterPlate({
   radius: plateR, thickness: TQ_T, cut: TQ_CUT,
-  ...(FORM ? { outline: FORM.loop() } : {}), // §307/§308 — the same shape as the base plate
+  ...(FORM ? { outline: FORM.loop() } : ROUND_TQ_OUTLINE ? { outline: ROUND_TQ_OUTLINE } : {}), // §307/§308 — the same shape as the base plate; §325 landing 16: the round plate's notch
   // The chaton sites' circles are drawn by their merged outline instead —
   // see tqHoles, where both representations are built and asserted equal.
   // §307 — every opening held inside the rectangle (formFilter; no-op round).
@@ -18079,6 +19009,7 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
       ringGeo(G.screwBoreR(PILLAR_SCREW_HEAD_R), PILLAR_SEAT_R + 0.15, PLATE_SCREW_LAND_T),
       MATS.nickel);
     land.position.set(p.x, p.y, -TQ_T / 2 + PLATE_SCREW_LAND_T / 2);
+    if (FRAME_LANDS) land.name = 'plateScrewLand';   // §325 landing 6: the ring that bears on a rim land, named so plateSeats can seat it by name
     threeQuarterPlate.add(land);
   }
   const plateScrews = pillarSeats.map((p) => ({
@@ -18100,7 +19031,7 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   // The head is sunk flush, so what it clamps below itself is the plate's
   // land, PLATE_SCREW_LAND_T, the same land ring cut above.
   for (const p of plateScrews)
-    declareFrameJoint({ joint: 'Three-quarter plate ⇄ pillar', clamped: 'three-quarter plate', host: 'pillar',
+    declareFrameJoint({ joint: FRAME_LANDS ? 'Three-quarter plate ⇄ rim land' : 'Three-quarter plate ⇄ pillar', clamped: 'three-quarter plate', host: FRAME_LANDS ? 'base plate' : 'pillar',
       frame: threeQuarterPlate, x: p.x, y: p.y, top: p.z, headR: PILLAR_SCREW_HEAD_R, headT: PLATE_SCREW_HEAD_T,
       shank: p.shank, clamp: PLATE_SCREW_LAND_T });
 }
@@ -18140,8 +19071,16 @@ for (const j of FRAME_JOINTS) {
 // arrest with the cone, and the lug's clocking is a CONSTRUCTION: full wind
 // is one fixed world azimuth (windLocalAt), so the lug is cut kissing the
 // thrown beak and the engagement turn count IS FUSEE_WRAP_TURNS.
-{
+arrest47: {   // labelled: §329 landing 4's stop-work branch leaves it before §47's arrest is solved
   const C = { x: P.barrel.x, y: P.barrel.y };
+  if (GEARED_BUILT) {
+    // §337 landing 2b — the geared Geneva replaces §47's arrest here, and is built LATE (after the fusee cock it hangs from, at
+    // §62's re-cut, where the windows are final). Until it has metal this leaves the arrest as the stop-work's no-site path does.
+    WIND_ARREST.pose = () => {};
+    WIND_ARREST.unit = fusee;
+    WIND_ARREST.stopwork = { built: false, geared: true };
+    break arrest47;
+  }
   const TAU2 = Math.PI * 2;
   const GROOVE = fusee.userData.groove; // the cut's own closures (floorAt takes cone-local z)
   const coneLocalZ = (zWorld) => zWorld - (L_BARREL + FUSEE_BASE_Z);
@@ -18362,6 +19301,29 @@ for (const j of FRAME_JOINTS) {
     return worst;
   };
 
+  // A2 — the owed measurement, Chain ⇄ three-quarter plate, CLOSED
+  // (§329 landing 4 moved this up from the block's end, unchanged: it reads only the chain's occupancy law, and the stop-work branch
+  // below leaves the block before §47's arrest is solved, so the measurement has to stand before the branch to hold on both builds.)
+  // (TODO 53): from the same occupancy law (the top link's leaned section
+  // at full wind against the plate's underside). The plate floor now
+  // carries CHAIN_TQ_REACH — the closed-form bound of exactly this
+  // measurement — so the assert holds the MARGIN, no longer just the
+  // sign. A second assert holds the bound CONSERVATIVE: the discrete top
+  // (the links the mesh really lays) must sit under it, every boot,
+  // every spec variant — the continuum bound errs outward by ~0.03 where
+  // chording errs inward, which is the right side for a floor, and the
+  // slack between them is published as a report, not gated.
+  {
+    let top = 0;
+    for (const pnt of linkOuterPtsNear(1, 1e9)) top = Math.max(top, pnt.z);
+    WIND_ARREST.chainTqGap = TQ_BOT_Z - top;
+    WIND_ARREST.chainTqBoundSlack = CHAIN_TQ_REACH - top;
+    if (!(WIND_ARREST.chainTqGap >= CLEAR_MARGIN - 1e-9))
+      console.warn(`§47/TODO 53: Chain ⇄ three-quarter plate gap ${WIND_ARREST.chainTqGap.toFixed(4)} under the ${CLEAR_MARGIN} margin — the plate floor's chain term regressed`);
+    if (WIND_ARREST.chainTqBoundSlack < -1e-9)
+      console.warn(`TODO 53: CHAIN_TQ_REACH under-bounds the discrete top by ${(-WIND_ARREST.chainTqBoundSlack).toFixed(4)} — the closed form stopped being conservative`);
+  }
+
   // --- the z plan, top down (all against the live plate) -----------------
   // One stack, every step a margin: plate underside → bracket (flush, the
   // support joint) → margin → the finger's plate (hub, arms, beak) → the
@@ -18393,6 +19355,387 @@ for (const j of FRAME_JOINTS) {
   const LUG_H = STOCK_MIN_U; // §50 wheel floor
   const LUG_Z2 = CONE_TOP_Z - 0.01;
   const LUG_Z1 = LUG_Z2 - LUG_H;
+  // ===========================================================================
+  // §329 landing 4 — THE STOP-WORK (option B), under ?arrest=stopwork. The owner's picks: a count, not a cam (a cam on the cone
+  // repeats every turn; the wind is FUSEE_WRAP_TURNS of the cone's own rotation), and the star turning in the GAP above the cone
+  // rather than in a pocket cut into it (measured: the cone's top face at CONE_TOP_Z, the three-quarter plate's underside one
+  // gap above, nothing between them but the fusee's own top staff). The line is src/stopwork-arrest.js; everything below is a fold
+  // of it, each dimension derived from the metal it meets:
+  //   · the PIN stands in the cone's top face at the largest radius whose root is still cone metal at its own azimuth (the groove
+  //     runs out through that face), floored where the star's teeth would reach the fusee's top staff;
+  //   · the STAR is the line's (n, m) for this wind at that pin orbit, its pivot a = r1 / sin(π/n) off the cone's axis, PLANTED in
+  //     the fusee cock's crank (§336 landing 3; a web of the plate's island until then) at the azimuth whose disc stands clearest
+  //     of the chain over the whole wind;
+  //   · the LOCK DISC on the cone's top face is the largest that clears the pin's circle by the margin (the line's lockHi), and its
+  //     RELIEF is carved from the star's own sweep through the engagement, never drawn;
+  //   · z: the star's stock at the §50 floor, the gap split evenly above and below it. Those two gaps are RUNNING gaps of one
+  //     mechanism (the star rides its driver's face and hangs from its own support), not structural clearances — they cannot be:
+  //     the gap is less than the stock plus two CLEAR_MARGINs, which is what the owner accepted.
+  // The arrest is the pin meeting a CLOSED notch's floor head-on (its velocity along the notch, so the force passes through the
+  // star's pivot and turns nothing): at full wind going up, at the end of the reserve coming down. The second stop is new — §47
+  // has only the first.
+  if (STOPWORK) {
+    const OMEGA = -MOVEMENT_SENSE;   // the cone's turn sense while WINDING: windLocalAt turns it +SENSE·2π per turn left to bank
+    const RUN = 0.01;                // the running fit (HUB_R's): a working contact inside one mechanism
+    const SW_HEAD_T = PIVOT_MIN_U;   // the stud's retaining head: §47's, at the §50 pivot floor (it retains; it carries no stop load)
+    const datum = barrelMeshAngle(0);   // the cone's world angle at full wind (windLocalAt ≡ 0 there)
+    const T = FUSEE_WRAP_TURNS;
+    const GAP = (TQ_BOT_Z - CONE_TOP_Z - STOCK_MIN_U) / 2;
+    const S_Z2 = TQ_BOT_Z - GAP, S_Z1 = S_Z2 - STOCK_MIN_U;
+    if (!(GAP >= 2 * RUN))
+      console.warn(`§329: the gap over the cone leaves ${GAP.toFixed(4)} each side of the star's ${STOCK_MIN_U.toFixed(3)} stock — under twice the running fit`);
+    const E = swEngagementArc(4);   // provisional for the pin's azimuth: E depends on n, re-checked once n is chosen
+    // §329 P1 — SIZED FROM THE STALL. At either stop the star holds the cone: the pin meets a closed notch's floor head-on, so
+    // its force passes through the star's pivot, and the cone's moment there is the chain's pull times the groove radius it
+    // leaves from, which the fusee holds LEVEL over the whole wind (the equalisation record: GOING_POWER.fuseeTorque_Nm, the
+    // same moment at full wind and at the end of the reserve). So both stops carry one load, F = T / r1, and the run-down stop
+    // that §47 never had is priced by the same number. Each member takes the larger of the section that load asks and its
+    // §50 floor (the alarm Geneva's rule, ARREST_STALL_NMM above), against the one steel's SPRING_SIGMA_Y_PA:
+    //   · the pin, a cantilever off the cone's top face loaded at the star's mid-plane: σ = 32·F·L/(π·d³);
+    //   · the star's stud, a cantilever down from the three-quarter plate to the same plane: the same law, the same F;
+    //   · the pin's root, sunk into the cone: the face moment F·L and the shear F reacted over the embed e as a bearing
+    //     pressure p = F/(d·e) + 6·F·L/(d·e²), solved for the e that holds it at yield.
+    // r1 depends on the pin (its root must be cone metal), so the pin is solved per site, a few fixed-point passes.
+    const SW_STALL_NMM = GOING_POWER.fuseeTorque_Nm * 1000;
+    const SW_SIGMA = SPRING_SIGMA_Y_PA / 1e6;                                          // N/mm²
+    const SW_MID_Z = S_Z1 + STOCK_MIN_U / 2;                                           // the star's mid-plane: where the pin and stud are loaded
+    // §336 landing 3 — the stud is planted in the FUSEE COCK's seat, a PENDANT that hangs from the crank down to where the
+    // plate's underside stood (the plate over the cone is the fusee window's air now), so the stud, the star's two running gaps
+    // and the stud's head are this design's unchanged. (A first cut planted the stud in the crank's own underside, 1.38 up: the
+    // load sized it at r 0.367, its head grew with it, and the head stood 0.104 off the cone's flank.)
+    const SW_STUD_TOP = TQ_BOT_Z;
+    const SW_PIN_L = SW_MID_Z - CONE_TOP_Z, SW_STUD_L = SW_STUD_TOP - SW_MID_Z;        // the two cantilevers' free lengths
+    const swCantR = (F, L) => Math.cbrt((32 * F * L * UNIT_MM) / (Math.PI * SW_SIGMA)) / 2 / UNIT_MM;   // radius at yield, units
+    const swRootE = (F, L, r) => {   // the embed that holds the face moment at yield: σ·d·e² − F·e − 6·F·L = 0, in units
+      const d = 2 * r * UNIT_MM, M = F * L * UNIT_MM;
+      return (F + Math.sqrt(F * F + 24 * SW_SIGMA * d * M)) / (2 * SW_SIGMA * d) / UNIT_MM;
+    };
+    const swSize = (r1) => {   // the load at orbit r1, and every member it sizes
+      const F = SW_STALL_NMM / (r1 * UNIT_MM);
+      const rPin = Math.max(SW_PIN_FLOOR, swCantR(F, SW_PIN_L));
+      const studR = Math.max(SW_STUD_FLOOR, swCantR(F, SW_STUD_L));
+      return { F, rPin, studR, rootD: Math.max(STOCK_MIN_U, swRootE(F, SW_PIN_L, rPin)) };
+    };
+    // the pin's root: the cone's own surface at the top face (cone-local z, azimuth), over the pin's width and its embed
+    const rootR = (azLocal, depth) => {
+      let r = Infinity;
+      for (let dz = 0.02; dz <= depth + 1e-9; dz += depth / 6)
+        for (let da = -0.08; da <= 0.08 + 1e-9; da += 0.04) r = Math.min(r, GROOVE.floorAt(coneLocalZ(CONE_TOP_Z - dz), azLocal + da));
+      return r;
+    };
+    // the chain near the star's band, over the whole wind (the occupancy law the arrest has always read)
+    const zLoBand = S_Z1 - SW_HEAD_T;
+    const chainNear = [];
+    for (let t = 0; t <= 1.0001; t += 0.05)
+      for (const pt of linkOuterPtsNear(Math.min(t, 1), 1e9))
+        if (pt.z > zLoBand - CLEAR_MARGIN && Math.hypot(pt.x - C.x, pt.y - C.y) < 14) chainNear.push(pt);
+    const winPolys = (TQ_WINDOWS.polys || []).map((q) => q.pts);
+    const inPolyXY = (pts, x, y) => {
+      let inside = false;
+      for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+        const [xi, yi] = pts[i], [xj, yj] = pts[j];
+        if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+      }
+      return inside;
+    };
+    // §336 landing 3 — THE SEAT IS THE COCK'S CRANK, not plate: the crank is routed through the seat at the cock's build, so
+    // what the seat needs here is the fusee window's AIR the crank runs in, its whole seat ring (the stud and a §50 floor of
+    // crank metal round it) inside that window. (It was plate metal outside every opening: a web of the island the cock removes.)
+    const fuseeWin = (TQ_WINDOWS.polys || []).filter((q) => q.name === 'fusee').map((q) => q.pts);
+    const plateMetalAt = (x, y, ring) => {   // the seat ring, inside the fusee window's air where the crank can carry it
+      for (let k = 0; k < 16; k++) {
+        const a = (k / 16) * TAU2, px = x + ring * Math.cos(a), py = y + ring * Math.sin(a);
+        if (!fuseeWin.some((w) => inPolyXY(w, px, py))) return false;
+      }
+      return true;
+    };
+    const rejects = { root: 0, line: 0, plate: 0, chain: 0, drum: 0 };
+    let site = null;
+    for (let i = 0; i < 720; i++) {
+      // a seam per azimuth: the default build runs this scan since §329's flip, and §47's own seams are past its `break`
+      await breathe(379);
+      const azS = (i / 720) * TAU2;
+      const pinAzW = azS - OMEGA * E / 2;   // the pin's world azimuth at full wind: θ = −E/2, entering the upper stop's notch
+      // the pin and its orbit, solved together: the pin sized at the orbit's load, the orbit the root's metal less the pin
+      let sz = swSize(rootR(pinAzW - datum, STOCK_MIN_U) - SW_PIN_FLOOR - STOCK_MIN_U), r1 = NaN;
+      for (let it = 0; it < 6; it++) {
+        r1 = rootR(pinAzW - datum, sz.rootD) - sz.rPin - STOCK_MIN_U;
+        if (!(r1 > 0)) break;
+        const nx = swSize(r1);
+        if (Math.abs(nx.rPin - sz.rPin) < 1e-9 && Math.abs(nx.rootD - sz.rootD) < 1e-9) { sz = nx; break; }
+        sz = nx;
+      }
+      const { rPin, studR } = sz;
+      const R1_LO = (TRAIN_STAFF_R + CLEAR_MARGIN + rPin + CLEAR_MARGIN) / (1 / Math.sin(Math.PI / 4) - 1);   // the teeth (a − rTip) clear the top staff
+      if (!(r1 >= R1_LO)) { rejects.root++; continue; }
+      const sw = chooseStopwork(T, r1, { rPin, studR });
+      if (!sw || sw.n !== 4) { rejects.line++; continue; }
+      const S = { x: C.x + sw.a * Math.cos(azS), y: C.y + sw.a * Math.sin(azS) };
+      if (!plateMetalAt(S.x, S.y, studR + STOCK_MIN_U)) { rejects.plate++; continue; }
+      let m = Infinity;
+      for (const pt of chainNear) {
+        const dz = pt.z < zLoBand ? zLoBand - pt.z : pt.z > S_Z2 ? pt.z - S_Z2 : 0;
+        if (dz >= CLEAR_MARGIN) continue;
+        m = Math.min(m, Math.hypot(pt.x - S.x, pt.y - S.y) - sw.rTip - Math.sqrt(CLEAR_MARGIN ** 2 - dz * dz));
+      }
+      if (!(m >= 0)) { rejects.chain++; continue; }
+      const drumM = Math.hypot(S.x - drumPos.x, S.y - drumPos.y) - sw.rTip - DRUM_WRAP_R - CLEAR_MARGIN;
+      if (!(drumM >= 0)) { rejects.drum++; continue; }
+      const margin = Math.min(m, drumM);
+      if (!site || margin > site.margin) site = { azS, S, r1, rPin, studR, rootD: sz.rootD, F: sz.F, sw, margin, chainM: m, drumM, pinAzW };
+    }
+    if (!site) {
+      console.warn(`§329: no stop-work site: every star azimuth was refused (root ${rejects.root}, line ${rejects.line}, plate ${rejects.plate}, chain ${rejects.chain}, drum ${rejects.drum}) — the movement is built with NO winding arrest`);
+      WIND_ARREST.pose = () => {};
+      WIND_ARREST.unit = fusee;
+      WIND_ARREST.stopwork = { built: false, rejects };
+      break arrest47;
+    }
+    const { S, r1, rPin, sw, azS, studR: SW_STUD_R, rootD: ROOT_D } = site;
+    const SW_HEAD_R = SW_STUD_R + 0.06;   // the head's lip over the bore: §47's, on the stud the load sized
+    // §329 P1 — the chosen site's members at the stall, held (each sized above, so these are the build checking its own sizing),
+    // and the two BEARING faces the stall loads, which the sizing above does not solve: the pin on a closed notch's floor and
+    // the star's bore on its stud, each the load over its projected area (diameter × the star's stock), against the same yield.
+    // The LOCK DISC carries nothing at either stop: the pin's force passes through the star's pivot, so the star feels no moment
+    // and its lock arcs press on nothing; the disc holds the star only against the drag of its own dwell.
+    const SW_P1 = (() => {
+      const F = site.F, mm = UNIT_MM, t = STOCK_MIN_U * mm;
+      const bend = (r, L) => (32 * F * L * mm) / (Math.PI * (2 * r * mm) ** 3);
+      const out = {
+        stallNmm: SW_STALL_NMM, F_N: F,
+        pin: { r: rPin, floor: SW_PIN_FLOOR, L: SW_PIN_L, sigma: bend(rPin, SW_PIN_L), governs: rPin > SW_PIN_FLOOR + 1e-12 ? 'load' : 'floor' },
+        stud: { r: SW_STUD_R, floor: SW_STUD_FLOOR, L: SW_STUD_L, sigma: bend(SW_STUD_R, SW_STUD_L), governs: SW_STUD_R > SW_STUD_FLOOR + 1e-12 ? 'load' : 'floor' },
+        root: { e: ROOT_D, floor: STOCK_MIN_U, p: F / (2 * rPin * mm * ROOT_D * mm) + (6 * F * SW_PIN_L * mm) / (2 * rPin * mm * (ROOT_D * mm) ** 2), governs: ROOT_D > STOCK_MIN_U + 1e-12 ? 'load' : 'floor' },
+        notchBearing: F / (2 * rPin * mm * t), studBearing: F / (2 * SW_STUD_R * mm * t), yield: SW_SIGMA,
+      };
+      for (const [what, v] of [['pin bending', out.pin.sigma], ['stud bending', out.stud.sigma], ['pin root bearing', out.root.p],
+        ['pin on the notch floor', out.notchBearing], ['star bore on its stud', out.studBearing]])
+        if (!(v <= SW_SIGMA * (1 + 1e-9)))
+          console.warn(`§329 P1: the stop-work's ${what} reads ${v.toFixed(1)} MPa at the stall (${SW_STALL_NMM.toFixed(3)} N·mm, ${F.toFixed(3)} N at the pin), over the ${SW_SIGMA.toFixed(0)} MPa yield`);
+      return out;
+    })();
+    const n = sw.n, m = sw.m, a = sw.a, rTip = sw.rTip;
+    if (Math.abs(swTravelTurns(m, n) - T) > 1e-9)
+      console.warn(`§329: the stop-work travels ${swTravelTurns(m, n).toFixed(4)} turns against a wind of ${T.toFixed(4)} — trim ${(swTravelTurns(m, n) - T).toFixed(4)} is not built`);
+    const En = swEngagementArc(n);
+    if (Math.abs(En - E) > 1e-12) console.warn(`§329: the pin was clocked for n = 4 and the line chose n = ${n}`);
+    // --- the star, in its own frame: x̂ toward the cone's axis at its run-down rest (ρ = 0) -----------------------------
+    const W = rPin + RUN;                          // a slot's half-width: the pin and its running fit
+    const R_L = sw.lockHi, R_ARC = R_L + RUN;      // the lock disc, and the star's concave arcs that ride it
+    const slotAz = (k) => OMEGA * (Math.PI / n + k * (TAU2 / n));   // k = 0 the open slot; 1..n−1 closed notches
+    const floorOf = (k) => (k < m ? sw.rIn : sw.r2 - rPin);         // open: the pin's closest approach less the margin; closed: the stop
+    const cornerA = Math.asin(W / rTip);
+    const cosD = (a * a + rTip * rTip - R_ARC * R_ARC) / (2 * a * rTip);
+    const delta = Math.acos(Math.max(-1, Math.min(1, cosD)));
+    if (!(delta < Math.PI / n - cornerA - 1e-6))
+      console.warn(`§329: the lock arcs (±${(delta * 180 / Math.PI).toFixed(2)}°) reach the slots' corners (${((Math.PI / n - cornerA) * 180 / Math.PI).toFixed(2)}°) — no tooth tip is left between them`);
+    const outline = [];
+    const tipArc = (b0, b1) => { const k = Math.max(2, Math.ceil(Math.abs(b1 - b0) / 0.03)); for (let j = 0; j <= k; j++) { const b = b0 + (b1 - b0) * (j / k); outline.push([rTip * Math.cos(b), rTip * Math.sin(b)]); } };
+    const lockArc = (bL) => {   // the concave arc about the cone's axis at its rest, from β = bL − δ to bL + δ through its innermost point
+      const cx = a * Math.cos(bL), cy = a * Math.sin(bL);
+      const p1 = [rTip * Math.cos(bL - delta), rTip * Math.sin(bL - delta)], p2 = [rTip * Math.cos(bL + delta), rTip * Math.sin(bL + delta)];
+      let g1 = Math.atan2(p1[1] - cy, p1[0] - cx), g2 = Math.atan2(p2[1] - cy, p2[0] - cx);
+      // the arc about c from p1 to p2 that passes the point nearest the star's centre (angle bL + π about c), going the way β increases
+      while (g2 > g1) g2 -= TAU2;   // β increasing along the star's edge runs the arc about c CLOCKWISE (c lies outside, beyond the edge)
+      const k = 48; for (let j = 0; j <= k; j++) { const g = g1 + (g2 - g1) * (j / k); outline.push([cx + R_ARC * Math.cos(g), cy + R_ARC * Math.sin(g)]); }
+    };
+    const slot = (bS, f) => {
+      const d = [Math.cos(bS), Math.sin(bS)], nn = [-Math.sin(bS), Math.cos(bS)], sTip = Math.sqrt(rTip * rTip - W * W);
+      const P = (s, w) => [s * d[0] + w * nn[0], s * d[1] + w * nn[1]];
+      outline.push(P(sTip, -W), P(f, -W), P(f, W), P(sTip, W));
+    };
+    const feats = [];
+    for (let k = 0; k < n; k++) { feats.push({ b: k * (TAU2 / n), kind: 'lock' }); feats.push({ b: slotAz(k), kind: 'slot', k }); }
+    for (const f of feats) f.b = ((f.b % TAU2) + TAU2) % TAU2;
+    feats.sort((p, q) => p.b - q.b);
+    // walk β upward: each lock arc spans [b − δ, b + δ], each slot [b − cornerA, b + cornerA]; tip arcs fill between
+    let prevEnd = null, firstStart = null;
+    for (const f of feats) {
+      const s0 = f.kind === 'lock' ? f.b - delta : f.b - cornerA;
+      if (prevEnd !== null) tipArc(prevEnd, s0); else firstStart = s0;
+      if (f.kind === 'lock') lockArc(f.b); else slot(f.b, floorOf(f.k));
+      prevEnd = f.kind === 'lock' ? f.b + delta : f.b + cornerA;
+    }
+    tipArc(prevEnd, firstStart + TAU2);
+    // each tip arc ends exactly where the next slot or lock arc begins (both on the tip circle at the same β), so every
+    // junction was written twice: sixteen zero-length edges, a seam the `outlines` gate fails (found flipping the default
+    // arrest to the stop-work). One point per junction, and the loop's last point is not its first.
+    for (let j = outline.length - 1; j > 0; j--)
+      if (Math.hypot(outline[j][0] - outline[j - 1][0], outline[j][1] - outline[j - 1][1]) < 1e-9) outline.splice(j, 1);
+    if (Math.hypot(outline[outline.length - 1][0] - outline[0][0], outline[outline.length - 1][1] - outline[0][1]) < 1e-9) outline.pop();
+    const starShape = new THREE.Shape();
+    starShape.moveTo(outline[0][0], outline[0][1]);
+    for (let j = 1; j < outline.length; j++) starShape.lineTo(outline[j][0], outline[j][1]);
+    starShape.closePath();
+    const bore = new THREE.Path(); bore.absarc(0, 0, SW_STUD_R + RUN, 0, TAU2, true); starShape.holes.push(bore);
+    // --- the pose law: the star's turn from the cone's, through the Geneva -----------------------------------------------
+    const PHI_HI = (m + 1) * TAU2 - En / 2;     // the finger angle at full wind (the upper stop); the lower stop is En/2
+    const rhoAt = (phi) => {                    // the star's CCW turn from its run-down rest, for finger angle phi
+      let rho = 0;
+      for (let k = 1; k <= m; k++) {
+        const th = phi - k * TAU2;
+        if (th >= En / 2) rho += -OMEGA * (TAU2 / n);
+        else if (th > -En / 2) rho += -OMEGA * (swStarAngle(n, r1, th, a) + Math.PI / n);
+      }
+      return rho;
+    };
+    const azU = azS + Math.PI;                  // the star frame's x̂: from its pivot toward the cone's axis
+    const phiOfTension = (tension) => PHI_HI - TAU2 * T * (1 - clamp(tension, 0, 1));
+    // the pin's world position at finger angle phi (θ about the line of centres, its passage's)
+    const pinAt = (phi) => { const ang = azS + OMEGA * (phi - PHI_HI) - OMEGA * En / 2; return { x: C.x + r1 * Math.cos(ang), y: C.y + r1 * Math.sin(ang) }; };
+    const toStar = (p, rho) => { const dx = p.x - S.x, dy = p.y - S.y, c0 = Math.cos(-(azU + rho)), s0 = Math.sin(-(azU + rho)); return [dx * c0 - dy * s0, dx * s0 + dy * c0]; };
+    // A — the construction, measured: through every passage the pin's centre lies on the open slot's centreline, and at the two
+    // stops it sits on a closed notch's centreline at its floor plus its own radius (a derivation over the pose law — boot has no pose)
+    {
+      let worst = 0;
+      for (let k = 1; k <= m; k++) for (let j = 0; j <= 40; j++) {
+        const phi = k * TAU2 - En / 2 + (j / 40) * En;
+        const [u, v] = toStar(pinAt(phi), rhoAt(phi));
+        const b = slotAz(k - 1), off = Math.abs(-u * Math.sin(b) + v * Math.cos(b));
+        worst = Math.max(worst, off);
+      }
+      const stopOff = (phi, k) => { const [u, v] = toStar(pinAt(phi), rhoAt(phi)); const b = slotAz(k); return [Math.abs(-u * Math.sin(b) + v * Math.cos(b)), Math.abs(u * Math.cos(b) + v * Math.sin(b) - (floorOf(k) + rPin))]; };
+      const up = stopOff(PHI_HI, m), lo = stopOff(En / 2, n - 1);
+      if (!(worst < 1e-9 && Math.max(...up, ...lo) < 1e-9))
+        console.warn(`§329: the stop-work is not the construction it claims — pin off the open slot by ${worst.toExponential(2)}, upper stop off by ${up.map((x) => x.toExponential(2))}, lower by ${lo.map((x) => x.toExponential(2))}`);
+    }
+    // --- the lock disc and its relief, in the cone's own frame -------------------------------------------------------------
+    const starPts = outline;
+    const distStar = (u, v) => {   // signed distance to the star's outline (negative inside)
+      let d = Infinity, inside = false;
+      for (let i = 0, j = starPts.length - 1; i < starPts.length; j = i++) {
+        const [xi, yi] = starPts[i], [xj, yj] = starPts[j];
+        if ((yi > v) !== (yj > v) && u < ((xj - xi) * (v - yi)) / (yj - yi) + xi) inside = !inside;
+        const ex = xi - xj, ey = yi - yj, L = ex * ex + ey * ey || 1e-12, tt = clamp(((u - xj) * ex + (v - yj) * ey) / L, 0, 1);
+        d = Math.min(d, Math.hypot(u - xj - tt * ex, v - yj - tt * ey));
+      }
+      return inside ? -d : d;
+    };
+    // The disc sits fast on the cone's TOP FACE, its bore around the fusee's top staff (no hub ring of its own): a hub's §50 wall
+    // would stand out to 0.817, and the star's teeth come in to a − rTip (0.764 on the lands preview), so where the star's sweep
+    // reaches the bore the disc is OPEN there — a C, carried by the face it sits on. The teeth then clear the staff itself, which
+    // the pin's floor R1_LO holds by the margin.
+    const DISC_IN = TRAIN_STAFF_R;
+    const NA = 360, poses = [];
+    for (let k = 1; k <= m; k++) for (let j = 0; j <= 24; j++) { const phi = k * TAU2 - En / 2 + (j / 24) * En; poses.push({ rho: rhoAt(phi), coneAng: datum + OMEGA * (phi - PHI_HI) }); }
+    const discR = new Float64Array(NA);
+    let reliefMin = Infinity;
+    for (let i = 0; i < NA; i++) {
+      // a seam per azimuth of the relief: each carves ~100 radii against the star's whole outline at every passage pose,
+      // about a second for the disc in one stretch (boot-yield read 968 ms held on the flipped default)
+      await breathe(380);
+      const al = (i / NA) * TAU2;
+      let r = R_L;
+      // the relief is a SLIDING fit inside one mechanism (the star's flanks pass the disc's edge as the lock arcs do), so it is
+      // cut at the running fit, never the structural margin: cut at CLEAR_MARGIN it ate the disc under the lock arcs at both ends
+      // of the passage, where they run at RUN, and left the star unlocked over 228° of the finger's 540° of dwell (measured).
+      const R_STEP = 0.01;
+      for (let rr = DISC_IN + RUN; rr <= R_L + 1e-9; rr += R_STEP) {
+        let hit = false;
+        for (const ps of poses) {
+          const wx = C.x + rr * Math.cos(al + ps.coneAng), wy = C.y + rr * Math.sin(al + ps.coneAng);
+          if (Math.hypot(wx - S.x, wy - S.y) > rTip + RUN) continue;
+          const [u, v] = toStar({ x: wx, y: wy }, ps.rho);
+          if (distStar(u, v) < RUN - 1e-9) { hit = true; break; }
+        }
+        if (hit) { r = rr - R_STEP; break; }
+      }
+      discR[i] = r; reliefMin = Math.min(reliefMin, r);
+    }
+    // where the relief leaves less than a §50 wall outside the bore, the disc is cut through to it: those azimuths are the C's opening
+    const open = Array.from(discR, (r) => r < DISC_IN + STOCK_MIN_U);
+    // Metal BETWEEN two openings touches only the bore, so it is a loose sliver, not a member: the opening is the smallest arc
+    // that covers every open azimuth (measured on the default stop-work: 338–354° and 2–18°, with the open slot's shadow left
+    // standing between them out to ~1.0). It is the complement of the longest run of metal.
+    if (open.some(Boolean)) {
+      let bestS = -1, bestL = 0;
+      for (let i = 0; i < NA; i++) if (!open[i] && open[(i + NA - 1) % NA]) { let L = 0; while (!open[(i + L) % NA] && L < NA) L++; if (L > bestL) { bestL = L; bestS = i; } }
+      for (let k = bestL; k < NA; k++) open[(bestS + k) % NA] = true;
+      if (bestL < NA / 2) console.warn(`§329: the lock disc's opening spans ${((NA - bestL) * 360 / NA).toFixed(0)}° — more than half the disc`);
+    }
+    const runs = []; for (let i = 0; i < NA; i++) if (open[i] && !open[(i + NA - 1) % NA]) runs.push(i);
+    // the lock holds through every dwell: the disc is whole under the azimuth the star faces whenever the pin is out of a slot
+    // A concave arc riding a convex disc holds the star both ways only while there is disc metal under the arc on BOTH sides of
+    // the azimuth it faces (metal on one side blocks one sense of turn and lets the other go). The arc spans ±GAMMA about the
+    // cone's axis: the angle, seen from the axis, of the arc's ends on the star's tip circle.
+    const GAMMA = Math.atan2(rTip * Math.sin(delta), a - rTip * Math.cos(delta));
+    const fullAt = (al) => { let q = Math.round((al / TAU2) * NA) % NA; if (q < 0) q += NA; return discR[q] >= R_L - 1e-9; };
+    const sideHeld = (al, sgn) => { for (let k = 1; k <= Math.ceil(GAMMA / (TAU2 / NA)); k++) if (fullAt(al + sgn * k * (TAU2 / NA))) return true; return false; };
+    let unlockedDeg = 0;
+    const DWELL_N = 720, dPhi = (PHI_HI - En / 2) / (DWELL_N - 1);
+    for (let j = 0; j < DWELL_N; j++) {
+      const phi = En / 2 + j * dPhi;
+      let inPass = false; for (let k = 1; k <= m; k++) if (Math.abs(phi - k * TAU2) < En / 2) inPass = true;
+      if (inPass) continue;
+      const coneAng = datum + OMEGA * (phi - PHI_HI);
+      let al = (azS - coneAng) % TAU2; if (al < 0) al += TAU2;
+      if (!(sideHeld(al, 1) && sideHeld(al, -1))) unlockedDeg += (dPhi * 180) / Math.PI;
+    }
+    if (unlockedDeg > 1e-9)
+      console.warn(`§329: the lock disc lets the star go for ${unlockedDeg.toFixed(1)}° of the finger's dwell — its relief reaches under both ends of the lock arc`);
+    const discShape = new THREE.Shape();
+    const P_AT = (i, r) => { const al = (i / NA) * TAU2; return [r * Math.cos(al), r * Math.sin(al)]; };
+    if (!runs.length) {   // whole: an outline and a bore
+      for (let i = 0; i < NA; i++) { const [x, y] = P_AT(i, discR[i]); if (i === 0) discShape.moveTo(x, y); else discShape.lineTo(x, y); }
+      discShape.closePath();
+      const discBore = new THREE.Path(); discBore.absarc(0, 0, DISC_IN, 0, TAU2, true); discShape.holes.push(discBore);
+    } else {              // a C: the outline over the metal's azimuths, then back round the bore
+      const s0 = runs[0]; let e0 = s0; while (open[(e0 + 1) % NA] && e0 - s0 < NA) e0++;   // the opening is s0..e0
+      const first = (e0 + 1) % NA, count = NA - (e0 - s0 + 1);
+      for (let k = 0; k < count; k++) { const i = (first + k) % NA; const [x, y] = P_AT(i, discR[i]); if (k === 0) discShape.moveTo(x, y); else discShape.lineTo(x, y); }
+      for (let k = count - 1; k >= 0; k--) { const i = (first + k) % NA; const [x, y] = P_AT(i, DISC_IN); discShape.lineTo(x, y); }
+      discShape.closePath();
+    }
+    // --- metal --------------------------------------------------------------------------------------------------------------
+    const swUnit = new THREE.Group();
+    swUnit.name = 'stopworkUnit';
+    movement.add(swUnit);
+    const starPivot = new THREE.Group();
+    starPivot.position.set(S.x, S.y, 0);
+    swUnit.add(starPivot);
+    const star = new THREE.Mesh(new THREE.ExtrudeGeometry(starShape, { depth: STOCK_MIN_U, bevelEnabled: false, curveSegments: 24 }), MATS.steel);
+    star.name = 'stopworkStar';
+    star.position.z = S_Z1;
+    starPivot.add(star);
+    const studMesh = new THREE.Mesh(new THREE.CylinderGeometry(SW_STUD_R, SW_STUD_R, SW_STUD_TOP - (S_Z1 - SW_HEAD_T), 16), MATS.blueSteel);
+    studMesh.name = 'stopworkStud';
+    studMesh.rotation.x = Math.PI / 2;
+    studMesh.position.set(S.x, S.y, (SW_STUD_TOP + S_Z1 - SW_HEAD_T) / 2);
+    swUnit.add(studMesh);
+    const headMesh = new THREE.Mesh(new THREE.CylinderGeometry(SW_HEAD_R, SW_HEAD_R, SW_HEAD_T, 16), MATS.blueSteel);
+    headMesh.name = 'stopworkStudHead';
+    headMesh.rotation.x = Math.PI / 2;
+    headMesh.position.set(S.x, S.y, S_Z1 - SW_HEAD_T / 2 - RUN);
+    swUnit.add(headMesh);
+    // the finger wheel rides the cone: built in the fusee's frame (world at full wind turned back by the datum), like §47's lug
+    const disc = new THREE.Mesh(new THREE.ExtrudeGeometry(discShape, { depth: S_Z2 - CONE_TOP_Z, bevelEnabled: false }), MATS.steel);
+    disc.name = 'stopworkLockDisc';
+    disc.position.z = coneLocalZ(CONE_TOP_Z);   // its outline is already in the fusee's frame: azimuth `al` above is the cone-local one
+    fusee.add(disc);
+    const pinW = pinAt(PHI_HI), pinL = rot2(pinW, -datum);
+    const pinMesh = new THREE.Mesh(new THREE.CylinderGeometry(rPin, rPin, S_Z2 - (CONE_TOP_Z - ROOT_D), 16), MATS.blueSteel);
+    pinMesh.name = 'stopworkPin';
+    pinMesh.rotation.x = Math.PI / 2;
+    pinMesh.position.set(pinL.x - C.x, pinL.y - C.y, coneLocalZ((S_Z2 + CONE_TOP_Z - ROOT_D) / 2));
+    fusee.add(pinMesh);
+    // --- pose + the public object -------------------------------------------------------------------------------------------
+    WIND_ARREST.pose = (tension) => { starPivot.rotation.z = azU + rhoAt(phiOfTension(tension)); };
+    WIND_ARREST.unit = swUnit;
+    WIND_ARREST.stopwork = {
+      built: true, n, m, travel: swTravelTurns(m, n), wind: T, r1, rPin, a, rTip, rIn: sw.rIn, r2: sw.r2, lockR: R_L, reliefMin,
+      unlockedDeg, lockArcDeg: (GAMMA * 180) / Math.PI, discOpenDeg: (open.filter(Boolean).length * 360) / NA, discOpenRuns: runs.map((r0) => { let e = r0; while (open[(e + 1) % NA] && e - r0 < NA) e++; return [r0, e].map((q) => (q * 360) / NA); }), starAzDeg: (azS * 180) / Math.PI, pivot: S, z: [S_Z1, S_Z2], gap: GAP, margin: site.margin, chainMargin: site.chainM,
+      drumMargin: site.drumM, rejects, pinAzDeg: (site.pinAzW * 180) / Math.PI, p1: SW_P1,
+    };
+    WIND_ARREST.pose(1);
+    registerLabel('Winding stop-work', swUnit);
+    registerExplode(swUnit, 0, 9);
+    declareTravel('Winding stop-work', (TAU2 / n) * m,
+      'the star turns 2π/n per passage of the pin, m passages between its two stops — the Geneva law, one engagement per cone turn');
+    declareRestoring('Winding stop-work', 'stopworkStar', 'two-way',
+      'the pin carries the star forward as the crown winds the cone and back as the mainspring unwinds it; between passages the lock disc holds it',
+      ['input:the going crown', 'Mainspring drum/mainspringRibbon']);
+    break arrest47;
+  }
   // TWO CEILINGS HANG OVER THE FINGER'S PLATE, AND THE LUG IS THE LOWER ONE
   // — TODO 51 row two. The bracket is the obvious one: the plate swings
   // under its arm, a pin's gap below. But the lug ORBITS, so it sweeps every
@@ -19254,14 +20597,118 @@ for (const j of FRAME_JOINTS) {
       padGain: gain, psiFull: psi, beakParked: parked, beakGain: bGain,
       beakMoment: bMoment, rejects, trace: trace.join('') };
   };
-  let FINGER = null;
+  // §329 landing 2a — THE TRAILING ARREST'S SITE, measured (?arrest=trailing; nothing is built from it yet). The line
+  // (src/trailing-arrest.js) is a family in the beak arm L2: the beak lever's stud S2 stands BEHIND the finger's stud S1, its slotted
+  // tail reaching back over S1 to a pin on the finger's tail, so the two levers turn together and the beak lever turns less. For each
+  // pad candidate §47 already solves, this finds where that lever can stand and the SMALLEST arm that seats it (the owner's rule,
+  // 2026-11-02). The beak parks at BEAK_PARKED_R on the pad's FAR side (az + LEVER_SIDE·dAz, measured chain-free at the tab's band), and
+  // for each L2 on a grid:
+  //   · the beak lever's turn is the line's closed form for the throw the bite needs (psi2ForThrow), and must be under the finger's own
+  //     turn ψ1 (the solve's PSI_FULL) — S2 behind S1 cannot turn the beak lever further than the finger;
+  //   · the THROWN arm stands ε = asin(ρ/L2) past the lug's force line (−MOVEMENT_SENSE·θ̂, the windLocalAt sense the existing scan uses;
+  //     ρ = MU_STEEL·PIVOT_MIN_U) on the side whose moment turns the lever further along its throw — so the stop engages by construction —
+  //     and S2 is where that arm, turned back by ψ2, meets the parked beak;
+  //   · the pin radius follows from the studs' distance e (r1For), with e and r1 at or over their member floors;
+  //   · every clearance §47's own solve takes: S2's hub rim, the pin, and both tails (the finger's S1→pin, the beak lever's S2→pin over
+  //     S1) outside the arm stop (the wrap's reach, floored by the lug's orbit); S2's head over the chain's reach at its window; no chord
+  //     crossing the flying span; S2's stud dropping through the fusee window's open sectors.
+  // The answer is the smallest seating L2 over every site (ties to the larger smallest margin); with none, the counts of why each try
+  // failed are the answer. NOT measured here: the two levers' STRATUM — the beak lever's tail crosses over the finger's stud, and under the
+  // bracket there is no second plate's room above the finger (PIN_GAP < STOCK_MIN_U); whether it stands below is landing 2b's question.
+  const TRAIL = SPEC.arrest === 'trailing' ? solveTrailingArrest() : null;
+  const trailingSite = (() => {
+    if (!TRAIL) return null;
+    const win = (TQ_WINDOWS.report || []).find((w) => w.name === 'fusee');
+    const inPoly = (pts, x, y) => {
+      let inside = false;
+      for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+        const [xi, yi] = pts[i], [xj, yj] = pts[j];
+        if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+      }
+      return inside;
+    };
+    const dropsThrough = (x, y, rr) => !win || (win.sectors || []).some((sct) => {
+      const pts = sct.pts || sct;
+      return inPoly(pts, x, y) && inPoly(pts, x + rr, y) && inPoly(pts, x - rr, y) && inPoly(pts, x, y + rr) && inPoly(pts, x, y - rr);
+    });
+    const rotV = (v, a) => ({ x: v.x * Math.cos(a) - v.y * Math.sin(a), y: v.x * Math.sin(a) + v.y * Math.cos(a) });
+    const segNear = (a, b) => {   // the segment's closest approach to the cone centre
+      const dx = b.x - a.x, dy = b.y - a.y, L2s = dx * dx + dy * dy || 1e-12;
+      const u = clamp(((C.x - a.x) * dx + (C.y - a.y) * dy) / L2s, 0, 1);
+      return { x: a.x + u * dx, y: a.y + u * dy };
+    };
+    const chordM = (a, b) => { const n = segNear(a, b); return rOf(n) - ARM_W / 2 - armStopAt(azOf(n)); };
+    const L2_GRID = [];
+    for (let L = TRAIL.throwNeed; L <= 6 + 1e-9; L += 0.05) L2_GRID.push(L);
+    return (s, az) => {
+      const st = s.stud, psi1 = Math.abs(s.psiFull), rotS = Math.sign(s.psiFull);   // co-rotating
+      const why = { chain: 0, turn: 0, radii: 0, hub: 0, head: 0, pin: 0, chord: 0, span: 0, web: 0 };
+      let best = null;
+      for (let k = 0; ; k++) {
+        const dAz = 0.12 + k * BEAK_SCAN_STEP;
+        if (dAz > 2.2 + 1e-9) break;
+        const baz = az + LEVER_SIDE * dAz;
+        let blocked = false;
+        for (let t = 0.1; t <= 1.0001; t += 0.05) {
+          if (chainProudAt(baz, BEAK_TAN / (2 * BEAK_PARKED_R) + BEAK_SCAN_STEP, TAB_Z1, TAB_Z2, Math.min(t, 1), CLEAR_MARGIN) > 0) { blocked = true; break; }
+        }
+        if (blocked) { why.chain++; continue; }
+        const B = { x: C.x + BEAK_PARKED_R * Math.cos(baz), y: C.y + BEAK_PARKED_R * Math.sin(baz) };
+        const F = { x: MOVEMENT_SENSE * Math.sin(baz), y: -MOVEMENT_SENSE * Math.cos(baz) };   // −MOVEMENT_SENSE·θ̂
+        for (const L2 of L2_GRID) {
+          if (best && L2 > best.L2 + 1e-9) break;   // a longer arm cannot beat the smallest that already seats
+          const psi2 = trailPsi2ForThrow(L2, TRAIL.throwNeed);
+          if (!(psi2 > 0 && psi2 < psi1)) { why.turn++; continue; }
+          const eps = trailEpsOf(L2);
+          // the thrown arm (S2 → beak) along −F, turned by ±ε: the sign whose moment cross(arm, F) has the lever's own sense
+          let at = rotV({ x: -F.x * L2, y: -F.y * L2 }, eps);
+          if (Math.sign(cross2(at, F)) !== rotS) at = rotV({ x: -F.x * L2, y: -F.y * L2 }, -eps);
+          const ar = rotV(at, -rotS * psi2);                  // the same arm at rest
+          const S2 = { x: B.x - ar.x, y: B.y - ar.y }, Bt = { x: S2.x + at.x, y: S2.y + at.y };
+          const thr = rOf(B) - rOf(Bt);
+          const e = Math.hypot(S2.x - st.x, S2.y - st.y);
+          const r1 = trailR1For(psi1, psi2, e);
+          if (!(thr > TRAIL.throwNeed - 1e-3) || e < TRAIL_D_MIN || !(r1 >= TRAIL_R1_MIN)) { why.radii++; continue; }
+          const pin = { x: st.x + (r1 * (st.x - S2.x)) / e, y: st.y + (r1 * (st.y - S2.y)) / e };   // beyond S1, away from S2
+          const hubM = rOf(S2) - HUB_R - armStopAt(azOf(S2));
+          if (hubM < 0) { why.hub++; continue; }
+          const pinM = rOf(pin) - ARM_W / 2 - armStopAt(azOf(pin));
+          if (pinM < 0) { why.pin++; continue; }
+          const cM = Math.min(chordM(st, pin), chordM(S2, pin));
+          if (cM < 0) { why.chord++; continue; }
+          if (spanFoulsChord(S2.x, S2.y, B.x, B.y) || spanFoulsChord(S2.x, S2.y, pin.x, pin.y)) { why.span++; continue; }
+          if (!dropsThrough(S2.x, S2.y, PIVOT_MIN_U + CLEAR_MARGIN)) { why.web++; continue; }
+          let reach = 0;
+          for (let t = 0.1; t <= 1.0001; t += 0.05)
+            reach = Math.max(reach, chainProudAt(azOf(S2), 0.12, HUB_Z1 - 0.02 - HEAD_T, TQ_BOT_Z, Math.min(t, 1), CLEAR_MARGIN));
+          const headM = rOf(S2) - (reach + CLEAR_MARGIN + HEAD_R);
+          if (headM < 0) { why.head++; continue; }
+          const margin = Math.min(hubM, headM, pinM, cM);
+          if (!best || L2 < best.L2 - 1e-9 || margin > best.margin)
+            best = { beakAz: baz, dAz, L2, psi2, ratio: psi2 / psi1, S2, beak: B, beakThrown: Bt, pin, e, r1, r2: e + r1, throw: thr, margin, hubM, headM, pinM, chordM: cM };
+          break;   // the smallest arm that seats at this station
+        }
+      }
+      return { best, why, rotS, movementSense: MOVEMENT_SENSE };
+    };
+  })();
+  let FINGER = null, fingerFound = false;
+  // §75 step 1 — EVERY pad candidate's beak scan, not only the chosen one's: which test rejected each beak station (the trace's
+  // letters, counted) and how many stations were legal. The loop stops at the first legal candidate, so on a solved movement this
+  // holds the candidates tried up to it; on one with no legal beak it holds them all. Read through __clock.windArrest.candidateScan.
+  const candidateScan = [];
+  WIND_ARREST.candidateScan = candidateScan;
   for (const cand of candidates) {
     await breathe(151);
     const s = solveFinger(cand.az);
+    candidateScan.push({ az: cand.az, tTouch: cand.tTouch, legal: (s.trace.match(/\./g) || []).length, rejects: s.rejects, trace: s.trace,
+      ...(trailingSite ? { trailing: trailingSite(s, cand.az) } : {}) });
     await breathe(152);
+    if (fingerFound) continue;   // §329 landing 2a: only under ?arrest=trailing, scanning the rest for the trailing site; FINGER is kept
     if (!s.beakParked) { FINGER ??= { ...s, az: cand.az, tTouch: cand.tTouch }; continue; }
     FINGER = { ...s, az: cand.az, tTouch: cand.tTouch };
-    break;
+    fingerFound = true;
+    if (!trailingSite) break;
   }
   if (!FINGER) {
     FINGER = { ...solveFinger(4.2), az: 4.2, tTouch: 0.93 }; // declared-unchecked fallback, the detent's own convention
@@ -19879,6 +21326,11 @@ for (const j of FRAME_JOINTS) {
       y: beakTan.x * Math.sin(PSI_FULL) + beakTan.y * Math.cos(PSI_FULL),
     };
     const alongFace = { x: -nT.y, y: nT.x };
+    // §336 — the stop's LEVER: the stall force runs along the face normal nT,
+    // so its moment arm about the arbor is the face line's distance from the
+    // axis, wherever on the face it lands. Published for the fusee cock,
+    // which was sized before this lug existed (checkFuseeCockStall).
+    WIND_ARREST_STOP_ARM = Math.abs((beakThrown.x - C.x) * alongFace.x + (beakThrown.y - C.y) * alongFace.y);
     const lugFloorR = GROOVE.floorR(F_LUG);   // §254: the shelf at the lug's station (the floor is helical now, so it is read by station, not by z)
     // face edge: the thrown-face line clipped to the lug's radial band
     const hitR = (targetR) => {
@@ -20081,42 +21533,24 @@ for (const j of FRAME_JOINTS) {
   registerExplode(arrestUnit, 0, 9); // rides out with the back/plate stack, the alarm click's tier convention
   declareTravel('Winding arrest', Math.abs(PSI_MAX) * 1.15,
     'the finger swings ψFor(LIFT_MAX) from bank to the law\'s deepest throw — the MEASURED ride through the pose\'s exact lever inverse, not the designed PAD_LIFT one, since the law carries the pad past its nominal lift; the margin covers the blade\'s seat preload, and the registry\'s containment assert widens this if the built ride exceeds it');
-  // §48 — the keyless winding wheels RECIPROCATE now, and honestly: §47's
-  // collapse made them pose from the bank, so the crown drives them one way
-  // while the mainspring back-drives them through the fusee arbor and its
-  // spur the other. Nothing restores them because nothing needs to — both
-  // directions are DRIVEN, which is exactly what the 'two-way' kind says.
-  // (Before the collapse they moved on no axis at all, so the audit could
-  // not judge them: §121's rule, met by a part becoming visible rather than
-  // by a waiver.)
-  declareRestoring('Keyless works', '*', 'two-way',
-    'the crown drives the winding wheels forward through the clutch\'s saw coupling into the fixed winding pinion (TODO 50\'s split); the mainspring back-drives the same teeth through the fusee arbor and its spur as the watch runs down — the reversal is two drives, not a spring; the coupling\'s own one-way lives on the CLUTCH unit, whose spring is declared there',
-    ['input:the going crown', 'Mainspring drum/mainspringRibbon']);
   declareRestoring('Winding arrest', 'windArrestPawl', 'spring',
     'the blade re-seats the finger on its bank pin when the coil leaves the pad — a real torsion arc about the stud, its fixed end on its own post under the bracket; the ARREST hold is the chain pressing the pad, not the spring',
     'windArrestSpring');
 
-  // A2 — the owed measurement, Chain ⇄ three-quarter plate, CLOSED
-  // (TODO 53): from the same occupancy law (the top link's leaned section
-  // at full wind against the plate's underside). The plate floor now
-  // carries CHAIN_TQ_REACH — the closed-form bound of exactly this
-  // measurement — so the assert holds the MARGIN, no longer just the
-  // sign. A second assert holds the bound CONSERVATIVE: the discrete top
-  // (the links the mesh really lays) must sit under it, every boot,
-  // every spec variant — the continuum bound errs outward by ~0.03 where
-  // chording errs inward, which is the right side for a floor, and the
-  // slack between them is published as a report, not gated.
-  {
-    let top = 0;
-    for (const pnt of linkOuterPtsNear(1, 1e9)) top = Math.max(top, pnt.z);
-    WIND_ARREST.chainTqGap = TQ_BOT_Z - top;
-    WIND_ARREST.chainTqBoundSlack = CHAIN_TQ_REACH - top;
-    if (!(WIND_ARREST.chainTqGap >= CLEAR_MARGIN - 1e-9))
-      console.warn(`§47/TODO 53: Chain ⇄ three-quarter plate gap ${WIND_ARREST.chainTqGap.toFixed(4)} under the ${CLEAR_MARGIN} margin — the plate floor's chain term regressed`);
-    if (WIND_ARREST.chainTqBoundSlack < -1e-9)
-      console.warn(`TODO 53: CHAIN_TQ_REACH under-bounds the discrete top by ${(-WIND_ARREST.chainTqBoundSlack).toFixed(4)} — the closed form stopped being conservative`);
-  }
 }
+// §48 — the keyless winding wheels RECIPROCATE now, and honestly: §47's
+// collapse made them pose from the bank, so the crown drives them one way
+// while the mainspring back-drives them through the fusee arbor and its
+// spur the other. Nothing restores them because nothing needs to — both
+// directions are DRIVEN, which is exactly what the 'two-way' kind says.
+// (Before the collapse they moved on no axis at all, so the audit could
+// not judge them: §121's rule, met by a part becoming visible rather than
+// by a waiver.)
+declareRestoring('Keyless works', '*', 'two-way',
+  'the crown drives the winding wheels forward through the clutch\'s saw coupling into the fixed winding pinion (TODO 50\'s split); the mainspring back-drives the same teeth through the fusee arbor and its spur as the watch runs down — the reversal is two drives, not a spring; the coupling\'s own one-way lives on the CLUTCH unit, whose spring is declared there',
+  ['input:the going crown', 'Mainspring drum/mainspringRibbon']);
+// (§329: declared OUTSIDE arrest47 since the stop-work. It is the keyless wheels' fact, true under either arrest, and written
+// inside the block it was skipped by the stop-work's `break`, so the restoring audit read Keyless works as restored by nothing.)
 
 // (The power-reserve reduction train is built after the dial side below — its
 // output arbor must be coaxial with the reserve sub-dial pivot, whose
@@ -20401,7 +21835,8 @@ for (const [nm, cy, wr] of [['reserve', reserveStationR, reserveWellR], ['second
   const inboard = -SECONDS_LOCAL.y - SUBDIAL_INBOARD_CLEAR;
   const outboard = dialRadius * (2 * G.DIAL_CANVAS_FILL_F) * G.DIAL_RAIL_IN_F
     - DIAL_WALL_HALF - CLEAR_MARGIN - -SECONDS_LOCAL.y;
-  if (SPEC.d4 === null && Math.abs(inboard - outboard) > 0.02)
+  // a print scaled to the case (printScale < 1) moved the outboard bound in on purpose: D4 is the ROUND print's maximum
+  if (SPEC.d4 === null && printScale === 1 && Math.abs(inboard - outboard) > 0.02)
     console.warn(`§125: D4 no longer maximizes the seconds well — inboard bound ${inboard.toFixed(4)} vs `
       + `outboard ${outboard.toFixed(4)} (need equal within 0.02); re-derive D4 from its comment's closed form`);
 }
@@ -20434,7 +21869,7 @@ if (DIAL_TRACK) {
   // rail the face prints). The free outline hugs the metal, and its rail comes inside the round one; the wells are
   // pins of its fit at the outline's own distance — the rail's inward offset gIn plus the ring wall and margin (a
   // disk at least the held corner's round inside the rail's offset stands inside the held rail too).
-  const roundInner = dialRadius * 2 * G.DIAL_CANVAS_FILL_F * G.DIAL_RAIL_IN_F;
+  const roundInner = dialRadius * 2 * G.DIAL_CANVAS_FILL_F * G.DIAL_RAIL_IN_F * printScale;   // the rail the solver read
   const wells = [{ name: 'seconds', at: SECONDS_LOCAL, r: secondsWellR },
     ...(reserveWellLaw === 'chapter' ? [{ name: 'reserve', at: RESERVE_LOCAL, r: reserveWellR }] : [])];
   for (const w of wells) freePin(P.dial.x - w.at.x, P.dial.y + w.at.y, w.r + DIAL_WALL_HALF + CLEAR_MARGIN + DIAL_TRACK.gIn, `the ${w.name} well inside the track`);
@@ -20456,6 +21891,7 @@ const dial = G.makeDial({
   // back to CCW for the Shape.
   ...(FORM ? { outline: FORM.loop().map(([X, Y]) => [P.dial.x - X, Y - P.dial.y]).reverse() } : {}),
   ...(DIAL_TRACK ? { track: DIAL_TRACK } : {}),   // §311 — the form face's railroad, the outline's own offsets
+  fitMarkers: FRAME_LANDS && FORM?.kind === 'free',   // §325 landing 7: the free outline's lands preview fits its numerals to the rail; §328 made lands every kind's default, and the other faces keep their band
   subdialRecess: SUBDIAL_RECESS,
   thickness: DIAL_T,          // TODO 26 — the dial is a plate now; its BACK lands on Z_DIAL
   edgeBreak: DIAL_EDGE_BREAK, // TODO 26 — and the plate is thinner at its rim, by a real chamfer
@@ -20545,7 +21981,7 @@ registerExplode(handsGroup, aesthetics.dial.hands.handsGroupZOffset, 2, 1);
 // Be clear what this does NOT do: it changes nothing about when the alarm
 // FIRES. That window is set by the release notch's angular width at the track
 // radius (§38's floor: pin ÷ radius), and no hand length touches it.
-const HOUR_HAND_LEN = dialRadius * G.DIAL_MARKER_INNER_F;
+const HOUR_HAND_LEN = dialRadius * G.DIAL_MARKER_INNER_F * printScale;   // the marker band the print-follows-case scale put it at
 // TODO 112/113 — every hand's build options live in ONE named spec object,
 // and the panel's HAND_SPECS rows reference these same objects: boot and
 // re-cut cannot diverge because there is nothing to keep in step.
@@ -20599,7 +22035,37 @@ const coaxialLift = (below, above) => {
 };
 const HOUR_HAND_SPEC = { length: HOUR_HAND_LEN, kind: 'hour', namePrefix: 'hour',
   pipe: { boreR: HOUR_PIPE_BORE, outerR: HOUR_PIPE_OUTER, hang: 'blade' } };
-const hourHand = G.makeHand(HOUR_HAND_SPEC);
+// §325 landing 7 — TELESCOPING HANDS (?hands=slide, a form face): the face's reach is the mid-rail's distance from the
+// hands' axis along each bearing. The minute hand's tip rides it (the round face's rungs, everywhere and not only at
+// the nearest side); the hour hand takes the round face's fraction of it, HOUR_HAND_LEN over the round minute length.
+// Each hand is an arm cut to the NEAREST reach and a slider that runs out to the rest (geometry.js makeSlideHand),
+// the cam below driving it by that very law. On a round face there is no track and the option is ignored.
+const SLIDE_HANDS = SPEC.hands === 'slide' && !!DIAL_TRACK;
+const SLIDE_OVERLAP = 3;   // the slider's rear end stays this far back along the arm at full extension
+const SLIDE_REACH = (() => {
+  if (!SLIDE_HANDS) return null;
+  const reach = (az) => DIAL_TRACK.mid.exit(az);
+  let far = 0;
+  for (let i = 0; i < 720; i++) far = Math.max(far, reach((i / 720) * 2 * Math.PI));
+  const roundMinute = dialRadius * (2 * G.DIAL_CANVAS_FILL_F) * ((G.DIAL_RAIL_IN_F + G.DIAL_RAIL_OUT_F) / 2) * printScale;
+  const hourFrac = HOUR_HAND_LEN / roundMinute;
+  const near = DIAL_TRACK.nearestMid;
+  return { reach, near, far, hourFrac };
+})();
+const slideHandOf = (spec, frac) => G.makeSlideHand({ length: SLIDE_REACH.near * frac, kind: spec.kind, namePrefix: spec.namePrefix, pipe: spec.pipe,
+  widthLength: spec.length, ext: (SLIDE_REACH.far - SLIDE_REACH.near) * frac, overlap: SLIDE_OVERLAP });
+// DECLARED DEBT (§325 landing 7, narrowed by landing 8): the HOUR hand's slider is still set by a FUNCTION of its bearing, not a cam.
+// Landing 8 closed the MINUTE hand (a lazy-tongs on a fixed cam, below). The hour hand has no fixed member at its layer for the
+// same reason landing 7 found; it stays on this function until its own landing. `?hands=slide` is outside every swept point.
+// Run one slider out to the tip the hand's bearing allows. `rot` is the hand's rotation about the axis in the dial's
+// frame; its local +Y points along az = π/2 + rot there, the frame the track is cut in.
+const poseSlide = (hand, rot, frac) => {
+  const sl = hand.userData.slide;
+  if (!sl) return;
+  const tip = SLIDE_REACH.reach(Math.PI / 2 + rot) * frac;
+  sl.group.position.y = Math.min(sl.ext, Math.max(0, tip - hand.userData.length));
+};
+const hourHand = SLIDE_HANDS ? slideHandOf(HOUR_HAND_SPEC, SLIDE_REACH.hourFrac) : G.makeHand(HOUR_HAND_SPEC);
 // Minute hand length: tip ON the railroad's rungs — DERIVED from the print's
 // own frame (§125 step 5), mid-rung between the two rails. A printed fraction
 // f lands at world f · 2·DIAL_CANVAS_FILL_F · dialRadius (the canvas square
@@ -20618,7 +22084,24 @@ const MINUTE_HAND_LEN = DIAL_TRACK ? DIAL_TRACK.nearestMid : dialRadius * (2 * G
   * ((G.DIAL_RAIL_IN_F + G.DIAL_RAIL_OUT_F) / 2);
 const MINUTE_HAND_SPEC = { length: MINUTE_HAND_LEN, kind: 'minute', namePrefix: 'minute',
   pipe: { boreR: MINUTE_PIPE_BORE, outerR: MINUTE_PIPE_OUTER, hang: 'blade' } };
-const minuteHand = G.makeHand(MINUTE_HAND_SPEC);
+// §325 landing 8 — THE MINUTE HAND OF A TELESCOPING FACE IS A LAZY-TONGS (src/slide-cam.js): it retracts toward the axis, so it has
+// no tail to sweep the dial centre, and the fixed cam above it has only the first mid pivot's pin moving in its plane. The
+// tongs ends TIP_EXT short of the reach (the tip bridge and the blade stand the rest). Solved ONCE here from the face's own
+// reach law; the cam is the polar curve that puts the tip on that law, steepened no further than 45° of pressure.
+const TIP_EXT = 0.6;
+const TONGS = SLIDE_HANDS ? (() => {
+  const yb = SC.baseY();   // the first rail pivots' eyes clear the stud's by the one margin each side
+  const N = 720, reach = SC.conservativeReach((az) => SLIDE_REACH.reach(az) - TIP_EXT, N);   // the minimum over each sample's neighbours: the tip stays inside the rail BETWEEN samples too
+  const geo = SC.solveTongs({ near: SLIDE_REACH.near - TIP_EXT, far: SLIDE_REACH.far - TIP_EXT, yb });
+  if (!geo) { console.warn('§325 landing 8: no lazy-tongs satisfies the pivot spacing, the reach and the slenderness on this face — the minute hand stays a plain arm'); return null; }
+  return { geo, cam: SC.camProfile({ reach, geo }) };
+})() : null;
+const minuteHand = TONGS ? G.makeTongsHand({ geo: TONGS.geo, length: SLIDE_REACH.near, kind: MINUTE_HAND_SPEC.kind, namePrefix: MINUTE_HAND_SPEC.namePrefix,
+    pipe: MINUTE_HAND_SPEC.pipe, widthLength: MINUTE_HAND_SPEC.length, tipExt: TIP_EXT })
+  : SLIDE_HANDS ? slideHandOf(MINUTE_HAND_SPEC, 1) : G.makeHand(MINUTE_HAND_SPEC);
+// the tongs' pose at the minute hand's bearing: `rot` is the hand's rotation about the axis in the dial's frame; its local +Y
+// points along az = π/2 + rot there, the frame the cam's polar curve is cut in
+const poseTongs = (hand, rot) => { const t = hand.userData.tongs; if (!t || !TONGS) return; t.place(SC.poseAt({ cam: TONGS.cam, geo: TONGS.geo, bearing: Math.PI / 2 + rot }).h); };
 // TODO 118 — the minute hand's lift over the hour plane, DERIVED at last.
 // This was `2.3`, a literal sized for the pre-§125 fat cylindrical rods
 // ("rHour + rMinute ≈ 2.10") and never re-cut: §125 widened the plans past
@@ -20815,7 +22298,7 @@ const MW_PINION_T = MW_WHEEL_T + 2 * MW_BEVEL(MW_WHEEL_T, MW_MODULE_2) + MW_COVE
 // reach, so the chain can deepen again without anyone re-counting leaves.
 const CANNON_T = -0.5 - (MW_Z1 - MW_WHEEL_T / 2 - MW_BEVEL(MW_WHEEL_T, MW_MODULE_1) - MW_COVER);
 const CANNON_END = -0.5 - CANNON_T;
-const CANNON_BORE_R = Math.max(MW_MODULE_1 * 0.35, 0.4);   // TODO 120: makePinion's default shaft bore, NAMED because the nose below is bored to it too — passed explicitly, so the leaves are cut exactly as before
+const CANNON_BORE_R = TONGS ? SC.STUD_R + PIVOT_BORE_CLEAR : Math.max(MW_MODULE_1 * 0.35, 0.4);   // §325 landing 8: the centre stud rides this bore   // TODO 120: makePinion's default shaft bore, NAMED because the nose below is bored to it too — passed explicitly, so the leaves are cut exactly as before
 const cannonPinion = G.makePinion({ name: 'cannonPinion', module: MW_MODULE_1, teeth: cannonPinionTeeth, mates: [{ teeth: MW_MINUTE_TEETH, mates: MW_MINUTE_MATES }], thickness: CANNON_T, boreR: CANNON_BORE_R, material: MATS.steel });
 cannonPinion.position.z = -0.5 - CANNON_T / 2;
 dialFace.add(cannonPinion);
@@ -20840,6 +22323,21 @@ const cannonNose = new THREE.Mesh(ringGeo(CANNON_BORE_R, CANNON_NOSE_R, CANNON_N
 cannonNose.name = 'cannonNose';
 cannonNose.position.z = (CANNON_NOSE_TOP - 0.5) / 2;
 dialFace.add(cannonNose);
+// §325 landing 8 — THE CENTRE STUD AND THE FIXED CAM. The stud rises from the plate through the cannon pinion's bore (bore =
+// stud + PIVOT_BORE_CLEAR, the movement's one running fit — TODO 175's idiom) and past the nose to the cam's hub, pressed
+// on; the cam stands over the minute hand's tongs, in the dial's frame, and never turns. The stud's seat is the plate's face
+// (0.4 buried, the motion works' stud's rule).
+if (TONGS) {
+  const t = minuteHand.userData.tongs;
+  const handZ = DIAL_T + aesthetics.dial.hands.handsGroupZOffset + minuteHand.position.z;   // dialFace-local z of hand-local 0
+  const studTop = handZ + t.zC + 2 * t.T - 0.05, studBot = MW_PLATE_FACE_LOCAL - 0.4;     // blind in the hub; buried in the plate
+  const stud = new THREE.Mesh(new THREE.CylinderGeometry(SC.STUD_R, SC.STUD_R, studTop - studBot, 16), MATS.steel);
+  stud.rotation.x = Math.PI / 2; stud.position.z = (studTop + studBot) / 2; stud.name = 'slideStud';
+  dialFace.add(stud);
+  const slideCam = G.makeSlideCam({ r: TONGS.cam.r, zLo: t.zC, studR: SC.STUD_R });
+  slideCam.position.z = minuteHand.position.z;
+  handsGroup.add(slideCam);
+}
 // …and the new floor that derivation creates: the leaves now reach PAST the
 // minute wheel toward the plate, so the pinion's end is the deepest thing on
 // the centre axis. It must still stand off the plate's dial-side face.
@@ -20977,10 +22475,7 @@ const hourWheelGroup = new THREE.Group();
 dialFace.add(hourWheelGroup);
 registerLabel('Hour wheel', hourWheelGroup);
 await breathe(163);
-const mwHourWheel = G.makeGear({ name: 'mwHourWheel',
-  module: MW_MODULE_2, teeth: MW_HOUR_TEETH, mates: [MW_PINION_TEETH], thickness: MW_WHEEL_T,   // TODO 144: solved at the stack
-  boreR: HOUR_TUBE_OUTER, spokes: 4, material: MATS.brass, hub: false,
-});
+const mwHourWheel = G.makeGear(MW_HOUR_WHEEL_ARGS);   // the fold's judge read this wheel's envelope off the same arguments (FOLD_WHEEL_ENVELOPES)
 // §194 — the MOTION WORKS, the movement's 12:1. It was the one chain with no
 // phase solve of its own, so before §194's rows nothing anywhere named these
 // two meshes and standing rule 2's own worked example (the hour hand arrives
@@ -20998,6 +22493,7 @@ await breathe(164);
 mwHourWheel.traverse((o) => { if (o.isMesh) o.name = 'mwHourWheel'; }); // TODO 6 contact-floor selector
 mwHourWheel.position.z = MW_Z2;
 hourWheelGroup.add(mwHourWheel);
+assertFoldEnvelope('hour wheel', mwHourWheel);
 {
   // TODO 26 — the hour tube CROSSES the dial, so a thicker dial makes it
   // LONGER, not shorter: the hand plane rides forward with the face (the
@@ -21791,7 +23287,7 @@ for (const m of rsvTrainWarnsAt(RESERVE_LOCAL, reserveWellR, rsvModule1)) consol
 // TODO 175 — p0 is PRESSED on the barrel-arbor extension (the slip coupling
 // its floors row declares), so its bore IS the extension's radius; it took
 // makePinion's default 0.4, inside the 0.55 rod.
-const reservePinion0 = G.makePinion({ name: 'reservePinion0', module: rsvModule0, teeth: rsvTeethP0, mates: [rsvTeethW1], thickness: 1.2, boreR: RSV_ARB_EXT_R, material: MATS.steel });
+const reservePinion0 = G.makePinion(RSV_P0_ARGS);   // the fold's judge read this pinion's envelope off the same arguments (FOLD_WHEEL_ENVELOPES)
 const rsvWheel1 = G.makeGear({ name: 'rsvWheel1', module: rsvModule0, teeth: rsvTeethW1, mates: [rsvTeethP0], thickness: 1.0, boreR: RSV_W1_BORE_R, spokes: 4, material: MATS.brass });
 const reservePinion1 = G.makePinion({ name: 'reservePinion1', module: rsvModule1, teeth: rsvTeethP1, mates: [RSV_P1_MATE], thickness: 1.2, boreR: RSV_W1_BORE_R, material: MATS.steel });
 // §234 — the swing solve's z-bands were read off `gearFaceReach` before these
@@ -21836,6 +23332,7 @@ const rsvW1Pos = rsvW1PosSolved; // §125 Tier B — the solved bearing (identic
 const rsvArbor0 = new THREE.Group(); // p0 — slip-coupled on the barrel arbor axis
 rsvArbor0.position.set(P.barrel.x, P.barrel.y, Z_RSV);
 rsvArbor0.add(reservePinion0);
+assertFoldEnvelope('reserve input pinion', reservePinion0);
 reserveTrain.add(rsvArbor0);
 // §234 step 3a coherence guard — RSV_P0_TOP_Z (near SETTING_ROD_R, far above
 // this point in the file) is a hand-off across the build order: the setting
@@ -22284,7 +23781,11 @@ const PLATE_RIM = (() => {
   let formOut = -Infinity;
   backPlate.updateMatrixWorld(true);
   backPlate.traverse((o) => {
-    if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
+    // §328 step 1 — a LAND is the plate's metal but not its RIM: on the round plate one stands within this walk's 1 mm seat
+    // band (seat r + PILLAR_CAP_R reaches past rSeat), and read as rim its top (TQ_BOT_Z) became the rim's back face, the
+    // gong's annulus floor (GONG_RIM_Z) rose above the gong and its post length went negative. What the band is FOR — the
+    // case's seat and its clamp heads — is held clear of the lands by tools/probe-328-lands.mjs instead
+    if (!o.isMesh || o.userData.schematic || o.userData.rimLand || !o.geometry?.attributes?.position) return;
     const p = o.geometry.attributes.position;
     const _mw = p.count > 0 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
     for (let i = 0; i < p.count; i++) {
@@ -29427,11 +30928,31 @@ const gongPostRFor = (L_m) => Math.max(GONG_WIRE_R + STOCK_MIN_U,
 // not. The inner solve is Newton on f₁ ∝ L⁻², the straight bar's exponent,
 // which the arch's few-percent deviation leaves a contraction too.
 await breathe(201);
+const HAMMER_POST_R = 0.6;
+// §268: the hammer's COLLET, bored the running fit over the post with a pivot
+// floor of wall. Declared beside the post because the crank's riser (TODO 267)
+// must leave its cranked root long enough to cover it. (Hoisted to the gong's
+// design since §325 landing 13: the ring's radius reads it, below.)
+const ALARM_HSPIRAL_COLLET_BORE = HAMMER_POST_R + PIVOT_BORE_CLEAR;
+const ALARM_HSPIRAL_COLLET_R = ALARM_HSPIRAL_COLLET_BORE + PIVOT_MIN_U;
+// §325 landing 13 — THE RING'S SECOND CAP: THE HAMMER'S BOSS BESIDE THE SKIRT. The hammer is sited off the ring (its
+// pivot on the tangent at the face: r = hypot(face, √(arm² − headR²))), and its collet, the boss on that pivot, rises
+// to the tail's root past the caseback skirt's bottom. So the boss stands BESIDE the skirt and is held off it radially.
+// The skirt is a CASE_LATHE_SEG lathe, so its inner wall's facets stand inside CASE_SKIRT_ID by up to
+// ID·(1 − cos(π/SEG)), and §262's rule holds a margin at the inscribed circle. Off the cap the ring sat clear of this by
+// 0.05. When the bore came in, the station did too, a little more slowly than the bore (the hypot), and the designed
+// arrangement's facet phase read the boss 0.1491 off the skirt. The cap is the largest ring whose hammer's boss reaches
+// no further than that circle less the margin. The round build only: a form case's back is not this skirt.
+const GONG_R_SKIRT_CAP = FORM ? Infinity : (() => {
+  const reach = CASE_SKIRT_ID * Math.cos(Math.PI / G.CASE_LATHE_SEG) - CLEAR_MARGIN - ALARM_HSPIRAL_COLLET_R;   // the pivot's ceiling
+  const tan = Math.sqrt(STRIKE_REF.armLen ** 2 - ALARM_HEAD_R ** 2);
+  return Math.sqrt(Math.max(0, reach * reach - tan * tan)) + GONG_WIRE_R + HAMMER_HEAD_GAP;                  // face → the wire's centre
+})();
 const GONG_DESIGN = (() => {
   const k_m = GONG_WIRE_R * OSC_U / 2;
   let L = GONG_STRAIGHT_LEN_M, R = 0, m1 = null, outer = 0, inner = 0, closed = false;
   for (outer = 1; outer <= 8 && !closed; outer++) {
-    R = R_ANNULUS_OUT - gongPostRFor(L);
+    R = Math.min(R_ANNULUS_OUT - gongPostRFor(L), GONG_R_SKIRT_CAP);   // §325 landing 13: and the hammer's boss off the skirt
     const R_m = R * OSC_U, S = (R / (GONG_WIRE_R / 2)) ** 2;
     let Lk = L;
     for (let j = 0; j < 40; j++) {
@@ -29458,7 +30979,13 @@ if (GONG_R - GONG_POST_R < R_ANNULUS_IN - 1e-9)
   console.warn(`§198: the gong block (r ${GONG_POST_R.toFixed(3)} at ${GONG_R.toFixed(3)}) does not fit the annulus `
     + `${R_ANNULUS_IN.toFixed(3)}–${R_ANNULUS_OUT.toFixed(3)}`);
 const GONG_ARC_DESIGN = GONG_DESIGN_LEN_M / (GONG_R * OSC_U);       // rad — the pitch's length at this radius
-if (Math.abs(aesthetics.gong.arcDeg - GONG_ARC_DESIGN / DEG2RAD) > 0.05)
+// §325 landing 12: the shipped arc is the ROUND build's derivation, and a form case cut against the 40 mm cap's annulus
+// derives another (61.14° at r 48.19). A form build seats its gong (src/gong-seats.js) and reads no arc. Its 'arc'
+// comparison mode is there to compare §198's arc, which is the arc that rings the note in the annulus it stands in, so
+// it rings its OWN derivation (gongArcDeg). The editable aesthetic is the round build's, and only the round build is
+// held to it. (Read as the round build's, arrangement-308's arc rang 1894 Hz.)
+const gongArcDeg = () => (FORM ? GONG_ARC_DESIGN / DEG2RAD : aesthetics.gong.arcDeg);
+if (!FORM && Math.abs(aesthetics.gong.arcDeg - GONG_ARC_DESIGN / DEG2RAD) > 0.05)
   console.warn(`§198: aesthetics.gong.arcDeg ${aesthetics.gong.arcDeg} is not the ${(GONG_ARC_DESIGN / DEG2RAD).toFixed(2)}° that rings `
     + `${GONG_NOTE_NAME} (${GONG_F1_TARGET_HZ.toFixed(3)} Hz) on a ${GONG_STOCK_MM[1]} mm wire at r ${GONG_R.toFixed(2)} — the shipped default must BE the derivation`);
 // THE BLOW IS RADIAL, and the head is INBOARD of the wire. Between the
@@ -29621,6 +31148,9 @@ const hammerPiv = GONG_SEATED ? (() => {
   return { x: h.x, y: h.y, psi: h.psi };   // the CCW root
 })();
 const HAMMER_PIV_AZ = Math.atan2(hammerPiv.y, hammerPiv.x);
+if (!FORM && Math.hypot(hammerPiv.x, hammerPiv.y) + ALARM_HSPIRAL_COLLET_R > CASE_SKIRT_ID * Math.cos(Math.PI / G.CASE_LATHE_SEG) - CLEAR_MARGIN + 1e-9)
+  console.warn(`§325: the hammer's boss reaches ${(Math.hypot(hammerPiv.x, hammerPiv.y) + ALARM_HSPIRAL_COLLET_R).toFixed(4)} — past the skirt's inscribed wall less the margin, `
+    + `${(CASE_SKIRT_ID * Math.cos(Math.PI / G.CASE_LATHE_SEG) - CLEAR_MARGIN).toFixed(4)}; GONG_R_SKIRT_CAP no longer holds the station`);
 // The free (ringing) end — the hammer strikes here. The pivot stands on the
 // tangent at the FACE (so the blow's line of action is exactly radial where
 // it lands), the eye ALARM_HEAD_R behind the face on that line: the tangent
@@ -29654,7 +31184,7 @@ if (Math.abs(Math.hypot(headRest.x - hammerPiv.x, headRest.y - hammerPiv.y) - AL
 // annulus solve keeps that topology, so the wire runs CW from the free end,
 // under the pusher's stem and on round the rim.)
 const GONG_HAND = Math.sign(Math.atan2(Math.sin(GONG_A1 - HAMMER_PIV_AZ), Math.cos(GONG_A1 - HAMMER_PIV_AZ))) || 1;
-GONG_A0 = GONG_A1 + GONG_HAND * aesthetics.gong.arcDeg * DEG2RAD;   // fixed (foot) end
+GONG_A0 = GONG_A1 + GONG_HAND * gongArcDeg() * DEG2RAD;   // fixed (foot) end
 // §310 landing 2 — A SEAT'S WIRE as samples, FOOT first (the arch solve's own
 // order, θ from the foot), a quarter unit apart along its analytic centreline:
 // what the mesh is swept along, what the band floor's swath is read off, and
@@ -29730,7 +31260,7 @@ const GONG_BAND_FLOOR = await (async () => {
   for (const o of walkBandFloor) { await breathe(204); visitBandFloor(o); }
   // the clamp heads, analytically: three stations on R_CLAMP, 0.4 mm proud
   for (const az of CASE_CLAMP_AZ) {
-    const dAz = Math.asin(Math.min(1, (CASE_SCREW_HEAD_D / 2) / R_CLAMP));
+    const dAz = Math.asin(Math.min(1, (CASE_CLAMP_HEAD_D / 2) / R_CLAMP));
     for (const s of [-1, 0, 1]) {
       const q = { x: Math.cos(az + s * dAz) * R_CLAMP, y: Math.sin(az + s * dAz) * R_CLAMP };
       if (inSwath(q) && GONG_RIM_Z + 0.4 / UNIT_MM > top) { top = GONG_RIM_Z + 0.4 / UNIT_MM; owner = 'case clamp head'; }
@@ -29786,7 +31316,7 @@ const GONG_FOOT_OBSTACLES = await (async () => {
   movement.traverse((o) => walkFootObstacle.push(o));
   for (const o of walkFootObstacle) { await breathe(207); visitFootObstacle(o); }
   for (const az of CASE_CLAMP_AZ) {
-    const h = CASE_SCREW_HEAD_D / 2, cx = Math.cos(az) * R_CLAMP, cy = Math.sin(az) * R_CLAMP;
+    const h = CASE_CLAMP_HEAD_D / 2, cx = Math.cos(az) * R_CLAMP, cy = Math.sin(az) * R_CLAMP;
     boxes.push({ x0: cx - h, x1: cx + h, y0: cy - h, y1: cy + h, name: 'case clamp head' });
   }
   return boxes;
@@ -29954,12 +31484,7 @@ const alarmHammerUnit = new THREE.Group();
 movement.add(alarmHammerUnit);
 registerLabel('Alarm hammer', alarmHammerUnit);
 registerExplode(alarmHammerUnit, 0, 9); // baseZ 0: children carry world z
-const HAMMER_POST_R = 0.6;
-// §268: the hammer's COLLET, bored the running fit over the post with a pivot
-// floor of wall. Declared beside the post because the crank's riser (TODO 267)
-// must leave its cranked root long enough to cover it.
-const ALARM_HSPIRAL_COLLET_BORE = HAMMER_POST_R + PIVOT_BORE_CLEAR;
-const ALARM_HSPIRAL_COLLET_R = ALARM_HSPIRAL_COLLET_BORE + PIVOT_MIN_U;
+// (HAMMER_POST_R and the collet's section are hoisted above GONG_DESIGN since §325 landing 13: the ring's radius reads the collet.)
 const HAMMER_POST_BOT = GONG_RIM_Z - GONG_RIM_PLANT;
 // §278 landing 2 — the staff stops at the CRANKED tail's plane, ALARM_TAIL_DROP
 // under the lever's: the tail's root rides there, outboard of the aperture.
@@ -30017,16 +31542,99 @@ registerSub('Alarm hammer', 'Hammer', alarmHammerPivot);
 //    at r 40). So the head's LENGTH is the whole radial room at REST, and
 //    its HEIGHT is capped by the plate's underside less the margin, which
 //    the swing then owes at every pose (the battery's pair sweep holds it).
-const ALARM_HEAD_L = ALARM_HEAD_FACE_R - GONG_BLOW * R_ANNULUS_IN;
+const ALARM_HEAD_L_ROOM = ALARM_HEAD_FACE_R - GONG_BLOW * R_ANNULUS_IN;   // the whole radial room at rest
 const ALARM_HEAD_SILHOUETTE = 0.55 + 0.45 * (1 + 0.6) / 2;    // cheeks 0.55 L at full H, peen 0.45 L tapering to 0.6 H
-const ALARM_HEAD_H_MATCH = (() => {
+const alarmHeadHMatch = (L) => {
   const wireM = OSC_STEEL_RHO * Math.PI * (GONG_WIRE_R * OSC_U) ** 2 * GONG_DESIGN_LEN_M;   // kg, the design wire
   const headU3 = (wireM * GONG_DESIGN.modalFrac) / OSC_STEEL_RHO / OSC_U ** 3;            // u³ the match wants (§253: the arc fundamental's fraction, ¼ for a straight bar)
-  return Math.sqrt(headU3 / (ALARM_HEAD_L * ALARM_HEAD_SILHOUETTE));
-})();
+  return Math.sqrt(headU3 / (L * ALARM_HEAD_SILHOUETTE));
+};
 const ALARM_HEAD_H_BAND = 2 * Math.min(Z_GONG - GONG_BAND_FLOOR.z, (TQ_BOT_Z - CLEAR_MARGIN - 0.01) - Z_GONG);
+// §325 landing 16 — THE HEAD MAY RUN UNDER THE PLATE'S RIM. The length law took the radial room between the face and the
+// three-quarter plate's rim, but the head rides at the ring's plane, under that plate: its height is already capped by the
+// plate's underside (ALARM_HEAD_H_BAND), and the rim is no wall at its plane. Its draw already carries it under the
+// rim (the paragraph above). So on the round build the head is as long as the room at rest or as long as the band-capped
+// section needs to reach the impedance match, whichever is longer. A head the match outgrows the annulus for runs inboard
+// under the plate, where its true tenants hold it: the frame's lands by ALARM_HEAD_DIMS and the strike keep (TODO 290),
+// everything else by the battery's sweeps. Brought in off the cap, the annulus left the head 1.81 u and 30.6 mg against a
+// 45.6 mg match (μ 0.78) at the Ø0.6 clamps' bore.
+const ALARM_HEAD_L_MATCH = (() => {
+  const wireM = OSC_STEEL_RHO * Math.PI * (GONG_WIRE_R * OSC_U) ** 2 * GONG_DESIGN_LEN_M;
+  return (wireM * GONG_DESIGN.modalFrac) / OSC_STEEL_RHO / OSC_U ** 3 / (ALARM_HEAD_SILHOUETTE * ALARM_HEAD_H_BAND ** 2);
+})();
+const ALARM_HEAD_L_REST = FORM ? ALARM_HEAD_L_ROOM : Math.max(ALARM_HEAD_L_ROOM, ALARM_HEAD_L_MATCH);
+// §325 landing 12 — AND THE DRAW CLEARS THE FRAME, as a law. The paragraph above relied on one measurement, for §198's
+// azimuth ("the nearest pillar seat at r 40"), for the draw clearing the base plate's tenants. When the ring came in off
+// the 40 mm cap the station moved, and the drawn head stood in the 45° quadrant's land (plateSeats: 3 poses in contact):
+// at full draw the peen's end alone came 0.52 u inside the seat's disc plus the margin. So the frame is a law. The head's
+// plan footprint runs from the face to the peen along the blow and ±H/2 across it, because it is square across the wire
+// (extruded H wide). Over the swing (−ALARM_STRIKE_AMP to ALARM_DRAW_RAD about hammerPiv, in the hammer's own sense,
+// sampled finer than the battery's net) it must stand CLEAR_MARGIN off every pillar seat's widest disc (pillarSeats,
+// PILLAR_CAP_R, the footprint the frame publishes to every later siting solve). These are full-height members, so the plan
+// alone decides it. The head is the LONGEST, up to the radial room at rest, whose footprint clears at the section the match
+// and the band then give it. A shorter head wants a deeper section for the same mass, so width and length are judged together.
+const ALARM_HEAD_FRAME_PTS = (() => {
+  const phi = GONG_BLOW_AZ + (GONG_BLOW > 0 ? Math.PI : 0), ux = Math.cos(phi), uy = Math.sin(phi);   // u: behind the face
+  const pts = [], NS = 128;
+  for (let k = 0; k <= NS; k++) {
+    const th = -ALARM_HAM_LIFT_SIGN * (-ALARM_STRIKE_AMP + (ALARM_DRAW_RAD + ALARM_STRIKE_AMP) * k / NS), c = Math.cos(th), s = Math.sin(th);
+    for (const p of pillarSeats) {
+      const dx = p.x - hammerPiv.x, dy = p.y - hammerPiv.y;   // the seat turned by −θ about the pivot = the head turned by +θ
+      const rx = hammerPiv.x + c * dx - s * dy - headFace.x, ry = hammerPiv.y + s * dx + c * dy - headFace.y;
+      pts.push({ u: rx * ux + ry * uy, w: -rx * uy + ry * ux });
+    }
+  }
+  return pts;
+})();
+const alarmHeadFrameClear = (L, H) => Math.min(...ALARM_HEAD_FRAME_PTS.map(({ u, w }) =>
+  Math.hypot(Math.max(0, -u, u - L), Math.max(0, Math.abs(w) - H / 2)) - PILLAR_CAP_R));
+const ALARM_HEAD_DIMS = (() => {
+  const hOf = (L) => Math.min(alarmHeadHMatch(L), ALARM_HEAD_H_BAND);
+  if (alarmHeadFrameClear(ALARM_HEAD_L_REST, hOf(ALARM_HEAD_L_REST)) >= CLEAR_MARGIN)
+    return { L: ALARM_HEAD_L_REST, lOwner: ALARM_HEAD_L_REST > ALARM_HEAD_L_ROOM ? 'the match at the band (under the plate\'s rim)' : 'the radial room at rest' };
+  const N = 400;   // the scan steps the length down; the footprint is not monotone in L, since the section deepens as L falls
+  for (let i = 1; i <= N; i++) {
+    const L = ALARM_HEAD_L_REST * (1 - i / N);
+    if (alarmHeadFrameClear(L, hOf(L)) >= CLEAR_MARGIN) return { L, lOwner: 'frame (the drawn head off the pillar seats)' };
+  }
+  return { L: 0, lOwner: 'frame — no length clears' };
+})();
+// TODO 290 — the keep the round build's pillar scan reads, measured off the same law: the hull of the drawn head's plan
+// footprint at its INTENDED length and section (never the cut head, or a short head would declare a short keep and hold
+// the land where it stands), sampled over the swing at the frame law's angles. Its corners at each sample are the
+// footprint's own, so the hull holds every sample exactly, and between two samples the corners run on arcs about the
+// pivot that bow past the chord by at most R·(1 − cos(step/2)): the hull is grown by that sagitta.
+if (!FORM) {
+  const phi = GONG_BLOW_AZ + (GONG_BLOW > 0 ? Math.PI : 0), ux = Math.cos(phi), uy = Math.sin(phi);
+  const L = ALARM_HEAD_L_REST, H = Math.min(alarmHeadHMatch(L), ALARM_HEAD_H_BAND), NS = 128, xs = [], ys = [];
+  const span = ALARM_DRAW_RAD + ALARM_STRIKE_AMP;
+  let R = 0;
+  for (const [u, w] of [[0, -H / 2], [0, H / 2], [L, H / 2], [L, -H / 2]]) {
+    const x0 = headFace.x + u * ux - w * uy, y0 = headFace.y + u * uy + w * ux;
+    R = Math.max(R, Math.hypot(x0 - hammerPiv.x, y0 - hammerPiv.y));
+    for (let k = 0; k <= NS; k++) {
+      const th = ALARM_HAM_LIFT_SIGN * (-ALARM_STRIKE_AMP + span * k / NS), c = Math.cos(th), s = Math.sin(th);
+      const dx = x0 - hammerPiv.x, dy = y0 - hammerPiv.y;
+      xs.push(hammerPiv.x + c * dx - s * dy); ys.push(hammerPiv.y + s * dx + c * dy);
+    }
+  }
+  const sag = R * (1 - Math.cos(span / NS / 2)), h0 = convexHull2(xs, ys, xs.length), gx = [], gy = [];
+  for (const [x, y] of h0) for (let a = 0; a < 24; a++) { gx.push(x + sag / Math.cos(Math.PI / 24) * Math.cos(a * Math.PI / 12)); gy.push(y + sag / Math.cos(Math.PI / 24) * Math.sin(a * Math.PI / 12)); }
+  ROUND_STRIKE_KEEP_MEASURED = Object.freeze({ specKey: GONG_SPEC_KEY, L, H,
+    hull: convexHull2(gx, gy, gx.length).map(([x, y]) => [Math.round(x * 1e4) / 1e4, Math.round(y * 1e4) / 1e4]) });
+  if (ROUND_STRIKE_KEEP) {
+    const a = ROUND_STRIKE_KEEP.hull, b = ROUND_STRIKE_KEEP_MEASURED.hull;
+    if (a.length !== b.length || a.some(([x, y], i) => Math.abs(x - b[i][0]) > 1e-3 || Math.abs(y - b[i][1]) > 1e-3))
+      console.warn('TODO 290: the round strike keep the pillars were sited on is not the drawn head this build cuts — re-run tools/strike-keep-round.mjs --write');
+  }
+}
+const ALARM_HEAD_L = ALARM_HEAD_DIMS.L;
+const ALARM_HEAD_L_OWNER = ALARM_HEAD_DIMS.lOwner;
+const ALARM_HEAD_H_MATCH = alarmHeadHMatch(ALARM_HEAD_L);
 const ALARM_HEAD_H = Math.min(ALARM_HEAD_H_MATCH, ALARM_HEAD_H_BAND);
 const ALARM_HEAD_H_OWNER = ALARM_HEAD_H_MATCH <= ALARM_HEAD_H_BAND ? 'impedance match' : 'band (plate underside)';
+if (!(alarmHeadFrameClear(ALARM_HEAD_L, ALARM_HEAD_H) >= CLEAR_MARGIN - 1e-9))
+  console.warn(`§325: the drawn hammer head stands ${alarmHeadFrameClear(ALARM_HEAD_L, ALARM_HEAD_H).toFixed(3)} off a pillar seat — under CLEAR_MARGIN at every length`);
 if (!(ALARM_HEAD_L > ALARM_HEAD_R + CLEAR_MARGIN))
   console.warn(`§198: the head's length ${ALARM_HEAD_L.toFixed(3)} does not reach past its own eye — no room between rim and ring`);
 {
@@ -30809,33 +32417,41 @@ const ALARM_TAIL_RISER = (() => {
   // derived through the round chain (CASE_DIMS' skirt arm and pane floor), so
   // tall metal outboard of STRIKE_R_ALLOW would deepen the form case too.
   const ok = (ac) => {
-    if (FORM && !(ac - T / 2 > ALARM_HSPIRAL_COLLET_R)) return false;
+    if (!wall && !(ac - T / 2 > ALARM_HSPIRAL_COLLET_R)) return false;
     for (const th of thetas) {
       for (const x of xs(ac - T / 2, len)) for (const y of [-h, h]) if (!(rAt(x, y, th) < STRIKE_R_ALLOW)) return false;
-      if (!FORM) for (const x of xs(0, ac + T / 2)) for (const y of [-h, h]) if (!(rAt(x, y, th) >= R_ANNULUS_IN)) return false;
+      if (wall) for (const x of xs(0, ac + T / 2)) for (const y of [-h, h]) if (!(rAt(x, y, th) >= R_ANNULUS_IN)) return false;
     }
     return true;
   };
+  // §325 landing 16 — THE ROUND PLATE IS OPENED ONLY WHEN THE ANNULUS CANNOT HOLD THE CRANK. The rim wall is kept wherever it
+  // still admits a station, and only when it admits none does the round build take the form rule: the root runs under the
+  // plate past its rim, and the plate is notched round the metal (ROUND_TQ_OUTLINE, cut from this very sweep). Opening it
+  // regardless set the riser in the middle of the wider window, deep under the plate. The notch then reached a bore that the
+  // designed arrangement's annulus never needed opened.
+  let wall = !FORM;
   const hi = ALARM_LIFT_CONTACT_SPAN.lo - ALARM_LIFT_TIP_R - CLEAR_MARGIN - T / 2;
   // The window is one interval (the bar runs monotonically inward from the
   // pivot over the swing): a coarse walk finds a station inside it, and each
   // edge is then bisected to 1e-9 — a fine walk paid ~13 M radius reads in a
   // build that must yield every 40 ms (§239), and found the same window.
   const STEP = T / 25;
-  let seed = null;
-  for (let ac = T / 2; ac <= hi + 1e-12; ac += STEP) if (ok(ac)) { seed = ac; break; }
-  let lo0 = null, hi0 = null;
-  if (seed !== null) {
+  const search = () => {
+    let seed = null;
+    for (let ac = T / 2; ac <= hi + 1e-12; ac += STEP) if (ok(ac)) { seed = ac; break; }
+    if (seed === null) return [null, null];
     const edge = (inside, outside) => {   // bisect the ok/not-ok boundary between two stations
       let a = inside, b = outside;
       while (Math.abs(b - a) > 1e-9) { const m = (a + b) / 2; if (ok(m)) a = m; else b = m; }
       return a;
     };
-    lo0 = ok(T / 2) ? T / 2 : edge(seed, T / 2);
-    hi0 = ok(hi) ? hi : edge(seed, hi);
+    const lo = ok(T / 2) ? T / 2 : edge(seed, T / 2), hi1 = ok(hi) ? hi : edge(seed, hi);
     // the interval's claim, checked rather than assumed: its middle is a station too
-    if (!ok((lo0 + hi0) / 2)) { lo0 = null; hi0 = null; }
-  }
+    return ok((lo + hi1) / 2) ? [lo, hi1] : [null, null];
+  };
+  let [lo0, hi0] = search();
+  if (lo0 === null && wall) { wall = false; [lo0, hi0] = search(); }   // §325 landing 16: open the round plate
+  ALARM_TAIL_RISER_OPENS_PLATE = !FORM && !wall;
   if (lo0 === null) {
     console.warn(FORM ? `§278/TODO 267: no riser station on the hammer's tail stands inside r ${STRIKE_R_ALLOW.toFixed(4)} above and past the collet (r ${ALARM_HSPIRAL_COLLET_R.toFixed(4)}) below over the swing — the crank cannot be cut`
       : `§278: no riser station on the hammer's tail stands inside r ${STRIKE_R_ALLOW.toFixed(4)} above and outside r ${R_ANNULUS_IN.toFixed(4)} below over the swing — the crank cannot be cut`);
@@ -32704,7 +34320,7 @@ const GONG_ACOUSTICS = (() => {
       designModalMass_mg: OSC_STEEL_RHO * Math.PI * aW * aW * GONG_DESIGN_LEN_M * GONG_DESIGN.modalFrac * 1e6,
       straightLen_mm: GONG_STRAIGHT_LEN_M * 1000, straightLaw_Hz, arcRad: alpha, S: GONG_SEATED ? GS.sOf(L, 2 * aW) : (GONG_R / (GONG_WIRE_R / 2)) ** 2,
       designFixedPoint: { rounds: GONG_DESIGN.outer, solves: GONG_DESIGN.inner, closed: GONG_DESIGN.closed } },
-    hammer: { headH_u: ALARM_HEAD_H, headL_u: ALARM_HEAD_L, headHOwner: ALARM_HEAD_H_OWNER, headHMatch_u: ALARM_HEAD_H_MATCH,
+    hammer: { headH_u: ALARM_HEAD_H, headL_u: ALARM_HEAD_L, headLOwner: ALARM_HEAD_L_OWNER, headHOwner: ALARM_HEAD_H_OWNER, headHMatch_u: ALARM_HEAD_H_MATCH,
       headMass_mg: mHead * 1e6, blow: GONG_BLOW, liftSign: ALARM_HAM_LIFT_SIGN, faceR_u: ALARM_HEAD_FACE_R, restGap_u: HAMMER_HEAD_GAP,
       mass_mg: mRotor * 1e6, I_kgm2: I_h, effMass_mg: mEff * 1e6,
       pivotR_u: Math.hypot(hammerPiv.x, hammerPiv.y), pivotAzDeg: HAMMER_PIV_AZ / DEG2RAD, freeEndAzDeg: GONG_A1 / DEG2RAD,
@@ -34085,6 +35701,7 @@ const EQUALISATION = (() => {
       k_Nm_per_rad: k,
       energy,
       section: { ...mainspring.section }, devLen_u: mainspring.devLen,
+      packing: ribbonPacking(mainspring),   // TODO 291 — r/e against the trade's band, and what bound the solve
       setup: {
         clicks: SETUP_CLICKS, teeth: SETUP_RATCHET_TEETH, sweepRad: SETUP_SWEEP,
         quantised: Number.isInteger(SETUP_CLICKS)
@@ -34100,6 +35717,7 @@ const EQUALISATION = (() => {
     alarm: {
       k_Nm_per_rad: kAlarm,
       section: { ...alarmSpring.section }, devLen_u: alarmSpring.devLen,
+      packing: ribbonPacking(alarmSpring),  // TODO 291 — measured on the same law; the alarm ribbon is not solved to it (TODO 201)
       // §104 — the set-up rides under the whole service band: the spring
       // never operates below 80 clicks of tension, and the gate holds the
       // quantisation the same way it holds the going side's 17.
@@ -46329,6 +47947,20 @@ panel.innerHTML = `
           <option value="free">Free outline</option>
         </select>
       </div>
+      <!-- §325 landing 3 — the ALARM, a reload-tier spec (?alarm=0): the
+           movement as designed, or built without the complication. -->
+      <div class="row label-small"><span>Alarm</span>
+        <select id="spec-alarm">
+          <option value="">On</option>
+          <option value="0">Off</option>
+        </select>
+      </div>
+      <!-- §326 — the STRAP WIDTH, a reload-tier spec (?strap=): the gap between
+           the lugs in mm. Its options are filled in code from the default and
+           the owner cap (never typed), so the markup is the label alone. -->
+      <div class="row label-small"><span>Strap width (mm)</span>
+        <select id="spec-strap"></select>
+      </div>
       <!-- §23: ADVANCED — every control below is GENERATED from
            aesthetics.json, so a future finish parameter gets a knob for free
            and the file stays the single source. Collapsed by default on §15's
@@ -46777,11 +48409,26 @@ function setBarState(id, on) {
 // §216's Hungarian measured 182.6 on its first pass, on "Menü / Nézet /
 // Vezérlés" — 6.0 over English's 176.6 in the same container, so it needed no
 // word chosen against it either.
+// §273's Czech measured 202.3, on "Nabídka / Pohled / Ovládání", and §217's
+// Finnish 203.5 — "Valikko / Näkymä / Ohjaimet", the WIDEST yet, 26.9 over
+// English's 176.6 and 3.4 past German's 200.1 measured in the same run. Both
+// pass the fit probe (every header one line, no bar over a panel's header),
+// so neither needed a word chosen against the bar. Finnish's HUD labels read
+// Aika 20.5 and Soi klo 31.6 px against the 150 px box, one line each, and no
+// Finnish label reached the panel column's 240 px `anywhere` allowance, so
+// the wrap rule stays and no `hyphens: auto` (a per-platform dictionary) is
+// owed.
 // §212's Hindi measured 150.0 — "नियंत्रण / दृश्य / डायल", narrower than every
 // Latin-script locale including English, because Devanagari spends its
 // complexity vertically rather than horizontally: the same script that is the
 // TALLEST in ink (probe-212-devanagari-vert) is among the narrowest here.
-// German is still the widest. The bar is also the one piece of chrome
+// §249 chunk C's Ukrainian measured 205.5, on "Меню / Вигляд / Керування" —
+// the WIDEST yet, 2.0 past Finnish and 9.0 past Russian's 196.5 in the same run;
+// Polish measured 198.3, on "Menu / Widok / Sterowanie". Both pass the fit
+// probe, so neither needed a word chosen against the bar; the HUD labels read
+// Час 18.3 / Дзвонить о 55.8 and Czas 23.7 / Dzwoni o 43.9 px, one line each.
+// German is no longer the widest: Ukrainian, Finnish and Czech are, by a few
+// px. The bar is also the one piece of chrome
 // that does NOT mirror under dir="rtl": it is pinned to the viewport's
 // top-right, a fact about the screen rather than about the script. So the
 // two rules below read the bar's OWN rect:
@@ -47620,6 +49267,7 @@ function askTour(onProceed) {
   ];
   const recutHands = () => {
     for (const [hand, spec, finish] of HAND_SPECS) {
+      if (hand.userData.slide || hand.userData.tongs) continue;   // §325 landing 7: a telescoping hand is two members; the flute re-cut would rebuild it as one
       hand.traverse((o) => { if (o.isMesh) o.geometry.dispose(); });
       hand.clear();
       for (const ch of [...G.makeHand(spec).children]) hand.add(ch);
@@ -47707,7 +49355,7 @@ function askTour(onProceed) {
       // §198: the foot walks the annulus's rim by the same clear-station rule
       // the boot applied, live edits included (§197's applier never re-ran
       // the walk — that residue is closed here, since the rule is a function).
-      let az = GONG_A1 + GONG_HAND * aesthetics.gong.arcDeg * DEG2RAD, walked = 0;
+      let az = GONG_A1 + GONG_HAND * gongArcDeg() * DEG2RAD, walked = 0;
       const step = CLEAR_MARGIN / GONG_R;
       while (gongFootClearAt(az) && walked < 60 * DEG2RAD) { az += GONG_HAND * step; walked += step; }
       GONG_A0 = az;
@@ -48748,9 +50396,38 @@ updateCrownUI();
   caseSel.value = SPEC.caseShape ?? '';
   caseSel.addEventListener('change', () => {
     const kind = caseSel.value;
-    const key = configKey({ spec: { ...SPEC, caseShape: kind, formRectSpec: null, gongSeat: null } });
+    const key = configKey({ spec: { ...SPEC, hands: null, strapMm: null, arrest: null, frame: null, caseShape: kind, formRectSpec: null, gongSeat: null } });   // §328: GONG_SPEC_KEY's own
     location.search = caseShapeSearch(location.search, kind, (seat) => seat.specKey === key);   // reload-tier, like the beat rate: back IS undo
   });
+  const alarmSpecSel = document.getElementById('spec-alarm');
+  alarmSpecSel.value = ALARM_BUILT ? '' : '0';
+  alarmSpecSel.addEventListener('change', () => {
+    const p = new URLSearchParams(location.search);
+    if (alarmSpecSel.value) p.set('alarm', alarmSpecSel.value); else p.delete('alarm');
+    location.search = p.toString();   // reload-tier, like the case shape: back IS undo
+  });
+  // §326 — THE STRAP WIDTH. Whole millimetres from STRAP_PICK_MIN_MM up to the owner cap; a picker's range, not a limit (?strap= takes
+  // any width and the cap warning names one past it). The default's option has value '' so picking it clears the param, and a width the
+  // URL carries off the menu is added, so the box never shows a strap the build is not cut for.
+  const strapSel = document.getElementById('spec-strap');
+  {
+    const capMm = Math.round(CASE_LUG_SPAN_MAX * UNIT_MM), here = SPEC.strapMm ?? STRAP_MM_DEFAULT;
+    const widths = [];
+    for (let w = STRAP_PICK_MIN_MM; w <= capMm; w++) widths.push(w);
+    if (!widths.includes(here)) { widths.push(here); widths.sort((x, y) => x - y); }
+    for (const w of widths) {
+      const o = document.createElement('option');
+      o.value = w === STRAP_MM_DEFAULT ? '' : String(w);
+      o.textContent = fmtNum(w, Number.isInteger(w) ? 0 : 1);
+      strapSel.appendChild(o);
+    }
+    strapSel.value = here === STRAP_MM_DEFAULT ? '' : String(here);
+    strapSel.addEventListener('change', () => {
+      const p = new URLSearchParams(location.search);
+      if (strapSel.value) p.set('strap', strapSel.value); else p.delete('strap');
+      location.search = p.toString();   // reload-tier, like the case shape: back IS undo
+    });
+  }
   vphSel.addEventListener('change', reloadWithSpec);
   rsvSel.addEventListener('change', reloadWithSpec);
   studSel.addEventListener('change', reloadWithSpec);
@@ -49101,7 +50778,7 @@ let STRIKE_PLATE_VERTS = 0;
 // (one margin either side) and the opening, with the post at the wire's foot.
 // tools/gong-seats.mjs writes it into the seat row as `keep`.
 let STRIKE_KEEP_MEASURED = null;
-if (FORM && ALARM_BUILT) {   // §325 landing 3: no strike group to open the plate for without the alarm
+if (ALARM_BUILT) {   // §325 landing 3: no strike group to open the plate for without the alarm; §325 landing 16: the round plate is opened too
   const z0 = TQ_BOT_Z - CLEAR_MARGIN, z1 = TQ_TOP_Z + CLEAR_MARGIN, xs = [], ys = [], v = new THREE.Vector3();
   const pz0 = PLATE_BACK_FACE - CLEAR_MARGIN, pz1 = TQ_BOT_Z + CLEAR_MARGIN, pxs = [], pys = [];
   const keepRot = alarmHammerPivot.rotation.z, N = 12;
@@ -49170,6 +50847,616 @@ if (FORM && ALARM_BUILT) {   // §325 landing 3: no strike group to open the pla
   }
 }
 
+// ---------------------------------------------------------------------------
+// §336 — THE FUSEE COCK: the fusee arbor's top bush in a cock standing on the
+// BASE plate, so the three-quarter plate keeps no boss over the cone.
+//
+// The owner chose the base plate (TODO 184's one rule for a cock) over a cock
+// screwed to this plate. What that costs is length: the great wheel stands
+// on the base plate's face out to 15.6 from the axis, so the leg stands
+// outside it and the bar carries the bush over the plate from there. What it
+// carries is the movement's heaviest bearing, and it carries it SIDEWAYS: the
+// chain's pull and the great wheel's mesh force lie in the plate's plane, so
+// the bar bends in its own plane (its WIDTH is the section's depth) and the
+// leg is a column with a side load at its top and a twist from the bar.
+// Derived, each from its constraint (P1 — the section from the load path):
+//
+//  · THE REACTION, an upper bound the energy column's own way (the loads
+//    ADDED, as if collinear): statics between the lower bush (the base
+//    plate's mid-plane) and this bush (the slab's mid-plane, FUSEE_COCK_MID),
+//    for the chain at the groove station whose pull × height is largest
+//    (the pull is the level fusee torque over that station's radius, since
+//    the fusee is level by construction), the great wheel's tangential force
+//    at its pitch radius and height, and the winding arrest's lug at the
+//    stall — §329's rule, the stop holds the cone at the going torque — at
+//    the lug's radius and height.
+//  · THE BAR, rectangular, COCK_T deep in z and `b` wide in plan: in-plane
+//    bending at its root, σ = 6·R·L/(T·b²), held to the plate metal's yield
+//    (NICKEL_SILVER_SIGMA_Y_PA, the band's low end), solved for b at each
+//    candidate's own length; never under the §50 floor.
+//  · THE LEG, a tube round its foot screw: the side load R at the slab's
+//    mid-plane bends it over its height, and the bar's moment R·L twists it;
+//    the outer radius is the least whose von Mises stress √(σ² + 3τ²) is
+//    under the same yield, never under TODO 184's sleeve (the bore plus a
+//    stock floor).
+//  · THE FOOT is SCANNED about the arbor over every bearing and reach, the
+//    nearest feasible seat winning (the fork and escape cocks' policy). A
+//    seat is feasible when the leg's column clears everything standing
+//    between the base plate and the slab (every mesh there by the keep
+//    visitor's two footprints; the chain by its run's hull over the whole
+//    reserve, because the chain mesh stands at one wind; the low corridor by
+//    LOW_LINKAGE_OBSTACLES, rule 5; the fork by FORK_SWEEP), its pad stands on
+//    base-plate metal a stock floor from every opening there, its hole
+//    through THIS plate leaves a TQ_LAND_MIN land to every opening, pivot
+//    boss and window already solved (it is a late opening: the windows'
+//    re-solve, shrink-only, stands them off it at the end), and the bar,
+//    over this plate in the slab's band, clears everything standing there.
+//    It is built HERE, after every part between the plates and on the plate's
+//    face exists, because the cock is the newcomer: built with the escape cock
+//    its leg was sited straight through the alarm click's spring, which is
+//    built eighteen thousand lines later (§322's lesson, the other way round:
+//    the frame comes first and the newcomer fits round it). Its foot's tapped
+//    hole re-cuts the base plate here, and its leg's passage joins tqHoles
+//    before the windows' re-solve and the three-quarter plate's re-cut below.
+//  · THE FOOT JOINT carries the bar's twist R·L through its one screw's
+//    clamp; that capacity is not modelled anywhere in this frame (TODO 184
+//    sized the screws by the plate they grip, not by a torque), so the record
+//    carries the demand and §336 files it.
+// ---------------------------------------------------------------------------
+await breathe(375);
+let FUSEE_COCK_SLOT = null;   // §336 landing 2: the cock's slot outline in plan (set by its build, merged into the windows at §62's re-cut)
+const FUSEE_COCK = await (async () => {
+  const C = P.barrel;
+  const T = FUSEE_COCK_T;
+  const sigmaY = NICKEL_SILVER_SIGMA_Y_PA;
+  const torque = GOING_POWER.fuseeTorque_Nm;
+  // 1. The reaction at this bush.
+  const zLow = BACK_PLATE_Z, zUp = FUSEE_BOSS_MID, span = zUp - zLow;
+  let chain = { m: 0 };
+  for (let i = 0; i <= 64; i++) {
+    const gp = fuseeGrooveAt((i / 64) * FUSEE_F_ACTIVE);
+    const F = torque / (gp.r * OSC_U), m = F * (gp.z - zLow);
+    if (m > chain.m) chain = { m, F, r: gp.r, z: gp.z };
+  }
+  const gwPos = greatWheel.getWorldPosition(new THREE.Vector3());
+  const rGreat = TRAIN.barrel.module * TRAIN.barrel.teeth / 2;
+  const gear = { F: torque / (rGreat * OSC_U), z: gwPos.z };
+  gear.m = gear.F * (gear.z - zLow);
+  // THE STALL, at full wind (§329's rule: the stop holds the cone at the
+  // going torque). Two forces join the chain's and the mesh's: the stop's on
+  // the cone, and the winding input's at the winding spur under the great
+  // wheel, which delivers that torque. The stop (§47's lug, or §329's stop-work)
+  // is built thousands of lines after this cock, so its force is BOUNDED here —
+  // at the cone's smallest groove radius (the largest force a stop riding the
+  // cone can need) and the cone's top (the longest lever about the lower bush)
+  // — and the built stop is held inside that bound at the movement-complete
+  // stage (checkFuseeCockStall).
+  const coneMesh = fusee.getObjectByName('fuseeCone');
+  let rSmall = Infinity;
+  for (let i = 0; i <= 64; i++) rSmall = Math.min(rSmall, fuseeGrooveAt((i / 64) * FUSEE_F_ACTIVE).r);
+  const stop = { r: rSmall, z: coneMesh ? new THREE.Box3().setFromObject(coneMesh).max.z : FUSEE_Z0 + FUSEE_ZSPAN };
+  stop.F = torque / (stop.r * OSC_U); stop.m = stop.F * (stop.z - zLow);
+  // §336 landing 3 — ON THE STOP-WORK'S BUILD THE STOP IS KNOWN, not bounded: the stop-work is built before this cock (in §47's
+  // block), so its pin's force on the cone at the stall is read off its own record (§329 P1: F = T / r1, at the star's mid-plane)
+  // in place of the bound. And the same force comes back into the cock: the star's stud is PLANTED IN THE CRANK, and at either
+  // stop the pin's force passes through the star's pivot, so the stud carries it whole into the crank at the seat.
+  const SWK = STOPWORK && WIND_ARREST.stopwork?.built ? WIND_ARREST.stopwork : null;
+  if (STOPWORK && !SWK) console.warn('§336: the stop-work is not built — the fusee cock has no stud to seat and its stop is the bound');
+  const seat = SWK ? { x: SWK.pivot.x, y: SWK.pivot.y, F: SWK.p1.F_N, studR: SWK.p1.stud.r, ringR: SWK.p1.stud.r + STOCK_MIN_U,
+    zLoad: (SWK.z[0] + SWK.z[1]) / 2 } : null;
+  if (SWK) { stop.F = SWK.p1.F_N; stop.r = SWK.r1; stop.z = (SWK.z[0] + SWK.z[1]) / 2; stop.m = stop.F * (stop.z - zLow); stop.exact = true; }
+  const spurPos = windSpur.getWorldPosition(new THREE.Vector3());
+  const wind = { r: windSpur.userData.r, z: spurPos.z };
+  wind.F = torque / (wind.r * OSC_U); wind.m = wind.F * (wind.z - zLow);
+  const R = (chain.m + gear.m + stop.m + wind.m) / span;    // N, at the boss's mid-plane: the stall, every force ADDED
+  // 2. The sections. THE ARM IS A FULLY STRESSED BEAM: the load acts at the
+  //    bush, so the in-plane moment at distance s along the arm is R·s, zero
+  //    at the boss and greatest at the foot, and the width that holds σ at the
+  //    yield there is √(6·R·s/(T·σ)) — the arm tapers with √s rather than
+  //    carrying its root's section all the way to a boss that does not need
+  //    it (a uniform bar here covered more cone than the plate's webs did:
+  //    55.6% clear against their 73.7%). Floored by SHEAR, which does not
+  //    fall with s: 1.5·R/(T·b) under the yield's shear (von Mises, σ/√3).
+  const T_m = T * OSC_U;
+  const shearOf = (F) => 1.5 * F / (T_m * sigmaY / Math.sqrt(3)) / OSC_U;
+  const bShear = shearOf(R);
+  const widthAt = (s) => Math.max(STOCK_MIN_U, bShear, Math.sqrt(6 * R * (Math.max(s, 0) * OSC_U) / (T_m * sigmaY)) / OSC_U);
+  // §336 landing 3 — AT A POINT, with the stud's load: the moment a section at p carries is R's from the bush and, PAST the
+  // seat (from the seat toward the foot), the stud's from the seat, each at most its force times its distance (an upper
+  // bound whatever their directions, the energy column's ADDED rule). The width at p holds that moment at the yield, never
+  // under the shear floor of the forces it carries. With no stud it is widthAt of the distance from the bush, exactly.
+  const Fs = seat ? seat.F : 0;
+  // §337 landing 2b, stage 3 — ON THE GEARED BUILD THE STOP HANGS FROM THE COCK: its forces close inside the cock as a COUPLE, the going
+  // torque, and a couple does not fall toward the boss as R·s does, so every section from the boss out carries it. It is known here
+  // though the site is not (the torque, not the arrangement, sets it); the residual force is inside the stop bound R already holds.
+  const STOP_COUPLE = GEARED_BUILT ? torque / OSC_U : 0;   // N·u
+  const momentAt = (px, py, past) => R * Math.hypot(px - C.x, py - C.y) + STOP_COUPLE + (past && seat ? Fs * Math.hypot(px - seat.x, py - seat.y) : 0);
+  const widthAtP = (px, py, past) => Math.max(STOCK_MIN_U, shearOf(R + (past ? Fs : 0)), Math.sqrt(6 * momentAt(px, py, past) * OSC_U / (T_m * sigmaY)) / OSC_U);
+  const bore = G.screwBoreR(COCK_SCREW_HEAD_R);
+  // the side load's line of action is the bush's plane, so that is the leg's lever arm
+  const legH = FUSEE_BOSS_MID - (BACK_PLATE_Z + BACK_PLATE_T / 2);
+  // A round column, bored or solid, with the side load R at a height h above
+  // its root and the arm's moment R·L twisting it: the least outer radius
+  // whose von Mises stress is under the yield. The leg (bored for its screw,
+  // h from the base plate to the bush's plane) and the post (solid, h its own
+  // height, L the crank's reach) are the one law.
+  // (§336 landing 3: the side force F and the twist Tq are given apart, because past the seat the stud's force joins both)
+  const columnSigma = (ro, h, F, Tq, bi) => {
+    const a = ro * OSC_U, b = bi * OSC_U;
+    const Z = Math.PI * (a ** 4 - b ** 4) / (4 * a);   // bending section modulus; the polar one is 2Z
+    const sig = F * (h * OSC_U) / Z, tau = Tq * OSC_U / (2 * Z);   // Tq in N·u
+    return Math.sqrt(sig * sig + 3 * tau * tau);
+  };
+  const columnRFor = (h, F, Tq, bi, floor) => {
+    let lo = floor;
+    if (columnSigma(lo, h, F, Tq, bi) <= sigmaY) return lo;
+    let hi = lo * 2;
+    while (columnSigma(hi, h, F, Tq, bi) > sigmaY) hi *= 2;
+    for (let k = 0; k < 40; k++) { const m = (lo + hi) / 2; if (columnSigma(m, h, F, Tq, bi) <= sigmaY) hi = m; else lo = m; }
+    return hi;
+  };
+  // the leg at foot (x, y): the bush's and the stud's side forces at the bush's plane, their moments about its axis twisting it
+  const legSigma = (ro, x, y) => columnSigma(ro, legH, R + Fs, momentAt(x, y, true), bore);
+  const legRFor = (x, y) => columnRFor(legH, R + Fs, momentAt(x, y, true), bore, COCK_LEG_BORE_R + STOCK_MIN_U);
+  // §336 landing 4 — THE STEADY PINS (TODO 286). The arm's moment about the leg's axis, the twist at the foot, has to pass
+  // into the base plate, and a screw only holds the cock down: a cock is KEYED by two steady pins pressed into the plate
+  // beside its screw. So the foot is a FLANGE, its depth the plate's own (BACK_PLATE_T: each pin engages the cock as deep as it
+  // engages the plate), bored for the screw and the two pins. The pins stand on a diameter of the foot, each in a LOBE of
+  // the flange just outside the leg's foot (the pin and a §50 floor of metal round it, a floor from the leg's foot too), and
+  // carry the twist as a couple, F = Tq / (2·r_p). The flange is the old pad's disc and the two lobes, not one disc round
+  // them all: measured, a round flange big enough to hold the pins (r 4.06) found no seat at the foot's 40° and moved the
+  // cock to 232° and reach 26.5, which hid the cone back to 75%. The pins' AZIMUTH about the foot is the scan's freedom. Each pin's radius is the largest of
+  // its own SHEAR (the one steel, SPRING_TAU_Y_PA, 4F/(π·d²)), its BEARING in the nickel silver of the plate and of the
+  // flange (F/(d·t), the same t both sides) and the §50 floor; the flange grows until both fit with a stock floor of metal
+  // round them, and the column scan sizes the foot by that flange. The screw's clamp friction is not counted on: the pins
+  // carry the whole twist, which is the conservative side.
+  const FLANGE_T = BACK_PLATE_T;
+  const legBotOf = (legR) => legR * 1.15;   // boredLegGeometry's foot radius: makeEscapeBridge's rBot
+  const pinsFor = (x, y, legR) => {
+    const Tq = momentAt(x, y, true), rb = legBotOf(legR), t = FLANGE_T * OSC_U;
+    const padR = legR * 1.5;   // the core: makeEscapeBridge's pad radius, as before
+    let pinR = STOCK_MIN_U / 2, rp = 0, F = 0;
+    for (let k = 0; k < 60; k++) {
+      rp = rb + pinR + STOCK_MIN_U;
+      F = Tq / (2 * rp);   // N (Tq in N·u, rp in u)
+      const dShear = Math.sqrt((4 * F) / (Math.PI * SPRING_TAU_Y_PA)) / OSC_U;
+      const dBear = F / (sigmaY * t) / OSC_U;
+      const r = Math.max(STOCK_MIN_U / 2, dShear / 2, dBear / 2);
+      if (Math.abs(r - pinR) < 1e-12) { pinR = r; break; }
+      pinR = r;
+    }
+    const d = 2 * pinR * OSC_U;
+    return { pinR, padR, lobeR: pinR + STOCK_MIN_U, rp, F, Tq, shear: (4 * F) / (Math.PI * d * d), bear: F / (d * t) };
+  };
+  // the lobes' best azimuth at a foot: the pair (φ, φ + π) whose two lobes stand clearest of the column's walls
+  const lobesAt = (x, y, pins) => {
+    let best = { c: -Infinity, who: null, phi: 0 };
+    for (let k = 0; k < 36; k++) {
+      const phi = (k / 36) * Math.PI;
+      let c = Infinity, who = null;
+      for (const q of [phi, phi + Math.PI]) {
+        const r = columnClear(x + pins.rp * Math.cos(q), y + pins.rp * Math.sin(q), pins.lobeR);
+        if (r.c < c) { c = r.c; who = r.who; }
+      }
+      if (c > best.c) best = { c, who, phi };
+    }
+    return best;
+  };
+  const postH = FUSEE_COCK_TOP - FUSEE_BOSS_BOT;
+  // THE SEAT'S PENDANT (§336 landing 3): a round column of cock metal hanging from the crank's underside to the plate's old
+  // underside, the stud planted in its foot. The stud's force passes through the star's pivot, on the pendant's axis, so it
+  // bends the pendant (lever: the star's mid-plane up to the crank's underside) and twists nothing; its radius is the least
+  // the column law holds at the yield, never under the seat ring the stud needs.
+  if (seat) seat.pendR = Math.max(seat.ringR, columnRFor(FUSEE_BOSS_BOT - seat.zLoad, seat.F, 0, 0, STOCK_MIN_U));
+  const bushBore = TRAIN_STAFF_R + PIVOT_BORE_CLEAR;
+  // The boss: the bush plus a stock floor of nickel round it, and as wide as
+  // the arm where it leaves it.
+  const bossR = Math.max(bushBore + STOCK_MIN_U, widthAt(bushBore + STOCK_MIN_U) / 2);
+  // 3. The keeps.
+  // (the three-quarter plate is not a keep either: the leg passes it through
+  // its own opening, held to every opening and boss by plateHoleClear, and the
+  // arm stands a margin over its face by construction; read as a keep, its
+  // whole-disc box closed every reach)
+  const swept = new Set([hammerGroup, forkGroup, balanceGroup, hairspringGroup, backPlate, resetRod, hackRod, threeQuarterPlate]);
+  const keepsIn = async (zLo, zHi, skip) => {
+    const keeps = [], v = new THREE.Vector3(), walk = [];
+    movement.updateMatrixWorld(true);
+    for (const child of movement.children) {
+      if (swept.has(child) || skip(child)) continue;
+      child.traverse((o) => { if (o.isMesh && o.geometry?.attributes?.position && !o.userData?.schematic) walk.push([child, o]); });
+    }
+    for (const [child, o] of walk) {
+      await breathe(376);
+      if (skip(o)) continue;
+      o.geometry.computeBoundingBox();
+      const b = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
+      if (b.max.z < zLo || b.min.z > zHi) continue;
+      let cr = 0;
+      const cx = (b.min.x + b.max.x) / 2, cy = (b.min.y + b.max.y) / 2;
+      const pos = o.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+        cr = Math.max(cr, Math.hypot(v.x - cx, v.y - cy));
+      }
+      keeps.push({ b, cx, cy, cr, unit: labelEntries.find((e) => e.obj === child)?.name ?? '(unlabeled)', mesh: o.name || o.geometry.type });
+    }
+    return keeps;
+  };
+  const keepClear = (keeps, x, y) => {
+    let c = Infinity, who = null;
+    for (const k of keeps) {
+      const bx = clamp(x, k.b.min.x, k.b.max.x), by = clamp(y, k.b.min.y, k.b.max.y);
+      const d = Math.max(Math.hypot(x - bx, y - by), Math.hypot(x - k.cx, y - k.cy) - k.cr);
+      if (d < c) { c = d; who = k.unit + ':' + k.mesh; }
+    }
+    return { c, who };
+  };
+  // the chain is the ONE mover between the plates here whose pose is a wind:
+  // its run is held by its hull over the reserve instead of its mesh
+  const isChain = (o) => o === chainMesh;
+  const columnKeeps = await keepsIn(BACK_PLATE_Z + BACK_PLATE_T / 2, FUSEE_COCK_BOT, isChain);
+  // the bar's band, a margin each way; the fusee's own top (its staff, the
+  // windTop continuation and the square) is the boss's tenant, not a keep
+  const ownTop = new Set();
+  barrelArbor.getObjectByName('fuseeUpperPivot') && ownTop.add(barrelArbor.getObjectByName('fuseeUpperPivot'));
+  windTop.traverse((o) => ownTop.add(o));
+  const barKeeps = await keepsIn(FUSEE_COCK_BOT - CLEAR_MARGIN, FUSEE_COCK_TOP + CLEAR_MARGIN, (o) => isChain(o) || ownTop.has(o));
+  // ...and the crank's band, in the cone window's air: the boss, the arm to
+  // the post and the post itself, which runs up to the bar
+  // (the stop-work's stud is the seat's tenant: it is planted in the crank's underside, so it is not a keep for the crank)
+  const crankKeeps = await keepsIn(FUSEE_BOSS_BOT - CLEAR_MARGIN, FUSEE_COCK_TOP + CLEAR_MARGIN, (o) => isChain(o) || ownTop.has(o) || o.name === 'stopworkStud');
+  // ...and the seat's pendant's band, down to the plate's old underside: the stop-work (its stud planted in the pendant, its
+  // star riding the declared running gap under it) is the pendant's tenant, not a keep
+  const swUnitObj = labelEntries.find((e) => e.name === 'Winding stop-work')?.obj;
+  const swMeshes = new Set(); swUnitObj?.traverse((o) => swMeshes.add(o));
+  const pendantKeeps = await keepsIn(TQ_BOT_Z - CLEAR_MARGIN, FUSEE_BOSS_BOT, (o) => isChain(o) || ownTop.has(o) || o === swUnitObj || swMeshes.has(o));
+  // The post stands one margin inside the cone window's solved edge: the
+  // crank is the window's tenant and touches no plate.
+  const coneWin = TQ_WINDOWS.report.find((w) => w.name === 'fusee');
+  const coneR = coneWin?.cut ? Math.min(...coneWin.rOut) : 0;
+  if (!coneWin?.cut) console.warn('§336: the cone window is not cut — the fusee cock\'s boss has no air to stand in');
+  const stadium = (x, y, s) => {
+    const vx = s.bx - s.ax, vy = s.by - s.ay, L2 = vx * vx + vy * vy || 1e-9;
+    const t = clamp(((x - s.ax) * vx + (y - s.ay) * vy) / L2, 0, 1);
+    return Math.hypot(x - s.ax - t * vx, y - s.ay - t * vy) - s.r;
+  };
+  // The chain's run over the whole reserve lies inside the hull of the
+  // fusee's widest wrap and the drum's: the stadium of the larger of the two
+  // circles is a conservative cover of that hull.
+  let fuseeWrapR = 0;
+  for (let i = 0; i <= 64; i++) fuseeWrapR = Math.max(fuseeWrapR, fuseeGrooveAt((i / 64) * FUSEE_F_ACTIVE).r);
+  const chainHull = { ax: C.x, ay: C.y, bx: drumPos.x, by: drumPos.y, r: Math.max(fuseeWrapR, DRUM_WRAP_R) + CHAIN_END_R_OUT };
+  const baseOpenings = [...BACK_PLATE_CUT.holes, ...BACK_PLATE_LATE_HOLES];
+  const baseSlots = [...BACK_PLATE_CUT.slots, ...BACK_PLATE_LATE_SLOTS];
+  const windowEdges = tqWindowEdges(TQ_WINDOWS.polys, null, C.x, C.y, plateR * 2);
+  const inPoly = (pts, x, y) => {
+    let inside = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      const [xi, yi] = pts[i], [xj, yj] = pts[j];
+      if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  };
+  const least = (...pairs) => { let c = Infinity, who = null; for (const [d, w] of pairs) if (d < c) { c = d; who = w; } return { c, who }; };
+  // the leg's column, between the plates (padR: the pad it lands on)
+  const columnClear = (x, y, padR) => {
+    const k = keepClear(columnKeeps, x, y);
+    const pairs = [[k.c - padR - CLEAR_MARGIN, k.who], [stadium(x, y, chainHull) - padR - CLEAR_MARGIN, 'the chain\'s run over the reserve']];
+    for (const o of LOW_LINKAGE_OBSTACLES) pairs.push([(o.ax === undefined ? Math.hypot(x - o.x, y - o.y) - o.r : stadium(x, y, o)) - padR - CLEAR_MARGIN, 'low corridor']);
+    pairs.push([FORK_SWEEP.clear(x, y) - padR - CLEAR_MARGIN, 'fork sweep']);
+    for (const h of baseOpenings) pairs.push([Math.hypot(x - h.x, y - h.y) - h.r - padR - STOCK_MIN_U, 'base plate opening']);
+    for (const sl of baseSlots) pairs.push([stadium(x, y, sl) - padR - STOCK_MIN_U, 'base plate slot']);
+    return least(...pairs);
+  };
+  // its hole through the three-quarter plate (holeR: the leg's widest, plus a margin)
+  const plateHoleClear = (x, y, holeR) => {
+    const pairs = [[tqOpeningClearance(x, y) - holeR - TQ_LAND_MIN, 'a plate opening'],
+      [tqKeepClearanceIn(NO_KEEPS, x, y) - holeR - CLEAR_MARGIN, 'a pivot boss in the plate'],
+      [tqEdgeLand(windowEdges, x, y) - holeR - TQ_LAND_MIN, 'a window\'s edge']];
+    for (const w of TQ_WINDOWS.polys) if (inPoly(w.pts, x, y)) pairs.push([-1, `inside window '${w.name}'`]);
+    return least(...pairs);
+  };
+  const barClear = (x, y, hw, keeps = barKeeps) => {   // hw: the half-width at that station
+    const k = keepClear(keeps, x, y);
+    return least([k.c - hw - CLEAR_MARGIN, k.who], [Math.hypot(x - P.balance.x, y - P.balance.y) - Math.max(BAL_OUTER_R, HAIRSPRING_SWEPT_R) - hw - CLEAR_MARGIN, 'balance']);
+  };
+  const plateEdge = (x, y) => (FORM ? formInset(x, y) : plateR - Math.hypot(x, y));
+  // §336 landing 2 — THE SLOT'S LAND. Where the bar runs through plate, its slot (the bar's half-width and a margin) keeps a
+  // plate land (TQ_LAND_MIN) from every other opening and the rim, every pivot boss, and every window but the cone's and the
+  // gear window's: the slot merges with those two into one opening at the re-cut, so their edges are not lands to keep.
+  const otherEdges = tqWindowEdges(TQ_WINDOWS.polys.filter((w) => w.name !== 'fusee' && w.name !== 'fusee gears'), null, C.x, C.y, plateR * 2);
+  const inMerged = (x, y) => TQ_WINDOWS.polys.some((w) => (w.name === 'fusee' || w.name === 'fusee gears') && inPoly(w.pts, x, y));
+  const slotLand = (x, y, hw) => {
+    if (inMerged(x, y)) return { c: Infinity, who: null };
+    const r = hw + CLEAR_MARGIN;
+    return least([tqOpeningClearance(x, y) - r - TQ_LAND_MIN, 'a plate opening or the rim'],
+      [tqKeepClearanceIn(NO_KEEPS, x, y) - r - TQ_LAND_MIN, 'a pivot boss in the plate'],
+      [tqEdgeLand(otherEdges, x, y) - r - TQ_LAND_MIN, 'another window\'s edge']);
+  };
+  // The POST: as far out as the window's air allows (its edge one margin
+  // inside the cone window's solved rim), sized by the column law for its own
+  // height and the twist the crank's reach puts on it, and never narrower
+  // than the arms it joins. Its radius and its station depend on each other,
+  // so they are iterated to the fixed point (a few rounds: the twist grows
+  // with the station only as its cube root).
+  // The window is cut to half-degree CHORDS, which sag inside its circle by
+  // r(1 − cos 0.25°); the post keeps its margin from the chords, so that sag
+  // (twice, §335's rule for the ring) comes off its station.
+  const coneEdge = coneR - 2 * coneR * (1 - Math.cos(0.25 * DEG2RAD));
+  // (§336 landing 3: per bearing, because the post's twist is the moment at the post, which past the seat depends on where it is)
+  const postFor = (a) => {
+    const cs = Math.cos(a), sn = Math.sin(a), at = (s) => [C.x + cs * s, C.y + sn * s];
+    let postR = Math.max(widthAtP(...at(coneEdge), true) / 2, STOCK_MIN_U), sStep = coneEdge - CLEAR_MARGIN - postR;
+    for (let k = 0; k < 30; k++) {
+      const pt = at(Math.max(sStep, 0));
+      const r = Math.max(columnRFor(postH, R + Fs, momentAt(...pt, true), 0, STOCK_MIN_U), widthAtP(...pt, true) / 2);
+      sStep = coneEdge - CLEAR_MARGIN - r;
+      if (Math.abs(r - postR) < 1e-9) { postR = r; break; }
+      postR = r;
+    }
+    return { postR, sStep };
+  };
+  // §336 landing 3 — THE CRANK'S PATH: from the bush to the post along the cock's bearing or, with a stud to carry, a DOGLEG
+  // through the stud's seat (the bush to the seat, the seat to the post), each leg a strip cut to the width at each of its
+  // points. A segment is sampled from where it leaves the member at its start.
+  const crankSegs = (P0) => (seat ? [[C, seat, false], [seat, P0, true]] : [[C, P0, false]]);
+  const segSamples = (A, B, past, skip0, fn) => {
+    const L = Math.hypot(B.x - A.x, B.y - A.y);
+    for (let t = skip0; t <= L; t += 0.5) { const f = t / (L || 1); if (fn(A.x + (B.x - A.x) * f, A.y + (B.y - A.y) * f, past) === false) return; }
+  };
+  // 4. The scan.
+  let best = null, near = null;
+  const landscape = [];
+  for (let dd = 0; dd < 360; dd += 2) {
+    await breathe(377);
+    const a = dd * DEG2RAD, cs = Math.cos(a), sn = Math.sin(a);
+    const { sStep, postR } = postFor(a);
+    const P0 = { x: C.x + cs * sStep, y: C.y + sn * sStep };
+    let bearingNear = null;
+    const series = [];   // every reach tried on this bearing, for the report
+    for (let reach = 2; ; reach += 0.25) {
+      if (best && reach >= best.reach - 1e-9) break;
+      if (!(sStep > bossR)) break;               // no post fits inside the window's air beyond the boss
+      const x = C.x + cs * reach, y = C.y + sn * reach;
+      const legR = legRFor(x, y), pins = pinsFor(x, y, legR), padR = pins.padR, holeR = legR * 1.15 + CLEAR_MARGIN;
+      const hw = widthAtP(x, y, true) / 2;         // the arm's root
+      const nodeR = Math.max(legR * 1.35, hw);
+      if (reach < sStep + postR + nodeR + CLEAR_MARGIN) continue;
+      const mPlate = plateEdge(x, y) - Math.max(nodeR, padR) - STOCK_MIN_U;
+      if (mPlate < 0) break;   // past the rim, every farther reach is too
+      let col = columnClear(x, y, padR);
+      if (col.c >= 0) { const lb = lobesAt(x, y, pins); pins.phi = lb.phi; if (lb.c < col.c) col = { c: lb.c, who: `${lb.who} (a steady pin's lobe)` }; }
+      const hole = plateHoleClear(x, y, holeR);
+      let mBar = Infinity, barWho = null;
+      const take = (r) => { if (r.c < mBar) { mBar = r.c; barWho = r.who; } return mBar >= 0; };
+      if (col.c >= 0 && hole.c >= 0) {
+        // the crank: the bush to the post, through the stud's seat when there is one; its slot keeps the plate land too
+        for (const [A0, B0, past] of crankSegs(P0))
+          segSamples(A0, B0, past, A0 === C ? bossR + CLEAR_MARGIN : 0, (px, py, pst) => {
+            const w = widthAtP(px, py, pst) / 2;
+            const b1 = barClear(px, py, w, crankKeeps), b2 = slotLand(px, py, w);
+            return take(least([b1.c, b1.who], [b2.c, b2.who]));
+          });
+        if (seat) {
+          const b1 = barClear(seat.x, seat.y, seat.pendR, crankKeeps), b2 = slotLand(seat.x, seat.y, seat.pendR), b3 = barClear(seat.x, seat.y, seat.pendR, pendantKeeps);
+          take(least([b1.c, b1.who], [b2.c, b2.who], [b3.c, b3.who]));
+        }
+        take(barClear(P0.x, P0.y, postR, crankKeeps));
+        // the bar IN THE PLATE'S PLANE (§336 landing 2), from the post to the foot: clear of what crosses the plate band, and its
+        // slot (the bar and a margin) a plate land from every other opening, pivot boss and window, and from the rim
+        for (let sb = sStep + postR; sb <= reach - nodeR && mBar >= 0; sb += 0.5) {
+          const bx = C.x + cs * sb, by = C.y + sn * sb, w = widthAtP(bx, by, true) / 2;
+          const b1 = barClear(bx, by, w, crankKeeps), b2 = slotLand(bx, by, w);
+          take(least([b1.c, b1.who], [b2.c, b2.who]));
+        }
+        { const a1 = barClear(x, y, nodeR, crankKeeps), a2 = slotLand(x, y, nodeR); take(least([a1.c, a1.who], [a2.c, a2.who])); }
+      }
+      const short = Math.min(mPlate, col.c, hole.c, mBar);
+      const row = { x, y, a, reach, short, hw, postR, sStep, legR, nodeR, padR, pins, holeR, mPlate, mColumn: col.c, colWho: col.who, mHole: hole.c, holeWho: hole.who, mBar, barWho };
+      series.push([reach, +short.toFixed(3), +col.c.toFixed(3), col.who, +hole.c.toFixed(3), hole.who, mBar === Infinity ? null : +mBar.toFixed(3), barWho]);
+      if (!near || short > near.short) near = row;
+      if (!bearingNear || short > bearingNear.short) bearingNear = row;
+      if (short < 0) continue;
+      if (!best || reach < best.reach - 1e-9) best = row;
+      break;
+    }
+    if (bearingNear) bearingNear.series = series;
+    landscape.push(bearingNear);
+  }
+  let foot = best;
+  if (!foot) {
+    const walls = [[near.mPlate, 'the plate runs out'], [near.mColumn, `the leg's column (${near.colWho})`],
+      [near.mHole, `its hole through the plate (${near.holeWho})`], [near.mBar, `the bar over the plate (${near.barWho})`]].sort((p, q) => p[0] - q[0]);
+    console.warn(`§336: no clear footing for the fusee cock — best near-miss is short by ${(-near.short).toFixed(3)} at `
+      + `(${near.x.toFixed(2)}, ${near.y.toFixed(2)}), reach ${near.reach.toFixed(2)}, bearing ${(near.a / DEG2RAD).toFixed(1)}°; bound by ${walls[0][1]}. `
+      + 'Seated there anyway so the rest of the boot reports — the cock is KNOWN BAD.');
+    foot = { ...near, missed: true };
+  }
+  // 5. The build.
+  await breathe(378);
+  const L = foot.reach;
+  const cs = Math.cos(foot.a), sn = Math.sin(foot.a);
+  const step = { x: C.x + cs * foot.sStep, y: C.y + sn * foot.sStep, r: foot.postR };
+  const cock = new THREE.Group();
+  // The foot: makeEscapeBridge's own foot boss, leg, pad and screw (a chain of
+  // one node draws no bar).
+  const upper = G.makeEscapeBridge({
+    chain: [{ x: foot.x, y: foot.y, r: foot.nodeR, foot: true, legR: foot.legR }], thickness: T,
+    foot: { headR: COCK_SCREW_HEAD_R, engage: BACK_PLATE_T },
+    footDrop: FUSEE_COCK_BOT - (BACK_PLATE_Z + BACK_PLATE_T / 2),
+  });
+  upper.position.set(0, 0, FUSEE_COCK_MID);
+  cock.add(upper);
+  // §336 landing 4 — the FOOT FLANGE and its two STEADY PINS (pinsFor, above), in place of the builder's thin pad: the
+  // flange bored for the screw (the leg's own bore) and for both pins, the pins pressed through the base plate (flush with
+  // its back face) and up into the flange to its top.
+  const pinSet = foot.pins;
+  {
+    const pad = upper.children.find((o) => o.name === 'bridgeFoot');
+    if (pad) { upper.remove(pad); pad.geometry.dispose(); }
+    const zBase = BACK_PLATE_Z + BACK_PLATE_T / 2;
+    pinSet.at = [pinSet.phi, pinSet.phi + Math.PI].map((q) => ({ x: foot.x + pinSet.rp * Math.cos(q), y: foot.y + pinSet.rp * Math.sin(q) }));
+    // the flange's outline: the core disc and the two lobes, unioned (layout.js unionLoops, as the slot)
+    const discPts = (cx, cy, r, n) => Array.from({ length: n }, (_, k) => { const q = (2 * Math.PI * k) / n; return [cx + r * Math.cos(q), cy + r * Math.sin(q)]; });
+    const outline = unionLoops([discPts(foot.x, foot.y, pinSet.padR, 64), ...pinSet.at.map((q) => discPts(q.x, q.y, pinSet.lobeR, 32))]);
+    const loop = Array.isArray(outline[0][0]) ? outline.reduce((m, L) => (L.length > m.length ? L : m)) : outline;
+    if (Array.isArray(outline[0][0]) && outline.length !== 1) console.warn(`§336: the steady pins' flange unioned into ${outline.length} loops — the lobes do not meet the core`);
+    const sh = new THREE.Shape(); loop.forEach(([px, py], k) => (k ? sh.lineTo(px, py) : sh.moveTo(px, py))); sh.closePath();
+    for (const [hx, hy, hr] of [[foot.x, foot.y, bore], ...pinSet.at.map((q) => [q.x, q.y, pinSet.pinR])]) {
+      const h = new THREE.Path(); h.absarc(hx, hy, hr, 0, 2 * Math.PI, true); sh.holes.push(h);
+    }
+    const flange = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: FLANGE_T, bevelEnabled: false, curveSegments: 24 }), MATS.ribbedNickel);
+    flange.name = 'bridgeFoot';   // PLATE_SEATS cites the foot by this name, as it did the pad
+    flange.position.z = zBase;
+    cock.add(flange);
+    const pinH = BACK_PLATE_T + FLANGE_T;
+    for (const q of pinSet.at) {
+      const pin = new THREE.Mesh(new THREE.CylinderGeometry(pinSet.pinR, pinSet.pinR, pinH, 24), MATS.steel);
+      pin.geometry.rotateX(Math.PI / 2);
+      pin.name = 'steadyPin';
+      pin.position.set(q.x, q.y, zBase - BACK_PLATE_T + pinH / 2);
+      cock.add(pin);
+      BACK_PLATE_LATE_HOLES.push({ x: q.x, y: q.y, r: pinSet.pinR });
+      // TODO 184's land rule for a late hole, held here because the base plate's land pass ran long before this cock
+      const land = Math.hypot(q.x - foot.x, q.y - foot.y) - pinSet.pinR - COCK_PLATE_TAP_R;
+      if (land < STOCK_MIN_U - 1e-9)
+        console.warn(`§336: a fusee cock steady pin leaves ${land.toFixed(3)} of base plate to the foot screw's tapped hole — need STOCK_MIN_U ${STOCK_MIN_U.toFixed(3)}`);
+    }
+  }
+  // The boss: the bush, the same builder's pivot boss (a chain of one node).
+  const lower = G.makeEscapeBridge({ chain: [{ x: C.x, y: C.y, r: bossR, bore: bushBore }], thickness: T, footDrop: 0 });
+  lower.position.set(0, 0, FUSEE_BOSS_MID);
+  cock.add(lower);
+  // The two ARMS, cut to the taper: a strip whose half-width at distance s
+  // from the bush is widthAt(s)/2, from s0 to s1 along the cock's bearing,
+  // extruded T deep and centred on zMid. Each overlaps the member at either
+  // end by its own radius (the boss, the post, the foot node), so the arm is
+  // one body with them.
+  // §336 landing 3: a strip along any segment A→B, its half-width at each point the width law's there, cut on the segment's
+  // own normal (the crank's dogleg legs are not on the cock's bearing)
+  const stripPts = (A0, B0, past) => {
+    const N = 24, left = [], right = [], ux = B0.x - A0.x, uy = B0.y - A0.y, Ls = Math.hypot(ux, uy) || 1, nx = -uy / Ls, ny = ux / Ls;
+    for (let k = 0; k <= N; k++) {
+      const f = k / N, px = A0.x + ux * f, py = A0.y + uy * f, w = widthAtP(px, py, past) / 2;
+      left.push([px + nx * w, py + ny * w]);
+      right.push([px - nx * w, py - ny * w]);
+    }
+    return [...left, ...right.reverse()];
+  };
+  const armPts = (s0, s1) => stripPts({ x: C.x + cs * s0, y: C.y + sn * s0 }, { x: C.x + cs * s1, y: C.y + sn * s1 }, true);
+  const crankSegsBuilt = crankSegs(step);
+  const crankPieces = crankSegsBuilt.map(([A0, B0, past]) => stripPts(A0, B0, past));
+  const armGeoOf = (pts) => {
+    const shape = new THREE.Shape();
+    pts.forEach(([x, y], k) => (k ? shape.lineTo(x, y) : shape.moveTo(x, y)));
+    shape.closePath();
+    const g = new THREE.ExtrudeGeometry(shape, { depth: T, bevelEnabled: false });
+    g.translate(0, 0, -T / 2);
+    return g;
+  };
+  for (const [k, pts] of crankPieces.entries()) {
+    const lowerArm = new THREE.Mesh(armGeoOf(pts), MATS.ribbedNickel);
+    lowerArm.name = 'fuseeCockCrank';
+    lowerArm.userData.armPast = crankSegsBuilt[k][2];   // past the stud's seat: the stud's moment is in its width (probe-336 reads it)
+    lowerArm.position.z = FUSEE_BOSS_MID;
+    cock.add(lowerArm);
+  }
+  // the stud's SEAT: a boss of crank metal round the stop-work's stud (its radius and a §50 floor), the stud planted in its underside
+  if (seat) {
+    // the seat and its pendant: one column, from the plate's old underside (the stud's foot) up through the crank's band
+    const seatMesh = new THREE.Mesh(new THREE.CylinderGeometry(seat.pendR, seat.pendR, FUSEE_BOSS_TOP - TQ_BOT_Z, 28), MATS.ribbedNickel);
+    seatMesh.geometry.rotateX(Math.PI / 2);
+    seatMesh.name = 'fuseeCockSeat';
+    seatMesh.position.set(seat.x, seat.y, (FUSEE_BOSS_TOP + TQ_BOT_Z) / 2);
+    cock.add(seatMesh);
+  }
+  const upperArm = new THREE.Mesh(armGeoOf(armPts(foot.sStep, L)), MATS.ribbedNickel);
+  upperArm.userData.armPast = true;
+  upperArm.name = 'fuseeCockArm';
+  upperArm.position.z = FUSEE_COCK_MID;
+  cock.add(upperArm);
+  // The post joining them, from the boss's underside to the arm's top.
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(foot.postR, foot.postR, postH, 28), MATS.ribbedNickel);
+  post.geometry.rotateX(Math.PI / 2);
+  post.name = 'fuseeCockPost';
+  post.position.set(step.x, step.y, (FUSEE_BOSS_BOT + FUSEE_COCK_TOP) / 2);
+  cock.add(post);
+  cock.traverse((o) => { o.userData.notPlateLoad = true; });
+  movement.add(cock);
+  const g = cock;
+  for (const f of upper.userData.footScrews)
+    declareFrameJoint({ joint: 'Fusee cock ⇄ base plate', clamped: 'fusee cock slab and leg', host: 'base plate',
+      frame: upper, x: f.x, y: f.y, top: f.z, headR: f.headR, headT: f.headT, shank: f.shank, clamp: f.clamp });
+  BACK_PLATE_LATE_HOLES.push({ x: foot.x, y: foot.y, r: COCK_PLATE_TAP_R });
+  recutBackPlate();
+  // §336 landing 2: the leg stands in the cock's slot, so the plate keeps no separate hole for it. The slot's outline (the
+  // bar's taper and a margin, out past the foot's node) is merged with the cone and gear windows at §62's re-cut below.
+  // It is built FROM THE CUT OUTLINE, offset by the margin, so the margin is exact wherever the plate stands: the two arms'
+  // polygons as extruded, the post's and the foot's discs as polygons circumscribing their meshes, and the boss (a first cut
+  // re-sampled the taper on its own grid and stood 0.0017 short of the margin between the two chordings).
+  // the slot stands the margin plus a float tie out: both meshes reach the GPU's Float32 positions, and the battery holds the
+  // pair strictly (min < CLEAR_MARGIN fails), so a slot cut at exactly the margin read 0.1499990 at 24 h. The tie is two
+  // Float32 vertices one ulp each at |coordinate| < 64 u, inspect.js's FLOOR_TIE_EPS by the same rule
+  const F32_TIE = 2 * Math.pow(2, -23) * 64;
+  FUSEE_COCK_SLOT = (() => {
+    const disc = (x, y, r, n) => Array.from({ length: n }, (_, k) => { const a = (2 * Math.PI * k) / n, R = r / Math.cos(Math.PI / n); return [x + R * Math.cos(a), y + R * Math.sin(a)]; });
+    // each piece is offset ALONE and the offsets are unioned: a piece is convex, where a miter offset is exact, while the union's
+    // junctions are reflex corners, where a miter's offset vertex lands short of the margin
+    return unionLoops([...crankPieces, armPts(foot.sStep, L), disc(step.x, step.y, foot.postR, 28), disc(foot.x, foot.y, foot.nodeR, 48), disc(C.x, C.y, bossR, 48),
+      ...(seat ? [disc(seat.x, seat.y, seat.pendR, 28)] : [])]
+      .map((P) => G.offsetPolygon(P, CLEAR_MARGIN + F32_TIE)));
+  })();
+  registerExplode(g, 0, 7);   // the group stands at the movement's origin; its parts carry their own heights
+  registerLabel('Fusee cock', g);
+  const rootM = momentAt(foot.x, foot.y, true), rootW = widthAtP(foot.x, foot.y, true);
+  const barSigma = 6 * rootM * OSC_U / (T_m * (rootW * OSC_U) ** 2);
+  // The tip's deflection, by the unit-load integral over the taper:
+  // δ = ∫ R·s² / (E·I(s)) ds, I(s) = T·b(s)³/12 in plane.
+  const E = STOCK.nickelSilver.E;
+  let deflect = 0;
+  // (along the arm's line, the stud's moment included past its seat's station: a report, not a gate)
+  { const N = 400; for (let k = 0; k < N; k++) { const sk = (k + 0.5) * L / N, px = C.x + cs * sk, py = C.y + sn * sk, b = widthAtP(px, py, true) * OSC_U; deflect += momentAt(px, py, true) * OSC_U * (sk * OSC_U) / (E * T_m * b ** 3 / 12) * (L / N) * OSC_U; } }
+  const deflect_mm = deflect * 1000;
+  return {
+    obj: g, foot, step, T, bot: FUSEE_COCK_BOT, mid: FUSEE_COCK_MID, top: FUSEE_COCK_TOP, bossMid: FUSEE_BOSS_MID, L,
+    load: { R_N: R, R_running_N: (chain.m + gear.m) / span, chain: { F_N: chain.F, r_u: chain.r, z: chain.z }, gear: { F_N: gear.F, z: gear.z },
+      stop: { F_N: stop.F, r_u: stop.r, z: stop.z, exact: !!stop.exact }, wind: { F_N: wind.F, r_u: wind.r, z: wind.z }, zLow, zUp },
+    seat: seat && { x: seat.x, y: seat.y, F_N: seat.F, studR_u: seat.studR, ringR_u: seat.ringR, pendR_u: seat.pendR, pendH_u: FUSEE_BOSS_BOT - TQ_BOT_Z,
+      pendSigma_Pa: columnSigma(seat.pendR, FUSEE_BOSS_BOT - seat.zLoad, seat.F, 0, 0), widthAt_u: widthAtP(seat.x, seat.y, true) },
+    bar: { rootWidth_u: rootW, rootMoment_Nu: rootM, widthAtWindow_u: widthAt(coneR), shearFloor_u: bShear, sigma_Pa: barSigma, yield_Pa: sigmaY, deflect_mm },
+    boss: { r_u: bossR }, post: { r_u: foot.postR, s_u: foot.sStep, h_u: postH, sigma_Pa: columnSigma(foot.postR, postH, R + Fs, momentAt(step.x, step.y, true), 0) },
+    leg: { r_u: foot.legR, h_u: legH, sigma_Pa: legSigma(foot.legR, foot.x, foot.y), yield_Pa: sigmaY },
+    footTwist_Nmm: rootM * UNIT_MM,
+    pins: { r_u: pinSet.pinR, rp_u: pinSet.rp, flangeR_u: pinSet.padR, lobeR_u: pinSet.lobeR, phi: pinSet.phi, flangeT_u: FLANGE_T, F_N: pinSet.F, twist_Nu: pinSet.Tq,
+      shear_Pa: pinSet.shear, shearYield_Pa: SPRING_TAU_Y_PA, bearing_Pa: pinSet.bear, bearingYield_Pa: sigmaY, at: pinSet.at },
+    landscape,
+    // §337 landing 2b, stage 3 — THE SECTIONS AS CUT, UNDER A LOAD THEY WERE NOT SIZED FOR: the geared stop-work is built after this
+    // cock, so its stop and its studs are read back through the same formulas (forces ADDED, this block's rule). `stopM` is the stop's
+    // moment about the lower bush; each stud is { x, y, F }.
+    stall: (stopM, studs, vectors = null) => {
+      // the arm is a fully stressed taper for a moment that falls to nothing at the boss, and a couple does not fall: so the bar is read
+      // along its whole length, each section at the width it was cut to, not at its root alone
+      const barWorst = (Mat) => { let w = { Pa: 0, s_u: 0, width_u: 0 }; const N = 60;
+        const look = (ax, ay, bx, by, past) => { for (let k = 0; k <= N; k++) { const px = ax + (bx - ax) * (k / N), py = ay + (by - ay) * (k / N), d = Math.hypot(px - C.x, py - C.y); if (d < bossR) continue; const b = widthAtP(px, py, past), Pa = 6 * Mat(px, py) * OSC_U / (T_m * (b * OSC_U) ** 2); if (Pa > w.Pa) w = { Pa, s_u: d, width_u: b }; } };
+        for (const [A0, B0, past] of crankSegsBuilt) look(A0.x, A0.y, B0.x, B0.y, past);
+        look(C.x + cs * foot.sStep, C.y + sn * foot.sStep, C.x + cs * L, C.y + sn * L, true);
+        return w; };
+      const read = (Rr, Fside, Mat) => { const Mroot = Mat(foot.x, foot.y), bw = barWorst(Mat); return { R_N: Rr, Fside_N: Fside, rootMoment_Nu: Mroot,
+        bar_Pa: bw.Pa, barAt_u: bw.s_u, barWidth_u: bw.width_u, barRoot_Pa: 6 * Mroot * OSC_U / (T_m * (rootW * OSC_U) ** 2), leg_Pa: columnSigma(foot.legR, legH, Fside, Mroot, bore),
+        post_Pa: columnSigma(foot.postR, postH, Fside, Mat(step.x, step.y), 0), pinShear_Pa: pinSet.shear * (Mroot / pinSet.Tq) }; };
+      const Rr = (chain.m + gear.m + stopM + wind.m) / span, Fsum = studs.reduce((a, q) => a + q.F, 0);
+      const added = read(Rr, Rr + Fsum, (x, y) => Rr * Math.hypot(x - C.x, y - C.y) + studs.reduce((a, q) => a + q.F * Math.hypot(x - q.x, y - q.y), 0));
+      // the stop-work's own forces with their DIRECTIONS (the going loads stay added, their directions being free): what reaches a
+      // section is the resultant of the loads on the cock and its moment about that section
+      let statics = null;
+      if (vectors) {
+        const Rg = (chain.m + gear.m + wind.m) / span, fx = vectors.reduce((a, v) => a + v.fx, 0), fy = vectors.reduce((a, v) => a + v.fy, 0);
+        statics = read(Rg, Rg + Math.hypot(fx, fy), (x, y) => Rg * Math.hypot(x - C.x, y - C.y) + Math.abs(vectors.reduce((a, v) => a + (v.x - x) * v.fy - (v.y - y) * v.fx, 0)));
+      }
+      return { yield_Pa: sigmaY, pinShearYield_Pa: SPRING_TAU_Y_PA, designMoment_Nu: rootM, added, statics };
+    },
+  };
+})();
 // ---------------------------------------------------------------------------
 // §62 — THE WINDOWS, RE-SOLVED against the finished movement, and the plate
 // re-cut to the answer.
@@ -49251,6 +51538,27 @@ if (FORM && ALARM_BUILT) {   // §325 landing 3: no strike group to open the pla
   // the bearing collars, the plate screws, §71's occluder (which shares this
   // very geometry, and is built below) — follows without being rebuilt.
   // TODO 266/270 — the strike opening's lands, against the windows as re-solved round it
+  // §325 landing 16 — ON THE ROUND BUILD THE OPENING IS A NOTCH. The strike group stands at the round plate's rim, so its
+  // opening crosses the outline: the plate is cut as the disc less the opening (layout.js discLessConvex) rather than
+  // given a hole, and its lands are held exactly as a form plate's are (every bore, pivot boss, slot, window and the lifting
+  // lever's post TQ_LAND_MIN off the opening's edge; the outline term is the notch itself).
+  if (!FORM && STRIKE_PLATE_OPENING && ALARM_TAIL_RISER_OPENS_PLATE) {
+    const pts = STRIKE_PLATE_OPENING.pts;
+    const edgeD = (x, y) => tqStrikeOpeningDist(x, y);
+    const lands = [];
+    for (const hh of tqHoles) lands.push({ what: `bore (${hh.x.toFixed(2)}, ${hh.y.toFixed(2)})`, d: edgeD(hh.x, hh.y) - hh.r });
+    for (const p of tqPivots) lands.push({ what: `pivot boss (${p.x.toFixed(2)}, ${p.y.toFixed(2)})`, d: edgeD(p.x, p.y) - pivotBossR(p) });
+    for (const sl of tqSlots) for (let q = 0; q <= 8; q++) { const x = sl.ax + (sl.bx - sl.ax) * q / 8, y = sl.ay + (sl.by - sl.ay) * q / 8; lands.push({ what: 'slot', d: edgeD(x, y) - sl.r }); }
+    for (const w of TQ_WINDOWS.polys) for (const [x, y] of w.pts) lands.push({ what: `window '${w.name}'`, d: edgeD(x, y) });
+    lands.push({ what: 'the lifting lever\'s post', d: edgeD(LIFT_PIV.x, LIFT_PIV.y) - ALARM_LIFT_POST_R });
+    const worst = lands.reduce((a, b) => (b.d < a.d ? b : a), { d: Infinity });
+    if (worst.d < TQ_LAND_MIN - 1e-9)
+      console.warn(`§325: the strike group's notch in the round three-quarter plate leaves ${worst.d.toFixed(3)} of plate to ${worst.what} — need TQ_LAND_MIN ${TQ_LAND_MIN.toFixed(3)}`);
+    const notch = discLessConvex(plateR, pts, 720, 2 * G.PLATE_BEVEL);   // the junctions rounded as §336 rounds the cock's corners
+    if (notch) ROUND_TQ_OUTLINE = notch;
+    else if (pts.every(([x, y]) => Math.hypot(x, y) < plateR)) tqPolyHoles.push({ name: 'strike group (§325 landing 16)', pts });
+    STRIKE_PLATE_OPENING = Object.freeze({ pts, land: worst.d, landTo: worst.what, verts: STRIKE_PLATE_VERTS, notch: !!notch });
+  }
   if (FORM && STRIKE_PLATE_OPENING) {
     const pts = STRIKE_PLATE_OPENING.pts;
     {
@@ -49267,6 +51575,450 @@ if (FORM && ALARM_BUILT) {   // §325 landing 3: no strike group to open the pla
       if (worst.d < TQ_LAND_MIN - 1e-9)
         console.warn(`TODO 266: the strike group's opening in the three-quarter plate leaves ${worst.d.toFixed(3)} of plate to ${worst.what} — need TQ_LAND_MIN ${TQ_LAND_MIN.toFixed(3)}; re-site the hammer (tools/gong-seats.mjs) rather than thin the land`);
       tqPolyHoles.push({ name: 'strike group (TODO 266)', pts });
+    }
+  }
+  // §336 landing 2 — THE COCK'S OPENING. The flush cock runs in the plate's own plane from the cone window out to its foot, so
+  // the plate is opened along it: the cone window, every gear-window sector its slot touches, and the slot itself become ONE
+  // opening (the plate builder cuts no overlapping holes: ExtrudeGeometry triangulates them into phantom plate), their union
+  // taken exactly (layout.js unionLoops). Every other window stands as solved; the bar's scan held the slot a plate land
+  // from all of them, so the merge opens nothing the land rule did not already clear.
+  let COCK_MERGE_PTS = null;
+  if (FUSEE_COCK_SLOT) {
+    const inP = (pts, x, y) => { let k = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, yi] = pts[i], [xj, yj] = pts[j]; if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) k = !k; } return k; };
+    const overlaps = (pts) => FUSEE_COCK_SLOT.some(([x, y]) => inP(pts, x, y)) || pts.some(([x, y]) => inP(FUSEE_COCK_SLOT, x, y));
+    const merged = TQ_WINDOWS.polys.filter((w) => w.name === 'fusee' || (w.name === 'fusee gears' && overlaps(w.pts)));
+    COCK_MERGE_PTS = merged.map((w) => w.pts);   // §337 landing 2b: the geared Geneva's bulge is merged into the same opening
+    if (!merged.some((w) => w.name === 'fusee')) console.warn('§336 landing 2: the cone window is not among the plate\'s windows at the re-cut — the cock\'s slot opens into nothing');
+    else {
+      // the merge's new corners are sharp convex corners of plate, which the plate's extrude bevel pushes out along their bisectors
+      // past the edge the clearances were solved to (measured 0.103 against 0.15 at the slot's junction with the cone window), so
+      // they are rounded: at 2·PLATE_BEVEL, so the drawn corner keeps a PLATE_BEVEL radius through the builder's own pre-offset of
+      // every opening by PLATE_BEVEL, and the bevel then offsets it as it does a straight edge (layout.js filletReflexCorners)
+      const loop = filletReflexCorners(unionLoops([...merged.map((w) => w.pts), FUSEE_COCK_SLOT]), 2 * G.PLATE_BEVEL);
+      TQ_WINDOWS.polys = [...TQ_WINDOWS.polys.filter((w) => !merged.includes(w)), { name: 'fusee', pts: loop, merged: merged.map((w) => w.name) }];
+    }
+  }
+  // §337 landing 2b — THE GEARED GENEVA'S SITE, searched against the windows as cut. The finger (a pinion and a crank on its own
+  // arbor, at the pair's centre distance from the cone's axis) and the star (a from the finger) each stand a disc in the cone
+  // window's air; where a disc would pass the window's edge the window BULGES to hold it, which the plate's land field allows
+  // (`plateLandAt`: the distance to the nearest opening, pivot boss or rim, less TQ_LAND_MIN). The finger's and star's studs hang
+  // from the cock, so a branch arm runs boss → finger → star in the cock's plane, a cantilever from the boss at the cock bar's own
+  // law (b = √(6·M/(T·σ_y)), M the pin's and mesh's forces times their distances from the boss, uniform at its root width as an
+  // upper bound). The search is probe-337-bulge's: every (m, n) the line offers at its least k and four larger, every finger
+  // direction and every star direction (3°), the arrangement of the LEAST BULGE (how far the worst disc or the arm stands past the
+  // window as cut), of equals the more margin. It RECORDS the arrangement (WIND_ARREST.geared) and builds nothing yet.
+  if (GEARED_BUILT && FUSEE_COCK_SLOT) {
+    const win = TQ_WINDOWS.polys.find((w) => w.name === 'fusee')?.pts;
+    if (!win) console.warn('§337: the geared Geneva found no cone window at the re-cut');
+    else {
+      const C = P.barrel, M = CLEAR_MARGIN, keep = TRAIN_STAFF_R + M;
+      const hours = SPEC.reserveHours, stallNmm = GOING_POWER.fuseeTorque_Nm * 1000;
+      const coneMesh = fusee.getObjectByName('fuseeCone');
+      const coneTop = new THREE.Box3().setFromObject(coneMesh).max.z;
+      const bandZ = (FUSEE_BOSS_BOT - M) - (coneTop + M), needZ = 3 * STOCK_MIN_U + 2 * M;
+      // every window but the cone's own (the gear windows the cock's slot touched are already merged into it; the rest keep their land)
+      const otherEdges = tqWindowEdges(TQ_WINDOWS.polys.filter((w) => w.name !== 'fusee'), null, C.x, C.y, plateR * 2);
+      const landAt = (x, y) => Math.min(tqOpeningClearance(x, y), tqKeepClearanceIn(NO_KEEPS, x, y), tqEdgeLand(otherEdges, x, y)) - TQ_LAND_MIN;
+      const segD = (x, y, a, b) => { const vx = b[0] - a[0], vy = b[1] - a[1], L2 = vx * vx + vy * vy || 1e-12; const t = clamp(((x - a[0]) * vx + (y - a[1]) * vy) / L2, 0, 1); return Math.hypot(x - a[0] - t * vx, y - a[1] - t * vy); };
+      const inWin = (x, y) => { let k = false; for (let i = 0, j = win.length - 1; i < win.length; j = i++) { const [xi, yi] = win[i], [xj, yj] = win[j]; if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) k = !k; } return k; };
+      const edgeD = (x, y) => { let d = Infinity; for (let i = 0, j = win.length - 1; i < win.length; j = i++) d = Math.min(d, segD(x, y, win[j], win[i])); return inWin(x, y) ? d : -d; };
+      const room = (x, y) => Math.max(edgeD(x, y), landAt(x, y));   // the window as cut, or the bulge the land allows
+      const prot = (x, y, rad) => Math.max(0, rad + M - edgeD(x, y));
+      const { rows } = chooseGearedStopwork(hours, { stallNmm, coneBoreR: TRAIN_STAFF_R });
+      const STEP = (3 * Math.PI) / 180;
+      let best = null, tried = 0;
+      for (const row of rows) {
+        if (row.direct) continue;
+        for (let kk = row.k; kk <= row.k + 4; kk++) {
+          await breathe(383);
+          const zc = row.num * kk, zf = row.den * kk, D = (GG_MODULE_U * (zc + zf)) / 2, g = row.geneva;
+          const coneTip = (GG_MODULE_U * (zc + 2)) / 2, pinTip = (GG_MODULE_U * (zf + 2)) / 2, crankR = g.r1 + g.rPin + STOCK_MIN_U;   // the crank's outer edge: the pin's radius and a §50 wall round it
+          const fRad = Math.max(pinTip, crankR, g.lockHi);
+          const mCone = room(C.x, C.y) - coneTip - M;
+          if (mCone < 0) continue;
+          const Ff = g.F + (stallNmm / (row.num / row.den)) / ((GG_MODULE_U * zf / 2) * UNIT_MM), Fs = g.F;   // N: the pin's force plus the mesh's, and the pin's
+          for (let p = 0; p < 2 * Math.PI - 1e-9; p += STEP) {
+            const Fx = C.x + D * Math.cos(p), Fy = C.y + D * Math.sin(p), eF = room(Fx, Fy);
+            const mF = Math.min(eF - fRad - M, D - crankR - keep);
+            if (mF < 0) continue;
+            for (let q = 0; q < 2 * Math.PI - 1e-9; q += STEP) {
+              const Sx = Fx + g.a * Math.cos(q), Sy = Fy + g.a * Math.sin(q), dS = Math.hypot(Sx - C.x, Sy - C.y);
+              const mS = Math.min(room(Sx, Sy) - g.rTip - M, dS - g.rTip - keep);
+              if (mS < 0) continue;
+              tried++;
+              const armW = Math.sqrt((6 * (Ff * D + Fs * dS) * UNIT_MM) / ((FUSEE_COCK_T * UNIT_MM) * (NICKEL_SILVER_SIGMA_Y_PA / 1e6))) / UNIT_MM;
+              let mA = Infinity, armProt = 0;
+              for (const [ax, ay, bx, by] of [[C.x, C.y, Fx, Fy], [Fx, Fy, Sx, Sy]])
+                for (let u = 0; u <= 12; u++) { const x = ax + ((bx - ax) * u) / 12, y = ay + ((by - ay) * u) / 12; mA = Math.min(mA, room(x, y) - armW / 2 - M); armProt = Math.max(armProt, prot(x, y, armW / 2 - M)); }
+              const m = Math.min(mF, mS, mCone, mA);
+              if (m < 0) continue;
+              const bulge = Math.max(prot(Fx, Fy, fRad), prot(Sx, Sy, g.rTip), prot(C.x, C.y, coneTip), armProt);
+              if (!best || bulge < best.bulge - 1e-9 || (Math.abs(bulge - best.bulge) <= 1e-9 && m > best.m))
+                best = { bulge, m, armW, n: row.n, mm: row.m, zCone: zc, zFinger: zf, k: kk, D, fingerAz: p, starAz: q, F: { x: Fx, y: Fy }, S: { x: Sx, y: Sy }, pairForce: { Ff, Fs }, g, coneTip, fRad };
+            }
+          }
+        }
+      }
+      WIND_ARREST.geared = { built: false, reserveHours: hours, bandZ, needZ, tried, site: best };
+      if (!(bandZ >= needZ)) console.warn(`§337: the cone window's air is ${bandZ.toFixed(3)} deep against the ${needZ.toFixed(3)} the geared Geneva's three layers need`);
+      if (!best) console.warn(`§337: no site for the geared Geneva at ${hours} h (${tried} arrangements cleared the land)`);
+      if (best && COCK_MERGE_PTS) {
+        // §337 landing 2b, stage 2 — THE GEARED GENEVA'S METAL. Three layers in the cone window's air, from the cone's top face up to
+        // the cock's boss (a margin at each end and between): the GEAR layer (the cone's wheel fast on the fusee's top staff, the
+        // finger's pinion on its stud), the CRANK layer (the crank carrying the pin at r1) and the STAR layer (the star, and the
+        // finger's lock disc beside the pin). Both studs hang from the cock's BRANCH ARM, boss → finger → star, in the cock's plane.
+        // The star's outline, pose law and lock-disc relief below are the direct stop-work's (§329 landing 4), pasted in a scope
+        // where the finger's axis is `C` and the finger turns against the cone: one derivation, two sites.
+        const TAU2 = Math.PI * 2, RUN = 0.01, t = STOCK_MIN_U;
+        const OMEGA = MOVEMENT_SENSE;                       // the finger's sense: the cone's while winding is −MOVEMENT_SENSE, a mesh reverses it
+        const ratio = best.zCone / best.zFinger;            // finger turns per cone turn, from the tooth counts
+        const T = ratio * FUSEE_WRAP_TURNS;                 // the finger's turns over the wind: the star's travel exactly (src/geared-geneva.js)
+        const datumC = barrelMeshAngle(0);                  // the cone's world angle at full wind
+        const datum = 0;                                    // the finger's frame is the world's at full wind
+        const gd = best.g;
+        const C = { x: best.F.x, y: best.F.y };             // (the pasted Geneva is about the finger's axis, not the cone's)
+        const S = { x: best.S.x, y: best.S.y };
+        const azS = Math.atan2(S.y - C.y, S.x - C.x);
+        const r1 = gd.r1, rPin = gd.rPin;
+        const sw = { ...gd, n: best.n, m: best.mm };
+        const E = swEngagementArc(best.n);
+            const zA = coneTop + M;
+        const zG = zA + t / 2, zC = zA + t + M + t / 2, zS = zA + 2 * t + 2 * M + t / 2;   // the three layers' mid-planes
+        const zArm = FUSEE_BOSS_BOT;                                                         // the branch arm's underside: the studs hang from it
+        const coneLocalZ = (zWorld) => zWorld - (L_BARREL + FUSEE_BASE_Z);
+        const sigmaMPa = SPRING_SIGMA_Y_PA / 1e6;
+        const cantR = (F, L) => Math.cbrt((32 * F * L * UNIT_MM) / (Math.PI * sigmaMPa)) / 2 / UNIT_MM;
+        // the finger's stud carries the pin's force and the mesh's (an upper bound: their sum), at the longest lever to the gear layer
+        const studFr = Math.max(gd.studR, cantR(best.pairForce.Ff, zArm - zG));
+        // the star's stud at its REAL length: from the arm's underside to the star's mid-plane (the row sized it at one layer's lever)
+        const SW_STUD_R = Math.max(gd.studR, cantR(best.pairForce.Fs, zArm - zS));
+        if (!(gd.rIn >= SW_STUD_R + RUN + t)) console.warn(`§337: the star's stud at its real length (r ${SW_STUD_R.toFixed(3)}) leaves the open slot's floor (${gd.rIn.toFixed(3)}) less than a wall`);
+        const hubR = Math.max(PIVOT_MIN_U + t, studFr + RUN + t);
+        const STUD_F_R = studFr;
+        const n = sw.n, m = sw.m, a = sw.a, rTip = sw.rTip;
+            if (Math.abs(swTravelTurns(m, n) - T) > 1e-9)
+              console.warn(`§329: the stop-work travels ${swTravelTurns(m, n).toFixed(4)} turns against a wind of ${T.toFixed(4)} — trim ${(swTravelTurns(m, n) - T).toFixed(4)} is not built`);
+            const En = swEngagementArc(n);
+            if (Math.abs(En - E) > 1e-12) console.warn(`§329: the pin was clocked for n = 4 and the line chose n = ${n}`);
+            // --- the star, in its own frame: x̂ toward the cone's axis at its run-down rest (ρ = 0) -----------------------------
+            const W = rPin + RUN;                          // a slot's half-width: the pin and its running fit
+            const R_L = sw.lockHi, R_ARC = R_L + RUN;      // the lock disc, and the star's concave arcs that ride it
+            const slotAz = (k) => OMEGA * (Math.PI / n + k * (TAU2 / n));   // k = 0 the open slot; 1..n−1 closed notches
+            const floorOf = (k) => (k < m ? sw.rIn : sw.r2 - rPin);         // open: the pin's closest approach less the margin; closed: the stop
+            const cornerA = Math.asin(W / rTip);
+            const cosD = (a * a + rTip * rTip - R_ARC * R_ARC) / (2 * a * rTip);
+            const delta = Math.acos(Math.max(-1, Math.min(1, cosD)));
+            if (!(delta < Math.PI / n - cornerA - 1e-6))
+              console.warn(`§329: the lock arcs (±${(delta * 180 / Math.PI).toFixed(2)}°) reach the slots' corners (${((Math.PI / n - cornerA) * 180 / Math.PI).toFixed(2)}°) — no tooth tip is left between them`);
+            const outline = [];
+            const tipArc = (b0, b1) => { const k = Math.max(2, Math.ceil(Math.abs(b1 - b0) / 0.03)); for (let j = 0; j <= k; j++) { const b = b0 + (b1 - b0) * (j / k); outline.push([rTip * Math.cos(b), rTip * Math.sin(b)]); } };
+            const lockArc = (bL) => {   // the concave arc about the cone's axis at its rest, from β = bL − δ to bL + δ through its innermost point
+              const cx = a * Math.cos(bL), cy = a * Math.sin(bL);
+              const p1 = [rTip * Math.cos(bL - delta), rTip * Math.sin(bL - delta)], p2 = [rTip * Math.cos(bL + delta), rTip * Math.sin(bL + delta)];
+              let g1 = Math.atan2(p1[1] - cy, p1[0] - cx), g2 = Math.atan2(p2[1] - cy, p2[0] - cx);
+              // the arc about c from p1 to p2 that passes the point nearest the star's centre (angle bL + π about c), going the way β increases
+              while (g2 > g1) g2 -= TAU2;   // β increasing along the star's edge runs the arc about c CLOCKWISE (c lies outside, beyond the edge)
+              const k = 48; for (let j = 0; j <= k; j++) { const g = g1 + (g2 - g1) * (j / k); outline.push([cx + R_ARC * Math.cos(g), cy + R_ARC * Math.sin(g)]); }
+            };
+            const slot = (bS, f) => {
+              const d = [Math.cos(bS), Math.sin(bS)], nn = [-Math.sin(bS), Math.cos(bS)], sTip = Math.sqrt(rTip * rTip - W * W);
+              const P = (s, w) => [s * d[0] + w * nn[0], s * d[1] + w * nn[1]];
+              outline.push(P(sTip, -W), P(f, -W), P(f, W), P(sTip, W));
+            };
+            const feats = [];
+            for (let k = 0; k < n; k++) { feats.push({ b: k * (TAU2 / n), kind: 'lock' }); feats.push({ b: slotAz(k), kind: 'slot', k }); }
+            for (const f of feats) f.b = ((f.b % TAU2) + TAU2) % TAU2;
+            feats.sort((p, q) => p.b - q.b);
+            // walk β upward: each lock arc spans [b − δ, b + δ], each slot [b − cornerA, b + cornerA]; tip arcs fill between
+            let prevEnd = null, firstStart = null;
+            for (const f of feats) {
+              const s0 = f.kind === 'lock' ? f.b - delta : f.b - cornerA;
+              if (prevEnd !== null) tipArc(prevEnd, s0); else firstStart = s0;
+              if (f.kind === 'lock') lockArc(f.b); else slot(f.b, floorOf(f.k));
+              prevEnd = f.kind === 'lock' ? f.b + delta : f.b + cornerA;
+            }
+            tipArc(prevEnd, firstStart + TAU2);
+            // each tip arc ends exactly where the next slot or lock arc begins (both on the tip circle at the same β), so every
+            // junction was written twice: sixteen zero-length edges, a seam the `outlines` gate fails (found flipping the default
+            // arrest to the stop-work). One point per junction, and the loop's last point is not its first.
+            for (let j = outline.length - 1; j > 0; j--)
+              if (Math.hypot(outline[j][0] - outline[j - 1][0], outline[j][1] - outline[j - 1][1]) < 1e-9) outline.splice(j, 1);
+            if (Math.hypot(outline[outline.length - 1][0] - outline[0][0], outline[outline.length - 1][1] - outline[0][1]) < 1e-9) outline.pop();
+            const starShape = new THREE.Shape();
+            starShape.moveTo(outline[0][0], outline[0][1]);
+            for (let j = 1; j < outline.length; j++) starShape.lineTo(outline[j][0], outline[j][1]);
+            starShape.closePath();
+            const bore = new THREE.Path(); bore.absarc(0, 0, SW_STUD_R + RUN, 0, TAU2, true); starShape.holes.push(bore);
+            // --- the pose law: the star's turn from the cone's, through the Geneva -----------------------------------------------
+            const PHI_HI = (m + 1) * TAU2 - En / 2;     // the finger angle at full wind (the upper stop); the lower stop is En/2
+            const rhoAt = (phi) => {                    // the star's CCW turn from its run-down rest, for finger angle phi
+              let rho = 0;
+              for (let k = 1; k <= m; k++) {
+                const th = phi - k * TAU2;
+                if (th >= En / 2) rho += -OMEGA * (TAU2 / n);
+                else if (th > -En / 2) rho += -OMEGA * (swStarAngle(n, r1, th, a) + Math.PI / n);
+              }
+              return rho;
+            };
+            const azU = azS + Math.PI;                  // the star frame's x̂: from its pivot toward the cone's axis
+            const phiOfTension = (tension) => PHI_HI - TAU2 * T * (1 - clamp(tension, 0, 1));
+            // the pin's world position at finger angle phi (θ about the line of centres, its passage's)
+            const pinAt = (phi) => { const ang = azS + OMEGA * (phi - PHI_HI) - OMEGA * En / 2; return { x: C.x + r1 * Math.cos(ang), y: C.y + r1 * Math.sin(ang) }; };
+            const toStar = (p, rho) => { const dx = p.x - S.x, dy = p.y - S.y, c0 = Math.cos(-(azU + rho)), s0 = Math.sin(-(azU + rho)); return [dx * c0 - dy * s0, dx * s0 + dy * c0]; };
+            // A — the construction, measured: through every passage the pin's centre lies on the open slot's centreline, and at the two
+            // stops it sits on a closed notch's centreline at its floor plus its own radius (a derivation over the pose law — boot has no pose)
+            {
+              let worst = 0;
+              for (let k = 1; k <= m; k++) for (let j = 0; j <= 40; j++) {
+                const phi = k * TAU2 - En / 2 + (j / 40) * En;
+                const [u, v] = toStar(pinAt(phi), rhoAt(phi));
+                const b = slotAz(k - 1), off = Math.abs(-u * Math.sin(b) + v * Math.cos(b));
+                worst = Math.max(worst, off);
+              }
+              const stopOff = (phi, k) => { const [u, v] = toStar(pinAt(phi), rhoAt(phi)); const b = slotAz(k); return [Math.abs(-u * Math.sin(b) + v * Math.cos(b)), Math.abs(u * Math.cos(b) + v * Math.sin(b) - (floorOf(k) + rPin))]; };
+              const up = stopOff(PHI_HI, m), lo = stopOff(En / 2, n - 1);
+              if (!(worst < 1e-9 && Math.max(...up, ...lo) < 1e-9))
+                console.warn(`§329: the stop-work is not the construction it claims — pin off the open slot by ${worst.toExponential(2)}, upper stop off by ${up.map((x) => x.toExponential(2))}, lower by ${lo.map((x) => x.toExponential(2))}`);
+            }
+            // --- the lock disc and its relief, in the cone's own frame -------------------------------------------------------------
+            const starPts = outline;
+            const distStar = (u, v) => {   // signed distance to the star's outline (negative inside)
+              let d = Infinity, inside = false;
+              for (let i = 0, j = starPts.length - 1; i < starPts.length; j = i++) {
+                const [xi, yi] = starPts[i], [xj, yj] = starPts[j];
+                if ((yi > v) !== (yj > v) && u < ((xj - xi) * (v - yi)) / (yj - yi) + xi) inside = !inside;
+                const ex = xi - xj, ey = yi - yj, L = ex * ex + ey * ey || 1e-12, tt = clamp(((u - xj) * ex + (v - yj) * ey) / L, 0, 1);
+                d = Math.min(d, Math.hypot(u - xj - tt * ex, v - yj - tt * ey));
+              }
+              return inside ? -d : d;
+            };
+            // The disc sits fast on the cone's TOP FACE, its bore around the fusee's top staff (no hub ring of its own): a hub's §50 wall
+            // would stand out to 0.817, and the star's teeth come in to a − rTip (0.764 on the lands preview), so where the star's sweep
+            // reaches the bore the disc is OPEN there — a C, carried by the face it sits on. The teeth then clear the staff itself, which
+            // the pin's floor R1_LO holds by the margin.
+            const DISC_IN = STUD_F_R + RUN;   // the geared finger's disc is bored for the finger's own stud (the direct one for the fusee's top staff)
+            const NA = 360, poses = [];
+            for (let k = 1; k <= m; k++) for (let j = 0; j <= 24; j++) { const phi = k * TAU2 - En / 2 + (j / 24) * En; poses.push({ rho: rhoAt(phi), coneAng: datum + OMEGA * (phi - PHI_HI) }); }
+            const discR = new Float64Array(NA);
+            let reliefMin = Infinity;
+            for (let i = 0; i < NA; i++) {
+              // a seam per azimuth of the relief: each carves ~100 radii against the star's whole outline at every passage pose,
+              // about a second for the disc in one stretch (boot-yield read 968 ms held on the flipped default)
+              await breathe(384);
+              const al = (i / NA) * TAU2;
+              let r = R_L;
+              // the relief is a SLIDING fit inside one mechanism (the star's flanks pass the disc's edge as the lock arcs do), so it is
+              // cut at the running fit, never the structural margin: cut at CLEAR_MARGIN it ate the disc under the lock arcs at both ends
+              // of the passage, where they run at RUN, and left the star unlocked over 228° of the finger's 540° of dwell (measured).
+              const R_STEP = 0.01;
+              for (let rr = DISC_IN + RUN; rr <= R_L + 1e-9; rr += R_STEP) {
+                let hit = false;
+                for (const ps of poses) {
+                  const wx = C.x + rr * Math.cos(al + ps.coneAng), wy = C.y + rr * Math.sin(al + ps.coneAng);
+                  if (Math.hypot(wx - S.x, wy - S.y) > rTip + RUN) continue;
+                  const [u, v] = toStar({ x: wx, y: wy }, ps.rho);
+                  if (distStar(u, v) < RUN - 1e-9) { hit = true; break; }
+                }
+                if (hit) { r = rr - R_STEP; break; }
+              }
+              discR[i] = r; reliefMin = Math.min(reliefMin, r);
+            }
+            // where the relief leaves less than a §50 wall outside the bore, the disc is cut through to it: those azimuths are the C's opening
+            const open = Array.from(discR, (r) => r < DISC_IN + STOCK_MIN_U);
+            // Metal BETWEEN two openings touches only the bore, so it is a loose sliver, not a member: the opening is the smallest arc
+            // that covers every open azimuth (measured on the default stop-work: 338–354° and 2–18°, with the open slot's shadow left
+            // standing between them out to ~1.0). It is the complement of the longest run of metal.
+            if (open.some(Boolean)) {
+              let bestS = -1, bestL = 0;
+              for (let i = 0; i < NA; i++) if (!open[i] && open[(i + NA - 1) % NA]) { let L = 0; while (!open[(i + L) % NA] && L < NA) L++; if (L > bestL) { bestL = L; bestS = i; } }
+              for (let k = bestL; k < NA; k++) open[(bestS + k) % NA] = true;
+              if (bestL < NA / 2) console.warn(`§329: the lock disc's opening spans ${((NA - bestL) * 360 / NA).toFixed(0)}° — more than half the disc`);
+            }
+            const runs = []; for (let i = 0; i < NA; i++) if (open[i] && !open[(i + NA - 1) % NA]) runs.push(i);
+            // the lock holds through every dwell: the disc is whole under the azimuth the star faces whenever the pin is out of a slot
+            // A concave arc riding a convex disc holds the star both ways only while there is disc metal under the arc on BOTH sides of
+            // the azimuth it faces (metal on one side blocks one sense of turn and lets the other go). The arc spans ±GAMMA about the
+            // cone's axis: the angle, seen from the axis, of the arc's ends on the star's tip circle.
+            const GAMMA = Math.atan2(rTip * Math.sin(delta), a - rTip * Math.cos(delta));
+            const fullAt = (al) => { let q = Math.round((al / TAU2) * NA) % NA; if (q < 0) q += NA; return discR[q] >= R_L - 1e-9; };
+            const sideHeld = (al, sgn) => { for (let k = 1; k <= Math.ceil(GAMMA / (TAU2 / NA)); k++) if (fullAt(al + sgn * k * (TAU2 / NA))) return true; return false; };
+            let unlockedDeg = 0;
+            const DWELL_N = 720, dPhi = (PHI_HI - En / 2) / (DWELL_N - 1);
+            for (let j = 0; j < DWELL_N; j++) {
+              const phi = En / 2 + j * dPhi;
+              let inPass = false; for (let k = 1; k <= m; k++) if (Math.abs(phi - k * TAU2) < En / 2) inPass = true;
+              if (inPass) continue;
+              const coneAng = datum + OMEGA * (phi - PHI_HI);
+              let al = (azS - coneAng) % TAU2; if (al < 0) al += TAU2;
+              if (!(sideHeld(al, 1) && sideHeld(al, -1))) unlockedDeg += (dPhi * 180) / Math.PI;
+            }
+            if (unlockedDeg > 1e-9)
+              console.warn(`§329: the lock disc lets the star go for ${unlockedDeg.toFixed(1)}° of the finger's dwell — its relief reaches under both ends of the lock arc`);
+            const discShape = new THREE.Shape();
+            const P_AT = (i, r) => { const al = (i / NA) * TAU2; return [r * Math.cos(al), r * Math.sin(al)]; };
+            if (!runs.length) {   // whole: an outline and a bore
+              for (let i = 0; i < NA; i++) { const [x, y] = P_AT(i, discR[i]); if (i === 0) discShape.moveTo(x, y); else discShape.lineTo(x, y); }
+              discShape.closePath();
+              const discBore = new THREE.Path(); discBore.absarc(0, 0, DISC_IN, 0, TAU2, true); discShape.holes.push(discBore);
+            } else {              // a C: the outline over the metal's azimuths, then back round the bore
+              const s0 = runs[0]; let e0 = s0; while (open[(e0 + 1) % NA] && e0 - s0 < NA) e0++;   // the opening is s0..e0
+              const first = (e0 + 1) % NA, count = NA - (e0 - s0 + 1);
+              for (let k = 0; k < count; k++) { const i = (first + k) % NA; const [x, y] = P_AT(i, discR[i]); if (k === 0) discShape.moveTo(x, y); else discShape.lineTo(x, y); }
+              for (let k = count - 1; k >= 0; k--) { const i = (first + k) % NA; const [x, y] = P_AT(i, DISC_IN); discShape.lineTo(x, y); }
+              discShape.closePath();
+            }
+        // where the dwell is unlocked (a report: the finger angle's range, and the azimuth the star then faces, in the disc's frame)
+        const unlockedAt = [];
+        for (let j = 0; j < DWELL_N; j++) {
+          const phi = En / 2 + j * dPhi;
+          let inPass = false; for (let k = 1; k <= m; k++) if (Math.abs(phi - k * TAU2) < En / 2) inPass = true;
+          if (inPass) continue;
+          const coneAng = datum + OMEGA * (phi - PHI_HI);
+          let al = (azS - coneAng) % TAU2; if (al < 0) al += TAU2;
+          if (!(sideHeld(al, 1) && sideHeld(al, -1))) unlockedAt.push([+(phi / TAU2).toFixed(3), +((al * 180) / Math.PI).toFixed(1), sideHeld(al, 1), sideHeld(al, -1)]);
+        }
+        const fullArcs = []; { let st = null; for (let i2 = 0; i2 <= NA; i2++) { const f = i2 < NA && discR[i2] >= R_L - 1e-9; if (f && st === null) st = i2; if (!f && st !== null) { fullArcs.push([st * 360 / NA, (i2 - 1) * 360 / NA]); st = null; } } }
+        // --- the metal --------------------------------------------------------------------------------------------------------
+        const swUnit = new THREE.Group();
+        swUnit.name = 'gearedStopworkUnit';
+        movement.add(swUnit);
+        // the cone's wheel, fast on the fusee's top staff (it turns with the fusee group)
+        const coneWheel = G.makeGear({ name: 'gearedConeWheel', module: GG_MODULE_U, teeth: best.zCone, thickness: t, boreR: TRAIN_STAFF_R, mates: [best.zFinger], material: MATS.steel, bevel: false, hub: false });   // nor a hub ring (1.5 × the thickness: 0.079 proud of the face toward the crank, measured 0.0708 of 0.15 at 36 h)   // no edge bevel: it stands past the layer's face and spends the margin (measured 0.1056 of 0.15), and the band has no room for it
+        coneWheel.position.set(0, 0, coneLocalZ(zG));
+        coneWheel.traverse((o) => { if (o.isMesh && !o.name) o.name = 'gearedConeWheel'; });   // the contact rows name the wheel's mesh
+        fusee.add(coneWheel);
+        // the finger: pinion, crank and lock disc, one body on its stud, turning with the finger group
+        const fingerGroup = new THREE.Group();
+        fingerGroup.name = 'gearedFinger';
+        fingerGroup.position.set(C.x, C.y, 0);
+        swUnit.add(fingerGroup);
+        const pinion = G.makePinion({ name: 'gearedPinion', module: GG_MODULE_U, teeth: best.zFinger, thickness: t, material: MATS.steel, boreR: studFr + RUN, mates: [best.zCone], bevel: false });
+        pinion.position.z = zG;
+        pinion.traverse((o) => { if (o.isMesh && !o.name) o.name = 'gearedPinion'; });
+        // the pinion's phase: a GAP of the pinion faces a TOOTH of the cone's wheel across the line of centres at full wind (the repo's
+        // meshPhaseTarget, which is local to an earlier block: Q's tooth centre points at psi + π − (frac((psi − pPhase)·pN/2π) + ½)·2π/qN)
+        const meshPhase = (() => { const psi = Math.atan2(C.y - P.barrel.y, C.x - P.barrel.x), fr = (psi - datumC) * best.zCone / TAU2; return psi + Math.PI - ((fr - Math.floor(fr)) + 0.5) * (TAU2 / best.zFinger); })();
+        pinion.rotation.z = meshPhase;
+        fingerGroup.add(pinion);
+        const pinAz0 = azS - OMEGA * E / 2, pinX = r1 * Math.cos(pinAz0), pinY = r1 * Math.sin(pinAz0);
+        // a polygon round (cx, cy): CIRCUMSCRIBED (its edges tangent to r) for an opening, which must hold the disc, and INSCRIBED
+        // (its vertices on r) for a part, which must not stand past r
+        const discPoly = (cx, cy, r, k, inscribed = false) => Array.from({ length: k }, (_, i) => { const a2 = (TAU2 * i) / k, R2 = inscribed ? r : r / Math.cos(Math.PI / k); return [cx + R2 * Math.cos(a2), cy + R2 * Math.sin(a2)]; });
+        const polyShape = (pts, boreR2) => { const sh = new THREE.Shape(); pts.forEach(([x, y], i) => (i ? sh.lineTo(x, y) : sh.moveTo(x, y))); sh.closePath(); if (boreR2) { const b = new THREE.Path(); b.absarc(0, 0, boreR2, 0, TAU2, true); sh.holes.push(b); } return sh; };
+        const capR = rPin + t;
+        const crankOutline = unionLoops([discPoly(0, 0, hubR, 40, true), discPoly(pinX, pinY, capR, 32, true),
+          (() => { const L = Math.hypot(pinX, pinY), ux = pinX / L, uy = pinY / L, w = Math.min(capR, hubR); return [[-uy * w, ux * w], [pinX - uy * w, pinY + ux * w], [pinX + uy * w, pinY - ux * w], [uy * w, -ux * w]]; })()]);
+        const crank = new THREE.Mesh(new THREE.ExtrudeGeometry(polyShape(crankOutline, studFr + RUN), { depth: t, bevelEnabled: false }), MATS.steel);
+        crank.name = 'gearedCrank'; crank.position.z = zC - t / 2; fingerGroup.add(crank);
+        const lockDisc = new THREE.Mesh(new THREE.ExtrudeGeometry(discShape, { depth: t, bevelEnabled: false }), MATS.steel);
+        lockDisc.name = 'stopworkLockDisc'; lockDisc.position.z = zS - t / 2; fingerGroup.add(lockDisc);
+        const pinMesh = new THREE.Mesh(new THREE.CylinderGeometry(rPin, rPin, (zS + t / 2) - (zC - t / 2), 16), MATS.blueSteel);
+        pinMesh.name = 'stopworkPin'; pinMesh.rotation.x = Math.PI / 2; pinMesh.position.set(pinX, pinY, ((zS + t / 2) + (zC - t / 2)) / 2); fingerGroup.add(pinMesh);
+        // the studs: from the branch arm's underside (and a stock into it) down to the layers they carry
+        const studOf = (name, x, y, r, zBot) => { const z1 = FUSEE_BOSS_MID, mesh = new THREE.Mesh(new THREE.CylinderGeometry(r, r, z1 - zBot, 16), MATS.blueSteel); mesh.name = name; mesh.rotation.x = Math.PI / 2; mesh.position.set(x, y, (z1 + zBot) / 2); swUnit.add(mesh); };
+        // each stud ends in a retaining head under the lowest part it carries: §47's lip over the bore, at the §50 pivot floor (it
+        // retains; it carries no stop load), a running fit below the part
+        const HEAD_T = PIVOT_MIN_U;
+        const headOf = (name, x, y, r, zPart) => { const h = new THREE.Mesh(new THREE.CylinderGeometry(r + 0.06, r + 0.06, HEAD_T, 16), MATS.blueSteel); h.name = name; h.rotation.x = Math.PI / 2; h.position.set(x, y, zPart - RUN - HEAD_T / 2); swUnit.add(h); };
+        studOf('gearedFingerStud', C.x, C.y, studFr, zA - RUN - HEAD_T);
+        headOf('gearedFingerStudHead', C.x, C.y, studFr, zA);
+        studOf('stopworkStud', S.x, S.y, SW_STUD_R, zS - t / 2 - RUN - HEAD_T);
+        headOf('stopworkStudHead', S.x, S.y, SW_STUD_R, zS - t / 2);
+        const starPivot = new THREE.Group();
+        starPivot.position.set(S.x, S.y, 0);
+        swUnit.add(starPivot);
+        const star = new THREE.Mesh(new THREE.ExtrudeGeometry(starShape, { depth: t, bevelEnabled: false, curveSegments: 24 }), MATS.steel);
+        star.name = 'stopworkStar'; star.position.z = zS - t / 2; starPivot.add(star);
+        // the BRANCH ARM, in the cock's plane: boss → finger → star, a pad round each stud, the cock bar's width at its root
+        const Cc = P.barrel, armHW = best.armW / 2;
+        const strip = (ax, ay, bx, by, hw) => { const L = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / L, uy = (by - ay) / L; return [[ax - uy * hw, ay + ux * hw], [bx - uy * hw, by + ux * hw], [bx + uy * hw, by - ux * hw], [ax + uy * hw, ay - ux * hw]]; };
+        const padF = Math.max(armHW, studFr + t), padS = Math.max(armHW * 0.7, SW_STUD_R + t);
+        const branchPieces = [strip(Cc.x, Cc.y, C.x, C.y, armHW), strip(C.x, C.y, S.x, S.y, Math.max(padS, armHW * 0.7)), discPoly(C.x, C.y, padF, 40), discPoly(S.x, S.y, padS, 40)];
+        const branchOutline = unionLoops(branchPieces);
+        const branchShape = new THREE.Shape(); branchOutline.forEach(([x, y], i) => (i ? branchShape.lineTo(x, y) : branchShape.moveTo(x, y))); branchShape.closePath();
+        const branch = new THREE.Mesh(new THREE.ExtrudeGeometry(branchShape, { depth: FUSEE_COCK_T, bevelEnabled: false }), MATS.ribbedNickel);
+        branch.name = 'fuseeCockBranch'; branch.position.z = FUSEE_BOSS_BOT; FUSEE_COCK.obj.add(branch);
+        // THE BULGE: the cone window gains the discs the layers need and the branch arm's slot, offset a margin (and the float tie
+        // the cock's slot carries), merged into the one opening the cock's slot already makes
+        const tie = M + 2 * Math.pow(2, -23) * 64;
+        const bulgePolys = [...branchPieces.map((pc) => G.offsetPolygon(pc, tie)), discPoly(Cc.x, Cc.y, best.coneTip + tie, 64), discPoly(C.x, C.y, best.fRad + tie, 64), discPoly(S.x, S.y, gd.rTip + tie, 64)];
+        const bulged = filletReflexCorners(unionLoops([...COCK_MERGE_PTS, FUSEE_COCK_SLOT, ...bulgePolys]), 2 * G.PLATE_BEVEL);
+        TQ_WINDOWS.polys = TQ_WINDOWS.polys.map((w) => (w.name === 'fusee' ? { ...w, pts: bulged } : w));
+        // --- pose + the public object ------------------------------------------------------------------------------------------
+        // the finger's turn is the cone's through the tooth counts (a mesh reverses it); the star follows the finger through the Geneva
+        WIND_ARREST.pose = (tension) => {
+          const phi = phiOfTension(tension);
+          fingerGroup.rotation.z = OMEGA * (phi - PHI_HI);
+          starPivot.rotation.z = azU + rhoAt(phi);
+        };
+        WIND_ARREST.unit = swUnit;
+        // §337 stage 3 — THE COCK AT THE STALL, as built: the stop on the cone is the mesh's force at the cone's wheel, and the two studs
+        // bring the finger's and the star's reactions into the branch arm, which the cock's sections were not sized for
+        const rpCone = (GG_MODULE_U * best.zCone) / 2, Fmesh = (GOING_POWER.fuseeTorque_Nm * 1000) / (rpCone * UNIT_MM);
+        // The stop-work hangs wholly from the cock, so its forces are known in direction at each stop and mostly close inside it: the
+        // mesh on the pinion, the pin's reaction through the star's pivot (the crank square to the line pin → star at a stop), the cone
+        // wheel's reaction shared by the two bushes in proportion to its height. The finger's balance gives the pin's force.
+        const K = P.barrel, eD = Math.hypot(C.x - K.x, C.y - K.y), ex = (C.x - K.x) / eD, ey = (C.y - K.y) / eD, Qx = K.x + ex * rpCone, Qy = K.y + ey * rpCone;
+        const uBush = (zG - FUSEE_COCK.load.zLow) / (FUSEE_COCK.bossMid - FUSEE_COCK.load.zLow);
+        // §337 stage 3 — THE MESH'S PRESSURE ANGLE IS DERIVED, NOT ASSUMED (the owner's call, 2026-11-07). It stood at an assumed
+        // 20°, which is the INVOLUTE convention: these teeth are cycloidal by §136's choice, where the pressure angle is 0 at the pitch
+        // point and greatest at the tip, so there is no such constant to borrow. gearToothSpec now derives each face's own maximum from
+        // the law that already cut it, and the worse of the pair is this mesh's bound. What the 20° was hiding: it is CONSERVATIVE at the
+        // two reserves built here (MEASURED off a boot: 10.24° at 24 h on 25:20 — stage 2's record says 20:16, which the lock fix's
+        // LOCK_R1_MIN moved — and 15.49° at 36 h on 25:14) and OPTIMISTIC at the reserves whose finger the
+        // line gives few leaves — chooseGearedStopwork accepts PINION_LEAVES_MIN (6), and §337 landing 1's own table reads 15:6 at 12 h
+        // (37.22°), 12:6 at 15 h (36.35°) and 15:9 at 18 h (27.73°). The remaining eleven reserves would have been read at half the
+        // real angle.
+        const PRESS_MAX = Math.max(G.gearToothSpec({ module: GG_MODULE_U, teeth: best.zCone, mates: [best.zFinger] }).maxPressureAngle,
+          G.gearToothSpec({ module: GG_MODULE_U, teeth: best.zFinger, mates: [best.zCone] }).maxPressureAngle);
+        const PRESS_STEPS = Math.max(4, Math.ceil((PRESS_MAX * 180) / Math.PI));   // about one degree a step
+        const stopVectors = (pinAz, sgn, pa) => {
+          const px = C.x + r1 * Math.cos(pinAz), py = C.y + r1 * Math.sin(pinAz), dL = Math.hypot(S.x - px, S.y - py), dx = (S.x - px) / dL, dy = (S.y - py) / dL;
+          const ta = Math.atan2(ex, -ey) + pa, mx = sgn * Fmesh * Math.cos(ta), my = sgn * Fmesh * Math.sin(ta);          // the mesh on the pinion
+          const tqM = (Qx - C.x) * my - (Qy - C.y) * mx, lever = (px - C.x) * dy - (py - C.y) * dx, Fp = -tqM / lever;     // the pin on the crank: F·d
+          const fpx = Fp * dx, fpy = Fp * dy;
+          return [{ x: C.x, y: C.y, fx: mx + fpx, fy: my + fpy }, { x: S.x, y: S.y, fx: -fpx, fy: -fpy }, { x: K.x, y: K.y, fx: -uBush * mx, fy: -uBush * my }];
+        };
+        const pinFull = azS - OMEGA * E / 2, pinEmpty = pinFull + OMEGA * (En / 2 - PHI_HI);
+        const studsAdded = [{ x: C.x, y: C.y, F: best.pairForce.Ff }, { x: S.x, y: S.y, F: best.pairForce.Fs }];
+        // the sweep walks the WHOLE range to the bound, not its two ends: the worst section is not monotonic in the angle, because the
+        // pin's force follows from the finger's balance about its stud and the mesh's line turns with it. MEASURED, and it is not academic:
+        // at 36 h the worst falls at −5.81° of a ±15.49° range — an INTERIOR angle a two-endpoint sweep would have walked straight past.
+        // At 24 h it does land on the endpoint (−10.24°), so one reserve of the two would have read right by luck.
+        let cockStall = null, worstPress = 0;
+        for (const az of [pinFull, pinEmpty]) for (let i2 = -PRESS_STEPS; i2 <= PRESS_STEPS; i2++) for (const sgn of [1, -1]) {
+          const pa = (PRESS_MAX * i2) / PRESS_STEPS;
+          const r = FUSEE_COCK.stall(Fmesh * (zG - FUSEE_COCK.load.zLow), studsAdded, stopVectors(az, sgn, pa));
+          if (!cockStall || r.statics.rootMoment_Nu > cockStall.statics.rootMoment_Nu) { cockStall = r; worstPress = pa; }
+        }
+        const over = (q) => [['bar', q.bar_Pa, cockStall.yield_Pa], ['leg', q.leg_Pa, cockStall.yield_Pa], ['post', q.post_Pa, cockStall.yield_Pa], ['steady pins', q.pinShear_Pa, cockStall.pinShearYield_Pa]].filter(([, v, y]) => v > y);
+        if (over(cockStall.statics).length) console.warn(`§337: at the stall the fusee cock stands over its yield: ${over(cockStall.statics).map(([k, v, y]) => `${k} ${(v / y).toFixed(2)}×`).join(', ')} — it was sized before the studs existed`);
+        // §337 stage 3 — WHICH READING GATES, and the waiver is AUDITED rather than silent (the owner's call, 2026-11-07). The gate is
+        // STATICS. The ADDED rule is this file's bound for loads whose DIRECTIONS ARE UNKNOWN — the cock's own sizing block says exactly
+        // that — and the stop-work hangs WHOLLY from this cock: its forces close inside it as a couple, so adding their magnitudes bounds
+        // a net force the mechanism cannot apply. §336 landing 3 set the precedent on this same cock, one landing earlier: on the
+        // stop-work's build the stop is KNOWN, not bounded. Reading it as statics is also what FOUND the crank's real defect (a couple
+        // does not fall toward the boss, 8× yield), so it is the more discriminating instrument, not the laxer one. Both readings stay
+        // in the record so the relaxation is legible, and the guard below is the audit: the day the cock holds the stall under ADDED too,
+        // this waiver has stopped being needed and says so rather than sitting here forever.
+        const stallWaiver = { reading: 'statics',
+          why: '§337: the stop-work hangs wholly from the cock, so its forces close inside it as a couple — the ADDED rule would bound a net force the mechanism cannot apply',
+          addedOver: over(cockStall.added).map(([k, v, y]) => [k, Math.round((v / y) * 100) / 100]),
+          staticsOver: over(cockStall.statics).map(([k, v, y]) => [k, Math.round((v / y) * 100) / 100]) };
+        if (!stallWaiver.addedOver.length) console.warn('§337: the fusee cock now holds the stall under the ADDED rule as well — the statics waiver is no longer needed and should be retired');
+        WIND_ARREST.stopwork = { built: true, geared: true, n, m, travel: swTravelTurns(m, n), wind: T, ratio, r1, rPin, a, rTip, lockR: R_L, reliefMin, unlockedDeg,
+          lockArcDeg: (GAMMA * 180) / Math.PI, discOpenDeg: (open.filter(Boolean).length * 360) / NA, discRuns: runs.length, openRun: runs.map((r0) => { let e = r0; while (open[(e + 1) % NA] && e - r0 < NA) e++; return [(r0 * 360) / NA, (e * 360) / NA]; }), unlockedAt: unlockedAt.filter((_, i2) => i2 % 8 === 0).slice(0, 12), nUnlocked: unlockedAt.length, fullArcs, studFr, studSr: SW_STUD_R, Fmesh, pairForce: best.pairForce, cockStall, stallWaiver,
+          pressureAngle: { maxDeg: (PRESS_MAX * 180) / Math.PI, steps: PRESS_STEPS, worstDeg: (worstPress * 180) / Math.PI, derived: 'gearToothSpec.maxPressureAngle, the worse face of the pair' },
+          z: [zA, zA + 3 * t + 2 * M], branchW: best.armW };
+        WIND_ARREST.geared.built = true;
+        WIND_ARREST.pose(1);
+        registerLabel('Winding stop-work', swUnit);
+        registerExplode(swUnit, 0, 9);
+        declareTravel('Winding stop-work', (TAU2 / n) * m, 'the star turns 2π/n per passage of the pin, m passages between its two stops — the Geneva law, the finger geared off the cone');
+        declareRestoring('Winding stop-work', 'stopworkStar', 'two-way',
+          'the pin carries the star forward as the crown winds the cone and back as the mainspring unwinds it; between passages the lock disc holds it',
+          ['input:the going crown', 'Mainspring drum/mainspringRibbon']);
+      }
     }
   }
   await breathe(298);
@@ -49348,8 +52100,11 @@ if (FORM && ALARM_BUILT) {   // §325 landing 3: no strike group to open the pla
 // bore window, so both crown sleeves live entirely in the thick back band —
 // the step's position is a consequence of where the stems are, not a styling
 // choice. (The pusher sits far above both crowns and never binds this.)
+// That is the STEMS' rule; the lug's weld foot is a second duty and needs the
+// band's back face, which CASE_DIMS derives — it takes the min there, as zStep
+// (TODO 278). Nothing below reads the step before that.
 await breathe(301);
-const CASE_Z_STEP = Math.min(Z_KEYLESS, ALARM_BUILT ? alarmSpinner.position.z : Infinity) - CASE_TUBE_AP - CLEAR_MARGIN;
+const CASE_Z_STEP_STEMS = Math.min(Z_KEYLESS, ALARM_BUILT ? alarmSpinner.position.z : Infinity) - CASE_TUBE_AP - CLEAR_MARGIN;
 
 await breathe(302);
 const CASE_SECTORS = (() => {
@@ -49396,7 +52151,10 @@ const CASE_SECTORS = (() => {
   // way, so this walk samples each edge's endpoints, its exact crossings of
   // the two wall radii (the quadratic in t), and its in-band midpoint.
   {
-    const zLo = CASE_Z_STEP, zHi = PLATE_RIM.back + 1 / UNIT_MM;
+    // TODO 278: the step is two duties' minimum and the second needs the back face
+    // (CASE_DIMS, below), so the scan runs down through the front: the annulus is
+    // case metal there too (R_IN out), and the wall radius stays the true one.
+    const zLo = -Infinity, zHi = PLATE_RIM.back + 1 / UNIT_MM;
     // §198 — the wall the sectors stand at is a function of z: the ledge
     // and the front band start at CASE_R_IN up to the rim's front face, and
     // above the ledge the back band's bore is R_BORE_BACK — the annulus over
@@ -49410,7 +52168,7 @@ const CASE_SECTORS = (() => {
     const inClampHead = (q) => {
       if (q.z < headBand[0] || q.z > headBand[1]) return false;
       for (const az of CASE_CLAMP_AZ)
-        if (Math.hypot(q.x - Math.cos(az) * R_CLAMP, q.y - Math.sin(az) * R_CLAMP) < CASE_SCREW_HEAD_D / 2 + CLEAR_MARGIN) return true;
+        if (Math.hypot(q.x - Math.cos(az) * R_CLAMP, q.y - Math.sin(az) * R_CLAMP) < CASE_CLAMP_HEAD_D / 2 + CLEAR_MARGIN) return true;
       return false;
     };
     const exempt = (q) => {
@@ -49747,7 +52505,13 @@ const BACK_SWEPT_REGIONS = [
   // annulus below the plate top too (the skirt descends there now), and that
   // is what read the liner 0.650 over the bin's build-pose 7.964. The skirt
   // drops 10.23 → 8.77, and the pane floor (the hammer's plane) takes the band.
-  ...(ALARM_BUILT ? [{ unit: 'Alarm switch', r0: 48.3, r1: 50.1, z: ALARM_SWITCH_SKIRT_ROW_Z }] : []),
+  // §325 landing 12 — THE ROW MOVES WITH THE WALL. The liner is cut to the case wall on the pusher's line (TODO 268's
+  // caseWallAlong), so when the bore came in off the 40 mm cap the liner came in with it and stood inside a row still
+  // written at the cap's bore (50.139): the skirt read only the liner's build-pose bin and dropped under the hammer's
+  // crank. The band §261 2c measured (48.3–50.1 against that bore) is kept as its offsets off the bore it stands in;
+  // its z is the stroke's, which the bore does not move. probe-back-envelope holds the sweep under it.
+  ...(ALARM_BUILT ? (() => { const cap = CASE_WIDTH_MAX - CASE_BAND_T;   // the bore §261 2c measured the row against
+    return [{ unit: 'Alarm switch', r0: R_BORE_BACK - (cap - 48.3), r1: R_BORE_BACK - (cap - 50.1), z: ALARM_SWITCH_SKIRT_ROW_Z }]; })() : []),
   // §314 — THE LET-DOWN SQUARE turns with the fusee, so its corners sweep the
   // annulus its half-diagonal reaches about the fusee's axis, and at the
   // arrangement's −20° barrel step the axis stands where the build pose's
@@ -50188,6 +52952,17 @@ const CASE_DIMS = (() => {
   // identity: the glass's outer pane's INNER face is flush with the band's
   // back face).
   const z0 = zMidBack + 1.2 / UNIT_MM;           // the ring's outer face at the rim
+  // THE MIDCASE STEP answers to two duties (TODO 278). §186: one CLEAR_MARGIN in
+  // front of the lowest crown bore (CASE_Z_STEP_STEMS). §280: the round case's lug
+  // welds to the thick band, its upper foot one STOCK_MIN_U inside the band's wall
+  // (caseLugPlan's own law), so the step sits no higher than the foot less that
+  // floor. With the alarm built the stems' rule is the lower and the step does not
+  // move; without it the winding stem alone rose the step 3.73 u past the foot. The
+  // foot depends on the back face and the lug section, never on the step. A form
+  // case welds to flat ends (`flat`) and reads no step.
+  const CASE_Z_STEP = FORM ? CASE_Z_STEP_STEMS : Math.min(CASE_Z_STEP_STEMS, caseLugPlan({
+    rOut: CASE_R_OUT, rBore: R_BORE_BACK, off: (CASE_LUG_INNER + CASE_LUG_T) / 2,
+    zWallLo: -Infinity, zWallHi: zMidBack, zBack: z0 }).footTopZ - STOCK_MIN_U);
   let formApertureGrow = null, formGlassGrow = null;   // §307 landing 2 — set under FORM below
   // (The glazing channel and the APERTURE it leaves are derived above the
   // band's back face now — TODO 69: the back face reads the aperture.) The
@@ -50314,6 +53089,7 @@ const CASE_DIMS = (() => {
     skirtOD, skirtID, zSkirtBot,
     apertureR: RA, glassEdgeR: RA_EDGE,
     ...(FORM ? { formApertureGrow, formGlassGrow } : {}),   // §307 landing 2 — the form back's window, a grow of the plate's shape
+    ...(FORM ? { plateFloors: PLATE_RIM.floors } : {}),   // §325 landing 6 — each stem's widest plate METAL along its own line, measured off the built plate (the §186 assert below holds the tubes to these same numbers)
     rStep, zStepUnder, zStepTop,
     // The bezel opening COVERS the dial/plate join (layout.js §125: "the
     // CASE, not the plate's rim, covers the join") — 1 mm of dial edge.
@@ -50342,7 +53118,7 @@ const CASE_DIMS = (() => {
     gasketD: CASE_GASKET_D, gasketSeat: CASE_GASKET_SEAT, crystT: CASE_CRYSTAL_T,
     // §187 — screwShaftD/HeadD stay for the §186 CLAMP screws; the six
     // caseback screws died with the flange.
-    screwShaftD: CASE_SCREW_SHAFT_D, screwHeadD: CASE_SCREW_HEAD_D,
+    screwShaftD: CASE_CLAMP_SHAFT_D, screwHeadD: CASE_CLAMP_HEAD_D,
     tubeD: CASE_TUBE_D, pusherD: CASE_PUSHER_D,
     stemAz: stemAngle, alarmAz: ALARM_BUILT ? alarmStemAngle : null, pusherAz: ALARM_BUILT ? ALARM_PUSH_AZ : null,   // §325 landing 3: null = not built, no bore
     // An azimuth locates a RADIUS; the pusher runs on a line PARALLEL to one.
@@ -50450,7 +53226,10 @@ const FREE_DIAL_FEET = FORM?.kind === 'free' ? await (async () => {
   movement.updateWorldMatrix(true, true);
   const hulls = [];
   movement.traverse((o) => {
-    if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position || skipRoot.some((r) => under(o, r))) return;
+    // the base plate's RIM LANDS (§328) are its own metal standing up into the feet's layer, so they count although
+    // the plate is skipped: §332's smaller print brought a foot's seat onto land 1 (probe-328-lands, 0.0000 at pose 0)
+    // on the default free build, which nothing here could see while every land was a skipped child of the plate
+    if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position || (skipRoot.some((r) => under(o, r)) && !o.userData.rimLand)) return;
     for (let q = o; q && q !== movement; q = q.parent) if (/^case|CaseLiner$|TubeLiner$/.test(q.name)) return;
     const pa = o.geometry.attributes.position, xs = [], ys = [];
     let z0 = Infinity, z1 = -Infinity;
@@ -50549,7 +53328,8 @@ const FORM_COUNTED = (() => {
 // §317 — the fitted tonneau's straight ends run at least the lug pair's outboard reach (makeFormCase's `need`:
 // the strap's interior span plus one lug, halved, plus half a lug), so its flat lugs weld to straight metal —
 // one law for the build's fit and for tools/gong-seats.mjs, which reads it off formFootprint.fitted
-const FITTED_FLAT_MIN = (CASE_LUG_INNER + CASE_LUG_T) / 2 + CASE_LUG_T / 2;
+const FITTED_FLAT_MIN = fittedFlatMin(SPEC.strapMm ?? STRAP_MM_DEFAULT);   // layout.js — one law for the fit, the tool and probe-325 S
+const HANDS_DISC_N = 192;   // §325 landing 9: the hands' keep-in disc's sides (a polygon, vertices on the circumscribing radius)
 const FORM_FOOTPRINT = await (async () => {
   if (!FORM) return null;
   const v = new THREE.Vector3();
@@ -50613,6 +53393,19 @@ const FORM_FOOTPRINT = await (async () => {
     if (ALARM_BUILT && GONG_SEATED) {
       for (const [x, y] of GONG_SEAT_PTS) freePin(x, y, GONG_WIRE_R + CLEAR_MARGIN, 'the gong\'s wire');
       freePin(gongFoot.x, gongFoot.y, GONG_POST_R_BUILT, 'the gong\'s block');
+    }
+    // §325 landing 9 — THE HANDS' SWEPT DISC IS A KEEP-IN. The minute hand is the longest thing that turns about the
+    // hands' axis, and the case was fitted to the metal alone, so it stood short of the hand on 74% of bearings (worst
+    // 22.6 u, tools/probe-325-hands-keep-in.mjs). The hand's full round-face length L (the print's own fraction, no
+    // case in it, so no circle: the track follows the case but L does not) must stand CLEAR_MARGIN inside the OPENING,
+    // which the outline encloses by CASE_CLEAR; the fit grows every polygon by the rim margin M, so the disc enters at
+    // L + CLEAR_MARGIN + CASE_CLEAR − M. A 192-gon with its vertices on the circumscribing radius, so no edge undercuts it.
+    // Telescoping hands (?hands=slide) are the roadmap's remainder and change none of this: the disc holds the hand at
+    // full length, which a telescoping hand would have to give back.
+    {
+      const L = dialRadius * (2 * G.DIAL_CANVAS_FILL_F) * ((G.DIAL_RAIL_IN_F + G.DIAL_RAIL_OUT_F) / 2) * printScale;   // the print-follows-case scale: the hands' design length is the scaled print's
+      const R = (L + CLEAR_MARGIN + CASE_CLEAR - M) / Math.cos(Math.PI / HANDS_DISC_N);
+      polys.push(Array.from({ length: HANDS_DISC_N }, (_, i) => [P.dial.x + R * Math.cos((2 * Math.PI * i) / HANDS_DISC_N), P.dial.y + R * Math.sin((2 * Math.PI * i) / HANDS_DISC_N)]));
     }
     const pins = FREE_PINS.map(([x, y, n]) => [x, y, n]);
     await handBack();
@@ -51103,7 +53896,13 @@ const SCHEMATIC = { proxies: [], on: false };
   // club teeth), `crown` (a knurled knob a hand turns, not a gear). Each is
   // drawn by its own pass below or in §83, so the part keeps exactly one glyph
   // and the wrong one is SKIPPED rather than drawn and overdrawn.
-  const OWN_GLYPH = ['spiral', 'profile', 'crown'];
+  // `slab` (a plate that does not turn — the dial: its own extrude's faces and
+  // edges, the §78 part three pass). The dial records `userData.r` for the
+  // placement searches, and until this word the rotor pass read that as a
+  // wheel and drew a brass circle at the ROUND dial's radius on every case
+  // shape — a phantom disc standing outside a form face's corners and inside
+  // its flanks, in the wheel palette, on a part that never turns.
+  const OWN_GLYPH = ['spiral', 'profile', 'crown', 'slab'];
   const optedOut = (o) => OWN_GLYPH.some((k) => o.userData[k] !== undefined);
   SCHEMATIC.ownGlyph = optedOut;  // the §48 blade pass lives in another closure and asks the same question
   const circGeo = (r, n = 64) => {
@@ -51354,7 +54153,7 @@ const SCHEMATIC = { proxies: [], on: false };
     // §186 — the clamp screws, drawn as the back screws are: head circles at
     // their own stations on the rim's back face.
     for (const a of clampAz) {
-      const s = new THREE.Line(circGeo(CASE_SCREW_HEAD_D / 2, 24), rim);
+      const s = new THREE.Line(circGeo(CASE_CLAMP_HEAD_D / 2, 24), rim);
       s.position.set(Math.cos(a) * clampR, Math.sin(a) * clampR, rimBack); put(s);
     }
 
@@ -51998,14 +54797,25 @@ document.getElementById('btn-case').addEventListener('click', () => setCaseLines
         // labelled 'Dial' unit, which is what §71's collectUnits prune exists
         // to permit — every object flagged directly, since an unflagged child
         // of a flagged parent is not protected.
+        //
+        // It is the ONE pass for the `slab` word (OWN_GLYPH, §107's rule: a
+        // word draws itself wherever it is spoken), so the dial's opt-out from
+        // the pitch circle and the glyph it gets instead cannot part: every
+        // part carrying `userData.slab` is drawn here from the mesh it names.
         {
-          const dp = byName('dialPlate');
-          const occ = new THREE.Mesh(dp.geometry, SCHEMATIC.occMat);
-          occ.userData.schematic = true; occ.layers.set(1); dp.add(occ);
-          SCHEMATIC.occluderFills.push(occ);   // §78 part four: the dial IS one of the two things the realistic x-ray glasses
-          await breathe(319);
-          const edges = new THREE.LineSegments(new THREE.EdgesGeometry(dp.geometry, 30), SCHEMATIC.rimMat);
-          edges.userData.schematic = true; edges.layers.set(1); dp.add(edges);
+          const slabs = [];
+          movement.traverse((o) => { if (typeof o.userData?.slab === 'string') slabs.push(o); });
+          for (const s of slabs) {
+            let dp = null;
+            s.traverse((o) => { if (!dp && o.isMesh && o.name === s.userData.slab) dp = o; });
+            if (!dp) { console.warn(`§78: a part opts out of the pitch circle as a slab of '${s.userData.slab}', and carries no such mesh — it draws nothing`); continue; }
+            const occ = new THREE.Mesh(dp.geometry, SCHEMATIC.occMat);
+            occ.userData.schematic = true; occ.layers.set(1); dp.add(occ);
+            SCHEMATIC.occluderFills.push(occ);   // §78 part four: the dial IS one of the two things the realistic x-ray glasses
+            await breathe(319);
+            const edges = new THREE.LineSegments(new THREE.EdgesGeometry(dp.geometry, 30), SCHEMATIC.rimMat);
+            edges.userData.schematic = true; edges.layers.set(1); dp.add(edges);
+          }
         }
 
         // PART FOUR's invariant, asserted rather than intended: x-ray in the
@@ -52377,6 +55187,14 @@ document.getElementById('btn-case').addEventListener('click', () => setCaseLines
 
 // §39 fills this at the end of the build; the axes key reads it.
 let scaleReadout = null;
+// A plan as text: a diameter on the round build, width × height on a form one
+// (a form outline has no one diameter, and quoting the round plateR there was
+// the defect). Width is world x, height world y — the plan's own bounds.
+const planText = (w, h) => scaleReadout.round ? `⌀${fmtNum(w, 1)}` : `${fmtNum(w, 1)} × ${fmtNum(h, 1)}`;
+// The vertical leg's span in whole millimetres, covering the plate's plan:
+// [kLo, kHi] with ticks at k / UNIT_MM. On the round build kLo = −kHi =
+// −ceil(MM(plateR)), the leg it always had.
+const measureSpanMM = () => [Math.floor(MM(scaleReadout.plateYMinUnits)), Math.ceil(MM(scaleReadout.plateYMaxUnits))];
 
 // Orientation legend (world axes at the movement's origin). Sized to the plate
 // so it reads at any framing, and drawn on top of the geometry so it is never
@@ -52455,7 +55273,7 @@ function setAxes(on) {
     const arm = plateR * 1.15;   // the AxesHelper's arm length, above
     scaleRow.firstElementChild.textContent =
       `${t('ticks')} ${fmtNum(AXIS_TICK_MM, 1)} mm · ${t('long')} ${fmtNum(AXIS_TICK_MAJOR_MM, 1)} mm · ${t('arm')} ${fmtNum(MM(arm), 1)} mm` +
-      (scaleReadout ? ` · ⌀${fmtNum(scaleReadout.plateMM, 1)} mm ${t('plate')}, ${fmtNum(scaleReadout.movMM, 1)} mm ${t('deep')}` : '');
+      (scaleReadout ? ` · ${planText(scaleReadout.plateWMM, scaleReadout.plateHMM)} mm ${t('plate')}, ${fmtNum(scaleReadout.movMM, 1)} mm ${t('deep')}` : '');
   }
 }
 document.getElementById('btn-axes').addEventListener('click', () => setAxes(!axesOn));
@@ -52522,10 +55340,10 @@ function buildMeasureScale() {
   const pts = [], cols = [];
   const C_SPINE = [0.82, 0.86, 0.9], C_MAJOR = [1, 0.83, 0.35], C_MINOR = [0.65, 0.7, 0.76];
   const seg = (ax, ay, az, bx, by, bz, c) => { pts.push(ax, ay, az, bx, by, bz); cols.push(...c, ...c); };
-  const R = scaleReadout.plateRUnits, zA = scaleReadout.zMinUnits, zB = scaleReadout.zMaxUnits;
-  const mmTop = Math.ceil(MM(R)), yTop = mmTop * mm, yFoot = -yTop;
+  const zA = scaleReadout.zMinUnits, zB = scaleReadout.zMaxUnits;
+  const [kLo, kHi] = measureSpanMM(), yTop = kHi * mm, yFoot = kLo * mm;
   seg(0, yFoot, 0, 0, yTop, 0, C_SPINE);
-  for (let k = -mmTop; k <= mmTop; k++) {
+  for (let k = kLo; k <= kHi; k++) {
     if (k === 0) continue;
     const major = k % 5 === 0, h = major ? 1.4 : 0.55, c = major ? C_MAJOR : C_MINOR;
     seg(-h, k * mm, 0, h, k * mm, 0, c); seg(0, k * mm, -h, 0, k * mm, h, c);
@@ -52581,7 +55399,9 @@ const _selBox = new THREE.Box3();
 function updateMeasureStats() {
   const stats = document.getElementById('scale-stats');
   if (!stats || !scaleReadout) return;
-  const base = `⌀${fmtNum(scaleReadout.plateMM, 1)} × ${fmtNum(scaleReadout.movMM, 1)} mm · ` +
+  const S = scaleReadout;
+  const base = `${planText(S.plateWMM, S.plateHMM)} × ${fmtNum(S.movMM, 1)} mm · ` +
+    `${t('Case')} ${planText(S.caseWMM, S.caseHMM)} × ${fmtNum(S.casedMM, 1)} mm · ` +
     `${fmtInt(F_BALANCE * 7200)} A/h · ${fmtNum(RELAX_SECONDS / 3600, 0)} ${t('h reserve')}`;
   const sel = selectionMeasureBox();
   stats.firstElementChild.textContent = sel
@@ -52617,15 +55437,15 @@ function updateMeasureLeaders() {
     return;
   }
   measureLeaders.visible = true;
-  const R = scaleReadout.plateRUnits, zA = scaleReadout.zMinUnits, zB = scaleReadout.zMaxUnits;
-  const X = measureGroup.position.x, yFoot = -Math.ceil(MM(R)) / UNIT_MM;
+  const yT = scaleReadout.plateYMaxUnits, yB = scaleReadout.plateYMinUnits, zA = scaleReadout.zMinUnits, zB = scaleReadout.zMaxUnits;
+  const X = measureGroup.position.x, yFoot = measureSpanMM()[0] / UNIT_MM;
   const pos = measureLeaders.geometry.getAttribute('position');
   let w = 0;
   const seg = (ax, ay, az, bx, by, bz) => { pos.setXYZ(w++, ax, ay, az); pos.setXYZ(w++, bx, by, bz); };
   const sel = selectionMeasureBox();
   if (!sel) {
-    seg(0,  R, 0,  X,  R, 0);
-    seg(0, -R, 0,  X, -R, 0);
+    seg(0, yT, 0,  X, yT, 0);
+    seg(0, yB, 0,  X, yB, 0);
     seg(0, yFoot, zA,  X, yFoot, zA);
     seg(0, yFoot, zB,  X, yFoot, zB);
   } else {
@@ -56426,7 +59246,8 @@ const UNIT_GROUPS = new Map([
   ['Fusee & chain', new Map([
     ['Fusee & great wheel', null], ['Chain', null], ['Mainspring drum', null],
     ['Maintaining detent', null], ['Set-up work', null],
-    ['Winding arrest', null], // §47 — the chain-thrown finger and its lug live with the cone they arrest
+    ['Fusee cock', null],   // §336 — the fusee's top bush is in it
+    [(STOPWORK || GEARED_BUILT) ? 'Winding stop-work' : 'Winding arrest', null], // §47 — the chain-thrown finger and its lug live with the cone they arrest (§329 landing 4: or the stop-work, under its key)
   ])],
   ['Keyless & winding', new Map([
     ['Keyless works', null], ['Setting lever', null], ['Yoke', null],
@@ -56442,7 +59263,7 @@ const UNIT_GROUPS = new Map([
     ['Power-reserve train', null], ['Hands', null],
   ])],
   ['Frame & plates', new Map([
-    ['Base plate', null], ['pillars', null], ['Three-quarter plate', null],
+    ['Base plate', null], ...(FRAME_LANDS ? [] : [['pillars', null]]), ['Three-quarter plate', null],
     ['Case', null], // backlog: the housing — band, screw back, crystal, lugs, tubes
   ])],
   ...(ALARM_BUILT ? [['Alarm complication', new Map([   // §325 landing 3: the group, when the movement carries it
@@ -56986,7 +59807,7 @@ function lifeSizeDistance() {
 }
 // What the movement will actually measure across the glass, for the caption —
 // derived from the same ruler rather than asserted.
-function lifeSizePlateMM() { return scaleReadout ? scaleReadout.plateMM : 0; }
+function lifeSizePlateMM() { return scaleReadout ? scaleReadout.plateWMM : 0; }   // "across": the plan's width (the diameter on the round build)
 
 // The three limits used to be suspended FOR THE MODE and restored on
 // leaving; the §60 remainder retired that special case. Fog and camera.far
@@ -57815,7 +60636,7 @@ const TOUR_STEPS = [
     caption: 'Winding hauls the chain up the fusee cone; its rising radius keeps the drive torque steady', dwell: 2.4 },
   { // §47 — the winding arrest. camera is a GETTER: TOUR_STEPS is built
     // before frameOn exists, and the step only reads it at enter time.
-    get camera() { return frameOn('Winding arrest', [0.35, -0.5, 0.75], 4.6); },
+    get camera() { return frameOn((STOPWORK || GEARED_BUILT) ? 'Winding stop-work' : 'Winding arrest', [0.35, -0.5, 0.75], 4.6); },   // §329 landing 4: the stop-work under its key
     scale: 1, xray: true,
     caption: 'Full wind ends on metal: the last coil lifts a finger, its beak drops before a stop on the cone, and the crown stands still', dwell: 5.0 },
   { preset: 'Train', scale: 1, powerflow: true,
@@ -58250,6 +61071,23 @@ if (IMPORT_OUTCOME) {
   adv.open = true;
   adv.parentElement.closest('details').open = true;
 }
+// §246 tier two — the position select. Its option values are the canonical
+// keys (balance-drive.js POSITIONS); only their text is translated. Changing
+// it tilts the watch: the driven balance carries on from where it is, under
+// the new position's friction and weight, and settles to that position's swing.
+// Declared BEFORE applyDeepLink(), which calls setBalancePosition for
+// ?position=: below it, the deep link reached `positionSelect` in its temporal
+// dead zone and every ?position= link died at boot (ReferenceError).
+const positionSelect = document.getElementById('sel-position');
+function syncPositionUI() { positionSelect.value = balancePosition; }
+function setBalancePosition(pos) {
+  if (!BD.POSITIONS.includes(pos)) return;
+  balancePosition = pos;
+  syncPositionUI();
+}
+positionSelect.addEventListener('change', () => setBalancePosition(positionSelect.value));
+syncPositionUI();
+
 applyDeepLink();
 
 // §55 — BOOT SYNCED TO THE WALL CLOCK. The movement used to start at an
@@ -58364,19 +61202,6 @@ function setQualityMode(mode) {
   qualitySelect.value = qualityMode;
 }
 qualitySelect.addEventListener('change', () => setQualityMode(qualitySelect.value));
-// §246 tier two — the position select. Its option values are the canonical
-// keys (balance-drive.js POSITIONS); only their text is translated. Changing
-// it tilts the watch: the driven balance carries on from where it is, under
-// the new position's friction and weight, and settles to that position's swing.
-const positionSelect = document.getElementById('sel-position');
-function syncPositionUI() { positionSelect.value = balancePosition; }
-function setBalancePosition(pos) {
-  if (!BD.POSITIONS.includes(pos)) return;
-  balancePosition = pos;
-  syncPositionUI();
-}
-positionSelect.addEventListener('change', () => setBalancePosition(positionSelect.value));
-syncPositionUI();
 const amplitudeReadout = document.getElementById('readout-amplitude');
 const rateReadout = document.getElementById('readout-rate');
 function paintBalanceReadouts() {
@@ -59051,6 +61876,7 @@ function tick(t) {
   // to a movement-frame quantity carries the NEGATED value to be the same rigid
   // body. `reserveHand` (below) always did this; these did not.
   minuteHand.rotation.z = -minuteA;
+  if (SLIDE_HANDS) poseTongs(minuteHand, minuteHand.rotation.z);
   // Hour hand: NOT minuteA/12. The angle is carried through the motion
   // works' two real meshes — cannon pinion → minute wheel, then minute
   // pinion → hour wheel — from their tooth counts, the same way every
@@ -59100,6 +61926,7 @@ function tick(t) {
   }
   // TODO 115 — dial-side: carries the negated movement-frame angle.
   hourWheelGroup.rotation.z = -mwHourA;
+  if (SLIDE_HANDS) poseSlide(hourHand, hourWheelGroup.rotation.z, SLIDE_REACH.hourFrac);
   // TODO 129 — THE HOUR, AS THE ALARM BRANCH READS IT: the hour wheel's own
   // dial-local angle, ONE source. Everything on the alarm side that is keyed
   // to the hour — the release disc's law (both copies), the setting train's
@@ -60880,7 +63707,10 @@ const JMP_SITE = await (async () => {
   // in it — the fact a late re-cut (TODO 160's filed design) would need.
   const bDepRoots = [SETTING_METAL.leg1, SETTING_METAL.leg2, SETTING_METAL.rise, SETTING_METAL.stub, SETTING_METAL.capArbor,
     SETTING_METAL.cornerDrop, SETTING_METAL.cornerFold, SETTING_METAL.cornerRise, SETTING_METAL.cornerFoot, SETTING_METAL.cornerCap,
-    SETTING_METAL.settingCap, reserveTrain].filter(Boolean);
+    SETTING_METAL.settingCap, reserveTrain,
+    // TODO 289 — the tail's bearings are B's too: sited off the leg B's tilt solve cut
+    SETTING_METAL.bearings.risePivot, SETTING_METAL.bearings.jewel,
+    ...['rise', 'stub', 'cap'].filter((k) => SETTING_METAL.bearings[k]).flatMap((k) => [SETTING_METAL.bearings[k].bush, SETTING_METAL.bearings[k].arm, SETTING_METAL.bearings[k].col])].filter(Boolean);
   const isBDep = (o) => bDepRoots.some((r) => under(o, r));
   const staticBDep = [], plateBDep = [];
   // TODO 161 — THE LAWED MOVERS are judged over their own travel, not as
@@ -61884,6 +64714,24 @@ if (ALARM_BUILT) {
 // undermined one says so.
 await breathe(352);
 checkPlateWindows('movement complete');
+// §336 — THE FUSEE COCK'S STALL BOUND, held against the stop that was built.
+// The cock was sized before §47's arrest existed, with the stop's force bounded
+// at the cone's smallest groove radius as its lever and the cone's top as its
+// height. The lug is metal now, so the bound is checked against it: its lever
+// (WIND_ARREST_STOP_ARM, the beak face's distance from the axis — a longer
+// lever needs less force) at or over the bound's, and the lug at or under the
+// bound's height (a shorter lever about the lower bush). Outside either, the
+// cock was sized for a smaller load than the stop puts on it.
+{
+  const lug = barrelArbor.getObjectByName('windArrestLug');
+  if (lug && FUSEE_COCK) {
+    const b = FUSEE_COCK.load.stop;
+    const zMax = new THREE.Box3().setFromObject(lug).max.z;
+    if (!(WIND_ARREST_STOP_ARM >= b.r_u - 1e-9) || zMax > b.z + 1e-9)
+      console.warn(`§336: the winding arrest's stop (lever ${WIND_ARREST_STOP_ARM?.toFixed(3)}, lug top ${zMax.toFixed(3)}) stands outside the stall bound `
+        + `the fusee cock was sized to (lever ≥ ${b.r_u.toFixed(3)}, z ≤ ${b.z.toFixed(3)}) — the cock carries more than its section was derived for`);
+  }
+}
 
 await breathe(353);
 tick(0); // seed correct initial pose before the first paint
@@ -61978,11 +64826,36 @@ let CASED_DEPTH_MM = NaN;
   // legend, in-scene ruler tick, leader-line endpoint — reads from here, so
   // two displays of one measurement cannot drift apart. Raw unit extents ride
   // along because the ruler needs world coordinates, not just mm.
+  //
+  // THE PLAN IS THE OUTLINE ACTUALLY CUT (TODO 285). On a form build `plateR` is kept for
+  // its other consumers (the radial chain, the wells) while the plates and the
+  // case are cut to FORM (§307), so a readout built on `plateR · 2` said
+  // "⌀31.5" for a 34.65 × 33.64 rectangle and a 27.6 × 29.1 cushion alike. The
+  // plate's plan is FORM's own bounds; the case's is the wall it is cut on —
+  // the round body's CASE_R_OUT (the 40 mm body cap, lugs excluded, §186) or
+  // the form band's `outer` loop (formCaseLoops: the outline grown
+  // CASE_CLEAR + CASE_BAND_T), the same loop caseWallAlong reads. Its depth is
+  // the cased box above. The Z leaders read `movBox`: they read `box`, which
+  // unitBox('Balance') had last set, so the foot marked the balance's faces
+  // and not the assembly's that the stats line quotes.
+  const planOf = (pts) => {
+    let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
+    for (const [x, y] of pts) { xMin = Math.min(xMin, x); xMax = Math.max(xMax, x); yMin = Math.min(yMin, y); yMax = Math.max(yMax, y); }
+    return { xMin, xMax, yMin, yMax };
+  };
+  const platePlan = FORM ? { xMin: FORM.xMin, xMax: FORM.xMax, yMin: FORM.yMin, yMax: FORM.yMax }
+    : { xMin: -plateR, xMax: plateR, yMin: -plateR, yMax: plateR };
+  const casePlan = FORM ? planOf(FORM_CASE_MOD.formCaseLoops(FORM).outer)
+    : { xMin: -CASE_R_OUT, xMax: CASE_R_OUT, yMin: -CASE_R_OUT, yMax: CASE_R_OUT };
   scaleReadout = {
     plateMM, movMM,
     balMM: bal ? MM(Math.max(bal.max.x - bal.min.x, bal.max.y - bal.min.y)) : null,
     plateRUnits: plateR,
-    zMinUnits: +box.min.z.toFixed(3), zMaxUnits: +box.max.z.toFixed(3),
+    round: !FORM,
+    plateWMM: MM(platePlan.xMax - platePlan.xMin), plateHMM: MM(platePlan.yMax - platePlan.yMin),
+    plateXMinUnits: platePlan.xMin, plateXMaxUnits: platePlan.xMax, plateYMinUnits: platePlan.yMin, plateYMaxUnits: platePlan.yMax,
+    caseWMM: MM(casePlan.xMax - casePlan.xMin), caseHMM: MM(casePlan.yMax - casePlan.yMin), casedMM,
+    zMinUnits: +movBox.min.z.toFixed(3), zMaxUnits: +movBox.max.z.toFixed(3),
   };
 }
 // ---------------------------------------------------------------------------
@@ -62306,8 +65179,16 @@ refreshConfigMark();
 // here first, which is the point.
 {
   const identity = VALIDATED_CONFIGS.find((r) => r.point === 'identity');
-  if (!(CASED_DEPTH_MM <= CASE_HEIGHT_MAX_MM))
-    console.warn(`§261: cased assembly ${CASED_DEPTH_MM.toFixed(4)} mm deep, over CASE_HEIGHT_MAX_MM ${CASE_HEIGHT_MAX_MM} — the case grew; spend depth in the open by raising the cap in layout.js, or take the growth back`);
+  // §325 landing 7 — telescoping hands spend depth ON PURPOSE: each slider is one more layer over its arm (its section
+  // and the one margin), and the minute plane rides up over the hour's. The allowance is those layers and nothing else,
+  // so a build that grows for any other reason still fails; the default build has no sliders and the cap as it was.
+  const SLIDE_ALLOWANCE_MM = SLIDE_HANDS
+    ? [hourHand, minuteHand].reduce((t, h) => t + (h.userData.tongs
+        ? (h.userData.tongs.zTop - h.userData.topRise + CLEAR_MARGIN)                       // §325 landing 8: base plate to the cam's roof, a margin over
+        : (h.userData.slide.slider.userData.floorDrop + h.userData.slide.slider.userData.topRise + CLEAR_MARGIN)) * UNIT_MM, 0) : 0;
+  const CASE_HEIGHT_CAP_MM = CASE_HEIGHT_MAX_MM + SLIDE_ALLOWANCE_MM;
+  if (!(CASED_DEPTH_MM <= CASE_HEIGHT_CAP_MM))
+    console.warn(`§261: cased assembly ${CASED_DEPTH_MM.toFixed(4)} mm deep, over CASE_HEIGHT_MAX_MM ${CASE_HEIGHT_MAX_MM}${SLIDE_ALLOWANCE_MM ? ` + the telescoping hands' ${SLIDE_ALLOWANCE_MM.toFixed(4)} mm` : ''} — the case grew; spend depth in the open by raising the cap in layout.js, or take the growth back`);
   else if (!identity)
     console.warn('§261: no identity row in validated-configs.js — the height cap cannot tell the default build, so its stale half is not held');
   else if (configState().key === identity.key && CASE_HEIGHT_MAX_MM - CASED_DEPTH_MM > CASE_HEIGHT_STEP_MM)
@@ -62317,6 +65198,12 @@ refreshConfigMark();
 // Debug/verification hook: step the sim and render without rAF (occluded windows
 // throttle requestAnimationFrame, which stalls automated checks).
 window.__clock = {
+  // §75 step 1 — the mainspring drum's placement in the movement frame (P's x/y): centre, direction off the fusee (P.barrel),
+  // its absolute azimuth in degrees (counter-clockwise from +x, the frame ?drumaz= takes), the centre distance and the chain
+  // coil's outer reach (DRUM_WRAP_R + CHAIN_END_R_OUT). Serializable, for the drum probes.
+  drum: { x: drumPos.x, y: drumPos.y, dirX: drumDir.x, dirY: drumDir.y,
+    azDeg: ((Math.atan2(drumDir.y, drumDir.x) * 180) / Math.PI + 360) % 360, dist: FUSEE_DRUM_DIST, reachR: DRUM_WRAP_R + CHAIN_END_R_OUT,
+    azSpec: SPEC.drumAzDeg },
   // §247 tier three — the oil points the schematic drew and the bearings it declined to site.
   oilPoints: () => ({ points: SCHEMATIC.oilPoints, unsited: SCHEMATIC.oilUnsited }),
   // TODO 184 — the frame's screw joints, DECLARED (the shank each site passed
@@ -62393,6 +65280,21 @@ window.__clock = {
     scan: CAP_SOLVE.scan.map((r) => ({ ...r })),
     // TODO 151's (d) landing — the cap's leg as solved for the shipped B
     // (solveCapLeg), for tools/probe-150-fold-sense.mjs / probe-151-cap-plane.mjs
+    // TODO 289 — the tail's bearings as sited (siteTailBearings), for tools/probe-fold-bearings.mjs: the rise's
+    // pivot radius and station, each bush's length and the overhang its law was fed, each hanger's standoff
+    // and foot, the jewel's planes. The achieved overhang ratio is a REPORT where the dial band capped the bush.
+    bearings: SETTING_METAL.tail && !SETTING_METAL.tail.refused ? (() => {
+      const T = SETTING_METAL.tail;
+      const H = (h) => h && ({ centre: vArr(h.c), axis: vArr(h.u), bushR: h.bushR, bushLen: h.bushLen, standoff: h.off, armLen: h.armLen, foot: { ...h.foot }, zBot: h.zBot, colTop: h.colTop });
+      return {
+        nOut: vArr(T.nOut), riseWhy: T.riseWhy, stubWhy: T.stubWhy, capWhy: T.capWhy, risePivotR: T.risePivotR, riseS0: T.riseS0, riseBushLen: T.riseBushLen, riseRoom: T.riseRoom,
+        stubStart: T.stubStart, stubEnd: T.stubEnd, stubBush: { len: T.stubBush.len, floor: T.stubBush.floor, mid: T.stubBush.mid, run: [...T.stubBush.run] },
+        capS0: T.capS0, capBushLen: T.capBushLen, jewelZ: T.jewelZ, stoneTopZ: T.stoneTopZ, stoneBotZ: T.stoneBotZ, jewelR: MW_CAP_JEWEL_R,
+        arborTop: vArr(T.arborTop), arborBot: vArr(T.arborBot), pocketR: T.pocketR,
+        overhang: { ...T.overhang }, overhangK: MW_BEVEL_OVERHANG_K, ldMin: MW_BUSH_LD_MIN, wall: MW_BUSH_WALL, boreClear: PIVOT_BORE_CLEAR, hangerS: MW_HANGER_S, seat: MW_HANGER_SEAT,
+        hangers: { rise: H(T.hangers.rise), stub: H(T.hangers.stub), cap: H(T.hangers.cap) },
+      };
+    })() : null,
     capLeg: SETTING_METAL.leg && {
       phiDeg: SETTING_METAL.leg.phiDeg, stub: SETTING_METAL.leg.stub, chord: SETTING_METAL.leg.chord,
       sigmaBDeg: SETTING_METAL.leg.sigmaB, sigmaEDeg: SETTING_METAL.leg.sigmaE,
@@ -62515,6 +65417,8 @@ window.__clock = {
     radiationPath: (shape, kAc) => gongRadiationFactorsPath(Float64Array.from(shape), gongWireFrame(), kAc),
     straightRoots: GONG_MODE_BL.slice(),
   } : null,
+  get roundStrikeKeep() { return { declared: ROUND_STRIKE_KEEP, measured: ROUND_STRIKE_KEEP_MEASURED }; },   // TODO 290 — what tools/strike-keep-round.mjs generates
+  get plateRim() { return { front: PLATE_RIM.front, back: PLATE_RIM.back, reach: PLATE_RIM.reach }; },   // §328 — the rim the case and the gong seat on, as measured off the plate's metal (probe-328-round-lands holds a land out of it)
   get armingSpring() { return ALARM_LINK_ARMING_SPRING; }, // TODO 206 — the alarm link's arming spring, its solved line spec
   get beakLever() { return alarmLinkParts.lever; }, // TODO 240 — the re-aimed beak lever: its run, arms, stub, bar line, seat tilt and the site's ray
   get beakPivot() { return alarmLinkParts.pivot; }, // TODO 204 — the beak lever's pin, eye, web, post and head: stations, sections and the stresses that sized them
@@ -62701,7 +65605,7 @@ window.__clock = {
     return { holdNet: MAINT_HOLD.holdNet, dHold: MAINT_HOLD.dHold, crestNet: MAINT_HOLD.crestNet, rCrest: MAINT_HOLD.rCrest,
       pitch: MAINT_HOLD.pitch, run: MAINT_HOLD.run, REC: MAINT_HOLD.REC, frames: B.K, frameStep: B.step, tipSpan: B.tipSpan,
       stop: B.stop, tauAt: (s) => B.tauAt(s), loadAt: (s) => { const L = B.loadAt(s); return { F_N: L.F, x: L.p.x, y: L.p.y }; },
-      tauGo: MAINT_SPRING.tauGo, tauFloor: MAINT_SPRING.tauFloor, geom: MAINT_SPRING.geom, detentAz: MAINT_DETENT_AZ,
+      tauGo: MAINT_SPRING.tauGo, tauFloor: MAINT_SPRING.tauFloor, geom: MAINT_SPRING.geom, detentAz: MAINT_DETENT_AZ, tipOverhang: MAINT_TIP_OVERHANG,
       begin: (tau0) => MAINT_HOLD.begin(tau0) };
   },
   get stemSawPitch() { return STEM_SAW_SPEC.pitch; }, // …and its pitch (the stemSlip axis reads this)
@@ -62754,7 +65658,7 @@ window.__clock = {
   // re-deriving it.
   get windArrest() {
     return {
-      engageTurns: WIND_ARREST.engageTurns, tTouch: WIND_ARREST.tTouch,
+      engageTurns: WIND_ARREST.engageTurns, tTouch: WIND_ARREST.tTouch, geared: WIND_ARREST.geared ?? null,   // §337 landing 2b
       padAz: WIND_ARREST.padAz, beakAz: WIND_ARREST.beakAz,
       studAz: WIND_ARREST.studAz, studR: WIND_ARREST.studR,
       padRestR: WIND_ARREST.padRestR, beakThrow: WIND_ARREST.beakThrow,
@@ -62768,6 +65672,21 @@ window.__clock = {
       padT: WIND_ARREST.padT, padZ: WIND_ARREST.padZ,
       hubZ: WIND_ARREST.hubZ, lugZ: WIND_ARREST.lugZ, lugOuter: WIND_ARREST.lugOuter,
       liftAt: WIND_ARREST.liftAt, beakScanRejects: WIND_ARREST.beakScanRejects,
+      candidateScan: WIND_ARREST.candidateScan,
+      stopwork: WIND_ARREST.stopwork ?? null,   // §329 landing 4: the stop-work's solved numbers under ?arrest=stopwork
+      // §329 landing 2a — the trailing arrest's site (null unless ?arrest=trailing): the line, the best site over every pad candidate,
+      // and the reasons summed over all of them
+      trailing: (() => {
+        if (SPEC.arrest !== 'trailing') return null;
+        const rows = (WIND_ARREST.candidateScan || []).filter((c) => c.trailing);
+        let best = null; const why = {};
+        for (const c of rows) {
+          for (const [k, v] of Object.entries(c.trailing.why)) why[k] = (why[k] || 0) + v;
+          if (c.trailing.best && (!best || c.trailing.best.L2 < best.L2 - 1e-9 || (Math.abs(c.trailing.best.L2 - best.L2) < 1e-9 && c.trailing.best.margin > best.margin))) best = { padAz: c.az, ...c.trailing.best };
+        }
+        const senses = [...new Set(rows.map((c) => `rotS ${c.trailing.rotS} / MOVEMENT_SENSE ${c.trailing.movementSense}`))];
+        return { line: solveTrailingArrest(), candidates: rows.length, best, why, senses };
+      })(),
     };
   },
   setCrownRotation(v) { crownRotation = v; },
@@ -63121,6 +66040,22 @@ window.__clock = {
     const { obj, ...rest } = ESCAPE_COCK;
     return rest;
   },
+  get fuseeCock() {   // §336
+    if (!FUSEE_COCK) return null;
+    const { obj, ...rest } = FUSEE_COCK;
+    return rest;
+  },
+  // §337 — the three-quarter plate's windows AS CUT (the final solve, §62, with §336's merged opening), named, in plan: the geared stop-work folds into the
+  // cone window's air, so its site search and its probe read the same outline the plate was cut to
+  // §337 landing 2 — the plate's LAND FIELD at (x, y): how far a point stands from the nearest plate opening, pivot boss or rim,
+  // less the land (TQ_LAND_MIN) a window's edge must keep from them. A disc of radius r centred where it reads at least r can be
+  // bulged into the cone window without a land going short. The cone's own windows (merged with the cock's slot) are not counted:
+  // the bulge joins them. Read by tools/probe-337-bulge.mjs.
+  plateLandAt(x, y) {
+    const edges = tqWindowEdges(TQ_WINDOWS.polys.filter((w) => w.name !== 'fusee'), null, P.barrel.x, P.barrel.y, plateR * 2);   // the gear windows the cock's slot touched are already merged into 'fusee'
+    return Math.min(tqOpeningClearance(x, y), tqKeepClearanceIn(NO_KEEPS, x, y), tqEdgeLand(edges, x, y)) - TQ_LAND_MIN;
+  },
+  get tqWindowPolys() { return (TQ_WINDOWS.polys || []).map((w) => ({ name: w.name, pts: w.pts.map(([x, y]) => [x, y]) })); },   // tqWindows (above) is the solver's report
   declaredTravels,   // §36 job A: the pose laws sampling cannot recover
   declaredRestoring, // §48: what brings each reciprocating part back
   // §36 part three: the routing spec's own frame. A sketched polyline arrives
@@ -63164,6 +66099,7 @@ window.__clock = {
       module1: rsvModule1, w2Tip: (rsvModule1 * (rsvTeethW2 + 2)) / 2, maxTip: RSV_FIT_TRAIN?.maxTip, short: RSV_FIT_TRAIN?.short },
     station: { x: RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, r: reserveStationR } } : null,
   casedDepthMm: CASED_DEPTH_MM,   // §317 — the cased depth §261 holds to its cap, for the instruments
+  get scaleReadout() { return scaleReadout; },   // §49's one derived dimension set, as the Measure overlay reads it (TODO 285, tools/probe-measure-readout.mjs)
   formFootprint: FORM_FOOTPRINT, form: FORM,  // §307 landing 2 — the measured footprint (§308: the fitted shape) and the shape actually cut
   dialTrack: DIAL_TRACK,                      // §311 — the form face's railroad (null round): rails, rungs, the hand's reach
   dialSpec: DIAL_SPEC,

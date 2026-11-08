@@ -398,11 +398,14 @@ Two §78 rules govern what the tier is allowed to SAY. **A generic glyph
 is a claim, so a part may opt out of one**: the opt-out is the named set
 `OWN_GLYPH`, consulted through `SCHEMATIC.ownGlyph` by both the rotor
 pass (which would call the part a wheel) and the §48 blade pass (which
-would call it a leaf spring). Three words so far — `userData.spiral =
+would call it a leaf spring). Four words so far — `userData.spiral =
 { innerR, outerR, coils }` (a wound ribbon), `userData.profile =
 { poly, hubR, boreR }` (§83 — a wheel whose content is its cut outline,
 the escape wheel's club teeth), `userData.crown` (§83 — a knurled knob a
-hand turns). Each member is drawn by its own pass instead, which is the
+hand turns), `userData.slab = '<mesh name>'` (a plate that does not turn —
+the dial, which records `userData.r` for the placement searches and was
+drawn as a brass wheel at the ROUND radius on every form case until it
+said so; `probe-schematic-form-case.mjs` D1 holds it). Each member is drawn by its own pass instead, which is the
 pattern to follow when the generic vocabulary would state something
 false: overdrawing leaves the wrong glyph in place underneath, so the
 generic pass must SKIP. A morphing part draws its current frame, not its
@@ -1032,6 +1035,19 @@ Worktrees live under the served root, so load the worktree's build directly:
 http://localhost:8347/.claude/worktrees/<name>/index.html
 ```
 
+**Since §338 landing 1 the build also boots NATIVELY**, with no browser:
+`node --import ./tools/native/loader.mjs tools/native/boot.mjs ['k=v' spec]`
+runs `main.js` unchanged in Node (`tools/native/host.mjs` stands in for the
+GPU, the DOM, the network and the frames; the spec roster is
+`src/spec-fields.js`, which index.html imports too). Build code that reaches
+for the page while cutting metal (a new fetch, a DOM read) breaks that host;
+`native-host.yml` runs `probe-338-native-boot.mjs`, which holds the
+fingerprint equal to Chromium's and every unit's PLACE within one
+`DIGEST_PLACE_Q` cell of it (the hash where it agrees, the raw matrices where a
+last-ulp difference straddles a cell edge, which it reports). SHAPE is reported, not
+gated: the two hosts' V8 versions disagree in the last ulp of transcendentals,
+and a few meshes change vertex count on it.
+
 State (camera pose, wind, τ) persists via the dev server's `/__state` temp
 file, falling back to `localStorage`. **Back it up before clearing it** —
 `GET /__state`, keep the JSON, `PUT` it back when done.
@@ -1109,11 +1125,16 @@ Cache Storage is partitioned by origin, not path, so `sw.js` names its
 cache for its SCOPE as well as its version; a flat name let each
 environment's activation evict the others'. `tools/offline-check.mjs`
 holds that: it stands up two stamped releases on one origin and boots
-both offline. **`offline.yml` now runs it on PRs that touch those files**
-(`sw.js`, the two documents, `stamp-release.mjs`, `build-pages.mjs`,
-`offline-check.mjs`) — separate from the battery, which runs the source
-tree and so deliberately has no worker at all. Run it by hand when
-iterating; the paths filter keeps it off every other PR.
+both offline. **`offline.yml` runs it on every PR that touches the app's own
+files** (`sw.js`, the documents, everything under `src/` and `vendor/`, the
+stamper, `build-pages.mjs`, `offline-check.mjs`) — separate from the battery,
+which runs the source tree and so deliberately has no worker at all. **Its
+precache gate is COVERAGE, not a count** (§96): every URL the offline journeys
+request must be in the cache by `sw.js`' own rule, a module deleted from the
+cache must be reported (its control), and the precache's size is only reported.
+So a new page or a new dynamic import is covered only once a journey requests
+it: add the journey, never a number. Run it by hand when iterating; docs-only
+PRs skip it.
 
 ## Inspecting
 
@@ -1188,11 +1209,11 @@ the host (`--shards K` → the runner's `.env`), never in the workflow, because 
 is a measured property of a machine. `docs/RUNNERS.md` has the rest.
 
 Since §81 the harness SHARDS: it partitions the work across K browser
-contexts by the measured `cost` column in `BATTERY` (`--shards`, default 2)
+contexts by the measured `cost` column in `BATTERY` (`--shards`, default 3)
 so the wall is max(shard) rather than sum(checks). That is sound because
 `start()` calls `clock.resetInputs()` before every check, so no check can
 observe which ones ran before it — **if a report ever moves between
-`--shards 1` and `--shards 2`, the check that moved has broken that
+`--shards 1` and `--shards 3`, the check that moved has broken that
 invariant and is the bug.** Two rules follow. Keep the cost column
 roughly true (`--report` writes the times back out as `ms`); a stale
 number costs wall clock, never a verdict. And when a check gets much
@@ -1360,7 +1381,7 @@ any warning as `warns` could never let a form build join the set however clean
 its sweeps came back; the arrangement is the first such row. A push, dispatch
 or local run sweeps every point FULL — against that run's default — and
 `--points-out` writes the whole payloads into the cached baseline beside the
-report. **Since §264 a push's tier (and a hosted dispatch's) is MEASURED on a
+report. **Since §264 a push's tier (and a hosted dispatch's, and since §330 a hosted PR's) is MEASURED on a
 parallel job, and since §265 its spec boots too — since the fan-out on TWO
 jobs, `battery spec` and `battery points`** (`--tiers-only --tiers-part P`, one
 file per tier naming its part, `TIERS_FORMAT` 3). Each is handed to the battery
@@ -1381,10 +1402,23 @@ casing path, back envelope) run on a fourth hosted job, `battery probes`, from
 t=0, and the `battery` job's last gate step reads that job's conclusion off the
 run: anything but `success` fails `battery` (the required check, §259's rule
 that the job named `battery` is the one that gates) before provenance or
-seeding can run. PR, matrix, self-hosted and nightly runs keep the probes after
-the harness, and no tiers jobs. Measured, §264 took the push from 89 to 63 min. Since §263 a hosted dispatch may ask for the SPLIT (`split: true`) instead,
+seeding can run. **Since §330 a hosted, unsplit PULL REQUEST takes the same
+fan-out**: its shards stay incremental against the base's baseline, but its
+point tier is the sibling's, swept FULL with no ceiling (the one the sibling path
+accepts), so it drops `--points-pr` and `--points-base`. #866's single process
+spent 33.8 min and its ceiling skipped two of the three points; on the fan-out
+the PR costs four concurrent hosted jobs where it held one, and its minutes stay
+free (the repository is public). **Measured on the first seven hosted PRs after
+it (#882–#887), the fan-out walls 12.9–18.2 min**, the point tier its critical
+path every time — no slower than the self-hosted host (13.9 and 17.7 min on #883
+and #885). **So hosted is the default and the host is a BACKUP**: a PR opts into
+`self-hosted-battery` only when a hosted run cannot give a verdict (hosted jobs
+queued, a runner lost mid-run, a failure only the hosted runners show and the
+PR's diff cannot cause), never because its battery has not passed yet, and a
+real failure is fixed, not routed around. Matrix, self-hosted and nightly runs keep the
+probes after the harness, and no tiers jobs. Measured, §264 took the push from 89 to 63 min. Since §263 a hosted dispatch may ask for the SPLIT (`split: true`) instead,
 which spreads both tiers across its two workers, so the tiers jobs run only on
-an unsplit run. A PR (`--points-pr`) sweeps each point INCREMENTALLY against its own
+an unsplit run. A PR off the fan-out (`--points-pr`: a self-hosted or matrix one) sweeps each point INCREMENTALLY against its own
 stored payload, re-measuring only the units the PR moved in that point's
 build; every doubt sends a point FULL and says so, and the PR's point tier is
 held to `POINT_PR_BUDGET_MS` of wall — a point that cannot finish is SKIPPED,

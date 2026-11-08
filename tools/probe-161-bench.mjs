@@ -6,7 +6,7 @@
 // on trust — so this is the instrument that keeps those honest.
 //
 // Three groups:
-//   A. THE ROSTER. index.html's spec table publishes what it reads, main.js
+//   A. THE ROSTER. the spec table (src/spec-fields.js, §338) publishes what it reads, main.js
 //      consumes it, and a copied link reproduces a DESIGNED movement — the
 //      defect §161 was filed for (13 keys against a 15-key reader).
 //   B. THE ROUTE. Every stop is entered, every derived framing RESOLVED (a

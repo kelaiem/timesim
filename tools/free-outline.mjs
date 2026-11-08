@@ -19,6 +19,7 @@
 //   node tools/free-outline.mjs --check [--spec …]         re-derive and compare with the committed file
 //   --fresh                                                 start from the stand-in box, not the committed row
 //   --dump FILE                                             on a refusal, write the unsettled row there (key and row)
+//   PW_CHROMIUM=/path/to/chrome when Playwright's own browser is not installed
 import { readFileSync, writeFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
@@ -60,7 +61,7 @@ const srv = createServer(async (req, res) => {
   } catch { res.writeHead(404).end('nf'); }
 });
 await new Promise((r) => srv.listen(0, '127.0.0.1', r));
-const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist',
+const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM || undefined, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist',
   '--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'] });
 const NOISE = /GPU stall|GL Driver Message|swiftshader|ReadPixels|Automatic fallback to software WebGL|no saved state|Failed to load resource/i;
 const boot = async () => {

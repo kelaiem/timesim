@@ -43,6 +43,17 @@
 //       is culled and the occluder goes transparent on that side. A sliver
 //       under 1e-4 u² (earcut's rounding over a dense loop) has no winding to
 //       judge and is counted, not gated.
+//   D1  THE DIAL IS NO WHEEL (every build, round included): no brass pitch
+//       circle — a schematic Line in the rotor tier's wheel material — hangs
+//       on the dial group, and its slab glyph (the dialPlate extrude's edges)
+//       does. The dial records userData.r for the placement searches, and the
+//       rotor pass drew it as a wheel at the ROUND dial's radius on every case
+//       shape until §78's `slab` word opted it out: a circle standing outside a
+//       form face's corners, the one round thing left in a form wireframe.
+//       Controls: the dial still carries a numeric userData.r (so what holds
+//       the circle off is the opt-out, not a missing radius), and the rotor
+//       tier still draws ≥ 10 brass circles elsewhere (so the check is not
+//       passing on a tier that drew nothing).
 // Controls, per form build: C1 the circle FITTED to the drawn outer ring (its
 // mean radius about the shape's centre — what the old drawing amounted to)
 // must miss the metal by more than CLEAR_MARGIN under L1's own reader, and
@@ -248,11 +259,23 @@ const measure = async (isForm) => {
       plateFitted.worst = Math.max(plateFitted.worst, Math.abs(insetOf(cx + plateCentreR * Math.cos(a), cy + plateCentreR * Math.sin(a))));
     }
   }
+  // D1 — the dial draws no pitch circle, and draws its slab.
+  const dialPlate = need('dialPlate');
+  let dialG = dialPlate.parent;
+  while (dialG && dialG.userData?.slab === undefined && dialG.userData?.r === undefined) dialG = dialG.parent;
+  // The rotor tier's wheel material, found by its colour (main.js MAT_WHEEL, the explainer's brass).
+  let wheelMat = null;
+  scene.traverse((o) => { if (!wheelMat && o.isLine && o.userData?.schematic && o.material?.color?.getHex() === 0xe0a355) wheelMat = o.material; });
+  let brassElsewhere = 0;
+  scene.traverse((o) => { if (o.isLine && o.userData?.schematic && o.material === wheelMat && o.parent !== dialG) brassElsewhere++; });
+  const dial = { r: dialG?.userData?.r, slab: dialG?.userData?.slab ?? null,
+    circles: dialG ? dialG.children.filter((o) => o.isLine && o.userData?.schematic && o.material === wheelMat).length : NaN,
+    edges: dialPlate.children.filter((o) => o.isLineSegments && o.userData?.schematic).length, brassElsewhere };
   // C2 — a roster that names nothing throws.
   let threw = false;
   try { need('noSuchGroup'); } catch { threw = true; }
   return { tol: TOL, f32: F32, clearMargin: L.CLEAR_MARGIN, barR: L.CASE_SPRING_BAR_D / 2,
-    kind: form ? form.kind : 'circle', byWhat, pusherWorst, fitted, occ: { rim: { verts: occ.rim.verts, worst: occ.rim.worst, rSpread: Math.max(...occ.rim.radii) - Math.min(...occ.rim.radii) }, fill: occ.fill, wall: occ.wall }, plateFitted, missingThrows: threw };
+    kind: form ? form.kind : 'circle', byWhat, pusherWorst, fitted, occ: { rim: { verts: occ.rim.verts, worst: occ.rim.worst, rSpread: Math.max(...occ.rim.radii) - Math.min(...occ.rim.radii) }, fill: occ.fill, wall: occ.wall }, plateFitted, dial, missingThrows: threw };
 };
 
 const NOISE = /GPU stall|GL Driver Message|swiftshader|ReadPixels|Automatic fallback to software WebGL|Failed to load resource: the server responded with a status of 404/i;
@@ -303,6 +326,10 @@ for (const b of run) {
     ok(`${b.name}: the case draws (${Object.values(r.byWhat).reduce((a, x) => a + x.lines, 0)} lines) and the plate occluder is a disc`, Object.keys(r.byWhat).length > 0 && r.occ.rim.verts > 0 && r.occ.rim.rSpread < r.f32, `rim radii spread ${r.occ.rim.rSpread.toExponential(2)}`);
     ok(`${b.name}: the pusher's two bore lines stand d/2 off the built bore's axis (on its chord, not its radius)`, r.pusherWorst !== null && r.pusherWorst <= r.tol, r.pusherWorst === null ? 'pusher lines not found' : `worst ${f4(r.pusherWorst)} off d/2`);
   }
+  ok(`${b.name}: D1 — the dial draws no brass pitch circle, and draws its slab's edges`, r.dial.circles === 0 && r.dial.edges > 0,
+    `${r.dial.circles} circle(s) on the dial (opt-out word: ${r.dial.slab ?? 'none'}), ${r.dial.edges} edge set(s) on dialPlate`);
+  ok(`${b.name}: D1 control — the dial still carries userData.r (${r.dial.r}) and the rotor tier draws ${r.dial.brassElsewhere} brass circles elsewhere`,
+    Number.isFinite(r.dial.r) && r.dial.brassElsewhere >= 10);
   ok(`${b.name}: a name that resolves to no object throws`, r.missingThrows);
   if (b.name.startsWith('spec ')) console.log(`${errors.length ? 'REPORT' : 'PASS'}  ${b.name}: ${errors.length ? `${errors.length} page error(s), not this probe's — ${errors.join(' | ').slice(0, 300)}` : 'no page error'}`);
   else ok(`${b.name}: no page error`, !errors.length, errors.join(' | ').slice(0, 300));
