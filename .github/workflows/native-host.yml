@@ -25,6 +25,12 @@
 #   cross-arch  tools/compare-338-hosts.mjs over both files: every build on
 #               every machine one movement, digest for digest.
 #
+# §338 landing 4 adds, to native-host, the POSE-CONDITIONING guard
+# (tools/probe-338-pose-conditioning.mjs): a synthetic engine one ulp off on an
+# eighth of its answers, booted beside the tree's own maths, and no digest pose
+# may move the metal past the PLACE budget (its control: the held wind at the τ
+# the train's law inverts, which #921 found, must).
+#
 # §338 landing 3 adds the BATTERY itself, natively:
 #   battery-native        tools/battery-native.mjs on both architectures: every
 #                         BATTERY row through inspect.js on the native host, each
@@ -50,6 +56,7 @@ on:
       - 'tools/native/**'
       - 'tools/probe-338-native-boot.mjs'
       - 'tools/compare-338-hosts.mjs'
+      - 'tools/probe-338-pose-conditioning.mjs'
       - 'tools/battery-native.mjs'
       - 'tools/report-diff.mjs'
       - 'tools/det-math-vendor.mjs'
@@ -132,6 +139,9 @@ jobs:
 
       - name: The native host builds the browser's movement, digest for digest
         run: node tools/probe-338-native-boot.mjs --json native-host-${{ runner.arch }}.json
+
+      - name: No pose of the net amplifies a one-ulp maths difference past the PLACE budget
+        run: node --import ./tools/native/loader.mjs tools/probe-338-pose-conditioning.mjs
 
       - name: Keep the digests
         if: always()
