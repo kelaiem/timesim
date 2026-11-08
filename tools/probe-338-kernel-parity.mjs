@@ -1,0 +1,212 @@
+#!/usr/bin/env node
+// §338 landing 5 — G3, KERNEL PARITY: does the compiled kernel answer what the JS
+// reference answers, and where it does not, is it the truer of the two?
+//
+//   node tools/probe-338-kernel-parity.mjs                      the primitive, on known and random geometry
+//   node tools/probe-338-kernel-parity.mjs --reports JS WASM    two battery-native --report files of one tree
+//
+// Acceptance (exits non-zero on any failure).
+//
+// THE PRIMITIVE (default mode). src/kernel.js' wasm `distance` against:
+//   · analytic pairs whose distance is known in closed form (parallel faces, vertex
+//     over face, skew edges, piercing, coplanar overlap and apart, past the bound);
+//   · random triangle soups under random rigid maps, against three-mesh-bvh's
+//     closestPointToGeometry (the reference) and a DENSE UPPER BOUND that shares no
+//     code with either: barycentric samples on one mesh, each measured to the other
+//     with the reference's exact point query. A distance can never exceed a sampled
+//     pair, so wasm over the bound is a wasm defect; where the reference reads 0 for a
+//     pair the dense bound puts apart, that is the reference's documented false-0
+//     (inspect.js' meshClearance), counted and reported, never held against wasm.
+//
+// THE BATTERY (--reports). G3 does not ask for bit identity (§338: a different
+// traversal may find an equal minimum by another route). It asks:
+//   1. every BATTERY row's gate reaches the SAME verdict on both reports (each row's
+//      own `fails`, standing rule 4's one definition);
+//   2. the `census` counters (work done, not findings) are excluded BY NAME and
+//      counted, report-diff's rule for timing;
+//   3. a minimum's WITNESS (`at`, `refinedAt`, `meshes`: where and between which
+//      meshes a minimum was found) is excluded by name and counted. §338's G3 says
+//      why: two arithmetics of one distance can order an exact tie between poses
+//      differently by an ulp, and the minimum's own value is a leaf that is held;
+//   4. every other leaf is equal, or is a distance the compiled kernel reads SMALLER.
+//      The reference's only measured way to differ is reading a sampled upper bound
+//      after its false-0 (TODO 197's over-read class), so a kernel leaf LARGER than
+//      the reference is a kernel defect and fails, and a smaller one is listed.
+// Its control plants a larger leaf and a moved verdict into a copy of the kernel's
+// report, and fails unless both are caught.
+import { readFileSync } from 'node:fs';
+
+const argv = process.argv.slice(2);
+const fails = [];
+const line = (ok, s) => { console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${s}`); if (!ok) fails.push(s); };
+
+if (argv[0] === '--reports') {
+  const [jsFile, wasmFile] = argv.slice(1);
+  if (!jsFile || !wasmFile) { console.error('usage: probe-338-kernel-parity.mjs --reports JS.json WASM.json'); process.exit(2); }
+  const { BATTERY } = await import('./battery-checks.mjs');
+  const [J, Wr] = [jsFile, wasmFile].map((f) => JSON.parse(readFileSync(f, 'utf8')));
+  if ((J.kernel ?? 'js') !== 'js' || Wr.kernel !== 'wasm') throw new Error(`--reports wants a js report then a wasm report (got ${J.kernel ?? 'js'}, ${Wr.kernel})`);
+
+  const WITNESS = new Set(['at', 'refinedAt', 'meshes']);
+  const verdict = (e, r) => { const f = e.fails(r); return Array.isArray(f) ? f.length : (f ? 1 : 0); };
+  const judge = (Jc, Wc) => {
+    const out = { verdicts: [], larger: [], smaller: [], other: [], census: 0, witness: [], leaves: 0, ran: 0 };
+    for (const e of BATTERY) {
+      const a = Jc[e.name], b = Wc[e.name];
+      if (!a || !b || a.neverRan || b.neverRan) continue;
+      out.ran++;
+      const va = verdict(e, a.result), vb = verdict(e, b.result);
+      if (va !== vb) out.verdicts.push(`${e.name}: js ${va ? `FAIL (${va})` : 'PASS'}, wasm ${vb ? `FAIL (${vb})` : 'PASS'}`);
+      const walk = (x, y, path) => {
+        if (typeof x === 'number' && typeof y === 'number') {
+          out.leaves++;
+          if (Object.is(x, y)) return;
+          (y < x ? out.smaller : y > x ? out.larger : out.other).push(`${path}: js ${x}, wasm ${y}`);
+          return;
+        }
+        if (x === null || y === null || typeof x !== 'object' || typeof y !== 'object') {
+          out.leaves++;
+          if (x !== y) out.other.push(`${path}: js ${JSON.stringify(x)}, wasm ${JSON.stringify(y)}`);
+          return;
+        }
+        if (Array.isArray(x) !== Array.isArray(y) || (Array.isArray(x) && x.length !== y.length)) { out.other.push(`${path}: shape differs`); return; }
+        for (const k of new Set([...Object.keys(x), ...Object.keys(y)])) {
+          if (k === 'census') { out.census++; continue; }
+          if (WITNESS.has(k)) { if (JSON.stringify(x[k]) !== JSON.stringify(y[k])) out.witness.push(`${path}.${k}: js ${JSON.stringify(x[k])}, wasm ${JSON.stringify(y[k])}`); continue; }
+          if (k === 'ms' || k === 'sliceMs' || /Ms$/.test(k)) continue;
+          if (!(k in x) || !(k in y)) { out.other.push(`${path}.${k}: present on one side only`); continue; }
+          walk(x[k], y[k], Array.isArray(x) ? `${path}[${k}]` : `${path}.${k}`);
+        }
+      };
+      walk(a.result, b.result, e.name);
+    }
+    return out;
+  };
+
+  // The control: a larger leaf and a moved verdict, planted into a copy.
+  {
+    const C = JSON.parse(JSON.stringify(Wr.checks));
+    let planted = null;
+    const plant = (o, path) => {
+      if (planted || !o || typeof o !== 'object') return;
+      for (const k of Object.keys(o)) {
+        if (planted) return;
+        if (k === 'census' || k === 'ms' || /Ms$/.test(k)) continue;
+        if (typeof o[k] === 'number' && o[k] > 0 && Number.isFinite(o[k])) { o[k] = o[k] * 2; planted = `${path}.${k}`; return; }
+        plant(o[k], `${path}.${k}`);
+      }
+    };
+    for (const n of ['clearances', 'expectedContacts', 'undeclaredClearance']) if (!planted && C[n] && !C[n].neverRan) plant(C[n].result, n);
+    const support = BATTERY.find((e) => e.name === 'support');
+    let moved = false;
+    if (support && C.support && !C.support.neverRan) {
+      const r = C.support.result;
+      for (const k of ['failures', 'violations', 'rows']) if (Array.isArray(r[k])) { r[k] = [...r[k], { planted: true, ok: false }]; moved = verdict(support, r) !== verdict(support, Wr.checks.support.result); if (moved) break; }
+    }
+    const c = judge(J.checks, C);
+    line(!!planted && c.larger.length >= 1 && moved && c.verdicts.length >= 1,
+      `control: a doubled leaf (${planted ?? 'none planted'}) and a moved support verdict are both caught (${c.larger.length} larger, ${c.verdicts.length} verdict(s))`);
+  }
+
+  const r = judge(J.checks, Wr.checks);
+  line(r.verdicts.length === 0, `every gate reaches the same verdict on both kernels (${r.ran} checks ran on both)${r.verdicts.length ? ': ' + r.verdicts.join('; ') : ''}`);
+  line(r.larger.length === 0, `no kernel distance reads LARGER than the reference (${r.leaves} leaves compared, ${r.census} census blocks excluded by name)`);
+  for (const s of r.larger.slice(0, 10)) console.log(`          LARGER ${s}`);
+  line(r.other.length === 0, `no leaf differs in any other way (strings, shapes, presence)`);
+  for (const s of r.other.slice(0, 10)) console.log(`          OTHER ${s}`);
+  console.log(`  REPORT ${r.witness.length} witness(es) differ (where an equal minimum was found):`);
+  for (const s of r.witness.slice(0, 10)) console.log(`          ${s}`);
+  console.log(`  REPORT ${r.smaller.length} leaf(s) read smaller by the kernel (the reference's sampled upper bound after its false 0):`);
+  for (const s of r.smaller.slice(0, 20)) console.log(`          ${s}`);
+  console.log(`\n${fails.length ? `FAIL — ${fails.length} gate(s)` : 'PASS — the compiled kernel reaches the reference\'s verdicts, and reads no gap larger than it'}`);
+  process.exit(fails.length ? 1 : 0);
+}
+
+// ---------------------------------------------------------------------------
+// The primitive.
+const T = await import('../vendor/three.module.js');
+const { computeBoundsTree } = await import('../vendor/three-mesh-bvh.module.js');
+T.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
+const K = await import('../src/kernel.js');
+const { KERNEL_WASM_SHA256 } = await import('../src/kernel-wasm.js');
+await K.useKernel('wasm');
+console.log(`kernel ${KERNEL_WASM_SHA256.slice(0, 16)}…`);
+
+const geo = (pts) => { const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pts.flat(), 3)); return g; };
+const tr = (x, y, z) => new T.Matrix4().makeTranslation(x, y, z);
+const tri = [[0, 0, 0], [1, 0, 0], [0, 1, 0]];
+const ANALYTIC = [
+  ['parallel faces 0.5 apart', geo(tri), geo(tri), tr(0, 0, 0.5), 0.5],
+  ['a vertex over a face', geo(tri), geo([[0.25, 0.25, 0.5], [0.25, 0.25, 2], [1, 1, 2]]), new T.Matrix4(), 0.5],
+  ['skew edges 0.25 apart', geo([[0, 0, 0], [1, 0, 0], [0.5, -1, 0]]), geo([[0.5, -0.5, 0.25], [0.5, 0.5, 0.25], [0.5, 0, 3]]), new T.Matrix4(), 0.25],
+  ['an edge piercing a face', geo(tri), geo([[0.25, 0.25, -1], [0.25, 0.25, 1], [0.5, 0.25, 1]]), new T.Matrix4(), 0],
+  ['coplanar, overlapping', geo(tri), geo(tri), tr(0.125, 0.125, 0), 0],
+  ['coplanar, 1 apart', geo(tri), geo(tri), tr(2, 0, 0), 1],
+  ['3 apart, the bound 2', geo(tri), geo(tri), tr(0, 0, 3), Infinity, 2],
+];
+let bad = 0;
+for (const [name, a, b, m, want, upper = Infinity] of ANALYTIC) {
+  const got = K.wasmDistance(a, b, m.elements, upper);
+  if (!(want === Infinity ? got === Infinity : got === want)) { bad++; console.log(`          ${name}: ${got}, want ${want}`); }
+}
+line(bad === 0, `analytic: ${ANALYTIC.length} pairs with closed-form distances read exactly (every coordinate a binary fraction)`);
+
+// Random soups: deterministic LCG, so a failure names a seed.
+let seed = 0x338;
+const rnd = () => { seed = (Math.imul(seed, 1103515245) + 12345) >>> 0; return seed / 4294967296; };
+const soup = (n, c, s) => { const pts = []; for (let t = 0; t < n; t++) { const o = [c[0] + (rnd() - 0.5) * s, c[1] + (rnd() - 0.5) * s, c[2] + (rnd() - 0.5) * s]; for (let k = 0; k < 3; k++) pts.push([o[0] + (rnd() - 0.5) * 0.4, o[1] + (rnd() - 0.5) * 0.4, o[2] + (rnd() - 0.5) * 0.4]); } return geo(pts); };
+const dense = (A, B, m, N, cap) => {
+  const p = B.attributes.position, v = [new T.Vector3(), new T.Vector3(), new T.Vector3()], q = new T.Vector3();
+  let best = cap;
+  for (let t = 0; t < p.count; t += 3) {
+    for (let c = 0; c < 3; c++) v[c].fromBufferAttribute(p, t + c).applyMatrix4(m);
+    for (let i = 0; i <= N; i++) for (let j = 0; i + j <= N; j++) {
+      q.set(0, 0, 0).addScaledVector(v[0], 1 - (i + j) / N).addScaledVector(v[1], i / N).addScaledVector(v[2], j / N);
+      const r = A.boundsTree.closestPointToPoint(q, {}, 0, best);
+      if (r && r.distance < best) best = r.distance;
+    }
+  }
+  return best;
+};
+const PAIRS = 300;
+let agree = 0, refFalseZero = 0, over = 0, mismatch = 0, worst = 0;
+const why = [];
+for (let k = 0; k < PAIRS; k++) {
+  const sep = rnd() * 3;
+  // Unequal sizes on every other pair, both ways round.
+  const A = soup(k % 2 ? 12 : 30, [0, 0, 0], 2), B = soup(k % 2 ? 40 : 30, [0, 0, 0], 2);
+  const m = new T.Matrix4().makeRotationFromEuler(new T.Euler(rnd() * 6.3, rnd() * 6.3, rnd() * 6.3)).setPosition(sep, (rnd() - 0.5) * 0.5, (rnd() - 0.5) * 0.5);
+  // Every fifth map sheared and scaled: the kernel's box bounds must hold for any
+  // affine map, not only the rigid ones inspect.js hands it (rigidFrame).
+  if (k % 5 === 0) m.multiply(new T.Matrix4().set(1 + rnd(), 0.4 * rnd(), 0, 0, 0, 1, 0.3 * rnd(), 0, 0.2 * rnd(), 0, 0.6 + rnd(), 0, 0, 0, 0, 1));
+  A.computeBoundsTree(); B.computeBoundsTree();
+  const upper = rnd() < 0.3 ? 0.5 + rnd() : Infinity;
+  const w = K.wasmDistance(A, B, m.elements, upper);
+  const hit = A.boundsTree.closestPointToGeometry(B, m, {}, {}, 0, upper);
+  const ref = hit ? hit.distance : Infinity;
+  const ub = dense(A, B, m, 8, Number.isFinite(upper) ? upper : Infinity);
+  if (w < upper && !(w <= ub + 1e-12)) { over++; why.push(`pair ${k}: wasm ${w} over the dense bound ${ub}`); continue; }
+  const refUnder = ref < upper, wUnder = w < upper;
+  if (refUnder && ref === 0 && w > 0) { refFalseZero++; continue; }
+  if (refUnder !== wUnder) { mismatch++; why.push(`pair ${k}: js ${ref}, wasm ${w}, bound ${upper}`); continue; }
+  if (refUnder) { const d = Math.abs(ref - w); worst = Math.max(worst, d); if (d > 1e-12) { mismatch++; why.push(`pair ${k}: js ${ref}, wasm ${w}`); continue; } }
+  agree++;
+}
+for (const s of why.slice(0, 6)) console.log(`          ${s}`);
+line(over === 0, `random: no wasm distance over the dense upper bound (${PAIRS} soup pairs, 30 × 30 and 12 × 40 triangles, a fifth of the maps sheared, 45 samples a triangle)`);
+line(mismatch === 0, `random: wasm agrees with the reference within 1e-12 wherever the reference reads no false 0 (${agree} agree, worst ${worst.toExponential(2)})`);
+console.log(`  REPORT the reference read 0 for ${refFalseZero} pair(s) the kernel puts apart (its false-0 mode; the dense bound decides, above)`);
+
+// The control: a kernel whose answer is off by a known amount must fail the agreement test.
+{
+  const A = soup(30, [0, 0, 0], 2), B = soup(30, [0, 0, 0], 2);
+  A.computeBoundsTree(); B.computeBoundsTree();
+  const m = tr(3, 0, 0);
+  const ref = A.boundsTree.closestPointToGeometry(B, m, {}, {}, 0, Infinity).distance;
+  const w = K.wasmDistance(A, B, m.elements, Infinity);
+  const ub = dense(A, B, m, 8, Infinity);
+  line(Math.abs(ref - w) <= 1e-12 && !(w * 1.001 <= ub + 1e-12 && Math.abs(ref - w * 1.001) <= 1e-12),
+    `control: a kernel answer 0.1% long (${(w * 1.001).toFixed(6)} for ${w.toFixed(6)}) fails the agreement test the real one passes`);
+}
+console.log(`\n${fails.length ? `FAIL — ${fails.length} gate(s)` : 'PASS — the compiled distance is the reference\'s, and exact where the reference reads a false 0'}`);
+process.exit(fails.length ? 1 : 0);
