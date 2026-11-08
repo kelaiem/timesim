@@ -11971,6 +11971,9 @@ const BACK_PLATE_CUT = {
   }] : [],
 };
 await breathe(91);
+// each pocket of the cut as the discs its opening is (the pocket and the bore it is cut with), for the late feet's land
+const PLATE_POCKET_DISCS = () => BACK_PLATE_CUT.pockets.flatMap((pk) => [{ x: pk.x, y: pk.y, r: pk.r },
+  ...(pk.through ? [{ x: pk.through.x, y: pk.through.y, r: pk.through.r }] : [])]);
 const backPlate = G.makeBackPlate({ ...BACK_PLATE_CUT, ...formFilter(plateR, BACK_PLATE_CUT) }); // §307 — openings outside the rectangle dropped (no-op round)
 // TODO 184 — THE LATE RE-CUT. Some openings in this plate belong to parts
 // solved after it is cut (the balance cock's legs stand on it 2,500 lines
@@ -18983,7 +18986,12 @@ ESCAPE_COCK = await (async () => {
     const tt = clamp(rx * COCK_SPINE.dir.x + ry * COCK_SPINE.dir.y, 0, COCK_SPINE.len);
     return Math.hypot(rx - tt * COCK_SPINE.dir.x, ry - tt * COCK_SPINE.dir.y) - COCK_SPINE.half - rad;
   };
-  const baseOpenings = [...BACK_PLATE_CUT.holes, ...BACK_PLATE_LATE_HOLES];
+  // TODO 289 landing 4 — and the plate's POCKETS: each is cut up into the slab from the dial face (the motion works' and
+  // the setting fold's: the cannon and cap pockets, the blind corner bores, the traverse blocks' pockets, each with the
+  // bore it is cut with), and a foot's tapped hole and steady pins go through the whole slab, so the land §62 holds every
+  // late hole to at the re-cut is owed to them here too. Without them the fusee cock's search walked onto A's opening
+  // once the drop's upper bush (which happened to touch the top face, inside the column band) stopped fencing it off.
+  const baseOpenings = [...BACK_PLATE_CUT.holes, ...BACK_PLATE_LATE_HOLES, ...PLATE_POCKET_DISCS()];
   const baseSlots = [...BACK_PLATE_CUT.slots, ...BACK_PLATE_LATE_SLOTS];
   // What a leg's column has to clear, as a signed distance from (x, y).
   const least = (...pairs) => { let c = Infinity, who = null; for (const [d, w] of pairs) if (d < c) { c = d; who = w; } return { c, who }; };
@@ -51524,7 +51532,12 @@ const FUSEE_COCK = await (async () => {
   let fuseeWrapR = 0;
   for (let i = 0; i <= 64; i++) fuseeWrapR = Math.max(fuseeWrapR, fuseeGrooveAt((i / 64) * FUSEE_F_ACTIVE).r);
   const chainHull = { ax: C.x, ay: C.y, bx: drumPos.x, by: drumPos.y, r: Math.max(fuseeWrapR, DRUM_WRAP_R) + CHAIN_END_R_OUT };
-  const baseOpenings = [...BACK_PLATE_CUT.holes, ...BACK_PLATE_LATE_HOLES];
+  // TODO 289 landing 4 — and the plate's POCKETS: each is cut up into the slab from the dial face (the motion works' and
+  // the setting fold's: the cannon and cap pockets, the blind corner bores, the traverse blocks' pockets, each with the
+  // bore it is cut with), and a foot's tapped hole and steady pins go through the whole slab, so the land §62 holds every
+  // late hole to at the re-cut is owed to them here too. Without them the fusee cock's search walked onto A's opening
+  // once the drop's upper bush (which happened to touch the top face, inside the column band) stopped fencing it off.
+  const baseOpenings = [...BACK_PLATE_CUT.holes, ...BACK_PLATE_LATE_HOLES, ...PLATE_POCKET_DISCS()];
   const baseSlots = [...BACK_PLATE_CUT.slots, ...BACK_PLATE_LATE_SLOTS];
   const windowEdges = tqWindowEdges(TQ_WINDOWS.polys, null, C.x, C.y, plateR * 2);
   const inPoly = (pts, x, y) => {
