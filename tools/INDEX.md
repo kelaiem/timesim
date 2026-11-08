@@ -4,7 +4,7 @@
 
 # The instruments
 
-419 scripts. **291 are ACCEPTANCE tests** — they decide and exit non-zero.
+421 scripts. **293 are ACCEPTANCE tests** — they decide and exit non-zero.
 **128 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -51,6 +51,7 @@ when a question was asked; the summaries are what it answered.
 | `gong-seats.mjs` |  | acceptance | WRITES src/gong-seats.js (BUILT §310 landing 2): where the alarm gong stands in each FITTED form case, and what it rings there. The build cannot solve this itself — the seat needs the whole movement's metal in the wire's band, and the gong and the hammer are cut long before the last of it — so the seats are GENERATED here from booted builds and committed, never typed. The build reads its row early, solves the strike exactly against its own live lever (GS.seatStrike) and, once every part is cut, re-measures the band with the SAME functions this tool solved on (GS.bandParts / bandNearest) and warns if the seat no longer holds. |
 | `height-ledger.mjs` |  | report | THE HEIGHT LEDGER'S HARNESS — one boot measured for the cased-depth chains, copied-tree mutants, and the ledger itself (front and back chains, the back-most metal and its slack), as a module. Not a probe: it measures nothing on its own. |
 | `item-docs.mjs` |  | acceptance | TODO.md and docs/BUILT.md, ONE FILE PER ITEM — the reader every tool shares, the split that made the layout, and the generated indexes. |
+| `kernel-build.mjs` |  | acceptance | §338 landing 5 — BUILD THE KERNEL: tools/kernel/kernel.cpp → src/kernel-wasm.js. |
 | `l10n-review-packets.mjs` |  | acceptance | §249's review follow-up — BUILDS THE NATIVE-REVIEW PACKETS: one page a fluent reader opens to judge a locale's translation row by row, English beside the translation, and to say "reads well", "needs a change" (with their wording) or "not sure". Every locale carries the same IOU in docs/BUILT.md ("No native review pass"), and no gate here can pay it: the page gate holds keys, markup, numbers and the honesty vocabulary, never whether a sentence reads naturally or a part has the name a workshop uses. This makes paying it cheap for whoever can. |
 | `ldraw-arc-survey.mjs` |  | acceptance | WHICH LEGO PARTS CAN CARRY A DEAD-BEAT'S LOCKING FACE? A report, not a gate: it reads a whole LDraw library from disk (unzip LDraw's complete.zip, as tools/ldraw-groove-survey.mjs does; or, with --fetch, only the parts named by --only, fetched from library.ldraw.org through tools/ldraw-fetch.mjs, ldraw-vendor's own fetcher, into a cache) and prints every part whose outline carries a USABLE ARC: a partial circle about a point a LEGO mount can reach. BUILT §323 (src/technic-deadbeat.js): the survey that decides whether a Graham's pallets can be made of real parts. Its fatal paths (no library, a control that reads wrong: exit 2 and 1) file it as ACCEPTANCE in tools/INDEX.md; what it prints is a report. |
 | `ldraw-fetch.mjs` |  | acceptance | FETCH LDraw PARTS AND EVERYTHING THEY REFERENCE, from the official library. A helper, not a measurement: it writes nothing but a cache directory. |
@@ -274,6 +275,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-337-geared-geneva.mjs` | §337 | acceptance | §337 landing 1 — THE GEARED GENEVA'S LINE, HELD. ACCEPTANCE (exits non-zero on a failure). |
 | `probe-337-record.mjs` | §337 | acceptance | §337 landing 2b, stage 3 — THE RECORD'S MEASURED BLOCK, HELD TO THE BUILD. ACCEPTANCE (exits non-zero on a failure). |
 | `probe-338-check-profile.mjs` | §338 | acceptance | §338 landing 0 — WHERE DOES THE BATTERY'S CHECK TIME GO, BY FUNCTION? |
+| `probe-338-kernel-parity.mjs` | §338 | acceptance | §338 landing 5 — G3, KERNEL PARITY: does the compiled kernel answer what the JS reference answers, and where it does not, is it the truer of the two? |
 | `probe-338-native-boot.mjs` | §338 | acceptance | §338 landing 1 — DOES THE NATIVE HOST BUILD THE SAME MOVEMENT AS THE BROWSER? |
 | `probe-338-pose-conditioning.mjs` | §338 | acceptance | §338 — THE POSE-CONDITIONING GUARD: does any pose of §152's net turn a last-ulp difference in the maths into a difference in the metal? |
 | `probe-36-apply.mjs` | §36 | acceptance | §36 Apply — the acceptance, and the only place the APPLIED tree is judged. |
