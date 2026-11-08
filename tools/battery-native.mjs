@@ -2,7 +2,7 @@
 // §338 landing 3 — THE BATTERY, NATIVELY: the same checks, the same gates, no browser.
 //
 //   node --import ./tools/native/loader.mjs tools/battery-native.mjs
-//        [--shards K] [--no-split] [--only a,b] [--report FILE] [--query 'k=v']
+//        [--shards K] [--no-split] [--only a,b] [--report FILE] [--query 'k=v'] [--kernel js|wasm|shadow]
 //
 // Boots the build in tools/native/host.mjs (main.js unchanged, the deterministic
 // maths installed first) and runs every row of tools/battery-checks.mjs' BATTERY
@@ -31,6 +31,11 @@
 //   · NO KERNEL YET. Every check runs the JS path, three-mesh-bvh, which is the
 //     reference any compiled kernel will be held to.
 //
+// --kernel (landing 5) picks the implementation behind inspect.js' `Kernel`: `js`
+// (three-mesh-bvh, the reference and the default), `wasm` (src/kernel.js' compiled
+// kernel, for the primitives it implements), or `shadow` (js answers, wasm runs
+// beside it on every call and the disagreements are tallied and printed).
+//
 // --report FILE writes `ci-battery.mjs --report`'s `checks` shape
 // ({name: {ms, sliceMs?, result}} over the WHOLE table, `neverRan` for the rest).
 // Exits 0 only when every run row's gate passes and nothing threw.
@@ -43,10 +48,11 @@ import { buildTasks } from './battery-split.mjs';
 import { COSTS, partition } from './battery-plan.mjs';
 
 // One shard's work, in whatever thread it runs: boot, hold, run each task.
-async function runShard({ query, tasks }) {
+async function runShard({ query, tasks, kernel = 'js' }) {
   const { bootNative } = await import('./native/host.mjs');
   const { clock, ms: bootMs, warns } = await bootNative({ query });
   const I = await import('../src/inspect.js');
+  await I.useKernel(kernel);
   clock.beginSweepHold();   // battery-checks.mjs prepPage's rule: the whole run, geometry frozen
   const out = [];
   for (const t of tasks) {
@@ -59,7 +65,7 @@ async function runShard({ query, tasks }) {
       if (st.state === 'error') { out.push({ key: t.key, error: String(st.error) }); break; }
     }
   }
-  return { bootMs, warns, axes: I.AXES.map((a) => ({ name: a.name, n: a.n })), out };
+  return { bootMs, warns, axes: I.AXES.map((a) => ({ name: a.name, n: a.n })), out, kernel: I.kernelStats() };
 }
 
 if (!isMainThread) {
@@ -77,6 +83,8 @@ if (!isMainThread) {
   const QUERY = opt('--query') ?? '';
   const SPLIT = !argv.includes('--no-split');
   const SHARDS = Number(opt('--shards') ?? Math.min(4, availableParallelism()));
+  const KERNEL = opt('--kernel') ?? 'js';
+  if (!['js', 'wasm', 'shadow'].includes(KERNEL)) throw new Error('--kernel wants js, wasm or shadow');
   if (ONLY) for (const n of ONLY) if (!BATTERY.some((e) => e.name === n)) throw new Error(`--only names no BATTERY row: ${n}`);
   if (!(SHARDS >= 1)) throw new Error('--shards wants a positive integer');
 
@@ -88,7 +96,7 @@ if (!isMainThread) {
   let shards = [];
   if (SHARDS === 1) {
     // The reference path: one process, no workers.
-    const r = await runShard({ query: QUERY, tasks: tasks.map(plain) });
+    const r = await runShard({ query: QUERY, tasks: tasks.map(plain), kernel: KERNEL });
     shards = [{ ...r, tasks: tasks.map((t) => t.key), cost: tasks.reduce((a, t) => a + t.cost, 0) }];
   } else {
     const parts = partition(tasks, Math.min(SHARDS, tasks.length));
@@ -97,7 +105,7 @@ if (!isMainThread) {
     // the loader for itself: clear the guard the parent's registration set.
     const env = { ...process.env, __TIMESIM_NATIVE_LOADER__: '' };
     shards = await Promise.all(parts.map((p) => new Promise((res, rej) => {
-      const w = new Worker(new URL(import.meta.url), { workerData: { query: QUERY, tasks: p.entries.map(plain) }, env, execArgv: process.execArgv });
+      const w = new Worker(new URL(import.meta.url), { workerData: { query: QUERY, tasks: p.entries.map(plain), kernel: KERNEL }, env, execArgv: process.execArgv });
       w.once('message', (m) => (m.fatal ? rej(new Error(`a shard died: ${m.fatal}`)) : res({ ...m, tasks: p.entries.map((t) => t.key), cost: p.cost })));
       w.once('error', rej);
       w.once('exit', (code) => { if (code) rej(new Error(`a shard exited ${code}`)); });
@@ -138,6 +146,15 @@ if (!isMainThread) {
     console.log(`  ${n ? 'FAIL' : 'PASS'}  ${e.name.padEnd(20)} ${String((r.ms / 1000).toFixed(1)).padStart(7)} s  ${e.gate}${n ? ` (${n} failing)` : ''}${note}`.slice(0, 400));
   }
   for (const l of lines) console.log(l);
+  if (KERNEL !== 'js') {
+    const ks = shards.map((s) => s.kernel);
+    const sum = (k) => ks.reduce((a, x) => a + (x[k] || 0), 0);
+    const worst = ks.reduce((a, x) => (x.maxAbs > a.maxAbs ? x : a), { maxAbs: 0, maxAt: null });
+    console.log(KERNEL === 'shadow'
+      ? `kernel shadow: ${sum('calls')} distance calls, ${sum('both')} under the bound on both, max |js − wasm| ${worst.maxAbs.toExponential(2)}${worst.maxAt ? ` (js ${worst.maxAt.ref}, wasm ${worst.maxAt.kernel}, bound ${worst.maxAt.upper})` : ''}; js 0 where wasm > 0: ${sum('refFalseZero')}; under the bound for wasm only: ${sum('kernelOnly')}, js only: ${sum('refOnly')}; js answered at or over the bound: ${sum('refAtOrOverBound')}; time js ${(sum('refMs') / 1000).toFixed(1)} s, wasm ${(sum('wasmMs') / 1000).toFixed(1)} s`
+      : `kernel: ${KERNEL}`);
+    if (KERNEL === 'shadow') for (const x of ks.flatMap((k) => k.samples || []).slice(0, 8)) console.log(`  disagreement: js ${x.ref} wasm ${x.kernel} bound ${x.upper} (${x.nA} × ${x.nB} triangles)`);
+  }
   const wall = Date.now() - t0;
   const ran = results.size;
   const checkMs = [...results.values()].reduce((a, r) => a + r.ms, 0);
@@ -145,7 +162,7 @@ if (!isMainThread) {
 
   if (REPORT) {
     const report = {
-      host: `native ${process.platform}-${process.arch} node ${process.version}`,
+      host: `native ${process.platform}-${process.arch} node ${process.version}`, kernel: KERNEL,
       query: QUERY, shards: shards.length, split: SPLIT,
       checks: Object.fromEntries(BATTERY.map(({ name }) => [name, results.has(name)
         ? { ms: results.get(name).ms, ...(sliceMs.has(name) ? { sliceMs: sliceMs.get(name) } : {}), result: results.get(name).result }
