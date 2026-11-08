@@ -15,27 +15,38 @@
 //           world matrix at every digest pose within one 1/DIGEST_PLACE_Q cell
 //           (a last-ulp difference at an ill-conditioned pose can cross an edge
 //           while the metal stands in the same place; the straddles are reported).
-//   CONTROL the native DEFAULT build's fingerprint must DIFFER from Chromium's
+//   CONTROLS the native DEFAULT build's fingerprint must DIFFER from Chromium's
 //           build of the other spec, so equality is something this comparison
 //           can fail to find, and the spec demonstrably reaches each host's build.
 //           And the PLACE tolerance is held the same way: those two different builds
 //           must part by more than a cell somewhere, and a planted two-cell move in
 //           one coordinate must be caught.
-//   REPORT  §152's SHAPE digest per unit, which is NOT gated here, with each
-//           differing unit classified by what differs at the digest poses:
-//             index-order  positions and triangle SET agree: only the index
-//                          buffer's order differs (the page's first frames
-//                          build bounds trees, which reorder it in place);
+//           And a native boot with the ENGINE's Math (host option detMath: false)
+//           must differ from Chromium in SHAPE and warn at boot, or the SHAPE gate
+//           would be passing on something other than the maths.
+//   GATES, since §338 landing 2: deterministic maths installed in both (each
+//           host's __detMath: installed, and its boot known answers reproduce);
+//           and §152's SHAPE digest identical for every unit. Landing 1 could
+//           only REPORT SHAPE: the hosts' V8 versions disagreed in the last ulp
+//           of transcendentals (coordinates ~1e-17 apart, a few meshes with a
+//           different vertex count), and the page's frames reordered index
+//           buffers by building bounds trees. Landing 2 installs src/det-math.js
+//           and hashes the index as a triangle SET, and SHAPE gates. A unit that
+//           differs is still classified, as the diagnosis:
+//             index-order  positions and triangle set agree, only the order
+//                          differs (cannot happen with the set hash: a digest
+//                          bug if it does);
 //             positions    the vertex count agrees and coordinates differ (max
-//                          |Δ| printed): a last-ulp difference in the build's
-//                          arithmetic, which §338 measured as the two hosts'
-//                          V8 versions disagreeing on transcendentals;
+//                          |Δ| printed): arithmetic that is still the engine's;
 //             topology     a mesh's vertex count differs: a construction
-//                          decision went the other way.
-//           SHAPE can be gated only once the build's arithmetic is the
-//           same on every engine, which is §338's deterministic-math landing.
+//                          decision went the other way on such a difference.
 //
-//   node tools/probe-338-native-boot.mjs        (~2 min; boots run in parallel)
+//   node tools/probe-338-native-boot.mjs [--json FILE]   (~2 min; boots run in parallel)
+//
+// --json writes, per spec and host, the fingerprint, every unit's SHAPE and
+// PLACE digest and the boot known answers, plus the platform: the input
+// tools/compare-338-hosts.mjs holds equal ACROSS machines (native-host.yml's
+// x64 and arm64 legs).
 import { execFileSync, spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
@@ -44,9 +55,16 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { prepPage, virginBoot } from './battery-checks.mjs';
+import { matchDeclaredWarns } from './battery-points.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
-const SPECS = ['', 'arrangement=designed'];   // the identity, and ci-battery's first silent swept spec point
+const SPECS = ['', 'arrangement=designed'];   // the identity, and ci-battery's first swept spec point
+// Each spec's boot is held to EXACTLY its declared warning set, ci-battery's own rule (matchDeclaredWarns, by
+// prefix): the identity's is empty; `designed` declares TODO 289 landing 3's leg-2 K-block row (LEG2_K_ROW on its
+// SPEC_POINTS row in tools/ci-battery.mjs, copied here because importing that file runs the battery). A warning
+// beyond the set, or a declared row that stops firing, fails in either host.
+const DECLARED = { '': [], 'arrangement=designed': ['TODO 289: leg 2\'s K block'] };
+const JSON_OUT = (() => { const i = process.argv.indexOf('--json'); return i > 0 ? process.argv[i + 1] : null; })();
 
 async function loadPlaywright() {
   try { return await import('playwright'); } catch {
@@ -110,6 +128,7 @@ function measure(I) {
     u.triSet = fnv(new TextEncoder().encode(tris.join(';')), 0x811c9dc5);
   }
   return { fingerprint, digests, units, placeRaw, placeQ: I.DIGEST_PLACE_Q, warns: (c.bootWarns || []).slice(),
+    detMath: globalThis.__detMath ? { installed: globalThis.__detMath.installed, failed: globalThis.__detMath.failed, katN: globalThis.__detMath.katN } : null,
     roster: [...(globalThis.__WATCH_SPEC_KEYS || [])], spec: globalThis.__WATCH_SPEC ?? null };
 }
 
@@ -136,13 +155,13 @@ async function chromiumBoots() {
   } finally { srv.kill(); }
 }
 
-function nativeBoot(q) {
+function nativeBoot(q, { detMath = true } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'timesim-338n-'));
   const file = join(dir, 'out.json');
   const script = `
     import { bootNative } from ${JSON.stringify(new URL('./native/host.mjs', import.meta.url).href)};
     import { writeFileSync } from 'node:fs';
-    await bootNative({ query: ${JSON.stringify(q)} });
+    await bootNative({ query: ${JSON.stringify(q)}, detMath: ${detMath} });
     const I = await import(${JSON.stringify(new URL('../src/inspect.js', import.meta.url).href)});
     writeFileSync(${JSON.stringify(file)}, JSON.stringify((${measure})(I)));
     process.exit(0);`;
@@ -154,7 +173,7 @@ function nativeBoot(q) {
 }
 
 const t0 = Date.now();
-const [chrome, ...natives] = await Promise.all([chromiumBoots(), ...SPECS.map(nativeBoot)]);
+const [chrome, engineMath, ...natives] = await Promise.all([chromiumBoots(), nativeBoot(SPECS[0], { detMath: false }), ...SPECS.map((q) => nativeBoot(q))]);
 const native = Object.fromEntries(SPECS.map((q, i) => [q, natives[i]]));
 console.log(`booted ${SPECS.length} spec(s) in both hosts in ${((Date.now() - t0) / 1000).toFixed(0)} s (native: node ${process.version}, V8 ${process.versions.v8})`);
 
@@ -163,8 +182,11 @@ const gate = (ok, what) => { console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${what}`); 
 for (const q of SPECS) {
   const a = chrome[q], b = native[q], name = q || 'identity';
   console.log(`\n${name}`);
-  gate(a.warns.length === 0, `Chromium boot silent (${a.warns.length} warning(s)${a.warns.length ? ': ' + a.warns.join(' | ') : ''})`);
-  gate(b.warns.length === 0, `native boot silent (${b.warns.length} warning(s)${b.warns.length ? ': ' + b.warns.join(' | ') : ''})`);
+  for (const [host, r] of [['Chromium', a], ['native', b]]) {
+    const { unmatched, stale } = matchDeclaredWarns(DECLARED[q], r.warns);
+    gate(!unmatched.length && !stale.length, `${host} boot warns exactly its declared set (${DECLARED[q].length ? DECLARED[q].join(' | ') : 'silent'})`
+      + (unmatched.length ? ` — undeclared: ${unmatched.join(' | ')}` : '') + (stale.length ? ` — declared but silent: ${stale.join(' | ')}` : ''));
+  }
   gate(JSON.stringify(a.roster) === JSON.stringify(b.roster) && JSON.stringify(a.spec) === JSON.stringify(b.spec),
     `the build read one roster (${b.roster.length} keys) and one spec ${JSON.stringify(b.spec)} in both hosts`);
   gate(a.fingerprint.hash === b.fingerprint.hash && a.fingerprint.units === b.fingerprint.units,
@@ -188,8 +210,12 @@ for (const q of SPECS) {
   }
   gate(placeDiff.length === 0, `PLACE agrees for all ${names.length} units over ${b.digests.poseCount} poses within one ${tol.toExponential(0)} digest cell${placeDiff.length ? ' — moved: ' + placeDiff.join(', ') : ''}`);
   console.log(`  REPORT PLACE hash straddles a cell edge for ${straddle.length} unit(s) whose metal agrees within the cell${straddle.length ? ': ' + straddle.join(', ') : ''}`);
+  for (const [host, r] of [['Chromium', a], ['native', b]]) {
+    gate(!!r.detMath && r.detMath.installed && r.detMath.failed.length === 0,
+      `${host}: deterministic maths installed, boot known answers reproduce (${r.detMath ? `${r.detMath.katN} inputs per function${r.detMath.failed.length ? ', moved: ' + r.detMath.failed.join(', ') : ''}` : 'no __detMath'})`);
+  }
   const shapeDiff = names.filter((n) => a.digests.units[n]?.shape !== b.digests.units[n]?.shape);
-  console.log(`  REPORT SHAPE digest differs for ${shapeDiff.length} of ${names.length} units (not gated: see the header)`);
+  gate(shapeDiff.length === 0, `SHAPE digest identical for all ${names.length} units over ${b.digests.poseCount} poses${shapeDiff.length ? ` — ${shapeDiff.length} differ, classified below` : ''}`);
   const tally = { 'index-order': 0, positions: 0, topology: 0, 'not a label unit': 0 };
   for (const n of shapeDiff) {
     const ua = a.units[n], ub = b.units[n];
@@ -226,5 +252,22 @@ gate(native[q0].fingerprint.hash !== chrome[q1].fingerprint.hash,
   gate(!(dev(A, B) < tol), `a planted two-cell move in '${n0}' is caught (max |ΔM| ${dev(A, B).toExponential(2)} against ${tol.toExponential(0)})`);
 }
 
-console.log(fails.length ? `\nFAIL — ${fails.length} gate(s)` : '\nPASS — the native host builds the browser\'s movement (fingerprint, and every unit\'s PLACE within one digest cell), and SHAPE is reported');
+// The maths control: the same native boot with the engine's own Math must NOT
+// build Chromium's metal (or the SHAPE gate above could not tell), and main.js
+// must say so at boot.
+{
+  const a = chrome[SPECS[0]], e = engineMath;
+  const moved = Object.keys(a.digests.units).filter((n) => a.digests.units[n].shape !== e.digests.units[n]?.shape);
+  gate(moved.length > 0, `control: native '${SPECS[0] || 'identity'}' with the ENGINE's Math differs from Chromium in SHAPE (${moved.length} units: ${moved.slice(0, 4).join(', ')}${moved.length > 4 ? ', …' : ''})`);
+  gate(e.warns.some((w) => w.startsWith('§338: deterministic maths is not installed')), 'control: that boot warns that deterministic maths is not installed');
+}
+
+if (JSON_OUT) {
+  const pick = (r) => ({ fingerprint: r.fingerprint.hash, units: Object.fromEntries(Object.entries(r.digests.units).map(([n, u]) => [n, { shape: u.shape, place: u.place }])), detMath: r.detMath });
+  writeFileSync(JSON_OUT, JSON.stringify({ format: 1, platform: `${process.platform}-${process.arch}`, node: process.version, v8: process.versions.v8,
+    specs: Object.fromEntries(SPECS.map((q) => [q, { chromium: pick(chrome[q]), native: pick(native[q]) }])) }, null, 1));
+  console.log(`wrote ${JSON_OUT}`);
+}
+
+console.log(fails.length ? `\nFAIL — ${fails.length} gate(s)` : '\nPASS — the native host builds the browser\'s movement: the same metal, digest for digest (PLACE within one cell, its straddles reported)');
 process.exit(fails.length ? 1 : 0);

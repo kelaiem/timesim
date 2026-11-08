@@ -159,6 +159,9 @@ jobs:
           if [ -d "$VERSION/vendor/ldraw" ] && [ ! -f "$VERSION/vendor/LICENSE-ldraw.txt" ]; then
             echo "::error::vendor/LICENSE-ldraw.txt is missing — a release carrying LDraw parts must carry their licence"; exit 1
           fi
+          if [ -f "$VERSION/vendor/det-math.module.js" ] && [ ! -f "$VERSION/vendor/LICENSE-stdlib.txt" ]; then
+            echo "::error::vendor/LICENSE-stdlib.txt is missing — a release carrying the stdlib-js maths (§338) must carry its licence"; exit 1
+          fi
 
       # §28 layer 1 — version every asset URL so a browser cannot serve a
       # stale one, and emit version.json for the running app to poll. URLs

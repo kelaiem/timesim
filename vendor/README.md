@@ -3,7 +3,9 @@
 These files are **not** covered by the project's Apache 2.0 license (see
 `../LICENSE`). The code is redistributed under its own MIT terms, whose
 full text is included here as required by those licenses; the LDraw part
-data (`ldraw/`, below) is CC BY 4.0. Two files are
+data (`ldraw/`, below) is CC BY 4.0; and `det-math.module.js` (below) is
+stdlib-js under Apache-2.0, with the Sun Microsystems fdlibm notices its ports
+carry kept verbatim at the end of the file. Two files are
 verbatim; `three-mesh-bvh.module.js` carries **three local patches** (below),
 all marked `PATCHED (timesim)` in place. None is fixed upstream as of
 master 2026-08 (patches 1–2 checked against `src/math/OrientedBox.js` and
@@ -119,3 +121,15 @@ bvh file must NOT** — it should differ at precisely the three patch sites, and
 If you bump a version, re-fetch that package's `LICENSE` too — the copyright
 years change — re-apply and re-verify all three patches, and update BOTH hash
 blocks above as well as the table in `../README.md`.
+
+## `det-math.module.js` — the deterministic maths (§338 landing 2)
+
+**GENERATED, never edited**: `node tools/det-math-vendor.mjs` writes it (and
+`LICENSE-stdlib.txt`) from the exactly pinned stdlib-js packages named in its
+header, bundled by a pinned esbuild; `--check` rebuilds it in a temporary
+directory and fails on any byte that differs. It is stdlib-js's pure-JavaScript
+ports of FreeBSD msun / Sun fdlibm (`sin`, `cos`, `pow`, `atan2` and the rest),
+which `src/det-math.js` installs over `Math` so the build's metal is the same on
+every engine and CPU. The tool, and `tools/check-det-math.mjs` on the committed
+bytes, assert that it calls no transcendental `Math` builtin and uses no `**`.
+

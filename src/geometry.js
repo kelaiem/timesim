@@ -457,7 +457,7 @@ const cyRetreat = (R, rho, h) => cyEpi(R, rho, cyPsiAtH(R, rho, h))[3];
 // one copy carrying a change.
 const cyContactAngle = (R, rho, h) => {
   if (h <= 0) return 0;
-  const c = ((R + rho) ** 2 + rho ** 2 - (R + h) ** 2) / (2 * rho * (R + rho));
+  const c = (Math.pow(R + rho, 2) + Math.pow(rho, 2) - Math.pow(R + h, 2)) / (2 * rho * (R + rho));
   if (c <= -1) return Math.PI;
   if (c >= 1) return 0;
   return Math.acos(c);
@@ -1892,7 +1892,7 @@ export function makeEscapeWheel({ teeth = 15, radius, thickness, rakeDeg = 0, un
       const n = [-Math.cos(th), -Math.sin(th)], back = [W * Math.sin(th), -W * Math.cos(th)];
       const dir = [Math.cos(rk) * n[0] + Math.sin(rk) * back[0], Math.cos(rk) * n[1] + Math.sin(rk) * back[1]];
       // |T + s·dir| = radius − undercut, the root nearer the tip
-      const b2 = 2 * (T[0] * dir[0] + T[1] * dir[1]), c2 = radius * radius - (radius - undercut) ** 2;
+      const b2 = 2 * (T[0] * dir[0] + T[1] * dir[1]), c2 = radius * radius - Math.pow(radius - undercut, 2);
       const sDist = (-b2 - Math.sqrt(b2 * b2 - 4 * c2)) / 2;
       U = [T[0] + sDist * dir[0], T[1] + sDist * dir[1]];
     }
@@ -2691,7 +2691,7 @@ export function makePalletFork({ span, seat, guard: guardSeat, thickness, stoneZ
       const k = 1 + n1[0] * n2[0] + n1[1] * n2[1];
       const ex = p.x + bevel * (n1[0] + n2[0]) / Math.max(k, 0.1), ey = p.y + bevel * (n1[1] + n2[1]) / Math.max(k, 0.1);
       let best = null, bd = Infinity;
-      for (const q of ring) { const dd = (q[0] - ex) ** 2 + (q[1] - ey) ** 2; if (dd < bd) { bd = dd; best = q; } }
+      for (const q of ring) { const dd = Math.pow(q[0] - ex, 2) + Math.pow(q[1] - ey, 2); if (dd < bd) { bd = dd; best = q; } }
       return best;
     });
   })();
@@ -4208,7 +4208,7 @@ export function* makeHairspringSteps(plan) {
   g.userData.devLen = restDevLen;
   g.userData.section = (() => {
     const a = ribbonR, c = Math.max(height / 2, ribbonR);
-    return { shape: 'rhombus4', a, c, I_u4: (a ** 3) * c / 3 };
+    return { shape: 'rhombus4', a, c, I_u4: (Math.pow(a, 3)) * c / 3 };
   })();
   if (overcoil) {
     // §218 tier two — the stud clamps the OVERCOIL's end, in the raised plane.
@@ -4333,7 +4333,7 @@ export function genevaSpec({ N, stockMin, pivotMin, margin, studR, arborR }) {
     // instead — the fat arm a continuously-running Geneva carries — buries the
     // pin at the ceiling rather than stopping it there, because the pin
     // arrives from OUTSIDE: measured, −0.2945 into metal at the stop.
-    bankTh: Math.acos((a * a + d * d - (b + pivotMin) ** 2) / (2 * a * d)),
+    bankTh: Math.acos((a * a + d * d - Math.pow(b + pivotMin, 2)) / (2 * a * d)),
     slotInner: d - a,                 // where the pin bottoms
     hollowR: lockR + margin * 0.5,    // the hollow is cut over the disc, with running room
     web: d - a - hubR,
@@ -6377,7 +6377,13 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
 // alarm barrel (§89) exactly as it was.
 // `sense`: the train this spring drives — MOVEMENT_SENSE for the going drum,
 // ALARM_SENSE for the alarm barrel (layout.js says why they are two).
-export function mainspringFrames({ innerR, outerR, coils, ribbonR, sweep, setup = 0,
+// §338 landing 2 — resumable, as makeHairspringSteps is (§266): the k-solve runs
+// a 128-panel length integral 44 times a frame, and with the deterministic pow
+// (src/det-math.js, about twice the engine's) one barrel's frames held the boot
+// thread past BREATHE_MS. The steps are the same arithmetic in the same order;
+// `mainspringFrames` drains them for every caller that does not yield.
+export function mainspringFrames(opts) { return drainSteps(mainspringFramesSteps(opts)); }
+export function* mainspringFramesSteps({ innerR, outerR, coils, ribbonR, sweep, setup = 0,
                                    sense = MOVEMENT_SENSE }) {
   const pBind = ribbonR * 2;              // coil bind — see above
   const P = pBind / (Math.PI * 2);        // ...as radius gained per radian
@@ -6491,13 +6497,18 @@ export function mainspringFrames({ innerR, outerR, coils, ribbonR, sweep, setup 
   // where the analytic guess put it — 2.12 against 1.63 as built), sampled at
   // both extremes and the middle, and the achieved step is asserted below.
   const h = sweep / 512;
-  const sens = (A) => {
-    const a = frameAt(A - h).pts, b = frameAt(A + h).pts;
+  function* sensSteps(A) {
+    const a = frameAt(A - h).pts;
+    yield;
+    const b = frameAt(A + h).pts;
+    yield;
     let m = 0;
     for (let i = 0; i <= segs; i++) m = Math.max(m, Math.hypot(a[i][0] - b[i][0], a[i][1] - b[i][1]));
     return m / (2 * h);
-  };
-  const dPdA = Math.max(sens(A_down + h), sens((A_down + A_full) / 2), sens(A_full - h));
+  }
+  // In argument order, as Math.max(sens(…), sens(…), sens(…)) evaluated them.
+  const s0 = yield* sensSteps(A_down + h), s1 = yield* sensSteps((A_down + A_full) / 2), s2 = yield* sensSteps(A_full - h);
+  const dPdA = Math.max(s0, s1, s2);
   const nFrames = Math.max(Math.ceil((sweep * dPdA) / pBind) + 1, 3);
 
   const frames = [], cutLens = [];
@@ -6505,6 +6516,7 @@ export function mainspringFrames({ innerR, outerR, coils, ribbonR, sweep, setup 
   for (let i = 0; i < nFrames; i++) {
     const A = A_full - (sweep * i) / (nFrames - 1);   // frame 0 = fully wound; frame last = A_down (service run-down)
     const f = frameAt(A);
+    yield;
     if (i) for (let j = 0; j <= segs; j++) {
       const q = frames[i - 1];
       maxStep = Math.max(maxStep, Math.hypot(f.pts[j][0] - q[j][0], f.pts[j][1] - q[j][1]));
@@ -6621,7 +6633,10 @@ export function stripSweepGeometry(curve, segs, half) {
   return g;
 }
 
-export function makeBarrel({ radius, height, teeth, module, plain = false, arborH = null, name = '',
+// §338 landing 2 — resumable for the same reason as mainspringFramesSteps (it
+// runs them, then tubes each frame); `makeBarrel` drains it.
+export function makeBarrel(opts) { return drainSteps(makeBarrelSteps(opts)); }
+export function* makeBarrelSteps({ radius, height, teeth, module, plain = false, arborH = null, name = '',
                              ratchet = !plain, springArborR = null, springWindSweep = 0,
                              springSetupSweep = 0, ribbonSection = 'strip', ribbonSolve = null,
                              arbor = true, arborBoreR = null,
@@ -6740,10 +6755,10 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
       ? Math.max((q * (springOuter - collarR)) / (1 + q), 0.08)
       : Math.max(((springOuter - radius * 0.16) / sCoils) * 0.1, 0.08);
     const springInner = morph ? collarR + sRibbon : radius * 0.16;
-    const wind = morph ? mainspringFrames({
+    const wind = morph ? (yield* mainspringFramesSteps({
       innerR: springInner, outerR: springOuter, coils: sCoils, ribbonR: sRibbon,
       sweep: springWindSweep, setup: springSetupSweep, sense,
-    }) : null;
+    })) : null;
     // TODO 193 — cut as a STRIP (stripSweepGeometry), on the curve and frames
     // the old TubeGeometry swept: the same polyline, the same segment count, the
     // same half-extent sRibbon, corners where the rhombus had its points.
@@ -6756,7 +6771,8 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
       : new THREE.TubeGeometry(curve, segs, sRibbon, 4, false));
     const tubeOf = (pts) => sweep(
       new THREE.CatmullRomCurve3(pts.map(([x, y]) => new THREE.Vector3(x, y, 0))), wind.segs);
-    const windGeos = morph ? wind.frames.map(tubeOf) : null;
+    let windGeos = null;
+    if (morph) { windGeos = []; for (const f of wind.frames) { windGeos.push(tubeOf(f)); yield; } }   // wind.frames.map(tubeOf), a frame a step
     const sGeo = morph ? windGeos[windGeos.length - 1]
       : sweep(new ArchimedeanSpiral(springInner, springOuter, sCoils), sCoils * 48);
     const springMesh = new THREE.Mesh(sGeo, MATS.steel);
@@ -6829,8 +6845,8 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
         // diagonal, the section four tube segments cut.)
         section: (() => {
           const a = sRibbon, c = Math.max((height * 0.7) / 2, sRibbon);
-          return strip ? { shape: 'strip', a, c, I_u4: 4 * (a ** 3) * c / 3 }
-            : { shape: 'rhombus4', a, c, I_u4: (a ** 3) * c / 3 };
+          return strip ? { shape: 'strip', a, c, I_u4: 4 * (Math.pow(a, 3)) * c / 3 }
+            : { shape: 'rhombus4', a, c, I_u4: (Math.pow(a, 3)) * c / 3 };
         })(),
       };
       setWind(wind.sweepFull);   // built fully wound, which is where the sim boots
@@ -6981,6 +6997,29 @@ function discLessDisc(A, B, n = 144) {   // CCW points of disc A less disc B (B 
   arc(B, B.r, phi + Math.PI + t2, phi + Math.PI - t2);
   return pts;
 }
+// CCW points of the union of a disc K and satellites that each overlap K and not each other (TODO 289 landing 3: a
+// corner's bore with a bearing block's pocket on either side). Walking K CCW, each satellite is entered where its
+// circle crosses K on the clockwise side and left where it crosses on the counter-clockwise side; between, the walk
+// follows the satellite's own arc outside K — discUnionRing's construction, once per satellite.
+function discChainRing(K, sats, n = 144) {
+  const xs = sats.map((S) => {
+    const d = Math.hypot(S.x - K.x, S.y - K.y), psi = Math.atan2(S.y - K.y, S.x - K.x);
+    const t2 = Math.acos((d * d + K.r * K.r - S.r * S.r) / (2 * d * K.r));   // half-angle on K inside S
+    const t1 = Math.acos((d * d + S.r * S.r - K.r * K.r) / (2 * d * S.r));   // half-angle on S inside K
+    return { S, psi: ((psi % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI), t1, t2 };
+  }).sort((a, b) => a.psi - b.psi);
+  const pts = [];
+  const arc = (c, R, a0, a1) => { const k = Math.max(2, Math.ceil(Math.abs(a1 - a0) / (2 * Math.PI) * n));
+    for (let i = 0; i < k; i++) { const a = a0 + (a1 - a0) * i / k; pts.push(new THREE.Vector2(c.x + R * Math.cos(a), c.y + R * Math.sin(a))); } };
+  for (let i = 0; i < xs.length; i++) {
+    const x = xs[i], nx = xs[(i + 1) % xs.length];
+    arc(x.S, x.S.r, x.psi + Math.PI + x.t1, x.psi + 3 * Math.PI - x.t1);   // the satellite, outside K
+    let a0 = x.psi + x.t2, a1 = nx.psi - nx.t2;                              // K, from this satellite's exit to the next's entry
+    while (a1 <= a0) a1 += 2 * Math.PI;
+    arc(K, K.r, a0, a1);
+  }
+  return pts;
+}
 // outline (§307): a closed CCW loop of [x, y] points in the plate's own frame,
 // the last point not repeated — layout.js's formLoop, a rounded rectangle,
 // simple by construction — that REPLACES the outer circle. `radius` is still
@@ -7071,7 +7110,18 @@ export function makeBackPlate({ radius, thickness, holes = [], slots = [], secto
     p.closePath();
     shape.holes.push(p);
   }
+  // TODO 289 landing 3 — pockets that name the SAME through-bore (two bearing blocks either side of one corner's
+  // bore) are one opening: their rings and the bore's are cut as one ring round all of them (discChainRing).
+  const throughKey = (t) => `${t.x},${t.y},${t.r}`;
+  const shared = new Map();
+  for (const pk of pockets) if (pk.through) { const k = throughKey(pk.through); shared.set(k, [...(shared.get(k) ?? []), pk]); }
+  for (const [, group] of shared) if (group.length > 1) {
+    const t = group[0].through, K = { x: t.x, y: t.y, r: t.r + bevelSize };
+    const sats = group.map((pk) => ({ x: pk.x, y: pk.y, r: pk.r + bevelSize }));
+    const p = new THREE.Path(); p.setFromPoints(discChainRing(K, sats).reverse()); shape.holes.push(p);   // CW: a hole
+  }
   for (const pk of pockets) {
+    if (pk.through && shared.get(throughKey(pk.through)).length > 1) continue;   // cut with its group above
     const A = { x: pk.x, y: pk.y, r: pk.r + bevelSize };
     const B = pk.through ? { x: pk.through.x, y: pk.through.y, r: pk.through.r + bevelSize } : null;
     const p = new THREE.Path();
@@ -7089,7 +7139,16 @@ export function makeBackPlate({ radius, thickness, holes = [], slots = [], secto
   {
     const discs = [];
     holes.forEach((h, i) => discs.push({ what: `hole ${i} (${h.x.toFixed(2)}, ${h.y.toFixed(2)}) r ${h.r.toFixed(3)}`, d: [h] }));
-    pockets.forEach((pk, i) => discs.push({ what: `pocket ${i} (${pk.x.toFixed(2)}, ${pk.y.toFixed(2)}) r ${pk.r.toFixed(3)}${pk.through ? ' + through r ' + pk.through.r.toFixed(3) : ''}`, d: [pk, ...(pk.through ? [pk.through] : [])] }));
+    {   // a pocket and its through-bore are one opening, and so are pockets sharing one through-bore (landing 3)
+      const byThrough = new Map();
+      pockets.forEach((pk, i) => {
+        const k = pk.through ? `${pk.through.x},${pk.through.y},${pk.through.r}` : `pocket ${i}`;
+        const e = byThrough.get(k);
+        if (e) { e.d.push(pk); e.what += ` + pocket ${i}`; }
+        else byThrough.set(k, { what: `pocket ${i} (${pk.x.toFixed(2)}, ${pk.y.toFixed(2)}) r ${pk.r.toFixed(3)}${pk.through ? ' + through r ' + pk.through.r.toFixed(3) : ''}`, d: [pk, ...(pk.through ? [pk.through] : [])] });
+      });
+      for (const e of byThrough.values()) discs.push(e);
+    }
     const polys = [];
     for (const sl of slots) { const q = new THREE.Path(); const dx = sl.bx - sl.ax, dy = sl.by - sl.ay, d = Math.hypot(dx, dy), ang = Math.atan2(d > 1e-9 ? dy : 0, d > 1e-9 ? dx : 1);
       q.absarc(sl.bx, sl.by, sl.r, ang + Math.PI / 2, ang - Math.PI / 2, true); q.absarc(sl.ax, sl.ay, sl.r, ang - Math.PI / 2, ang - Math.PI * 1.5, true); polys.push({ what: 'slot', p: q.getPoints(72) }); }
@@ -7147,6 +7206,29 @@ export function makeBackPlate({ radius, thickness, holes = [], slots = [], secto
     fg.translate(0, 0, faceZ - h);
     const floor = new THREE.Mesh(fg, MATS.perledNickel);
     floor.name = 'backPlate';   // support resolves the plate by this exact name
+    m.add(floor);
+  }
+  // TODO 289 landing 2 — a `through` may carry its own `depth`: a BLIND bore of another depth cut as one opening
+  // with the pocket (a bearing block's pocket beside a corner's blind bore). Its floor is the bore's disc, lapped into
+  // the stock like every floor, less the pocket's opening (the pocket's own floor stands under that, deeper or
+  // shallower), so the two floors meet face to face where the openings join and neither overlaps the other's hole.
+  for (const pk of pockets) {
+    if (!(pk.through && pk.through.depth > 0)) continue;
+    const h = 2 * faceZ - pk.through.depth;
+    if (!(h > 0)) continue;
+    const B = { x: pk.through.x, y: pk.through.y, r: pk.through.r + bevelSize + pk.lap };
+    const A = { x: pk.x, y: pk.y, r: pk.r + bevelSize };
+    const d = Math.hypot(A.x - B.x, A.y - B.y);
+    if (!(Math.abs(B.r - A.r) < d && d < A.r + B.r)) {
+      console.warn(`TODO 289: a blind through-bore's floor (r ${B.r.toFixed(3)}) and its pocket's opening (r ${A.r.toFixed(3)}, ${d.toFixed(3)} apart) do not cross — the floor's crescent is undefined`);
+      continue;
+    }
+    const fs = new THREE.Shape();
+    fs.setFromPoints(discLessDisc(B, A));
+    const fg = new THREE.ExtrudeGeometry(fs, { depth: h, bevelEnabled: false, curveSegments: 72 });
+    fg.translate(0, 0, faceZ - h);
+    const floor = new THREE.Mesh(fg, MATS.perledNickel);
+    floor.name = 'backPlate';
     m.add(floor);
   }
   return m;

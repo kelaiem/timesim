@@ -1,11 +1,11 @@
 // DO THE DIAL'S FEET STAND ON THE DIAL AND THE PLATE THEY JOIN, ON EVERY FORM KIND, AND DOES NONE OF THEM SET THE CASE?
-// Acceptance (TODO 294; the free kind's own rows are tools/probe-325-free-case.mjs P1).
+// Acceptance (TODO 297; the free kind's own rows are tools/probe-325-free-case.mjs P1).
 //
-//   node tools/probe-294-form-feet.mjs        (exit 1 on any failed row)
+//   node tools/probe-297-form-feet.mjs        (exit 1 on any failed row)
 //
 // The feet are three posts from the dial's back to the base plate. §125 step 5 sites them by the ROUND rule, one
 // CLEAR_MARGIN inside the tighter of the dial's and the plate's radii. The form kinds cut the dial and both plates to
-// the form outline (FORM), and since TODO 294 every form kind re-sites them inside it (main.js FORM_DIAL_FEET, §325
+// the form outline (FORM), and since TODO 297 every form kind re-sites them inside it (main.js FORM_DIAL_FEET, §325
 // landing 2's solve). Per build:
 //   F1 each foot stands inside the outline the dial and the plates are cut to by the rim margin plus its own radius
 //      (FORM.inset ≥ PLATE_RIM_MARGIN + DIAL_FOOT_R), so it is wholly under the dial and on the plate, and it is
@@ -14,7 +14,7 @@
 //   F3 no foot is what sets the case: the regions record's binding member is not a foot.
 // CONTROL: the round default keeps its feet exactly at the rim rule (each at min(dialRadius, plateR) − DIAL_FOOT_R −
 // CLEAR_MARGIN off the hands, at 10°, 108° and 250°), to 1e-9.
-// REPORTED: each build's fitted-case area, against the as-cut figures TODO 294 filed.
+// REPORTED: each build's fitted-case area, against the as-cut figures TODO 297 filed.
 import { bootMany } from './boot-pool.mjs';
 
 const FILED = { 'case=rect': 1162.1, 'case=cushion': 1083.3, 'case=tonneau': 1124.4, 'case=fitted': 1060.9, 'alarm=0&case=fitted': 1040.2 };

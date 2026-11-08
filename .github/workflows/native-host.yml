@@ -13,6 +13,35 @@
 # must keep working in, so a change that reaches for the page during the BUILD
 # (a fetch, a DOM read the stand-in answers differently) goes red on its own PR.
 #
+# §338 landing 2 makes it the PORTABILITY gate too, in three jobs:
+#   maths       the vendored deterministic maths rebuilt byte for byte from its
+#               pinned packages, the module graph free of `**`, and the
+#               recorded known answers reproduced on Node (V8) AND Bun
+#               (JavaScriptCore): one table, two engine families;
+#   native-host the probe on BOTH architectures GitHub hosts (ubuntu-latest,
+#               x64; ubuntu-24.04-arm, arm64, free for a public repository),
+#               each holding its own Chromium and native builds equal, SHAPE
+#               included, and writing its digests out;
+#   cross-arch  tools/compare-338-hosts.mjs over both files: every build on
+#               every machine one movement, digest for digest.
+#
+# §338 landing 4 adds, to native-host, the POSE-CONDITIONING guard
+# (tools/probe-338-pose-conditioning.mjs): a synthetic engine one ulp off on an
+# eighth of its answers, booted beside the tree's own maths, and no digest pose
+# may move the metal past the PLACE budget (its control: the held wind at the τ
+# the train's law inverts, which #921 found, must).
+#
+# §338 landing 3 adds the BATTERY itself, natively:
+#   battery-native        tools/battery-native.mjs on both architectures: every
+#                         BATTERY row through inspect.js on the native host, each
+#                         judged by its own gate, its whole --report kept;
+#   battery-cross-arch    tools/report-diff.mjs over the two reports: every leaf
+#                         of every check's payload EXACTLY equal across x64 and
+#                         arm64 (timing excluded by name and counted), with a
+#                         planted one-ulp control. §227 could only compare
+#                         summary lines across architectures; this compares the
+#                         ~175,000 leaves §152's incremental path inherits.
+#
 # `paths` is POSITIVE, as boot-yield.yml's is: what the probe boots is
 # index.html and the module graph under src/ and vendor/, and the host is
 # tools/native/.
@@ -26,6 +55,13 @@ on:
       - 'vendor/**'
       - 'tools/native/**'
       - 'tools/probe-338-native-boot.mjs'
+      - 'tools/compare-338-hosts.mjs'
+      - 'tools/probe-338-pose-conditioning.mjs'
+      - 'tools/battery-native.mjs'
+      - 'tools/report-diff.mjs'
+      - 'tools/det-math-vendor.mjs'
+      - 'tools/det-math-kat.mjs'
+      - 'tools/check-det-math.mjs'
       - 'tools/battery-checks.mjs'
       - 'dev_server.py'
       - 'tools/package-lock.json'
@@ -44,8 +80,39 @@ permissions:
   contents: read
 
 jobs:
-  native-host:
+  maths:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install the tools' pinned packages
+        working-directory: tools
+        run: npm ci --no-audit --no-fund
+
+      - name: The vendored maths is what its pinned packages build
+        run: node tools/det-math-vendor.mjs --check
+
+      - name: The build computes with the repository's maths (no `**`, bundle audited, known answers on V8)
+        run: node tools/check-det-math.mjs
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+
+      - name: The known answers reproduce on JavaScriptCore (Bun)
+        run: bun tools/det-math-kat.mjs --check
+
+  native-host:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -62,10 +129,96 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('tools/package-lock.json') }}
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('tools/package-lock.json') }}
 
       - name: Install Chromium
         uses: ./.github/actions/install-chromium
 
-      - name: The native host builds the browser's movement
-        run: node tools/probe-338-native-boot.mjs
+      - name: The known answers reproduce on this machine
+        run: node tools/det-math-kat.mjs --check
+
+      - name: The native host builds the browser's movement, digest for digest
+        run: node tools/probe-338-native-boot.mjs --json native-host-${{ runner.arch }}.json
+
+      - name: No pose of the net amplifies a one-ulp maths difference past the PLACE budget
+        run: node --import ./tools/native/loader.mjs tools/probe-338-pose-conditioning.mjs
+
+      - name: Keep the digests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-host-${{ runner.arch }}
+          path: native-host-${{ runner.arch }}.json
+          if-no-files-found: error
+          retention-days: 14
+
+  cross-arch:
+    needs: native-host
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: native-host-*
+          merge-multiple: true
+
+      - name: x64 and arm64 built one movement
+        run: node tools/compare-338-hosts.mjs native-host-X64.json native-host-ARM64.json
+
+  battery-native:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    # A local 4-vCPU run walls ~17.5 min in one process; the cap is that times
+    # the 1.66x same-tree spread battery.yml measured, rounded up, plus boot.
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install the tools' pinned packages
+        working-directory: tools
+        run: npm ci --no-audit --no-fund
+
+      - name: The battery, natively, every row judged by its own gate
+        run: node --import ./tools/native/loader.mjs tools/battery-native.mjs --report battery-native-${{ runner.arch }}.json
+
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: battery-native-${{ runner.arch }}
+          path: battery-native-${{ runner.arch }}.json
+          if-no-files-found: error
+          retention-days: 14
+
+  battery-cross-arch:
+    needs: battery-native
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: battery-native-*
+          merge-multiple: true
+
+      - name: x64 and arm64 reached one verdict, leaf for leaf
+        run: node tools/report-diff.mjs battery-native-X64.json battery-native-ARM64.json
+

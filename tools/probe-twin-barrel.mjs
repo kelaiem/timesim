@@ -30,6 +30,10 @@ import { bootMany } from './boot-pool.mjs';
 import { EXPR as ROOM_EXPR } from './probe-twin-barrel-room.mjs';
 import { drumRibbon, parallelTwin, seriesTwin, chainDrumR, chainDrumAngles } from '../src/twin-barrel.js';
 import { MAINSPRING_ALPHA_MIN, MAINSPRING_SIGMA_Y_PA } from '../src/layout.js';
+import { installDetMath } from '../src/det-math.js';
+// the build computes with the repository's maths (§338 landing 2), so the pure solves here must too: a row that
+// holds Node's solve to the booted record to the bit is otherwise comparing two engines' last ulps
+installDetMath(Math);
 
 const REF_EXPR = `(() => { const g = window.__clock.equalisation.going;
   return { k: g.k_Nm_per_rad, wind: g.windRangeRad, section: g.section, devLen: g.devLen_u, packing: g.packing,

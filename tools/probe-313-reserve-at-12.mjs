@@ -39,7 +39,7 @@ import { createRequire } from 'node:module';
 import { UNIT_MM, CASE_CLEAR, CASE_BAND_T, CASE_WIDTH_MAX, ARRANGEMENT } from '../src/layout.js';
 import { GONG_SEATS } from '../src/gong-seats.js';
 import { defaultSeatMode } from '../src/case-shape.js';
-// a kind's default seat's fit: the spiral where one closes, else the bar (§317, case-shape.js defaultSeatMode; TODO 294
+// a kind's default seat's fit: the spiral where one closes, else the bar (§317, case-shape.js defaultSeatMode; TODO 297
 // left the rect with only a bar)
 const seatFit = (kind) => GONG_SEATS[kind][defaultSeatMode(GONG_SEATS, kind)].formrect.join(',');
 

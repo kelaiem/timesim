@@ -24,6 +24,10 @@ import { bootMany } from './boot-pool.mjs';
 import { EXPR as ROOM_EXPR } from './probe-twin-barrel-room.mjs';
 import { pulleyBarrel, pickPulleyBarrel, DRUM_GAP_U } from '../src/twin-barrel.js';
 import { PULLEY_BARREL, CLEAR_MARGIN, UNIT_MM, PLATE_RIM_MARGIN, convexHull2, fitFittedCase, shapeArea } from '../src/layout.js';
+import { installDetMath } from '../src/det-math.js';
+// the build computes with the repository's maths (§338 landing 2), so the pure solves here must too: a row that
+// holds Node's solve to the booted record to the bit is otherwise comparing two engines' last ulps
+installDetMath(Math);
 
 const ci = process.argv.indexOf('--cache'), cache = ci >= 0 ? process.argv[ci + 1] : null;
 const REF_EXPR = `(() => { const g = window.__clock.equalisation.going;

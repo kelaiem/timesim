@@ -68,7 +68,7 @@ export function solveRibbon({ springOuter, springArborR, springWindSweep, spring
       }
       const L = freeCoilLength(r + a, springOuter, n * Math.PI * 2);
       const Afull = n * Math.PI * 2 + thetaF;
-      return { ribbonR: a, devLen: L, fill: (2 * a * L) / (Math.PI * (springOuter ** 2 - r ** 2)),
+      return { ribbonR: a, devLen: L, fill: (2 * a * L) / (Math.PI * (Math.pow(springOuter, 2) - Math.pow(r, 2))),
         windLen: ribbonFrameLength(r + a, springOuter, a, Afull, RIBBON_K_MAX) };
     };
     const alphaMin = ribbonSolve.alphaMin ?? null;

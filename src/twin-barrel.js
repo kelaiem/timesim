@@ -77,10 +77,10 @@ export function drumRibbon({ R, c, setup, sweep, sigmaOverE = MAINSPRING_SIGMA_Y
     ribbonSolve: { sigmaOverE, alphaMin } });
   if (!sol) return null;
   const a = sol.ribbonR, L = sol.devLen;
-  const I_u4 = ((2 * a) ** 3 * (2 * c)) / 12;   // the strip's section, the build's (section.I_u4)
-  const k = (MAINSPRING_E_PA * I_u4 * U ** 4) / (L * U);   // N·m/rad, main.js ribbonK's law
+  const I_u4 = (Math.pow(2 * a, 3) * (2 * c)) / 12;   // the strip's section, the build's (section.I_u4)
+  const k = (MAINSPRING_E_PA * I_u4 * Math.pow(U, 4)) / (L * U);   // N·m/rad, main.js ribbonK's law
   const thFull = setup + sweep;
-  const energyJ = 0.5 * k * (thFull ** 2 - setup ** 2);
+  const energyJ = 0.5 * k * (Math.pow(thFull, 2) - Math.pow(setup, 2));
   const sigmaFull = (MAINSPRING_E_PA * a * thFull) / L;   // σ = E·a·θ/L at full wind
   return { R, springOuter, sol, a, L, I_u4, k, energyJ, sigmaFull, alpha: sol.collarR / (2 * a) };
 }
