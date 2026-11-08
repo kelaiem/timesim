@@ -25,6 +25,17 @@
 #   cross-arch  tools/compare-338-hosts.mjs over both files: every build on
 #               every machine one movement, digest for digest.
 #
+# §338 landing 5 adds the COMPILED KERNEL (tools/kernel/kernel.cpp → src/kernel-wasm.js):
+#   maths                 + the kernel rebuilt byte for byte by the pinned clang
+#                         (tools/kernel-build.mjs --check), and the primitive held
+#                         to the reference on analytic and random geometry
+#                         (tools/probe-338-kernel-parity.mjs);
+#   battery-native        on both kernels, js (the reference) and wasm;
+#   battery-cross-arch    each kernel's two architectures leaf-identical;
+#   kernel-parity         G3: the wasm report against the js report of one tree
+#                         and one machine, every verdict the same and no gap read
+#                         larger (probe-338-kernel-parity.mjs --reports).
+#
 # §338 landing 4 adds, to native-host, the POSE-CONDITIONING guard
 # (tools/probe-338-pose-conditioning.mjs): a synthetic engine one ulp off on an
 # eighth of its answers, booted beside the tree's own maths, and no digest pose
@@ -57,6 +68,9 @@ on:
       - 'tools/probe-338-native-boot.mjs'
       - 'tools/compare-338-hosts.mjs'
       - 'tools/probe-338-pose-conditioning.mjs'
+      - 'tools/probe-338-kernel-parity.mjs'
+      - 'tools/kernel/**'
+      - 'tools/kernel-build.mjs'
       - 'tools/battery-native.mjs'
       - 'tools/report-diff.mjs'
       - 'tools/det-math-vendor.mjs'
@@ -106,6 +120,15 @@ jobs:
 
       - name: The known answers reproduce on JavaScriptCore (Bun)
         run: bun tools/det-math-kat.mjs --check
+
+      - name: Install the kernel's pinned compiler (clang and lld 18)
+        run: sudo apt-get update -q && sudo apt-get install -y -q clang-18 lld-18
+
+      - name: The compiled kernel is what its source builds, byte for byte, importing nothing
+        run: KERNEL_CXX=clang++-18 node tools/kernel-build.mjs --check
+
+      - name: The compiled distance is the reference's (G3, the primitive)
+        run: node --import ./tools/native/loader.mjs tools/probe-338-kernel-parity.mjs
 
   native-host:
     strategy:
@@ -176,6 +199,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, ubuntu-24.04-arm]
+        kernel: [js, wasm]
     runs-on: ${{ matrix.os }}
     # A local 4-vCPU run walls ~17.5 min in one process; the cap is that times
     # the 1.66x same-tree spread battery.yml measured, rounded up, plus boot.
@@ -192,14 +216,14 @@ jobs:
         run: npm ci --no-audit --no-fund
 
       - name: The battery, natively, every row judged by its own gate
-        run: node --import ./tools/native/loader.mjs tools/battery-native.mjs --report battery-native-${{ runner.arch }}.json
+        run: node --import ./tools/native/loader.mjs tools/battery-native.mjs --kernel ${{ matrix.kernel }} --report battery-native-${{ runner.arch }}-${{ matrix.kernel }}.json
 
       - name: Keep the report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: battery-native-${{ runner.arch }}
-          path: battery-native-${{ runner.arch }}.json
+          name: battery-native-${{ runner.arch }}-${{ matrix.kernel }}
+          path: battery-native-${{ runner.arch }}-${{ matrix.kernel }}.json
           if-no-files-found: error
           retention-days: 14
 
@@ -219,6 +243,28 @@ jobs:
           pattern: battery-native-*
           merge-multiple: true
 
-      - name: x64 and arm64 reached one verdict, leaf for leaf
-        run: node tools/report-diff.mjs battery-native-X64.json battery-native-ARM64.json
+      - name: x64 and arm64 reached one verdict, leaf for leaf (the js kernel)
+        run: node tools/report-diff.mjs battery-native-X64-js.json battery-native-ARM64-js.json
+
+      - name: x64 and arm64 reached one verdict, leaf for leaf (the wasm kernel)
+        run: node tools/report-diff.mjs battery-native-X64-wasm.json battery-native-ARM64-wasm.json
+
+  kernel-parity:
+    needs: battery-native
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: battery-native-X64-*
+          merge-multiple: true
+
+      - name: The wasm kernel reaches the js kernel's verdicts and reads no gap larger (G3)
+        run: node tools/probe-338-kernel-parity.mjs --reports battery-native-X64-js.json battery-native-X64-wasm.json
 

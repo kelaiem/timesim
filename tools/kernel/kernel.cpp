@@ -311,40 +311,123 @@ static double box_dist2(const double* amn, const double* amx, const double* bmn,
 }
 
 // ---------------------------------------------------------------------------
-// The query. B's triangles are mapped into A's frame once per query, and B's tree
-// refitted there (its topology kept, its boxes recomputed bottom-up), so every box
-// test is between two axis-aligned boxes in one frame.
+// The query. B is mapped into A's frame LAZILY: a B node's box is the axis-aligned
+// box of its own box's eight corners mapped (a superset, so a distance to it is
+// still a lower bound), and a leaf's triangles are mapped only when the traversal
+// reaches that leaf, each term for term as three.js' applyMatrix4 maps it (so the
+// arithmetic is the reference's frame convention, B into A, and a distance the
+// same function of the same rounded corners). Both are stamped per query, so a
+// query costs what it visits, not B's size.
 struct Query {
-  const Geom* A; const Geom* B;
-  double* btri;           // B's triangles in A's frame, tree order
-  double* bmn; double* bmx;  // B's refitted boxes, 3 per node
+  const Geom* A; const Geom* B; const double* m;
+  double* btri;              // B's triangles in A's frame, tree order (valid where the leaf is stamped)
+  double* bmn; double* bmx;  // B's node boxes in A's frame (valid where stamped)
+  u32* boxStamp; u32* triStamp;
+  u32 qid;
+  double ax[3][3];           // B's own axes in A's frame, unit (M's columns, normalized)
+  double col[3][3];          // M's columns as they are
   double best2;
+  double prune2;             // (√best2 + PRUNE_PAD)²: a node is skipped only past this
   bool done;
   u32 pairs;
 };
 
+// PRUNING IS EXACT ONLY WITH A MARGIN. A box bound and a triangle distance are
+// different arithmetic on the same corners, and where a triangle lies on its own
+// box's face (every box is tight on its triangles) the computed bound can land an
+// ulp ABOVE the computed distance and prune the very pair that holds the minimum,
+// which moved one expectedContacts witness between two builds of this kernel. So a
+// node is skipped only when its bound clears the best by PRUNE_PAD: the movement's
+// coordinates are under 100 units, an ulp there is 1.4e-14, a bound and a distance
+// each carry under ten roundings, so their difference is under 1.4e-13, and 1e-12
+// is clear of it. With the margin, the answer is the exact minimum of tri_tri2 over
+// every pair under `upper`, whatever the traversal visits first.
+static const double PRUNE_PAD = 1e-12;
+static inline double pad2(double best2) {
+  if (!(best2 < __builtin_inf())) return best2;
+  double r = __builtin_sqrt(best2) + PRUNE_PAD;
+  return r * r;
+}
+
+static u32 query_id = 0;
 static u32 scratch(u32 bytes) {
-  if (bytes > scratch_cap) { scratch_ptr = alloc(bytes); scratch_cap = scratch_ptr ? bytes : 0; }
+  if (bytes > scratch_cap) {
+    scratch_ptr = alloc(bytes);
+    scratch_cap = scratch_ptr ? bytes : 0;
+    if (scratch_ptr) { u8* z = (u8*)(unsigned long)scratch_ptr; for (u32 i = 0; i < bytes; i++) z[i] = 0; query_id = 0; }
+  }
   return scratch_ptr;
 }
 
-static void refit(Query& Q, int n) {
+static inline void map_point(const double* m, const double* v, double* o) {
+  double x = v[0], y = v[1], z = v[2];
+  double w = 1.0 / (m[3] * x + m[7] * y + m[11] * z + m[15]);
+  o[0] = (m[0] * x + m[4] * y + m[8] * z + m[12]) * w;
+  o[1] = (m[1] * x + m[5] * y + m[9] * z + m[13]) * w;
+  o[2] = (m[2] * x + m[6] * y + m[10] * z + m[14]) * w;
+}
+
+static void leaf_tris(Query& Q, int n) {
+  if (Q.triStamp[n] == Q.qid) return;
+  Q.triStamp[n] = Q.qid;
+  const Node& nd = Q.B->node[n];
+  for (int t = nd.start; t < nd.start + nd.count; t++)
+    for (int c = 0; c < 3; c++) map_point(Q.m, Q.B->tri + 9 * t + 3 * c, Q.btri + 9 * t + 3 * c);
+}
+
+// A B node's box in A's frame. A LEAF's is exact, read off its mapped triangles
+// (at most LEAF of them, and a visited leaf needs them mapped anyway); an inner
+// node's is the box of its own box's eight mapped corners, which is looser under
+// a rotation but costs eight points, not the subtree.
+static void bbox(Query& Q, int n) {
+  if (Q.boxStamp[n] == Q.qid) return;
+  Q.boxStamp[n] = Q.qid;
   const Node& nd = Q.B->node[n];
   double* mn = Q.bmn + 3 * n; double* mx = Q.bmx + 3 * n;
+  mn[0] = mn[1] = mn[2] = __builtin_inf();
+  mx[0] = mx[1] = mx[2] = -__builtin_inf();
   if (nd.left < 0) {
-    mn[0] = mn[1] = mn[2] = __builtin_inf();
-    mx[0] = mx[1] = mx[2] = -__builtin_inf();
-    for (int t = nd.start; t < nd.start + nd.count; t++) {
-      const double* p = Q.btri + 9 * t;
-      for (int k = 0; k < 9; k++) { int a = k % 3; mn[a] = dmin(mn[a], p[k]); mx[a] = dmax(mx[a], p[k]); }
-    }
+    leaf_tris(Q, n);
+    for (int t = nd.start; t < nd.start + nd.count; t++)
+      for (int k = 0; k < 9; k++) { int a = k % 3; mn[a] = dmin(mn[a], Q.btri[9 * t + k]); mx[a] = dmax(mx[a], Q.btri[9 * t + k]); }
     return;
   }
-  refit(Q, nd.left); refit(Q, nd.left + 1);
-  for (int a = 0; a < 3; a++) {
-    mn[a] = dmin(Q.bmn[3 * nd.left + a], Q.bmn[3 * (nd.left + 1) + a]);
-    mx[a] = dmax(Q.bmx[3 * nd.left + a], Q.bmx[3 * (nd.left + 1) + a]);
+  for (int c = 0; c < 8; c++) {
+    double v[3] = { (c & 1) ? nd.mx[0] : nd.mn[0], (c & 2) ? nd.mx[1] : nd.mn[1], (c & 4) ? nd.mx[2] : nd.mn[2] }, o[3];
+    map_point(Q.m, v, o);
+    for (int a = 0; a < 3; a++) { mn[a] = dmin(mn[a], o[a]); mx[a] = dmax(mx[a], o[a]); }
   }
+}
+
+// A lower bound on the squared distance between A's node `a` (an axis-aligned box
+// in its own frame) and B's node `b`: the larger of the two boxes' axis-aligned gap
+// (B's box in A's frame) and, for an inner B node, the gap between their
+// projections on each of B's own three axes. Each is a distance along a line, so
+// each bounds the true distance from below and so does their maximum; the
+// projections are what keep a ROTATED thin slab (the base plate seen from a turned
+// part) from swelling to its rotated box's box across its thin axis.
+static double lower2(Query& Q, const double* amn, const double* amx, int b) {
+  double g = box_dist2(amn, amx, Q.bmn + 3 * b, Q.bmx + 3 * b);
+  const Node& nb = Q.B->node[b];
+  if (nb.left < 0) return g;
+  double ac[3] = { (amn[0] + amx[0]) * 0.5, (amn[1] + amx[1]) * 0.5, (amn[2] + amx[2]) * 0.5 };
+  double ah[3] = { (amx[0] - amn[0]) * 0.5, (amx[1] - amn[1]) * 0.5, (amx[2] - amn[2]) * 0.5 };
+  double lc[3] = { (nb.mn[0] + nb.mx[0]) * 0.5, (nb.mn[1] + nb.mx[1]) * 0.5, (nb.mn[2] + nb.mx[2]) * 0.5 }, bc[3];
+  map_point(Q.m, lc, bc);
+  for (int k = 0; k < 3; k++) {
+    const double* u = Q.ax[k];
+    // B's box mapped is a parallelepiped with edges M's columns × its half extents:
+    // its radius on u is the sum of each edge's projection (orthogonal or not).
+    double rb = 0;
+    for (int j = 0; j < 3; j++) {
+      const double* cj = Q.col[j];
+      rb += __builtin_fabs(u[0] * cj[0] + u[1] * cj[1] + u[2] * cj[2]) * (nb.mx[j] - nb.mn[j]) * 0.5;
+    }
+    double ra = __builtin_fabs(u[0]) * ah[0] + __builtin_fabs(u[1]) * ah[1] + __builtin_fabs(u[2]) * ah[2];
+    double sep = __builtin_fabs(u[0] * (bc[0] - ac[0]) + u[1] * (bc[1] - ac[1]) + u[2] * (bc[2] - ac[2])) - ra - rb;
+    if (sep > 0 && sep * sep > g) g = sep * sep;
+  }
+  return g;
 }
 
 static void visit(Query& Q, int a, int b) {
@@ -352,11 +435,12 @@ static void visit(Query& Q, int a, int b) {
   const Node& na = Q.A->node[a];
   const Node& nb = Q.B->node[b];
   if (na.left < 0 && nb.left < 0) {
+    leaf_tris(Q, b);
     for (int i = na.start; i < na.start + na.count; i++)
       for (int j = nb.start; j < nb.start + nb.count; j++) {
         Q.pairs++;
         double d = tri_tri2(Q.A->tri + 9 * i, Q.btri + 9 * j, Q.best2);
-        if (d < Q.best2) { Q.best2 = d; if (d == 0) { Q.done = true; return; } }
+        if (d < Q.best2) { Q.best2 = d; Q.prune2 = pad2(d); if (d == 0) { Q.done = true; return; } }
       }
     return;
   }
@@ -372,16 +456,17 @@ static void visit(Query& Q, int a, int b) {
   int c0, c1; double d0, d1;
   if (splitA) {
     c0 = na.left; c1 = na.left + 1;
-    d0 = box_dist2(Q.A->node[c0].mn, Q.A->node[c0].mx, Q.bmn + 3 * b, Q.bmx + 3 * b);
-    d1 = box_dist2(Q.A->node[c1].mn, Q.A->node[c1].mx, Q.bmn + 3 * b, Q.bmx + 3 * b);
+    d0 = lower2(Q, Q.A->node[c0].mn, Q.A->node[c0].mx, b);
+    d1 = lower2(Q, Q.A->node[c1].mn, Q.A->node[c1].mx, b);
   } else {
     c0 = nb.left; c1 = nb.left + 1;
-    d0 = box_dist2(na.mn, na.mx, Q.bmn + 3 * c0, Q.bmx + 3 * c0);
-    d1 = box_dist2(na.mn, na.mx, Q.bmn + 3 * c1, Q.bmx + 3 * c1);
+    bbox(Q, c0); bbox(Q, c1);
+    d0 = lower2(Q, na.mn, na.mx, c0);
+    d1 = lower2(Q, na.mn, na.mx, c1);
   }
   if (d1 < d0) { int tc = c0; c0 = c1; c1 = tc; double td = d0; d0 = d1; d1 = td; }
-  if (d0 < Q.best2) { if (splitA) visit(Q, c0, b); else visit(Q, a, c0); }
-  if (d1 < Q.best2) { if (splitA) visit(Q, c1, b); else visit(Q, a, c1); }
+  if (d0 < Q.prune2) { if (splitA) visit(Q, c0, b); else visit(Q, a, c0); }
+  if (d1 < Q.prune2) { if (splitA) visit(Q, c1, b); else visit(Q, a, c1); }
 }
 
 static u32 last_pairs = 0;
@@ -391,30 +476,34 @@ extern "C" {
 __attribute__((export_name("distance"))) double distance(u32 hA, u32 hB, u32 matPtr, double upper) {
   const Geom* A = (const Geom*)(unsigned long)hA;
   const Geom* B = (const Geom*)(unsigned long)hB;
-  const double* m = (const double*)(unsigned long)matPtr;
   last_pairs = 0;
   if (!A->ntri || !B->ntri) return __builtin_inf();
-  u32 need = (u32)B->ntri * 9 * 8 + (u32)B->nnode * 3 * 8 * 2;
+  u32 nn = (u32)B->nnode;
+  u32 need = (u32)B->ntri * 9 * 8 + nn * 3 * 8 * 2 + nn * 4 * 2;
   u32 sp = scratch(need);
   if (!sp) return -1;   // out of memory: the caller resets and asks again
   Query Q;
-  Q.A = A; Q.B = B;
+  Q.A = A; Q.B = B; Q.m = (const double*)(unsigned long)matPtr;
   Q.btri = (double*)(unsigned long)sp;
   Q.bmn = Q.btri + 9 * B->ntri;
-  Q.bmx = Q.bmn + 3 * B->nnode;
-  // three.js' Vector3.applyMatrix4, term for term (w divides, as there).
-  for (int t = 0; t < B->ntri * 3; t++) {
-    const double* v = B->tri + 3 * t;
-    double x = v[0], y = v[1], z = v[2];
-    double w = 1.0 / (m[3] * x + m[7] * y + m[11] * z + m[15]);
-    Q.btri[3 * t + 0] = (m[0] * x + m[4] * y + m[8] * z + m[12]) * w;
-    Q.btri[3 * t + 1] = (m[1] * x + m[5] * y + m[9] * z + m[13]) * w;
-    Q.btri[3 * t + 2] = (m[2] * x + m[6] * y + m[10] * z + m[14]) * w;
+  Q.bmx = Q.bmn + 3 * nn;
+  Q.boxStamp = (u32*)(Q.bmx + 3 * nn);
+  Q.triStamp = Q.boxStamp + nn;
+  Q.qid = ++query_id;
+  if (Q.qid == 0) {   // the stamp wrapped: clear and start again
+    for (u32 i = 0; i < 2 * nn; i++) Q.boxStamp[i] = 0;
+    Q.qid = query_id = 1;
   }
-  refit(Q, 0);
+  for (int k = 0; k < 3; k++) {
+    double c[3] = { Q.m[4 * k], Q.m[4 * k + 1], Q.m[4 * k + 2] };
+    double L = __builtin_sqrt(dot(c, c));
+    for (int a = 0; a < 3; a++) { Q.col[k][a] = c[a]; Q.ax[k][a] = L > 0 ? c[a] / L : 0; }
+  }
   Q.best2 = upper < __builtin_inf() ? upper * upper : __builtin_inf();
+  Q.prune2 = pad2(Q.best2);
   Q.done = false; Q.pairs = 0;
-  if (box_dist2(A->node[0].mn, A->node[0].mx, Q.bmn, Q.bmx) < Q.best2) visit(Q, 0, 0);
+  bbox(Q, 0);
+  if (lower2(Q, A->node[0].mn, A->node[0].mx, 0) < Q.prune2) visit(Q, 0, 0);
   last_pairs = Q.pairs;
   double d = __builtin_sqrt(Q.best2);
   return d < upper ? d : __builtin_inf();

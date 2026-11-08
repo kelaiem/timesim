@@ -1078,6 +1078,15 @@ from the great wheel's angle, which turns once an hour — multiplies a last-ulp
 difference by 1/ω: pose such an instant where the metal stands still (a held
 wind stands at the balance's REST, `MAINT_HOLD.restAtOrBefore`), never at the
 inverse itself.
+**Since §338 landing 5 a compiled kernel can answer the closest-point query**:
+`Kernel` in `inspect.js` is the one interface and its JS body (three-mesh-bvh) is
+the REFERENCE and the default; `--kernel wasm` (or `shadow`, which runs both) on
+`battery-native.mjs` uses `tools/kernel/kernel.cpp`, built by
+`tools/kernel-build.mjs` into `src/kernel-wasm.js` (GENERATED, byte-reproducible,
+importing nothing; never edit it). A new check writes its query in JS through
+`Kernel` and lands; never call the compiled module from a check.
+`probe-338-kernel-parity.mjs` holds it (G3): the same verdicts, no gap read
+larger, and the leaves it reads smaller listed (the reference's false 0).
 
 State (camera pose, wind, τ) persists via the dev server's `/__state` temp
 file, falling back to `localStorage`. **Back it up before clearing it** —
