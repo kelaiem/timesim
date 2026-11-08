@@ -9326,8 +9326,10 @@ async function siteTailBearings(B, F, g, cap) {
       for (const d of e.lands) if (landTo(s, d) < STOCK_MIN_U - 1e-9) return false;
       return true; };
     // the least station from the first apex and the greatest toward the second, stepped at half a margin, bisected to 1e-3
+    // (the plate's end clauses first: they are arithmetic, the blanks' judge is a revolved-envelope solve per blank,
+    // and a walk from the apex spends its first steps inside the corner's bore — a conjunction, so the same answer)
     const walk = (from, dir, i) => {
-      const ok = (s) => common(s) && endOk(s, i);
+      const ok = (s) => endOk(s, i) && common(s);
       let s = from;
       while (!ok(s)) { s += dir * m / 2; if (s < sStart || s > sEnd) return null; }
       let lo = s - dir * m / 2, hi = s;

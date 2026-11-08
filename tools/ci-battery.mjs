@@ -219,7 +219,12 @@ const SPEC_BOOT_RATIO = Object.freeze({
   'd4=16': 3.0,          // 32.0 / 33.1 / 36.1 s: the siting scan refuses almost every candidate near the setting cap (see its row)
   'reconf=1': 2.3,       // 27.4 s
   'alarmaz=175': 2.1,    // 25.4 s
-  'stopwork-140': 1.9,   // 22.2 s
+  // stopwork-140 re-measured 2026-11-08 by TODO 289 landing 3, which made it heavier: leg 2's K block refuses the heading
+  // its §325 walk used to open at (−107.87°), so the walk goes six degrees further (−101.87°), each heading 161 bearings
+  // with ~50 paying the cap leg and the tail. Native host (tools/native/boot.mjs), one at a time on the dev container: the
+  // default 28.8 s, the point 61.4 s at main and 95.7 s with the landing (3.3×); rounded up to a tenth. The POINT tier
+  // reads this table too (its boot is the same build): at 120 s flat it was DEAD on the hosted runner while its spec boot lived.
+  'stopwork-140': 3.4,   // 95.7 s against 28.8 s
   'alarmaz=180': 1.8,    // 21.2 s
   // §337 stage 3's two geared points, measured the same way on 2026-11-07, M2 Max, two solo passes each (the default 13.7
   // and 13.9 s on the same two passes; each ratio is the slowest point over the fastest default, rounded up to a tenth, as
@@ -2113,7 +2118,7 @@ async function runPointTier(browser, base, { stored, incremental, owned = SWEEP_
       const against = p.mode === 'incremental' ? p.entry.digests : againstDefault;
       got[p.point.name] = against
         ? await sweepPoint({ browser, base, point: p.point, mode: p.mode, against, bootInTurn,
-          bootTimeoutMs: BOOT_TIMEOUT_MS, checkTimeoutMs: CHECK_TIMEOUT_MS, deadline })
+          bootTimeoutMs: specBootTimeoutMs(p.point.name), checkTimeoutMs: CHECK_TIMEOUT_MS, deadline })
         : { q: p.point.q, mode: p.mode, error: 'no default digests to compare a full point against', ms: 0 };
       const g = got[p.point.name];
       console.log(`  ${g.skipped ? '…' : g.error ? '✗' : '·'} ${p.point.name.padEnd(16)} ${p.mode} `
