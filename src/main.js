@@ -51896,9 +51896,11 @@ const FUSEE_COCK = await (async () => {
         const pinFull = azS - OMEGA * E / 2, pinEmpty = pinFull + OMEGA * (En / 2 - PHI_HI);
         const studsAdded = [{ x: C.x, y: C.y, F: best.pairForce.Ff }, { x: S.x, y: S.y, F: best.pairForce.Fs }];
         // the sweep walks the WHOLE range to the bound, not its two ends: the worst section is not monotonic in the angle, because the
-        // pin's force follows from the finger's balance about its stud and the mesh's line turns with it. MEASURED, and it is not academic:
-        // at 36 h the worst falls at −5.81° of a ±15.49° range — an INTERIOR angle a two-endpoint sweep would have walked straight past.
-        // At 24 h it does land on the endpoint (−10.24°), so one reserve of the two would have read right by luck.
+        // pin's force follows from the finger's balance about its stud and the mesh's line turns with it. That is a property of the
+        // MECHANISM, not of the torque loading it, which is why the sweep stays. It no longer earns itself on a measurement: at the
+        // torque TODO 291 left (54.5% of the old mainspring's energy) the worst falls on the ENDPOINT at both built reserves, where
+        // until 2026-11-08 36 h read an interior −5.81° of ±15.49°. Keep that distinction when quoting this sweep — the record said
+        // "the sweep earned itself at 36 h" for a day after it had stopped being true, and probe-337-record.mjs is what caught it.
         let cockStall = null, worstPress = 0;
         for (const az of [pinFull, pinEmpty]) for (let i2 = -PRESS_STEPS; i2 <= PRESS_STEPS; i2++) for (const sgn of [1, -1]) {
           const pa = (PRESS_MAX * i2) / PRESS_STEPS;
@@ -51920,7 +51922,10 @@ const FUSEE_COCK = await (async () => {
           addedOver: over(cockStall.added).map(([k, v, y]) => [k, Math.round((v / y) * 100) / 100]),
           staticsOver: over(cockStall.statics).map(([k, v, y]) => [k, Math.round((v / y) * 100) / 100]) };
         if (!stallWaiver.addedOver.length) console.warn('§337: the fusee cock now holds the stall under the ADDED rule as well — the statics waiver is no longer needed and should be retired');
-        WIND_ARREST.stopwork = { built: true, geared: true, n, m, travel: swTravelTurns(m, n), wind: T, ratio, r1, rPin, a, rTip, lockR: R_L, reliefMin, unlockedDeg,
+        WIND_ARREST.stopwork = { built: true, geared: true, n, m, travel: swTravelTurns(m, n), wind: T, ratio,
+          // the PAIR's own tooth counts, not just their ratio: docs/built/0337.md quotes them per reserve ('the pair built'), and
+          // tools/probe-337-record.mjs holds that table to this build - a ratio alone does not name a pair (25:20 and 15:12 share 1.25)
+          zCone: best.zCone, zFinger: best.zFinger, r1, rPin, a, rTip, lockR: R_L, reliefMin, unlockedDeg,
           lockArcDeg: (GAMMA * 180) / Math.PI, discOpenDeg: (open.filter(Boolean).length * 360) / NA, discRuns: runs.length, openRun: runs.map((r0) => { let e = r0; while (open[(e + 1) % NA] && e - r0 < NA) e++; return [(r0 * 360) / NA, (e * 360) / NA]; }), unlockedAt: unlockedAt.filter((_, i2) => i2 % 8 === 0).slice(0, 12), nUnlocked: unlockedAt.length, fullArcs, studFr, studSr: SW_STUD_R, Fmesh, pairForce: best.pairForce, cockStall, stallWaiver,
           pressureAngle: { maxDeg: (PRESS_MAX * 180) / Math.PI, steps: PRESS_STEPS, worstDeg: (worstPress * 180) / Math.PI, derived: 'gearToothSpec.maxPressureAngle, the worse face of the pair' },
           z: [zA, zA + 3 * t + 2 * M], branchW: best.armW };
