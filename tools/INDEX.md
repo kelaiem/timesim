@@ -4,7 +4,7 @@
 
 # The instruments
 
-410 scripts. **284 are ACCEPTANCE tests** — they decide and exit non-zero.
+412 scripts. **286 are ACCEPTANCE tests** — they decide and exit non-zero.
 **126 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -14,6 +14,7 @@ when a question was asked; the summaries are what it answered.
 | instrument | § | kind | what it answers, in its own words |
 |---|---|---|---|
 | `battery-checks.mjs` |  | report | §152 — WHAT A CHECK COMPUTES, split from the harness that schedules it. |
+| `battery-native.mjs` |  | acceptance | §338 landing 3 — THE BATTERY, NATIVELY: the same checks, the same gates, no browser. |
 | `battery-points.mjs` |  | report | TODO 186 B1 — THE SILENT SPEC POINTS, SWEPT, and kept swept incrementally. |
 | `battery-promote.mjs` |  | acceptance | §227 — MAY THIS PUSH PROMOTE A PULL REQUEST'S BATTERY INSTEAD OF RE-RUNNING? |
 | `battery-split.mjs` |  | report | §127 — the battery's partition atom, and the reassembly that makes it legal. |
@@ -405,6 +406,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-wind.mjs` |  | report | TODO 38 W4 probe: registry reversal verdicts and the restoring audit under the new `wind` axis. Usage: node probe-wind.mjs out.json |
 | `probe-wound-sense.mjs` |  | acceptance | WHICH WAY DOES EACH WOUND PART WIND? — TODO 115's unmeasured half. |
 | `rebrickable-subset.mjs` |  | acceptance | Writes src/technic-rebrickable.js (BUILT §309): the SUBSET of Rebrickable's full download (rebrickable.com/downloads, CSV) and BrickLink's catalogue download that the parts list's SUBSTITUTES need, so every candidate id, relationship, mapping and count is READ from those files and never typed (§300's rule, §301's pattern). The whole downloads are ~160 MB and are not committed. |
+| `report-diff.mjs` |  | acceptance | §338 landing 3 (§227's precondition) — ARE TWO BATTERY REPORTS THE SAME VERDICT, LEAF FOR LEAF? |
 | `runner-ready.mjs` |  | acceptance | §251 — IS THE SELF-HOSTED BATTERY HOST READY, ASKED FROM OFF THE HOST? Acceptance: exit 0 READY, 1 NOT READY, 2 CANNOT TELL (no token, API error). |
 | `servers.mjs` |  | report | TODO 131 — WHO OWNS THAT SERVER? Every instrument in this directory spawns its own static server (`python3 -m http.server`, or `dev_server.py` for the battery and the i18n checker) and reaps it on its last line — so a probe that THROWS leaves the server behind, and the next run on that port reads the orphan (SKILL.md, "a crashed probe leaves its server running"). The advice used to be `pgrep -af "[h]ttp[.]server"` and a kill by hand, and that is how the full battery was killed mid-run at its final anchor: its dev server on a random port looked exactly like an orphan, because a port number says nothing about ownership. |
 | `smoke-gong-bench.mjs` |  | acceptance | SMOKE: gong-bench.html (BUILT §310's bench, hosted beside technic.html) in Chromium, 1280 and 390 wide. Exits non-zero on any failure. Checks: the page loads its generated data and the build's own modules with no page error and no console error; every case kind is offered and draws; the build's seats load as presets and ring their generated f₁ (src/gong-seats.js' `f`, to 0.5% — the bench samples the curve the build sweeps); the solver, in its module worker on src/gong-solve.js with the hammer on its lever, returns at least one bar; and at 390 wide nothing scrolls sideways. The f₁ readout is the page's own two-decimal kHz, so the tolerance is that display's rounding plus the curve's quarter-unit sampling. |
