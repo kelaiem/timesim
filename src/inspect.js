@@ -1020,7 +1020,15 @@ function bakedGeometry(src, L) {
 function bvhForGeometry(geometry) {
   let bvh = bvhCache.get(geometry);
   if (!bvh) {
-    geometry.computeBoundsTree();
+    // §338 landing 3 — never let the tree write the geometry's boundingBox. A
+    // MeshBVH sets it, when absent, to its root bounds, padded outward by
+    // FLOAT32_EPSILON; three.js computes the exact one on first use. Which of the
+    // two a geometry carried depended on what had happened first, and the page's
+    // live frames build trees before any sweep runs, so the AABB pre-filter read
+    // padded boxes in Chromium and exact ones on the native host: verdicts equal,
+    // 203 more pre-filter passes in Chromium's expectedContacts, the report a
+    // function of the page's history. The box is now always three.js' exact one.
+    geometry.computeBoundsTree({ setBoundingBox: false });
     bvh = geometry.boundsTree;
     bvhCache.set(geometry, bvh);
   }

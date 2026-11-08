@@ -63864,7 +63864,7 @@ const JMP_SITE = await (async () => {
   const qGeo = new Map();
   // Each copy carries its own tree, so a query descends both hierarchies
   // rather than walking every triangle of the part at every leaf.
-  const withTree = (g) => { indexed(g); g.boundsTree = new MeshBVH(g); return g; };
+  const withTree = (g) => { indexed(g); g.boundsTree = new MeshBVH(g, { setBoundingBox: false }); return g; };   // §338 landing 3: the tree never writes the boundingBox (inspect.js bvhForGeometry says why)
   const qOf = (m) => { if (!qGeo.has(m)) qGeo.set(m, withTree(m.geometry.clone())); return qGeo.get(m); };
   const studO = jumperUnit.getWorldPosition(V());
   const studA = V().set(0, 0, 1).applyQuaternion(jumperUnit.getWorldQuaternion(new THREE.Quaternion())).normalize();
@@ -64143,7 +64143,7 @@ const JMP_SITE = await (async () => {
     if (!arr.length) return null;
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
-    return new MeshBVH(indexed(g));
+    return new MeshBVH(indexed(g), { setBoundingBox: false });   // §338 landing 3: as withTree above
   };
   await breathe(330);
   // one tree per obstacle, each with its own box: a query descends only the
