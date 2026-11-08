@@ -855,12 +855,26 @@ jobs:
   # 21 on purpose: a timeout is a one-line revert, 763.0 s uses 61% of it, and
   # two samples cannot tell a fast run from a slow one. Revisit when these rows
   # outnumber the guesses - with more wall times, not another projection.
+  #
+  # 21 -> 23, for probe-337-record.mjs joining the step below. ITS RUNNER WALL
+  # IS NOT MEASURED YET, so the 63 s it is budgeted is DERIVED with lanes held
+  # equal rather than scaled off a dev container - the mistake the block above
+  # records. The probe boots the two geared reserves, and boot-pool gives 2
+  # lanes on a 4-vCPU runner, so it is one serial boot wide; it walls 44.3 s
+  # locally on 2 lanes. The runner/local factor comes from this job's own
+  # measurement, lanes divided out: probe-337-geared-geneva walled 228.3 s here
+  # against 40.2 s locally over EIGHT lanes, which is 228.3/40.2/(8/2) = 1.42x
+  # per boot, not 5.7x. 44.3 x 1.42 = 63 s; 763.0 + 63 = 826 s, and the tail
+  # rule gives 826 x 1.66 = 1371 s = 22.9 min -> 23.
+  # THE FIRST RUN REPLACES THAT 63 WITH A MEASUREMENT. Append the job's new
+  # wall to the rows above and re-derive; a budget is not a sample, and this
+  # one is the only figure in this block that was not measured.
   battery-probes:
     name: battery probes
     needs: route
     if: needs.route.outputs.tiers_job == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 21
+    timeout-minutes: 23
     steps:
       - uses: actions/checkout@v4
 
@@ -881,7 +895,7 @@ jobs:
       - name: Install Chromium
         uses: ./.github/actions/install-chromium   # bounded apt from cached .debs, then the cached browser
 
-      - name: Case relief, casing path, back envelope, lands, the clearance witness and the geared Geneva's line (§186, §187, §328, TODO 282, §337)
+      - name: Case relief, casing path, back envelope, lands, the clearance witness, the geared Geneva's line and its record (§186, §187, §328, TODO 282, §337)
         run: |
           node tools/probe-case-relief.mjs
           node tools/probe-187-casing-path.mjs
@@ -889,6 +903,7 @@ jobs:
           node tools/probe-328-lands.mjs
           node tools/probe-282-witness.mjs
           node tools/probe-337-geared-geneva.mjs
+          node tools/probe-337-record.mjs
 
   battery:
     needs: route
@@ -1297,8 +1312,9 @@ jobs:
       # therefore holds exactly as a failing probe step after the harness did:
       # the report is still uploaded, nothing is published or seeded.
       #
-      # Its cap is the probes job's own (21 min since §337 stage 3's measured
-      # re-derivation; see that job's comment for why not 18): the battery
+      # Its cap is the probes job's own (23 min since §337 stage 3's record
+      # gate joined it; 21 before that, 18 before the measured re-derivation -
+      # see that job's comment for both): the battery
       # reaches it ~12 min in and may now wait past its own ~19 min, so
       # a probes job that started with the battery finishes, or is killed,
       # inside this step either way. A step killed at the cap fails, which is
@@ -1307,7 +1323,7 @@ jobs:
       # cap would fail a probe that was still running and had not yet failed.
       - name: The case relief, casing path, back envelope, lands, witness and geared-line probes passed (§186, §187, §328, TODO 282, §337)
         if: env.TIERS_JOB == 'true' && env.MATRIX != 'true'
-        timeout-minutes: 21
+        timeout-minutes: 23
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -1412,9 +1428,18 @@ jobs:
       # thirteen reserves for as long as the fix had been in. Stage 3 fixed the
       # rule to read the lock floor as well; this step is why that cannot rot
       # again. Acceptance, exit 1 on a finding.
-      - name: The geared Geneva's line (§337)
-        if: (env.MATRIX != 'true' || matrix.worker == 1) && env.TIERS_JOB != 'true'   # on the fan-out path the `battery probes` job runs it
-        run: node tools/probe-337-geared-geneva.mjs
+      #
+      # probe-337-record.mjs beside it holds the RECORD's measured block to a
+      # boot - the eleven figures docs/built/0337.md quotes per built reserve.
+      # It is here for the same reason: those figures came from a probe that is
+      # a REPORT and judges nothing, and TODO 291 moved every one of them when
+      # it re-solved the going mainspring, with the record keeping the old
+      # numbers until this gate read them.
+      - name: The geared Geneva's line and its record (§337)
+        if: (env.MATRIX != 'true' || matrix.worker == 1) && env.TIERS_JOB != 'true'   # on the fan-out path the `battery probes` job runs them
+        run: |
+          node tools/probe-337-geared-geneva.mjs
+          node tools/probe-337-record.mjs
 
       # ---- §227: what this run measured, so a merge can tell ----------------
       #
