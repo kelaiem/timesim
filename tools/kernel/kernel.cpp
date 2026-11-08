@@ -1,5 +1,7 @@
 // §338 landing 5 — THE KERNEL'S FIRST PRIMITIVE: the closest distance between two
-// triangle meshes, one placed in the other's frame by a rigid matrix.
+// triangle meshes, one placed in the other's frame by a rigid matrix. Since
+// landing 6 the second: whether any triangle of one meets any of the other
+// (`intersects`, below the distance query).
 //
 // Built by tools/kernel-build.mjs to wasm32 (src/kernel-wasm.js, GENERATED; never
 // edit it), and called only through src/kernel.js' `Kernel` interface. The JS path
@@ -471,18 +473,14 @@ static void visit(Query& Q, int a, int b) {
 
 static u32 last_pairs = 0;
 
-extern "C" {
-
-__attribute__((export_name("distance"))) double distance(u32 hA, u32 hB, u32 matPtr, double upper) {
-  const Geom* A = (const Geom*)(unsigned long)hA;
-  const Geom* B = (const Geom*)(unsigned long)hB;
-  last_pairs = 0;
-  if (!A->ntri || !B->ntri) return __builtin_inf();
+// One query's setup, shared by both primitives: B's scratch in A's frame, the
+// stamps, and M's columns for the projection bounds. False when the scratch
+// does not fit (the caller resets the arena and asks again).
+static bool begin_query(Query& Q, const Geom* A, const Geom* B, u32 matPtr) {
   u32 nn = (u32)B->nnode;
   u32 need = (u32)B->ntri * 9 * 8 + nn * 3 * 8 * 2 + nn * 4 * 2;
   u32 sp = scratch(need);
-  if (!sp) return -1;   // out of memory: the caller resets and asks again
-  Query Q;
+  if (!sp) return false;
   Q.A = A; Q.B = B; Q.m = (const double*)(unsigned long)matPtr;
   Q.btri = (double*)(unsigned long)sp;
   Q.bmn = Q.btri + 9 * B->ntri;
@@ -499,14 +497,117 @@ __attribute__((export_name("distance"))) double distance(u32 hA, u32 hB, u32 mat
     double L = __builtin_sqrt(dot(c, c));
     for (int a = 0; a < 3; a++) { Q.col[k][a] = c[a]; Q.ax[k][a] = L > 0 ? c[a] / L : 0; }
   }
-  Q.best2 = upper < __builtin_inf() ? upper * upper : __builtin_inf();
-  Q.prune2 = pad2(Q.best2);
   Q.done = false; Q.pairs = 0;
   bbox(Q, 0);
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// §338 landing 6 — THE SECOND PRIMITIVE: does any triangle of A meet any
+// triangle of B? The reference is three-mesh-bvh's intersectsGeometry, which
+// inspect.js records as having a measured false-positive mode, so this one is
+// EXACT on the computed corners:
+//   1. a separating plane: if every corner of one triangle is strictly on one
+//      side of the other's plane, they cannot meet (the cheap, common answer);
+//   2. otherwise two non-coplanar triangles meet exactly when an edge of one
+//      pierces the other (seg_pierces, inclusive at the boundary);
+//   3. a corner exactly ON the other's plane, or a degenerate triangle, is the
+//      only case 1 and 2 cannot settle (coplanar overlap, an edge lying in the
+//      face, touching at a point), and there the exact distance decides: 0 is
+//      meeting, anything else is not.
+// Incidence is invariant under any invertible affine map, so B may be placed by
+// any such M (inspect.js' boolean sites pass world matrices that may scale).
+static bool tri_meets(const double* P, const double* Q) {
+  const double* p[3] = { P, P + 3, P + 6 };
+  const double* q[3] = { Q, Q + 3, Q + 6 };
+  double e1[3], e2[3], nP[3], nQ[3];
+  sub(p[1], p[0], e1); sub(p[2], p[0], e2); cross(e1, e2, nP);
+  sub(q[1], q[0], e1); sub(q[2], q[0], e2); cross(e1, e2, nQ);
+  bool degenerate = !(dot(nP, nP) > 0) || !(dot(nQ, nQ) > 0);
+  bool onPlane = false;
+  if (!degenerate) {
+    double dq[3], dp[3], v[3];
+    for (int i = 0; i < 3; i++) { sub(q[i], p[0], v); dq[i] = dot(nP, v); }
+    if ((dq[0] > 0 && dq[1] > 0 && dq[2] > 0) || (dq[0] < 0 && dq[1] < 0 && dq[2] < 0)) return false;
+    for (int i = 0; i < 3; i++) { sub(p[i], q[0], v); dp[i] = dot(nQ, v); }
+    if ((dp[0] > 0 && dp[1] > 0 && dp[2] > 0) || (dp[0] < 0 && dp[1] < 0 && dp[2] < 0)) return false;
+    onPlane = dq[0] == 0 || dq[1] == 0 || dq[2] == 0 || dp[0] == 0 || dp[1] == 0 || dp[2] == 0;
+  }
+  for (int i = 0; i < 3; i++) {
+    int j = (i + 1) % 3;
+    if (seg_pierces(p[i], p[j], q[0], q[1], q[2])) return true;
+    if (seg_pierces(q[i], q[j], p[0], p[1], p[2])) return true;
+  }
+  if (degenerate || onPlane) return tri_tri2(P, Q, __builtin_inf()) == 0;
+  return false;
+}
+
+static void visit_meets(Query& Q, int a, int b) {
+  if (Q.done) return;
+  const Node& na = Q.A->node[a];
+  const Node& nb = Q.B->node[b];
+  if (na.left < 0 && nb.left < 0) {
+    leaf_tris(Q, b);
+    for (int i = na.start; i < na.start + na.count; i++)
+      for (int j = nb.start; j < nb.start + nb.count; j++) {
+        Q.pairs++;
+        if (tri_meets(Q.A->tri + 9 * i, Q.btri + 9 * j)) { Q.done = true; return; }
+      }
+    return;
+  }
+  bool splitA;
+  if (na.left < 0) splitA = false;
+  else if (nb.left < 0) splitA = true;
+  else {
+    double ea = 0, eb = 0;
+    for (int k = 0; k < 3; k++) { ea += na.mx[k] - na.mn[k]; eb += Q.bmx[3 * b + k] - Q.bmn[3 * b + k]; }
+    splitA = ea >= eb;
+  }
+  // A pair is skipped only when its boxes stand apart by more than the pruning
+  // margin (PRUNE_PAD, the distance query's own reason): a bound computed an ulp
+  // over 0 must not hide a touching pair.
+  const double pad = PRUNE_PAD * PRUNE_PAD;
+  if (splitA) {
+    for (int c = na.left; c <= na.left + 1; c++)
+      if (!(lower2(Q, Q.A->node[c].mn, Q.A->node[c].mx, b) > pad)) { visit_meets(Q, c, b); if (Q.done) return; }
+  } else {
+    for (int c = nb.left; c <= nb.left + 1; c++) {
+      bbox(Q, c);
+      if (!(lower2(Q, na.mn, na.mx, c) > pad)) { visit_meets(Q, a, c); if (Q.done) return; }
+    }
+  }
+}
+
+extern "C" {
+
+__attribute__((export_name("distance"))) double distance(u32 hA, u32 hB, u32 matPtr, double upper) {
+  const Geom* A = (const Geom*)(unsigned long)hA;
+  const Geom* B = (const Geom*)(unsigned long)hB;
+  last_pairs = 0;
+  if (!A->ntri || !B->ntri) return __builtin_inf();
+  Query Q;
+  if (!begin_query(Q, A, B, matPtr)) return -1;   // out of memory: the caller resets and asks again
+  Q.best2 = upper < __builtin_inf() ? upper * upper : __builtin_inf();
+  Q.prune2 = pad2(Q.best2);
   if (lower2(Q, A->node[0].mn, A->node[0].mx, 0) < Q.prune2) visit(Q, 0, 0);
   last_pairs = Q.pairs;
   double d = __builtin_sqrt(Q.best2);
   return d < upper ? d : __builtin_inf();
+}
+
+// 1 when some triangle of A meets some triangle of B under M, 0 when none does,
+// -1 when the scratch did not fit.
+__attribute__((export_name("intersects"))) int intersects(u32 hA, u32 hB, u32 matPtr) {
+  const Geom* A = (const Geom*)(unsigned long)hA;
+  const Geom* B = (const Geom*)(unsigned long)hB;
+  last_pairs = 0;
+  if (!A->ntri || !B->ntri) return 0;
+  Query Q;
+  if (!begin_query(Q, A, B, matPtr)) return -1;
+  Q.best2 = 0; Q.prune2 = 0;
+  if (!(lower2(Q, A->node[0].mn, A->node[0].mx, 0) > PRUNE_PAD * PRUNE_PAD)) visit_meets(Q, 0, 0);
+  last_pairs = Q.pairs;
+  return Q.done ? 1 : 0;
 }
 
 __attribute__((export_name("last_pairs"))) u32 last_pairs_get() { return last_pairs; }

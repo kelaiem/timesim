@@ -1091,6 +1091,9 @@ importing nothing; never edit it). A new check writes its query in JS through
 `Kernel` and lands; never call the compiled module from a check.
 `probe-338-kernel-parity.mjs` holds it (G3): the same verdicts, no gap read
 larger, and the leaves it reads smaller listed (the reference's false 0).
+Since landing 6 it also answers `Kernel.intersects`, the exact boolean the
+penetration bisections ask; CONTACT (`Kernel.touches`, `meshesIntersect`'s
+question, which counts a running fit) stays the reference in every mode.
 
 State (camera pose, wind, τ) persists via the dev server's `/__state` temp
 file, falling back to `localStorage`. **Back it up before clearing it** —
