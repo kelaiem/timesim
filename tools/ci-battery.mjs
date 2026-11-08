@@ -767,11 +767,8 @@ async function waitForServer(url, deadlineMs) {
 // Each row states what it is for, so a point that is EXPECTED to warn says so
 // beside itself, and a point that starts warning when it used to be silent is
 // a visible change in the report rather than a silent one.
-// TODO 289 landing 3 — leg 2's K-side bearing block is best effort per arrangement: on the designed train (and the
-// arrangements built on it, and arrangement-308) the reserve train stands where that block must, no cap bearing
-// leaves the reserve a swing round it, and the build keeps leg 2's B block alone and says so — a row about the
-// arrangement, declared on each point that boots it rather than a station out of its window.
-const LEG2_K_ROW = 'TODO 289: leg 2\'s K block';
+// (TODO 289 landing 3 declared leg 2's K-block refusal on the designed train's points and arrangement-308; landing 5
+// cut the fold corner's opening to its blanks' footprint, the block stands by K on every point, and the row is retired.)
 const SPEC_POINTS = [
   // The identity, as a control: if this ever warns, the trial harness itself
   // is lying, because the default spec is what every gate above boots.
@@ -782,7 +779,7 @@ const SPEC_POINTS = [
   // The designed-train VARIANTS below keep their boots (`arrangement=designed&…`, the builds they always
   // were) but no longer sweep: against the arrangement every one changes most of the movement, a near-full
   // sweep each, and their validated rows were withdrawn with the flip (tools/validated-configs.mjs --drop).
-  { name: 'designed', q: 'arrangement=designed', expect: 'declared', expectWarns: [LEG2_K_ROW], sweep: true, why: '§314 — the designed train (barrel 145°, reserve on two meshes, module as designed): the old identity, swept; boots TODO 289\'s leg-2 K-block row' },
+  { name: 'designed', q: 'arrangement=designed', expect: 'silent', sweep: true, why: '§314 — the designed train (barrel 145°, reserve on two meshes, module as designed): the old identity, swept' },
   // §33 step 1 / step 2 — the stem and crown azimuths, each a shipped handle.
   { name: 'crownaz=90', q: 'arrangement=designed&crownaz=90', expect: 'any', why: '§33 step 1 — the crown a quarter turn round' },
   { name: 'stemaz=200', q: 'arrangement=designed&stemaz=200', expect: 'any', why: '§33 step 2 — the stem decoupled from the barrel' },
@@ -915,9 +912,9 @@ const SPEC_POINTS = [
   //   · 2 is past that end, and is the guard on the clamp: it must WARN with
   //     both bounds and BUILD (a stud inside its own carrier is nonsense, not
   //     NaN) — one warn, measured.
-  { name: 'studr=7.595', q: 'arrangement=designed&studr=7.595', expect: 'declared', expectWarns: [LEG2_K_ROW], why: '§237 — the outboard end of the window: the terminal re-solves, measured silent' },
-  { name: 'studr=4.71', q: 'arrangement=designed&studr=4.71', expect: 'declared', expectWarns: [LEG2_K_ROW], why: '§237 — four coil pitches in, the interior of the window; measured silent' },
-  { name: 'studr=7.1175', q: 'arrangement=designed&studr=7.1175', expect: 'declared', expectWarns: [LEG2_K_ROW], why: '§237 — one coil pitch in, TODO 147\'s original rule and the old default; measured silent' },
+  { name: 'studr=7.595', q: 'arrangement=designed&studr=7.595', expect: 'silent', why: '§237 — the outboard end of the window: the terminal re-solves, measured silent' },
+  { name: 'studr=4.71', q: 'arrangement=designed&studr=4.71', expect: 'silent', why: '§237 — four coil pitches in, the interior of the window; measured silent' },
+  { name: 'studr=7.1175', q: 'arrangement=designed&studr=7.1175', expect: 'silent', why: '§237 — one coil pitch in, TODO 147\'s original rule and the old default; measured silent' },
   { name: 'studr=2', q: 'arrangement=designed&studr=2', expect: 'any', why: '§237 — past the inboard end: must warn with both bounds and BUILD, never NaN' },
   // §36 Apply — THE CANONICAL ROUTE, and it is a spec point rather than a
   // probe's private fixture because that is what keeps it honest: every
@@ -950,7 +947,7 @@ const SPEC_POINTS = [
   // alarm stem by nothing at all. The lesson for Apply's own verdict is that
   // checkRoute's legality and a route's fitness as METAL are two questions,
   // and only the second one is answered by measuring boxes.
-  { name: 'route=2-leg', q: 'arrangement=designed&route=-16,-27.71,-6;-16,-27.71,3;-18.5,-32.04,3&routebush=0,0.33', expect: 'declared', expectWarns: [LEG2_K_ROW],
+  { name: 'route=2-leg', q: 'arrangement=designed&route=-16,-27.71,-6;-16,-27.71,3;-18.5,-32.04,3&routebush=0,0.33', expect: 'silent',
     why: '§36 Apply — a committed route becomes metal: one back-plate bore, one knuckle, one footed bush' },
   // The refusal, asserted as a WARNING rather than a silence: a route that
   // meets a plate edge-on is a channel through it, and Apply must say so and
@@ -986,7 +983,7 @@ const SPEC_POINTS = [
   // holds the exact set; `formrect=` is its own metal-centred fit and
   // `gong=arc` its case-path gong, both as landing 5 shipped them.
   { name: 'arrangement-308', q: 'case=rect&barrelstep=0&rsvaz=36&alarmmod=80&gong=arc&formrect=-45.96,45.72,-43.91,51.41', expect: 'declared',
-    expectWarns: ['§186: the rim-to-bore fit', '§261: cased assembly', 'TODO 206 arming spring: follower-B\'s seat sits at the nose\'s margin', LEG2_K_ROW,
+    expectWarns: ['§186: the rim-to-bore fit', '§261: cased assembly', 'TODO 206 arming spring: follower-B\'s seat sits at the nose\'s margin',
       // §201 landing 2 — THE STOP-WORK IS UNFRAMED IN THIS ARRANGEMENT, and that is
       // a row about this build, not about the default. The arrest window frames the
       // Geneva's engagement now and is cut in every other declared point (the

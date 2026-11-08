@@ -8786,6 +8786,20 @@ function capLegAt(B, F, phi, L) {
 const bevelEnv = (shaftAngleDeg, module, boreR, mateBoreR) => G.bevelBlankEnvelope(G.bevelToothSpec({ module,
   teeth: BEVEL_TEETH, mateTeeth: BEVEL_TEETH, shaftAngleDeg, boreR, mateBoreR, quiet: true }));
 const vArr = (v) => [v.x, v.y, v.z];
+// TODO 289 landing 5 — THE FOLD CORNER'S PLATE OPENING, cut to its blanks (G.blanksPlanFootprint): the convex footprint of
+// the two blanks above the plate's dial face less a margin, grown by the margin, so the plate round it stands
+// CLEAR_MARGIN off every blank in the slab's band. It replaces the circle of the blanks' cone-distance sphere
+// (coneR + CLEAR_MARGIN about K), which at Σ ≈ 162° reached 2.886 along the run where the near-flat blanks stop at 0.55:
+// that excess was what held leg 2's K block off the reserve train's room on the designed train. One function, read by
+// the cap-bearing scan's every candidate (siteTailBearings) and by the shipped plate (MW_FOLD_PLATE_HOLE). `r` is the
+// outline's circumscribed radius about K, what a disc-only reader holds it by.
+const foldOpeningFor = (F) => {
+  const mod = foldModuleFor(F.shaftAngleDeg);
+  const pts = G.blanksPlanFootprint([
+    { e: bevelEnv(F.shaftAngleDeg, mod, MW_LEG1_R, MW_LEG2_R), f: { o: vArr(F.K), a: vArr(F.leg1U.clone().negate()) } },
+    { e: bevelEnv(F.shaftAngleDeg, mod, MW_LEG2_R, MW_LEG1_R), f: { o: vArr(F.K), a: vArr(F.leg2U) } }], PLATE_BACK - CLEAR_MARGIN, CLEAR_MARGIN);
+  return { x: F.K.x, y: F.K.y, r: Math.max(...pts.map(([x, y]) => Math.hypot(x - F.K.x, y - F.K.y))), pts };
+};
 // Every blank of one corner clears every blank of another corner that turns
 // as a DIFFERENT body by the one margin — the tilt's pairs (B's blanks against
 // E's) and the stub's (E's against D's). Two blanks keyed to ONE rod — the
@@ -9249,11 +9263,20 @@ async function siteTailBearings(B, F, g, cap) {
     const circR = half * Math.SQRT2;
     const at = (s) => o.clone().addScaledVector(u, s);
     const gapOf = (s, i) => (i === 0 ? s - len / 2 : lenT - s - len / 2);   // the block's near end face to its apex
-    const landTo = (s, d) => { const c = at(s); return Math.hypot(c.x - d.x, c.y - d.y) - (pocketR + bev) - (d.r + bev); };
+    // landing 5 — an end whose bore is an OUTLINE (`pts`, the fold's footprint): the block's top face, in plan the
+    // rectangle len × 2·half about its station, keeps out of that outline grown by the bevel, which is what the disc's
+    // rule (the near end face past r + bev) says of a disc; and the land to it is read off the outline
+    const pu = { x: u.x / Math.hypot(u.x, u.y), y: u.y / Math.hypot(u.x, u.y) };
+    const rectAt = (s) => { const c = at(s), hl = len / 2;
+      return [[-hl, -half], [hl, -half], [hl, half], [-hl, half]].map(([a, p]) => [c.x + pu.x * a - pu.y * p, c.y + pu.y * a + pu.x * p]); };
+    const mergeBev = ends.map((e) => (e.merge?.pts ? G.dilateConvex(e.merge.pts, bev) : null));
+    const mergeGap = (s, i) => (mergeBev[i] ? G.convexGap(rectAt(s), mergeBev[i]) : gapOf(s, i) - ends[i].merge.r - bev);
+    const landTo = (s, d) => { const c = at(s);
+      return d.pts ? G.pointConvexGap(G.dilateConvex(d.pts, bev), c.x, c.y) - (pocketR + bev) : Math.hypot(c.x - d.x, c.y - d.y) - (pocketR + bev) - (d.r + bev); };
     const common = (s) => s - len / 2 >= sStart - 1e-9 && s + len / 2 <= sEnd + 1e-9
       && !blanksClear({ o: vArr(o), a: vArr(u), r: circR, zLo: s - len / 2, zHi: s + len / 2 }, m);
     const endOk = (s, i) => { const e = ends[i];
-      if (e.merge && !(gapOf(s, i) >= e.merge.r + bev - 1e-9)) return false;
+      if (e.merge && !(mergeGap(s, i) >= -1e-9)) return false;
       for (const d of e.lands) if (landTo(s, d) < STOCK_MIN_U - 1e-9) return false;
       return true; };
     // the least station from the first apex and the greatest toward the second, stepped at half a margin, bisected to 1e-3
@@ -9273,9 +9296,9 @@ async function siteTailBearings(B, F, g, cap) {
     const blocks = st.map((s, i) => {
       const c = at(s), e = ends[i];
       let through = e.merge;
-      if (through) {   // the crescent: the pocket's lapped floor rim must cross the bore's circle
+      if (through) {   // the crescent: the pocket's lapped floor rim must cross the bore's circle (or outline, exactly twice)
         const R = pocketR + bev + SEAT_LAND_LAP, d = Math.hypot(c.x - through.x, c.y - through.y);
-        if (!(Math.abs(R - through.r) < d && d < R + through.r)) through = null;
+        if (through.pts ? !discLessConvex(R, through.pts.map(([x, y]) => [x - c.x, y - c.y])) : !(Math.abs(R - through.r) < d && d < R + through.r)) through = null;
       }
       return { s, centre: c, merged: !!through, pocket: { x: c.x, y: c.y, r: pocketR, depth, lap: SEAT_LAND_LAP, ...(through ? { through } : {}) } };
     });
@@ -9283,19 +9306,20 @@ async function siteTailBearings(B, F, g, cap) {
       return { why: `the leg's block at ${b.s.toFixed(3)} neither reaches its corner's bore to merge nor keeps §62's land to it` };
     const over = [(st[0] - len / 2) - bevelLoadZ(loads[0]), (lenT - bevelLoadZ(loads[1])) - (st[1] + len / 2)];
     return { why: null, r, bore, half, len, topZ, depth, pocketR, circR, blocks, spread: st[1] - st[0], overhang: over,
-      endGaps: blocks.map((b, i) => ends[i].merge ? gapOf(b.s, i) - ends[i].merge.r - bev : null),
+      endGaps: blocks.map((b, i) => ends[i].merge ? mergeGap(b.s, i) : null),
       lands: blocks.map((b, i) => ends[i].lands.map((d) => landTo(b.s, d))) };
   };
   // leg 1 (landing 2): A → K, merged with the drop's bore at A (blind since landing 1) and the fold's through-bore at K
   const sDropOut = spec(BEVEL_MODULE, 90, MW_LEG1_R, SETTING_ROD_R);
   const foldModule = foldModuleFor(F.shaftAngleDeg);
   const sFoldIn = spec(foldModule, F.shaftAngleDeg, MW_LEG1_R, MW_LEG2_R), sFoldOut = spec(foldModule, F.shaftAngleDeg, MW_LEG2_R, MW_LEG1_R);
-  const dropHoleR = sDropOut.coneR + m, foldHoleR = sFoldIn.coneR + m;   // MW_DROP_PLATE_HOLE's and MW_FOLD_PLATE_HOLE's laws
+  const dropHoleR = sDropOut.coneR + m;   // MW_DROP_PLATE_HOLE's law
+  const foldOpening = foldOpeningFor(F), foldHoleR = foldOpening.r;   // MW_FOLD_PLATE_HOLE's (landing 5: the blanks' footprint)
   const lenAK = settingA.distanceTo(F.K);
   const leg1Blocks = (() => {
     const LB = legBlocks({ o: settingA, u: F.leg1U, lenT: lenAK, sStart: settingA.distanceTo(leg1A), sEnd: lenAK, r: MW_LEG1_R,
       ends: [{ merge: { x: settingA.x, y: settingA.y, r: dropHoleR, ...(upper.drop.why ? {} : { depth: upper.drop.floorZ - PLATE_BACK }) }, lands: [] },
-             { merge: { x: F.K.x, y: F.K.y, r: foldHoleR }, lands: [] }],
+             { merge: foldOpening, lands: [] }],
       loads: [sDropOut, sFoldIn] });
     return LB.why ? LB : { ...LB, dropHoleR, foldHoleR, endToDropBore: LB.endGaps[0], endToFoldBore: LB.endGaps[1] };
   })();
@@ -9315,7 +9339,7 @@ async function siteTailBearings(B, F, g, cap) {
     const riseMergedHere = Math.hypot(B.x - cap.x, B.y - cap.y) < capPocketR + bev + SEAT_LAND_LAP + riseHoleR;
     const leg1K = leg1Blocks.why ? null : leg1Blocks.blocks[1].pocket;
     const LB = legBlocks({ o: F.K, u: F.leg2U, lenT: lenKB, sStart: 0, sEnd: F.K.distanceTo(leg2B), r: MW_LEG2_R,
-      ends: [{ merge: { x: F.K.x, y: F.K.y, r: foldHoleR }, lands: leg1K && !leg1K.through ? [{ x: leg1K.x, y: leg1K.y, r: leg1K.r }] : [] },
+      ends: [{ merge: foldOpening, lands: leg1K && !leg1K.through ? [{ x: leg1K.x, y: leg1K.y, r: leg1K.r }] : [] },
              riseMergedHere
                ? { merge: null, lands: [{ x: B.x, y: B.y, r: riseHoleR }, { x: cap.x, y: cap.y, r: capPocketR }] }
                : { merge: { x: B.x, y: B.y, r: riseHoleR, ...(upper.rise.why ? {} : { depth: upper.rise.floorZ - PLATE_BACK }) }, lands: [] }],
@@ -9701,7 +9725,9 @@ const foldWheelClear = (pts) => {   // the worst 3D clearance of a candidate's p
 // TODO 289 landing 3 — whether leg 2 carries its K-side block. On the arrangements whose reserve train stands where
 // that block must (measured on ?arrangement=designed: the reserve's input pinion 0.142 off it at the scan's nearest,
 // against the 0.15 margin, at every swing in its ±30°), the cap-bearing scan finds no bearing with it; the scan then
-// runs again without it, so the fold keeps its bearing and leg 2 keeps its B block, and the build warns.
+// runs again without it, so the fold keeps its bearing and leg 2 keeps its B block, and the build warns. Since landing 5
+// cut the fold corner's opening to its blanks' footprint, the block stands 1.51 from K and no declared point needs
+// this; it stays as the fallback, warned, for an arrangement that would.
 let MW_LEG2_K_BEARING = true;
 const CAP_SOLVE = await (async () => {
   const capAt = (dl) => {
@@ -10100,7 +10126,27 @@ const MW_FOLD_SPIN = (() => {
 // for a vertical axis that is the plan footprint; for K's horizontal axes the
 // footprint is the blank's sphere of radius coneR about the apex, so the bore
 // is coneR + CLEAR_MARGIN. Consumed by the plate's `holes` at its build.
-const MW_FOLD_PLATE_HOLE = { x: MW_FOLD.K.x, y: MW_FOLD.K.y, r: cornerFold.spec.coneR + CLEAR_MARGIN };
+// (TODO 289 landing 5: cut to the blanks' footprint above the dial face instead, foldOpeningFor; the sphere's circle
+// reached 2.886 along the run where the blanks stop at 0.55.) Rule 6: the built corner's blanks, as cut, stand inside it
+// by the margin wherever they rise above the dial face.
+const MW_FOLD_PLATE_HOLE = foldOpeningFor(MW_FOLD);
+{
+  let worst = Infinity, at = null;
+  const v = new THREE.Vector3();
+  for (const name of ['mwCornerFoldIn', 'mwCornerFoldOut']) keyless.traverse((o) => {
+    if (!o.isMesh || o.name !== name) return;
+    o.updateWorldMatrix(true, false);
+    const p = o.geometry.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld);
+      if (v.z < PLATE_BACK) continue;
+      const g = -G.pointConvexGap(MW_FOLD_PLATE_HOLE.pts, v.x, v.y);
+      if (g < worst) { worst = g; at = name; }
+    }
+  });
+  if (worst < CLEAR_MARGIN - 1e-6)
+    console.warn(`TODO 289: the fold corner's opening stands ${worst.toFixed(4)} off ${at} above the dial face — need CLEAR_MARGIN ${CLEAR_MARGIN}`);
+}
 // A's own recess, by the same rule — TODO 150 item 1 replaced the bare 1.95
 // literal that used to stand here (sized for a blank whose corner pointed
 // the wrong way) with the cut blank's own coneR, now that the corner is
@@ -11817,7 +11863,8 @@ const MW_MERGED_BORES = (() => {
   for (const [k, hole, blind] of [['drop', MW_DROP_PLATE_HOLE, MW_BLIND_BORES.drop], ['fold', MW_FOLD_PLATE_HOLE, null], ['rise', MW_RISE_PLATE_HOLE, MW_BLIND_BORES.rise]]) {
     const p = at(hole);
     if (!p) continue;
-    if (Math.abs(p.through.r - hole.r) > 1e-9 || (blind && Math.abs(p.through.depth - blind.depth) > 1e-9) || (!blind && p.through.depth !== undefined))
+    const samePts = !hole.pts || (p.through.pts && p.through.pts.length === hole.pts.length && p.through.pts.every((q, i) => Math.abs(q[0] - hole.pts[i][0]) < 1e-9 && Math.abs(q[1] - hole.pts[i][1]) < 1e-9));
+    if (Math.abs(p.through.r - hole.r) > 1e-9 || !samePts || (blind && Math.abs(p.through.depth - blind.depth) > 1e-9) || (!blind && p.through.depth !== undefined))
       console.warn(`TODO 289: a traverse block's pocket was sited against the ${k} corner's bore at r ${p.through.r.toFixed(4)} depth ${p.through.depth}, but the plate cuts it at r ${hole.r.toFixed(4)} depth ${blind?.depth}`);
     out[k] = true;
   }
@@ -65763,6 +65810,9 @@ window.__clock = {
           return [k, U.why ? { why: U.why } : { why: null, apex: vArr(U.o), axis: vArr(U.u), r: U.r, bore: U.bore, outer: U.outer, s0: U.s0, len: U.len, room: U.room,
             sEnd: U.sEnd, centre: vArr(U.centre), floorZ: U.floorZ, coneR: U.coneR, legCut: U.legCut, straddled: U.straddled }]; })),
         leg1A: vArr(T.leg1A), leg2B: vArr(T.leg2B), plateTop: PLATE_TOP_FACE,
+        // TODO 289 landing 5 — the fold corner's opening as cut (foldOpeningFor), and the sphere's circle it replaced
+        foldOpening: { x: MW_FOLD_PLATE_HOLE.x, y: MW_FOLD_PLATE_HOLE.y, r: MW_FOLD_PLATE_HOLE.r, pts: MW_FOLD_PLATE_HOLE.pts.map((q) => [...q]),
+          sphereR: cornerFold.spec.coneR + CLEAR_MARGIN },
         // TODO 289 landing 2 — leg 1's bearing blocks, let into the plate
         ...Object.fromEntries(['leg1Blocks', 'leg2Blocks'].map((k) => [k, T[k].why ? { why: T[k].why }
           : (({ blocks, ...LB }) => ({ ...LB, blocks: blocks.map((b) => ({ s: b.s, centre: vArr(b.centre), merged: b.merged, pocket: { ...b.pocket } })) }))(T[k])])),

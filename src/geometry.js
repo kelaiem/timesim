@@ -11,7 +11,7 @@ export { freeCoilLength, ribbonFrameLength, RIBBON_K_MAX, barrelDims, solveRibbo
 import { STOCK_MIN_U, CLEAR_MARGIN, PIVOT_BORE_CLEAR, SLENDER_TARGET, FORK_BEVEL_FRAC, UNIT_MM,
   mmForArcmin, RESOLVE_ARCMIN, IDENTIFY_ARCMIN, GLANCE_ARCMIN, CAP_PER_EM, MOVEMENT_SENSE,
   CASE_LUG_T, CASE_LUG_EDGE_R, CASE_SPRING_BAR_D, CASE_SPRING_BAR_TIP_D, caseLugPlan,
-  balanceWheelDims } from './layout.js'; // §50/TODO 12: build to the stock floor; §25 D's flat top clears the margin like everything else; §54's build-to proportion caps the fusee crest (TODO 40); §188's hand stock is a mm quantity; §190/§280: the lug/bar stock and the lug's one outline law
+  balanceWheelDims, convexHull2, discLessConvex, unionLoops } from './layout.js'; // §50/TODO 12: build to the stock floor; §25 D's flat top clears the margin like everything else; §54's build-to proportion caps the fusee crest (TODO 40); §188's hand stock is a mm quantity; §190/§280: the lug/bar stock and the lug's one outline law
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -7033,6 +7033,76 @@ function discChainRing(K, sats, n = 144) {
 // form case seats the plate on its own frame, which this prototype does not
 // model yet, so a `rim` passed beside an outline is ignored. Null = the
 // round plate, byte for byte.
+// TODO 289 landing 5 — WHERE BLANKS RISE INTO A PLATE, IN PLAN. A corner's plate opening used to be the circle of its
+// blanks' cone-distance sphere (coneR + CLEAR_MARGIN about the apex), but at the fold's Σ ≈ 162° each blank is nearly a flat
+// disc standing across the run: in the slab it spans s −1.31…+0.55 along leg 2 against the circle's 2.886, and the circle
+// was what kept leg 2's K block off the reserve train's room. The opening needs only to pass what rises into the slab's
+// band, so it is cut to that: the convex hull of the blanks' surfaces above `zCut` in plan, grown by `dil`.
+//   · the surface is each envelope's meridian polygon (`poly`, circumscribing the cut blank: the surface every blank
+//     judgement here samples) revolved about its axis, sampled at `step` along the meridian and round the axis, so every
+//     point of it lies within step of a sample; samples a step BELOW zCut are kept too, so the cut curve is covered;
+//   · the hull contains every sample's plan point, and growing it by dil + the envelope's azimuthal allowance (eps) +
+//     step covers the true footprint: the plate round the opening then stands dil clear of every blank above zCut.
+// Returns a CCW convex polygon of [x, y], or null when nothing rises above zCut.
+export function blanksPlanFootprint(blanks, zCut, dil, step = 0.05) {
+  const xs = [], ys = [];
+  let eps = 0;
+  for (const { e, f } of blanks) {
+    eps = Math.max(eps, e.eps || 0);
+    const o = f.o, a = f.a, { u, v } = _basis(a), P = e.poly, n = P.length;
+    for (let i = 0; i < n; i++) {
+      const [r0, z0] = P[i], [r1, z1] = P[(i + 1) % n], ks = Math.max(1, Math.ceil(Math.hypot(r1 - r0, z1 - z0) / step));
+      for (let k = 0; k <= ks; k++) {
+        const t = k / ks, r = r0 + (r1 - r0) * t, z = z0 + (z1 - z0) * t;
+        const np = Math.max(1, Math.ceil((2 * Math.PI * r) / step));
+        for (let j = 0; j < np; j++) {
+          const ps = (2 * Math.PI * j) / np, c = Math.cos(ps) * r, sn = Math.sin(ps) * r;
+          if (o[2] + a[2] * z + u[2] * c + v[2] * sn < zCut - step) continue;
+          xs.push(o[0] + a[0] * z + u[0] * c + v[0] * sn); ys.push(o[1] + a[1] * z + u[1] * c + v[1] * sn);
+        }
+      }
+    }
+  }
+  if (!xs.length) return null;
+  return dilateConvex(convexHull2(xs, ys, xs.length), dil + eps + step);
+}
+// A convex polygon (CCW [x, y]) grown outward by d: the hull of a circle of radius d at every vertex, each circle drawn
+// as its CIRCUMSCRIBED n-gon (radius d / cos(π/n)), so the grown polygon covers the true offset rather than cutting
+// inside it by the polygon's sag.
+export function dilateConvex(hull, d, n = 16) {
+  if (!(d > 0)) return hull.slice();
+  const R = d / Math.cos(Math.PI / n), xs = [], ys = [];
+  for (const [x, y] of hull) for (let k = 0; k < n; k++) { xs.push(x + R * Math.cos((2 * Math.PI * k) / n)); ys.push(y + R * Math.sin((2 * Math.PI * k) / n)); }
+  return convexHull2(xs, ys, xs.length);
+}
+const _segD2 = (x, y, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy,
+  t = L2 ? Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / L2)) : 0; return Math.hypot(x - a[0] - t * dx, y - a[1] - t * dy); };
+const _inConvex = (P, x, y) => { for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i + 1) % P.length];
+  if ((b[0] - a[0]) * (y - a[1]) - (b[1] - a[1]) * (x - a[0]) < 0) return false; } return true; };
+// A point's distance to a convex CCW polygon: positive outside, negative (the depth) inside.
+export function pointConvexGap(P, x, y) {
+  let d = Infinity;
+  for (let i = 0; i < P.length; i++) d = Math.min(d, _segD2(x, y, P[i], P[(i + 1) % P.length]));
+  return _inConvex(P, x, y) ? -d : d;
+}
+// The gap between two convex CCW polygons: their least distance when apart, −1 when they overlap (a vertex of one inside
+// the other, or two edges crossing; for convex polygons one of the two always holds when they meet).
+export function convexGap(P, Q) {
+  for (const [x, y] of P) if (_inConvex(Q, x, y)) return -1;
+  for (const [x, y] of Q) if (_inConvex(P, x, y)) return -1;
+  const cross = (a, b, c) => (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+  let d = Infinity;
+  for (let i = 0; i < P.length; i++) {
+    const a = P[i], b = P[(i + 1) % P.length];
+    for (let j = 0; j < Q.length; j++) {
+      const c = Q[j], e = Q[(j + 1) % Q.length];
+      if (cross(a, b, c) * cross(a, b, e) < 0 && cross(c, e, a) * cross(c, e, b) < 0) return -1;
+      d = Math.min(d, _segD2(a[0], a[1], c, e), _segD2(b[0], b[1], c, e), _segD2(c[0], c[1], a, b), _segD2(e[0], e[1], a, b));
+    }
+  }
+  return d;
+}
+const _circlePts = (x, y, r, n = 144) => Array.from({ length: n }, (_, k) => [x + r * Math.cos((2 * Math.PI * k) / n), y + r * Math.sin((2 * Math.PI * k) / n)]);
 export function makeBackPlate({ radius, thickness, holes = [], slots = [], sectors = [], rim = null, pockets = [], outline = null }) {
   const bevelSize = radius * PLATE_BEVEL_F;
   const shape = new THREE.Shape();
@@ -7075,9 +7145,15 @@ export function makeBackPlate({ radius, thickness, holes = [], slots = [], secto
     }
     shape.closePath();
   }
+  // TODO 289 landing 5 — an opening may carry `pts`, its finished outline as a convex CCW polygon (a corner's opening
+  // cut to its blanks' footprint, blanksPlanFootprint); its `r` is then the circumscribed radius about (x, y), what a
+  // reader that knows only discs holds it by, and every cut here reads the outline, grown by the bevel like a disc.
+  const v2 = (q) => new THREE.Vector2(q[0], q[1]);
+  const cutOf = (t) => (t.pts ? dilateConvex(t.pts, bevelSize) : _circlePts(t.x, t.y, t.r + bevelSize));
   for (const h of holes) {
     const p = new THREE.Path();
-    p.absarc(h.x, h.y, h.r + bevelSize, 0, Math.PI * 2, true); // CW: a hole
+    if (h.pts) p.setFromPoints(cutOf(h).map(v2).reverse());   // CW: a hole
+    else p.absarc(h.x, h.y, h.r + bevelSize, 0, Math.PI * 2, true); // CW: a hole
     shape.holes.push(p);
   }
   for (const sl of slots) {
@@ -7120,12 +7196,22 @@ export function makeBackPlate({ radius, thickness, holes = [], slots = [], secto
   for (const pk of pockets) if (pk.through) { const k = throughKey(pk.through); shared.set(k, [...(shared.get(k) ?? []), pk]); }
   for (const [, group] of shared) if (group.length > 1) {
     const t = group[0].through, K = { x: t.x, y: t.y, r: t.r + bevelSize };
+    if (t.pts) {   // an outlined bore: the exact union of its outline and every pocket's disc
+      const p = new THREE.Path(); p.setFromPoints(unionLoops([cutOf(t), ...group.map((pk) => _circlePts(pk.x, pk.y, pk.r + bevelSize))]).map(v2).reverse());
+      shape.holes.push(p); continue;
+    }
     const sats = group.map((pk) => ({ x: pk.x, y: pk.y, r: pk.r + bevelSize }));
     const p = new THREE.Path(); p.setFromPoints(discChainRing(K, sats).reverse()); shape.holes.push(p);   // CW: a hole
   }
   for (const pk of pockets) {
     if (pk.through && shared.get(throughKey(pk.through)).length > 1) continue;   // cut with its group above
     const A = { x: pk.x, y: pk.y, r: pk.r + bevelSize };
+    if (pk.through?.pts) {
+      const T = cutOf(pk.through), Ap = _circlePts(A.x, A.y, A.r), p = new THREE.Path();
+      if (convexGap(T, Ap) < 0) { p.setFromPoints(unionLoops([T, Ap]).map(v2).reverse()); shape.holes.push(p); }
+      else { p.setFromPoints(Ap.map(v2).reverse()); shape.holes.push(p); const q = new THREE.Path(); q.setFromPoints(T.map(v2).reverse()); shape.holes.push(q); }
+      continue;
+    }
     const B = pk.through ? { x: pk.through.x, y: pk.through.y, r: pk.through.r + bevelSize } : null;
     const p = new THREE.Path();
     if (B && Math.hypot(B.x - A.x, B.y - A.y) < A.r + B.r) p.setFromPoints(discUnionRing(A, B).reverse());   // CW: a hole
@@ -7141,14 +7227,15 @@ export function makeBackPlate({ radius, thickness, holes = [], slots = [], secto
   const lands = [];
   {
     const discs = [];
-    holes.forEach((h, i) => discs.push({ what: `hole ${i} (${h.x.toFixed(2)}, ${h.y.toFixed(2)}) r ${h.r.toFixed(3)}`, d: [h] }));
+    holes.forEach((h, i) => discs.push({ what: `hole ${i} (${h.x.toFixed(2)}, ${h.y.toFixed(2)}) r ${h.r.toFixed(3)}`, d: h.pts ? [] : [h], P: h.pts ? [h.pts] : [] }));
     {   // a pocket and its through-bore are one opening, and so are pockets sharing one through-bore (landing 3)
       const byThrough = new Map();
       pockets.forEach((pk, i) => {
         const k = pk.through ? `${pk.through.x},${pk.through.y},${pk.through.r}` : `pocket ${i}`;
         const e = byThrough.get(k);
         if (e) { e.d.push(pk); e.what += ` + pocket ${i}`; }
-        else byThrough.set(k, { what: `pocket ${i} (${pk.x.toFixed(2)}, ${pk.y.toFixed(2)}) r ${pk.r.toFixed(3)}${pk.through ? ' + through r ' + pk.through.r.toFixed(3) : ''}`, d: [pk, ...(pk.through ? [pk.through] : [])] });
+        else byThrough.set(k, { what: `pocket ${i} (${pk.x.toFixed(2)}, ${pk.y.toFixed(2)}) r ${pk.r.toFixed(3)}${pk.through ? ' + through r ' + pk.through.r.toFixed(3) : ''}`,
+          d: [pk, ...(pk.through && !pk.through.pts ? [pk.through] : [])], P: pk.through?.pts ? [pk.through.pts] : [] });
       });
       for (const e of byThrough.values()) discs.push(e);
     }
@@ -7160,17 +7247,29 @@ export function makeBackPlate({ radius, thickness, holes = [], slots = [], secto
       const q = new THREE.Path(); q.absarc(sc.cx, sc.cy, r1, Math.max(sc.a0, a1u) + da, Math.min(sc.a0, a1u) - da, true); q.absarc(sc.cx, sc.cy, r0, Math.min(sc.a0, a1u) - da, Math.max(sc.a0, a1u) + da, false); polys.push({ what: 'sector', p: q.getPoints(72) }); }
     const segD = (x, y, a, b) => { const dx = b.x - a.x, dy = b.y - a.y, L2 = dx * dx + dy * dy, t = L2 ? Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / L2)) : 0; return Math.hypot(x - a.x - t * dx, y - a.y - t * dy); };
     for (let i = 0; i < discs.length; i++) {
+      const Pi = discs[i].P ?? [];
       for (let j = i + 1; j < discs.length; j++) {
+        const Pj = discs[j].P ?? [];
         let m = Infinity; for (const a of discs[i].d) for (const b of discs[j].d) m = Math.min(m, Math.hypot(a.x - b.x, a.y - b.y) - a.r - b.r);
+        for (const a of discs[i].d) for (const Q of Pj) m = Math.min(m, pointConvexGap(Q, a.x, a.y) - a.r);
+        for (const Q of Pi) for (const b of discs[j].d) m = Math.min(m, pointConvexGap(Q, b.x, b.y) - b.r);
+        for (const Q of Pi) for (const R of Pj) m = Math.min(m, convexGap(Q, R));
         lands.push({ a: discs[i].what, b: discs[j].what, land: m });
       }
-      for (const pg of polys) { let m = Infinity; for (const a of discs[i].d) for (let k = 0; k < pg.p.length; k++) m = Math.min(m, segD(a.x, a.y, pg.p[k], pg.p[(k + 1) % pg.p.length]) - a.r); lands.push({ a: discs[i].what, b: pg.what, land: m }); }
+      for (const pg of polys) { let m = Infinity; for (const a of discs[i].d) for (let k = 0; k < pg.p.length; k++) m = Math.min(m, segD(a.x, a.y, pg.p[k], pg.p[(k + 1) % pg.p.length]) - a.r);
+        for (const Q of Pi) for (let k = 0; k < pg.p.length; k++) { m = Math.min(m, pointConvexGap(Q, pg.p[k].x, pg.p[k].y));
+          for (const [qx, qy] of Q) m = Math.min(m, segD(qx, qy, pg.p[k], pg.p[(k + 1) % pg.p.length])); }
+        lands.push({ a: discs[i].what, b: pg.what, land: m }); }
     }
     for (const l of lands) if (l.land < STOCK_MIN_U - 1e-9)
       console.warn(`§62: the base plate's ${l.a} and ${l.b} leave a ${l.land.toFixed(4)} land — need STOCK_MIN_U ${STOCK_MIN_U.toFixed(4)} (merge them into one opening, or move one)`);
   }
   // discLessDisc cuts a crescent only when the bore CROSSES the floor's rim.
-  for (const pk of pockets) if (pk.through) {
+  for (const pk of pockets) if (pk.through?.pts) {
+    if (!discLessConvex(pk.r + bevelSize + pk.lap, pk.through.pts.map(([x, y]) => [x - pk.x, y - pk.y])))
+      console.warn(`TODO 289: a pocket's outlined through-bore does not cross its floor's rim (r ${(pk.r + bevelSize + pk.lap).toFixed(3)}) exactly twice — the floor's crescent is undefined`);
+  }
+  for (const pk of pockets) if (pk.through && !pk.through.pts) {
     const R = pk.r + bevelSize + pk.lap, d = Math.hypot(pk.through.x - pk.x, pk.through.y - pk.y);
     if (!(Math.abs(R - pk.through.r) < d && d < R + pk.through.r))
       console.warn(`TODO 172: a pocket's through-bore (r ${pk.through.r.toFixed(3)} at ${d.toFixed(3)}) does not cross its floor's rim (r ${R.toFixed(3)}) — the floor's crescent is undefined`);
@@ -7203,7 +7302,11 @@ export function makeBackPlate({ radius, thickness, holes = [], slots = [], secto
     if (!(h > 0)) continue;   // cut through: no floor
     const A = { x: pk.x, y: pk.y, r: pk.r + bevelSize + pk.lap };
     const fs = new THREE.Shape();
-    if (pk.through) fs.setFromPoints(discLessDisc(A, pk.through));
+    if (pk.through?.pts) {
+      const c = discLessConvex(A.r, pk.through.pts.map(([x, y]) => [x - A.x, y - A.y]));
+      if (!c) continue;   // warned above
+      fs.setFromPoints(c.map(([x, y]) => new THREE.Vector2(x + A.x, y + A.y)));
+    } else if (pk.through) fs.setFromPoints(discLessDisc(A, pk.through));
     else fs.absarc(A.x, A.y, A.r, 0, Math.PI * 2, false);
     const fg = new THREE.ExtrudeGeometry(fs, { depth: h, bevelEnabled: false, curveSegments: 72 });
     fg.translate(0, 0, faceZ - h);
@@ -7216,7 +7319,7 @@ export function makeBackPlate({ radius, thickness, holes = [], slots = [], secto
   // the stock like every floor, less the pocket's opening (the pocket's own floor stands under that, deeper or
   // shallower), so the two floors meet face to face where the openings join and neither overlaps the other's hole.
   for (const pk of pockets) {
-    if (!(pk.through && pk.through.depth > 0)) continue;
+    if (!(pk.through && pk.through.depth > 0) || pk.through.pts) continue;
     const h = 2 * faceZ - pk.through.depth;
     if (!(h > 0)) continue;
     const B = { x: pk.through.x, y: pk.through.y, r: pk.through.r + bevelSize + pk.lap };
