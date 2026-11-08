@@ -71,15 +71,16 @@ function diffReports(A, B) {
 {
   const C = JSON.parse(JSON.stringify(A));
   let planted = null;
+  const step = (o, path, k) => (Array.isArray(o) ? `${path}[${k}]` : `${path}.${k}`);   // compare()'s own path spelling
   const plant = (o, path) => {
     if (planted || o === null || typeof o !== 'object') return;
     for (const k of Object.keys(o)) {
       if (planted) return;
       const v = o[k];
       if (typeof v === 'number' && Number.isFinite(v) && v !== 0 && !TIMING(k, v)) {
-        const f = new Float64Array([v]), u = new BigInt64Array(f.buffer); u[0] += 1n; o[k] = f[0]; planted = `${path}.${k}`; return;
+        const f = new Float64Array([v]), u = new BigInt64Array(f.buffer); u[0] += 1n; o[k] = f[0]; planted = step(o, path, k); return;
       }
-      plant(v, `${path}.${k}`);
+      plant(v, step(o, path, k));
     }
   };
   for (const [name, row] of Object.entries(C.checks)) { if (!row.neverRan && (!ONLY || ONLY.has(name))) plant(row.result, name); if (planted) break; }
