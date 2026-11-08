@@ -48,6 +48,8 @@ import { auditLubrication, LUBRICATION, LUBRICATION_DEBT, LUBRICATION_WAIVERS } 
 // is the one main.js already evaluated: importing it here re-runs no boot
 // handshake and arms no marker.
 import { aesthetics, mergeAesthetics } from './aesthetics.js';
+import { kernelMode, wasmDistance, shadowTally } from './kernel.js';   // §338 landing 5
+export { useKernel, kernelMode, kernelStats } from './kernel.js';
 
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
@@ -1017,6 +1019,28 @@ function bakedGeometry(src, L) {
   _bakeCache.set(src, { key, ver, geometry: g });
   return g;
 }
+// §338 landing 5 — THE KERNEL INTERFACE. Every geometric primitive a check asks
+// for goes through `Kernel`, and its JS body (three-mesh-bvh) is the REFERENCE: a
+// new check writes its query here, in JS, and lands (§338's first design rule).
+// src/kernel.js may answer a primitive with the compiled kernel instead, held to
+// this body by tools/probe-338-kernel-parity.mjs; today it can answer `distance`.
+const Kernel = {
+  // The closest distance between `gA` (its own frame) and `gB` placed by `m`
+  // (B's frame → A's), or a value at or over `upper` (Infinity included) when no
+  // pair is closer than it.
+  distance(gA, gB, m, upper) {
+    const k = kernelMode();
+    if (k === 'wasm') return wasmDistance(gA, gB, m.elements, upper);
+    const t0 = k === 'shadow' ? performance.now() : 0;
+    const bvh = bvhForGeometry(gA);
+    bvhForGeometry(gB);
+    const hit = bvh.closestPointToGeometry(gB, m, {}, {}, 0, upper);
+    const d = hit ? hit.distance : Infinity;
+    if (k === 'shadow') shadowTally(gA, gB, m.elements, upper, d, performance.now() - t0);
+    return d;
+  },
+};
+
 function bvhForGeometry(geometry) {
   let bvh = bvhCache.get(geometry);
   if (!bvh) {
@@ -2268,11 +2292,8 @@ function _meshClearanceInner(a, b, upperBound = Infinity) {
   // whole query in its local units (see rigidFrame). Rigid meshes pass through
   // untouched, so every rigid pair's answer is the one it always was.
   const va = rigidFrame(a), vb = rigidFrame(b);
-  const bvh = bvhForGeometry(va.geometry);
-  bvhForGeometry(vb.geometry);
   _mat.copy(va.frame).invert().multiply(vb.frame);
-  const hit = bvh.closestPointToGeometry(vb.geometry, _mat, {}, {}, 0, upperBound);
-  let d = hit ? hit.distance : Infinity; // Infinity ⇒ nothing within upperBound
+  let d = Kernel.distance(va.geometry, vb.geometry, _mat, upperBound); // Infinity ⇒ nothing within upperBound
   // Cross-check near-zeros. closestPointToGeometry's tri-to-tri distance
   // short-circuits to 0 through its own triangle-intersection test, and
   // that test can FALSELY report an intersection for plainly separated
@@ -7364,10 +7385,8 @@ export function checkAlarmHandoffs(clock, { tol = HANDOFF_TRACK_TOL, poses = ALA
             // the z-nudge below is a boolean on the meshes as they stand,
             // which an affine map cannot change, so it keeps its own tree.
             const va = rigidFrame(a), vb = rigidFrame(b);
-            const bvhV = bvhForGeometry(va.geometry); bvhForGeometry(vb.geometry);
             _mat.copy(va.frame).invert().multiply(vb.frame);
-            const hit = bvhV.closestPointToGeometry(vb.geometry, _mat, {}, {}, 0, gap);
-            let d = hit ? hit.distance : Infinity;
+            let d = Kernel.distance(va.geometry, vb.geometry, _mat, gap);
             const bvhA = bvhFor(a); bvhFor(b);
             const tryDz = (dz) => stoneIntersectsWheel(bvhA, a.matrixWorld, b, b.geometry, new THREE.Vector3(0, 0, dz));
             let zSep = Infinity;
