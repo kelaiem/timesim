@@ -4,8 +4,8 @@
 
 # The instruments
 
-407 scripts. **281 are ACCEPTANCE tests** — they decide and exit non-zero.
-**126 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
+409 scripts. **282 are ACCEPTANCE tests** — they decide and exit non-zero.
+**127 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
 **Grep this file by what you want to know, not by section number.** The names encode
@@ -40,6 +40,8 @@ when a question was asked; the summaries are what it answered.
 | `free-outline.mjs` |  | acceptance | §325 — WRITE OR CHECK src/free-outlines.js, the FREE outline each movement is cut to. ACCEPTANCE (--check exits non-zero on drift). |
 | `glossary-links.mjs` |  | acceptance | §236 tier one — THE GLOSSARY LINKER'S GATE. explain.html defines 28 project words and, since §236, links their first use in each entry to the definition. Nothing about that is authored: the links are injected at runtime by src/glossary-links.js, after src/explain-i18n.js has swapped the page into the reader's language. Two properties have to hold, and neither is visible by reading the diff. |
 | `gong-bench-data.mjs` |  | acceptance | WRITES src/gong-bench-data.json: what gong-bench.html lays its wire into — per form case, the measured free space at the gong wire's own height. The page cannot boot the movement (it is sim-code-free, like technic.html: the battery never sees it), so the space is GENERATED here from booted builds and committed, never typed, and --check re-derives it. |
+| `gong-seats-file.mjs` |  | report | THE SEAT TABLE'S FILE FORMAT, one copy: tools/gong-seats.mjs writes it, tools/gong-seats-jobs.mjs merges parallel runs of it (one kind and mode a process) back into one file. |
+| `gong-seats-jobs.mjs` |  | acceptance | RUNS tools/gong-seats.mjs IN PARALLEL: one process per (kind, mode), merged into one write of src/gong-seats.js. |
 | `gong-seats.mjs` |  | acceptance | WRITES src/gong-seats.js (BUILT §310 landing 2): where the alarm gong stands in each FITTED form case, and what it rings there. The build cannot solve this itself — the seat needs the whole movement's metal in the wire's band, and the gong and the hammer are cut long before the last of it — so the seats are GENERATED here from booted builds and committed, never typed. The build reads its row early, solves the strike exactly against its own live lever (GS.seatStrike) and, once every part is cut, re-measures the band with the SAME functions this tool solved on (GS.bandParts / bandNearest) and warns if the seat no longer holds. |
 | `height-ledger.mjs` |  | report | THE HEIGHT LEDGER'S HARNESS — one boot measured for the cased-depth chains, copied-tree mutants, and the ledger itself (front and back chains, the back-most metal and its slack), as a module. Not a probe: it measures nothing on its own. |
 | `item-docs.mjs` |  | acceptance | TODO.md and docs/BUILT.md, ONE FILE PER ITEM — the reader every tool shares, the split that made the layout, and the generated indexes. |
