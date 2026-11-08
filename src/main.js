@@ -194,6 +194,11 @@ const __bootWarns = [];
     _w(...a);
   };
 }
+// §338 landing 2 — the build's maths is src/det-math.js, installed by the host
+// before this module (index.html imports det-math-boot.js first; the native
+// host installs it itself). Its boot check ran before this channel existed, so
+// its findings are re-said here; a host that never installed it is a finding.
+for (const w of globalThis.__detMath ? globalThis.__detMath.warns : ['§338: deterministic maths is not installed — this host did not import src/det-math-boot.js before main.js, so the metal is cut with the engine\'s own Math']) console.warn(w);
 // TODO 30 — the buffer is ALSO published here, live, from the module's first
 // lines. It is deliberately NOT on __clock: that object's EXISTENCE is the
 // boot-complete handshake (ci-battery.mjs waits on `!!window.__clock`, §33's
@@ -1847,7 +1852,7 @@ const balanceR = BALANCE_R;
 const forkSpan = 2 * escapeWheelR * Math.sin(THREE.MathUtils.degToRad(EMBRACE_DEG));
 // Pivot distance from the escape-wheel centre that puts both stones exactly on
 // the wheel rim (stones sit at (±span/2, span/2) in fork-local coordinates).
-const palletStoneDist = forkSpan / 2 + Math.sqrt(escapeWheelR ** 2 - (forkSpan / 2) ** 2);
+const palletStoneDist = forkSpan / 2 + Math.sqrt(Math.pow(escapeWheelR, 2) - Math.pow(forkSpan / 2, 2));
 // Lever runs from the pivot to just short of the balance roller's edge. Real
 // Swiss-lever movements sit the balance close to the escapement — a compact
 // fork bridging a modest gap, not stretched across open space — so this is
@@ -2123,19 +2128,19 @@ const OSC_U = UNIT_MM / 1000;   // m per model unit — §39's pin, the one conv
 // TODO 242 — a function of the wheel's dimensions (balanceWheelDims' shape), so
 // the energy record can weigh the one-step-heavier balance with this same law.
 function oscInertiaOf(B) {
-  const u5 = OSC_U ** 5;        // ρ·(volume)·(radius²) — five lengths
+  const u5 = Math.pow(OSC_U, 5);        // ρ·(volume)·(radius²) — five lengths
   // Rim: a brass annulus about its own axis, I = m·(rO² + rI²)/2.
-  const rimVol = Math.PI * (B.rim.rO ** 2 - B.rim.rI ** 2) * B.rim.h;
-  const rim = OSC_BRASS_RHO * rimVol * (B.rim.rO ** 2 + B.rim.rI ** 2) / 2 * u5;
+  const rimVol = Math.PI * (Math.pow(B.rim.rO, 2) - Math.pow(B.rim.rI, 2)) * B.rim.h;
+  const rim = OSC_BRASS_RHO * rimVol * (Math.pow(B.rim.rO, 2) + Math.pow(B.rim.rI, 2)) / 2 * u5;
   // Arms: one steel bar across the full inner diameter (= the two arms),
   // about its centre — I = m·(x² + y²)/12 for the in-plane pair of sides.
-  const arm = OSC_STEEL_RHO * (B.arm.x * B.arm.y * B.arm.z) * (B.arm.x ** 2 + B.arm.y ** 2) / 12 * u5;
+  const arm = OSC_STEEL_RHO * (B.arm.x * B.arm.y * B.arm.z) * (Math.pow(B.arm.x, 2) + Math.pow(B.arm.y, 2)) / 12 * u5;
   // Timing screws: 16 steel frusta as POINT MASSES at their centres. The
   // neglect is bounded: a screw's own transverse term is ~0.116 u² against
   // rc² ≈ 80, i.e. 0.14% of the screws' contribution.
   const screwVol = (Math.PI * B.screws.len / 3)
-    * (B.screws.r1 ** 2 + B.screws.r1 * B.screws.r2 + B.screws.r2 ** 2);
-  const screw = OSC_STEEL_RHO * B.screws.n * screwVol * (B.screws.rc ** 2) * u5;
+    * (Math.pow(B.screws.r1, 2) + B.screws.r1 * B.screws.r2 + Math.pow(B.screws.r2, 2));
+  const screw = OSC_STEEL_RHO * B.screws.n * screwVol * (Math.pow(B.screws.rc, 2)) * u5;
   // NOT counted, with the measured bound rather than a shrug: roller table
   // (0.10% of the above), safety roller (0.18%, over-counted as a full disc),
   // staff (0.10%) and the ruby impulse pin (0.06%) — 0.38% together, so 0.19%
@@ -2143,7 +2148,7 @@ function oscInertiaOf(B) {
   // TODO 192 — the MASS of the same three terms, for the pivot-friction
   // torque (μ·m·g·r_piv) the energy column prices. Same decomposition, same
   // neglect, same bound: the uncounted staff and rollers are under 1%.
-  const mass = (OSC_BRASS_RHO * rimVol + OSC_STEEL_RHO * (B.arm.x * B.arm.y * B.arm.z) + OSC_STEEL_RHO * B.screws.n * screwVol) * OSC_U ** 3;
+  const mass = (OSC_BRASS_RHO * rimVol + OSC_STEEL_RHO * (B.arm.x * B.arm.y * B.arm.z) + OSC_STEEL_RHO * B.screws.n * screwVol) * Math.pow(OSC_U, 3);
   return { total: rim + arm + screw, rim, arm, screw, mass };
 }
 const OSC_I = oscInertiaOf(balanceWheel.userData);
@@ -2247,7 +2252,7 @@ const HAIRSPRING_STUD_R = (() => {
 })();
 const HAIRSPRING_PLAN = { innerR: HS_INNER_R, outerR: HS_OUTER_R, coils: HS_COILS,
   overcoil: { turns: 0.75, raise: HAIRSPRING_OVERCOIL_RAISE, kneeR: HS_INNER_R, studR: HAIRSPRING_STUD_R } };
-const OSC_K_TARGET = OSC_I.total * (2 * Math.PI * F_BALANCE) ** 2;
+const OSC_K_TARGET = OSC_I.total * Math.pow(2 * Math.PI * F_BALANCE, 2);
 // §218 — the spring is fitted AS CLAMPED. k = EI/L is the pure-bending
 // stiffness; between a collet that turns and a stud that does not, the stud's
 // reaction costs strain energy a moment alone would not, and the spring the
@@ -2335,18 +2340,18 @@ await breathe(26);
 const HAIRSPRING_FATIGUE_MPA = 700;
 const OSCILLATOR = (() => {
   const H = hairspring.userData;
-  const kPure = OSC_STEEL_E * (H.section.I_u4 * OSC_U ** 4) / (H.devLen * OSC_U); // EI/L — pure bending
+  const kPure = OSC_STEEL_E * (H.section.I_u4 * Math.pow(OSC_U, 4)) / (H.devLen * OSC_U); // EI/L — pure bending
   const k = kPure * HS_CLAMP.ratio;                                          // §218 — as CLAMPED, what the balance feels
   const f = Math.sqrt(k / OSC_I.total) / (2 * Math.PI);
   const pct = (x) => +(100 * x / OSC_I.total).toFixed(1);
   // §218 — THE BREATHING, converted from the builder's EI = 1 model units.
   // Energy·EI/U → J; torque·EI/U → N·m; force·EI/U² → N; strain = a·Δκ.
   const EL = H.elastica;
-  const EI = OSC_STEEL_E * (H.section.I_u4 * OSC_U ** 4);                  // N·m²
+  const EI = OSC_STEEL_E * (H.section.I_u4 * Math.pow(OSC_U, 4));                  // N·m²
   const rowSI = (r) => ({
     thetaRad: +r.theta.toFixed(4),
     torque_Nm: r.torque * EI / OSC_U,
-    pivotForce_mN: r.lam * EI / OSC_U ** 2 * 1e3,
+    pivotForce_mN: r.lam * EI / Math.pow(OSC_U, 2) * 1e3,
     stress_MPa: OSC_STEEL_E * H.ribbonR * r.dkMax / 1e6,
     coilGap_mm: MM(r.gap - 2 * H.ribbonR),          // centreline distance less the ribbon's own diameter
     radialShift_mm: MM(r.radialShift),
@@ -2367,7 +2372,7 @@ const OSCILLATOR = (() => {
   // the frames' torque per radian, in SI, against k — the metal's own reading
   const kFrames = frames.filter((r) => Math.abs(r.thetaRad) <= 0.06 && r.thetaRad !== 0)
     .reduce((acc, r) => acc + r.torque_Nm / r.thetaRad, 0) / 2;
-  const controlLam = EL.control.reduce((m, c) => Math.max(m, c.lam * EI / OSC_U ** 2 * 1e3), 0);
+  const controlLam = EL.control.reduce((m, c) => Math.max(m, c.lam * EI / Math.pow(OSC_U, 2) * 1e3), 0);
   // §218 tier two — THE FLAT SPRING BESIDE IT, same section, same plan minus
   // the overcoil: the reference the overcoil's number is read against, solved
   // at the performed and physical amplitudes (two solves, not a frame set).
@@ -2378,7 +2383,7 @@ const OSCILLATOR = (() => {
   // (the flat one reads 16% more at −200° than at +200°), so the reference is
   // the flat spring's peak over the same ±swing — not its value at +θ alone,
   // which divided a −θ peak by a +θ force.
-  const flatForce1 = (th) => { const r = flatEl.solve(th); return Math.hypot(r.lam[0], r.lam[1]) * EI / OSC_U ** 2 * 1e3; };
+  const flatForce1 = (th) => { const r = flatEl.solve(th); return Math.hypot(r.lam[0], r.lam[1]) * EI / Math.pow(OSC_U, 2) * 1e3; };
   const flatForce = (th) => Math.max(flatForce1(th), flatForce1(-th));
   const OC = H.overcoil;
   const overcoil = OC ? {
@@ -2402,7 +2407,7 @@ const OSCILLATOR = (() => {
     converged: every.every((r) => r.converged) && EL.control.every((c) => c.converged) && HS_CLAMP.converged,
     clampRatio: HS_CLAMP.ratio, clampRatioBuilder: EL.clampRatio, clampRatioAgrees: ratioErr < 1e-9,
     kFrames_Nm_per_rad: kFrames, kFramesAgrees: Math.abs(kFrames / k - 1) * 100 <= 0.5,
-    control: { maxPivotForce_mN: controlLam, pass: controlLam < 1e-9, rows: EL.control.map((c) => ({ thetaRad: c.theta, pivotForce_mN: c.lam * EI / OSC_U ** 2 * 1e3, kOverPure: c.kOverPure })) },
+    control: { maxPivotForce_mN: controlLam, pass: controlLam < 1e-9, rows: EL.control.map((c) => ({ thetaRad: c.theta, pivotForce_mN: c.lam * EI / Math.pow(OSC_U, 2) * 1e3, kOverPure: c.kOverPure })) },
     peaks: {
       performed: { ampDeg: AMPLITUDE_POSED_DEG, pivotForce_mN: peak(worn, 'pivotForce_mN'), stress_MPa: peak(worn, 'stress_MPa'), radialShift_mm: peak(worn, 'radialShift_mm'), minCoilGap_mm: worn.reduce((m, r) => Math.min(m, r.coilGap_mm), Infinity) },
       physical:  { ampDeg: AMPLITUDE_PEAK_DEG,   pivotForce_mN: peak(all, 'pivotForce_mN'),  stress_MPa: peak(all, 'stress_MPa'),  radialShift_mm: peak(all, 'radialShift_mm'),  minCoilGap_mm: all.reduce((m, r) => Math.min(m, r.coilGap_mm), Infinity) },
@@ -2453,7 +2458,7 @@ const OSCILLATOR = (() => {
     // same polyline.
     spring: { h_mm: MM(2 * H.section.a), b_mm: MM(2 * H.section.c), L_mm: MM(H.devLen), shape: H.section.shape,
               inStock: MM(2 * H.section.a) >= 0.02 && MM(2 * H.section.a) <= 0.04,
-              mass_kg: OSC_STEEL_RHO * (2 * H.section.a * H.section.c * OSC_U ** 2) * (H.devLen * OSC_U) },
+              mass_kg: OSC_STEEL_RHO * (2 * H.section.a * H.section.c * Math.pow(OSC_U, 2)) * (H.devLen * OSC_U) },
   });
 })();
 if (!OSCILLATOR.agrees)
@@ -4809,7 +4814,7 @@ function _govEscapement(psiA, swingOnly = false) {
   // march the landed tip along the face to wheel arc wEnd: the anchor pose and
   // face station at every step, or null if the contact is lost, pulls or grazes
   const march = (pad, a0, wEnd, keep) => {
-    const STEP = P / 4000, cf = pad.c[0] * pad.f[0] + pad.c[1] * pad.f[1], c2 = pad.c[0] ** 2 + pad.c[1] ** 2;
+    const STEP = P / 4000, cf = pad.c[0] * pad.f[0] + pad.c[1] * pad.f[1], c2 = Math.pow(pad.c[0], 2) + Math.pow(pad.c[1], 2);
     let s = 0, w = 0, a = a0, pulls = 0;
     const tr = keep ? [[0, a0]] : null;
     while (w < wEnd) {
@@ -8356,7 +8361,7 @@ const ALARM_PINB_BLADE = (() => {
   let lo = 1.0001, hi = 3;
   const wOf = (R) => { const L = Lof(R), d0 = sB / (R - 1);
     const Fb0 = (ALARM_PINB_SEAT_MN / 1000) * (ALARM_PINB_REACH + mu * ALARM_PINB_HINGE_R) / (xb - mu * ALARM_PINB_HINGE_R);   // N, the blade at the seat
-    const k = Fb0 / (d0 * U); return 4 * k * (L * U) ** 3 / (STEEL_E_PA * (t * U) ** 3) / U; };
+    const k = Fb0 / (d0 * U); return 4 * k * Math.pow(L * U, 3) / (STEEL_E_PA * Math.pow(t * U, 3)) / U; };
   const fits = (R) => rootR(R) + Math.hypot(studS / 2, wOf(R) / 2) <= ALARM_FLANGE_OUT;
   for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (fits(m)) hi = m; else lo = m; }
   const R = hi, L = Lof(R), d0 = sB / (R - 1), dMax = d0 + sB;
@@ -8502,7 +8507,7 @@ const ALARM_FSPIRAL = await (async () => {
   const [W_LO, W_HI] = SELECTOR_DETENT_WINDOW_MN;
   // the nose force per unit strip HEIGHT (b = 1 u), newtons, from an elastica
   // torque (EI = 1, model units — the caller multiplies EI back in)
-  const I1 = m * (t * m) ** 3 / 12;
+  const I1 = m * Math.pow(t * m, 3) / 12;
   const noseF1 = (sol) => STEEL_E_PA * I1 * Math.abs(sol.torque) / m / (ALARM_FOLLOWER_LEN * m);
   const strainOf = (sol) => (t / 2) * sol.dkMax;
   const evalAt = (n, face) => {
@@ -8563,7 +8568,7 @@ const ALARM_FSPIRAL = await (async () => {
     Fmin_mN: 1000 * F0 * b, Fmax_mN: 1000 * F1 * b,
     Mmin_Nmm: F0 * b * ALARM_FOLLOWER_LEN * UNIT_MM, Mmax_Nmm: F1 * b * ALARM_FOLLOWER_LEN * UNIT_MM,
     // the pure-moment rate E·b·t³/(12·L), and the elastica's own secant over the travel
-    kPure_Nm_per_rad: STEEL_E_PA * (b * m) * (t * m) ** 3 / 12 / (L * m),
+    kPure_Nm_per_rad: STEEL_E_PA * (b * m) * Math.pow(t * m, 3) / 12 / (L * m),
     kSecant_Nm_per_rad: (F1 - F0) * b * ALARM_FOLLOWER_LEN * m / DA,
     strainMax: strainOf(pick.s1), strainTarget: ALARM_FSPIRAL_STRAIN,
     faceGap: pick.faceGap, colletGap: pick.colletGap, rMaxFace: pick.rMaxFace,
@@ -10259,7 +10264,7 @@ const LINK_T = LINK_T_U;
 // staff in the table (below): a body wider than ≈ 1.0 u routes nowhere, so
 // 0.765 is inside what the layout allows without being set by it.
 const REPLACED_ROD_R = 0.35;                                                   // the tube this stamping replaces — the section floor's basis, not a live dimension
-const LINK_W = Math.max(LINK_BODY_W_U, Math.cbrt(12 * (Math.PI * REPLACED_ROD_R ** 4 / 4) / LINK_T));   // 0.765 u
+const LINK_W = Math.max(LINK_BODY_W_U, Math.cbrt(12 * (Math.PI * Math.pow(REPLACED_ROD_R, 4) / 4) / LINK_T));   // 0.765 u
 const LINK_EYE_D = linkEyeDiaForPin(G.SETTING_LEVER_POST_R, PIVOT_BORE_CLEAR); // 1.633 u — the setting lever's post and the hack pin are one stock (HACK_PIN_R below is asserted equal)
 const FUSEE_TOP_Z = L_BARREL + FUSEE_BASE_Z + FUSEE_H;
 // The rods run LOW now — between the base plate and the GREAT WHEEL's
@@ -10467,7 +10472,7 @@ const yoke = G.makeYoke({
 {
   const prong = yoke.getObjectByName('yokeProng');
   const pos = prong.geometry.attributes.position;
-  const a = YOKE_A_SEAT, drop = Math.sqrt(YOKE_ARM ** 2 - a ** 2);
+  const a = YOKE_A_SEAT, drop = Math.sqrt(Math.pow(YOKE_ARM, 2) - Math.pow(a, 2));
   const ey = [a / YOKE_ARM, drop / YOKE_ARM], ex = [ey[1], -ey[0]];
   let sMin = Infinity, lAt = 0;
   for (let i = 0; i < pos.count; i++) {
@@ -10738,7 +10743,7 @@ if (!(STEM_SAW_SPEC.toothH + CLEAR_MARGIN <= CLUTCH_TRAVEL))
   const pos = tp.geometry.attributes.position;
   // local → canonical at seat: local +Y is the arm (heading h), local +X the arm
   // turned −sideSign·90° (the map is a mirror where sideSign = −1)
-  const h = Math.atan2(-Math.sqrt(YOKE_ARM ** 2 - YOKE_A_SEAT ** 2), YOKE_A_SEAT);
+  const h = Math.atan2(-Math.sqrt(Math.pow(YOKE_ARM, 2) - Math.pow(YOKE_A_SEAT, 2)), YOKE_A_SEAT);
   const Yc = { s: Math.cos(h), l: Math.sin(h) }, Xc = { s: Math.cos(h - sideSign * Math.PI / 2), l: Math.sin(h - sideSign * Math.PI / 2) };
   // the pin's axis (its geometry is centred on its own origin)…
   const cs = YK_DS + tp.position.x * Xc.s + tp.position.y * Yc.s, cl = YK_C + tp.position.x * Xc.l + tp.position.y * Yc.l;
@@ -10872,8 +10877,8 @@ function intersectTail(post, rodLen, prevQ) {
   const H = hammerPivotPos;
   const dx = post.x - H.x, dy = post.y - H.y;
   const d = Math.hypot(dx, dy) || 1e-9;
-  const aLen = clamp((HAMMER_TAIL ** 2 - rodLen ** 2 + d * d) / (2 * d), -HAMMER_TAIL, HAMMER_TAIL);
-  const h2 = HAMMER_TAIL ** 2 - aLen * aLen;
+  const aLen = clamp((Math.pow(HAMMER_TAIL, 2) - Math.pow(rodLen, 2) + d * d) / (2 * d), -HAMMER_TAIL, HAMMER_TAIL);
+  const h2 = Math.pow(HAMMER_TAIL, 2) - aLen * aLen;
   const h = Math.sqrt(Math.max(h2, 0));
   const mx = H.x + (aLen / d) * dx, my = H.y + (aLen / d) * dy;
   const px = -dy / d, py = dx / d;
@@ -11296,8 +11301,8 @@ function priceRigidBentLink(elbow, len_u, stroke_u, W_u, T_u) {
   const e_u = Math.abs(elbow.e);
   const m = UNIT_MM / 1000;                               // m per unit
   const W = W_u * m, T = T_u * m;
-  const I_plan = T * W ** 3 / 12, I_thin = W * T ** 3 / 12;   // m⁴
-  const Z_plan_mm3 = (T_u * UNIT_MM) * (W_u * UNIT_MM) ** 2 / 6;
+  const I_plan = T * Math.pow(W, 3) / 12, I_thin = W * Math.pow(T, 3) / 12;   // m⁴
+  const Z_plan_mm3 = (T_u * UNIT_MM) * Math.pow(W_u * UNIT_MM, 2) / 6;
   const eulerP_N = eulerCriticalLoad_N(I_plan, len_u, 1);      // §231: one law; K = 1, both ends pinned by their own pins
   const eulerThin_N = eulerCriticalLoad_N(I_thin, len_u, 1);
   const eulerFrac = (F_mN / 1000) / eulerP_N;
@@ -12396,7 +12401,9 @@ const Z_DRUM = (DRUM_BOT_Z + DRUM_TOP_Z) / 2; // drum body is built centred; ban
 // 2.5 past the spring-bound plate), down just past the body for the lower
 // pivot to continue.
 await breathe(100);
-const barrel = G.makeBarrel({ name: 'barrel',
+// §338 landing 2 — resumed a step at a time (the deterministic pow made one
+// barrel's wind frames longer than BREATHE_MS; geometry.js makeBarrelSteps).
+const barrelSteps = G.makeBarrelSteps({ name: 'barrel',
   radius: DRUM_R_ACTUAL, height: DRUM_HEIGHT, plain: true,
   // §100 (TODO 39) — the drum turns ON a FIXED arbor now, as a fusee
   // barrel does: `arbor: false` stops the builder putting a rotating copy
@@ -12423,6 +12430,9 @@ const barrel = G.makeBarrel({ name: 'barrel',
   // TODO 291 — and the PACKING: the strip no thicker than the collar's radius over MAINSPRING_ALPHA_MIN, the collar solved.
   ribbonSolve: { sigmaOverE: MAINSPRING_SIGMA_Y_PA / MAINSPRING_E_PA, alphaMin: MAINSPRING_ALPHA_MIN },
 });
+let barrelStep;
+while (!(barrelStep = barrelSteps.next()).done) await breathe(385);
+const barrel = barrelStep.value;
 await breathe(101);
 const mainspring = barrel.getObjectByName('spring').userData.mainspring;
 const MS_COLLAR_R = mainspring.collarR;   // TODO 291 — the solve's collar (the set-up work cuts it and its hook below)
@@ -12430,7 +12440,7 @@ const MS_COLLAR_R = mainspring.collarR;   // TODO 291 — the solve's collar (th
 // (a strip since TODO 193) at its own alloy's modulus; EQUALISATION quotes this
 // rather than re-deriving it, so the pivots sized below and the record priced
 // later read one number.
-const ribbonK = (sp, E) => E * (sp.section.I_u4 * OSC_U ** 4) / (sp.devLen * OSC_U); // N·m/rad
+const ribbonK = (sp, E) => E * (sp.section.I_u4 * Math.pow(OSC_U, 4)) / (sp.devLen * OSC_U); // N·m/rad
 // TODO 291 — A RIBBON'S PACKING, read off its own record: the strip's thickness e = 2a, the collar it is wound on
 // (the innermost coil's inner face, innerR − a), α = r/e against MAINSPRING_ALPHA_BAND, r over the spring's outer
 // radius (SJX's ¼–⅓, a report: it describes springs designed for many developing turns, and this one develops 1.6),
@@ -12438,7 +12448,7 @@ const ribbonK = (sp, E) => E * (sp.section.I_u4 * OSC_U ** 4) / (sp.devLen * OSC
 const ribbonPacking = (sp) => {
   const e = 2 * sp.ribbonR, r = sp.innerR - sp.ribbonR;
   return { thicknessU: e, collarR: r, alpha: r / e, limit: MAINSPRING_ALPHA_MIN, band: MAINSPRING_ALPHA_BAND,
-    rOverOuter: r / sp.outerR, fill: (e * sp.devLen) / (Math.PI * (sp.outerR ** 2 - r ** 2)), coils: sp.coils,
+    rOverOuter: r / sp.outerR, fill: (e * sp.devLen) / (Math.PI * (Math.pow(sp.outerR, 2) - Math.pow(r, 2))), coils: sp.coils,
     solved: !!sp.solve, binds: sp.solve?.binds ?? null };
 };
 const GOING_K = ribbonK(mainspring, MAINSPRING_E_PA);
@@ -12469,7 +12479,7 @@ const TRAIN_STAGES = (() => {
 const PIVOT_UPPER_L = CHATON_STONE_TOP_Z - (CHATON_STONE_BOT_Z - CLEAR_MARGIN);
 const PIVOT_LOWER_L = CLEAR_MARGIN + G.jewelStone(1.3).rubyDepth;
 const PIVOT_LEN_U = Math.max(PIVOT_UPPER_L, PIVOT_LOWER_L);
-const GOING_FUSEE_TORQUE_NM = 0.5 * GOING_K * (SPRING_WIND_FULL ** 2 - SETUP_SWEEP ** 2) / (FUSEE_WRAP_TURNS * 2 * Math.PI);
+const GOING_FUSEE_TORQUE_NM = 0.5 * GOING_K * (Math.pow(SPRING_WIND_FULL, 2) - Math.pow(SETUP_SWEEP, 2)) / (FUSEE_WRAP_TURNS * 2 * Math.PI);
 const TRAIN_PIVOT_SIZES = (() => {
   const rows = [];
   let T = GOING_FUSEE_TORQUE_NM;
@@ -12510,7 +12520,7 @@ for (const row of TRAIN_PIVOT_SIZES) {
 // floor and the record cannot price the train two ways.
 const GOING_POWER = (() => {
   const k = GOING_K;
-  const released_J = 0.5 * k * (SPRING_WIND_FULL ** 2 - SETUP_SWEEP ** 2);
+  const released_J = 0.5 * k * (Math.pow(SPRING_WIND_FULL, 2) - Math.pow(SETUP_SWEEP, 2));
   const reserve_s = SPEC.reserveHours * 3600;
   const beats = SPEC.vph * SPEC.reserveHours;
   const rW = (m) => m.module * m.teeth / 2;
@@ -12547,7 +12557,7 @@ const GOING_POWER = (() => {
     const tfFlat_Nm = A.muJewel * mB * g * (2 / 3) * (A.endContactMm / 1000);
     // loss(θ) = (π k_B / 2Q) θ² + 2 T_f θ = delivered  ⇒  the positive root.
     const sustained = (tf) => { const a = Math.PI * kB / (2 * A.qOther), b = 2 * tf; return (-b + Math.sqrt(b * b + 4 * a * delivered_J)) / (2 * a); };
-    const needAtClaim_J = Math.PI * kB / (2 * A.qOther) * thetaClaim ** 2 + 2 * thetaClaim * tfVertical_Nm;
+    const needAtClaim_J = Math.PI * kB / (2 * A.qOther) * Math.pow(thetaClaim, 2) + 2 * thetaClaim * tfVertical_Nm;
     return {
       stages, etaTrain, etaTotal, delivered_J, qOther: A.qOther,
       pivot: { vertical_Nm: tfVertical_Nm, flat_Nm: tfFlat_Nm },
@@ -12602,7 +12612,7 @@ const FORK_CROSSING_SOLVE = (() => {
         const vol = (a.x * (b.y * c.z - b.z * c.y) - a.y * (b.x * c.z - b.z * c.x) + a.z * (b.x * c.y - b.y * c.x)) / 6;
         iz += vol * (q(a.x, b.x, c.x) + q(a.y, b.y, c.y));
       }
-      I += rho * iz * toM ** 5;
+      I += rho * iz * Math.pow(toM, 5);
     }
     return I;
   };
@@ -12674,7 +12684,7 @@ const BALANCE_DRIVE_CORNER = 'nominal';
 const BALANCE_DRIVE = (() => {
   const C = GOING_POWER.corner(BALANCE_DRIVE_CORNER);
   const H = hairspring.userData, EL = H.elastica;
-  const EI = OSC_STEEL_E * (H.section.I_u4 * OSC_U ** 4);                 // N·m² — OSCILLATOR's own conversion
+  const EI = OSC_STEEL_E * (H.section.I_u4 * Math.pow(OSC_U, 4));                 // N·m² — OSCILLATOR's own conversion
   const rows = EL.frames.map((r) => ({ theta: r.theta, torque: r.torque * EI / OSC_U, cx: r.cx, cy: r.cy }));
   const peakRad = AMPLITUDE_PEAK_DEG * DEG2RAD;
   const brakeNm = rows.filter((r) => Math.abs(r.theta) <= peakRad + 1e-9).reduce((m, r) => Math.max(m, Math.abs(r.torque)), 0);
@@ -14059,9 +14069,9 @@ const MAINT_SPRING = (() => {
       // The foot: square, from the flank's face across to the blade's far face,
       // its outer corner a margin inside the rim's edge.
       const footW = yB + t - bevel;
-      const xFootOut = Math.sqrt((outerMetalR - CLEAR_MARGIN) ** 2 - (yB + t) ** 2);
+      const xFootOut = Math.sqrt(Math.pow(outerMetalR - CLEAR_MARGIN, 2) - Math.pow(yB + t, 2));
       const xRoot = xFootOut - footW;
-      const xTip = Math.max(xc - rPin, Math.sqrt(Math.max(0, (innerMetalR + CLEAR_MARGIN) ** 2 - yB * yB)));
+      const xTip = Math.max(xc - rPin, Math.sqrt(Math.max(0, Math.pow(innerMetalR + CLEAR_MARGIN, 2) - yB * yB)));
       g = { rPin, rP, phiStop, phiWork, xc, yPin, yB, rE, F, dLoad, footW, xFootOut, xRoot, xTip, L: xRoot - xc, t };
       if (Math.abs(rNew - rPin) < 1e-13) break;
       rPin = rNew;
@@ -14082,12 +14092,12 @@ const MAINT_SPRING = (() => {
     const n = 2000, h = L / n;
     let acc = 0;
     for (let i = 0; i <= n; i++) {
-      const x = i * h, tt = tAt(t0, L, x) * U, I = (b * U) * tt ** 3 / 12;
-      acc += (i === 0 || i === n ? 1 : i % 2 ? 4 : 2) * (x * U) ** 2 / (E * I);
+      const x = i * h, tt = tAt(t0, L, x) * U, I = (b * U) * Math.pow(tt, 3) / 12;
+      acc += (i === 0 || i === n ? 1 : i % 2 ? 4 : 2) * Math.pow(x * U, 2) / (E * I);
     }
     return acc * (h * U) / 3;
   };
-  const sigmaRootOf = (g, t0) => 6 * (tauGo / (g.rE * U)) * (g.L * U) / (b * U * (t0 * U) ** 2);
+  const sigmaRootOf = (g, t0) => 6 * (tauGo / (g.rE * U)) * (g.L * U) / (b * U * Math.pow(t0 * U, 2));
   // 1 — the most run the crossing can give: the root at the alloy's limit,
   //     iterated with the geometry it moves (the run moves the pin, the pin
   //     the blade's face, the root's thickness the foot).
@@ -14099,7 +14109,7 @@ const MAINT_SPRING = (() => {
       if (Math.abs(tN - tL) < 1e-13) break;
       tL = tN;
     }
-    const thetaWorkLim = tauGo * complianceOf(tL, gL.L) / (gL.rE * U) ** 2;
+    const thetaWorkLim = tauGo * complianceOf(tL, gL.L) / Math.pow(gL.rE * U, 2);
     return { g: gL, t: tL, thetaWorkLim, runMax: (1 - tauFloor / tauGo) * thetaWorkLim, margin: CLEAR_MARGIN / gL.rP };
   };
   let N = 0, R = 0.15, lim = null;
@@ -14125,12 +14135,12 @@ const MAINT_SPRING = (() => {
   gLim.runMax = lim.runMax; gLim.thetaWorkLim = lim.thetaWorkLim;
   // 2 — the blade cut to that run: k from the torque span over it, the root's
   //     thickness from k (bisected: the compliance falls monotonically with it).
-  const k = feasible ? (tauGo - tauFloor) / R : (gLim.rE * U) ** 2 / complianceOf(tLim, gLim.L);   // N·m/rad
+  const k = feasible ? (tauGo - tauFloor) / R : Math.pow(gLim.rE * U, 2) / complianceOf(tLim, gLim.L);   // N·m/rad
   let t = tLim, g = gLim;
   for (let j = 0; feasible && j < 40; j++) {
     g = solveGeom(R, t);
     let lo = tLim, hi = 4 * tLim;
-    for (let i = 0; i < 100; i++) { const m = (lo + hi) / 2; if ((g.rE * U) ** 2 / complianceOf(m, g.L) < k) lo = m; else hi = m; }
+    for (let i = 0; i < 100; i++) { const m = (lo + hi) / 2; if (Math.pow(g.rE * U, 2) / complianceOf(m, g.L) < k) lo = m; else hi = m; }
     const tN = (lo + hi) / 2;
     if (Math.abs(tN - t) < 1e-13) break;
     t = tN;
@@ -14316,7 +14326,7 @@ let MAINT_RING_POLY = null;   // the ring's cut outline, ring-local — the dete
   // "say so where the glyph would have been").
   {
     const U = OSC_U;
-    const EI = (X) => { const tt = M.tAt(X - gm.xc) * U; return M.E * (M.b * U) * tt ** 3 / 12; };
+    const EI = (X) => { const tt = M.tAt(X - gm.xc) * U; return M.E * (M.b * U) * Math.pow(tt, 3) / 12; };
     // The kernel splits into three moments of the compliance from the root,
     //   w(X; a) = I2(m) − (X + a)·I1(m) + X·a·I0(m),  I_k(m) = ∫_m^{x_root} u^k/(E·I(u)) du,
     // m = max(X, a) — so it is tabulated ONCE (cumulative Simpson panels from
@@ -14331,7 +14341,7 @@ let MAINT_RING_POLY = null;   // the ring's cut outline, ring-local — the dete
       const g0 = 1 / EI(u0), gm_ = 1 / EI(um), g1 = 1 / EI(u1), w = (kH * U) / 6;
       I0[i] = I0[i + 1] + w * (g0 + 4 * gm_ + g1);
       I1[i] = I1[i + 1] + w * (u0 * U * g0 + 4 * um * U * gm_ + u1 * U * g1);
-      I2[i] = I2[i + 1] + w * ((u0 * U) ** 2 * g0 + 4 * (um * U) ** 2 * gm_ + (u1 * U) ** 2 * g1);
+      I2[i] = I2[i + 1] + w * (Math.pow(u0 * U, 2) * g0 + 4 * Math.pow(um * U, 2) * gm_ + Math.pow(u1 * U, 2) * g1);
     }
     const Ik = (T, m) => {
       const f = clamp((m - kLo) / kH, 0, NK), i = Math.min(NK - 1, Math.floor(f)), r = f - i;
@@ -14846,7 +14856,7 @@ const maintDetent = new THREE.Group();
     const nL = _unit(_v2(P.x - C.x, P.y - C.y));
     const section = (s) => {
       const M = _add(A, bis, s), w = 2 * s * Math.tan(wedge / 2), e = Math.abs(_crs(nL, _v2(M.x - C.x, M.y - C.y)));
-      const sigma = F / (w * OSC_U * ARC_T_M) + 6 * F * e * OSC_U / (ARC_T_M * (w * OSC_U) ** 2);
+      const sigma = F / (w * OSC_U * ARC_T_M) + 6 * F * e * OSC_U / (ARC_T_M * Math.pow(w * OSC_U, 2));
       return { s_u: s, width_u: w, offset_u: e, sigma };
     };
     let worst = section(sStart);
@@ -14860,7 +14870,7 @@ const maintDetent = new THREE.Group();
   // larger of the two.
   const ARC_RHO_HERTZ = (() => {
     let r = 0.05;
-    for (let i = 0; i < 60; i++) r = (arcCut(r).F / ARC_T_M) * ARC_E_STAR / (Math.PI * ARC_P0_ALLOW ** 2) / OSC_U;
+    for (let i = 0; i < 60; i++) r = (arcCut(r).F / ARC_T_M) * ARC_E_STAR / (Math.PI * Math.pow(ARC_P0_ALLOW, 2)) / OSC_U;
     return r;
   })();
   const ARC_RHO_BEAM = (() => {
@@ -15526,9 +15536,9 @@ const maintDetent = new THREE.Group();
     // ENERGY, TODO 194's bound and the blade's capacity, both published.
     const R = crest.beak_mN / seated.beak_mN;
     const U_bound_J = 0.5 * (crest.beak_mN / 1000) * (MAINT_DET_LEVER * U) * travel * R / (R - 1);
-    const U_blade_J = 0.5 * crest.k * (S.crest.delta * U) ** 2;
+    const U_blade_J = 0.5 * crest.k * Math.pow(S.crest.delta * U, 2);
     const sigmaMax_Pa = STEEL_E_PA * S.crest.strain;
-    const U_cap_J = sigmaMax_Pa ** 2 * (S.crest.L * U) * (b * U) * (t * U) / (18 * STEEL_E_PA);
+    const U_cap_J = Math.pow(sigmaMax_Pa, 2) * (S.crest.L * U) * (b * U) * (t * U) / (18 * STEEL_E_PA);
     // ---- the derivation, held (rule 6: achieved and required) ----
     const say = (what, ok, got, need) => { if (!ok) console.warn(`TODO 210 detent spring: ${what} — ${got}, need ${need}`); };
     say('crest strain', Math.abs(S.crest.strain - strainTarget) <= 1e-6 * strainTarget, S.crest.strain.toExponential(4), strainTarget.toExponential(4));
@@ -15907,7 +15917,7 @@ const setupWork = new THREE.Group();
   };
   const A = { x: ratchetR * 1.28 + 2.2 * Math.cos(0.6), y: 2.2 * Math.sin(0.6) };
   const dx = T.x - A.x, dy = T.y - A.y, d = Math.hypot(dx, dy);
-  const h = Math.sqrt(Math.max(springR * springR - (d / 2) ** 2, 0.01));
+  const h = Math.sqrt(Math.max(springR * springR - Math.pow(d / 2, 2), 0.01));
   const C = { x: (A.x + T.x) / 2 + (-dy / d) * h, y: (A.y + T.y) / 2 + (dx / d) * h };
   const thT = Math.atan2(T.y - C.y, T.x - C.x);
   let span = Math.atan2(A.y - C.y, A.x - C.x) - thT;
@@ -16809,7 +16819,7 @@ registerLabel('Balance cock', balanceCock);
     const dxr = Math.cos(a), dyr = Math.sin(a);
     // Exact bound: |C + r·d̂| = plateR − 0.2, positive root.
     const cd = TQ_CUT.x * dxr + TQ_CUT.y * dyr;
-    const disc = cd * cd - (TQ_CUT.x ** 2 + TQ_CUT.y ** 2) + (plateR - 0.2) ** 2;
+    const disc = cd * cd - (Math.pow(TQ_CUT.x, 2) + Math.pow(TQ_CUT.y, 2)) + Math.pow(plateR - 0.2, 2);
     const rMax = -cd + Math.sqrt(Math.max(disc, 0));
     if (TQ_CUT.radii[i] > rMax) {
       TQ_CUT.radii[i] = rMax;
@@ -18858,7 +18868,7 @@ ESCAPE_COCK = await (async () => {
   for (let i = 0; i < 360; i++) {
     const a = TQ_CUT.aim + i * DEG2RAD, dxr = Math.cos(a), dyr = Math.sin(a);
     const cd = TQ_CUT.x * dxr + TQ_CUT.y * dyr;
-    const disc = cd * cd - (TQ_CUT.x ** 2 + TQ_CUT.y ** 2) + (plateR - 0.2) ** 2;
+    const disc = cd * cd - (Math.pow(TQ_CUT.x, 2) + Math.pow(TQ_CUT.y, 2)) + Math.pow(plateR - 0.2, 2);
     const rMax = -cd + Math.sqrt(Math.max(disc, 0));
     if (TQ_CUT.radii[i] > rMax) {
       TQ_CUT.radii[i] = rMax;
@@ -19530,7 +19540,7 @@ arrest47: {   // labelled: §329 landing 4's stop-work branch leaves it before �
       for (const pt of chainNear) {
         const dz = pt.z < zLoBand ? zLoBand - pt.z : pt.z > S_Z2 ? pt.z - S_Z2 : 0;
         if (dz >= CLEAR_MARGIN) continue;
-        m = Math.min(m, Math.hypot(pt.x - S.x, pt.y - S.y) - sw.rTip - Math.sqrt(CLEAR_MARGIN ** 2 - dz * dz));
+        m = Math.min(m, Math.hypot(pt.x - S.x, pt.y - S.y) - sw.rTip - Math.sqrt(Math.pow(CLEAR_MARGIN, 2) - dz * dz));
       }
       if (!(m >= 0)) { rejects.chain++; continue; }
       const drumM = Math.hypot(S.x - drumPos.x, S.y - drumPos.y) - sw.rTip - DRUM_WRAP_R - CLEAR_MARGIN;
@@ -19554,12 +19564,12 @@ arrest47: {   // labelled: §329 landing 4's stop-work branch leaves it before �
     // and its lock arcs press on nothing; the disc holds the star only against the drag of its own dwell.
     const SW_P1 = (() => {
       const F = site.F, mm = UNIT_MM, t = STOCK_MIN_U * mm;
-      const bend = (r, L) => (32 * F * L * mm) / (Math.PI * (2 * r * mm) ** 3);
+      const bend = (r, L) => (32 * F * L * mm) / (Math.PI * Math.pow(2 * r * mm, 3));
       const out = {
         stallNmm: SW_STALL_NMM, F_N: F,
         pin: { r: rPin, floor: SW_PIN_FLOOR, L: SW_PIN_L, sigma: bend(rPin, SW_PIN_L), governs: rPin > SW_PIN_FLOOR + 1e-12 ? 'load' : 'floor' },
         stud: { r: SW_STUD_R, floor: SW_STUD_FLOOR, L: SW_STUD_L, sigma: bend(SW_STUD_R, SW_STUD_L), governs: SW_STUD_R > SW_STUD_FLOOR + 1e-12 ? 'load' : 'floor' },
-        root: { e: ROOT_D, floor: STOCK_MIN_U, p: F / (2 * rPin * mm * ROOT_D * mm) + (6 * F * SW_PIN_L * mm) / (2 * rPin * mm * (ROOT_D * mm) ** 2), governs: ROOT_D > STOCK_MIN_U + 1e-12 ? 'load' : 'floor' },
+        root: { e: ROOT_D, floor: STOCK_MIN_U, p: F / (2 * rPin * mm * ROOT_D * mm) + (6 * F * SW_PIN_L * mm) / (2 * rPin * mm * Math.pow(ROOT_D * mm, 2)), governs: ROOT_D > STOCK_MIN_U + 1e-12 ? 'load' : 'floor' },
         notchBearing: F / (2 * rPin * mm * t), studBearing: F / (2 * SW_STUD_R * mm * t), yield: SW_SIGMA,
       };
       for (const [what, v] of [['pin bending', out.pin.sigma], ['stud bending', out.stud.sigma], ['pin root bearing', out.root.p],
@@ -20508,7 +20518,7 @@ arrest47: {   // labelled: §329 landing 4's stop-work branch leaves it before �
   // against a pad that is no longer there.
   const studFor = (pt, th, az, restR) => {
     let out = Math.max(0.15,
-      Math.sqrt(Math.max(STUD_FLOOR_R ** 2 - R_PAD_ARM ** 2, 0)) - restR);
+      Math.sqrt(Math.max(Math.pow(STUD_FLOOR_R, 2) - Math.pow(R_PAD_ARM, 2), 0)) - restR);
     const studAtOut = (o) => ({
       x: pt.x - LEVER_SIDE * R_PAD_ARM * th.x + o * Math.cos(az),
       y: pt.y - LEVER_SIDE * R_PAD_ARM * th.y + o * Math.sin(az),
@@ -22642,7 +22652,7 @@ const JMP_ENGAGE_BAND = STAR_R - JMP_TIP_SEAT_R;
 // gives the inner transversal crossing:
 const JMP_PHI = Math.asin(0.5 * JMP_TIP_SEAT_R / JMP_PIV_R); // pivot-vertex angle at the seat crossing
 const JMP_LEVER = JMP_PIV_R * Math.cos(JMP_PHI)
-  - Math.sqrt(JMP_TIP_SEAT_R ** 2 - (JMP_PIV_R * Math.sin(JMP_PHI)) ** 2); // pivot → tip
+  - Math.sqrt(Math.pow(JMP_TIP_SEAT_R, 2) - Math.pow(JMP_PIV_R * Math.sin(JMP_PHI), 2)); // pivot → tip
 // Beak width from the SHOULDER constraint, not styling. makeJumper's
 // outline is self-similar: the tip cone runs from the apex back to the
 // shoulder over `JUMPER_TIP_CONE_F`·(W/2), where the arm flares to full
@@ -22908,7 +22918,7 @@ const jumperStudMeshes = [];   // the two posts riveted into the base plate (the
   const T = { x: JMP_PIV_R - 0.9, y: JMP_W * 0.55 + 0.12 };
   const dx = T.x - A.x, dy = T.y - A.y, dd = Math.hypot(dx, dy);
   const springR = 1.1;
-  const h = Math.sqrt(Math.max(springR * springR - (dd / 2) ** 2, 0.01));
+  const h = Math.sqrt(Math.max(springR * springR - Math.pow(dd / 2, 2), 0.01));
   const C = { x: (A.x + T.x) / 2 + (-dy / dd) * h, y: (A.y + T.y) / 2 + (dx / dd) * h };
   const thT = Math.atan2(T.y - C.y, T.x - C.x);
   let span = Math.atan2(A.y - C.y, A.x - C.x) - thT;
@@ -25403,7 +25413,7 @@ let ALARM_SELR_REACH = 0;
     const vx = R.yh.x, vy = R.yh.y;          // across it, inboard
     const P0 = R.plan(xiIn, ALARM_SELR_Y);   // the slot's inner end, on the arm's line
     // the two side lines meet the rim circle where |P0 + t·u ± h·v| = FLANGE_OUT
-    const tRim = (h) => { const px = P0.x + h * vx, py = P0.y + h * vy; const b = px * ux + py * uy, c = px * px + py * py - ALARM_FLANGE_OUT ** 2; return -b + Math.sqrt(b * b - c); };
+    const tRim = (h) => { const px = P0.x + h * vx, py = P0.y + h * vy; const b = px * ux + py * uy, c = px * px + py * py - Math.pow(ALARM_FLANGE_OUT, 2); return -b + Math.sqrt(b * b - c); };
     const side = (h, t) => ({ x: P0.x + h * vx + t * ux, y: P0.y + h * vy + t * uy });
     const A = side(-slotHalf, tRim(-slotHalf)), B = side(-slotHalf, 0), C = side(slotHalf, 0), D = side(slotHalf, tRim(slotHalf));
     const aA = Math.atan2(A.y, A.x), aD = Math.atan2(D.y, D.x);
@@ -25687,7 +25697,7 @@ alarmFollowerSpiral.userData.setWind(ALARM_FOLLOWER_A0);   // the seated frame u
         console.warn(`TODO 194 lug/riser at arm ${phi.toFixed(4)}, u ${u}: tube radius ${(r - hw).toFixed(4)}..${(r + hw).toFixed(4)}, window ${inW.toFixed(4)}..${outW.toFixed(4)}`);
     }
   }
-  const d_m = 2 * ALARM_FSPIRAL_RISER_R * UNIT_MM / 1000, tau = 16 * (ALARM_FSPIRAL.Mmax_Nmm / 1000) / (Math.PI * d_m ** 3);
+  const d_m = 2 * ALARM_FSPIRAL_RISER_R * UNIT_MM / 1000, tau = 16 * (ALARM_FSPIRAL.Mmax_Nmm / 1000) / (Math.PI * Math.pow(d_m, 3));
   if (tau > 0.9 * SPRING_TAU_Y_PA)
     console.warn(`TODO 194 riser: torsion ${(tau / 1e6).toFixed(1)} MPa carrying the spiral's ${ALARM_FSPIRAL.Mmax_Nmm.toFixed(4)} N·mm, need ≤ ${(0.9 * SPRING_TAU_Y_PA / 1e6).toFixed(1)} MPa`);
 }
@@ -25922,7 +25932,7 @@ const ALARM_RELEASE_CRANK_Z = (ALARM_TUBE_BACK - ALARM_FLANGE_T) - CLEAR_MARGIN 
 // collet, below) charges μ on the axial component at its mean radius.
 const ALARM_A_THRUST_R0 = ALARM_POST_R + PIVOT_BORE_CLEAR;                 // follower A's thrust boss: bored to the post with the pivot running clear
 const ALARM_A_THRUST_R1 = ALARM_FSPIRAL_COLLET_R;                          // its rim: the collet's own (the face it bears on)
-const ALARM_A_THRUST_RM = (2 / 3) * (ALARM_A_THRUST_R1 ** 3 - ALARM_A_THRUST_R0 ** 3) / (ALARM_A_THRUST_R1 ** 2 - ALARM_A_THRUST_R0 ** 2); // a flat annulus's friction radius
+const ALARM_A_THRUST_RM = (2 / 3) * (Math.pow(ALARM_A_THRUST_R1, 3) - Math.pow(ALARM_A_THRUST_R0, 3)) / (Math.pow(ALARM_A_THRUST_R1, 2) - Math.pow(ALARM_A_THRUST_R0, 2)); // a flat annulus's friction radius
 const alarmConeContact = (phi, mu, omegaH) => {
   const L = ALARM_A_TAIL_LEN, PVx = -ALARM_PIVOT_R, PVy = 0;
   const px = PVx - L * Math.cos(phi), py = PVy - L * Math.sin(phi), r = Math.hypot(px, py);
@@ -27844,7 +27854,7 @@ const _i1Dist = Math.hypot(ALARM_SET_I1.x - P.dial.x, ALARM_SET_I1.y - P.dial.y)
 }
 const _i1PhiL = Math.atan2(ALARM_SET_I1.y - P.dial.y, -(ALARM_SET_I1.x - P.dial.x));        // i1's dial-local azimuth (world (x, y) ↔ dial-local (−x, y))
 const ALARM_SEAT_R_RELIEF = _i1Dist - _i1bTipR - CLEAR_MARGIN;
-const ALARM_SEAT_RELIEF_HALF = Math.acos((ALARM_SEAT_R_OUT ** 2 + _i1Dist ** 2 - (_i1bTipR + CLEAR_MARGIN) ** 2) / (2 * ALARM_SEAT_R_OUT * _i1Dist));
+const ALARM_SEAT_RELIEF_HALF = Math.acos((Math.pow(ALARM_SEAT_R_OUT, 2) + Math.pow(_i1Dist, 2) - Math.pow(_i1bTipR + CLEAR_MARGIN, 2)) / (2 * ALARM_SEAT_R_OUT * _i1Dist));
 const _setTipR = G.gearOuterR({ module: ALARM_SET_MODULE, teeth: ALARM_SET_WHEEL_TEETH, mates: [ALARM_SET_I1_TEETH], thickness: ALARM_SET_T, bevel: false });
 const ALARM_SEAT_POST_L = -0.05 - (ALARM_SEAT_BOT + ALARM_SEAT_T / 2);                        // the sheet's back face down to the webs' mid-plane: the post stands ON the web, half a plate above the hour wheel's margin
 const ALARM_SEAT_POST_RAD = 2 * SLENDER_OVERHANG_K * ALARM_SEAT_POST_L / SLENDER_MAX;        // §54: λₑ = K·L/(r/2) ≤ SLENDER_MAX, as a cantilever from the sheet
@@ -27940,7 +27950,7 @@ let ALARM_SEAT = null;   // the published hold arithmetic — filled by the buil
   const away = (perp.x * -f.t.x + perp.y * -f.t.y) > 0 ? perp : { x: -perp.x, y: -perp.y };
   const sinPhi = ALARM_SEAT_TRACK_CLEAR / rS, cosPhi = Math.sqrt(1 - sinPhi * sinPhi);
   const e = { x: -cosPhi * sHat.x + sinPhi * away.x, y: -cosPhi * sHat.y + sinPhi * away.y };   // the blade's direction: inward, turned until its line clears the track by a margin
-  const L = rS * cosPhi - Math.sqrt(ALARM_SEAT_PAD_RADIUS ** 2 - ALARM_SEAT_TRACK_CLEAR ** 2);   // stud to the foot's centre, the first crossing of the pad's radius
+  const L = rS * cosPhi - Math.sqrt(Math.pow(ALARM_SEAT_PAD_RADIUS, 2) - Math.pow(ALARM_SEAT_TRACK_CLEAR, 2));   // stud to the foot's centre, the first crossing of the pad's radius
   const Pt = { x: S.x + e.x * L, y: S.y + e.y * L };
   const zBladeMid = ALARM_SEAT_BLADE_Z + SPRING_FLAT_U / 2;
   const stud = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_SEAT_STUD_R, ALARM_SEAT_STUD_R, (zBladeMid + SPRING_FLAT_U / 2) - (ALARM_SEAT_BOT + ALARM_SEAT_T / 2), 10), MATS.nickel);
@@ -27962,7 +27972,7 @@ let ALARM_SEAT = null;   // the published hold arithmetic — filled by the buil
   foot.position.set(Pt.x, Pt.y, ALARM_SEAT_BLADE_Z - footH / 2);
   alarmSeatUnit.add(foot);
   // --- the arithmetic, published ---
-  const rEff = (a, b) => (2 / 3) * (b ** 3 - a ** 3) / (b ** 2 - a ** 2);     // friction-effective radius of an annulus
+  const rEff = (a, b) => (2 / 3) * (Math.pow(b, 3) - Math.pow(a, 3)) / (Math.pow(b, 2) - Math.pow(a, 2));     // friction-effective radius of an annulus
   const seatR_u = rEff(ALARM_SEAT_BORE, ALARM_SEAT_R_RELIEF);                 // CONSERVATIVE: the annulus the relief leaves whole all the way round
   const padR_u = Math.hypot(Pt.x, Pt.y);
   const pinF_N = ALARM_FEELER_SPRING.pinF_mN_riding / 1000;
@@ -27980,7 +27990,7 @@ let ALARM_SEAT = null;   // the published hold arithmetic — filled by the buil
   // and tan θ follows from it, and the ramp's run from tan θ. The steepest
   // ramp — the shortest — the seat can hold; nothing here is a chosen angle.
   const strainCap = 0.9 * SPRING_SIGMA_Y_PA / STEEL_E_PA;
-  const padCap_N = Math.min(strainCap * 2 * L ** 2 / (3 * SPRING_FLAT_U) * k * U, SELECTOR_DETENT_WINDOW_MN[1] / 1000);   // strain = 3·t·preload/(2·L²), preload = F/(k·U)
+  const padCap_N = Math.min(strainCap * 2 * Math.pow(L, 2) / (3 * SPRING_FLAT_U) * k * U, SELECTOR_DETENT_WINDOW_MN[1] / 1000);   // strain = 3·t·preload/(2·L²), preload = F/(k·U)
   const climb_N = MU_STEEL * ((pinF_N + padCap_N) * seatR_u + padCap_N * padR_u) / (ALARM_SPRING_HEADROOM * ALARM_TRACK_RMID);
   const climbRatio = climb_N / pinF_N;                                        // (tan θ + μ)/(1 − μ·tan θ)
   const tanTheta = (climbRatio - MU_STEEL) / (1 + MU_STEEL * climbRatio);   // the inverse of ALARM_DETECTOR_LAWS.climbRatio at MU_STEEL
@@ -28025,7 +28035,7 @@ let ALARM_SEAT = null;   // the published hold arithmetic — filled by the buil
   const decoupled = Object.freeze({ hold_Nmm: holdAt(FRICTION.muTooth.favourable), climb_Nmm: climbAt(FRICTION.muTooth.adverse),
     ratio: holdAt(FRICTION.muTooth.favourable) / climbAt(FRICTION.muTooth.adverse) });
   const preload_u = padF_N / k / U;
-  const strain = 3 * (SPRING_FLAT_U * U) * (preload_u * U) / (2 * (L * U) ** 2);
+  const strain = 3 * (SPRING_FLAT_U * U) * (preload_u * U) / (2 * Math.pow(L * U, 2));
   ALARM_SEAT = Object.freeze({
     padF_mN: padF_N * 1000, seatR_u, padR_u, holdTq_Nmm: hold_Nmm, dragTq_Nmm: drag_Nmm,
     climbTq_Nmm: climb_Nmm, climbF_mN: climb_N * 1000, rampTan: tanTheta, rampRun_rad: ALARM_NOTCH_RAMP, strainCap, corners, decoupled,
@@ -28832,7 +28842,7 @@ const ALARM_COLLAR_RISE = ALARM_COLLAR_FAT_R - ALARM_COLLAR_THIN_R;
 // collar at each end; setting that to δ (ALARM_FORK_CLEAR) gives
 // a = ((c/2)² + δ²)/(2δ). Shorter, the pad scrubs further than the fit it rides
 // with; longer buys nothing but swing room the studs have to find.
-const ALARM_LIFT_ARM_IN = ((ALARM_COLLAR_RISE / 2) ** 2 + ALARM_FORK_CLEAR ** 2) / (2 * ALARM_FORK_CLEAR);
+const ALARM_LIFT_ARM_IN = (Math.pow(ALARM_COLLAR_RISE / 2, 2) + Math.pow(ALARM_FORK_CLEAR, 2)) / (2 * ALARM_FORK_CLEAR);
 const ALARM_LIFT_SWING = 2 * Math.asin(ALARM_COLLAR_RISE / (2 * ALARM_LIFT_ARM_IN));   // dead-centre phased: ±half about horizontal
 const ALARM_LIFT_HEAD_TOP = Z_ALARM_CORNER - ALARM_COLLAR_THIN_R - 0.01; // pad top 0.01 under the collar's thin section at rest (the fork clearance figure — the hand-off row reads the running fit as contact)
 const ALARM_LIFT_HEAD_H = 0.24;
@@ -29064,7 +29074,7 @@ const ALARM_LIFT_FRAME_H = Math.max(ALARM_LIFT_FRAME_T,
   Math.sqrt(6 * (ALARM_RELEASE_HELIX.Fmax * ALARM_SLEEVE_DESIGN_THROW / ALARM_COLLAR_RISE) * (ALARM_LIFT_ARM_IN * _mm) / (STOCK_MIN_U * _mm * 0.9 * SPRING_SIGMA_Y_PA)) / _mm);
 const _rodR = (F, L) => Math.cbrt(32 * F * (L * _mm) / (Math.PI * SPRING_SIGMA_Y_PA)) / _mm / 2;   // a round cantilever under yield
 const _barB = (F, L) => Math.cbrt(6 * F * (L * _mm) / (0.9 * SPRING_SIGMA_Y_PA)) / _mm;             // a square cantilever at 0.9·σy
-const _barW = (F, L, h) => 6 * F * (L * _mm) / (0.9 * SPRING_SIGMA_Y_PA * (h * _mm) ** 2) / _mm;      // a cantilever h deep at 0.9·σy: its width
+const _barW = (F, L, h) => 6 * F * (L * _mm) / (0.9 * SPRING_SIGMA_Y_PA * Math.pow(h * _mm, 2)) / _mm;      // a cantilever h deep at 0.9·σy: its width
 const ALARM_RELEASE = (() => {
   const F = ALARM_RELEASE_HELIX.Fmax, thr = ALARM_SLEEVE_DESIGN_THROW, rise = ALARM_COLLAR_RISE;
   const crankW = Z_DIAL - ALARM_RELEASE_CRANK_Z;                                        // the crank's plane, world
@@ -30847,7 +30857,7 @@ const GONG_ARCH = (() => {
     let norm = 0;
     for (let i = 0; i < 6; i++) { let r = 0; for (let j = 0; j < 6; j++) r += Math.abs(A[i * 6 + j]); norm = Math.max(norm, r); }
     const s = Math.max(0, Math.ceil(Math.log2(norm / 0.25)));
-    const B = A.map((v) => v / 2 ** s);
+    const B = A.map((v) => v / Math.pow(2, s));
     const X = new Float64Array(36), T = new Float64Array(36), P = new Float64Array(36);
     for (let i = 0; i < 6; i++) { X[i * 7] = 1; T[i * 7] = 1; }
     for (let k = 1; k <= 14; k++) { mul(T, B, P); for (let i = 0; i < 36; i++) { T[i] = P[i] / k; X[i] += T[i]; } }
@@ -30881,7 +30891,7 @@ const GONG_ARCH = (() => {
   // first, at most nMax. The roots sit ~π/α apart in g, so a scan step of a
   // hundredth of that cannot straddle two.
   const modes = (S, alpha, gMax, nMax, NG = 160) => {
-    const det = (g) => freeEnd(S, g ** 4, alpha).det;
+    const det = (g) => freeEnd(S, Math.pow(g, 4), alpha).det;
     const step = 0.01 * Math.PI / alpha;
     const roots = [];
     let g0 = step, d0 = det(g0);
@@ -30898,7 +30908,7 @@ const GONG_ARCH = (() => {
       g0 = g1; d0 = d1;
     }
     return roots.map((g) => {
-      const Om = g ** 4, { m } = freeEnd(S, Om, alpha);
+      const Om = Math.pow(g, 4), { m } = freeEnd(S, Om, alpha);
       // the null vector: the longest cross product of two rows of the 3×3
       const cr = (p, q) => [m[p * 3 + 1] * m[q * 3 + 2] - m[p * 3 + 2] * m[q * 3 + 1],
         m[p * 3 + 2] * m[q * 3 + 0] - m[p * 3 + 0] * m[q * 3 + 2],
@@ -30948,11 +30958,11 @@ const GONG_NOTE_NAME = (() => {
   const fromC4 = GONG_NOTE_SEMITONES + 9;        // A4 is 9 semitones above C4
   return names[((fromC4 % 12) + 12) % 12] + (4 + Math.floor(fromC4 / 12));
 })();
-const GONG_F1_TARGET_HZ = GONG_PITCH_A4_HZ * 2 ** (GONG_NOTE_SEMITONES / 12);   // 2093.005 Hz
+const GONG_F1_TARGET_HZ = GONG_PITCH_A4_HZ * Math.pow(2, GONG_NOTE_SEMITONES / 12);   // 2093.005 Hz
 // §56's straight-bar length for that pitch — since §253 the START of the
 // fixed point below (see GONG_DESIGN), not the design; named because the
 // record quotes how far the curvature moved it.
-const GONG_STRAIGHT_LEN_M = Math.sqrt(GONG_MODE_BL[0] ** 2 * (GONG_WIRE_DIA * OSC_U / 4) * GONG_STEEL_C / (2 * Math.PI * GONG_F1_TARGET_HZ));
+const GONG_STRAIGHT_LEN_M = Math.sqrt(Math.pow(GONG_MODE_BL[0], 2) * (GONG_WIRE_DIA * OSC_U / 4) * GONG_STEEL_C / (2 * Math.PI * GONG_F1_TARGET_HZ));
 // THE BLOCK. §197 sized the stud as a ferrule (a floor-stock wall round the
 // brazed end) and asserted the clamp condition — a clamped-free bar only
 // rings at its clamped-free modes if the root is effectively rigid, compared
@@ -30967,7 +30977,7 @@ const GONG_ROOT_STIFF_MIN = 10, GONG_ROOT_DESIGN = 1.5;
 const GONG_POST_TOP = Z_GONG + GONG_WIRE_R;        // the wire is let in WHOLE, so the block reaches over its top
 const GONG_POST_LEN = GONG_POST_TOP - (GONG_RIM_Z - GONG_RIM_PLANT);
 const gongPostRFor = (L_m) => Math.max(GONG_WIRE_R + STOCK_MIN_U,
-  GONG_WIRE_R * (GONG_ROOT_STIFF_MIN * GONG_ROOT_DESIGN * GONG_POST_LEN / (L_m / OSC_U)) ** 0.25);
+  GONG_WIRE_R * Math.pow(GONG_ROOT_STIFF_MIN * GONG_ROOT_DESIGN * GONG_POST_LEN / (L_m / OSC_U), 0.25));
 // THE RADIUS. The ring stands as far out as its own block can — one margin
 // off the case bore — because every unit of radius is a unit of the head's
 // LENGTH (the head lies between the plate's rim and the wire), and §197
@@ -30999,7 +31009,7 @@ const ALARM_HSPIRAL_COLLET_R = ALARM_HSPIRAL_COLLET_BORE + PIVOT_MIN_U;
 // no further than that circle less the margin. The round build only: a form case's back is not this skirt.
 const GONG_R_SKIRT_CAP = FORM ? Infinity : (() => {
   const reach = CASE_SKIRT_ID * Math.cos(Math.PI / G.CASE_LATHE_SEG) - CLEAR_MARGIN - ALARM_HSPIRAL_COLLET_R;   // the pivot's ceiling
-  const tan = Math.sqrt(STRIKE_REF.armLen ** 2 - ALARM_HEAD_R ** 2);
+  const tan = Math.sqrt(Math.pow(STRIKE_REF.armLen, 2) - Math.pow(ALARM_HEAD_R, 2));
   return Math.sqrt(Math.max(0, reach * reach - tan * tan)) + GONG_WIRE_R + HAMMER_HEAD_GAP;                  // face → the wire's centre
 })();
 const GONG_DESIGN = (() => {
@@ -31007,7 +31017,7 @@ const GONG_DESIGN = (() => {
   let L = GONG_STRAIGHT_LEN_M, R = 0, m1 = null, outer = 0, inner = 0, closed = false;
   for (outer = 1; outer <= 8 && !closed; outer++) {
     R = Math.min(R_ANNULUS_OUT - gongPostRFor(L), GONG_R_SKIRT_CAP);   // §325 landing 13: and the hammer's boss off the skirt
-    const R_m = R * OSC_U, S = (R / (GONG_WIRE_R / 2)) ** 2;
+    const R_m = R * OSC_U, S = Math.pow(R / (GONG_WIRE_R / 2), 2);
     let Lk = L;
     for (let j = 0; j < 40; j++) {
       const alpha = Lk / R_m;
@@ -31170,7 +31180,7 @@ const GONG_SEAT = (() => {
   const { row } = GONG_SEAT_LOOKUP;
   const curve = GS.seatCurve(row.curve);
   const lever = { Q: LIFT_PIV, rho: Math.hypot(ALARM_LIFT_ARM + ALARM_TAIL_LEN, ALARM_LIFT_S),
-    tanLen: Math.sqrt(ALARM_ARM_LEN ** 2 - ALARM_HEAD_R ** 2), side: ALARM_LIFT_SIDE, gap: HAMMER_HEAD_GAP };
+    tanLen: Math.sqrt(Math.pow(ALARM_ARM_LEN, 2) - Math.pow(ALARM_HEAD_R, 2)), side: ALARM_LIFT_SIDE, gap: HAMMER_HEAD_GAP };
   // TODO 269 — a seat struck ALONG its end (a spiral, `blow: 'tangent'`) has no root to find: its strike is
   // the end, the face one gap before it, and the lever's equation is a residual to hold, not to solve
   // §319 — THE STRIKE TOLERANCE: a row whose lever circle is reached only with the blow tilted off the
@@ -31188,7 +31198,7 @@ const GONG_SEAT = (() => {
 })();
 const GONG_SEATED = !!GONG_SEAT && !GONG_SEAT.refused;
 const ALARM_HAMMER_PIV_R = GONG_SEATED ? Math.hypot(GONG_SEAT.st.P.x, GONG_SEAT.st.P.y)
-  : Math.hypot(ALARM_HEAD_FACE_R, Math.sqrt(ALARM_ARM_LEN ** 2 - ALARM_HEAD_R ** 2));   // on the tangent at the face
+  : Math.hypot(ALARM_HEAD_FACE_R, Math.sqrt(Math.pow(ALARM_ARM_LEN, 2) - Math.pow(ALARM_HEAD_R, 2)));   // on the tangent at the face
 const hammerPiv = GONG_SEATED ? (() => {
   // the lever's far-arm direction that puts the anti-parallel geometry's pivot
   // at the seat's P (|P − Q| = rho is the strike's own equation, so this is exact)
@@ -31212,7 +31222,7 @@ if (!FORM && Math.hypot(hammerPiv.x, hammerPiv.y) + ALARM_HSPIRAL_COLLET_R > CAS
 // pivot, and on which side is the sense question again — the pivot must be
 // COUNTER-clockwise of the face for a clockwise draw (ALARM_HAM_LIFT_SIGN)
 // to carry an inboard head inward, so the face is clockwise of it.
-const ALARM_ARM_TANGENT = Math.sqrt(ALARM_ARM_LEN ** 2 - ALARM_HEAD_R ** 2);
+const ALARM_ARM_TANGENT = Math.sqrt(Math.pow(ALARM_ARM_LEN, 2) - Math.pow(ALARM_HEAD_R, 2));
 // §310 landing 2 — on a seat GONG_A1 is the STRIKE's azimuth (where the sound
 // is emitted), and the blow's direction is its own quantity, GONG_BLOW_AZ: the
 // wire's normal at the strike, from the face toward the wire. On the round
@@ -31400,7 +31410,7 @@ const GONG_POST_R_BUILT = GONG_SEATED ? gongPostRFor(GONG_SEAT.row.curve.L * OSC
 {
   // The block must be a CLAMP, not a hinge — the assert §197 wrote, now
   // under a block sized to it (see GONG_POST_R): a tripwire below the design.
-  const stiff = (GONG_POST_R_BUILT / GONG_WIRE_R) ** 4
+  const stiff = Math.pow(GONG_POST_R_BUILT / GONG_WIRE_R, 4)
     * ((GONG_SEATED ? GONG_SEAT.row.curve.L : GONG_R * Math.abs(GONG_A1 - GONG_A0)) / GONG_POST_LEN);
   if (stiff < GONG_ROOT_STIFF_MIN)
     console.warn(`§198: the gong block's root stiffness is only ${stiff.toFixed(1)}× the wire's — under the ${GONG_ROOT_STIFF_MIN}× `
@@ -31492,8 +31502,8 @@ const gongSeatShapes = ({ roots, S, L_m, d_m }) => roots.map((g) => {
   const at = (arr, x) => { let i = 1; while (i < sh.s.length - 1 && sh.s[i] < x) i++; const t = (x - sh.s[i - 1]) / ((sh.s[i] - sh.s[i - 1]) || 1); return arr[i - 1] + t * (arr[i] - arr[i - 1]); };
   const w = new Float64Array(NG + 1), u = new Float64Array(NG + 1);
   let I2 = 0, Iu = 0;
-  for (let q = 0; q <= NG; q++) { w[q] = at(sh.w, q / NG); u[q] = at(sh.u, q / NG); const c = (q === 0 || q === NG) ? 0.5 : 1; I2 += c * (w[q] ** 2 + u[q] ** 2); Iu += c * u[q] ** 2; }
-  return { g, Om: g ** 4, mFrac: I2 / NG, tanShare: Iu / I2, uTip: u[NG], w, u, f: GS.hz(g, L_m, d_m), kind: Iu / I2 > 0.5 ? 'extensional' : 'flexural' };
+  for (let q = 0; q <= NG; q++) { w[q] = at(sh.w, q / NG); u[q] = at(sh.u, q / NG); const c = (q === 0 || q === NG) ? 0.5 : 1; I2 += c * (Math.pow(w[q], 2) + Math.pow(u[q], 2)); Iu += c * Math.pow(u[q], 2); }
+  return { g, Om: Math.pow(g, 4), mFrac: I2 / NG, tanShare: Iu / I2, uTip: u[NG], w, u, f: GS.hz(g, L_m, d_m), kind: Iu / I2 > 0.5 ? 'extensional' : 'flexural' };
 });
 let GONG_SEAT_MODES = null, GONG_SEAT_MODES_OUT = null;
 if (GONG_SEATED) {
@@ -31510,7 +31520,7 @@ if (GONG_SEATED) {
 function gongArchModes() {
   if (GONG_SEATED) return GONG_SEAT_MODES;   // §310 landing 2
   const L = gongDevLen(), R_m = GONG_R * OSC_U, k_m = GONG_WIRE_R * OSC_U / 2;
-  const alpha = L / R_m, S = (GONG_R / (GONG_WIRE_R / 2)) ** 2;
+  const alpha = L / R_m, S = Math.pow(GONG_R / (GONG_WIRE_R / 2), 2);
   return GONG_ARCH.modes(S, alpha, 1.1 * GONG_MODE_BL[4] / alpha, 8)
     .map((m) => ({ ...m, f: gongFreqOf(m.Om, R_m, k_m), kind: m.tanShare > 0.5 ? 'extensional' : 'flexural' }));   // a label on a published share, not a claim
 }
@@ -31599,8 +31609,8 @@ registerSub('Alarm hammer', 'Hammer', alarmHammerPivot);
 const ALARM_HEAD_L_ROOM = ALARM_HEAD_FACE_R - GONG_BLOW * R_ANNULUS_IN;   // the whole radial room at rest
 const ALARM_HEAD_SILHOUETTE = 0.55 + 0.45 * (1 + 0.6) / 2;    // cheeks 0.55 L at full H, peen 0.45 L tapering to 0.6 H
 const alarmHeadHMatch = (L) => {
-  const wireM = OSC_STEEL_RHO * Math.PI * (GONG_WIRE_R * OSC_U) ** 2 * GONG_DESIGN_LEN_M;   // kg, the design wire
-  const headU3 = (wireM * GONG_DESIGN.modalFrac) / OSC_STEEL_RHO / OSC_U ** 3;            // u³ the match wants (§253: the arc fundamental's fraction, ¼ for a straight bar)
+  const wireM = OSC_STEEL_RHO * Math.PI * Math.pow(GONG_WIRE_R * OSC_U, 2) * GONG_DESIGN_LEN_M;   // kg, the design wire
+  const headU3 = (wireM * GONG_DESIGN.modalFrac) / OSC_STEEL_RHO / Math.pow(OSC_U, 3);            // u³ the match wants (§253: the arc fundamental's fraction, ¼ for a straight bar)
   return Math.sqrt(headU3 / (L * ALARM_HEAD_SILHOUETTE));
 };
 const ALARM_HEAD_H_BAND = 2 * Math.min(Z_GONG - GONG_BAND_FLOOR.z, (TQ_BOT_Z - CLEAR_MARGIN - 0.01) - Z_GONG);
@@ -31613,8 +31623,8 @@ const ALARM_HEAD_H_BAND = 2 * Math.min(Z_GONG - GONG_BAND_FLOOR.z, (TQ_BOT_Z - C
 // everything else by the battery's sweeps. Brought in off the cap, the annulus left the head 1.81 u and 30.6 mg against a
 // 45.6 mg match (μ 0.78) at the Ø0.6 clamps' bore.
 const ALARM_HEAD_L_MATCH = (() => {
-  const wireM = OSC_STEEL_RHO * Math.PI * (GONG_WIRE_R * OSC_U) ** 2 * GONG_DESIGN_LEN_M;
-  return (wireM * GONG_DESIGN.modalFrac) / OSC_STEEL_RHO / OSC_U ** 3 / (ALARM_HEAD_SILHOUETTE * ALARM_HEAD_H_BAND ** 2);
+  const wireM = OSC_STEEL_RHO * Math.PI * Math.pow(GONG_WIRE_R * OSC_U, 2) * GONG_DESIGN_LEN_M;
+  return (wireM * GONG_DESIGN.modalFrac) / OSC_STEEL_RHO / Math.pow(OSC_U, 3) / (ALARM_HEAD_SILHOUETTE * Math.pow(ALARM_HEAD_H_BAND, 2));
 })();
 const ALARM_HEAD_L_REST = FORM ? ALARM_HEAD_L_ROOM : Math.max(ALARM_HEAD_L_ROOM, ALARM_HEAD_L_MATCH);
 // §325 landing 12 — AND THE DRAW CLEARS THE FRAME, as a law. The paragraph above relied on one measurement, for §198's
@@ -32625,7 +32635,7 @@ const gongRadiationFactors = (shape, alpha, R_m, kAc) => {
     const st = Math.sin((t / NT) * Math.PI / 2), wT = (t === 0 || t === NT) ? 0.5 : 1;
     const J = gongBesselJ(MM + 1, zMax * st);
     let acc = 0;
-    for (let mi = -MM; mi <= MM; mi++) { const d = jd(J, mi); acc += d * d * (PhRe[mi + MM] ** 2 + PhIm[mi + MM] ** 2); }
+    for (let mi = -MM; mi <= MM; mi++) { const d = jd(J, mi); acc += d * d * (Math.pow(PhRe[mi + MM], 2) + Math.pow(PhIm[mi + MM], 2)); }
     sph += wT * 2 * Math.PI * R_m * R_m * st * st * st * acc * (Math.PI / NT);
   }
   const cre = new Float64Array(2 * MM + 1), cim = new Float64Array(2 * MM + 1);
@@ -33393,7 +33403,7 @@ alarmSpring = null;   // the ribbon's wind morph — set below, driven in tick()
   // is built caller-side on the arbor rotor below.
   const arborH = ALARM_BARREL_H * 2;
   await breathe(216);
-  const alarmBarrel = G.makeBarrel({ name: 'alarmBarrel',
+  const alarmBarrelSteps = G.makeBarrelSteps({ name: 'alarmBarrel',
     radius: ALARM_BARREL_PITCH_R, height: ALARM_BARREL_H, ratchet: false,
     teeth: ALARM_BARREL_TEETH, module: ALARM_TRAIN_MODULE, arborH,
     arbor: false, arborBoreR: ALARM_BARREL_ARBOR_R + PIVOT_BORE_CLEAR,
@@ -33416,6 +33426,9 @@ alarmSpring = null;   // the ribbon's wind morph — set below, driven in tick()
     // arrangement exactly — sweepDown is the click-held floor, not free).
     springSetupSweep: ALARM_SETUP_SWEEP,
   });
+  let alarmBarrelStep;   // §338 landing 2 — a step at a time, as the going barrel is
+  while (!(alarmBarrelStep = alarmBarrelSteps.next()).done) await breathe(386);
+  const alarmBarrel = alarmBarrelStep.value;
   await breathe(217);
   alarmBarrelRotor.add(alarmBarrel);
   alarmBarrelGear = alarmBarrel;   // TODO 15: the winding chain's last link
@@ -33576,7 +33589,7 @@ const ALARM_GOV_DESIGN_WIND = ALARM_BARREL_TURNS / 2;
 // 1.5 mm poising ring, outside real ring stock and into the plate. The ribbon
 // is also over the alloy's TENSILE strength at full wind, so its proportions and
 // this solve have to be re-done together: TODO 201.
-const ALARM_GOV_K = OSC_STEEL_E * (alarmSpring.section.I_u4 * OSC_U ** 4) / (alarmSpring.devLen * OSC_U); // N·m/rad
+const ALARM_GOV_K = OSC_STEEL_E * (alarmSpring.section.I_u4 * Math.pow(OSC_U, 4)) / (alarmSpring.devLen * OSC_U); // N·m/rad
 const alarmMomentAt = (windTurns) => ALARM_GOV_K * (ALARM_SETUP_SWEEP + windTurns * Math.PI * 2); // N·m — the set-up floor is in the law
 // --- §268 — THE HAMMER SPRING, A TORSION SPIRAL ON THE HAMMER'S OWN POST ----
 // (TODO 128.) Sited HERE, beside the governor's torque law, because its rate
@@ -33713,7 +33726,7 @@ const ALARM_HSPIRAL = await (async () => {
   const kLinear = ALARM_HSPIRAL_LIFT_SHARE * ALARM_STRIKE_ARBOR_TQ_SETUP * ALARM_HSPIRAL_RISE_ARC / (DRAW * DRAW * ALARM_HSPIRAL_RISE_PEAK);
   const tqPeak = ALARM_HSPIRAL_LIFT_SHARE * ALARM_STRIKE_ARBOR_TQ_SETUP;            // N·m, the budget the peak is held to
   // real torque / energy for a strip of height b (metres) from an EI = 1 solve
-  const I1 = (tU) => (tU * m) ** 3 / 12;                                          // m⁴ per METRE of height (b is handed in metres)
+  const I1 = (tU) => Math.pow(tU * m, 3) / 12;                                          // m⁴ per METRE of height (b is handed in metres)
   const tqOf = (tU, bM, sol) => STEEL_E_PA * I1(tU) * bM * sol.torque / m;        // N·m
   const enOf = (tU, bM, sol) => STEEL_E_PA * I1(tU) * bM * sol.energy / m;        // J
   const strainOf = (tU, sol) => (tU / 2) * sol.dkMax;
@@ -33815,7 +33828,7 @@ const ALARM_HSPIRAL = await (async () => {
     // the rates: pure moment, the elastica's secant to the draw, and the
     // ENERGY rate over the fall — the one the cos law is written on, so that
     // ½k(DRAW² − AMP²) is the elastica's own released energy exactly
-    kPure_Nm_per_rad: STEEL_E_PA * bM * (t * m) ** 3 / 12 / (L * m),
+    kPure_Nm_per_rad: STEEL_E_PA * bM * Math.pow(t * m, 3) / 12 / (L * m),
     kLinear_Nm_per_rad: kLinear,
     kSecant_Nm_per_rad: Math.abs(M(P.sDraw)) / DRAW,
     kFall_Nm_per_rad: 2 * (Udraw - Uamp) / (DRAW * DRAW - W_LO * W_LO),
@@ -33865,7 +33878,7 @@ const ALARM_HSPIRAL_STUD_R = (() => {
   // census reads the tessellated stock), floored at STOCK_MIN_R10
   const F = ALARM_HSPIRAL_STUD_F, Lc = ALARM_HSPIRAL_Z * OSC_U;
   const dYield = Math.cbrt(32 * F * Lc / (Math.PI * 0.9 * SPRING_SIGMA_Y_PA));
-  const dDefl = Math.pow(64 * F * Lc ** 3 / (3 * STEEL_E_PA * Math.PI * ALARM_SEAT_SINK * OSC_U), 0.25);
+  const dDefl = Math.pow(64 * F * Math.pow(Lc, 3) / (3 * STEEL_E_PA * Math.PI * ALARM_SEAT_SINK * OSC_U), 0.25);
   return Math.max(STOCK_MIN_R10, flatsR(dYield / OSC_U, 10), flatsR(dDefl / OSC_U, 10));
 })();
 const ALARM_HSPIRAL_STUD_RHO = ALARM_HSPIRAL.faceR + ALARM_HSPIRAL_STUD_R - ALARM_SEAT_SINK;
@@ -34045,7 +34058,7 @@ registerSub('Alarm hammer', 'Hammer spring', alarmHammerSpiral);
     console.warn(`§268: the hammer spring's stud (r ${r.toFixed(3)}) leaves the annulus ${R_ANNULUS_IN.toFixed(3)}–${R_ANNULUS_OUT.toFixed(3)}`);
   // its section against the load it was sized from — achieved vs required
   const F = ALARM_HSPIRAL_STUD_F, Lc = ALARM_HSPIRAL_Z * OSC_U, dM = 2 * ALARM_HSPIRAL_STUD_R * Math.cos(Math.PI / 10) * OSC_U;
-  const sigma = 32 * F * Lc / (Math.PI * dM ** 3), defl = 64 * F * Lc ** 3 / (3 * STEEL_E_PA * Math.PI * dM ** 4) / OSC_U;
+  const sigma = 32 * F * Lc / (Math.PI * Math.pow(dM, 3)), defl = 64 * F * Math.pow(Lc, 3) / (3 * STEEL_E_PA * Math.PI * Math.pow(dM, 4)) / OSC_U;
   if (sigma > 0.9 * SPRING_SIGMA_Y_PA + 1)
     console.warn(`§268 stud: bending ${(sigma / 1e6).toFixed(1)} MPa under the spring's ${(F * 1000).toFixed(1)} mN, need ≤ ${(0.9 * SPRING_SIGMA_Y_PA / 1e6).toFixed(0)} MPa`);
   if (defl > ALARM_SEAT_SINK + 1e-9)
@@ -34066,7 +34079,7 @@ alarmHammerSpiral.userData.setWind(0);   // the rest frame until tick poses it
 // a cosine at this W inside a 5%-by-pickup envelope — which is now a posed
 // chatter at ~200 Hz rather than a law; TODO 228 prices the restitution and
 // the banking a real hammer comes to rest on.
-const ALARM_HAMMER_I = rotorInertiaZ(alarmHammerPivot, new THREE.Vector3(hammerPiv.x, hammerPiv.y, 0)).Izz_u5 * OSC_U ** 5 * OSC_STEEL_RHO;   // kg·m²
+const ALARM_HAMMER_I = rotorInertiaZ(alarmHammerPivot, new THREE.Vector3(hammerPiv.x, hammerPiv.y, 0)).Izz_u5 * Math.pow(OSC_U, 5) * OSC_STEEL_RHO;   // kg·m²
 const ALARM_HAMMER_W = Math.sqrt(ALARM_HSPIRAL.kFall_Nm_per_rad / ALARM_HAMMER_I);   // rad/s
 const ALARM_FALL_S = Math.acos(-ALARM_STRIKE_AMP / ALARM_DRAW_RAD) / ALARM_HAMMER_W;  // reaches the wire here
 const ALARM_HAMMER_DECAY = Math.log(20) / (ALARM_FREE_S - ALARM_FALL_S);             // rebound down to 5% by the next pickup
@@ -34200,7 +34213,7 @@ const GONG_ACOUSTICS = (() => {
   // 1 — the rotor, by signed tetrahedra over its own triangles.
   const pivot = new THREE.Vector3(hammerPiv.x, hammerPiv.y, 0);
   const rotor = rotorInertiaZ(alarmHammerPivot, pivot);         // §268: one function, shared with the fall law
-  const mRotor = rotor.vol_u3 * U ** 3 * OSC_STEEL_RHO;         // kg
+  const mRotor = rotor.vol_u3 * Math.pow(U, 3) * OSC_STEEL_RHO;         // kg
   // §198 — the HEAD alone, by the same tetrahedra: the match solve sized it
   // to the arc fundamental's modal fraction of the design wire (§253; a
   // quarter on §198's straight law), and that claim is measured off the
@@ -34218,9 +34231,9 @@ const GONG_ACOUSTICS = (() => {
       }
       V += (a.x * (b.y * c.z - b.z * c.y) - a.y * (b.x * c.z - b.z * c.x) + a.z * (b.x * c.y - b.y * c.x)) / 6;
     }
-    return Math.abs(V) * U ** 3 * OSC_STEEL_RHO;
+    return Math.abs(V) * Math.pow(U, 3) * OSC_STEEL_RHO;
   })();
-  const I_h = rotor.Izz_u5 * U ** 5 * OSC_STEEL_RHO;            // kg·m²
+  const I_h = rotor.Izz_u5 * Math.pow(U, 5) * OSC_STEEL_RHO;            // kg·m²
   const rArm = ALARM_ARM_LEN * U;                               // m — the PLAN lever, the crank's rise is not a moment arm
   // 1a — THE SPRING. §268: ALARM_HAMMER_W is √(k/I) off the torsion spiral's
   // energy rate and this rotor's inertia, so the blow's energy is the
@@ -34254,7 +34267,7 @@ const GONG_ACOUSTICS = (() => {
   // the normal reading is hundreds of times it.
   const BLOW_ALONG = GONG_SEATED && GONG_SEAT.row.blow === 'tangent';
   const driveOf = (m) => (BLOW_ALONG ? m.uTip : 1);
-  const mModal = M * arch[0].mFrac / driveOf(arch[0]) ** 2;
+  const mModal = M * arch[0].mFrac / Math.pow(driveOf(arch[0]), 2);
   const mu = mEff / mModal;
   const eta = GL.eta(mu, REST);
   const Estar = OSC_STEEL_E / (2 * (1 - NU * NU));
@@ -34275,7 +34288,7 @@ const GONG_ACOUSTICS = (() => {
   const Re = contact === 'line' ? null : GONG_SEATED ? Math.sqrt(aW / strikeK) : Math.sqrt(aW * GONG_R * U);   // torus on a flat: √(r_section·r_centreline) (the round build's own expression, bit for bit)
   const kHertz = contact === 'hertz' ? (4 / 3) * Estar * Math.sqrt(Re) : null;
   const kLine = contact === 'line' ? GL.lineStiffness(Estar, ALARM_HEAD_H, U) : contact === 'end' ? 2 * Estar * aW : null;
-  const tau = contact === 'hertz' ? 2.9432 * (5 * mRed / (4 * kHertz)) ** 0.4 * vHead ** -0.2 : GL.linearContactTau(mRed, kLine);
+  const tau = contact === 'hertz' ? 2.9432 * Math.pow(5 * mRed / (4 * kHertz), 0.4) * Math.pow(vHead, -0.2) : GL.linearContactTau(mRed, kLine);
   // 3/4 — per mode. The Hertz spectrum says which modes the blow can reach;
   // §253 divides by each mode's modal mass as well, because an impulse J at
   // the tip leaves mode n with J²φ_n(tip)²/2m_n — equal across modes only
@@ -34284,7 +34297,7 @@ const GONG_ACOUSTICS = (() => {
   const spec = arch.map((m) => {
     const f = m.f;
     const S = GL.contactSpectrum(f, tau);
-    return { f, w: S * S * driveOf(m) ** 2 / m.mFrac, lambda: C_AIR / f, mFrac: m.mFrac, kind: m.kind, uTip: m.uTip, tanShare: m.tanShare, shape: m.w };
+    return { f, w: S * S * Math.pow(driveOf(m), 2) / m.mFrac, lambda: C_AIR / f, mFrac: m.mFrac, kind: m.kind, uTip: m.uTip, tanShare: m.tanShare, shape: m.w };
   });
   // §56's straight law at this length, kept beside the arch's answer so the
   // record (and the explainer) can quote what the curvature term moved.
@@ -34344,7 +34357,7 @@ const GONG_ACOUSTICS = (() => {
     const { W: W_rad, I: I_ax } = radiate(m.shape, kAc, 2 * RHO_AIR * Math.PI * aW * aW * om * U_n);
     const spl = 10 * Math.log10(Math.max(I_ax, 1e-30) / 1e-12);
     const audible = m.f <= 20000;                                // the listener, not the model
-    if (audible) counted += 10 ** ((spl + aWeight(m.f)) / 10);
+    if (audible) counted += Math.pow(10, (spl + aWeight(m.f)) / 10);
     return { n: i + 1, kind: m.kind, f_Hz: m.f, modalMass_mg: m_n * 1e6, tanTip: m.uTip, tanShare: m.tanShare,
       E_J: E_n, tipV_ms: U_n, W_W: W_rad, kL: kAc * L, kR: GONG_SEATED ? null : kAc * R_m,
       spl_dB: spl, splA_dBA: spl + aWeight(m.f), audible, ringT60_s: 13.8 * Q / om };
@@ -34372,7 +34385,7 @@ const GONG_ACOUSTICS = (() => {
       // §56's law at this length, so the record can quote what the term moved
       modalFrac: arch[0].mFrac, designModalFrac: GONG_DESIGN.modalFrac,
       designModalMass_mg: OSC_STEEL_RHO * Math.PI * aW * aW * GONG_DESIGN_LEN_M * GONG_DESIGN.modalFrac * 1e6,
-      straightLen_mm: GONG_STRAIGHT_LEN_M * 1000, straightLaw_Hz, arcRad: alpha, S: GONG_SEATED ? GS.sOf(L, 2 * aW) : (GONG_R / (GONG_WIRE_R / 2)) ** 2,
+      straightLen_mm: GONG_STRAIGHT_LEN_M * 1000, straightLaw_Hz, arcRad: alpha, S: GONG_SEATED ? GS.sOf(L, 2 * aW) : Math.pow(GONG_R / (GONG_WIRE_R / 2), 2),
       designFixedPoint: { rounds: GONG_DESIGN.outer, solves: GONG_DESIGN.inner, closed: GONG_DESIGN.closed } },
     hammer: { headH_u: ALARM_HEAD_H, headL_u: ALARM_HEAD_L, headLOwner: ALARM_HEAD_L_OWNER, headHOwner: ALARM_HEAD_H_OWNER, headHMatch_u: ALARM_HEAD_H_MATCH,
       headMass_mg: mHead * 1e6, blow: GONG_BLOW, liftSign: ALARM_HAM_LIFT_SIGN, faceR_u: ALARM_HEAD_FACE_R, restGap_u: HAMMER_HEAD_GAP,
@@ -34399,7 +34412,7 @@ const GONG_ACOUSTICS = (() => {
       wind_rad: [...ALARM_HSPIRAL_WIND], k_Nm_per_rad: ALARM_HSPIRAL.kFall_Nm_per_rad,
       kPure_Nm_per_rad: ALARM_HSPIRAL.kPure_Nm_per_rad, kSecant_Nm_per_rad: ALARM_HSPIRAL.kSecant_Nm_per_rad,
       Mdraw_Nmm: ALARM_HSPIRAL.Mdraw_Nm * 1000, Mwire_Nmm: ALARM_HSPIRAL.Mamp_Nm * 1000,
-      release_J: 0.5 * ALARM_HSPIRAL.kFall_Nm_per_rad * (ALARM_DRAW_RAD ** 2 - ALARM_STRIKE_AMP ** 2),
+      release_J: 0.5 * ALARM_HSPIRAL.kFall_Nm_per_rad * (Math.pow(ALARM_DRAW_RAD, 2) - Math.pow(ALARM_STRIKE_AMP, 2)),
       storedAtDraw_J: ALARM_HSPIRAL.Udraw_J, storedAtWire_J: ALARM_HSPIRAL.Uamp_J, liftWork_J: ALARM_HSPIRAL.liftWork_J,
       liftPeak_Nm: ALARM_HSPIRAL.liftPeak_Nm, liftBudget_Nm: ALARM_HSPIRAL.liftBudget_Nm, liftShare: ALARM_HSPIRAL.liftShare,
       liftSpend_Nm: ALARM_HSPIRAL.liftSpend_Nm, arborTqSetup_Nm: ALARM_HSPIRAL.arborTqSetup_Nm,
@@ -34454,7 +34467,7 @@ await breathe(224);
   // arm and tail add their share). The §197 band is kept as the envelope.
   if (!(A.strike.mu > 0.4 && A.strike.mu < 2.5))
     console.warn(`§197: the hammer meets the wire at μ = ${A.strike.mu.toFixed(2)} — far off the matched 1.0, `
-      + `so ${(100 * A.strike.eta / ((1 + A.strike.restitution) / 2) ** 2).toFixed(0)}% of the available transfer is being thrown away`);
+      + `so ${(100 * A.strike.eta / Math.pow((1 + A.strike.restitution) / 2, 2)).toFixed(0)}% of the available transfer is being thrown away`);
   if (A.hammer.headHOwner === 'impedance match'
       && Math.abs(A.hammer.headMass_mg / A.wire.designModalMass_mg - 1) > 0.02)
     console.warn(`§198: the hammer head weighs ${A.hammer.headMass_mg.toFixed(2)} mg against the ${A.wire.designModalMass_mg.toFixed(2)} mg `
@@ -34629,11 +34642,11 @@ const ALARM_GOV_RING_BOT = Math.max(
 //     reach into the next tooth's front binds it from above
 //     (ALARM_GOV_PSI_BRACKET). The ring itself is untouched — same radius,
 //     same section, same footprint row — and what it poises is a real anchor.
-function _armJ(r0, r1, w) { return w * (r1 ** 3 - r0 ** 3) / 3; } // radial bar: ∫r²dA = w·(r1³−r0³)/3
-const _govRingIOf = (su) => OSC_BRASS_RHO * (OSC_U ** 5) * (
-  (Math.PI / 2) * ((ALARM_GOV_RING_R + su / 2) ** 4 - (ALARM_GOV_RING_R - su / 2) ** 4) * su
+function _armJ(r0, r1, w) { return w * (Math.pow(r1, 3) - Math.pow(r0, 3)) / 3; } // radial bar: ∫r²dA = w·(r1³−r0³)/3
+const _govRingIOf = (su) => OSC_BRASS_RHO * (Math.pow(OSC_U, 5)) * (
+  (Math.PI / 2) * (Math.pow(ALARM_GOV_RING_R + su / 2, 4) - Math.pow(ALARM_GOV_RING_R - su / 2, 4)) * su
   + 2 * _armJ(ALARM_GOV_COLLAR_R, ALARM_GOV_RING_R - su / 2, 0.5) * 0.35
-  + (Math.PI / 2) * (ALARM_GOV_COLLAR_R ** 4 - ALARM_GOV_ARBOR_R ** 4) * 0.35);
+  + (Math.PI / 2) * (Math.pow(ALARM_GOV_COLLAR_R, 4) - Math.pow(ALARM_GOV_ARBOR_R, 4)) * 0.35);
 // The working-contact grade the cycle sweep (end of this block) holds the
 // whole action cycle to. §111 set it AT its measured debt (0.25) with the
 // instruction to tighten and never widen; §113's drop tightened it to 0.033,
@@ -34649,7 +34662,7 @@ const ALARM_GOV_FACE_PSI = await (async () => {
     const e = _govEscapement(psi, true);
     if (!e) return null;
     const phi = 2 * e.h;
-    const I = (ALARM_STRIKE_GAP / (2 * ALARM_GOV_TEETH_PER_STRIKE)) ** 2
+    const I = Math.pow(ALARM_STRIKE_GAP / (2 * ALARM_GOV_TEETH_PER_STRIKE), 2)
       * alarmGovTorqueAt(ALARM_GOV_DESIGN_WIND) * (e.driveArc / phi) / (2 * phi);
     let lo = 0.02, hi = 4;
     for (let i = 0; i < 50; i++) { const m = (lo + hi) / 2; if (_govRingIOf(m) < I) lo = m; else hi = m; }
@@ -34762,7 +34775,7 @@ const ALARM_GOV_SAW_PHASE = (ALARM_GOV_ANCHOR_BEARING + ALARM_GOV_LAND_EPS) - (0
 // never re-target the beat. (§268 subtracts the hammer lift's mean spend from
 // M(w) before the law reads it — a constant term, so the curve is no longer
 // a pure 1/√M and the endpoints DID move: the record publishes them.)
-const ALARM_GOV_I = (ALARM_STRIKE_GAP / (2 * ALARM_GOV_TEETH_PER_STRIKE)) ** 2
+const ALARM_GOV_I = Math.pow(ALARM_STRIKE_GAP / (2 * ALARM_GOV_TEETH_PER_STRIKE), 2)
   * alarmGovTorqueAt(ALARM_GOV_DESIGN_WIND) * ALARM_GOV_RHO / (2 * ALARM_GOV_PHI);   // kg·m² ≈ 2.8e-10
 const alarmStrikeGapAt = (windTurns) => 2 * ALARM_GOV_TEETH_PER_STRIKE
   * Math.sqrt(2 * ALARM_GOV_PHI * ALARM_GOV_I / (alarmGovTorqueAt(Math.max(windTurns, 0)) * ALARM_GOV_RHO));
@@ -34818,11 +34831,11 @@ const _govPolyJ = (pts) => { // area and ∂(x²+y²)dA about the anchor axis
 };
 
 const ALARM_GOV_RING_S = (() => {
-  const u5 = OSC_U ** 5;
+  const u5 = Math.pow(OSC_U, 5);
   const palletT = ALARM_GOV_ANCHOR_TOP - ALARM_GOV_SAW_BOT;  // the tabs span saw band + plate
   const steel = OSC_STEEL_RHO * u5 * (
     (_govPolyJ(_govPalletPoly(_govPalletA)).J + _govPolyJ(_govPalletPoly(_govPalletB)).J) * palletT
-    + (Math.PI / 2) * (ALARM_GOV_HUB_R ** 4 - ALARM_GOV_ARBOR_R ** 4) * ALARM_GOV_ANCHOR_T // hub annulus: ρ·h·π/2·(b⁴−a⁴)
+    + (Math.PI / 2) * (Math.pow(ALARM_GOV_HUB_R, 4) - Math.pow(ALARM_GOV_ARBOR_R, 4)) * ALARM_GOV_ANCHOR_T // hub annulus: ρ·h·π/2·(b⁴−a⁴)
     // the two arches, counted from their OWN outlines by the same Green's
     // theorem the blades use — a radial-bar formula cannot describe a curve,
     // and the count has to be of the metal that is actually cut (§107)
@@ -35395,7 +35408,7 @@ declareRestoring('Alarm governor anchor', 'alarmGovAnchor', 'two-way',
 // 0.5–5 N·mm), which is the cross-check that the §39 scale pin, the
 // section and the length are telling one consistent story.
 const EQUALISATION = (() => {
-  const u4 = OSC_U ** 4;
+  const u4 = Math.pow(OSC_U, 4);
   const kOf = (sp) => MAINSPRING_E_PA * (sp.section.I_u4 * u4) / (sp.devLen * OSC_U); // N·m/rad — TODO 193: the ribbon's own alloy
   // TODO 193 — THE RIBBON AGAINST ITS MATERIAL. A spiral wound off its free
   // coil carries a UNIFORM moment M = k·θ, so the outer fibre sees σ = M·a/I
@@ -35491,7 +35504,7 @@ const EQUALISATION = (() => {
     // in at or under SPRING_SIGMA_Y_PA: a load-bound row sits ON it by
     // construction, and its margin is the upper bound's.
     const balancePivotL = Math.max(BALANCE_PIVOT_TIP_Z - BALANCE_SHOULDER_TOP_Z, CLEAR_MARGIN + G.jewelStone(1.0).rubyDepth);
-    const bend = (F, L_u, d_u) => 32 * F * (L_u * OSC_U) / (Math.PI * (d_u * OSC_U) ** 3);
+    const bend = (F, L_u, d_u) => 32 * F * (L_u * OSC_U) / (Math.PI * Math.pow(d_u * OSC_U, 3));
     const pivotStrength = (() => {
       const rows = [];
       let T = fuseeTorque_Nm;
@@ -35570,7 +35583,7 @@ const EQUALISATION = (() => {
       const arc = H.arc, tL = arc.line_u * OSC_U;
       const p0_Pa = Math.sqrt((load_N / tL) * arc.Estar_Pa / (Math.PI * arc.rho_u * OSC_U));
       const halfWidth_m = Math.sqrt(4 * (load_N / tL) * arc.rho_u * OSC_U / (Math.PI * arc.Estar_Pa));
-      const secSigma = (q) => load_N / (q.width_u * OSC_U * bt) + 6 * load_N * q.offset_u * OSC_U / (bt * (q.width_u * OSC_U) ** 2);
+      const secSigma = (q) => load_N / (q.width_u * OSC_U * bt) + 6 * load_N * q.offset_u * OSC_U / (bt * Math.pow(q.width_u * OSC_U, 2));
       const arcStartSigma_Pa = secSigma(arc.arcStart), worstSigma_Pa = secSigma(arc.worst);
       if (!(p0_Pa <= arc.p0Allow_Pa * (1 + 1e-9)))
         console.warn(`TODO 221: the beak's arc (ρ ${arc.rho_u.toFixed(4)} u) carries the hold at p0 ${(p0_Pa / 1e9).toFixed(3)} GPa — over first yield of the click steel's low end, ${(arc.p0Allow_Pa / 1e9).toFixed(3)} GPa`);
@@ -36856,7 +36869,7 @@ registerExplode(alarmClickUnit, 0, 9); // rides with the back stack, like the wi
   // diameter, and a clamped-h arc would have quietly shipped an arc that
   // reaches neither end.
   const springR = Math.max(1.3, ds / 2 + 0.08);
-  const hs = Math.sqrt(Math.max(springR * springR - (ds / 2) ** 2, 0.01));
+  const hs = Math.sqrt(Math.max(springR * springR - Math.pow(ds / 2, 2), 0.01));
   // Two circumcentres solve the chord; the arc must bulge AWAY from the
   // ratchet (the first cut picked the wheel-ward side and the torus lay on
   // the teeth — measured 0). Chosen by arithmetic, not by sign convention:
@@ -37180,7 +37193,7 @@ const ARREST_PLATE_T = STOCK_MIN_U;      // the cross and finger are floor stock
 const ARREST_STALL_NMM = EQUALISATION.alarm.momentRange_Nmm[1] / SUB_GAIN;
 const ARREST_FINGER_HUB_R = (() => {
   const T = ARREST_STALL_NMM, ri = ARREST_SPEC.fingerBoreR * UNIT_MM;
-  const tau = (ro) => (T * ro) / ((Math.PI / 2) * (ro ** 4 - ri ** 4)) * 1e6;   // N/mm² → Pa
+  const tau = (ro) => (T * ro) / ((Math.PI / 2) * (Math.pow(ro, 4) - Math.pow(ri, 4))) * 1e6;   // N/mm² → Pa
   let lo = ri * (1 + 1e-9), hi = ri + 10;
   for (let i = 0; i < 200; i++) { const m = (lo + hi) / 2; if (tau(m) > SPRING_TAU_Y_PA) lo = m; else hi = m; }
   return Math.max(ARREST_SPEC.fingerBoreR + STOCK_MIN_U, hi / UNIT_MM);
@@ -38512,7 +38525,7 @@ subIdlerSpin = null; subPinBSpin = null; subDiff = null;
     const F = ARREST_STALL_NMM / (ARREST_SPEC.a * UNIT_MM);
     const L = (finger.userData.stack.lift + ARREST_PLATE_T / 2) * UNIT_MM;
     const dPin = 2 * ARREST_SPEC.pinR * UNIT_MM;
-    const sigma = (32 * F * L) / (Math.PI * dPin ** 3) * 1e6;
+    const sigma = (32 * F * L) / (Math.PI * Math.pow(dPin, 3)) * 1e6;
     if (!(sigma <= SPRING_SIGMA_Y_PA))
       console.warn(`TODO 212: the Geneva pin bends ${(sigma / 1e6).toFixed(1)} MPa at the stall, over ${(SPRING_SIGMA_Y_PA / 1e6).toFixed(0)}`);
   }
@@ -39118,7 +39131,7 @@ const ALARM_ROCKER_PIN_R = STOCK_MIN_R10;         // the pin runs at the movemen
 // nose's CENTRE therefore rides one nose-radius outside the wall.
 const ALARM_ROCKER_READ_R = ALARM_COL_BASE_R + ALARM_COL_RIDER_NOSE_R;
 const ALARM_ROCKER_POST_W = ALARM_COL_TIP_R + CLEAR_MARGIN + ALARM_ROCKER_POST_R;  // §171's floor
-const ALARM_ROCKER_ARM = Math.sqrt(ALARM_ROCKER_POST_W ** 2 - ALARM_ROCKER_READ_R ** 2);
+const ALARM_ROCKER_ARM = Math.sqrt(Math.pow(ALARM_ROCKER_POST_W, 2) - Math.pow(ALARM_ROCKER_READ_R, 2));
 // The chamfer the pillars owe this follower: exactly the radial travel it
 // makes, no more — a cam cut deeper than its follower's lift is metal removed
 // for nothing, and cut shallower is a follower that stops reading.
@@ -40011,8 +40024,8 @@ const _jStudLen = (ALARM_LOCK_Z + ALARM_COL_BAND_MID + ALARM_JUMPER_W / 2) - TQ_
 const ALARM_JUMPER_STUD_R = Math.max(STOCK_MIN_R10, (() => {
   const need = 10 * ALARM_JUMPER_K;                                   // N/m
   const L_m = _jStudLen * UNIT_MM / 1000;
-  const I_need = need * L_m ** 3 / (3 * STEEL_E_PA);                  // m⁴
-  return ((4 * I_need / Math.PI) ** 0.25) / (UNIT_MM / 1000);
+  const I_need = need * Math.pow(L_m, 3) / (3 * STEEL_E_PA);                  // m⁴
+  return (Math.pow(4 * I_need / Math.PI, 0.25)) / (UNIT_MM / 1000);
 })());
 {
   const stud = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_JUMPER_STUD_R, ALARM_JUMPER_STUD_R, _jStudLen, 10), MATS.nickel);
@@ -40117,7 +40130,7 @@ declareTransfer('alarm switch: the wheel’s index (sautoir blade → saw tooth)
   // 5. The blade works inside the material. This is TODO 63's finding, held
   //    as a gate: the free length is SOLVED from this, so a failure here means
   //    the solve and the built section have parted.
-  const strain = 3 * (ALARM_JUMPER_PRELOAD + ALARM_JUMPER_THROW) * ALARM_JUMPER_T / (2 * ALARM_JUMPER_L ** 2);
+  const strain = 3 * (ALARM_JUMPER_PRELOAD + ALARM_JUMPER_THROW) * ALARM_JUMPER_T / (2 * Math.pow(ALARM_JUMPER_L, 2));
   if (_jFold.passes >= 24)
     console.warn(`§173: the blade's free length never settled — the fold's fixed point ran its full ${_jFold.passes} passes, so ALARM_JUMPER_L and the throw it was solved from are not the same design`);
   if (strain > SPRING_STRAIN_MAX + 1e-12)
@@ -40131,7 +40144,7 @@ declareTransfer('alarm switch: the wheel’s index (sautoir blade → saw tooth)
   //    shank the tip hangs on and the stud the blade is grounded to are round
   //    bars, so both are priced at πr⁴/4 and not at cantileverK's rectangle.
   const U_m = UNIT_MM / 1000;
-  const roundK = (r_u, L_u) => 3 * STEEL_E_PA * (Math.PI * (r_u * U_m) ** 4 / 4) / (L_u * U_m) ** 3;
+  const roundK = (r_u, L_u) => 3 * STEEL_E_PA * (Math.PI * Math.pow(r_u * U_m, 4) / 4) / Math.pow(L_u * U_m, 3);
   const shankLen = (ALARM_COL_BAND_MID - ALARM_JUMPER_W / 2) - (ALARM_SAW_BAND_MID + ALARM_JUMPER_TIP_H / 2);
   for (const [what, k] of [['shank', roundK(ALARM_JUMPER_SHANK_R, shankLen)], ['anchor stud', roundK(ALARM_JUMPER_STUD_R, _jStudLen)]])
     if (k < 10 * ALARM_JUMPER_K)
@@ -40860,7 +40873,7 @@ const alarmLinkHangerJog = (hx, hy, P, N, pivReach) => {
 const linkShaftTipXY = (rod, inner) => {
   const dx = rod.x - inner.x, dy = rod.y - inner.y;
   const D = Math.hypot(dx, dy);
-  const a = Math.asin(ALARM_LINK_ROD_STANDOFF / D), L = Math.sqrt(D * D - ALARM_LINK_ROD_STANDOFF ** 2);
+  const a = Math.asin(ALARM_LINK_ROD_STANDOFF / D), L = Math.sqrt(D * D - Math.pow(ALARM_LINK_ROD_STANDOFF, 2));
   const ux = dx / D, uy = dy / D;
   const vx = ux * Math.cos(a) - uy * Math.sin(a), vy = ux * Math.sin(a) + uy * Math.cos(a);
   return { x: inner.x + vx * L, y: inner.y + vy * L };
@@ -43666,7 +43679,7 @@ const alarmLinkParts = {};
         // chord, which the lower ratio's larger preload carried past the 10×
         // section (measured 0.1956 against a 0.164 half-section)
         const nRoot = Math.abs(cornerN(sol.a, 0) + ALARM_SEAT_SINK + sol.d0);
-        return Math.max(HANGER_S, Math.pow(10 * sol.k * 4 * Lh ** 3 / STEEL_E_PA, 0.25) / U, 2 * nRoot);
+        return Math.max(HANGER_S, Math.pow(10 * sol.k * 4 * Math.pow(Lh, 3) / STEEL_E_PA, 0.25) / U, 2 * nRoot);
       };
       const room = (sol) => (ALARM_LINK_BUSH_T[2] - hangerSFor(sol) / 2) - tC - sol.L;
       // TODO 222 — THE RATIO IS NOW THE LEAST THE ROOM ALLOWS. TODO 206 put R = 3
@@ -43848,7 +43861,7 @@ const alarmLinkParts = {};
         // that face: |M| = √((R·aV)² + (Ft·aH)²). Round bars are judged across
         // their FLATS (TODO 11 tranche five), solid section, σ = 32·M/(π·d³).
         const flats = (r) => 2 * r * Math.cos(Math.PI / 10);
-        const sigmaRound = (M_Nm, d_u) => 32 * M_Nm / (Math.PI * (d_u * U) ** 3);
+        const sigmaRound = (M_Nm, d_u) => 32 * M_Nm / (Math.PI * Math.pow(d_u * U, 3));
         const rho = beakLen / tailLen;
         const yR = -noseY / (rho - 1);
         const root = P.side * (P.headIn + P.endShake / 2);
@@ -43891,8 +43904,8 @@ const alarmLinkParts = {};
           const yP = P.side * s_u;
           const M = Math.hypot(R * Math.abs(yP - yR), Ft * Hpost);
           const T = Ft * Math.abs(yP - noseY);
-          const sg = sigmaRound(M * U, d_u) + 4 * R / (Math.PI * (d_u * U) ** 2);
-          const tau = 16 * T * U / (Math.PI * (d_u * U) ** 3);
+          const sg = sigmaRound(M * U, d_u) + 4 * R / (Math.PI * Math.pow(d_u * U, 2));
+          const tau = 16 * T * U / (Math.PI * Math.pow(d_u * U, 3));
           return Math.hypot(sg, Math.sqrt(3) * tau);
         };
         // ITS STATION — PLATE LAND. The foot stands on the plate's face, so its
@@ -43904,7 +43917,7 @@ const alarmLinkParts = {};
         // to a fixed point; it contracts, the diameter growing only as the cube
         // root of the station.
         const sFor = (r) => Math.max(
-          Math.sqrt(Math.max(0, (ALARM_LINK_ROD_R_SECTION + CLEAR_MARGIN + r) ** 2 - tailLen * tailLen)),
+          Math.sqrt(Math.max(0, Math.pow(ALARM_LINK_ROD_R_SECTION + CLEAR_MARGIN + r, 2) - tailLen * tailLen)),
           P.headIn + r);
         let rPost = STOCK_MIN_R10, sPost = sFor(rPost);
         for (let it = 0; it < 60; it++) {
@@ -44096,7 +44109,7 @@ const alarmLinkParts = {};
     // NOT the slenderness column's rectangular ac³/12. coeff 3 = cantilever,
     // 48 = simply supported with the load at midspan.
     const kBend = (rU, L_u, coeff) => coeff * STEEL_E_PA
-      * (Math.PI * (rU * _m) ** 4 / 4) / (L_u * _m) ** 3;         // N/m
+      * (Math.PI * Math.pow(rU * _m, 4) / 4) / Math.pow(L_u * _m, 3);         // N/m
     // §202 — the two figures the asserts below hold this arithmetic to.
     // TODO 82's probe (tools/probe-82-alarm-stall.mjs) poses the built tree
     // and reads the stall independently; this row derives it from the solve,
@@ -44609,7 +44622,7 @@ if (Math.abs(alarmDriverCarry(1) - alarmDriverCarryLine(1)) > 1e-9 || Math.abs(a
 // a tooth up and where it seats it. Force claims quote the SMALLEST arm, at
 // mid-stroke, because that is the one that has to be afforded.
 const ALARM_PAWL_ARM = ALARM_DRIVE_OFFSET;
-const ALARM_PAWL_ARM_END = (ALARM_DRIVE_OFFSET ** 2 + ALARM_PIN_HALF ** 2) / ALARM_DRIVE_OFFSET;
+const ALARM_PAWL_ARM_END = (Math.pow(ALARM_DRIVE_OFFSET, 2) + Math.pow(ALARM_PIN_HALF, 2)) / ALARM_DRIVE_OFFSET;
 const ALARM_PAWL_SWEEP = alarmDriverCarry(1);
 // §163 — AN EQUALITY, WHERE THIS WAS A FLOOR. The old test was
 // `if (ALARM_PAWL_SWEEP < ALARM_COL_STEP)`, which is the right constraint for
@@ -45001,7 +45014,7 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
     // whichever governs.
     {
       const m = UNIT_MM / 1000;
-      const I = (ALARM_PUSH_REACH_W * m) * (ALARM_PUSH_REACH_T * m) ** 3 / 12;   // m⁴, thin axis = T
+      const I = (ALARM_PUSH_REACH_W * m) * Math.pow(ALARM_PUSH_REACH_T * m, 3) / 12;   // m⁴, thin axis = T
       const pcr_N = eulerCriticalLoad_N(I, reachLen, ALARM_PUSH_REACH_K);
       const ceil_N = CASE_PUSHER_INPUT_N[1];
       if (pcr_N < ceil_N)
@@ -45013,8 +45026,8 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
       // the floor the width was DERIVED from, re-derived here from the live
       // length and compared against the tooth it was cut to (§169's convention:
       // quote where needed, re-derive where produced, warn if the two part).
-      const wFloor = ceil_N * (ALARM_PUSH_REACH_K * reachLen * m) ** 2 * 12
-        / (Math.PI * Math.PI * STEEL_E_PA * (ALARM_PUSH_REACH_T * m) ** 3);
+      const wFloor = ceil_N * Math.pow(ALARM_PUSH_REACH_K * reachLen * m, 2) * 12
+        / (Math.PI * Math.PI * STEEL_E_PA * Math.pow(ALARM_PUSH_REACH_T * m, 3));
       if (ALARM_PUSH_REACH_W < wFloor)
         console.warn(`§231: the reach bar is cut ${ALARM_PUSH_REACH_W.toFixed(4)} wide against a buckling floor of `
           + `${wFloor.toFixed(4)} — the tooth no longer clears the load it was chosen over`);
@@ -45229,12 +45242,12 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
       const rPin = Math.hypot(L.q0.x - axW.x, L.q0.y - axW.y);
       const pinNeedMN = detentTq_Nmm / (rPin * UNIT_MM) * 1000;
       const rodNeedMN = pinNeedMN * L.armBout / L.armBin;
-      const Z_mm3 = (ALARM_LINKAGE_ARM_T * UNIT_MM) * (ALARM_LINKAGE_ARM_W * UNIT_MM) ** 2 / 6;
+      const Z_mm3 = (ALARM_LINKAGE_ARM_T * UNIT_MM) * Math.pow(ALARM_LINKAGE_ARM_W * UNIT_MM, 2) / 6;
       const sigma = (F_mN, arm_u) => (F_mN / 1000) * (arm_u * UNIT_MM) / Z_mm3;   // MPa (N·mm / mm³)
       const sB = sigma(pinNeedMN, L.armBout), sA = sigma(rodNeedMN, L.armA);
       // TODO 241 — the stop's bearing at the survival ceiling: the head's face
       // on the tube's end annulus, the liner's bore out to the sleeve's flange
-      const seatA_mm2 = Math.PI * ((CASE_PUSHER_D / 2 + G.TUBE_WALL) ** 2 - ALARM_PUSH_GUIDE_BORE ** 2) * UNIT_MM ** 2;
+      const seatA_mm2 = Math.PI * (Math.pow(CASE_PUSHER_D / 2 + G.TUBE_WALL, 2) - Math.pow(ALARM_PUSH_GUIDE_BORE, 2)) * Math.pow(UNIT_MM, 2);
       const stopBearing_MPa = CASE_PUSHER_INPUT_N[1] / seatA_mm2;
       const yieldMPa = SPRING_SIGMA_Y_PA / 1e6;
       if (!(sA < yieldMPa) || !(sB < yieldMPa))
@@ -45650,9 +45663,9 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
   //     to 3·t·δ/(2L²), and it must stay under SPRING_STRAIN_MAX or it takes
   //     a set and the preload decays with it:
   //         L² ≥ 3 · t · δmax / (2 · ε)
-  const bladeI_m4 = (bladeW * U) * (bladeT * U) ** 3 / 12;
+  const bladeI_m4 = (bladeW * U) * Math.pow(bladeT * U, 3) / 12;
   const momentMax_Nm = noseFmax_N * (ALARM_PAWL_L * U);
-  const bladeDragFloor = Math.cbrt(3 * STEEL_E_PA * bladeI_m4 * (bearArm * U) ** 2 * springTheta / momentMax_Nm) / U;
+  const bladeDragFloor = Math.cbrt(3 * STEEL_E_PA * bladeI_m4 * Math.pow(bearArm * U, 2) * springTheta / momentMax_Nm) / U;
   const bladeStrainFloor = Math.sqrt(3 * (bladeT * U) * deltaMax_m / (2 * SPRING_STRAIN_MAX)) / U;
   // Exactly the greater floor, not a round-up: a blade's length is free where
   // a coil's turn count was quantised, and every unit past the floor is a
@@ -45660,8 +45673,8 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
   // closed, and reach is what the anchor arm below has to afford.
   const bladeFree = Math.max(bladeDragFloor, bladeStrainFloor);
   const bladeK_N_per_m = cantileverK_N_per_m(bladeW, bladeT, bladeFree);   // §173's one cantilever law
-  const springKtheta = bladeK_N_per_m * (bearArm * U) ** 2;                // N·m per radian, as the pawl feels it
-  const springStrain = 3 * (bladeT * U) * deltaMax_m / (2 * (bladeFree * U) ** 2);
+  const springKtheta = bladeK_N_per_m * Math.pow(bearArm * U, 2);                // N·m per radian, as the pawl feels it
+  const springStrain = 3 * (bladeT * U) * deltaMax_m / (2 * Math.pow(bladeFree * U, 2));
   if (springStrain > SPRING_STRAIN_MAX + 1e-12)
     console.warn(`§192: the pawl blade's root works to ${springStrain.toExponential(3)} surface strain at full deflection, over SPRING_STRAIN_MAX ${SPRING_STRAIN_MAX.toExponential(3)} — the strain floor no longer governs its own length`);
   // The blade's geometry on a branch, ONE definition for the scan that judges
@@ -46142,8 +46155,8 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
     //    the assert never fire — over the stud's full height, compared at the
     //    shared load point (the clamp face).
     const studL_m = (ALARM_PAWL_BAND_Z + STOCK_MIN_U - ALARM_COL_DRIVER_T) * UNIT_MM / 1000;
-    const studI_m4 = Math.PI * (STOCK_MIN_R10 * UNIT_MM / 1000) ** 4 / 4;
-    const studK_N_per_m = 3 * STEEL_E_PA * studI_m4 / studL_m ** 3;
+    const studI_m4 = Math.PI * Math.pow(STOCK_MIN_R10 * UNIT_MM / 1000, 4) / 4;
+    const studK_N_per_m = 3 * STEEL_E_PA * studI_m4 / Math.pow(studL_m, 3);
     ALARM_PAWL_SPRING.studShare = ALARM_PAWL_SPRING.k_N_per_m / studK_N_per_m;
     if (studK_N_per_m < 10 * ALARM_PAWL_SPRING.k_N_per_m)
       console.warn(`§192: the blade's anchor stud is ${(studK_N_per_m / ALARM_PAWL_SPRING.k_N_per_m).toFixed(2)}× the blade's own rate, under the 10× that makes the blade the member that governs — the ground is a second spring in series and the rate above is not what the pawl feels`);
@@ -46273,7 +46286,7 @@ alarmPusherReturnSpring = null; alarmPusherReturnFrames = null;
   // expecting 0.604, which under-counted the deflection the coil count is
   // solved for and drew the spring at its free length. `defl_u` converts at the
   // one place it is computed, and the round-trip assert below holds it.
-  const kOf = (n) => STEEL_G_PA * (2 * wireR * U) ** 4 / (8 * (2 * coilR * U) ** 3 * n);
+  const kOf = (n) => STEEL_G_PA * Math.pow(2 * wireR * U, 4) / (8 * Math.pow(2 * coilR * U, 3) * n);
   const deflOf = (F, kk) => F / (kk * U);         // N and N/m in, MODEL UNITS out
   // ---- AND A SECOND FLOOR ON THE COUNT, from what the FINGER may be asked.
   // §234 (§308 landing 5's residue) — the wire's size follows the stem, and a
@@ -46295,11 +46308,11 @@ alarmPusherReturnSpring = null; alarmPusherReturnFrames = null;
   const kMax = (ALARM_RETURN_FEEL_N - preload_N) / (ALARM_PUSH_TRAVEL * U);   // N/m: k·travel may take only what the preload leaves of the ceiling
   // (a preload that alone reaches the ceiling leaves no k at all; no count can
   // answer that, so the floor stands down and the §164 row below names it)
-  const needFeel = kMax > 0 ? Math.floor(STEEL_G_PA * (2 * wireR * U) ** 4 / (8 * (2 * coilR * U) ** 3 * kMax)) + 1 : 2;
+  const needFeel = kMax > 0 ? Math.floor(STEEL_G_PA * Math.pow(2 * wireR * U, 4) / (8 * Math.pow(2 * coilR * U, 3) * kMax)) + 1 : 2;
   let coils = 2, k = kOf(2), preloadDefl = deflOf(preload_N, k), needShear = 2;
   for (let it = 0; it < 80; it++) {
     const dTot = preloadDefl + ALARM_PUSH_TRAVEL;
-    const need = KW * STEEL_G_PA * (2 * wireR) * dTot / (Math.PI * (2 * coilR) ** 2 * SPRING_TAU_Y_PA);
+    const need = KW * STEEL_G_PA * (2 * wireR) * dTot / (Math.PI * Math.pow(2 * coilR, 2) * SPRING_TAU_Y_PA);
     needShear = Math.max(2, Math.ceil(need));
     const nNext = Math.max(needShear, needFeel);
     const kNext = kOf(nNext);
@@ -46514,7 +46527,7 @@ alarmPusherReturnSpring = null; alarmPusherReturnFrames = null;
     preload_N, preloadDefl_u: preloadDefl, dragF_N,
     solid_u: solid, free_u: freeLen, installed_u: installed,
     collarS, abutS, pressF_N: preload_N + k * ALARM_PUSH_TRAVEL * U,
-    tau_Pa: KW * STEEL_G_PA * (2 * wireR) * (preloadDefl + ALARM_PUSH_TRAVEL) / (Math.PI * (2 * coilR) ** 2 * coils),
+    tau_Pa: KW * STEEL_G_PA * (2 * wireR) * (preloadDefl + ALARM_PUSH_TRAVEL) / (Math.PI * Math.pow(2 * coilR, 2) * coils),
   };
   // ————————————————— what has to be true of it —————————————————
   // 1. THE ROUND TRIP. The preload is the force the drag budget asked for; the
@@ -46548,7 +46561,7 @@ alarmPusherReturnSpring = null; alarmPusherReturnFrames = null;
       const sz = g.boundingBox.getSize(new THREE.Vector3());
       // a bounding box over-states a turned part, which is the safe direction
       // for a RETURN TIME: more mass is a slower return.
-      vol_mm3 += sz.x * sz.y * sz.z * UNIT_MM ** 3;
+      vol_mm3 += sz.x * sz.y * sz.z * Math.pow(UNIT_MM, 3);
     });
     const m_kg = vol_mm3 * 1e-9 * OSC_STEEL_RHO;   // §56's density, the one the oscillator's inertia already uses
     const tQuarter = (Math.PI / 2) * Math.sqrt(m_kg / k);
@@ -50997,7 +51010,7 @@ const FUSEE_COCK = await (async () => {
   // (§336 landing 3: the side force F and the twist Tq are given apart, because past the seat the stud's force joins both)
   const columnSigma = (ro, h, F, Tq, bi) => {
     const a = ro * OSC_U, b = bi * OSC_U;
-    const Z = Math.PI * (a ** 4 - b ** 4) / (4 * a);   // bending section modulus; the polar one is 2Z
+    const Z = Math.PI * (Math.pow(a, 4) - Math.pow(b, 4)) / (4 * a);   // bending section modulus; the polar one is 2Z
     const sig = F * (h * OSC_U) / Z, tau = Tq * OSC_U / (2 * Z);   // Tq in N·u
     return Math.sqrt(sig * sig + 3 * tau * tau);
   };
@@ -51423,13 +51436,13 @@ const FUSEE_COCK = await (async () => {
   registerExplode(g, 0, 7);   // the group stands at the movement's origin; its parts carry their own heights
   registerLabel('Fusee cock', g);
   const rootM = momentAt(foot.x, foot.y, true), rootW = widthAtP(foot.x, foot.y, true);
-  const barSigma = 6 * rootM * OSC_U / (T_m * (rootW * OSC_U) ** 2);
+  const barSigma = 6 * rootM * OSC_U / (T_m * Math.pow(rootW * OSC_U, 2));
   // The tip's deflection, by the unit-load integral over the taper:
   // δ = ∫ R·s² / (E·I(s)) ds, I(s) = T·b(s)³/12 in plane.
   const E = STOCK.nickelSilver.E;
   let deflect = 0;
   // (along the arm's line, the stud's moment included past its seat's station: a report, not a gate)
-  { const N = 400; for (let k = 0; k < N; k++) { const sk = (k + 0.5) * L / N, px = C.x + cs * sk, py = C.y + sn * sk, b = widthAtP(px, py, true) * OSC_U; deflect += momentAt(px, py, true) * OSC_U * (sk * OSC_U) / (E * T_m * b ** 3 / 12) * (L / N) * OSC_U; } }
+  { const N = 400; for (let k = 0; k < N; k++) { const sk = (k + 0.5) * L / N, px = C.x + cs * sk, py = C.y + sn * sk, b = widthAtP(px, py, true) * OSC_U; deflect += momentAt(px, py, true) * OSC_U * (sk * OSC_U) / (E * T_m * Math.pow(b, 3) / 12) * (L / N) * OSC_U; } }
   const deflect_mm = deflect * 1000;
   return {
     obj: g, foot, step, T, bot: FUSEE_COCK_BOT, mid: FUSEE_COCK_MID, top: FUSEE_COCK_TOP, bossMid: FUSEE_BOSS_MID, L,
@@ -51451,12 +51464,12 @@ const FUSEE_COCK = await (async () => {
       // the arm is a fully stressed taper for a moment that falls to nothing at the boss, and a couple does not fall: so the bar is read
       // along its whole length, each section at the width it was cut to, not at its root alone
       const barWorst = (Mat) => { let w = { Pa: 0, s_u: 0, width_u: 0 }; const N = 60;
-        const look = (ax, ay, bx, by, past) => { for (let k = 0; k <= N; k++) { const px = ax + (bx - ax) * (k / N), py = ay + (by - ay) * (k / N), d = Math.hypot(px - C.x, py - C.y); if (d < bossR) continue; const b = widthAtP(px, py, past), Pa = 6 * Mat(px, py) * OSC_U / (T_m * (b * OSC_U) ** 2); if (Pa > w.Pa) w = { Pa, s_u: d, width_u: b }; } };
+        const look = (ax, ay, bx, by, past) => { for (let k = 0; k <= N; k++) { const px = ax + (bx - ax) * (k / N), py = ay + (by - ay) * (k / N), d = Math.hypot(px - C.x, py - C.y); if (d < bossR) continue; const b = widthAtP(px, py, past), Pa = 6 * Mat(px, py) * OSC_U / (T_m * Math.pow(b * OSC_U, 2)); if (Pa > w.Pa) w = { Pa, s_u: d, width_u: b }; } };
         for (const [A0, B0, past] of crankSegsBuilt) look(A0.x, A0.y, B0.x, B0.y, past);
         look(C.x + cs * foot.sStep, C.y + sn * foot.sStep, C.x + cs * L, C.y + sn * L, true);
         return w; };
       const read = (Rr, Fside, Mat) => { const Mroot = Mat(foot.x, foot.y), bw = barWorst(Mat); return { R_N: Rr, Fside_N: Fside, rootMoment_Nu: Mroot,
-        bar_Pa: bw.Pa, barAt_u: bw.s_u, barWidth_u: bw.width_u, barRoot_Pa: 6 * Mroot * OSC_U / (T_m * (rootW * OSC_U) ** 2), leg_Pa: columnSigma(foot.legR, legH, Fside, Mroot, bore),
+        bar_Pa: bw.Pa, barAt_u: bw.s_u, barWidth_u: bw.width_u, barRoot_Pa: 6 * Mroot * OSC_U / (T_m * Math.pow(rootW * OSC_U, 2)), leg_Pa: columnSigma(foot.legR, legH, Fside, Mroot, bore),
         post_Pa: columnSigma(foot.postR, postH, Fside, Mat(step.x, step.y), 0), pinShear_Pa: pinSet.shear * (Mroot / pinSet.Tq) }; };
       const Rr = (chain.m + gear.m + stopM + wind.m) / span, Fsum = studs.reduce((a, q) => a + q.F, 0);
       const added = read(Rr, Rr + Fsum, (x, y) => Rr * Math.hypot(x - C.x, y - C.y) + studs.reduce((a, q) => a + q.F * Math.hypot(x - q.x, y - q.y), 0));
@@ -51996,9 +52009,11 @@ const FUSEE_COCK = await (async () => {
         const pinFull = azS - OMEGA * E / 2, pinEmpty = pinFull + OMEGA * (En / 2 - PHI_HI);
         const studsAdded = [{ x: C.x, y: C.y, F: best.pairForce.Ff }, { x: S.x, y: S.y, F: best.pairForce.Fs }];
         // the sweep walks the WHOLE range to the bound, not its two ends: the worst section is not monotonic in the angle, because the
-        // pin's force follows from the finger's balance about its stud and the mesh's line turns with it. MEASURED, and it is not academic:
-        // at 36 h the worst falls at −5.81° of a ±15.49° range — an INTERIOR angle a two-endpoint sweep would have walked straight past.
-        // At 24 h it does land on the endpoint (−10.24°), so one reserve of the two would have read right by luck.
+        // pin's force follows from the finger's balance about its stud and the mesh's line turns with it. That is a property of the
+        // MECHANISM, not of the torque loading it, which is why the sweep stays. It no longer earns itself on a measurement: at the
+        // torque TODO 291 left (54.5% of the old mainspring's energy) the worst falls on the ENDPOINT at both built reserves, where
+        // until 2026-11-08 36 h read an interior −5.81° of ±15.49°. Keep that distinction when quoting this sweep — the record said
+        // "the sweep earned itself at 36 h" for a day after it had stopped being true, and probe-337-record.mjs is what caught it.
         let cockStall = null, worstPress = 0;
         for (const az of [pinFull, pinEmpty]) for (let i2 = -PRESS_STEPS; i2 <= PRESS_STEPS; i2++) for (const sgn of [1, -1]) {
           const pa = (PRESS_MAX * i2) / PRESS_STEPS;
@@ -52020,7 +52035,10 @@ const FUSEE_COCK = await (async () => {
           addedOver: over(cockStall.added).map(([k, v, y]) => [k, Math.round((v / y) * 100) / 100]),
           staticsOver: over(cockStall.statics).map(([k, v, y]) => [k, Math.round((v / y) * 100) / 100]) };
         if (!stallWaiver.addedOver.length) console.warn('§337: the fusee cock now holds the stall under the ADDED rule as well — the statics waiver is no longer needed and should be retired');
-        WIND_ARREST.stopwork = { built: true, geared: true, n, m, travel: swTravelTurns(m, n), wind: T, ratio, r1, rPin, a, rTip, lockR: R_L, reliefMin, unlockedDeg,
+        WIND_ARREST.stopwork = { built: true, geared: true, n, m, travel: swTravelTurns(m, n), wind: T, ratio,
+          // the PAIR's own tooth counts, not just their ratio: docs/built/0337.md quotes them per reserve ('the pair built'), and
+          // tools/probe-337-record.mjs holds that table to this build - a ratio alone does not name a pair (25:20 and 15:12 share 1.25)
+          zCone: best.zCone, zFinger: best.zFinger, r1, rPin, a, rTip, lockR: R_L, reliefMin, unlockedDeg,
           lockArcDeg: (GAMMA * 180) / Math.PI, discOpenDeg: (open.filter(Boolean).length * 360) / NA, discRuns: runs.length, openRun: runs.map((r0) => { let e = r0; while (open[(e + 1) % NA] && e - r0 < NA) e++; return [(r0 * 360) / NA, (e * 360) / NA]; }), unlockedAt: unlockedAt.filter((_, i2) => i2 % 8 === 0).slice(0, 12), nUnlocked: unlockedAt.length, fullArcs, studFr, studSr: SW_STUD_R, Fmesh, pairForce: best.pairForce, cockStall, stallWaiver,
           pressureAngle: { maxDeg: (PRESS_MAX * 180) / Math.PI, steps: PRESS_STEPS, worstDeg: (worstPress * 180) / Math.PI, derived: 'gearToothSpec.maxPressureAngle, the worse face of the pair' },
           z: [zA, zA + 3 * t + 2 * M], branchW: best.armW };
@@ -55985,14 +56003,14 @@ const GONG_CASE_PATH = !ALARM_BUILT ? null : await (async () => {   // §325 lan
         + 'their mass is missing from the watch; declare userData.stock or add the material to stockKeyOf');
     const cx = mx / M, cy = my / M, cz = mz / M;                                 // u
     const Sc = [S[0] - M * cx * cx, S[1] - M * cy * cy, S[2] - M * cz * cz, S[3] - M * cx * cy, S[4] - M * cx * cz, S[5] - M * cy * cz];
-    const tr = Sc[0] + Sc[1] + Sc[2], U5 = U ** 5;
+    const tr = Sc[0] + Sc[1] + Sc[2], U5 = Math.pow(U, 5);
     return {
-      M_kg: M * U ** 3, com_u: [cx, cy, cz],
+      M_kg: M * Math.pow(U, 3), com_u: [cx, cy, cz],
       I_kgm2: { xx: (tr - Sc[0]) * U5, yy: (tr - Sc[1]) * U5, zz: (tr - Sc[2]) * U5, xy: -Sc[3] * U5, xz: -Sc[4] * U5, yz: -Sc[5] * U5 },
-      byStock_g: Object.fromEntries(Object.entries(byStock).map(([k, v]) => [k, v * U ** 3 * 1000])),
-      meshes, perMesh, openSkipped: open, openSkippedNominal_g: openNominal * U ** 3 * 1000, openDefectMax: OPEN_MESH_DEFECT, slowestMesh: { name: slowestName, ms: slowest },
-      caseExterior_g: caseExt * U ** 3 * 1000, skippedByName: TALLY_SKIP,
-      hiddenMass_g: hidden * U ** 3 * 1000, unmapped: [...unmapped.values()],
+      byStock_g: Object.fromEntries(Object.entries(byStock).map(([k, v]) => [k, v * Math.pow(U, 3) * 1000])),
+      meshes, perMesh, openSkipped: open, openSkippedNominal_g: openNominal * Math.pow(U, 3) * 1000, openDefectMax: OPEN_MESH_DEFECT, slowestMesh: { name: slowestName, ms: slowest },
+      caseExterior_g: caseExt * Math.pow(U, 3) * 1000, skippedByName: TALLY_SKIP,
+      hiddenMass_g: hidden * Math.pow(U, 3) * 1000, unmapped: [...unmapped.values()],
       caseAlloy: aesthetics.materials?.caseMetal?.alloy ?? 'steel',
     };
   };
@@ -56082,7 +56100,7 @@ const GONG_CASE_PATH = !ALARM_BUILT ? null : await (async () => {   // §325 lan
     const got = radiate([{ r0: 0, z0: 0, r1: a / U, z1: 0, nr: 0, nz: 1 }], k, { Vx: 0, Vy: 0, Vz: 1, Ox: 0, Oy: 0, Oz: 0, cx: 0, cy: 0, cz: 0 }, dsFor(k)).W / 2;   // the sphere is walked whole, so a lone disc is seen from both sides: twice the baffled figure
     const J = gongBesselJ(1, 2 * ka), exact = 0.5 * AIR_RHO * AIR_C * Math.PI * a * a * (1 - J[1] / ka);
     // the elements are midpoint samples λ/32 long, so the identity holds to (2π/32)²/24 ≈ 1.6e-3 (the midpoint rule's own term); twice that is the assert
-    if (Math.abs(got / exact - 1) > 2 * (2 * Math.PI / 32) ** 2 / 24)
+    if (Math.abs(got / exact - 1) > 2 * Math.pow(2 * Math.PI / 32, 2) / 24)
       console.warn(`§269: the exterior integral radiates ${got.toExponential(5)} W from a baffled piston at ka ${ka} where the identity gives ${exact.toExponential(5)} — the quadrature is wrong before it meets the case`);
   }
   // the Kirchhoff ratio: the same integral over a translating sphere of the case's radius, against the exact dipole
@@ -56093,7 +56111,7 @@ const GONG_CASE_PATH = !ALARM_BUILT ? null : await (async () => {   // §325 lan
       prof.push({ r0: a * Math.sin(t0) / U, z0: a * Math.cos(t0) / U, r1: a * Math.sin(t1) / U, z1: a * Math.cos(t1) / U, nr: Math.sin(tm), nz: Math.cos(tm) });
     }
     const got = radiate(prof, k, { Vx: 1, Vy: 0, Vz: 0, Ox: 0, Oy: 0, Oz: 0, cx: 0, cy: 0, cz: 0 }, dsFor(k)).W;
-    const ka = k * a, exact = (2 * Math.PI * AIR_RHO * AIR_C * a * a / 3) * ka ** 4 / (4 + ka ** 4);
+    const ka = k * a, exact = (2 * Math.PI * AIR_RHO * AIR_C * a * a / 3) * Math.pow(ka, 4) / (4 + Math.pow(ka, 4));
     return got / exact;
   };
   lap('pistonControl');
@@ -56106,7 +56124,7 @@ const GONG_CASE_PATH = !ALARM_BUILT ? null : await (async () => {   // §325 lan
     plateClampR_u: CASE_R_IN, plateT_u: BACK_PLATE_T,
     glassF01_Hz: clampedDiscF01(D.apertureR * U, crystT * U, STOCK.corundum), glassR_u: D.apertureR, glassT_u: crystT,
     // a thin ring's in-plane bending mode n: f = n(n²−1)/√(n²+1) · (t/√12)·√(E/ρ) / (2πR²) — the band alone, free
-    bandOval2_Hz: (2 * 3 / Math.sqrt(5)) * (CASE_BAND_T * U / Math.sqrt(12)) * Math.sqrt(caseStock.E / caseStock.rho) / (2 * Math.PI * ((D.R_OUT - CASE_BAND_T / 2) * U) ** 2),
+    bandOval2_Hz: (2 * 3 / Math.sqrt(5)) * (CASE_BAND_T * U / Math.sqrt(12)) * Math.sqrt(caseStock.E / caseStock.rho) / (2 * Math.PI * Math.pow((D.R_OUT - CASE_BAND_T / 2) * U, 2)),
     bandT_u: CASE_BAND_T, bandR_u: D.R_OUT - CASE_BAND_T / 2,
   };
   // The two discs bound the mass law directly; the band's figure is a FREE
@@ -56118,7 +56136,7 @@ const GONG_CASE_PATH = !ALARM_BUILT ? null : await (async () => {   // §325 lan
   receiver.bandCaveat = 'a free thin ring\'s n = 2 in-plane mode: the band alone, its two ends unclosed — the assembled band rings above it';
   // 6 — THE AIRBORNE PATH's pane: the mass law at normal incidence for the back glass.
   const paneMs = STOCK.corundum.rho * crystT * U;                                // kg/m²
-  const massLaw_dB = (f) => 10 * Math.log10(1 + (2 * Math.PI * f * paneMs / (2 * AIR_RHO * AIR_C)) ** 2);
+  const massLaw_dB = (f) => 10 * Math.log10(1 + Math.pow(2 * Math.PI * f * paneMs / (2 * AIR_RHO * AIR_C), 2));
   // 7 — PER MODE.
   const c_m = watch.com_u.map((v) => v * U);
   const xf = (GONG_SEATED ? gongFoot.x * U : GONG_R * U * Math.cos(GONG_A0)) - c_m[0], yf = (GONG_SEATED ? gongFoot.y * U : GONG_R * U * Math.sin(GONG_A0)) - c_m[1], zf = Z_GONG * U - c_m[2];   // the foot about the mass centre (§310: a seat's own foot)
@@ -56142,8 +56160,8 @@ const GONG_CASE_PATH = !ALARM_BUILT ? null : await (async () => {   // §325 lan
     const kirch = m.audible ? sphereRatio(k) : null; lap('sphere' + m.n);
     const W = rad ? rad.W : null, Ipk = rad ? rad.Ipeak : null;
     const spl = rad ? 10 * Math.log10(Math.max(Ipk, 1e-30) / 1e-12) : null, splA = rad ? spl + gongAWeight(m.f_Hz) : null;
-    const both = rad ? 10 * Math.log10(10 ** (splA / 10) + 10 ** (m.splA_dBA / 10)) : m.splA_dBA;
-    if (m.audible) { countedCase += 10 ** (splA / 10); countedBoth += 10 ** (both / 10); }
+    const both = rad ? 10 * Math.log10(Math.pow(10, splA / 10) + Math.pow(10, m.splA_dBA / 10)) : m.splA_dBA;
+    if (m.audible) { countedCase += Math.pow(10, splA / 10); countedBoth += Math.pow(10, both / 10); }
     m.caseW_W = W ?? 0; m.splA_withCase_dBA = both;                             // the ding's mix reads these (SND_GONG_PARTIALS)
     modes.push({
       n: m.n, f_Hz: m.f_Hz, audible: m.audible,
@@ -56157,7 +56175,7 @@ const GONG_CASE_PATH = !ALARM_BUILT ? null : await (async () => {   // §325 lan
       // above either it is neither bound (TODO 229). The band's free-ring figure is a separate, softer bound.
       belowDiscModes: m.f_Hz <= receiver.discFirst_Hz, belowBandFreeOval: m.f_Hz <= receiver.bandOval2_Hz,
       regime: m.f_Hz <= receiver.discFirst_Hz ? 'below the plate and glass modes: the rigid figure is a floor' : 'above a disc mode: neither bound (TODO 229)',
-      plateMagnification: 1 / Math.abs(1 - (m.f_Hz / receiver.plateF01_Hz) ** 2),
+      plateMagnification: 1 / Math.abs(1 - Math.pow(m.f_Hz / receiver.plateF01_Hz, 2)),
       paneMassLaw_dB: massLaw_dB(m.f_Hz), airborneThroughBack_dBA: m.splA_dBA - massLaw_dB(m.f_Hz),
     });
   }
@@ -66126,7 +66144,7 @@ window.__clock = {
   get strikePlateOpening() { return STRIKE_PLATE_OPENING; },   // TODO 266 — the strike group's opening in a form plate (null round)
   gongSeat: ALARM_BUILT ? FORM ? Object.freeze({ specKey: GONG_SPEC_KEY, arrKey: GONG_ARR_KEY, pivot: { x: hammerPiv.x, y: hammerPiv.y }, mode: GONG_SEAT_MODE, seated: GONG_SEATED, refused: GONG_SEAT?.refused ?? null,
     row: GONG_SEAT?.row ?? null, strike: GONG_SEATED ? { s: GONG_SEAT.st.s, S: GONG_SEAT.st.S, F: GONG_SEAT.st.F, b: GONG_SEAT.st.b, P: { x: hammerPiv.x, y: hammerPiv.y }, psi: hammerPiv.psi } : null,
-    check: GONG_SEAT_CHECK, lever: { Q: LIFT_PIV, rho: Math.hypot(ALARM_LIFT_ARM + ALARM_TAIL_LEN, ALARM_LIFT_S), tanLen: Math.sqrt(ALARM_ARM_LEN ** 2 - ALARM_HEAD_R ** 2),
+    check: GONG_SEAT_CHECK, lever: { Q: LIFT_PIV, rho: Math.hypot(ALARM_LIFT_ARM + ALARM_TAIL_LEN, ALARM_LIFT_S), tanLen: Math.sqrt(Math.pow(ALARM_ARM_LEN, 2) - Math.pow(ALARM_HEAD_R, 2)),
       side: ALARM_LIFT_SIDE, gap: HAMMER_HEAD_GAP, headR: ALARM_HEAD_R, headH: ALARM_HEAD_H, postR: HAMMER_POST_R, margin: CLEAR_MARGIN },
     keep: STRIKE_KEEP_MEASURED,   // TODO 272 — what tools/gong-seats.mjs writes into the row as the pillars' keep-out
     tenants: GONG_BAND_TENANTS, wireR: GONG_WIRE_R, wireD_m: 2 * GONG_WIRE_R * OSC_U, zGong: Z_GONG, postR: GONG_POST_R_BUILT,

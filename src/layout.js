@@ -1227,11 +1227,11 @@ export function caseLugPlan({ rOut, rBore, off, zWallLo, zWallHi, zBack, arcSegs
   const warn = [];
   const T = CASE_LUG_T, rc = CASE_LUG_EDGE_R, F = CASE_LUG_LOAD_N;
   const a = Math.abs(off);
-  const surfOut = flat ? rOut : Math.sqrt(rOut * rOut - (a + T / 2) ** 2);
-  const surfIn = flat ? rOut : Math.sqrt(rOut * rOut - (a - T / 2) ** 2);
+  const surfOut = flat ? rOut : Math.sqrt(rOut * rOut - Math.pow(a + T / 2, 2));
+  const surfIn = flat ? rOut : Math.sqrt(rOut * rOut - Math.pow(a - T / 2, 2));
   const uBar = rOut + CASE_BAR_REACH, uTip = rOut + CASE_LUG_REACH;
   const armU = uBar - surfOut;
-  const sigmaAt = (W, arm) => F * arm * U_M / (caseLugSectionZ(T, W, rc) * U_M ** 3);
+  const sigmaAt = (W, arm) => F * arm * U_M / (caseLugSectionZ(T, W, rc) * Math.pow(U_M, 3));
   // The lightest W whose root stress is the yield — bisection, monotone in W.
   let lo = 2 * rc + CASE_LUG_HOLE_D, hi = 40 / UNIT_MM;
   if (sigmaAt(lo, armU) <= CASE_LUG_SIGMA_Y_PA) hi = lo;
@@ -1512,8 +1512,8 @@ export const SPRING_INDEX_TARGET = SPRING_INDEX_MAX * 0.9;   // 10.8
 // TODO 16 and the §54 report both already compute longhand. I = a·c³/12.
 export const cantileverK_N_per_m = (a_u, c_u, L_u) => {
   const m = UNIT_MM / 1000;                       // m per unit — §39's pin
-  const I = (a_u * m) * (c_u * m) ** 3 / 12;      // m⁴, thin axis = c
-  return 3 * STEEL_E_PA * I / (L_u * m) ** 3;
+  const I = (a_u * m) * Math.pow(c_u * m, 3) / 12;      // m⁴, thin axis = c
+  return 3 * STEEL_E_PA * I / Math.pow(L_u * m, 3);
 };
 // §231 — THE ONE EULER LAW. A slender member loaded ALONG its own length does
 // not fail by yielding, it BUCKLES, and P_cr = π²EI/(K·L)² is the first
@@ -1533,7 +1533,7 @@ export const cantileverK_N_per_m = (a_u, c_u, L_u) => {
 // computes its own), L in units, the answer in newtons.
 export const eulerCriticalLoad_N = (I_m4, L_u, K) => {
   const m = UNIT_MM / 1000;                       // m per unit — §39's pin
-  return Math.PI * Math.PI * STEEL_E_PA * I_m4 / (K * L_u * m) ** 2;
+  return Math.PI * Math.PI * STEEL_E_PA * I_m4 / Math.pow(K * L_u * m, 2);
 };
 // §137 — THE DETENT ENVELOPE, declared instead of asserted in prose.
 // TODO 16 sized the arming chain against "a detented selector ring plausibly
@@ -3376,12 +3376,12 @@ export const YK_SPRING = (() => {
   const g0 = endsRaw[0].defl_u * mPerU * endsRaw[0].armSpring_u / endsRaw[0].dY_u;
   const g1 = endsRaw[1].defl_u * mPerU * endsRaw[1].armSpring_u / endsRaw[1].dY_u;
   const k = Math.sqrt((wLo * wHi) / (g0 * g1)) / 1000;   // N/m (the window is in mN)
-  const I = (k * (L * mPerU) ** 3) / (3 * E);
-  const w = (12 * I) / (t * mPerU) ** 3 / mPerU;          // the blade's height, u
+  const I = (k * Math.pow(L * mPerU, 3)) / (3 * E);
+  const w = (12 * I) / Math.pow(t * mPerU, 3) / mPerU;          // the blade's height, u
   const ends = endsRaw.map((e) => {
     const F_mN = 1000 * k * e.defl_u * mPerU;
     return Object.freeze({ ...e, F_mN, N_mN: (F_mN * e.armSpring_u) / e.dY_u,
-      sigma_Pa: (3 * E * t * mPerU * e.defl_u * mPerU) / (2 * (L * mPerU) ** 2) });
+      sigma_Pa: (3 * E * t * mPerU * e.defl_u * mPerU) / (2 * Math.pow(L * mPerU, 2)) });
   });
   return Object.freeze({ t_u: t, w_u: w, L_u: L, k_N_per_m: k, stroke_u: stroke, gamma, anchor: A, freeAng,
     staffClear_u: clearAt(gamma), staffNeed_u: need, sigmaTarget_Pa: sigT, ends, bladeAt: at });
@@ -3505,7 +3505,7 @@ export const SETTING_LEVER_CUT = (() => {
     const side = Math.atan2(b.l - a.l, b.s - a.s), turn = Math.abs(Math.PI - Math.abs(side - Math.PI));   // the side's heading against the end's (−s)
     return bev / Math.cos(Math.min(turn, Math.PI - 0.2) / 2);
   })();
-  const latMin = Math.max(Math.sqrt(keep * keep - dzB * dzB), miter + Math.sqrt(Math.max(0, keep * keep - (dzB + bev) ** 2)));
+  const latMin = Math.max(Math.sqrt(keep * keep - dzB * dzB), miter + Math.sqrt(Math.max(0, keep * keep - Math.pow(dzB + bev, 2))));
   // the side curve's s at a given l (the quadratic is monotone in l)
   const sideAt = (l) => { let lo = 0, hi = 1; for (let k = 0; k < 60; k++) { const m = (lo + hi) / 2; if (quad(m, 1).l > l) lo = m; else hi = m; } return quad((lo + hi) / 2, 1).s; };
   // the end's corner's lowest lateral over the stroke: SL_C + s·sin θ + l·cos θ
@@ -3765,7 +3765,7 @@ export function loopConvexity(pts) {
 // The cushion's base polyline (unit-free: computed per box) and its normals.
 function cushionSamples(a, b, n, cx, cy) {
   const F = 16 * CUSHION_SAMPLES;
-  const pe = (t) => { const c = Math.cos(t), s = Math.sin(t); return [a * Math.sign(c) * Math.abs(c) ** (2 / n), b * Math.sign(s) * Math.abs(s) ** (2 / n)]; };
+  const pe = (t) => { const c = Math.cos(t), s = Math.sin(t); return [a * Math.sign(c) * Math.pow(Math.abs(c), 2 / n), b * Math.sign(s) * Math.pow(Math.abs(s), 2 / n)]; };
   const fine = [], cum = [0];
   for (let i = 0; i <= F; i++) fine.push(pe((TAU * i) / F));
   for (let i = 1; i <= F; i++) cum.push(cum[i - 1] + Math.hypot(fine[i][0] - fine[i - 1][0], fine[i][1] - fine[i - 1][1]));
@@ -3778,7 +3778,7 @@ function cushionSamples(a, b, n, cx, cy) {
   }
   const pts = ts.map(pe);
   const nrm = pts.map(([x, y]) => {
-    const gx = n * Math.sign(x) * Math.abs(x / a) ** (n - 1) / a, gy = n * Math.sign(y) * Math.abs(y / b) ** (n - 1) / b, L2 = Math.hypot(gx, gy);
+    const gx = n * Math.sign(x) * Math.pow(Math.abs(x / a), n - 1) / a, gy = n * Math.sign(y) * Math.pow(Math.abs(y / b), n - 1) / b, L2 = Math.hypot(gx, gy);
     return [gx / L2, gy / L2];
   });
   // THE SAGITTA, measured: each chord against the curve at its parametric middle
@@ -3863,7 +3863,7 @@ export function caseShapeOf(kind, box, opts = {}) {
     const T = opts.tonneau ?? (() => {
       const e = (opts.bow ?? TONNEAU_BOW) * a, R = (e * e + b * b) / (2 * e);
       const rc = Math.max(0, Math.min(opts.cornerR ?? PLATE_RIM_MARGIN, b));
-      const ky = b - rc, kx = (a - R) + Math.sqrt((R - rc) ** 2 - ky * ky);
+      const ky = b - rc, kx = (a - R) + Math.sqrt(Math.pow(R - rc, 2) - ky * ky);
       return { sx: a - R, R, kx, ky, rc, b };
     })();
     const { sx, R, kx, ky, rc } = T, bb = T.b;
@@ -3888,7 +3888,7 @@ export function caseShapeOf(kind, box, opts = {}) {
     const s = shapeFrom(kind, prims, { segs, maxChord: opts.maxChord ?? 1, cornerR: rc,
       grown: (g, { cornerR: hold } = {}) => {
         const R2 = R + g, b2 = bb + g, rc2 = hold ?? rc + g, ky2 = b2 - rc2;
-        return caseShapeOf('tonneau', box, { ...opts, tonneau: { sx, R: R2, rc: rc2, b: b2, ky: ky2, kx: sx + Math.sqrt((R2 - rc2) ** 2 - ky2 * ky2) } });
+        return caseShapeOf('tonneau', box, { ...opts, tonneau: { sx, R: R2, rc: rc2, b: b2, ky: ky2, kx: sx + Math.sqrt(Math.pow(R2 - rc2, 2) - ky2 * ky2) } });
       } });
     return Object.freeze({ ...s, flatHalf: kx });   // the straight end's half-run, where a flat lug may weld
   }
@@ -3909,9 +3909,9 @@ export function caseShapeOf(kind, box, opts = {}) {
     // segments); grow g adds g to R, to rc and to both ends and keeps every
     // centre (k and tau re-expressed on the grown box), the tonneau's closure.
     const rc = Math.max(0, Math.min(opts.cornerR ?? PLATE_RIM_MARGIN, b));
-    const { k = 2 * TONNEAU_BOW / (TONNEAU_BOW ** 2 + (b / a) ** 2), tau = 0 } = opts.fitted ?? {};
+    const { k = 2 * TONNEAU_BOW / (Math.pow(TONNEAU_BOW, 2) + Math.pow(b / a, 2)), tau = 0 } = opts.fitted ?? {};
     const R = a / k, yA = cy + tau * b, sx = a - R;               // the right side's centre (cx + sx, yA); the left's mirrored
-    const kxAt = (yc) => sx + Math.sqrt((R - rc) ** 2 - (yc - yA) ** 2);   // a corner centre's x (from cx) at height yc
+    const kxAt = (yc) => sx + Math.sqrt(Math.pow(R - rc, 2) - Math.pow(yc - yA, 2));   // a corner centre's x (from cx) at height yc
     const kT = kxAt(yMax - rc), kB = kxAt(yMin + rc);
     if (!(kT > 0) || !(kB > 0))
       console.warn(`§317: the fitted tonneau's corner round ${rc.toFixed(3)} u leaves no straight end (half-runs ${kT.toFixed(3)} / ${kB.toFixed(3)} u at the +y / −y ends, required > 0)`);
@@ -4062,7 +4062,7 @@ export function* fitFittedCaseSteps(hull, metal, { margin = PLATE_RIM_MARGIN, ce
     if (!(p.a > 0) || !(b > 0) || !(p.k > 0)) return null;
     const R = p.a / p.k;
     // the corners must be constructible before the shape is asked anything
-    for (const yc of [p.y1 - cornerR, p.y0 + cornerR]) if (!((R - cornerR) ** 2 > (yc - p.yA) ** 2)) return null;
+    for (const yc of [p.y1 - cornerR, p.y0 + cornerR]) if (!(Math.pow(R - cornerR, 2) > Math.pow(yc - p.yA, 2))) return null;
     return caseShapeOf('fitted', { xMin: cx - p.a, xMax: cx + p.a, yMin: p.y0, yMax: p.y1 }, { cornerR, fitted: { k: p.k, tau: (p.yA - cy) / b } });
   };
   const quiet = (fn) => { const w = console.warn; console.warn = () => {}; try { return fn(); } finally { console.warn = w; } };
@@ -4097,7 +4097,7 @@ export function* fitFittedCaseSteps(hull, metal, { margin = PLATE_RIM_MARGIN, ce
   };
   const areaOf = (p) => (p ? quiet(() => shapeArea(make(p))) : Infinity);
   const tb = t.bounds, b0 = (tb.yMax - tb.yMin) / 2, a0 = (tb.xMax - tb.xMin) / 2;
-  const start = { a: a0, y0: tb.yMin, y1: tb.yMax, k: 2 * TONNEAU_BOW / (TONNEAU_BOW ** 2 + (b0 / a0) ** 2), yA: (tb.yMin + tb.yMax) / 2 };
+  const start = { a: a0, y0: tb.yMin, y1: tb.yMax, k: 2 * TONNEAU_BOW / (Math.pow(TONNEAU_BOW, 2) + Math.pow(b0 / a0, 2)), yA: (tb.yMin + tb.yMax) / 2 };
   // THE LANDSCAPE IS A V-SHAPED VALLEY, measured (the record's grid): the tightened
   // area over (k, yA) runs down a DIAGONAL floor — a larger k wants a lower apex —
   // and across it is a V, two hull vertices trading the binding. A compass search
@@ -4127,7 +4127,7 @@ export function* fitFittedCaseSteps(hull, metal, { margin = PLATE_RIM_MARGIN, ce
     return { p, A };
   };
   const rowMin = function* (k) { return yield* golden(tb.yMin, tb.yMax, 1e-3, (yA) => at(k, yA)); };
-  const ks = Array.from({ length: KSCAN }, (_, i) => start.k * 4 ** (2 * i / (KSCAN - 1) - 1));
+  const ks = Array.from({ length: KSCAN }, (_, i) => start.k * Math.pow(4, 2 * i / (KSCAN - 1) - 1));
   let iBest = 0, rBest = Infinity;
   for (let i = 0; i < ks.length; i++) { const r = yield* rowMin(ks[i]); if (r.A < rBest) { rBest = r.A; iBest = i; } }
   yield* golden(ks[Math.max(0, iBest - 1)], ks[Math.min(ks.length - 1, iBest + 1)], 1e-5 * start.k, rowMin);
@@ -5933,7 +5933,7 @@ export function solveStopWork({
   const HACK_SCREW_DROP = (() => { const W = balanceWheelDims({ radius: balanceR, thickness: BAL_T, rimF: BAL_RIM_F }); return W.rim.h / 2 - W.screws.r2; })();
   // ...the rest of the separation must come radially. Corner-to-corner:
   // √(standoff² + drop²) = margin ⇒
-  const HACK_SCREW_STANDOFF = Math.sqrt(Math.max(0, HACK_CLEAR_MARGIN ** 2 - HACK_SCREW_DROP ** 2));
+  const HACK_SCREW_STANDOFF = Math.sqrt(Math.max(0, Math.pow(HACK_CLEAR_MARGIN, 2) - Math.pow(HACK_SCREW_DROP, 2)));
   // Size the ruby's top face to fill exactly the annulus that is both fully
   // ON the rim's underside (≥ rim inner edge — full-face seating, lesson:
   // surface-to-surface) and radially inside the screws' standoff:
@@ -6186,7 +6186,7 @@ export function solveStopWork({
   // the balance axis, so the tangential offset just shifts the contact
   // azimuth — the pad's top-face centre stays at the derived radius:
   //   hypot(STOP_PIVOT_R + PAD_X, PAD_Y) = HACK_CONTACT_R
-  const STOP_PAD_X = Math.sqrt(Math.max(0, HACK_CONTACT_R ** 2 - STOP_PAD_Y ** 2)) - STOP_PIVOT_R; // negative: inward
+  const STOP_PAD_X = Math.sqrt(Math.max(0, Math.pow(HACK_CONTACT_R, 2) - Math.pow(STOP_PAD_Y, 2))) - STOP_PIVOT_R; // negative: inward
   if (Math.abs(STOP_PAD_Y) >= HACK_CONTACT_R)
     warn(`stop work: pad tangential offset exceeds the contact radius ${STOP_PAD_Y.toFixed(2)}`);
 
