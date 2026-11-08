@@ -25,6 +25,17 @@
 #   cross-arch  tools/compare-338-hosts.mjs over both files: every build on
 #               every machine one movement, digest for digest.
 #
+# §338 landing 3 adds the BATTERY itself, natively:
+#   battery-native        tools/battery-native.mjs on both architectures: every
+#                         BATTERY row through inspect.js on the native host, each
+#                         judged by its own gate, its whole --report kept;
+#   battery-cross-arch    tools/report-diff.mjs over the two reports: every leaf
+#                         of every check's payload EXACTLY equal across x64 and
+#                         arm64 (timing excluded by name and counted), with a
+#                         planted one-ulp control. §227 could only compare
+#                         summary lines across architectures; this compares the
+#                         ~175,000 leaves §152's incremental path inherits.
+#
 # `paths` is POSITIVE, as boot-yield.yml's is: what the probe boots is
 # index.html and the module graph under src/ and vendor/, and the host is
 # tools/native/.
@@ -39,6 +50,8 @@ on:
       - 'tools/native/**'
       - 'tools/probe-338-native-boot.mjs'
       - 'tools/compare-338-hosts.mjs'
+      - 'tools/battery-native.mjs'
+      - 'tools/report-diff.mjs'
       - 'tools/det-math-vendor.mjs'
       - 'tools/det-math-kat.mjs'
       - 'tools/check-det-math.mjs'
@@ -147,3 +160,55 @@ jobs:
 
       - name: x64 and arm64 built one movement
         run: node tools/compare-338-hosts.mjs native-host-X64.json native-host-ARM64.json
+
+  battery-native:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    # A local 4-vCPU run walls ~17.5 min in one process; the cap is that times
+    # the 1.66x same-tree spread battery.yml measured, rounded up, plus boot.
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install the tools' pinned packages
+        working-directory: tools
+        run: npm ci --no-audit --no-fund
+
+      - name: The battery, natively, every row judged by its own gate
+        run: node --import ./tools/native/loader.mjs tools/battery-native.mjs --report battery-native-${{ runner.arch }}.json
+
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: battery-native-${{ runner.arch }}
+          path: battery-native-${{ runner.arch }}.json
+          if-no-files-found: error
+          retention-days: 14
+
+  battery-cross-arch:
+    needs: battery-native
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: battery-native-*
+          merge-multiple: true
+
+      - name: x64 and arm64 reached one verdict, leaf for leaf
+        run: node tools/report-diff.mjs battery-native-X64.json battery-native-ARM64.json
+
