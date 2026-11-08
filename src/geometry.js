@@ -7722,14 +7722,37 @@ export function makeCock({ length, width, thickness = width * 0.5, studHole = nu
   s.absarc(0, -length * 0.5, hw, Math.PI, Math.PI * 2, false); // rounded foot
   s.closePath();
 
+  // The slab's bevel, hoisted above the holes: the jewel bore is DRAWN past
+  // bevelSize, and the spy hole has to clear the ring as drawn (below).
+  // bevelThickness is clamped by the slab's depth; bevelSize is not.
+  const bevelT = Math.min(width * 0.05, thickness * 0.2);
+  const bevelS = width * 0.05;
+  // TODO 295 — THE JEWEL BORE, and the chaton is a PRESSED BUSH in it.
+  // The setting used to be ADDED to a solid slab: its collar stood buried in
+  // uncut nickel, and the staff's own axis carried the whole floor beneath the
+  // stone — the slab's underside to the stone's bottom with no hole in it,
+  // which is the path BALANCE_SHOULDER_TOP_Z derives the pivot's top to run
+  // along. The bore is at the collar's OWN outer radius (makeJewelSetting's
+  // `outerR` = r · 1.6), so it is a press fit on the bush rather than a
+  // number of its own. The chaton's floor stops short of the slab's
+  // underside, so what is left below it is open bore.
+  const jewelBoreR = cockJewelR(width) * 1.6;
+  // What the AUTHORED outline carries, which is what the spy hole must clear
+  // and what `outlines` reads: borePath draws the ring at R + bevelSize/cos(π/n)
+  // so the DEPTH BAND lands on R (TODO 175). At COCK_W 6 that compensation is
+  // 0.3046 against the 0.25 gap below, so clearing the collar's NOMINAL radius
+  // left the two rings crossing by 0.0546 — earcut then resolves a folded ring
+  // however it likes, which is TODO 198's class and the gate that caught it.
+  const jewelBoreDrawnR = jewelBoreR + bevelS / Math.cos(Math.PI / boreSides(jewelBoreR));
+
   // Spy hole toward the head — slid down out of the way of a stud hole
   // punched above it AND of a high-set jewel (overlapping holes break the
-  // extrude; the jewel setting's collar reaches width·0.16·1.6 around
+  // extrude; the jewel bore as drawn reaches jewelBoreDrawnR around
   // jewelAt·length).
   const h1 = new THREE.Path();
   let h1y = length * 0.42;
   if (studHole) h1y = Math.min(h1y, studHole.y - studHole.r - width * 0.12 - 0.25);
-  h1y = Math.min(h1y, length * jewelAt - width * 0.16 * 1.6 - width * 0.12 - 0.25);
+  h1y = Math.min(h1y, length * jewelAt - jewelBoreDrawnR - width * 0.12 - 0.25);
   h1.absarc(0, h1y, width * 0.12, 0, Math.PI * 2, true);
   s.holes.push(h1);
   // STUD HOLE: a real bore for the hairspring stud to pass through the
@@ -7744,21 +7767,7 @@ export function makeCock({ length, width, thickness = width * 0.5, studHole = nu
   h2.absarc(0, -length * 0.42, width * 0.12, 0, Math.PI * 2, true);
   s.holes.push(h2);
 
-  const bevelT = Math.min(width * 0.05, thickness * 0.2);
-  const bevelS = width * 0.05;                   // bevelSize, hoisted: the jewel bore is drawn past it
   const depth = cockCoreDepth(width, thickness); // core extrusion; bevels restore the total
-
-  // TODO 295 — THE JEWEL BORE, and the chaton is a PRESSED BUSH in it.
-  // The setting used to be ADDED to a solid slab: its collar stood buried in
-  // uncut nickel, and the staff's own axis carried the whole floor beneath the
-  // stone — the slab's underside to the stone's bottom with no hole in it,
-  // which is the path BALANCE_SHOULDER_TOP_Z derives the pivot's top to run
-  // along. The bore is at the collar's OWN outer radius (makeJewelSetting's
-  // `outerR` = r · 1.6), so it is a press fit on the bush rather than a
-  // number of its own, and it is the radius the spy hole above already keeps
-  // clear (`width · 0.16 · 1.6`, the same product). The chaton's floor stops
-  // short of the slab's underside, so what is left below it is open bore.
-  const jewelBoreR = cockJewelR(width) * 1.6;
   s.holes.push(borePath(jewelBoreR, bevelS, 0, length * jewelAt));
   const geo = new THREE.ExtrudeGeometry(s, {
     depth,
@@ -7867,7 +7876,10 @@ export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [], foot
   // the counterbore and the stone's seat alike — the boss's lathe cut them
   // honestly and the bar put the metal straight back. A node's keep-out is the
   // widest hole it carries: the counterbore where there is one, else the bore,
-  // else the foot screw's. A plane at that radius is TANGENT to the hole's
+  // else the foot screw's. The bore/foot/plain PRECEDENCE is the disc loop's
+  // own, not a preference — a node carrying both is built as a bore boss and
+  // no screw bore is cut in it, so reading the widest of all three would claim
+  // a hole that is not there. A plane at that radius is TANGENT to the hole's
   // wall (every point of the end face is at least keep-out from the axis), so
   // the bar still welds to the boss across the rim from keep-out to n.r and
   // never enters the hole.

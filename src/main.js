@@ -16719,6 +16719,11 @@ const balanceCock = G.makeCock({
   // leave the slab's metal untouched — anything it meets is nickel standing
   // between the slab's underside and the stone, which is exactly the path
   // BALANCE_SHOULDER_TOP_Z derives the pivot's top to run along.
+  // Both sides of the comparison are MOVEMENT-frame: P.balance and COCK_MID_Z
+  // are the layout's own coordinates, and the cock is not parented into
+  // `movement` until further down, so updateMatrixWorld leaves matrixWorld
+  // equal to its movement-frame matrix. Nothing here reads a world quantity
+  // through an ancestor, which is the one thing that call cannot do (TODO 139).
   {
     balanceCock.updateMatrixWorld(true);
     const slab = balanceCock.getObjectByName('cockSlab');
