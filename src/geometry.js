@@ -6377,7 +6377,13 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
 // alarm barrel (§89) exactly as it was.
 // `sense`: the train this spring drives — MOVEMENT_SENSE for the going drum,
 // ALARM_SENSE for the alarm barrel (layout.js says why they are two).
-export function mainspringFrames({ innerR, outerR, coils, ribbonR, sweep, setup = 0,
+// §338 landing 2 — resumable, as makeHairspringSteps is (§266): the k-solve runs
+// a 128-panel length integral 44 times a frame, and with the deterministic pow
+// (src/det-math.js, about twice the engine's) one barrel's frames held the boot
+// thread past BREATHE_MS. The steps are the same arithmetic in the same order;
+// `mainspringFrames` drains them for every caller that does not yield.
+export function mainspringFrames(opts) { return drainSteps(mainspringFramesSteps(opts)); }
+export function* mainspringFramesSteps({ innerR, outerR, coils, ribbonR, sweep, setup = 0,
                                    sense = MOVEMENT_SENSE }) {
   const pBind = ribbonR * 2;              // coil bind — see above
   const P = pBind / (Math.PI * 2);        // ...as radius gained per radian
@@ -6491,13 +6497,18 @@ export function mainspringFrames({ innerR, outerR, coils, ribbonR, sweep, setup 
   // where the analytic guess put it — 2.12 against 1.63 as built), sampled at
   // both extremes and the middle, and the achieved step is asserted below.
   const h = sweep / 512;
-  const sens = (A) => {
-    const a = frameAt(A - h).pts, b = frameAt(A + h).pts;
+  function* sensSteps(A) {
+    const a = frameAt(A - h).pts;
+    yield;
+    const b = frameAt(A + h).pts;
+    yield;
     let m = 0;
     for (let i = 0; i <= segs; i++) m = Math.max(m, Math.hypot(a[i][0] - b[i][0], a[i][1] - b[i][1]));
     return m / (2 * h);
-  };
-  const dPdA = Math.max(sens(A_down + h), sens((A_down + A_full) / 2), sens(A_full - h));
+  }
+  // In argument order, as Math.max(sens(…), sens(…), sens(…)) evaluated them.
+  const s0 = yield* sensSteps(A_down + h), s1 = yield* sensSteps((A_down + A_full) / 2), s2 = yield* sensSteps(A_full - h);
+  const dPdA = Math.max(s0, s1, s2);
   const nFrames = Math.max(Math.ceil((sweep * dPdA) / pBind) + 1, 3);
 
   const frames = [], cutLens = [];
@@ -6505,6 +6516,7 @@ export function mainspringFrames({ innerR, outerR, coils, ribbonR, sweep, setup 
   for (let i = 0; i < nFrames; i++) {
     const A = A_full - (sweep * i) / (nFrames - 1);   // frame 0 = fully wound; frame last = A_down (service run-down)
     const f = frameAt(A);
+    yield;
     if (i) for (let j = 0; j <= segs; j++) {
       const q = frames[i - 1];
       maxStep = Math.max(maxStep, Math.hypot(f.pts[j][0] - q[j][0], f.pts[j][1] - q[j][1]));
@@ -6621,7 +6633,10 @@ export function stripSweepGeometry(curve, segs, half) {
   return g;
 }
 
-export function makeBarrel({ radius, height, teeth, module, plain = false, arborH = null, name = '',
+// §338 landing 2 — resumable for the same reason as mainspringFramesSteps (it
+// runs them, then tubes each frame); `makeBarrel` drains it.
+export function makeBarrel(opts) { return drainSteps(makeBarrelSteps(opts)); }
+export function* makeBarrelSteps({ radius, height, teeth, module, plain = false, arborH = null, name = '',
                              ratchet = !plain, springArborR = null, springWindSweep = 0,
                              springSetupSweep = 0, ribbonSection = 'strip', ribbonSolve = null,
                              arbor = true, arborBoreR = null,
@@ -6738,10 +6753,10 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
     ? Math.max((q * (springOuter - collarR)) / (1 + q), 0.08)
     : Math.max(((springOuter - radius * 0.16) / sCoils) * 0.1, 0.08);
   const springInner = morph ? collarR + sRibbon : radius * 0.16;
-  const wind = morph ? mainspringFrames({
+  const wind = morph ? (yield* mainspringFramesSteps({
     innerR: springInner, outerR: springOuter, coils: sCoils, ribbonR: sRibbon,
     sweep: springWindSweep, setup: springSetupSweep, sense,
-  }) : null;
+  })) : null;
   // TODO 193 — cut as a STRIP (stripSweepGeometry), on the curve and frames
   // the old TubeGeometry swept: the same polyline, the same segment count, the
   // same half-extent sRibbon, corners where the rhombus had its points.
@@ -6754,7 +6769,8 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
     : new THREE.TubeGeometry(curve, segs, sRibbon, 4, false));
   const tubeOf = (pts) => sweep(
     new THREE.CatmullRomCurve3(pts.map(([x, y]) => new THREE.Vector3(x, y, 0))), wind.segs);
-  const windGeos = morph ? wind.frames.map(tubeOf) : null;
+  let windGeos = null;
+  if (morph) { windGeos = []; for (const f of wind.frames) { windGeos.push(tubeOf(f)); yield; } }   // wind.frames.map(tubeOf), a frame a step
   const sGeo = morph ? windGeos[windGeos.length - 1]
     : sweep(new ArchimedeanSpiral(springInner, springOuter, sCoils), sCoils * 48);
   const springMesh = new THREE.Mesh(sGeo, MATS.steel);

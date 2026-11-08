@@ -12288,7 +12288,9 @@ const Z_DRUM = (DRUM_BOT_Z + DRUM_TOP_Z) / 2; // drum body is built centred; ban
 // 2.5 past the spring-bound plate), down just past the body for the lower
 // pivot to continue.
 await breathe(100);
-const barrel = G.makeBarrel({ name: 'barrel',
+// §338 landing 2 — resumed a step at a time (the deterministic pow made one
+// barrel's wind frames longer than BREATHE_MS; geometry.js makeBarrelSteps).
+const barrelSteps = G.makeBarrelSteps({ name: 'barrel',
   radius: DRUM_R_ACTUAL, height: DRUM_HEIGHT, plain: true,
   // §100 (TODO 39) — the drum turns ON a FIXED arbor now, as a fusee
   // barrel does: `arbor: false` stops the builder putting a rotating copy
@@ -12315,6 +12317,9 @@ const barrel = G.makeBarrel({ name: 'barrel',
   // TODO 291 — and the PACKING: the strip no thicker than the collar's radius over MAINSPRING_ALPHA_MIN, the collar solved.
   ribbonSolve: { sigmaOverE: MAINSPRING_SIGMA_Y_PA / MAINSPRING_E_PA, alphaMin: MAINSPRING_ALPHA_MIN },
 });
+let barrelStep;
+while (!(barrelStep = barrelSteps.next()).done) await breathe(385);
+const barrel = barrelStep.value;
 await breathe(101);
 const mainspring = barrel.getObjectByName('spring').userData.mainspring;
 const MS_COLLAR_R = mainspring.collarR;   // TODO 291 — the solve's collar (the set-up work cuts it and its hook below)
@@ -33285,7 +33290,7 @@ alarmSpring = null;   // the ribbon's wind morph — set below, driven in tick()
   // is built caller-side on the arbor rotor below.
   const arborH = ALARM_BARREL_H * 2;
   await breathe(216);
-  const alarmBarrel = G.makeBarrel({ name: 'alarmBarrel',
+  const alarmBarrelSteps = G.makeBarrelSteps({ name: 'alarmBarrel',
     radius: ALARM_BARREL_PITCH_R, height: ALARM_BARREL_H, ratchet: false,
     teeth: ALARM_BARREL_TEETH, module: ALARM_TRAIN_MODULE, arborH,
     arbor: false, arborBoreR: ALARM_BARREL_ARBOR_R + PIVOT_BORE_CLEAR,
@@ -33308,6 +33313,9 @@ alarmSpring = null;   // the ribbon's wind morph — set below, driven in tick()
     // arrangement exactly — sweepDown is the click-held floor, not free).
     springSetupSweep: ALARM_SETUP_SWEEP,
   });
+  let alarmBarrelStep;   // §338 landing 2 — a step at a time, as the going barrel is
+  while (!(alarmBarrelStep = alarmBarrelSteps.next()).done) await breathe(386);
+  const alarmBarrel = alarmBarrelStep.value;
   await breathe(217);
   alarmBarrelRotor.add(alarmBarrel);
   alarmBarrelGear = alarmBarrel;   // TODO 15: the winding chain's last link
