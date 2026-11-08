@@ -80,7 +80,7 @@ export const EXPR = `(() => {
     return { x0, x1, y0, y1, r: rr, farthestBy: by, sideBy: side }; };
   const g = ext((d) => d.drum), rest = ext((d) => !d.drum && counted(d));
   const reach = { drumGroup: g, rest, excursion: { '-x': rest.x0 - g.x0, '+x': g.x1 - rest.x1, '-y': rest.y0 - g.y0, '+y': g.y1 - rest.y1 },
-    plateR: c.plateR, drumFarthest: Math.hypot(D.x, D.y) + D.reachR, restFarthestR: rest.r, drumCentre: [D.x, D.y], drumDir: [D.dirX, D.dirY], drumDist: D.dist, drumReachR: D.reachR };
+    plateR: c.plateR, fuseeCentre: [D.x - D.dirX * D.dist, D.y - D.dirY * D.dist], drumFarthest: Math.hypot(D.x, D.y) + D.reachR, restFarthestR: rest.r, drumCentre: [D.x, D.y], drumDir: [D.dirX, D.dirY], drumDist: D.dist, drumReachR: D.reachR };
   // (b) free discs
   const hull = (pts) => { pts.sort((a, b) => a[0] - b[0] || a[1] - b[1]); const cr = (o, a, b) => (a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]);
     const lo = [], up = []; for (const p of pts) { while (lo.length >= 2 && cr(lo[lo.length-2], lo[lo.length-1], p) <= 0) lo.pop(); lo.push(p); }
@@ -98,7 +98,7 @@ export const EXPR = `(() => {
   else { bx0 = by0 = -region.R; bx1 = by1 = region.R; }
   const nx = Math.ceil((bx1 - bx0) / RES) + 1, ny = Math.ceil((by1 - by0) / RES) + 1;
   const z0 = dz0 - CM, z1 = dz1 + CM;
-  const field = (withDrum) => {
+  const field = (withDrum, zA = z0, zB = z1) => {
     const occ = new Uint8Array(nx * ny);
     const mark = (x, y) => { const i = Math.round((x - bx0) / RES), j = Math.round((y - by0) / RES); if (i >= 0 && j >= 0 && i < nx && j < ny) occ[j * nx + i] = 1; };
     const byUnit = {};
@@ -107,7 +107,7 @@ export const EXPR = `(() => {
         for (let t = 0; t + 2 < n; t += 3) {
           const ia = m.idx ? m.idx[t] : t, ib = m.idx ? m.idx[t+1] : t+1, ic = m.idx ? m.idx[t+2] : t+2;
           const za = v[3*ia+2], zb = v[3*ib+2], zc = v[3*ic+2];
-          if (Math.max(za, zb, zc) < z0 || Math.min(za, zb, zc) > z1) continue;
+          if (Math.max(za, zb, zc) < zA || Math.min(za, zb, zc) > zB) continue;
           byUnit[d.name] = (byUnit[d.name] || 0) + 1;
           const ax = v[3*ia], ay = v[3*ia+1], bxx = v[3*ib], byy = v[3*ib+1], cx = v[3*ic], cy = v[3*ic+1];
           // edges sampled at RES/2, interior by cell centres
@@ -155,10 +155,15 @@ export const EXPR = `(() => {
             const l1 = ((by-cy)*(b.x-cx) + (cx-bx)*(b.y-cy)) / den, l2 = ((cy-ay)*(b.x-cx) + (ax-cx)*(b.y-cy)) / den;
             if (l1 >= 0 && l2 >= 0 && l1 + l2 <= 1) { over++; if (zmin < overZ) overZ = zmin; } } } }
       b.boundedBy = Object.entries(near).sort((p, q) => p[1] - q[1]).slice(0, 5); b.plateOver = over ? +overZ.toFixed(3) : null; }
-    return { discs: best, bandTriangles: byUnit };
+    // §339 landing 2a': a caller that sets window.__roomGrid gets the free-radius field itself (u, margin taken off)
+    const grid = window.__roomGrid && !withDrum ? { bx0, by0, nx, ny, res: RES, r: Array.from(G, (g) => +(Math.sqrt(g) * RES - RES / 2 - CM).toFixed(3)) } : undefined;
+    return { discs: best, bandTriangles: byUnit, grid };
   };
   const free = { region: form ? { kind: region.kind, vertices: region.poly.length } : region, zBand: [z0, z1], res: RES,
     withDrumA: field(true), withoutDrumGroup: field(false) };
+  // §339 landing 2a': extra z bands a caller asks for (window.__roomGrid.bands, [[z0, z1], …]), each a field with the
+  // drum group removed, so a seat can be judged at the heights each of its parts occupies
+  if (window.__roomGrid?.bands) free.bands = window.__roomGrid.bands.map(([a, b]) => { const F = field(false, a, b); return { z: [a, b], discs: F.discs, grid: F.grid }; });
   for (const k of ['withDrumA', 'withoutDrumGroup']) { const b = free[k].bandTriangles; free[k].bandUnits = Object.entries(b).sort((p, q) => q[1] - p[1]).slice(0, 12); delete free[k].bandTriangles; }
   // (d) depth, at rest
   const inDisc = (x, y) => Math.hypot(x - D.x, y - D.y) <= D.reachR;

@@ -23,8 +23,9 @@
 // Energies are the ribbons' own ½k(θ_full² − θ_setup²) over the service band, each at its own angles. Nothing here is
 // friction-priced: the coupling mesh is a stage loss the build's energy column takes from FRICTION when it is folded.
 import { barrelDims, barrelArborR, solveRibbon } from './ribbon-solve.js';
+import { MODULE_MIN_U } from './geared-geneva.js';
 import { solveSpringWind, springWindBeta, SPRING_WIND_NPT } from './fusee-wind.js';
-import { CLEAR_MARGIN, UNIT_MM, MAINSPRING_E_PA, MAINSPRING_SIGMA_Y_PA, MAINSPRING_ALPHA_MIN } from './layout.js';
+import { CLEAR_MARGIN, TRAIN, CENTRE_PINION_LEAVES, UNIT_MM, MAINSPRING_E_PA, MAINSPRING_SIGMA_Y_PA, MAINSPRING_ALPHA_MIN } from './layout.js';
 
 const U = UNIT_MM / 1000;   // metres per unit
 // The collar's floor, the law main.js's MS_COLLAR_MIN states: the arbor's working section plus the 0.6 boss wall.
@@ -142,4 +143,54 @@ export function pulleyBarrel({ zA, zB, NB, fw, c, cB = c, teeth = fw.setupTeeth,
     return Math.max(mx, Math.abs(T / u - kHook) / kHook);
   }, 0);
   return { ...out, feasible: true, kHook, lawDev, energyJ: B.energyJ };
+}
+
+// THE PICK, by a stated rule (tools/probe-pulley-barrel.mjs holds it, and layout.js' PULLEY_BARREL declares its answer).
+// Over every reduced ratio n = p/q (q ≤ 60) and B's set-up clicks NB, the geometry the invariant fixes that passes the
+// floors —
+//   B's tooth tips (R_B + m) inside the free disc `discCap`;
+//   A's chain no tighter than the cone's own smallest wrap (R_A + c_end ≥ P/u(1), a bend the chain already takes);
+//   a module m ≥ MODULE_MIN_U (§50's floor) with at least CENTRE_PINION_LEAVES teeth on A, the module the one of those
+//     nearest the great wheel's (TRAIN.barrel.module, the mesh carrying the same torque class) —
+// the smallest R_A whose barrel drives the train at least as hard as today's drum (the fusee's level torque k·P/R_wrap,
+// against k₀·P₀/R_wrap₀), and of those the nearest today's, so TODO 207's rim and the amplitude rows, solved at today's
+// drive, are not re-opened by a stronger spring. B's ribbon height is then cut to that demand (k ∝ c at a fixed stress),
+// so the drive is today's to float noise. `k0` is today's ribbon's k; `c` its half-height.
+export function pickPulleyBarrel({ fw, k0, c, discCap }) {
+  const Q = fw.inputs.SETUP_SWEEP * fw.inputs.DRUM_WRAP_R, ce = fw.chainEndROut, teeth = fw.setupTeeth;
+  const rMin = fw.inputs.FUSEE_LEVEL_P / fw.full;   // the cone's smallest wrap: invariant under the scaling, so the bound is today's
+  const mGW = TRAIN.barrel.module, delta = flangeDelta(fw);
+  const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+  const cands = [];
+  for (let q = 2; q <= 60; q++) for (let p = 1; p < q; p++) {
+    if (gcd(p, q) !== 1) continue;
+    const n = p / q;
+    for (let NB = 1; NB <= 4 * teeth; NB++) {
+      const setupB = (NB * 2 * Math.PI) / teeth, RA = (Q * n) / setupB - ce, rpA = RA + delta, RB = rpA / n;
+      if (RB < 3 || RA + ce < rMin) continue;
+      let best = null;
+      for (let k = Math.ceil(CENTRE_PINION_LEAVES / p); ; k++) {
+        const m = (2 * rpA) / (k * p);
+        if (m < MODULE_MIN_U) break;
+        if (RB + m > discCap) continue;
+        if (!best || Math.abs(m - mGW) < Math.abs(best.m - mGW)) best = { k, m };
+      }
+      if (best) cands.push({ zA: best.k * p, zB: best.k * q, NB, RA, RB, m: best.m });
+    }
+  }
+  cands.sort((a, b) => a.RA - b.RA || b.RB - a.RB);
+  // the drive's SIZE the train sees: the fusee's level torque k·P/R_wrap (its output is k·u·r/R_wrap with u·r = P)
+  const train0 = (k0 * fw.inputs.FUSEE_LEVEL_P) / fw.inputs.DRUM_WRAP_R;
+  const trainOf = (X) => (X.kHook * X.chain.P) / X.chain.Rw / train0;
+  let pick = null, tried = 0;
+  for (const x of cands) {
+    if (pick && x.RA > pick.RA + 1e-12) break;
+    tried++;
+    const P = pulleyBarrel({ zA: x.zA, zB: x.zB, NB: x.NB, fw, c });
+    if (P.feasible && trainOf(P) >= 1 && (!pick || trainOf(P) < trainOf(pick))) pick = P;
+  }
+  const full = pick;
+  if (pick) pick = pulleyBarrel({ zA: pick.zA, zB: pick.zB, NB: pick.NB, fw, c, cB: c / trainOf(pick) });
+  return { pick, full, tried, rMin, trainOf,
+    candidates: { count: cands.length, raMin: cands[0]?.RA, raMax: cands.at(-1)?.RA } };
 }

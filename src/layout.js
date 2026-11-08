@@ -1465,6 +1465,12 @@ export const MAINSPRING_ALPHA_BAND = Object.freeze({
   why: 'r/e, the innermost coil\'s radius over the strip\'s thickness: ~10 today, ~14 historically, 16 per Defossez (D. Ichim, SJX Watches, 2025-11-07)',
 });
 export const MAINSPRING_ALPHA_MIN = MAINSPRING_ALPHA_BAND.low;
+// BACKLOG §339 landing 2a' — A CHAIN PULLEY AND ONE BARREL, the design's integers DECLARED: the teeth on the pulley's
+// flange (zA) and on the barrel's wall (zB), and the barrel's set-up clicks (NB) on the build's 24-tooth set-up ratchet.
+// Every length follows from them (src/twin-barrel.js' pulleyBarrel: the cone held the same cone, the flange one margin
+// outside the chain coiled on the pulley). They are the answer of pickPulleyBarrel's stated rule at the
+// alarm=0&case=fitted build's free disc, and tools/probe-pulley-barrel.mjs re-derives them and fails if they part.
+export const PULLEY_BARREL = Object.freeze({ zA: 38, zB: 104, NB: 29 });
 // TODO 221 — THE CLICK STEEL, named, and why a CONTACT needs it where a beam
 // does not. The maintaining detent's beak bears the whole hold (the going
 // torque on the ring's face, ~2.2 N) across a line one click-thickness long

@@ -4,7 +4,7 @@
 
 # The instruments
 
-405 scripts. **279 are ACCEPTANCE tests** — they decide and exit non-zero.
+406 scripts. **280 are ACCEPTANCE tests** — they decide and exit non-zero.
 **126 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -357,6 +357,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-outline-moves.mjs` |  | acceptance | WHICH AUTHORED OUTLINES DID A CHANGE MOVE, and what do they sit on? |
 | `probe-outline-simple.mjs` |  | acceptance | TODO 100 — is every extruded outline a SIMPLE polygon? |
 | `probe-power-budget.mjs` |  | acceptance | Does the going spring deliver enough energy, after friction, to keep the balance at the amplitude the movement claims? It walks the power from the ribbon to the balance, loss by loss: mainspring, drum, chain, fusee, four meshes, four pivoted arbors (shouldered onto pivots at §50's floor or their load since TODO 192 step 2 and TODO 193), escapement, then solves the amplitude the delivered energy can sustain against the balance's own pivot friction and damping — and ASSERTS its answer against the record main.js publishes (EQUALISATION.going.energy, TODO 192 step 1), exiting non-zero if the two disagree. Since TODO 217 it also prices the maintaining detent's HOLD — the going torque on the ring's face, carried by the cranked click's arm and beak, and since TODO 221 by the beak's ARC as a Hertz line contact against the click steel's first yield — against the same record, and since TODO 219 the maintaining SPRING: its floor from the nominal corner's need at the claim, the ring's tooth count, k, the preload, k again from the blade's own profile, and its root stress. Since TODO 249 it also derives the reset heart's slip ceiling — the torque the running train delivers at the fourth arbor, its own walk to that arbor's pivots at the adverse corner — and the reset rod's mean load at it. The verdict itself is a REPORT; the agreement is the acceptance. |
+| `probe-pulley-barrel-place.mjs` |  | acceptance | WHERE DOES THE BARREL GO, AND WHAT DOES THE FORM CASE GIVE BACK? A REPORT (BACKLOG §339 landing 2a', before the fold: it moves no metal, and it judges nothing). |
 | `probe-pulley-barrel.mjs` |  | acceptance | A CHAIN PULLEY AND ONE BARREL: does a springless chain drum geared to one barrel in the free disc hold the single drum's energy, and at what pulley? Acceptance (BACKLOG §339 landing 2a', the owner's choice 2026-11-08 over the twin as landing 1 specified it; src/twin-barrel.js' pulleyBarrel is the line spec it holds). |
 | `probe-radial-pusher.mjs` |  | report | §170 — IS THE PRESS LINE RADIAL? Measured, not asserted. |
 | `probe-reconf-rest.mjs` |  | acceptance | A RECONFIGURE HANDLE RELEASED WHERE IT STANDS PROPOSES WHAT IT ALREADY IS — in every frame the build can be booted in. |
