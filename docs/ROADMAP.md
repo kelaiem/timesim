@@ -15,6 +15,7 @@ says how to add a row.
 <!-- roadmap:rows -->
 | Item | What | Status | Branch | Since |
 |---|---|---|---|---|
+| §339 | A twin-barrel going train: two smaller mainspring drums feeding the one fusee chain, so a form case can be cut smaller around them. | Proposed; measuring where the drum binds the form case | `claude/hopeful-cori-3t4xn7` | 2026-11-08 |
 <!-- /roadmap:rows -->
 
 ## Stopped
