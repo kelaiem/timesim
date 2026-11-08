@@ -1432,7 +1432,7 @@ const SPEC_POINTS = [
       'TODO 192: AMPLITUDE_CLAIM_DEG', 'TODO 207/242: BAL_RIM_F',
       'TODO 206 arming spring: follower-B\'s seat sits at the nose\'s margin',
       '§325: the strike group\'s notch in the round three-quarter plate'],
-    why: '§337 landing 2b stage 3 — the geared Geneva at 36 h, 25 : 14, the reserve whose worst pressure angle is INTERIOR to its range; boots exactly ?reserveh=36\'s own six rows, the arrest\'s six gone' },
+    why: '§337 landing 2b stage 3 — the geared Geneva at 36 h, 25 : 14 (its worst pressure angle fell INTERIOR to its range until TODO 291 moved the torque; it is the endpoint now, and probe-337-record.mjs holds that); boots exactly ?reserveh=36\'s own six rows, the arrest\'s six gone' },
 ];
 // A SPEC_BOOT_RATIO row naming no declared point is a stale measurement (the waiver tables' rule): it fails here,
 // before any browser starts, rather than quietly applying to nothing.

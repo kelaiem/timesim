@@ -46,7 +46,10 @@ export const windTurns = (reserveHours) => (reserveHours * CENTRE_PINION_LEAVES)
 export function gearPair(reserveHours, m, n, { coneBoreR, module = MODULE_MIN_U } = {}) {
   let p = 60 * (2 * m * n + n + 2), q = 7 * reserveHours * n;
   const d = gcd(p, q); p /= d; q /= d;
-  // g = 1 needs NO gear: the pin rides the cone itself, §329's direct stop-work (30 h and 45 h), so there is no pair to cut
+  // g = 1 needs NO gear: the pin rides the cone itself, §329's direct stop-work, so there is no pair to cut. This is per (m, n),
+  // NOT per reserve: a ratio-one row exists at 30 h (n4 m1) and at 45 h (n8 m2), which is why stopworkReaches answers for both,
+  // but only 30 h's CHOSEN line is direct - 45 h has no site on the metal (STOPWORK_SITED_HOURS is [30]) and gears 12 : 18 like
+  // the rest. Reading this comment as "two reserves are direct" is what put an eleven in docs/built/0337.md where ten belongs.
   if (p === q) return { zCone: null, zFinger: null, g: 1, k: 0, num: 1, den: 1, direct: true };
   const rootClear = (z) => (module * z) / 2 - DEDENDUM_F * module >= coneBoreR + STOCK_MIN_U;
   for (let k = 1; k <= 64; k++) {
