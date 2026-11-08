@@ -920,6 +920,10 @@ it into prose either.
    single source for that band's swept footprint.
 6. **Boot is silent.** Build-time asserts `console.warn` with the achieved
    and required numbers; a warning at boot means something regressed.
+   "Boot" ends on `main.js`' last line, where the live loop starts: a gate on
+   the boot reads `__clock.buildWarns`, never the whole `bootWarns` buffer, so a
+   runtime guard a starved live frame trips (the page under load, not the
+   build) lands in `runWarns` instead (§338).
 7. **A digest is a claim about the metal, so it is anchored like one.** §152's
    per-unit key must reproduce across two virgin boots — gated beside
    `fingerprint`'s — because a digest that drifts turns every skip taken on it

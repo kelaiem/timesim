@@ -23,12 +23,51 @@
 // Energies are the ribbons' own ½k(θ_full² − θ_setup²) over the service band, each at its own angles. Nothing here is
 // friction-priced: the coupling mesh is a stage loss the build's energy column takes from FRICTION when it is folded.
 import { barrelDims, barrelArborR, solveRibbon } from './ribbon-solve.js';
-import { UNIT_MM, MAINSPRING_E_PA, MAINSPRING_SIGMA_Y_PA, MAINSPRING_ALPHA_MIN } from './layout.js';
+import { MODULE_MIN_U } from './geared-geneva.js';
+import { solveSpringWind, springWindBeta, SPRING_WIND_NPT } from './fusee-wind.js';
+import { CLEAR_MARGIN, TRAIN, CENTRE_PINION_LEAVES, UNIT_MM, MAINSPRING_E_PA, MAINSPRING_SIGMA_Y_PA, MAINSPRING_ALPHA_MIN } from './layout.js';
 
 const U = UNIT_MM / 1000;   // metres per unit
 // The collar's floor, the law main.js's MS_COLLAR_MIN states: the arbor's working section plus the 0.6 boss wall.
 export const COLLAR_BOSS_U = 0.6;
 export const collarFloor = (R) => barrelArborR(R) + COLLAR_BOSS_U;
+
+// THE CHAIN INTERFACE (landing 2a's correction). Landing 1 held drum A's wind angles at the single drum's, and that is
+// only true at the single drum's radius: the chain coils on drum A, so A's angle per unit of chain is 1/R_wrap. What the
+// fusee actually sees is the chain's tension along its length, F = M/R_wrap, against the cone's radius. The cut is
+// r(t) = P/u(t) with u² = θ_s² + 4πW·P·t/R_wrap (the closed form; main.js' span-aware solve corrects it by under 1%), so
+// the cone is the SAME cone when θ_s and P both scale by ρ = R_wrap₀/R_wrap and the level radius r₀ = P/θ_s is held. The
+// set-up is a whole number of clicks on the set-up ratchet (SETUP_RATCHET_TEETH, equalisation's integer-click row), so ρ
+// is that count over today's, and drum A's radius is DERIVED from the click count:
+//     R_A = R_wrap₀·(clicks₀/clicks) − CHAIN_END_R_OUT.
+// The span's give is the one term that is not invariant (it reads R_wrap and the centre distance D), so the angles come
+// from the build's own solve at A's geometry, never from the scaling. The hook then needs k₀/ρ² for today's torque.
+// `fw` is the booted build's __clock.fuseeWind record.
+export function chainDrumR(clicks, fw) {
+  return fw.inputs.DRUM_WRAP_R * (fw.setupClicks / clicks) - fw.chainEndROut;
+}
+// main.js' FUSEE_DRUM_DIST = FUSEE_R_LARGE + R + 2.5: the XY gap its drum block justifies (clearance taken in z)
+export const DRUM_GAP_U = 2.5;
+export const levelP = (clicks, fw) => fw.inputs.FUSEE_LEVEL_P * (clicks / fw.setupClicks);
+export function chainDrumAngles({ R, clicks, fw }) {
+  return chainDrumAnglesAt({ R, setup: (clicks * 2 * Math.PI) / fw.setupTeeth, P: levelP(clicks, fw), fw, clicks });
+}
+// The same at any set-up angle θ_s (the pulley's: its set-up is the barrel's, carried back through the mesh), with
+// P = P₀·θ_s/θ_s₀ so r₀ = P/θ_s is held, unless P is given.
+export function chainDrumAnglesAt({ R, setup, P = null, fw, clicks = null }) {
+  const I = fw.inputs;
+  const SETUP_SWEEP = setup;
+  const DRUM_WRAP_R = R + fw.chainEndROut;
+  // main.js' own expressions, in its order, so the default (clicks₀) reproduces the booted record to the bit
+  const FUSEE_LEVEL_P = P ?? I.FUSEE_LEVEL_P * (setup / I.SETUP_SWEEP);   // r₀ = P/θ_s held: the cone's large end does not move
+  const FUSEE_R_LARGE = FUSEE_LEVEL_P / SETUP_SWEEP;
+  const FUSEE_DRUM_DIST = FUSEE_R_LARGE + R + DRUM_GAP_U;
+  const SPRING_WIND_BETA = springWindBeta({ FUSEE_WRAP_TURNS: I.FUSEE_WRAP_TURNS, FUSEE_R_LARGE, SETUP_SWEEP, DRUM_WRAP_R });
+  const sol = solveSpringWind({ ...I, FUSEE_LEVEL_P, DRUM_WRAP_R, FUSEE_DRUM_DIST, SETUP_SWEEP, SPRING_WIND_BETA });
+  const full = sol.u[I.SPRING_WIND_NPT ?? SPRING_WIND_NPT];
+  return { R, clicks, setup: SETUP_SWEEP, full, sweep: full - SETUP_SWEEP, Rw: DRUM_WRAP_R, D: FUSEE_DRUM_DIST,
+    P: FUSEE_LEVEL_P, rho: fw.inputs.DRUM_WRAP_R / DRUM_WRAP_R, sol };
+}
 
 // One drum's ribbon, solved at its own angles. `c` is the ribbon's axial half-height (the record's section.c), which
 // the drum's height sets and the twin keeps for both drums (they share the train's band).
@@ -38,10 +77,10 @@ export function drumRibbon({ R, c, setup, sweep, sigmaOverE = MAINSPRING_SIGMA_Y
     ribbonSolve: { sigmaOverE, alphaMin } });
   if (!sol) return null;
   const a = sol.ribbonR, L = sol.devLen;
-  const I_u4 = ((2 * a) ** 3 * (2 * c)) / 12;   // the strip's section, the build's (section.I_u4)
-  const k = (MAINSPRING_E_PA * I_u4 * U ** 4) / (L * U);   // N·m/rad, main.js ribbonK's law
+  const I_u4 = (Math.pow(2 * a, 3) * (2 * c)) / 12;   // the strip's section, the build's (section.I_u4)
+  const k = (MAINSPRING_E_PA * I_u4 * Math.pow(U, 4)) / (L * U);   // N·m/rad, main.js ribbonK's law
   const thFull = setup + sweep;
-  const energyJ = 0.5 * k * (thFull ** 2 - setup ** 2);
+  const energyJ = 0.5 * k * (Math.pow(thFull, 2) - Math.pow(setup, 2));
   const sigmaFull = (MAINSPRING_E_PA * a * thFull) / L;   // σ = E·a·θ/L at full wind
   return { R, springOuter, sol, a, L, I_u4, k, energyJ, sigmaFull, alpha: sol.collarR / (2 * a) };
 }
@@ -68,4 +107,97 @@ export function seriesTwin({ R, c, setup, sweep, ...opts }) {
   if (!each) return { R, feasible: false };
   // in series the stiffnesses add as compliances: k = k₁k₂/(k₁+k₂) = k/2 for two equal ribbons
   return { R, feasible: true, each, kHook: each.k / 2, energyJ: 2 * each.energyJ };
+}
+
+// THE CHAIN PULLEY AND ONE BARREL (landing 2a', the owner's choice 2026-11-08 over the twin as landing 1 specified it).
+// Drum A carries the chain and NO spring: it is a pulley. Drum B, the one barrel, stands in the free disc, and its teeth
+// (cut on its wall, a going barrel's) mesh a toothed FLANGE on A, zA teeth on A, zB on B, one module m, so B turns
+// n = zA/zB times A. The flange is under the chain (the coupling band, landing 0 (c)) and its pitch circle stands
+//     r_pA = R_A + FLANGE_DELTA,   FLANGE_DELTA = 2·c_end + CLEAR_MARGIN,
+// because B's wall stands on that circle all the way up its height, and above the flange it must clear the chain coiled
+// on A (outer metal R_A + 2·c_end) by the margin. B's wall, its pitch circle, is R_B = m·zB/2 with m = 2·r_pA/zA.
+// The set-up is B's alone, a whole NB clicks on a set-up ratchet of `teeth` (the build's cut, 24), so the hook sees
+// θ_s = θ_sB/n and the torque n·k_B·(n·u) = n²·k_B·u: proportional, with nothing to match between two set-ups.
+// The cone is the same cone when θ_s·R_wrap,A = θ_s₀·R_wrap₀ =: Q (chainDrumR's invariant), which fixes the pulley:
+//     R_A = Q/(θ_sB/n) − c_end,   R_B = r_pA/n,
+// so (zA, zB, NB) are the design's integers, and every length follows from them (rule 1). The multiple of a ratio sets
+// only the module.
+export function flangeDelta(fw) { return 2 * fw.chainEndROut + CLEAR_MARGIN; }   // pulleyGeometry's r_pA − R_A
+// `cB` is B's ribbon half-height, `c` by default: the drive's SIZE goes as the strip's height (k ∝ c at a fixed stress,
+// which the section's height does not enter), so the caller can size B to the train's demand without moving a radius.
+// The geometry the integers fix, closed form (main.js builds from this, so the build and the line spec read one law).
+// Q = θ_s₀·R_wrap₀, the single drum's set-up times its wrap radius; ce = CHAIN_END_R_OUT.
+export function pulleyGeometry({ zA, zB, NB, teeth, Q, ce }) {
+  const n = zA / zB;
+  const setupB = (NB * 2 * Math.PI) / teeth;
+  const setupHook = setupB / n;
+  const RA = Q / setupHook - ce;
+  const rpA = RA + 2 * ce + CLEAR_MARGIN, m = (2 * rpA) / zA, RB = (m * zB) / 2;
+  return { zA, zB, NB, n, setupB, setupHook, RA, rpA, m, RB, centreDistance: rpA + RB };
+}
+export function pulleyBarrel({ zA, zB, NB, fw, c, cB = c, teeth = fw.setupTeeth, ...opts }) {
+  const I = fw.inputs, ce = fw.chainEndROut;
+  const geo = pulleyGeometry({ zA, zB, NB, teeth, Q: I.SETUP_SWEEP * I.DRUM_WRAP_R, ce });
+  const { n, setupB, RA, rpA, m, RB } = geo, Q = I.SETUP_SWEEP * I.DRUM_WRAP_R;
+  if (!(RA > 0)) return { zA, zB, NB, n, feasible: false, why: 'no positive pulley' };
+  const chain = chainDrumAnglesAt({ R: RA, setup: geo.setupHook, fw });
+  const B = drumRibbon({ R: RB, c: cB, setup: setupB, sweep: n * chain.sweep, ...opts });
+  const out = { cB, zA, zB, NB, n, m, RA, rpA, RB, setupB, chain, B, centreDistance: rpA + RB, invariant: (chain.setup * chain.Rw) / Q - 1 };
+  if (!B) return { ...out, feasible: false, why: 'no ribbon for B' };
+  const kHook = n * n * B.k;
+  const lawDev = [0, 0.25, 0.5, 0.75, 1].reduce((mx, f) => {
+    const u = chain.setup + f * chain.sweep, T = n * B.k * (n * u);
+    return Math.max(mx, Math.abs(T / u - kHook) / kHook);
+  }, 0);
+  return { ...out, feasible: true, kHook, lawDev, energyJ: B.energyJ };
+}
+
+// THE PICK, by a stated rule (tools/probe-pulley-barrel.mjs holds it, and layout.js' PULLEY_BARREL declares its answer).
+// Over every reduced ratio n = p/q (q ≤ 60) and B's set-up clicks NB, the geometry the invariant fixes that passes the
+// floors —
+//   B's tooth tips (R_B + m) inside the free disc `discCap`;
+//   A's chain no tighter than the cone's own smallest wrap (R_A + c_end ≥ P/u(1), a bend the chain already takes);
+//   a module m ≥ MODULE_MIN_U (§50's floor) with at least CENTRE_PINION_LEAVES teeth on A, the module the one of those
+//     nearest the great wheel's (TRAIN.barrel.module, the mesh carrying the same torque class) —
+// the smallest R_A whose barrel drives the train at least as hard as today's drum (the fusee's level torque k·P/R_wrap,
+// against k₀·P₀/R_wrap₀), and of those the nearest today's, so TODO 207's rim and the amplitude rows, solved at today's
+// drive, are not re-opened by a stronger spring. B's ribbon height is then cut to that demand (k ∝ c at a fixed stress),
+// so the drive is today's to float noise. `k0` is today's ribbon's k; `c` its half-height.
+export function pickPulleyBarrel({ fw, k0, c, discCap }) {
+  const Q = fw.inputs.SETUP_SWEEP * fw.inputs.DRUM_WRAP_R, ce = fw.chainEndROut, teeth = fw.setupTeeth;
+  const rMin = fw.inputs.FUSEE_LEVEL_P / fw.full;   // the cone's smallest wrap: invariant under the scaling, so the bound is today's
+  const mGW = TRAIN.barrel.module, delta = flangeDelta(fw);
+  const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+  const cands = [];
+  for (let q = 2; q <= 60; q++) for (let p = 1; p < q; p++) {
+    if (gcd(p, q) !== 1) continue;
+    const n = p / q;
+    for (let NB = 1; NB <= 4 * teeth; NB++) {
+      const setupB = (NB * 2 * Math.PI) / teeth, RA = (Q * n) / setupB - ce, rpA = RA + delta, RB = rpA / n;
+      if (RB < 3 || RA + ce < rMin) continue;
+      let best = null;
+      for (let k = Math.ceil(CENTRE_PINION_LEAVES / p); ; k++) {
+        const m = (2 * rpA) / (k * p);
+        if (m < MODULE_MIN_U) break;
+        if (RB + m > discCap) continue;
+        if (!best || Math.abs(m - mGW) < Math.abs(best.m - mGW)) best = { k, m };
+      }
+      if (best) cands.push({ zA: best.k * p, zB: best.k * q, NB, RA, RB, m: best.m });
+    }
+  }
+  cands.sort((a, b) => a.RA - b.RA || b.RB - a.RB);
+  // the drive's SIZE the train sees: the fusee's level torque k·P/R_wrap (its output is k·u·r/R_wrap with u·r = P)
+  const train0 = (k0 * fw.inputs.FUSEE_LEVEL_P) / fw.inputs.DRUM_WRAP_R;
+  const trainOf = (X) => (X.kHook * X.chain.P) / X.chain.Rw / train0;
+  let pick = null, tried = 0;
+  for (const x of cands) {
+    if (pick && x.RA > pick.RA + 1e-12) break;
+    tried++;
+    const P = pulleyBarrel({ zA: x.zA, zB: x.zB, NB: x.NB, fw, c });
+    if (P.feasible && trainOf(P) >= 1 && (!pick || trainOf(P) < trainOf(pick))) pick = P;
+  }
+  const full = pick;
+  if (pick) pick = pulleyBarrel({ zA: pick.zA, zB: pick.zB, NB: pick.NB, fw, c, cB: c / trainOf(pick) });
+  return { pick, full, tried, rMin, trainOf,
+    candidates: { count: cands.length, raMin: cands[0]?.RA, raMax: cands.at(-1)?.RA } };
 }

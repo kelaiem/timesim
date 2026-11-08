@@ -629,6 +629,9 @@ export async function virginBoot(browser, base, bootTimeoutMs, query = '') {
 
 // Take the sweep hold for the whole run and snapshot the boot warns, in one
 // eval — the state every shard's page is left in before its first check.
+// The BUILD's warns (§338: `buildWarns`, everything said before main.js' last
+// line), never a warn a live frame raised between boot and this hold: that is
+// the page under load, not the build.
 //
 // Why the harness takes the sweep hold at all: only buildSweptRegistry and
 // checkLowCorridor hold it themselves, so during the other sweeps the rAF loop
@@ -644,7 +647,7 @@ export async function virginBoot(browser, base, bootTimeoutMs, query = '') {
 export async function prepPage(page) {
   return page.evaluate(() => {
     window.__clock.beginSweepHold(); // frozen for the whole battery — see above
-    return window.__clock.bootWarns.slice();
+    return window.__clock.buildWarns.slice();
   });
 }
 
