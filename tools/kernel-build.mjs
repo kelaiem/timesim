@@ -8,8 +8,16 @@
 // toolchain is not the one the module records, which it reports rather than
 // guessing past). A reproducible build is itself a portability claim (§338).
 //
+// THE COMPILER IS PINNED, not taken from the distro. CI's first run found apt's
+// "clang 18" to be 18.1.3 on one image and 18.1.8 on the next, so "clang 18" names
+// no binary. It is zig's bundled clang, from PyPI's `ziglang` at ZIG_VERSION: one
+// static release, the same on every host and architecture (the native-host legs
+// rebuild it on x64 and arm64 and must reproduce these bytes).
+//   python3 -m venv ~/zig && ~/zig/bin/pip install ziglang==0.13.0.post1
+//   KERNEL_PYTHON=~/zig/bin/python node tools/kernel-build.mjs [--check]
+//
 // The flags are the entry's determinism rules, written once here:
-//   --target=wasm32       the reference target; wasm has no FMA in its non-relaxed
+//   -target wasm32-freestanding   the reference target; wasm has no FMA in its non-relaxed
 //                         instruction set, so contraction cannot happen on any host
 //   -ffp-contract=off     and none at compile time either
 //   -fno-fast-math        no reassociation, no reciprocal approximations
@@ -27,23 +35,32 @@ import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
+import { execFileSync as run } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = join(ROOT, 'tools/kernel/kernel.cpp');
 const OUT = join(ROOT, 'src/kernel-wasm.js');
-const CXX = process.env.KERNEL_CXX || 'clang++';
-const FLAGS = ['--target=wasm32', '-std=c++17', '-O2', '-ffreestanding', '-nostdlib', '-fno-exceptions', '-fno-rtti',
+const ZIG_VERSION = '0.13.0';
+const PY = process.env.KERNEL_PYTHON || 'python3';
+const CXX = [PY, '-m', 'ziglang', 'c++', '-target', 'wasm32-freestanding'];
+const FLAGS = ['-std=c++17', '-O2', '-ffreestanding', '-nostdlib', '-fno-exceptions', '-fno-rtti',
   '-ffp-contract=off', '-fno-fast-math', '-mno-simd128', '-Wall', '-Wextra', '-Werror',
   '-Wl,--no-entry', '-Wl,--strip-all', '-Wl,--export-dynamic'];
 
-const version = execFileSync(CXX, ['--version'], { encoding: 'utf8' }).split('\n')[0].trim();
+let zig;
+try { zig = run(PY, ['-m', 'ziglang', 'version'], { encoding: 'utf8' }).trim(); }
+catch { console.error(`FAIL — no zig: install it with \`pip install ziglang==${ZIG_VERSION}.post1\` and point KERNEL_PYTHON at that python`); process.exit(1); }
+if (zig !== ZIG_VERSION) { console.error(`FAIL — zig ${zig} is not the pinned ${ZIG_VERSION}`); process.exit(1); }
+const version = `zig ${zig}, ${execFileSync(CXX[0], [...CXX.slice(1), '--version'], { encoding: 'utf8' }).split('\n')[0].trim()}`;
 const source = readFileSync(SRC);
 const srcHash = createHash('sha256').update(source).digest('hex');
 const dir = mkdtempSync(join(tmpdir(), 'kernel-'));
 let wasm;
 try {
-  execFileSync(CXX, [...FLAGS, '-o', join(dir, 'kernel.wasm'), SRC], { stdio: ['ignore', 'inherit', 'inherit'] });
+  // zig's caches in the build's own temporary directory: nothing of a previous build is reused.
+  const env = { ...process.env, ZIG_GLOBAL_CACHE_DIR: join(dir, 'zig-global'), ZIG_LOCAL_CACHE_DIR: join(dir, 'zig-local') };
+  execFileSync(CXX[0], [...CXX.slice(1), ...FLAGS, '-o', join(dir, 'kernel.wasm'), SRC], { stdio: ['ignore', 'inherit', 'inherit'], env, cwd: dir });
   wasm = readFileSync(join(dir, 'kernel.wasm'));
 } finally { rmSync(dir, { recursive: true, force: true }); }
 
