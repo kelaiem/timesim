@@ -847,6 +847,7 @@ jobs:
   # distribution needs a population. One run is what got the 18 wrong.
   #   744.0 s  run 42432485347  PR #918  2026-11-08  (the 21 above derives from this)
   #   763.0 s  run 42435601495  PR #919  2026-11-08
+  #   689.0 s  run 42465520142  PR #923  2026-11-08  (first run WITH probe-337-record.mjs)
   # Those two sit 19 s apart, 1.026x, and that says NOTHING about whether 1.66
   # is loose - both landed on healthy runners, while the 1.66 came from a run
   # that took 4082.8 s against 2459.1 s on the same tree. Do not read a narrow
@@ -856,19 +857,27 @@ jobs:
   # two samples cannot tell a fast run from a slow one. Revisit when these rows
   # outnumber the guesses - with more wall times, not another projection.
   #
-  # 21 -> 23, for probe-337-record.mjs joining the step below. ITS RUNNER WALL
-  # IS NOT MEASURED YET, so the 63 s it is budgeted is DERIVED with lanes held
-  # equal rather than scaled off a dev container - the mistake the block above
-  # records. The probe boots the two geared reserves, and boot-pool gives 2
-  # lanes on a 4-vCPU runner, so it is one serial boot wide; it walls 44.3 s
-  # locally on 2 lanes. The runner/local factor comes from this job's own
-  # measurement, lanes divided out: probe-337-geared-geneva walled 228.3 s here
-  # against 40.2 s locally over EIGHT lanes, which is 228.3/40.2/(8/2) = 1.42x
-  # per boot, not 5.7x. 44.3 x 1.42 = 63 s; 763.0 + 63 = 826 s, and the tail
-  # rule gives 826 x 1.66 = 1371 s = 22.9 min -> 23.
-  # THE FIRST RUN REPLACES THAT 63 WITH A MEASUREMENT. Append the job's new
-  # wall to the rows above and re-derive; a budget is not a sample, and this
-  # one is the only figure in this block that was not measured.
+  # 21 -> 23, for probe-337-record.mjs joining the step below. The 63 s it was
+  # budgeted at is SUPERSEDED - the third row above is that measurement, and
+  # the budget is kept here only because this block's whole point is that a
+  # derivation and a sample are different things. (It was derived with lanes
+  # held equal rather than scaled off a dev container: the probe is one serial
+  # boot wide at the runner's 2 lanes and walls 44.3 s locally on 2, and this
+  # job's own runner/local factor with lanes divided out is 228.3/40.2/(8/2) =
+  # 1.42x per boot, not 5.7x. 44.3 x 1.42 = 63 s, so 763.0 + 63 = 826 s and
+  # 826 x 1.66 = 22.9 min -> 23.)
+  #
+  # WHAT THE MEASUREMENT ACTUALLY SAYS: 689.0 s, the FASTEST of the three
+  # samples, on the first run carrying the new probe. So the probe's cost is
+  # inside this job's own spread, which is what the spread was always for. It
+  # CANNOT be read as a 63 s delta, or as any delta - the job got faster
+  # overall, and one wall cannot separate a probe's cost from the runner it
+  # landed on. Do not back-solve a per-probe number out of it.
+  # The cap does not move on this. The slowest sample still governs: 763.0 x
+  # 1.66 = 1267 s = 21.1 -> 22 strictly, so 23 now sits a minute LOOSE of its
+  # own derivation. Left there deliberately, on the rule two rows up - three
+  # samples cannot bound a tail, a timeout is a one-line revert, and tightening
+  # a cap toward the fastest runs is the same mistake the 18 was.
   battery-probes:
     name: battery probes
     needs: route
