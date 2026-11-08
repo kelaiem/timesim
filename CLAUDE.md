@@ -1069,6 +1069,15 @@ native runner skips it by name. **A bounds tree never writes a geometry's
 pre-filter a function of what the page had rendered. Compare reports of the SAME
 mode: a split run's census counters (the two extrema sweeps') differ from a
 whole run's on both hosts, its verdicts never do.
+**And since §338 landing 4 no POSE may amplify the maths**:
+`tools/probe-338-pose-conditioning.mjs` boots beside the tree a synthetic engine
+one ulp off on an eighth of its answers, and every §152 digest pose must move the
+metal less than the PLACE budget (1 / (Q · poses · meshes · 16), so the net
+expects under one cell straddle). A pose law that INVERTS a slow function — τ
+from the great wheel's angle, which turns once an hour — multiplies a last-ulp
+difference by 1/ω: pose such an instant where the metal stands still (a held
+wind stands at the balance's REST, `MAINT_HOLD.restAtOrBefore`), never at the
+inverse itself.
 
 State (camera pose, wind, τ) persists via the dev server's `/__state` temp
 file, falling back to `localStorage`. **Back it up before clearing it** —

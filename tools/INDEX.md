@@ -4,7 +4,7 @@
 
 # The instruments
 
-413 scripts. **286 are ACCEPTANCE tests** — they decide and exit non-zero.
+414 scripts. **287 are ACCEPTANCE tests** — they decide and exit non-zero.
 **127 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -272,6 +272,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-337-record.mjs` | §337 | acceptance | §337 landing 2b, stage 3 — THE RECORD'S MEASURED BLOCK, HELD TO THE BUILD. ACCEPTANCE (exits non-zero on a failure). |
 | `probe-338-check-profile.mjs` | §338 | acceptance | §338 landing 0 — WHERE DOES THE BATTERY'S CHECK TIME GO, BY FUNCTION? |
 | `probe-338-native-boot.mjs` | §338 | acceptance | §338 landing 1 — DOES THE NATIVE HOST BUILD THE SAME MOVEMENT AS THE BROWSER? |
+| `probe-338-pose-conditioning.mjs` | §338 | acceptance | §338 — THE POSE-CONDITIONING GUARD: does any pose of §152's net turn a last-ulp difference in the maths into a difference in the metal? |
 | `probe-36-apply.mjs` | §36 | acceptance | §36 Apply — the acceptance, and the only place the APPLIED tree is judged. |
 | `probe-50-clutch.mjs` | §50 | report | TODO 50 — the stem clutch, measured in the movement. |
 | `probe-50-coupling.mjs` | §50 | report | Boot test-geometry.html headless and report the build log + a lift-law sanity table. |
