@@ -643,7 +643,7 @@ jobs:
           tiers_job=false; pwhy=""
           if [ "$run" = true ] && [ "$matrix" != true ] && [ "$host" = ubuntu-latest ] && { [ "$EVENT" = push ] || [ "$EVENT" = workflow_dispatch ] || [ "$EVENT" = pull_request ]; }; then
             tiers_job=true
-            pwhy="the spec boots and the point tier are measured by the parallel 'battery spec' and 'battery points' jobs and handed to the battery before it judges; the case and casing probes run on 'battery probes', whose conclusion the battery gates on"
+            pwhy="the spec boots and the point tier are measured by the parallel 'battery spec' and 'battery points' jobs and handed to the battery before it judges; the case and casing probes run on 'battery probes' and the geared build's thirteen-reserve invariant on 'battery geared invariant', whose conclusions the battery gates on"
           fi
           # The cap, one for both siblings. §264 set 55 when one sibling ran
           # the point tier (then 1260 s) and the spec boots back to back. Since
@@ -879,29 +879,42 @@ jobs:
   # samples cannot bound a tail, a timeout is a one-line revert, and tightening
   # a cap toward the fastest runs is the same mistake the 18 was.
   #
-  # 23 -> 32, for probe-337-geared-invariant.mjs joining the step below (TODO
-  # 294's option 6). A DERIVATION, not a sample, which this block's whole point
-  # is to keep distinguishable: the probe boots ?arrest=geared at all THIRTEEN
-  # reserves, 414 s of boot in all locally (25-37 s each, mean 31.9), ~70 s of
-  # wall at this machine's 8 lanes. Carried over by the per-boot runner/local
-  # factor three rows up (1.42x, lanes divided out): 31.9 x 1.42 = 45.3 s a
-  # boot, and 13 boots at the runner's 2 lanes is 7 waves, ~317 s, taken as
-  # ~300. Against the SLOWEST sample that is 763.0 + 300 = 1063 s, 1063 x 1.66
-  # = 29.4 min -> 30; against the 826 s the row above budgeted from, 1126 x
-  # 1.66 = 31.2 -> 32. The LOOSER of the two is taken, because a derivation has
-  # no tail of its own to clear and this one multiplies a per-boot factor by
-  # thirteen. THE FIRST RUN THAT EXECUTES THE PROBE OWES A RE-DERIVATION off
-  # its own wall, and should replace this whole row with it.
+  # 23 -> 32 WAS TAKEN, AND IS REVERTED HERE. probe-337-geared-invariant.mjs
+  # (TODO 294's option 6) joined the step below on 4aee50af and ran ONCE: run
+  # 42521704332, job 1154 s, its probe step 1126 s, this job's setup 23 s. The
+  # derivation that set the 32 was: the probe boots ?arrest=geared at all
+  # THIRTEEN reserves, 414 s of boot in all locally (25-37 s each, mean 31.9),
+  # carried over by the per-boot runner/local factor three rows up (1.42x,
+  # lanes divided out) to 31.9 x 1.42 = 45.3 s a boot, 13 boots at the runner's
+  # 2 lanes is 7 waves, ~317 s, taken as ~300 on top of the 826 s the row above
+  # budgeted. The MEASUREMENT it owed says 1154 x 1.66 = 31.9 min -> 32: the
+  # same cap, to the minute. Do not read that as the derivation vindicated in
+  # detail - it budgeted a JOB total of 1126 s and the STEP walled 1126 s,
+  # which is a collision of two different quantities, and one wall still cannot
+  # say what the probe alone costs.
   #
-  # If that bump is unwelcome, the alternative is a job of its own: 300 x 1.66
-  # = 8.3 -> 10 min, in parallel, leaving this job's 23 where it stands, at the
-  # cost of a second job for the gate step below to wait on.
+  # The probe then moved to a JOB OF ITS OWN, the alternative this row used to
+  # offer, so this cap stops carrying it. Its own cap is derived at that job,
+  # just below.
+  #
+  # 32 -> 25, and this block's standing demand is DISCHARGED: the rows now
+  # outnumber the guesses, and every one of them is a wall time. Seven more
+  # 7-probe samples, all from main on 2026-11-08, slowest last - b1431249
+  # 487 s, 470f2a35 635 s, 144c746b 649 s, 6e87a329 765 s, b5852475 800 s,
+  # 0e64bb37 811 s, 63011007 883 s (job walls; the probe step inside them runs
+  # 464-863 s) - beside the 689.0 and 763.0 above. THE JOB HAS GROWN: its
+  # slowest is 883 s, not 763. On this header's own rule the slowest sample
+  # governs, 883 x 1.66 = 1466 s = 24.4 min -> 25, so the 23 had drifted a
+  # minute and a half UNDER its own derivation while nobody was reading it.
+  # Nothing about TODO 294 moves this - the seven probes that STAY here do.
+  # Nine samples spanning 487-883 s is also the first row in this block
+  # entitled to say the 1.81x spread is measured rather than assumed.
   battery-probes:
     name: battery probes
     needs: route
     if: needs.route.outputs.tiers_job == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 32
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -922,7 +935,7 @@ jobs:
       - name: Install Chromium
         uses: ./.github/actions/install-chromium   # bounded apt from cached .debs, then the cached browser
 
-      - name: Case relief, casing path, back envelope, lands, the clearance witness, the geared Geneva's line, its record and its invariant (§186, §187, §328, TODO 282, §337, TODO 294)
+      - name: Case relief, casing path, back envelope, lands, the clearance witness, the geared Geneva's line and its record (§186, §187, §328, TODO 282, §337)
         run: |
           node tools/probe-case-relief.mjs
           node tools/probe-187-casing-path.mjs
@@ -931,7 +944,61 @@ jobs:
           node tools/probe-282-witness.mjs
           node tools/probe-337-geared-geneva.mjs
           node tools/probe-337-record.mjs
-          node tools/probe-337-geared-invariant.mjs
+
+  # ---- TODO 294: the geared build's invariant, on a job of its own -----------
+  #
+  # probe-337-geared-invariant.mjs boots ?arrest=geared at all THIRTEEN reserves
+  # and holds the FOLD's own members - the branch arm the studs hang from and the
+  # cock's stall with their reactions in it - which neither of the other two
+  # §337 probes can read. The step in `battery` below says why; this job is only
+  # about where the wall goes. Thirteen boots is more wall than the seven probes
+  # on `battery probes` put together, so it runs HERE, in parallel with them,
+  # instead of lengthening a job that four other jobs already wait behind. That
+  # is the alternative that job's cap block used to record, taken on 2026-11-08.
+  # It costs the gate step in `battery` a SECOND sibling to wait on, which is the
+  # whole price.
+  #
+  # THE CAP, 13 min. This probe's wall has never been measured on its own; what
+  # exists is one 8-probe sample of the step next door (run 42521704332, 1126 s)
+  # and seven 7-probe samples of that same step the same day (464-863 s, mean
+  # 695 s). DIFFERENCING them gives the probe 263 s against the slowest sibling
+  # run, 431 s against the mean and 662 s against the fastest - one sample cannot
+  # pin it closer, which is the oldest rule in this file. So the cap is taken off
+  # the middle reading plus this job's measured setup (23 s on that run):
+  # 431 + 23 = 454 s, and 454 x 1.66 = 754 s = 12.6 min -> 13. The 1.66 spread is
+  # NOT applied to the 662 s difference on top: differencing against the FASTEST
+  # sibling already charges the probe for the whole 7-probe spread (863 - 464 =
+  # 399 s), and even that reading, 662 + 23 = 685 s = 11.4 min, clears 13 on its
+  # own. THE FIRST RUN OF THIS JOB OWES THE MEASUREMENT this row stands in for,
+  # and should replace it with its own wall x 1.66.
+  battery-geared-invariant:
+    name: battery geared invariant
+    needs: route
+    if: needs.route.outputs.tiers_job == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 13
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pinned Playwright
+        working-directory: tools
+        run: npm ci --no-audit --no-fund
+
+      - name: Cache Playwright Chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('tools/package-lock.json') }}
+
+      - name: Install Chromium
+        uses: ./.github/actions/install-chromium   # bounded apt from cached .debs, then the cached browser
+
+      - name: The geared Geneva's invariant at all thirteen reserves (§337, TODO 294)
+        run: node tools/probe-337-geared-invariant.mjs
 
   battery:
     needs: route
@@ -1326,35 +1393,44 @@ jobs:
             exit $status
           fi
 
-      # THE FAN-OUT'S PROBES STILL GATE `battery`. On the fan-out path the three
-      # post-battery probes run on their own job, `battery probes`, from t=0
-      # (they read nothing the harness writes and share nothing with it: their
-      # own server, port and browser profile). `battery` is the required check,
-      # so — §259's rule for the split, where `battery-collect` takes the name
-      # because it is the job that gates — the job named `battery` must still
-      # fail when a probe does. This step reads the sibling's conclusion off the
-      # run (the jobs API, `filter=latest`, so a re-run of either job is read at
-      # its latest attempt) and fails unless it is `success`: a failed,
-      # cancelled, timed-out or never-listed probes job fails the battery. It
-      # sits BEFORE the provenance and seeding steps, whose `success()` it
-      # therefore holds exactly as a failing probe step after the harness did:
-      # the report is still uploaded, nothing is published or seeded.
+      # THE FAN-OUT'S PROBES STILL GATE `battery`. On the fan-out path the
+      # post-battery probes run on their own jobs, from t=0 (they read nothing
+      # the harness writes and share nothing with it: their own server, port and
+      # browser profile). Since TODO 294 there are TWO of them - `battery
+      # probes`, which runs seven, and `battery geared invariant`, which runs the
+      # thirteen-reserve one alone for the wall it costs. `battery` is the
+      # required check, so — §259's rule for the split, where `battery-collect`
+      # takes the name because it is the job that gates — the job named `battery`
+      # must still fail when a probe does. This step reads BOTH siblings'
+      # conclusions off the run (the jobs API, `filter=latest`, so a re-run of
+      # any of these jobs is read at its latest attempt) and passes only when
+      # every one of them is `success`: a failed, cancelled, timed-out or
+      # never-listed sibling fails the battery. ADDING A PROBE JOB MEANS ADDING
+      # ITS NAME TO `NEED` BELOW - a sibling this step does not name is a gate
+      # nothing enforces, which is the one failure mode a green battery cannot
+      # show you. It sits BEFORE the provenance and seeding steps, whose
+      # `success()` it therefore holds exactly as a failing probe step after the
+      # harness did: the report is still uploaded, nothing is published or
+      # seeded.
       #
-      # Its cap is the probes job's own (32 min since TODO 294's invariant
-      # gate joined it; 23 with §337 stage 3's record gate, 21 before that, 18
-      # before the measured re-derivation - see that job's comment for all of
-      # them): the battery
-      # reaches it ~12 min in and may now wait past its own ~19 min, so
-      # a probes job that started with the battery finishes, or is killed,
-      # inside this step either way. A step killed at the cap fails, which is
-      # the safe side, and the battery job's own cap (95-150 min) is nowhere
-      # near. The two must move together: a wait shorter than the probes job's
-      # cap would fail a probe that was still running and had not yet failed.
-      - name: The case relief, casing path, back envelope, lands, witness and geared-line probes passed (§186, §187, §328, TODO 282, §337, TODO 294)
+      # Its cap is the LARGEST of the caps it waits on, and must be: a wait
+      # shorter than a sibling's cap would fail a probe that was still running
+      # and had not yet failed. That is `battery probes`' 25 min (23 with §337
+      # stage 3's record gate, 21 before that, 18 before the measured
+      # re-derivation, 32 for the one run that carried the invariant probe here -
+      # see that job's comment for all of them) against `battery geared
+      # invariant`'s 13, so 25. The battery reaches this step ~12 min in and may
+      # wait past its own ~19 min; a sibling that started with the battery
+      # finishes, or is killed, inside this step either way. A step killed at the
+      # cap fails, which is the safe side, and the battery job's own cap
+      # (95-150 min) is nowhere near.
+      - name: The case relief, casing path, back envelope, lands, witness, geared-line and invariant probe jobs passed (§186, §187, §328, TODO 282, §337, TODO 294)
         if: env.TIERS_JOB == 'true' && env.MATRIX != 'true'
-        timeout-minutes: 32
+        timeout-minutes: 25
         env:
           GH_TOKEN: ${{ github.token }}
+          # Every sibling probe job this battery is gated on, by its `name:`.
+          NEED: 'battery probes,battery geared invariant'
         run: |
           set -u
           API="${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}"
@@ -1363,17 +1439,27 @@ jobs:
                    -H "Accept: application/vnd.github+json" \
                    "$API/actions/runs/${GITHUB_RUN_ID}/jobs?filter=latest&per_page=100" | node -e "
               let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{
-                const j=(JSON.parse(s).jobs||[]).find(x=>x.name==='battery probes');
-                process.stdout.write(j?j.status+':'+(j.conclusion||''):'')}catch{process.stdout.write('')}})" || echo '')
+                const jobs=JSON.parse(s).jobs||[];
+                const seen=process.env.NEED.split(',').map(n=>{
+                  const j=jobs.find(x=>x.name===n);
+                  return [n, j?j.status+':'+(j.conclusion||''):''];
+                });
+                const bad=seen.filter(p=>p[1].startsWith('completed:')&&p[1]!=='completed:success');
+                const left=seen.filter(p=>!p[1].startsWith('completed:'));
+                const say=seen.map(p=>p[0]+' is '+(p[1]||'not listed yet')).join('; ');
+                process.stdout.write((bad.length?'fail ':left.length?'wait ':'pass ')+say)}catch{process.stdout.write('')}})" || echo '')
             case "$st" in
-              completed:success)
-                echo "§186/§187: 'battery probes' passed" | tee -a "$GITHUB_STEP_SUMMARY"; exit 0 ;;
-              completed:*)
-                echo "::error::'battery probes' ended $st — case relief, casing path, back envelope, lands, the clearance witness or the geared Geneva's line failed (see that job); this battery does not pass"
-                echo "§186/§187: 'battery probes' ended $st — the battery FAILS" >> "$GITHUB_STEP_SUMMARY"
+              pass*)
+                echo "§186/§187/§337: the probe jobs passed — ${st#pass }" | tee -a "$GITHUB_STEP_SUMMARY"; exit 0 ;;
+              fail*)
+                echo "::error::a sibling probe job did not pass (${st#fail }) — case relief, casing path, back envelope, lands, the clearance witness, the geared Geneva's line, its record or its invariant failed (see that job); this battery does not pass"
+                echo "§186/§187/§337: ${st#fail } — the battery FAILS" >> "$GITHUB_STEP_SUMMARY"
                 exit 1 ;;
+              wait*)
+                echo "${st#wait }; waiting" ;;
+              *)
+                echo "the jobs API gave nothing back; waiting" ;;
             esac
-            echo "'battery probes' is ${st:-not listed yet}; waiting"
             sleep 15
           done
 
@@ -1479,7 +1565,16 @@ jobs:
       # satisfy, and every rule is re-run against a deliberately broken copy of
       # each reserve's own reading and must refuse it. That is what lets a
       # reserve nobody has ever looked at be gated on the same terms as the two
-      # the record covers. It is also what took this job's cap to 32.
+      # the record covers.
+      #
+      # WHERE ITS WALL GOES. On the fan-out path it is not here at all: it has a
+      # job of its own, `battery geared invariant`, and the gate step above waits
+      # on that job as well as on `battery probes`. This step is the OTHER path -
+      # a split run, where the probes ride worker 1 - and there it adds the
+      # ~430 s that the sibling job's cap block differences out of its samples,
+      # about 7 min, to the half of the matrix that carries no anchors, no spec
+      # boots and no point tier and finishes first anyway. The 95 that caps a
+      # split worker is not touched by it.
       - name: The geared Geneva's line, its record and its invariant (§337, TODO 294)
         if: (env.MATRIX != 'true' || matrix.worker == 1) && env.TIERS_JOB != 'true'   # on the fan-out path the `battery probes` job runs them
         run: |
