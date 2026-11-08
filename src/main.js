@@ -21498,7 +21498,7 @@ registerExplode(dialGroup, Z_DIAL, 1, -1);
 registerLabel('Dial', dialGroup);
 
 const DIAL_FOOT_R = 0.6;
-const DIAL_FEET = [];   // §325 landing 2: the free kind re-sites them late (FREE_DIAL_FEET)
+const DIAL_FEET = [];   // §325 landing 2 / TODO 294: every form kind re-sites them late (FORM_DIAL_FEET)
 // Dial feet — the dial otherwise just sits at (P.dial, Z_DIAL) with nothing
 // visibly connecting it to the rest of the movement (the 4 structural
 // pillars span the OPPOSITE direction, back plate to cocks, and never reach
@@ -21533,8 +21533,11 @@ const DIAL_FEET = [];   // §325 landing 2: the free kind re-sites them late (FR
   // §325 landing 2 — ON THE FREE OUTLINE the feet stand in the plate's OPEN INTERIOR, not on a rim: the round rim
   // above is a radius the free case does not have, and measured, feet there held three corners of the outline out at
   // the round size (they are counted metal, so the fit grew to give each its rim margin). Their seats need the metal of
-  // the plate→dial gap, built well below this line, so on the free kind they are built here at the rim rule and
-  // RE-SITED late (FREE_DIAL_FEET, before the footprint is measured).
+  // the plate→dial gap, built well below this line, so they are built here at the rim rule and RE-SITED late
+  // (FORM_DIAL_FEET, before the footprint is measured). TODO 294 — on EVERY form kind, not only the free one: the
+  // box kinds (rect, cushion, tonneau, fitted) cut the dial and the plates smaller than this rim too, and there two of
+  // the three feet stood off the dial and the plates they join (5.4 and 2.8 u past them on alarm=0&case=fitted) and
+  // held the case out (5–10% of its area, measured by the build's own fit).
   for (const deg of [10, 108, 250]) {
     const a = deg * DEG2RAD;
     const foot = new THREE.Mesh(new THREE.CylinderGeometry(FOOT_R, FOOT_R, footLen, 10), MATS.steel);
@@ -53098,8 +53101,9 @@ const DIAL_SPEC = (() => {
 // §308 landing 2 — the COUNTED METAL is one predicate, read by the fit below and
 // by the region model after it (FORM_REGIONS), so the outline and the regions
 // that set it cannot disagree about which meshes stand in the movement.
-// §325 landing 2 — THE FREE CASE'S DIAL FEET, sited in the plate's open interior once everything in the plate→dial
-// gap is built. A foot is a post from the dial's back to the base plate, so a seat must be:
+// §325 landing 2 — THE FORM CASE'S DIAL FEET, sited in the plate's open interior once everything in the plate→dial
+// gap is built (the free kind's since §325; every cut-to-shape kind's since TODO 294, reading the outline the plates
+// are cut to, FORM, whatever its kind). A foot is a post from the dial's back to the base plate, so a seat must be:
 //   · clear of every mesh standing in that gap (its plan hull, FOOT_R + CLEAR_MARGIN off — the keyless and motion
 //     works, the reserve train, everything the gap carries), read off the built metal;
 //   · on metal of the plate it lands on (§62's land, STOCK_MIN_U, off every base-plate opening);
@@ -53108,7 +53112,7 @@ const DIAL_SPEC = (() => {
 // Of the seats that hold, one per 120° sector about the hands (centred on each foot's rim azimuth), the three whose
 // triangle holds the hands DEEPEST — the dial's margin against tipping, its weight at the hands. No triple that holds
 // the hands warns, and the feet stay at the rim rule.
-const FREE_DIAL_FEET = FORM?.kind === 'free' ? await (async () => {
+const FORM_DIAL_FEET = FORM ? await (async () => {
   const lo = Z_DIAL - CLEAR_MARGIN, hi = backPlate.position.z + CLEAR_MARGIN, v = new THREE.Vector3();
   // handed back on breathe()'s budget through no NUMBERED seam (§317's rule: the boot bar's table is the default build's)
   const handBack = async () => {
@@ -53338,7 +53342,7 @@ const FORM_FOOTPRINT = await (async () => {
       free: { key: FREE_KEY, generated: !!FREE_ROW, c, rc: FREE_RC, need: FITTED_FLAT_MIN, margin: M, worstAt: held.where,
         handOffMm: (P.dial.x - FORM.cx) * UNIT_MM, flat: FORM.free.flat ?? null,
         keep: { slots: BACK_PLATE_LATE_SLOTS.map(({ ax, ay, bx, by, r }) => ({ ax: r4(ax), ay: r4(ay), bx: r4(bx), by: r4(by), r: r4(r) })) },
-        feet: FREE_DIAL_FEET,
+        feet: FORM_DIAL_FEET,
         polys: polys.map((q) => q.map(([x, y]) => [r4(x), r4(y)])),
         pins: FREE_PINS.map(([x, y, n, what]) => [r4(x), r4(y), n, what]),
         ports,
@@ -53380,7 +53384,7 @@ const FORM_FOOTPRINT = await (async () => {
   // mm²: the one actually cut, and on the fitted tonneau the tonneau it was
   // derived from, so the record reads what the form fit bought.
   const mm2 = UNIT_MM * UNIT_MM;
-  return { kind: FORM.kind, metal: [x0, x1, y0, y1], rect, holds, margin, scale: fit.s ?? null, hullN: hull.length, counted: total,
+  return { kind: FORM.kind, metal: [x0, x1, y0, y1], rect, holds, margin, scale: fit.s ?? null, hullN: hull.length, counted: total, feet: FORM_DIAL_FEET,   // TODO 294
     accuracy: fit.shape.accuracy, mm: [(rect[1] - rect[0]) * UNIT_MM, (rect[3] - rect[2]) * UNIT_MM],
     areaMm2: shapeArea(FORM) * mm2, fitAreaMm2: shapeArea(fit.shape) * mm2,
     ...(FORM.kind === 'fitted' ? { fitted: { flatMin: FITTED_FLAT_MIN, centre: [P.dial.x, P.dial.y], tonneauAreaMm2: fit.tonneauArea * mm2, tonneauMm: [fit.tonneau.hw * 2 * UNIT_MM, fit.tonneau.hh * 2 * UNIT_MM],
