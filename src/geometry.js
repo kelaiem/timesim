@@ -1472,24 +1472,27 @@ export function revolvedBlankDiscClearance(A, fA, D, target) {
 // own bevelOffset) — so each builder that passes a grow asserts the band's
 // least vertex radius IS r (boreBandGuard), and a flipped winding warns.
 export const boreSides = (r) => Math.max(6, Math.ceil(Math.PI / Math.acos(Math.max(-1, 1 - PIVOT_BORE_CLEAR / (2 * r)))));
-export function borePath(r, grow = 0) {
+// `cx, cy` place the bore off the outline's origin (TODO 295 — a cock's jewel
+// bore is at its pivot station, not at its own centre); the compensation and
+// the winding are the same, and the guard below takes the same centre.
+export function borePath(r, grow = 0, cx = 0, cy = 0) {
   const n = boreSides(r), p = new THREE.Path();
   const R = r + grow / Math.cos(Math.PI / n);
-  p.moveTo(R, 0);
-  for (let k = 1; k < n; k++) p.lineTo(R * Math.cos((-2 * Math.PI * k) / n), R * Math.sin((-2 * Math.PI * k) / n));
+  p.moveTo(cx + R, cy);
+  for (let k = 1; k < n; k++) p.lineTo(cx + R * Math.cos((-2 * Math.PI * k) / n), cy + R * Math.sin((-2 * Math.PI * k) / n));
   p.closePath();
   return p;
 }
 // TODO 175 — the band's least vertex radius about the bore's axis must be the
 // bore asked for: the metal a shaft meets is the depth band, and a winding that
 // grew the hole (or a bevel paid twice) reads here as a number, not a picture.
-export function boreBandGuard(geo, r, halfT, who) {
+export function boreBandGuard(geo, r, halfT, who, cx = 0, cy = 0) {
   if (!(r > 0)) return;
   const pos = geo.attributes.position;
   let m = Infinity;
   for (let i = 0; i < pos.count; i++) {
     if (Math.abs(pos.getZ(i)) > halfT + 1e-5) continue;   // float32 positions: 0.8 is stored as 0.80000001
-    m = Math.min(m, Math.hypot(pos.getX(i), pos.getY(i)));
+    m = Math.min(m, Math.hypot(pos.getX(i) - cx, pos.getY(i) - cy));
   }
   if (Math.abs(m - r) > 1e-5)
     console.warn(`TODO 175: ${who}'s bore band reads ${m.toFixed(6)} against its bore ${r} — the bevel compensation and the contour's winding disagree`);
@@ -7742,17 +7745,35 @@ export function makeCock({ length, width, thickness = width * 0.5, studHole = nu
   s.holes.push(h2);
 
   const bevelT = Math.min(width * 0.05, thickness * 0.2);
+  const bevelS = width * 0.05;                   // bevelSize, hoisted: the jewel bore is drawn past it
   const depth = cockCoreDepth(width, thickness); // core extrusion; bevels restore the total
+
+  // TODO 295 — THE JEWEL BORE, and the chaton is a PRESSED BUSH in it.
+  // The setting used to be ADDED to a solid slab: its collar stood buried in
+  // uncut nickel, and the staff's own axis carried the whole floor beneath the
+  // stone — the slab's underside to the stone's bottom with no hole in it,
+  // which is the path BALANCE_SHOULDER_TOP_Z derives the pivot's top to run
+  // along. The bore is at the collar's OWN outer radius (makeJewelSetting's
+  // `outerR` = r · 1.6), so it is a press fit on the bush rather than a
+  // number of its own, and it is the radius the spy hole above already keeps
+  // clear (`width · 0.16 · 1.6`, the same product). The chaton's floor stops
+  // short of the slab's underside, so what is left below it is open bore.
+  const jewelBoreR = cockJewelR(width) * 1.6;
+  s.holes.push(borePath(jewelBoreR, bevelS, 0, length * jewelAt));
   const geo = new THREE.ExtrudeGeometry(s, {
     depth,
     bevelEnabled: true,
     bevelThickness: bevelT,
-    bevelSize: width * 0.05,
+    bevelSize: bevelS,
     bevelSegments: 1,
     curveSegments: 20,
   });
   geo.translate(0, 0, -depth / 2);
-  g.add(new THREE.Mesh(geo, MATS.nickel));
+  boreBandGuard(geo, jewelBoreR, depth / 2, 'makeCock\'s jewel bore', 0, length * jewelAt);
+  const slab = new THREE.Mesh(geo, MATS.nickel);
+  slab.name = 'cockSlab';   // §322/§329: NAMED, so TODO 295's bore guard cites the part rather than an index into the group
+  g.add(slab);
+  g.userData.jewelBoreR = jewelBoreR;
 
   // Sunk jewel setting at the pivot.
   const js = makeJewelSetting({ r: cockJewelR(width), holeR: jewelHoleR });
@@ -7839,15 +7860,42 @@ export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [], foot
     disc.position.set(n.x, n.y, 0);
     g.add(disc);
   }
+  // TODO 295 — the bar STOPS at what each node has bored. It was a box of the
+  // full centre-to-centre length, so its end face landed on the bored boss's
+  // own AXIS: at the escape cock the bar's half-width is 2.09 times the bore's
+  // radius (3.00 at the fork), and it refilled the foot-side half of the bore,
+  // the counterbore and the stone's seat alike — the boss's lathe cut them
+  // honestly and the bar put the metal straight back. A node's keep-out is the
+  // widest hole it carries: the counterbore where there is one, else the bore,
+  // else the foot screw's. A plane at that radius is TANGENT to the hole's
+  // wall (every point of the end face is at least keep-out from the axis), so
+  // the bar still welds to the boss across the rim from keep-out to n.r and
+  // never enters the hole.
+  const keepOut = (n) => (n.bore ? Math.max(n.bore, n.cbR ?? 0)
+    : n.foot ? screwBoreR(footHeadR(n))
+    : 0);
   for (let i = 0; i + 1 < chain.length; i++) {
     const a = chain[i], b = chain[i + 1];
     const dx = b.x - a.x, dy = b.y - a.y;
     const len = Math.hypot(dx, dy);
     if (len < 1e-6) continue;
+    const ka = keepOut(a), kb = keepOut(b);
+    const barLen = len - ka - kb;
+    if (!(barLen > 0)) {
+      console.warn(`TODO 295: the escape bridge's nodes at (${a.x.toFixed(2)}, ${a.y.toFixed(2)}) and `
+        + `(${b.x.toFixed(2)}, ${b.y.toFixed(2)}) stand ${len.toFixed(3)} apart against keep-outs `
+        + `${ka.toFixed(3)} + ${kb.toFixed(3)} — their holes meet and no bar can join them clear of both`);
+      continue;
+    }
+    for (const [n, k] of [[a, ka], [b, kb]])
+      if (k > 0 && n.r - k < STOCK_MIN_U)
+        console.warn(`TODO 295: the escape bridge's bar meets a node of r ${n.r.toFixed(3)} outside its `
+          + `${k.toFixed(3)} keep-out — ${(n.r - k).toFixed(3)} of rim to weld to, under STOCK_MIN_U ${STOCK_MIN_U.toFixed(3)}`);
     const w = 2 * Math.min(a.r, b.r) * 0.8; // waisted between the bosses
-    const bar = new THREE.Mesh(new THREE.BoxGeometry(len, w, thickness), slabMat);
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(barLen, w, thickness), slabMat);
     bar.name = 'bridgeBar';
-    bar.position.set((a.x + b.x) / 2, (a.y + b.y) / 2, 0);
+    const mid = (ka + (len - kb)) / 2;      // the span's midpoint, along a → b
+    bar.position.set(a.x + (dx / len) * mid, a.y + (dy / len) * mid, 0);
     bar.rotation.z = Math.atan2(dy, dx);
     g.add(bar);
   }
