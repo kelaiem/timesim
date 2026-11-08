@@ -43,7 +43,8 @@ const expr = `(async () => {
   const toPlate = (n) => { let m = Infinity; for (const x of (mine[n] ?? [])) for (const p of plate) m = Math.min(m, I.meshClearance(x, p)); return m; };
   const rod = (n) => { const m = one(n); if (!m) return null; const g = m.geometry.parameters; const u = new m.position.constructor(0, 1, 0).applyQuaternion(m.getWorldQuaternion(new m.quaternion.constructor()));
     const c = m.getWorldPosition(new m.position.constructor()); return { r: g.radiusTop, len: g.height, LD: g.height / (2 * g.radiusTop), centre: [c.x, c.y, c.z], dir: [u.x, u.y, u.z] }; };
-  const missing = [...FOLD].filter((n) => !mine[n]);
+  // a part an arrangement declares refused (leg 2's K block, TODO 289 landing 3) is not missing
+  const missing = [...FOLD].filter((n) => !mine[n] && !(n === 'settingTraverse2BlockK' && C.settingFold?.bearings?.leg2Blocks?.kRefused));
   const rec = C.settingFold.bearings, leg = C.settingFold.capLeg;
   // CLEAR: every bearing part against every mesh outside the fold, and against every fold blank
   const clear = [];
@@ -112,12 +113,13 @@ for (const k of ['drop', 'rise']) { const U = R.upper?.[k]; if (!U || U.why) { r
   const v = X.fit[k + 'Top']; row(v <= K.PIVOT_BORE_CLEAR + 1e-6 && v >= K.PIVOT_BORE_CLEAR - sagOf(U.bore) - 1e-6, `${k} upper pivot ⇄ bush (landing 1)`, `${v.toFixed(4)} (fit ${K.PIVOT_BORE_CLEAR}, sag ≤ ${sagOf(U.bore).toFixed(4)})`); }
 for (const [leg, LB, fits, landing] of [['leg 1', R.leg1Blocks, [['A', X.fit.blockA], ['K', X.fit.blockK]], 2], ['leg 2', R.leg2Blocks, [['K', X.fit.block2K], ['B', X.fit.block2B]], 3]]) {
   if (!LB || LB.why) { row(false, `${leg} ⇄ its blocks`, LB?.why ?? 'not sited'); continue; }
-  for (const [k, v] of fits) row(v <= K.PIVOT_BORE_CLEAR + 1e-6 && v >= K.PIVOT_BORE_CLEAR - sagOf(LB.bore) - 1e-6, `${leg} ⇄ its block near ${k} (landing ${landing})`, `${v.toFixed(4)} (fit ${K.PIVOT_BORE_CLEAR}, sag ≤ ${sagOf(LB.bore).toFixed(4)})`); }
+  if (LB.kRefused) console.log(`  REPORT ${leg}'s K block refused on this arrangement (no cap bearing leaves the reserve a swing round it) — B block alone`);
+  for (const [k, v] of fits.filter(([k]) => !(LB.kRefused && k === 'K'))) row(v <= K.PIVOT_BORE_CLEAR + 1e-6 && v >= K.PIVOT_BORE_CLEAR - sagOf(LB.bore) - 1e-6, `${leg} ⇄ its block near ${k} (landing ${landing})`, `${v.toFixed(4)} (fit ${K.PIVOT_BORE_CLEAR}, sag ≤ ${sagOf(LB.bore).toFixed(4)})`); }
 row(X.fit.jewel <= K.PIVOT_BORE_CLEAR + 1e-6 && X.fit.jewel >= K.PIVOT_BORE_CLEAR - 0.02, 'cap arbor ⇄ jewel stone', `${X.fit.jewel.toFixed(4)} (ringExtrude\'s hole, fit ${K.PIVOT_BORE_CLEAR})`);
 console.log('\nHELD — welds, seats and the plate:');
 for (const [k, v, what] of [['pivot ⇄ rise rod', X.held.pivot, 'one body'], ['drop ⇄ its upper pivot', X.held.dropTop, 'one body'], ['rise ⇄ its upper pivot', X.held.riseTop, 'one body'],
   ['leg 1 block A ⇄ plate', X.held.blockAPlate, 'seated on its pocket\'s floor'], ['leg 1 block K ⇄ plate', X.held.blockKPlate, 'seated on its pocket\'s floor'],
-  ['leg 2 block K ⇄ plate', X.held.block2KPlate, 'seated on its pocket\'s floor'], ['leg 2 block B ⇄ plate', X.held.block2BPlate, 'seated on its pocket\'s floor'],
+  ...(R.leg2Blocks?.kRefused ? [] : [['leg 2 block K ⇄ plate', X.held.block2KPlate, 'seated on its pocket\'s floor']]), ['leg 2 block B ⇄ plate', X.held.block2BPlate, 'seated on its pocket\'s floor'],
   ['drop upper pivot ⇄ plate', X.held.dropTopPivotPlate, 'run up into the blind floor'], ['rise upper pivot ⇄ plate', X.held.riseTopPivotPlate, 'run up into the blind floor'], ['rise bush ⇄ arm', X.held.riseArm, 'weld'], ['rise arm ⇄ column', X.held.riseCol, 'weld'], ['rise column ⇄ plate', X.held.risePlate, 'planted'],
   ['stub bush ⇄ arm', X.held.stubArm, 'weld'], ['stub arm ⇄ column', X.held.stubCol, 'weld'], ['stub column ⇄ plate', X.held.stubPlate, 'planted'],
   ['cap bush ⇄ arm', X.held.capArm, 'weld'], ['cap arm ⇄ column', X.held.capCol, 'weld'], ['cap column ⇄ plate', X.held.capPlate, 'planted'],
@@ -153,8 +155,9 @@ for (const [k, rod] of [['drop', 0.382], ['rise', 0.382]]) { const U = R.upper?.
 for (const [leg, LB, r, ends] of [['leg 1', R.leg1Blocks, 0.55, ['A', 'K']], ['leg 2', R.leg2Blocks, 0.382, ['K', 'B']]]) { if (LB && !LB.why) {
   row(near(LB.bore, r + K.PIVOT_BORE_CLEAR) && near(LB.half - LB.bore, K.STOCK_MIN_U) && near(LB.len, 2 * r * R.ldMin), `${leg}'s blocks = the leg's ${r} + fit, STOCK_MIN_U wall, L/D 1`, `bore ${LB.bore.toFixed(4)} half ${LB.half.toFixed(4)} len ${LB.len.toFixed(4)}`);
   row(near(LB.depth, LB.topZ - (R.plateTop - 2.3)) && near(LB.topZ, -3 + LB.half) && LB.depth > 0, `each of ${leg}'s pockets is exactly as deep as its block stands proud of the dial face`, `depth ${LB.depth.toFixed(4)}, top z ${LB.topZ.toFixed(4)}`);
-  for (const i of [0, 1]) row(LB.blocks[i].merged && !!LB.blocks[i].pocket.through && LB.endGaps[i] >= -1e-6, `${leg}'s ${ends[i]} block's pocket is one opening with the corner's bore, the block's end outside it`, `${LB.endGaps[i]?.toFixed(4)}`);
-  row(LB.spread >= R.overhangK * Math.max(...LB.overhang) - 1e-6, `${leg}'s pair carries both overhung blanks (spread ≥ 2× the larger overhang)`, `${LB.spread.toFixed(4)} vs ${R.overhangK} × ${Math.max(...LB.overhang).toFixed(4)}`); } }
+  for (const b of LB.blocks) { const i = b.end ? ends.indexOf(b.end) : LB.blocks.indexOf(b);
+    row(b.merged && !!b.pocket.through && LB.endGaps[i] >= -1e-6, `${leg}'s ${ends[i]} block's pocket is one opening with the corner's bore, the block's end outside it`, `${LB.endGaps[i]?.toFixed(4)}`); }
+  if (LB.blocks.length === 2) row(LB.spread >= R.overhangK * Math.max(...LB.overhang) - 1e-6, `${leg}'s pair carries both overhung blanks (spread ≥ 2× the larger overhang)`, `${LB.spread.toFixed(4)} vs ${R.overhangK} × ${Math.max(...LB.overhang).toFixed(4)}`); } }
 row(X.rods.settingStub.len <= X.leg.stub - R.stubStart - R.stubEnd + 1e-6 && X.rods.settingStub.len >= X.leg.stub - R.stubStart - R.stubEnd - 1e-6, 'the stub is cut between its two clearances', `${X.rods.settingStub.len.toFixed(4)} = ${X.leg.stub.toFixed(4)} − ${R.stubStart.toFixed(4)} − ${R.stubEnd.toFixed(4)}`);
 console.log('\nREPORT — the overhung-bevel rule, achieved (bearing spread / overhang, rule 2×):');
 if (R.upper?.rise && !R.upper.rise.why) console.log(`  rise  straddled since landing 1 (its upper bush over B, ${R.upper.rise.len.toFixed(3)} long, and the bush past E, ${R.riseBushLen.toFixed(3)})`);

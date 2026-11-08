@@ -9387,7 +9387,12 @@ async function siteTailBearings(B, F, g, cap) {
                ? { merge: null, lands: [{ x: B.x, y: B.y, r: riseHoleR }, { x: cap.x, y: cap.y, r: capPocketR }] }
                : { merge: { x: B.x, y: B.y, r: riseHoleR, ...(upper.rise.why ? {} : { depth: upper.rise.floorZ - PLATE_BACK }) }, lands: [] }],
       loads: [sFoldOut, sRiseInL] });
-    return LB.why ? LB : { ...LB, riseHoleR, riseMerged: riseMergedHere };
+    if (LB.why) return LB;
+    LB.blocks.forEach((b, i) => { b.end = i === 0 ? 'K' : 'B'; });
+    // the K block is BEST EFFORT per arrangement (MW_LEG2_K_BEARING): where no cap bearing leaves the reserve a swing
+    // round it, the cap-bearing scan runs again without it, and leg 2 keeps its B block alone
+    if (!MW_LEG2_K_BEARING) return { ...LB, blocks: LB.blocks.slice(1), kRefused: true, riseHoleR, riseMerged: riseMergedHere };
+    return { ...LB, riseHoleR, riseMerged: riseMergedHere };
   })();
   const rods = [   // every rod of the fold, as it will be cut: [a, b, r]
     ...[[leg1Blocks, F.leg1U], [leg2Blocks, F.leg2U]].flatMap(([LB, u]) => LB.why ? [] : LB.blocks.map((b) => [b.centre.clone().addScaledVector(u, -LB.len / 2), b.centre.clone().addScaledVector(u, LB.len / 2), LB.circR])),
@@ -9647,6 +9652,8 @@ async function buildSettingMetal(B, parent, { candidate = false } = {}) {
     for (const [key, LB, legU, names] of [['leg1', T.leg1Blocks, F.leg1U, ['settingTraverseBlockA', 'settingTraverseBlockK']],
                                           ['leg2', T.leg2Blocks, F.leg2U, ['settingTraverse2BlockK', 'settingTraverse2BlockB']]]) {
       if (LB.why) { if (!candidate) console.warn(`TODO 289: ${key === 'leg1' ? 'leg 1' : 'leg 2'}: ${LB.why} — it runs unborne on this arrangement`); continue; }
+      if (LB.kRefused && !candidate)
+        console.warn('TODO 289: leg 2\'s K block: no cap bearing within ±60° leaves the reserve train a swing round it on this arrangement — leg 2 runs in its B block alone, its K end overhung');
       const sq = new THREE.Shape();
       sq.moveTo(-LB.half, -LB.half); sq.lineTo(LB.half, -LB.half); sq.lineTo(LB.half, LB.half); sq.lineTo(-LB.half, LB.half); sq.closePath();
       const hole = new THREE.Path(); hole.absarc(0, 0, LB.bore, 0, Math.PI * 2, true); sq.holes.push(hole);
@@ -9656,7 +9663,7 @@ async function buildSettingMetal(B, parent, { candidate = false } = {}) {
         const g = new THREE.ExtrudeGeometry(sq, { depth: LB.len, bevelEnabled: false, curveSegments: RING_GEO_SEG });
         g.translate(0, 0, -LB.len / 2);
         const block = new THREE.Mesh(g, MATS.nickel);
-        block.name = names[i];
+        block.name = names[b.end === 'B' ? 1 : b.end === 'K' && key === 'leg2' ? 0 : i];
         block.position.copy(b.centre);
         block.quaternion.copy(frame);
         parent.add(block);
@@ -9733,6 +9740,11 @@ const foldWheelClear = (pts) => {   // the worst 3D clearance of a candidate's p
   }
   return { m, by };
 };
+// TODO 289 landing 3 — whether leg 2 carries its K-side block. On the arrangements whose reserve train stands where
+// that block must (measured on ?arrangement=designed: the reserve's input pinion 0.142 off it at the scan's nearest,
+// against the 0.15 margin, at every swing in its ±30°), the cap-bearing scan finds no bearing with it; the scan then
+// runs again without it, so the fold keeps its bearing and leg 2 keeps its B block, and the build warns.
+let MW_LEG2_K_BEARING = true;
 const CAP_SOLVE = await (async () => {
   const capAt = (dl) => {
     const cs = Math.cos(dl), sn = Math.sin(dl);
@@ -9846,6 +9858,14 @@ const CAP_SOLVE = await (async () => {
     return { nearest };
   };
   let found = await searchBearings();
+  // TODO 289 landing 3 — at the held heading, folds seen but none open: try once more without leg 2's K block (above)
+  if (!found.open && foldsSeen > 0) {
+    const first = found, firstScan = scan.slice();
+    MW_LEG2_K_BEARING = false;
+    scan.length = 0;
+    found = await searchBearings();
+    if (!found.open) { MW_LEG2_K_BEARING = true; found = first; scan.length = 0; scan.push(...firstScan); }
+  }
   // §325 landing 5 — the held heading opened NO FOLD: walk leg 1's heading out from it, nearest first, a degree at a
   // time to a quarter turn either way (MW_FOLD_LEG1_HEADING_USED_DEG above), each heading's whole bearing scan the one
   // above. The identity train opens at the held heading and never comes here.
@@ -11812,7 +11832,7 @@ const MW_LEG_POCKETS = (() => {
     if (!LB || LB.why) continue;
     if (!(LB.depth > 0 && LB.depth < BACK_PLATE_T - STOCK_MIN_U))
       console.warn(`TODO 289: ${label}'s bearing pockets would be ${LB.depth.toFixed(4)} deep in a ${BACK_PLATE_T} plate, leaving under STOCK_MIN_U`);
-    if (!(LB.spread >= MW_BEVEL_OVERHANG_K * Math.max(...LB.overhang) - 1e-9))
+    if (LB.blocks.length === 2 && !(LB.spread >= MW_BEVEL_OVERHANG_K * Math.max(...LB.overhang) - 1e-9))
       console.warn(`TODO 289: ${label}'s blocks stand ${LB.spread.toFixed(4)} apart against ${MW_BEVEL_OVERHANG_K}× the larger overhang ${Math.max(...LB.overhang).toFixed(4)}`);
     for (const b of LB.blocks) out.push(b.pocket);
   }
