@@ -7139,6 +7139,7 @@ windSpinner.add(crown);
 // what a rim reaching into another wheel's teeth IS.
 const SETTING_SPUR_T = 1.1;
 let SETTING_SPUR_Z = 0;
+let KW_MINUTE_DISC = null;   // the keyless minute wheel's swept disc, set where its plane is solved (below)
 const settingWheel = G.makeGear({ name: 'settingWheel', module: KW_MODULE, teeth: settingWheelTeeth, mates: [
     { teeth: minuteWheelTeeth, mates: [settingWheelTeeth] },
   ], thickness: SETTING_SPUR_T, boreR: 0.7, spokes: 0, material: MATS.steel });
@@ -7222,11 +7223,17 @@ const minuteWheel = G.makeGear({ name: 'minuteWheel', module: KW_MODULE, teeth: 
   SETTING_SPUR_Z = Z_KEYLESS - KW_SPEC.settingWheel.zWebHi - CLEAR_MARGIN
     - Math.max(half(settingWheel), half(minuteWheel));
   settingWheel.position.set(uWind.x * swDist, uWind.y * swDist, SETTING_SPUR_Z);
+  // TODO 289 landing 4 — the minute wheel's own swept disc, for the drop's lower bush above it: its tip circle (the
+  // spec's bound, gearOuterR, the one every swept disc here is read by) and the larger of its two faces' reach off
+  // its plane (the hub stands proud of the rim), read off the wheel as cut
+  KW_MINUTE_DISC = { r: G.gearOuterR({ module: KW_MODULE, teeth: minuteWheelTeeth, thickness: 1.0,
+    mates: [{ teeth: settingWheelTeeth, mates: [minuteWheelTeeth, windPinionTeeth] }] }), half: half(minuteWheel) };
 }
 // …and the arbor that makes the corner's two halves one part. It runs from the
 // spur's top face up to the bevel's web, bored through both at KW_CROWN_BORE —
 // transferArbor's idiom, one wheel up, and entirely below the stem.
 assertWheelSide(settingBevelMount, KW_SET_WHEEL_SIDE, 'keyless setting corner');
+const KW_SETTING_ARBOR_XY = { x: uWind.x * swDist, y: uWind.y * swDist };   // the setting wheel's axis (TODO 289 landing 4 reads it)
 const settingArbor = (() => {
   const zHi = Z_KEYLESS - KW_SPEC.settingWheel.zWebHi;   // the bevel's web, its lowest face
   const zLo = SETTING_SPUR_Z;
@@ -9250,6 +9257,23 @@ async function siteTailBearings(B, F, g, cap) {
   //     this bush and the one past E), the band's whole room where it is the shaft's ONLY bearing (the drop — its
   //     lower end is still owed, and the overhung rule's ratio is reported, never met).
   // A pivot no radius down to TRAIN_PIVOT_R admits runs as before, through its open bore, and warns.
+  // --- TODO 289 landing 4: THE DROP'S LOWER BUSH. The drop (the minute arbor, A down to the keyless minute wheel
+  // keyed on its foot) ran in its upper bush alone, the wheel overhung 6.26 below it. The window between the wheel
+  // and corner A's lower blank takes a plain bush on the drop's own 0.382 at the running fit, STOCK_MIN_U wall, a
+  // plain journal's L/D 1: corner A's blanks then stand BETWEEN the two bushes, and only the wheel is overhung,
+  // past this one. Its lowest rim stands one margin (and the measured band) over the wheel's swept disc, the least
+  // overhang there is, and
+  // the overhung rule is then the PAIR's: their spread ≥ MW_BEVEL_OVERHANG_K × the overhang from this bush's end
+  // to the wheel's plane (rule 6 below). A bush whose band reaches a fold blank there is refused, and the drop runs
+  // as before, warned.
+  const dropLower = (() => {
+    const r = SETTING_ROD_R, bore = r + PIVOT_BORE_CLEAR, outer = bore + MW_BUSH_WALL, len = 2 * r * MW_BUSH_LD_MIN;
+    const zLo = SETTING_SPUR_Z + KW_MINUTE_DISC.half + m + MEASURED_MARGIN_BAND, zHi = zLo + len;   // + the band: ALARM_SHEET_GAP's rule
+    const hit = blanksClear({ o: [settingA.x, settingA.y, zLo], a: [0, 0, 1], r: outer, zLo: 0, zHi: len }, m);
+    if (hit) return { why: `no room for the drop's lower bush between the keyless minute wheel and ${hit} by the margin` };
+    return { why: null, r, bore, outer, len, zLo, zHi, c: new THREE.Vector3(settingA.x, settingA.y, (zLo + zHi) / 2),
+      overhang: zLo - SETTING_SPUR_Z };
+  })();
   const upper = {};
   {
     const riseHoleR = spec(moduleRise, sigmaB, MW_LEG2_R, MW_RISE_R).coneR + m;   // MW_RISE_PLATE_HOLE's law
@@ -9257,9 +9281,10 @@ async function siteTailBearings(B, F, g, cap) {
     const riseMerged = Math.hypot(B.x - cap.x, B.y - cap.y) < capPocketFin + riseHoleR;
     const sDropOut = spec(BEVEL_MODULE, 90, MW_LEG1_R, SETTING_ROD_R), sRiseIn = spec(moduleRise, sigmaB, MW_LEG2_R, MW_RISE_R);
     const sites = [
-      // the drop: up from A, against leg 1 leaving A along leg1U; overhung (the minute wheel below is borne by nothing yet)
+      // the drop: up from A, against leg 1 leaving A along leg1U; straddled since landing 4 wherever its lower bush
+      // stands (corner A's blanks between the two), else its only bearing and overhung as before
       { key: 'drop', o: settingA.clone(), u: Z_UP.clone(), leg: F.leg1U.clone(), legR: MW_LEG1_R, legWeb: sDropOut.zWebLo, rodR: SETTING_ROD_R,
-        coneR: sDropOut.coneR, straddled: false, why: null },
+        coneR: sDropOut.coneR, straddled: !dropLower.why, why: null },
       // the rise: up from B against d1, against leg 2 arriving from K (so leaving B along −leg2U); straddled
       { key: 'rise', o: B.clone(), u: d1.clone().negate(), leg: F.leg2U.clone().negate(), legR: MW_LEG2_R, legWeb: sRiseIn.zWebLo, rodR: MW_RISE_R,
         coneR: sRiseIn.coneR, straddled: true, why: riseMerged ? 'the rise corner\'s bore is the cap pocket\'s own through-bore on this arrangement' : null },
@@ -9404,15 +9429,19 @@ async function siteTailBearings(B, F, g, cap) {
   const pocketR = capTipR + m + plateR * G.PLATE_BEVEL_F + SEAT_LAND_LAP;   // MW_CAP_POCKET's finished radius, its bevel at the face and its floor's lapped collar
   const boreRB = spec(moduleRise, sigmaB, MW_LEG2_R, MW_RISE_R).coneR + m + plateR * G.PLATE_BEVEL_F;   // MW_RISE_PLATE_HOLE's law, with the slab's bevel at the face
   const placed = [];
-  const hangerFor = async (what, c, u, bushR, bushLen) => {
+  // `dir` (default nOut) is the arm's heading; `armBlanks` also holds the arm off the fold blanks (the drop's runs
+  // under corner A's), and `openings` are plate openings ({x, y, r} at the face) its foot keeps the margin from
+  const hangerFor = async (what, c, u, bushR, bushLen, { dir = nOut, armBlanks = false, openings = [] } = {}) => {
     const zBot = c.z - MW_HANGER_S / 2;
     const ownRod = (a, b) => segSegDist3(c.clone().addScaledVector(u, -bushLen / 2), c.clone().addScaledVector(u, bushLen / 2), a, b) < 1e-6;   // collinear with the bush: the journal it bears
     const clearAt = (off) => {
-      const fx = c.x + nOut.x * off, fy = c.y + nOut.y * off;
+      const fx = c.x + dir.x * off, fy = c.y + dir.y * off;
       const col0 = new THREE.Vector3(fx, fy, zBot), col1 = new THREE.Vector3(fx, fy, colTop);
       const colDisc = { o: [fx, fy, zBot], a: [0, 0, 1], r: colR, zLo: 0, zHi: colTop - zBot };
-      const armA = c.clone().addScaledVector(nOut, bushR), armB = new THREE.Vector3(fx, fy, c.z);
+      const armA = c.clone().addScaledVector(dir, bushR), armB = new THREE.Vector3(fx, fy, c.z);
       if (blanksClear(colDisc, m)) return false;
+      if (armBlanks && blanksClear({ o: vArr(armA), a: [dir.x, dir.y, 0], r: MW_HANGER_S * Math.SQRT1_2, zLo: 0, zHi: Math.hypot(fx - armA.x, fy - armA.y) }, m)) return false;
+      for (const o of openings) if (Math.hypot(fx - o.x, fy - o.y) < o.r + colR + m) return false;
       const capZ = [Z_SETTING_CAP - SETTING_CAP_REACH, Z_SETTING_CAP + SETTING_CAP_REACH];
       if (!(colTop < capZ[0] || zBot > capZ[1]) && Math.hypot(fx - cap.x, fy - cap.y) < capTipR + colR + m) return false;
       for (const d of MW_FOLD_OBSTACLES) if (!(colTop < d.zLo || zBot > d.zHi) && Math.hypot(fx - d.o[0], fy - d.o[1]) < d.r + colR + m) return false;
@@ -9428,10 +9457,10 @@ async function siteTailBearings(B, F, g, cap) {
     const lim = off + 12;
     while (!clearAt(off)) { off += m / 2; await breathe(382); if (off > lim) return null; }
     { let lo = off - m / 2, hi = off; if (lo >= bushR + MW_HANGER_S * 1.5) while (hi - lo > 1e-3) { const mid = (lo + hi) / 2; if (clearAt(mid)) hi = mid; else lo = mid; } off = hi; }
-    const fx = c.x + nOut.x * off, fy = c.y + nOut.y * off;
-    const h = { what, c, u, bushR, bushLen, off, armLen: off - MW_HANGER_S / 2 - bushR, foot: { x: fx, y: fy }, zBot, colTop,
+    const fx = c.x + dir.x * off, fy = c.y + dir.y * off;
+    const h = { what, c, u, n: dir, bushR, bushLen, off, armLen: off - MW_HANGER_S / 2 - bushR, foot: { x: fx, y: fy }, zBot, colTop,
       segs: [[c.clone().addScaledVector(u, -bushLen / 2), c.clone().addScaledVector(u, bushLen / 2), bushR],
-        [c.clone().addScaledVector(nOut, bushR), new THREE.Vector3(fx, fy, c.z), colR], [new THREE.Vector3(fx, fy, zBot), new THREE.Vector3(fx, fy, colTop), colR]] };
+        [c.clone().addScaledVector(dir, bushR), new THREE.Vector3(fx, fy, c.z), colR], [new THREE.Vector3(fx, fy, zBot), new THREE.Vector3(fx, fy, colTop), colR]] };
     placed.push(h);
     return h;
   };
@@ -9445,12 +9474,31 @@ async function siteTailBearings(B, F, g, cap) {
   if (!stub) stubWhy = 'no hanger standoff outward of the stub\'s bush clears the fold';
   const capH = capWhy ? null : await hangerFor('cap', capC, Z_UP, capBushR, capBushLen);
   if (!capH && !capWhy) capWhy = 'no hanger standoff outward of the cap arbor\'s bush clears the fold';
+  // TODO 289 landing 4 — the drop's hanger. Its arm leaves the drop straight AWAY from the setting wheel's axis: the
+  // minute wheel was folded off the stem line to the side away from the setting lever, and every other keyless member
+  // (the stem and its clutch, the crown and transfer wheels, the lever, the yoke) stands on the setting wheel's side
+  // of it. The arm runs over the minute wheel and under corner A's blanks (held off them like the column), and the
+  // column's foot keeps the margin from A's plate opening: the drop's bore and leg 1's A-side block pocket, cut as
+  // one opening since landing 2, each at its finished radius.
+  const dropDir = new THREE.Vector3(settingA.x - KW_SETTING_ARBOR_XY.x, settingA.y - KW_SETTING_ARBOR_XY.y, 0).normalize();
+  let dropLowerWhy = dropLower.why;
+  const dropH = dropLowerWhy ? null : await hangerFor('drop', dropLower.c, Z_UP, dropLower.outer, dropLower.len, {
+    dir: dropDir, armBlanks: true,
+    openings: [{ x: settingA.x, y: settingA.y, r: dropHoleR + bev },
+      ...(leg1Blocks.why ? [] : [{ x: leg1Blocks.blocks[0].pocket.x, y: leg1Blocks.blocks[0].pocket.y, r: leg1Blocks.blocks[0].pocket.r + bev }])] });
+  if (!dropH && !dropLowerWhy) dropLowerWhy = 'no hanger standoff away from the setting wheel clears the fold';
+  // a lower bush that found no hanger leaves the upper bush the drop's only bearing again: its overhung length, the
+  // slab's whole room over the floor (above the floor no blank reaches, so the judge that sited it still holds)
+  if (dropLowerWhy && !upper.drop.why && upper.drop.straddled) {
+    const U = upper.drop;
+    upper.drop = { ...U, straddled: false, len: U.room, sEnd: U.s0 + U.room, centre: U.o.clone().addScaledVector(U.u, U.s0 + U.room / 2) };
+  }
   return {
-    upper, leg1A, leg2B, leg1Blocks, leg2Blocks,
+    upper, leg1A, leg2B, leg1Blocks, leg2Blocks, dropLower: dropLowerWhy ? { why: dropLowerWhy } : dropLower,
     nOut, riseWhy, stubWhy, capWhy, risePivotR, riseS0, riseBushLen, riseRoom, riseLen, stubStart, stubEnd, stubA, stubB, stubBush: { ...stubBush, mid: stubBushMid, run: stubRun },
     capS0, capBushLen, jewelZ, stoneTopZ, stoneBotZ, arborTop, arborBot, capTipR, pocketR,
     overhang: { rise: riseLen - bevelLoadZ(sRiseOut) + riseS0, stub: Math.max(sFoot.zWebHi + m - bevelLoadZ(sFoot), sCap.zWebHi + m - bevelLoadZ(sCap)) },
-    hangers: { rise, stub, cap: capH },
+    hangers: { rise, stub, cap: capH, drop: dropH },
   };
 }
 // §234 fold — THE SETTING METAL FROM ITS CAP CORNER, ONE BUILDER. Everything
@@ -9601,21 +9649,23 @@ async function buildSettingMetal(B, parent, { candidate = false } = {}) {
       parent.add(risePivot);
       bearings.risePivot = risePivot;
     }
-    for (const [key, h, bore] of [['rise', T.hangers.rise, T.risePivotR + PIVOT_BORE_CLEAR], ['stub', T.hangers.stub, MW_RISE_R + PIVOT_BORE_CLEAR], ['cap', T.hangers.cap, MW_RISE_R + PIVOT_BORE_CLEAR]].filter(([, h]) => h)) {
-      const tag = key === 'cap' ? 'settingCap' : key === 'stub' ? 'settingStub' : 'settingRise';
+    if (T.dropLower.why && !candidate) console.warn(`TODO 289: ${T.dropLower.why} — the drop runs without its lower bearing on this arrangement`);
+    for (const [key, h, bore] of [['rise', T.hangers.rise, T.risePivotR + PIVOT_BORE_CLEAR], ['stub', T.hangers.stub, MW_RISE_R + PIVOT_BORE_CLEAR], ['cap', T.hangers.cap, MW_RISE_R + PIVOT_BORE_CLEAR],
+      ['drop', T.hangers.drop, SETTING_ROD_R + PIVOT_BORE_CLEAR]].filter(([, h]) => h)) {
+      const tag = key === 'cap' ? 'settingCap' : key === 'stub' ? 'settingStub' : key === 'drop' ? 'settingDrop' : 'settingRise';
       const bush = new THREE.Mesh(ringGeo(bore, h.bushR, h.bushLen), MATS.nickel);
       bush.name = `${tag}Bush`;
       bush.position.copy(h.c);
       bush.quaternion.setFromUnitVectors(Z_UP, h.u);   // ringGeo stands along z; the bush along its journal
       // the arm: a bar along nOut from the bush's cylinder to the column's inner face, one section square in the
       // (t3, z) frame — square to the column, so a tilted journal still meets a flat weld face
-      const armFrame = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(T.nOut, Z_UP.clone().cross(T.nOut), Z_UP));
+      const armFrame = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(h.n, Z_UP.clone().cross(h.n), Z_UP));
       // lapped into the bush by its 40-gon's flat sag (RING_GEO_SEG), so the weld is metal on metal and not a
       // hairline over a flat: the arm's inner face sits at the polygon's flat, where the metal is
       const sag = h.bushR * (1 - Math.cos(Math.PI / RING_GEO_SEG));
       const arm = new THREE.Mesh(new THREE.BoxGeometry(h.armLen + sag, MW_HANGER_S, MW_HANGER_S), MATS.nickel);
       arm.name = `${tag}Arm`;
-      arm.position.copy(h.c).addScaledVector(T.nOut, h.bushR - sag + (h.armLen + sag) / 2);
+      arm.position.copy(h.c).addScaledVector(h.n, h.bushR - sag + (h.armLen + sag) / 2);
       arm.quaternion.copy(armFrame);
       const col = new THREE.Mesh(new THREE.BoxGeometry(MW_HANGER_S, MW_HANGER_S, h.colTop - h.zBot), MATS.nickel);
       col.name = `${tag}Column`;
@@ -10236,7 +10286,7 @@ registerSub('Keyless works', 'Setting rise', SETTING_METAL.capArbor);
 // (one body), the three bushes with their hangers and the cap's jewel are
 // 'Setting bearings', so a hover names what holds the rod rather than the rod.
 if (SETTING_METAL.bearings.jewel) {
-  const borne = ['rise', 'stub', 'cap'].filter((k) => SETTING_METAL.bearings[k]);   // the rise's is best effort (siteTailBearings: riseWhy)
+  const borne = ['rise', 'stub', 'cap', 'drop'].filter((k) => SETTING_METAL.bearings[k]);   // the rise's is best effort (siteTailBearings: riseWhy)
   if (SETTING_METAL.bearings.risePivot) registerSub('Keyless works', 'Setting rise', SETTING_METAL.bearings.risePivot);
   for (const k of borne) for (const part of ['bush', 'arm', 'col']) registerSub('Keyless works', 'Setting bearings', SETTING_METAL.bearings[k][part]);
   registerSub('Keyless works', 'Setting bearings', SETTING_METAL.bearings.jewel);
@@ -10250,6 +10300,20 @@ if (SETTING_METAL.bearings.jewel) {
   };
   if (SETTING_METAL.bearings.risePivot) SETTING_METAL.bearings.risePivot.userData.bearings = { axis: 'y', stations: [alongY(SETTING_METAL.bearings.risePivot, T.hangers.rise.c)] };
   if (T.hangers.stub) SETTING_METAL.stub.userData.bearings = { axis: 'y', stations: [alongY(SETTING_METAL.stub, T.hangers.stub.c)] };
+  // TODO 289 landing 4 — the drop declares its lower bush (its upper is its pivot's, below); rule 6: the pair's
+  // spread (bush centre to bush centre) carries the overhung wheel by the overhung-bevel rule's own ratio, and the
+  // bush stands its margin over the wheel's swept disc
+  if (T.hangers.drop) {
+    settingDrop.userData.bearings = { axis: 'y', stations: [alongY(settingDrop, T.hangers.drop.c)] };
+    const U = T.upper.drop, DL = T.dropLower;
+    if (!U.why) {
+      const spread = U.centre.z - DL.c.z;
+      if (!(spread >= MW_BEVEL_OVERHANG_K * DL.overhang - 1e-9))
+        console.warn(`TODO 289: the drop's bushes stand ${spread.toFixed(4)} apart against ${MW_BEVEL_OVERHANG_K} × the wheel's overhang ${DL.overhang.toFixed(4)}`);
+    }
+    if (Math.abs(DL.zLo - (SETTING_SPUR_Z + KW_MINUTE_DISC.half + CLEAR_MARGIN + MEASURED_MARGIN_BAND)) > 1e-9)
+      console.warn(`TODO 289: the drop's lower bush starts at ${DL.zLo.toFixed(4)}, not one margin over the minute wheel's disc`);
+  }
   SETTING_METAL.capArbor.userData.bearings = { axis: 'y', stations: [...(T.hangers.cap ? [alongY(SETTING_METAL.capArbor, T.hangers.cap.c)] : []),
     alongY(SETTING_METAL.capArbor, new THREE.Vector3(SETTING_CAP_XY.x, SETTING_CAP_XY.y, (T.stoneTopZ + T.stoneBotZ) / 2))].sort((a, b) => a - b) };
   // TODO 289 landings 2 and 3 — each leg's two blocks are bearings, and the leg declares their stations (§54 reads its span)
@@ -10290,7 +10354,8 @@ if (SETTING_METAL.bearings.jewel) {
   // each bush as long as its law says, the rise's pivot inside the dial band by the margin, the arm one section
   // long at least, and the column's foot inside the plate's slab by the seat (the plate itself is cut far below;
   // plateSeats holds the foot ON plate metal over the pose net)
-  for (const [k, journalR, want] of [['rise', T.risePivotR, T.riseBushLen], ['stub', MW_RISE_R, T.stubBush.len], ['cap', MW_RISE_R, T.capBushLen]].filter(([k]) => borne.includes(k))) {
+  for (const [k, journalR, want] of [['rise', T.risePivotR, T.riseBushLen], ['stub', MW_RISE_R, T.stubBush.len], ['cap', MW_RISE_R, T.capBushLen],
+    ['drop', SETTING_ROD_R, T.dropLower.len]].filter(([k]) => borne.includes(k))) {
     const b = SETTING_METAL.bearings[k].bush, pr = b.geometry.parameters, h = T.hangers[k];
     const bore = Math.min(...pr.points.map((q) => q.x)), outer = Math.max(...pr.points.map((q) => q.x)), len = Math.max(...pr.points.map((q) => q.y)) - Math.min(...pr.points.map((q) => q.y));
     if (Math.abs(bore - (journalR + PIVOT_BORE_CLEAR)) > 1e-9 || Math.abs(outer - bore - MW_BUSH_WALL) > 1e-9 || Math.abs(len - want) > 1e-9)
@@ -65630,7 +65695,11 @@ window.__clock = {
         capS0: T.capS0, capBushLen: T.capBushLen, jewelZ: T.jewelZ, stoneTopZ: T.stoneTopZ, stoneBotZ: T.stoneBotZ, jewelR: MW_CAP_JEWEL_R,
         arborTop: vArr(T.arborTop), arborBot: vArr(T.arborBot), pocketR: T.pocketR,
         overhang: { ...T.overhang }, overhangK: MW_BEVEL_OVERHANG_K, ldMin: MW_BUSH_LD_MIN, wall: MW_BUSH_WALL, boreClear: PIVOT_BORE_CLEAR, hangerS: MW_HANGER_S, seat: MW_HANGER_SEAT,
-        hangers: { rise: H(T.hangers.rise), stub: H(T.hangers.stub), cap: H(T.hangers.cap) },
+        hangers: { rise: H(T.hangers.rise), stub: H(T.hangers.stub), cap: H(T.hangers.cap), drop: H(T.hangers.drop) },
+        // TODO 289 landing 4 — the drop's lower bush (siteTailBearings: dropLower) and the wheel it sits over
+        dropLower: T.dropLower.why ? { why: T.dropLower.why } : { why: null, r: T.dropLower.r, bore: T.dropLower.bore, outer: T.dropLower.outer,
+          len: T.dropLower.len, zLo: T.dropLower.zLo, zHi: T.dropLower.zHi, centre: vArr(T.dropLower.c), overhang: T.dropLower.overhang,
+          wheel: { z: SETTING_SPUR_Z, ...KW_MINUTE_DISC }, dir: T.hangers.drop ? vArr(T.hangers.drop.n) : null },
         // TODO 289 landing 1 — the upper pivots over A and B (siteTailBearings: upper), and the legs cut clear of them
         upper: Object.fromEntries(['drop', 'rise'].map((k) => { const U = T.upper[k];
           return [k, U.why ? { why: U.why } : { why: null, apex: vArr(U.o), axis: vArr(U.u), r: U.r, bore: U.bore, outer: U.outer, s0: U.s0, len: U.len, room: U.room,
