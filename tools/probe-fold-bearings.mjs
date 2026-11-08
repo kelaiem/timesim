@@ -28,7 +28,7 @@ const expr = `(async () => {
   const BLANKS = ['mwCornerDropIn','mwCornerDropOut','mwCornerFoldIn','mwCornerFoldOut','mwCornerRiseIn','mwCornerRiseOut',
     'mwCornerFootIn','mwCornerFootOut','mwCornerCapIn','mwCornerCapOut','settingCap'];
   const BEARINGS = ['settingRiseBush', 'settingRiseArm', 'settingRiseColumn', 'settingStubBush', 'settingStubArm', 'settingStubColumn',
-    'settingCapBush', 'settingCapArm', 'settingCapColumn', 'settingCapJewel', 'settingDropTopBush', 'settingRiseTopBush'];
+    'settingCapBush', 'settingCapArm', 'settingCapColumn', 'settingCapJewel', 'settingDropTopBush', 'settingRiseTopBush', 'settingTraverseBlockA', 'settingTraverseBlockK'];
   const FOLD = new Set([...RODS, ...BLANKS, ...BEARINGS]);
   const meshes = [], mine = {};
   C.scene.updateMatrixWorld(true);
@@ -47,7 +47,7 @@ const expr = `(async () => {
   // CLEAR: every bearing part against every mesh outside the fold, and against every fold blank
   const clear = [];
   // declared: the columns planted in the plate, the jewel housed in it, the arbor's pivot in the jewel's recess (PLATE_SEATS)
-  const DECLARED = new Set(['settingRiseColumn|backPlate', 'settingStubColumn|backPlate', 'settingCapColumn|backPlate', 'settingCapJewel|backPlate', 'settingDropTopBush|backPlate', 'settingRiseTopBush|backPlate']);
+  const DECLARED = new Set(['settingRiseColumn|backPlate', 'settingStubColumn|backPlate', 'settingCapColumn|backPlate', 'settingCapJewel|backPlate', 'settingDropTopBush|backPlate', 'settingRiseTopBush|backPlate', 'settingTraverseBlockA|backPlate', 'settingTraverseBlockK|backPlate']);
   for (const n of BEARINGS) { for (const o of nearest(n, 3)) if (!DECLARED.has(n + '|' + o.mesh)) clear.push({ a: n, b: o.mesh + ' (' + o.unit + ')', d: o.d, kind: 'outside' });
     for (const b of BLANKS) { const v = d(n, b); if (isFinite(v)) clear.push({ a: n, b, d: +v.toFixed(4), kind: 'blank' }); } }
   for (const p of ['settingRisePivot', 'settingDropTopPivot', 'settingRiseTopPivot']) for (const b of BLANKS) { const v = d(p, b); if (isFinite(v)) clear.push({ a: p, b, d: +v.toFixed(4), kind: 'blank' }); }
@@ -59,13 +59,14 @@ const expr = `(async () => {
     missing, rec, leg: leg && { phiDeg: leg.phiDeg, stub: leg.stub, sigmaEDeg: leg.sigmaEDeg, E: leg.E, D: leg.D, zCap: leg.zCap, zCapCorner: leg.zCapCorner },
     consts: { CLEAR_MARGIN: L.CLEAR_MARGIN, PIVOT_BORE_CLEAR: L.PIVOT_BORE_CLEAR, STOCK_MIN_U: L.STOCK_MIN_U, Z_DIAL: L.Z_DIAL, TURN_LD_TARGET: L.TURN_LD_TARGET },
     rods: Object.fromEntries(RODS.map((n) => [n, rod(n)])),
-    fit: { dropTop: d('settingDropTopPivot', 'settingDropTopBush'), riseTop: d('settingRiseTopPivot', 'settingRiseTopBush'), rise: d('settingRisePivot', 'settingRiseBush'), stub: d('settingStub', 'settingStubBush'), cap: d('settingCapArbor', 'settingCapBush'), jewel: d('settingCapArbor', 'settingCapJewel') },
+    fit: { blockA: d('settingTraverse1', 'settingTraverseBlockA'), blockK: d('settingTraverse1', 'settingTraverseBlockK'), dropTop: d('settingDropTopPivot', 'settingDropTopBush'), riseTop: d('settingRiseTopPivot', 'settingRiseTopBush'), rise: d('settingRisePivot', 'settingRiseBush'), stub: d('settingStub', 'settingStubBush'), cap: d('settingCapArbor', 'settingCapBush'), jewel: d('settingCapArbor', 'settingCapJewel') },
     held: { pivot: d('settingRise', 'settingRisePivot'), dropTop: d('settingDrop', 'settingDropTopPivot'), riseTop: d('settingRise', 'settingRiseTopPivot'),
+      blockAPlate: toPlate('settingTraverseBlockA'), blockKPlate: toPlate('settingTraverseBlockK'),
       dropTopPivotPlate: toPlate('settingDropTopPivot'), riseTopPivotPlate: toPlate('settingRiseTopPivot'),
       riseArm: d('settingRiseBush', 'settingRiseArm'), riseCol: d('settingRiseArm', 'settingRiseColumn'), risePlate: toPlate('settingRiseColumn'),
       stubArm: d('settingStubBush', 'settingStubArm'), stubCol: d('settingStubArm', 'settingStubColumn'), stubPlate: toPlate('settingStubColumn'),
       capArm: d('settingCapBush', 'settingCapArm'), capCol: d('settingCapArm', 'settingCapColumn'), capPlate: toPlate('settingCapColumn'), jewelPlate: toPlate('settingCapJewel'), arborPlate: toPlate('settingCapArbor') },
-    control: { mustMiss: d('settingRiseBush', 'settingStub'), mustMiss2: d('settingStubBush', 'settingCapArbor'), mustMiss3: d('settingRiseTopBush', 'settingDrop') },
+    control: { mustMiss: d('settingRiseBush', 'settingStub'), mustMiss2: d('settingStubBush', 'settingCapArbor'), mustMiss3: d('settingRiseTopBush', 'settingDrop'), mustMiss4: d('settingTraverseBlockA', 'settingTraverse2') },
     inside: await (async () => {   // parity: a point in the part's metal crosses the plate's surfaces an odd number of times when it starts inside
       const THREE = await import('/vendor/three.module.js');
       // parity PER MESH: the slab and a pocket's floor are two closed solids sharing a face plane, so a ray through
@@ -108,9 +109,12 @@ for (const [k, fit, bore] of [['rise pivot ⇄ bush', X.fit.rise, R.risePivotR +
   row(fit <= K.PIVOT_BORE_CLEAR + 1e-6 && fit >= K.PIVOT_BORE_CLEAR - sagOf(bore) - 1e-6, k, `${fit.toFixed(4)} (fit ${K.PIVOT_BORE_CLEAR}, sag ≤ ${sagOf(bore).toFixed(4)})`);
 for (const k of ['drop', 'rise']) { const U = R.upper?.[k]; if (!U || U.why) { row(false, `${k} upper pivot ⇄ bush`, U?.why ?? 'not sited'); continue; }
   const v = X.fit[k + 'Top']; row(v <= K.PIVOT_BORE_CLEAR + 1e-6 && v >= K.PIVOT_BORE_CLEAR - sagOf(U.bore) - 1e-6, `${k} upper pivot ⇄ bush (landing 1)`, `${v.toFixed(4)} (fit ${K.PIVOT_BORE_CLEAR}, sag ≤ ${sagOf(U.bore).toFixed(4)})`); }
+{ const LB = R.leg1Blocks; if (!LB || LB.why) row(false, 'leg 1 ⇄ its blocks', LB?.why ?? 'not sited');
+  else for (const [k, v] of [['A', X.fit.blockA], ['K', X.fit.blockK]]) row(v <= K.PIVOT_BORE_CLEAR + 1e-6 && v >= K.PIVOT_BORE_CLEAR - sagOf(LB.bore) - 1e-6, `leg 1 ⇄ its block near ${k} (landing 2)`, `${v.toFixed(4)} (fit ${K.PIVOT_BORE_CLEAR}, sag ≤ ${sagOf(LB.bore).toFixed(4)})`); }
 row(X.fit.jewel <= K.PIVOT_BORE_CLEAR + 1e-6 && X.fit.jewel >= K.PIVOT_BORE_CLEAR - 0.02, 'cap arbor ⇄ jewel stone', `${X.fit.jewel.toFixed(4)} (ringExtrude\'s hole, fit ${K.PIVOT_BORE_CLEAR})`);
 console.log('\nHELD — welds, seats and the plate:');
 for (const [k, v, what] of [['pivot ⇄ rise rod', X.held.pivot, 'one body'], ['drop ⇄ its upper pivot', X.held.dropTop, 'one body'], ['rise ⇄ its upper pivot', X.held.riseTop, 'one body'],
+  ['leg 1 block A ⇄ plate', X.held.blockAPlate, 'seated on its pocket\'s floor'], ['leg 1 block K ⇄ plate', X.held.blockKPlate, 'seated on its pocket\'s floor'],
   ['drop upper pivot ⇄ plate', X.held.dropTopPivotPlate, 'run up into the blind floor'], ['rise upper pivot ⇄ plate', X.held.riseTopPivotPlate, 'run up into the blind floor'], ['rise bush ⇄ arm', X.held.riseArm, 'weld'], ['rise arm ⇄ column', X.held.riseCol, 'weld'], ['rise column ⇄ plate', X.held.risePlate, 'planted'],
   ['stub bush ⇄ arm', X.held.stubArm, 'weld'], ['stub arm ⇄ column', X.held.stubCol, 'weld'], ['stub column ⇄ plate', X.held.stubPlate, 'planted'],
   ['cap bush ⇄ arm', X.held.capArm, 'weld'], ['cap arm ⇄ column', X.held.capCol, 'weld'], ['cap column ⇄ plate', X.held.capPlate, 'planted'],
@@ -121,6 +125,7 @@ for (const k of ['drop', 'rise']) row(X.inside[k] === true, `${k} upper bush hou
 console.log('\nCONTROL — the fit reading can miss:');
 row(X.control.mustMiss >= m, 'must-miss: rise bush ⇄ stub (a rod it does not bear)', X.control.mustMiss.toFixed(4));
 row(X.control.mustMiss2 >= m, 'must-miss: stub bush ⇄ cap arbor', X.control.mustMiss2.toFixed(4));
+row(X.control.mustMiss4 >= m, 'must-miss: leg 1\'s block ⇄ leg 2', X.control.mustMiss4.toFixed(4));
 row(X.control.mustMiss3 >= m, 'must-miss: rise\'s upper bush ⇄ the drop', X.control.mustMiss3.toFixed(4));
 row(X.held.risePlate <= 0 && X.held.stubPlate <= 0 && X.held.capPlate <= 0, 'must-hit: every column reads contact with the plate');
 console.log(`\nCLEAR — every bearing part ⇄ every mesh outside the fold and every fold blank, CLEAR_MARGIN ${m} (rest pose; the battery holds the pose net):`);
@@ -142,6 +147,12 @@ for (const [k, rod] of [['drop', 0.382], ['rise', 0.382]]) { const U = R.upper?.
   row(near(U.floorZ, U.apex[2] + U.coneR + m), `${k}'s blind floor a margin over the corner's sphere`, `z ${U.floorZ.toFixed(4)} = ${U.apex[2]} + ${U.coneR.toFixed(4)} + ${m}`);
   const cosP = U.axis[2], sinP = Math.sqrt(1 - cosP * cosP);
   row(near(U.apex[2] + U.s0 * cosP - U.outer * sinP, U.floorZ) && U.apex[2] + U.sEnd * cosP + U.outer * sinP <= R.plateTop + 1e-9, `${k}'s upper bush stands in the slab over its floor`, `rim z ${(U.apex[2] + U.s0 * cosP - U.outer * sinP).toFixed(4)}…${(U.apex[2] + U.sEnd * cosP + U.outer * sinP).toFixed(4)}`); }
+{ const LB = R.leg1Blocks; if (LB && !LB.why) {
+  row(near(LB.bore, 0.55 + K.PIVOT_BORE_CLEAR) && near(LB.half - LB.bore, K.STOCK_MIN_U) && near(LB.len, 2 * 0.55 * R.ldMin), 'leg 1\'s blocks = the leg\'s 0.55 + fit, STOCK_MIN_U wall, L/D 1', `bore ${LB.bore.toFixed(4)} half ${LB.half.toFixed(4)} len ${LB.len.toFixed(4)}`);
+  row(near(LB.depth, LB.topZ - (R.plateTop - 2.3)) && near(LB.topZ, -3 + LB.half), 'each block\'s pocket is exactly as deep as the block stands proud of the dial face', `depth ${LB.depth.toFixed(4)}, top z ${LB.topZ.toFixed(4)}`);
+  row(LB.endToDropBore >= -1e-6 && !!LB.blocks[0].pocket.through, 'the A block\'s pocket is one opening with the drop\'s blind bore, the block\'s end outside the bore', LB.endToDropBore.toFixed(4));
+  row(LB.endToFoldBore >= -1e-6 && !!LB.blocks[1].pocket.through, 'the K block\'s pocket is one opening with the fold bore, the block\'s end outside the bore', LB.endToFoldBore.toFixed(4));
+  row(LB.spread >= R.overhangK * Math.max(...LB.overhang) - 1e-6, 'the pair carries both overhung blanks (spread ≥ 2× the larger overhang)', `${LB.spread.toFixed(4)} vs ${R.overhangK} × ${Math.max(...LB.overhang).toFixed(4)}`); } }
 row(X.rods.settingStub.len <= X.leg.stub - R.stubStart - R.stubEnd + 1e-6 && X.rods.settingStub.len >= X.leg.stub - R.stubStart - R.stubEnd - 1e-6, 'the stub is cut between its two clearances', `${X.rods.settingStub.len.toFixed(4)} = ${X.leg.stub.toFixed(4)} − ${R.stubStart.toFixed(4)} − ${R.stubEnd.toFixed(4)}`);
 console.log('\nREPORT — the overhung-bevel rule, achieved (bearing spread / overhang, rule 2×):');
 if (R.upper?.rise && !R.upper.rise.why) console.log(`  rise  straddled since landing 1 (its upper bush over B, ${R.upper.rise.len.toFixed(3)} long, and the bush past E, ${R.riseBushLen.toFixed(3)})`);
@@ -149,7 +160,7 @@ else console.log(`  rise  ${(R.riseBushLen / R.overhang.rise).toFixed(2)}×  (bu
 if (R.upper?.drop && !R.upper.drop.why) console.log(`  drop  ONE bearing, its upper bush over A (${R.upper.drop.len.toFixed(3)} long, the band's room); the minute wheel at its foot is overhung ${(R.upper.drop.s0 + X.rods.settingDrop.len).toFixed(3)} below the bush — its lower bearing is owed (TODO 289 residue)`);
 console.log(`  stub  ${(R.stubBush.len / R.overhang.stub).toFixed(2)}×  (bush ${R.stubBush.len.toFixed(3)}, overhang ${R.overhang.stub.toFixed(3)})`);
 console.log(`  cap   straddled (jewel to bush ${(X.rods.settingCapArbor.len).toFixed(3)} of arbor)`);
-console.log('\nREPORT — the two traverses borne by nothing, the drop by its upper bush alone (TODO 289 residue): nearest metal outside the fold');
+console.log('\nREPORT — leg 2 borne by nothing, the drop by its upper bush alone (TODO 289 residue); leg 1 for reference: nearest metal outside the fold');
 for (const [k, v] of Object.entries(X.traverses)) console.log(`  ${k.padEnd(18)} r ${X.rods[k].r.toFixed(3)} L/D ${X.rods[k].LD.toFixed(1)}: ${v.map((n) => `${n.d.toFixed(4)} ${n.mesh} (${n.unit})`).join(' | ')}`);
 console.log(`\n${r.warnings.length} boot warning(s)`); for (const w of r.warnings) console.log('  ' + w.slice(0, 300));
 console.log(bad ? `\nFAIL — ${bad} finding(s)` : '\nPASS');
