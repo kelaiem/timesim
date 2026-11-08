@@ -122,18 +122,25 @@ export function seriesTwin({ R, c, setup, sweep, ...opts }) {
 //     R_A = Q/(θ_sB/n) − c_end,   R_B = r_pA/n,
 // so (zA, zB, NB) are the design's integers, and every length follows from them (rule 1). The multiple of a ratio sets
 // only the module.
-export function flangeDelta(fw) { return 2 * fw.chainEndROut + CLEAR_MARGIN; }
+export function flangeDelta(fw) { return 2 * fw.chainEndROut + CLEAR_MARGIN; }   // pulleyGeometry's r_pA − R_A
 // `cB` is B's ribbon half-height, `c` by default: the drive's SIZE goes as the strip's height (k ∝ c at a fixed stress,
 // which the section's height does not enter), so the caller can size B to the train's demand without moving a radius.
-export function pulleyBarrel({ zA, zB, NB, fw, c, cB = c, teeth = fw.setupTeeth, ...opts }) {
-  const I = fw.inputs, ce = fw.chainEndROut;
+// The geometry the integers fix, closed form (main.js builds from this, so the build and the line spec read one law).
+// Q = θ_s₀·R_wrap₀, the single drum's set-up times its wrap radius; ce = CHAIN_END_R_OUT.
+export function pulleyGeometry({ zA, zB, NB, teeth, Q, ce }) {
   const n = zA / zB;
   const setupB = (NB * 2 * Math.PI) / teeth;
-  const Q = I.SETUP_SWEEP * I.DRUM_WRAP_R;
-  const RA = Q / (setupB / n) - ce;
+  const setupHook = setupB / n;
+  const RA = Q / setupHook - ce;
+  const rpA = RA + 2 * ce + CLEAR_MARGIN, m = (2 * rpA) / zA, RB = (m * zB) / 2;
+  return { zA, zB, NB, n, setupB, setupHook, RA, rpA, m, RB, centreDistance: rpA + RB };
+}
+export function pulleyBarrel({ zA, zB, NB, fw, c, cB = c, teeth = fw.setupTeeth, ...opts }) {
+  const I = fw.inputs, ce = fw.chainEndROut;
+  const geo = pulleyGeometry({ zA, zB, NB, teeth, Q: I.SETUP_SWEEP * I.DRUM_WRAP_R, ce });
+  const { n, setupB, RA, rpA, m, RB } = geo, Q = I.SETUP_SWEEP * I.DRUM_WRAP_R;
   if (!(RA > 0)) return { zA, zB, NB, n, feasible: false, why: 'no positive pulley' };
-  const rpA = RA + flangeDelta(fw), m = (2 * rpA) / zA, RB = (m * zB) / 2;
-  const chain = chainDrumAnglesAt({ R: RA, setup: setupB / n, fw });
+  const chain = chainDrumAnglesAt({ R: RA, setup: geo.setupHook, fw });
   const B = drumRibbon({ R: RB, c: cB, setup: setupB, sweep: n * chain.sweep, ...opts });
   const out = { cB, zA, zB, NB, n, m, RA, rpA, RB, setupB, chain, B, centreDistance: rpA + RB, invariant: (chain.setup * chain.Rw) / Q - 1 };
   if (!B) return { ...out, feasible: false, why: 'no ribbon for B' };

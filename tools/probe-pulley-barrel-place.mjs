@@ -13,14 +13,17 @@
 //     radius covers B's tooth tips (R_B + m) and B's wall stands a CLEAR_MARGIN off the chain's span, taken as the
 //     convex hull of the cone's largest wrap circle and A's coil;
 //   - per feasible seat, the axis-aligned box of the rest of the counted metal together with A and B, against today's
-//     box (the rest with the drum group), side by side: the width a re-fit could recover, an ESTIMATE (the fitted case is
-//     solved round the hands, and the fold's re-fit is the measurement).
+//     box (the rest with the drum group): what the PLATES' rectangle could give back;
+//   - and THE CASE: the build's own fitted-case solve (layout.js fitFittedCase, about the hands) re-run on the per-unit
+//     hulls the build publishes (__clock.regions), its control the area the build cut, then with the drum group out and
+//     with the pulley and the barrel at the best box's seat. The case is what a wearer measures, and it is solved about
+//     the hands, so the box and the case can disagree; this row is what found that they do.
 // Moving parts are read at rest, so a seat is a CANDIDATE for the fold's sweeps, not a placement.
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { bootMany } from './boot-pool.mjs';
 import { EXPR as ROOM_EXPR } from './probe-twin-barrel-room.mjs';
 import { pulleyBarrel, pickPulleyBarrel, DRUM_GAP_U } from '../src/twin-barrel.js';
-import { PULLEY_BARREL, CLEAR_MARGIN } from '../src/layout.js';
+import { PULLEY_BARREL, CLEAR_MARGIN, UNIT_MM, PLATE_RIM_MARGIN, convexHull2, fitFittedCase, shapeArea } from '../src/layout.js';
 
 const ci = process.argv.indexOf('--cache'), cache = ci >= 0 ? process.argv[ci + 1] : null;
 const REF_EXPR = `(() => { const g = window.__clock.equalisation.going;
@@ -35,10 +38,14 @@ else {
       // the span's heights (the fusee's lowest groove to the drum's hook plane, a chain plate's half-width and a margin
       // either side) and the coupling band landing 0 (c) measured clear of the chain (z 2.93–4.26)
       window.__roomGrid = { bands: [[I.FUSEE_Z0 - ce - CM, I.COIL_TOP + ce + CM], [2.93 - CM, ${FLANGE_TOP} + CM]] };
-      return ${ROOM_EXPR}; })() })`)]);
+      return ${ROOM_EXPR}; })(),
+      // the fitted case's own inputs: each unit's plan hull (FORM_REGIONS), the centre, the flat ends and the area cut
+      fit: (() => { const c = window.__clock, F = c.formFootprint;
+        return { units: Object.fromEntries(Object.entries(c.regions.units).map(([k, v]) => [k, v.hull])), metal: F.metal,
+          centre: F.fitted.centre, flatMin: F.fitted.flatMin, fitAreaMm2: F.fitAreaMm2, rect: F.rect }; })() })`)]);
   for (const [q, r] of [['(default)', ref], [TARGET, tgt]])
     if (r.unknownKeys?.length || r.bootError || !r.extra) { console.log(`FAIL boot ${q}: ${r.bootError ?? 'unknown keys ' + r.unknownKeys}`); process.exit(1); }
-  boots = { ref: ref.extra.ref, room: tgt.extra.room };
+  boots = { ref: ref.extra.ref, room: tgt.extra.room, fit: tgt.extra.fit };
   if (cache) writeFileSync(cache, JSON.stringify(boots));
 }
 const { fw } = boots.ref, c = boots.ref.section.c, room = boots.room, Rr = room.reach;
@@ -99,5 +106,23 @@ console.log(`seats: ${seats.length}, the pulley at ${arcs.map(([a, b]) => `${a}�
 const show = (tag, s) => { const b = s.box;
   console.log(`  ${tag}: pulley ${s.aA}° (${f(s.A.x)}, ${f(s.A.y)}), barrel ${s.aB}° off it (${f(s.B.x)}, ${f(s.B.y)}), least margin ${f(s.margin, 2)}; box x ${f(b.x0)}…${f(b.x1)}, y ${f(b.y0)}…${f(b.y1)}: ${['x0', 'x1', 'y0', 'y1'].map((kk) => `${kk} ${f(kk.endsWith('0') ? b[kk] - box0[kk] : box0[kk] - b[kk])}`).join(', ')} back, area ${f((1 - s.area / area(box0)) * 100, 1)}% less`); };
 show('smallest box', [...seats].sort((p, q) => p.area - q.area || q.margin - p.margin)[0]);
-show('widest margin', [...seats].sort((p, q) => q.margin - p.margin || p.area - q.area)[0]);
+// THE CASE, not the box: the fitted case is solved about the hands (layout.js fitFittedCase, the build's own fit) from
+// the counted metal's hull, which the build publishes per unit (__clock.regions). Control: every unit's hull re-fitted
+// must read the area the build cut. Then the same fit with the drum group out, and with the pulley and the barrel in.
+{
+  const FT = boots.fit, mm2 = UNIT_MM * UNIT_MM, DRUM = ['Mainspring drum', 'Chain', 'Set-up work'];
+  const fitArea = (pts) => { const h = convexHull2(Float64Array.from(pts, (q) => q[0]), Float64Array.from(pts, (q) => q[1]), pts.length);
+    const xs = h.map((q) => q[0]), ys = h.map((q) => q[1]);
+    const fit = fitFittedCase(h, [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)], { margin: PLATE_RIM_MARGIN, centre: FT.centre, flatMin: FT.flatMin });
+    return { area: shapeArea(fit.shape) * mm2, b: fit.shape.bounds }; };
+  const circ = (x, y, r, n = 64) => Array.from({ length: n }, (_, i) => [x + (r / Math.cos(Math.PI / n)) * Math.cos((2 * Math.PI * i) / n), y + (r / Math.cos(Math.PI / n)) * Math.sin((2 * Math.PI * i) / n)]);
+  const all = Object.values(FT.units).flat(), rest = Object.entries(FT.units).filter(([k]) => !DRUM.includes(k)).flatMap(([, v]) => v);
+  const A0 = fitArea(all), A1 = fitArea(rest);
+  const best = [...seats].sort((p, q) => p.area - q.area || q.margin - p.margin)[0];
+  const A2 = fitArea([...rest, ...circ(best.A.x, best.A.y, rAt), ...circ(best.B.x, best.B.y, X.RB + X.m)]);
+  const bx = (r) => `x ${f(r.b.xMin)}…${f(r.b.xMax)}, y ${f(r.b.yMin)}…${f(r.b.yMax)}`;
+  console.log(`THE FITTED CASE (fitFittedCase about the hands): the build cut ${f(FT.fitAreaMm2)} mm²; every unit re-fitted ${f(A0.area)} mm² (${Math.abs(A0.area / FT.fitAreaMm2 - 1) < 1e-5 ? 'reproduces it' : 'DOES NOT reproduce it'}), ${bx(A0)}`);
+  console.log(`  the drum group out: ${f(A1.area)} mm², ${bx(A1)} — ${Math.abs(A1.area - A0.area) < 1e-3 ? 'the drum does not set the case' : `${f(A0.area - A1.area)} mm² back`}`);
+  console.log(`  the pulley and barrel at the best box's seat: ${f(A2.area)} mm², ${bx(A2)} — ${f(((A2.area / A0.area) - 1) * 100, 1)}% against today`);
+}
 process.exit(0);
