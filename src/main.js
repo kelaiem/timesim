@@ -26,7 +26,7 @@ import {
   F_BALANCE, BEAT_DEG, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_STEP, BALANCE_R_REF, BAL_R_STEP, balanceWheelDims, BALANCE_R_SPEC, AMPLITUDE_POSED_DEG, LIFT_DEG, IMPULSE_WIDTH,
   CLEAR_MARGIN, HANDOFF_TRACK_TOL, ZERO_AREA_MAX, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK, FORK_HALF_Z,
   BAL_T, BAL_RIM_F, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T, NICKEL_SILVER_SIGMA_Y_PA,
-  SPRING_TOP_Z, TRAIN_CEILING_Z, HAIRSPRING_OVERCOIL_RAISE, COCK_SLAB_BOT, COCK_SLAB_TOP, COCK_MID_Z, Z_DIAL, Z_DIAL_WITH_ALARM, DIAL_RECLAIM, DIAL_T, DIAL_EDGE_BREAK, Z_KEYLESS,
+  SPRING_TOP_Z, SPRING_STACK_TOP_Z, TRAIN_CEILING_Z, HAIRSPRING_OVERCOIL_RAISE, COCK_SLAB_BOT, COCK_SLAB_TOP, COCK_MID_Z, Z_DIAL, Z_DIAL_WITH_ALARM, DIAL_RECLAIM, DIAL_T, DIAL_EDGE_BREAK, Z_KEYLESS,
   // Train ratios (§13 steps 2 + 3c): TRAIN is the ONE table — module, wheel
   // teeth and pinion teeth per mesh. Builders and tick()'s ratio chain
   // (meshOffset / the going-train ratios) both read it; the flat teeth
@@ -83,7 +83,7 @@ import {
   STOCK, ALLOY_STOCK,                          // §269: the stocks' densities and moduli, for the watch's mass and the receiver's first modes
   STEEL_E_PA, STEEL_G_PA, SPRING_SIGMA_Y_PA, SPRING_TAU_Y_PA, cantileverK_N_per_m,
   CLICK_STEEL_SIGMA_Y_BAND, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU,   // TODO 221: the click steel and the line contact's first yield
-  MAINSPRING_E_PA, MAINSPRING_SIGMA_Y_BAND, MAINSPRING_SIGMA_Y_PA,   // TODO 193: the ribbons' alloy, cited  // §137: the one steel, the one cantilever law; §164 names its other properties beside it
+  MAINSPRING_E_PA, MAINSPRING_SIGMA_Y_BAND, MAINSPRING_SIGMA_Y_PA, MAINSPRING_ALPHA_BAND, MAINSPRING_ALPHA_MIN,   // TODO 193: the ribbons' alloy, cited  // §137: the one steel, the one cantilever law; §164 names its other properties beside it
   MU_STEEL, ALARM_SPRING_HEADROOM,            // TODO 144: the one steel-on-steel friction coefficient, and the drag-against-hold margin — the disc's drag and its seat are priced on both
   FRICTION, FRICTION_CORNERS,                  // TODO 192 / §247 tier two: the friction bands the power budget is priced at — three corners, never one number
   SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N, // §137: the declared envelopes force rows sit inside
@@ -4219,7 +4219,7 @@ const TQ_UNDER = [barrelArbor, centerArbor, thirdArbor, fourthArbor, escapeArbor
 // a regression, not a design.
 await breathe(32);
 const TQ_MEASURED_MAX = Math.max(...TQ_UNDER.map((o) => boxOf(o).max.z));
-const TQ_DESIGN_MAX = Math.max(SPRING_TOP_Z, CHAIN_TQ_REACH);
+const TQ_DESIGN_MAX = Math.max(SPRING_STACK_TOP_Z, CHAIN_TQ_REACH);   // TODO 291: the stack's datum, not the lighter spring's top (layout.js)
 if (TQ_MEASURED_MAX > TQ_DESIGN_MAX + 1e-6) {
   console.warn(`3/4 plate floor bound by measured part (${TQ_MEASURED_MAX.toFixed(2)}) above the hairspring stack and the chain's reach (${TQ_DESIGN_MAX.toFixed(2)}) — the balance cock sinks further into the plate band`);
   for (const o of TQ_UNDER) {
@@ -12228,13 +12228,17 @@ const drumRotAt = (t) => MOVEMENT_SENSE * (SPRING_WIND_FULL - springWindAt(t));
 // spring's inner radius and its section both derive from this number now
 // (previously the spring took `radius · 0.16` and the two disagreed by 0.036,
 // which is how the ribbon came to be buried in the collar it sits on).
-// The 1.5 itself is carried forward unchanged from the as-built seat — a
-// 0.6-thick boss pressed on the drum arbor's 0.9 — so this change moves no
-// geometry it did not have to. It is the one dimension here that is inherited
-// rather than derived; deriving it is a spring-proportion question (arbor core
-// against barrel bore), and it belongs to TODO 32's torque work, where the
-// ribbon's length and section stop being free.
-const MS_COLLAR_R = 1.5;
+// TODO 291 — and the collar is SOLVED now, not inherited. Its 1.5 was carried
+// forward from the as-built seat (a 0.6-thick boss pressed on the drum arbor's
+// 0.9), and on it the solved strip stood at r/e 3.41, three times past the
+// trade's floor (layout.js, MAINSPRING_ALPHA_BAND). The ribbon solve now takes
+// the packing rule beside the stress and the half fill, and returns the collar
+// that stores the most energy under all three (makeBarrel, `ribbonSolve`). This
+// is its FLOOR: the boss on the arbor's working section, which is what the 1.5
+// stood for: the arbor's working section (barrelArborR, 0.964, which the 1.5
+// rounded to 0.9) plus the boss's 0.6 wall, so the collar can grow from here and
+// is never cut thinner than the seat it is.
+const MS_COLLAR_MIN = G.barrelArborR(DRUM_R_ACTUAL) + 0.6;
 // Drum direction: perpendicular-to-stem, blended outward (away from the
 // plate centre) so the chain's span stays clear of the train — the pure
 // perpendicular placement let the span cross the third wheel as the active
@@ -12298,20 +12302,32 @@ const barrel = G.makeBarrel({ name: 'barrel',
   // from A_free + SETUP_SWEEP (run down, ratchet still holding 23 clicks)
   // to A_free + SETUP_SWEEP + DRUM_ROT_FULL (full wind). The free coil
   // itself is a bench state, reachable only by letting the set-up down.
-  springArborR: MS_COLLAR_R, springWindSweep: DRUM_ROT_FULL,
+  springArborR: MS_COLLAR_MIN, springWindSweep: DRUM_ROT_FULL,
   springSetupSweep: SETUP_SWEEP,
   // TODO 192 step 3 — the ribbon PROPORTIONED to its alloy and its drum: the
   // half-thickness that puts the full wind on MAINSPRING_SIGMA_Y_PA, and the
   // most coils of it the barrel holds at half fill (makeBarrel's ribbonSolve).
-  ribbonSolve: { sigmaOverE: MAINSPRING_SIGMA_Y_PA / MAINSPRING_E_PA },
+  // TODO 291 — and the PACKING: the strip no thicker than the collar's radius over MAINSPRING_ALPHA_MIN, the collar solved.
+  ribbonSolve: { sigmaOverE: MAINSPRING_SIGMA_Y_PA / MAINSPRING_E_PA, alphaMin: MAINSPRING_ALPHA_MIN },
 });
 await breathe(101);
 const mainspring = barrel.getObjectByName('spring').userData.mainspring;
+const MS_COLLAR_R = mainspring.collarR;   // TODO 291 — the solve's collar (the set-up work cuts it and its hook below)
 // TODO 193 — THE GOING RIBBON'S k, named once. k = E·I/L of the ribbon AS CUT
 // (a strip since TODO 193) at its own alloy's modulus; EQUALISATION quotes this
 // rather than re-deriving it, so the pivots sized below and the record priced
 // later read one number.
 const ribbonK = (sp, E) => E * (sp.section.I_u4 * OSC_U ** 4) / (sp.devLen * OSC_U); // N·m/rad
+// TODO 291 — A RIBBON'S PACKING, read off its own record: the strip's thickness e = 2a, the collar it is wound on
+// (the innermost coil's inner face, innerR − a), α = r/e against MAINSPRING_ALPHA_BAND, r over the spring's outer
+// radius (SJX's ¼–⅓, a report: it describes springs designed for many developing turns, and this one develops 1.6),
+// the half-fill, and, for a solved ribbon, which constraint bound its collar.
+const ribbonPacking = (sp) => {
+  const e = 2 * sp.ribbonR, r = sp.innerR - sp.ribbonR;
+  return { thicknessU: e, collarR: r, alpha: r / e, limit: MAINSPRING_ALPHA_MIN, band: MAINSPRING_ALPHA_BAND,
+    rOverOuter: r / sp.outerR, fill: (e * sp.devLen) / (Math.PI * (sp.outerR ** 2 - r ** 2)), coils: sp.coils,
+    solved: !!sp.solve, binds: sp.solve?.binds ?? null };
+};
 const GOING_K = ribbonK(mainspring, MAINSPRING_E_PA);
 // The train's stages, the ONE list the pivots' loads and the energy column's
 // losses both walk: pinion in, wheel out, tooth counts.
@@ -14070,6 +14086,7 @@ let MAINT_BLADE = null;        // TODO 224: the blade's posed frames, built with
 // barrelMeshAngle's real run against the cut and measures which flank the beak
 // climbs.
 const MAINT_RING_RUN = MOVEMENT_SENSE;
+let MAINT_TIP_OVERHANG = null;   // TODO 291/293 — set when the blade's tip is trimmed to clear the hub land at the stop: how far its face runs past the contact
 let MAINT_RING_POLY = null;   // the ring's cut outline, ring-local — the detent rides THIS, not sawRadiusAt
 {
   const ring = G.makeRatchetAndClick({ radius: MAINT_RING_R, teeth: MAINT_RING_TEETH, thickness: MAINT_RING_T, includeClick: false,
@@ -14114,17 +14131,22 @@ let MAINT_RING_POLY = null;   // the ring's cut outline, ring-local — the dete
   // stands WHILE THE WATCH RUNS, deflected by the working torque: free, its tip
   // would stand MAINT_SPRING.deflWork_u further toward the stop.
   const M = MAINT_SPRING, gm = M.geom;
-  const outline = [[gm.xTip, gm.yB], [gm.xRoot, gm.yB], [gm.xRoot, M.bevel], [gm.xFootOut, M.bevel], [gm.xFootOut, gm.yB + M.t]];
-  const NT = 32;                                        // the taper, sampled from the root to the contact, then the floor to the tip end
-  for (let i = NT; i >= 0; i--) { const xr = (M.L * i) / NT; outline.push([gm.xc + xr, gm.yB + M.tAt(xr)]); }
-  outline.push([gm.xTip, gm.yB + M.tAt(gm.xTip - gm.xc)]);
-  const sh = new THREE.Shape();
-  outline.forEach(([x, y], i) => { const q = M.toGw(x, y); if (i === 0) sh.moveTo(q.x, q.y); else sh.lineTo(q.x, q.y); });
-  sh.closePath();
-  const blade = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: M.b, bevelEnabled: false }), MATS.blueSteel);
-  blade.geometry.translate(0, 0, M.zMid - M.b / 2);   // flush with the wheel's stock faces
-  if (blade.geometry.attributes.position.count / 3 !== 4 * outline.length - 4)
-    console.warn(`TODO 219 maintaining spring: the blade extruded to ${blade.geometry.attributes.position.count / 3} triangles where a simple ${outline.length}-gon gives ${4 * outline.length - 4}`);
+  // The CUT, one law for the first cut and for the re-cut the tip's clearance below may ask for.
+  const cutBlade = () => {
+    const outline = [[gm.xTip, gm.yB], [gm.xRoot, gm.yB], [gm.xRoot, M.bevel], [gm.xFootOut, M.bevel], [gm.xFootOut, gm.yB + M.t]];
+    const NT = 32;                                      // the taper, sampled from the root to the contact, then the floor to the tip end
+    for (let i = NT; i >= 0; i--) { const xr = (M.L * i) / NT; outline.push([gm.xc + xr, gm.yB + M.tAt(xr)]); }
+    outline.push([gm.xTip, gm.yB + M.tAt(gm.xTip - gm.xc)]);
+    const sh = new THREE.Shape();
+    outline.forEach(([x, y], i) => { const q = M.toGw(x, y); if (i === 0) sh.moveTo(q.x, q.y); else sh.lineTo(q.x, q.y); });
+    sh.closePath();
+    const g = new THREE.ExtrudeGeometry(sh, { depth: M.b, bevelEnabled: false });
+    g.translate(0, 0, M.zMid - M.b / 2);              // flush with the wheel's stock faces
+    if (g.attributes.position.count / 3 !== 4 * outline.length - 4)
+      console.warn(`TODO 219 maintaining spring: the blade extruded to ${g.attributes.position.count / 3} triangles where a simple ${outline.length}-gon gives ${4 * outline.length - 4}`);
+    return g;
+  };
+  const blade = new THREE.Mesh(cutBlade(), MATS.blueSteel);
   blade.name = 'maintSpring';
   greatWheel.add(blade);
   // The PIN, hung from the ring's underside into the crossing: pin stock
@@ -14258,6 +14280,32 @@ let MAINT_RING_POLY = null;   // the ring's cut outline, ring-local — the dete
     };
     // the face offset at X under the load at s, relative to the cut
     const dyAt = (X, L) => (L.F * kern(X, L.a) - Fw * kern(X, gm.xc)) / U;
+    // TODO 291 — THE TIP CLEARS THE HUB LAND AT EVERY POSE, not only as cut. MAINT_SPRING stands the tip one
+    // CLEAR_MARGIN off the hub land in the CUT (working) shape, but the hold relaxes the blade toward the stop flank,
+    // and the free end swings inward with it. The stop is the extreme: travel there is the whole run and the load only
+    // the floor, and the posed face moves monotonically with the travel. Under TODO 291's softer spring the run grew
+    // (0.224 → 0.297 rad, the ring 35 → 25 teeth) and the tip's pin-side corner went 0.056 into the hub land by the stop
+    // (intraUnit, maintHold f ≥ 0.67). So the tip is the SHORTEST that keeps that corner, posed at the stop, one margin
+    // off the land, bisected on the posed shape's own law. The stub beyond the contact carries no load (the
+    // compliance runs from the contact to the root), so trimming it moves no spring quantity; it must still reach past
+    // the contact's station at every pose, which the guard holds.
+    {
+      const stopL = loadAt(M.run), need = M.innerMetalR + CLEAR_MARGIN;
+      const cornerR = (X) => Math.hypot(X, gm.yB + dyAt(X, stopL));
+      if (cornerR(gm.xTip) < need) {
+        let lo = gm.xTip, hi = gm.xc;
+        for (let i = 0; i < 80 && hi - lo > 1e-12; i++) { const m = (lo + hi) / 2; if (cornerR(m) >= need) hi = m; else lo = m; }
+        gm.xTip = hi;
+        // The face must still run past the contact at every pose (the pin bears ON it). The cut wanted a pin radius
+        // past it; under the hub that is not available at this run, and the shortfall is TODO 293's, published below.
+        const aMin = Math.min(loadAt(0).a, stopL.a);
+        if (!(gm.xTip < aMin))
+          console.warn(`TODO 291 maintaining spring: the tip that clears the hub land at the stop (x ${gm.xTip.toFixed(4)}) no longer reaches the contact (stations from ${aMin.toFixed(4)})`);
+        MAINT_TIP_OVERHANG = { u: aMin - gm.xTip, wanted_u: gm.rPin, todo: 'TODO 293' };
+        blade.geometry.dispose();
+        blade.geometry = cutBlade();
+      }
+    }
     const step = gm.rPin * (1 - Math.cos(Math.PI / 16));
     const tipSpan = gm.yPin - pinAt(M.run).y;             // the pin's whole fall toward the flank, run 0 → stop
     const K = Math.ceil(tipSpan / step);
@@ -35594,6 +35642,7 @@ const EQUALISATION = (() => {
       k_Nm_per_rad: k,
       energy,
       section: { ...mainspring.section }, devLen_u: mainspring.devLen,
+      packing: ribbonPacking(mainspring),   // TODO 291 — r/e against the trade's band, and what bound the solve
       setup: {
         clicks: SETUP_CLICKS, teeth: SETUP_RATCHET_TEETH, sweepRad: SETUP_SWEEP,
         quantised: Number.isInteger(SETUP_CLICKS)
@@ -35609,6 +35658,7 @@ const EQUALISATION = (() => {
     alarm: {
       k_Nm_per_rad: kAlarm,
       section: { ...alarmSpring.section }, devLen_u: alarmSpring.devLen,
+      packing: ribbonPacking(alarmSpring),  // TODO 291 — measured on the same law; the alarm ribbon is not solved to it (TODO 201)
       // §104 — the set-up rides under the whole service band: the spring
       // never operates below 80 clicks of tension, and the gate holds the
       // quantisation the same way it holds the going side's 17.
@@ -65456,7 +65506,7 @@ window.__clock = {
     return { holdNet: MAINT_HOLD.holdNet, dHold: MAINT_HOLD.dHold, crestNet: MAINT_HOLD.crestNet, rCrest: MAINT_HOLD.rCrest,
       pitch: MAINT_HOLD.pitch, run: MAINT_HOLD.run, REC: MAINT_HOLD.REC, frames: B.K, frameStep: B.step, tipSpan: B.tipSpan,
       stop: B.stop, tauAt: (s) => B.tauAt(s), loadAt: (s) => { const L = B.loadAt(s); return { F_N: L.F, x: L.p.x, y: L.p.y }; },
-      tauGo: MAINT_SPRING.tauGo, tauFloor: MAINT_SPRING.tauFloor, geom: MAINT_SPRING.geom, detentAz: MAINT_DETENT_AZ,
+      tauGo: MAINT_SPRING.tauGo, tauFloor: MAINT_SPRING.tauFloor, geom: MAINT_SPRING.geom, detentAz: MAINT_DETENT_AZ, tipOverhang: MAINT_TIP_OVERHANG,
       begin: (tau0) => MAINT_HOLD.begin(tau0) };
   },
   get stemSawPitch() { return STEM_SAW_SPEC.pitch; }, // …and its pitch (the stemSlip axis reads this)

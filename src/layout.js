@@ -72,26 +72,33 @@
 // escapement from rest (BALANCE_DRIVE.selfStart). `equalisation` row 15 holds
 // both, and that one step heavier fails one of them. `claimDeg` and `peakDeg`
 // are AMPLITUDE_CLAIM_DEG and AMPLITUDE_PEAK_DEG for that balance (row 14).
-// Measured (the record's own step test, nominal corner, hanging):
-//   18,000  0.645  200.36°  (0.650: 199.09°)   both start
-//   21,600  0.485  200.14°  (0.490: 198.58°)   both start
-//   28,800  0.270  201.75°  (0.275: 199.68°)   both start
-//   36,000  0.250  201.93°  (0.255: 199.75°)   both start   balanceR 7.5
-// — the target binds every row; the start, which a lighter balance makes
-// easier, does not. A row without them is the 18,000 balance's.
-// `balanceR` is the balance's RADIUS (BALANCE_R_SPEC), and only 36,000 moves
-// it: at r 9 the lightest rim the metal allows (balanceWheelDims' floor,
-// 0.2305) sustains about 162° there. The radius is the largest in steps of a
-// quarter that still reaches the target on a rim inside the metal (7.75
-// reaches 199.21° at the lightest grid rim, 0.235), and a smaller balance
-// re-solves the escapement it drives — the roller, the escape-to-balance
-// distance and so the notch, bank and knock (298.27° at r 7.5, so peakDeg
-// 299) all scale off BALANCE_R; the escape wheel and the angles do not.
+// Measured (the record's own step test, nominal corner, hanging), since TODO 291
+// re-proportioned the mainspring to the packing rule (55% of the old ribbon's
+// energy; the old rims were 0.645, 0.485, 0.27 and 0.25 at r 7.5):
+//   18,000  0.36   201.65°  (0.365: 199.43°)   both start
+//   21,600  0.26   200.98°  (0.265: 198.69°)   both start
+// — the target binds both; the start does not. A row without them is the 18,000
+// balance's.
+// TODO 292 — the two FAST rows have no balance the honest spring can drive. At
+// 28,800 the lightest rim on the grid (0.235) sustains 144.75° at r 9 and
+// 150.44° at 8.75, and neither starts; at 36,000 it sustains 138.95° at r 7.5
+// and 152.89° at 7, and neither starts. Each quarter smaller gains a few
+// degrees and costs an escapement re-solve, and the start has not come back at
+// any radius tried. So those rows keep their GEAR TRAINS (the mesh is real and
+// §204's cut stands) and carry no balance: `undriven` names why, SPEC refuses
+// them (it builds the 18,000 watch and says so), and the rate menu does not
+// offer them. They return when the spring's energy does (BACKLOG §339's second
+// drum, or a larger one).
+// `balanceR` is the balance's RADIUS (BALANCE_R_SPEC). The 36,000 row carried
+// r 7.5 under the old spring (the largest quarter step that reached the target
+// at the lightest grid rim), and a smaller balance re-solves the escapement it
+// drives — the roller, the escape-to-balance distance and so the notch, bank and
+// knock all scale off BALANCE_R; the escape wheel and the angles do not.
 const RATE_TABLE = {
-  18000: { fourthTeeth: 80, escPinion: 8, balanceR: 9, rimF: 0.645, claimDeg: 126, peakDeg: 311 }, // 8/80 = 1/10 — the shipped movement
-  21600: { fourthTeeth: 96, escPinion: 8, balanceR: 9, rimF: 0.485, claimDeg: 128, peakDeg: 311 }, // 8/96 = 1/12
-  28800: { fourthTeeth: 96, escPinion: 6, balanceR: 9, rimF: 0.27, claimDeg: 132, peakDeg: 311 }, // 6/96 = 1/16
-  36000: { fourthTeeth: 120, escPinion: 6, module: 0.168, balanceR: 7.5, rimF: 0.25, claimDeg: 133, peakDeg: 299 }, // 6/120 = 1/20 — §204: at 0.168 the wheel keeps the 96-tooth rows' pitch radius
+  18000: { fourthTeeth: 80, escPinion: 8, balanceR: 9, rimF: 0.36, claimDeg: 126, peakDeg: 311 }, // 8/80 = 1/10 — the shipped movement
+  21600: { fourthTeeth: 96, escPinion: 8, balanceR: 9, rimF: 0.26, claimDeg: 128, peakDeg: 311 }, // 8/96 = 1/12
+  28800: { fourthTeeth: 96, escPinion: 6, undriven: 'TODO 292 — no balance the honest mainspring (TODO 291) drives to AMPLITUDE_TARGET_DEG and starts at this rate' }, // 6/96 = 1/16
+  36000: { fourthTeeth: 120, escPinion: 6, module: 0.168, undriven: 'TODO 292 — no balance the honest mainspring (TODO 291) drives to AMPLITUDE_TARGET_DEG and starts at this rate' }, // 6/120 = 1/20 — §204: at 0.168 the wheel keeps the 96-tooth rows' pitch radius
 };
 // The row a rate's balance reads: its own, or the shipped movement's.
 const rateBalanceRow = (vph) => (RATE_TABLE[vph].rimF !== undefined ? RATE_TABLE[vph] : RATE_TABLE[18000]);
@@ -152,7 +159,12 @@ export const SPEC = (() => {
   const given = (v) => v !== undefined && v !== null && v !== '';
   const designed = raw0.arrangement === 'designed';
   const raw = !designed && !Object.keys(ARRANGEMENT).some((k) => given(raw0[k])) ? { ...raw0, ...ARRANGEMENT } : raw0;
-  const vph = RATE_TABLE[raw.vph] ? Number(raw.vph) : 18000;
+  // TODO 292 — a rate whose row carries no balance the spring can drive is REFUSED, loudly: the build is the 18,000
+  // watch, never a stale balance quietly claiming the target at the asked rate.
+  const vphAsked = RATE_TABLE[raw.vph] ? Number(raw.vph) : 18000;
+  if (RATE_TABLE[vphAsked].undriven)
+    console.warn(`TODO 292: ?vph=${vphAsked} is refused — ${RATE_TABLE[vphAsked].undriven}; this build is the 18000 A/h watch`);
+  const vph = RATE_TABLE[vphAsked].undriven ? 18000 : vphAsked;
   // Reserve clamped to what the STRUCTURE accepts: below ~12 h the fusee
   // loses its reason to exist; above 48 h the cone's groove stack (0.7 u per
   // turn, one turn per 8 h) grows past what the plate floor can absorb —
@@ -505,7 +517,10 @@ export function configKey({ spec = SPEC, route = null, tuned = [] } = {}) {
 export const GEARED_BUILT = SPEC.arrest === 'geared';
 export const STOPWORK_BUILT = SPEC.arrest === 'stopwork-site'
   || (SPEC.arrest === null && stopworkReaches(SPEC.reserveHours) && STOPWORK_SITED_HOURS.includes(SPEC.reserveHours));
-export const SPEC_RATES = Object.freeze(Object.keys(RATE_TABLE).map(Number));
+// The rates the menu offers: every row with a balance the spring drives (TODO 292). The refused rows are listed beside
+// them, for the probe that holds the refusal.
+export const SPEC_RATES = Object.freeze(Object.keys(RATE_TABLE).map(Number).filter((r) => !RATE_TABLE[r].undriven));
+export const SPEC_RATES_UNDRIVEN = Object.freeze(Object.keys(RATE_TABLE).map(Number).filter((r) => RATE_TABLE[r].undriven));
 
 // ---------------------------------------------------------------------------
 // Kinematic constants (see SPEC.md "Gear train" + "Escapement behavior")
@@ -1438,6 +1453,18 @@ export const MAINSPRING_SIGMA_Y_BAND = Object.freeze({
   why: 'Nivaflex 45/18 (DIN 2.4782) Rp0.2 after hardening, 1800–2550 MPa by degree of cold work; Rm up to 3000 MPa (Hempel Metals / VACUUMSCHMELZE data)',
 });
 export const MAINSPRING_SIGMA_Y_PA = MAINSPRING_SIGMA_Y_BAND.low;
+// TODO 291 — THE PACKING: how thick a mainspring may be for the arbor it is wound on. The innermost coils' bending round
+// the arbor is what sets or breaks a spring, so the trade sizes the strip's thickness e to the innermost coil's radius r
+// as a ratio α = r/e. David Ichim, "In-Depth: Balancing Mainspring Dimensions Inside the Barrel" (SJX Watches,
+// 7 November 2025): Defossez suggests 16, the old lower limit was about 14, and "the lower limit today is more in the
+// vicinity of 10" with modern alloys and manufacture. A BAND, FRICTION's rule, because the movement does not say which
+// school drew its spring. The solve and the gate read the LOW end, the permissive one, so no verdict rests on the
+// strictest figure. It is a rule of the trade, not a measured property of the alloy, and the record says so.
+export const MAINSPRING_ALPHA_BAND = Object.freeze({
+  low: 10, historical: 14, defossez: 16,
+  why: 'r/e, the innermost coil\'s radius over the strip\'s thickness: ~10 today, ~14 historically, 16 per Defossez (D. Ichim, SJX Watches, 2025-11-07)',
+});
+export const MAINSPRING_ALPHA_MIN = MAINSPRING_ALPHA_BAND.low;
 // TODO 221 — THE CLICK STEEL, named, and why a CONTACT needs it where a beam
 // does not. The maintaining detent's beak bears the whole hold (the going
 // torque on the ring's face, ~2.2 N) across a line one click-thickness long
@@ -1754,7 +1781,10 @@ export const L_HAIRSPRING = L_BALANCE + 1.2;
 // gate holds the result inside real stock; a real hairspring of this
 // thickness runs about this tall.
 export const HAIRSPRING_H_REF = 0.6;   // the height the train's datum was solved at (TRAIN_CEILING_Z)
-export const HAIRSPRING_H = 0.3726;
+// TODO 291 — 0.3726 → 0.2015: the honest mainspring (r/e at the trade's floor) re-solved the 18,000 rim 0.645 → 0.36,
+// which takes k from 7.6628e-8 to 4.1441e-8 N·m/rad (×0.54081, read off both builds' balanceDriveModel), so the
+// height follows it, 0.3726 × 0.54081, to keep §218's 0.0239 mm ribbon.
+export const HAIRSPRING_H = 0.2015;
 // BALANCE COCK: a LOW bridge riding one margin over the hairspring
 // stack, wherever that stack lands — with the low escapement that is
 // ~4 under the three-quarter plate's band, so the cock (and the
@@ -1786,7 +1816,23 @@ export const SPRING_TOP_Z = L_HAIRSPRING + HAIRSPRING_OVERCOIL_RAISE + HAIRSPRIN
 // shorter ribbon it is sprung with are not a reason to re-cut the mainspring
 // either, so the datum is the reference ribbon's.
 export const TRAIN_CEILING_Z = L_HAIRSPRING + HAIRSPRING_H_REF * 0.7;
-export const COCK_SLAB_BOT = SPRING_TOP_Z + CLEAR_MARGIN;
+// TODO 291 applies the rule a THIRD time, one level up. The honest mainspring
+// lightened the balance again (rim 0.645 → 0.36) and the hairspring lost height
+// with it (HAIRSPRING_H 0.3726 → 0.2015), which would lower SPRING_TOP_Z by
+// 1.5·ΔH = 0.257 and with it the cock, the plate floor and every quoted length
+// stacked on them. Booted that way, the stop-work star over the fusee cone lost
+// its running fit (−0.057 a side, §329): the cone stands on the train's datum and
+// the plate came down onto it. A lighter balance is not a reason to re-cut the
+// plate stack, so the stack above the balance keeps the height it was solved at
+// (TODO 207's spring), and the overcoil itself is cut at the real height, which
+// leaves the cock that much more clearance over the spring. The depth the lower
+// spring could buy is real, and spending it is a re-layout of the plate floor
+// against the cone, not part of this fix.
+export const HAIRSPRING_H_STACK = 0.3726;
+export const SPRING_STACK_TOP_Z = L_HAIRSPRING + (HAIRSPRING_H_STACK + CLEAR_MARGIN) + HAIRSPRING_H_STACK / 2;
+if (!(SPRING_TOP_Z <= SPRING_STACK_TOP_Z + 1e-12))
+  console.warn(`TODO 291: the hairspring's top ${SPRING_TOP_Z.toFixed(4)} stands over the stack datum ${SPRING_STACK_TOP_Z.toFixed(4)} — the spring grew past the height the cock and the plate floor were solved at`);
+export const COCK_SLAB_BOT = SPRING_STACK_TOP_Z + CLEAR_MARGIN;
 export const COCK_SLAB_TOP = COCK_SLAB_BOT + COCK_T;
 export const COCK_MID_Z = COCK_SLAB_BOT + COCK_T / 2;
 // Dial plane (watch front, −z side). Part of the same depth budget: the

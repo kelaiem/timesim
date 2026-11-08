@@ -10,11 +10,17 @@
 //   GATES   both boots silent (standing rule 6);
 //           one spec roster and one parsed spec (src/spec-fields.js) in both;
 //           the §52 fingerprint identical across the hosts;
-//           §152's PLACE digest identical for every unit (the quantized world
-//           matrices at every digest pose: every part in the same place).
+//           §152's PLACE agrees for every unit at the digest's own resolution: the
+//           quantized hash equal, or, where a coordinate straddles a cell edge, every
+//           world matrix at every digest pose within one 1/DIGEST_PLACE_Q cell
+//           (a last-ulp difference at an ill-conditioned pose can cross an edge
+//           while the metal stands in the same place; the straddles are reported).
 //   CONTROL the native DEFAULT build's fingerprint must DIFFER from Chromium's
 //           build of the other spec, so equality is something this comparison
 //           can fail to find, and the spec demonstrably reaches each host's build.
+//           And the PLACE tolerance is held the same way: those two different builds
+//           must part by more than a cell somewhere, and a planted two-cell move in
+//           one coordinate must be caught.
 //   REPORT  §152's SHAPE digest per unit, which is NOT gated here, with each
 //           differing unit classified by what differs at the digest poses:
 //             index-order  positions and triangle SET agree: only the index
@@ -67,6 +73,28 @@ function measure(I) {
       for (const m of meshesOf(obj)) u.pos = fnv(m.geometry.attributes.position.array, u.pos);
     }
   }
+  // The PLACE half's RAW metal (the gate below compares it to the digest's own resolution): every mesh's world matrix
+  // at every digest pose, over the digest's own population (collectUnits' walk, the §66 schematic tier pruned, then
+  // the held fixtures), in its order. Packed as Float64 bytes in base64 so a boot's payload stays a few MB.
+  const placeRaw = {};
+  {
+    const pop = [];
+    for (const { name, obj } of c.labelEntries) {
+      const ms = []; const walk = (o) => { if (o.userData && o.userData.schematic) return; if (o.isMesh && o.geometry && o.geometry.attributes.position) ms.push(o); for (const ch of o.children) walk(ch); };
+      walk(obj); if (ms.length) pop.push({ name, ms });
+    }
+    for (const h of I.heldFixtureEntries(c)) pop.push({ name: h.name, ms: h.meshes });
+    const acc = Object.fromEntries(pop.map((u) => [u.name, []]));
+    for (const p of poses) {
+      c.resetInputs(); c.setPose(p); c.scene.updateMatrixWorld(true);
+      for (const u of pop) for (const m of u.ms) acc[u.name].push(...m.matrixWorld.elements);
+    }
+    for (const [name, arr] of Object.entries(acc)) {
+      const b = new Uint8Array(new Float64Array(arr).buffer); let str = '';
+      for (let i = 0; i < b.length; i += 0x8000) str += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000));
+      placeRaw[name] = btoa(str);
+    }
+  }
   c.resetInputs();
   for (const { name, obj } of c.labelEntries) {
     const u = units[name];
@@ -81,7 +109,7 @@ function measure(I) {
     tris.sort();
     u.triSet = fnv(new TextEncoder().encode(tris.join(';')), 0x811c9dc5);
   }
-  return { fingerprint, digests, units, warns: (c.bootWarns || []).slice(),
+  return { fingerprint, digests, units, placeRaw, placeQ: I.DIGEST_PLACE_Q, warns: (c.bootWarns || []).slice(),
     roster: [...(globalThis.__WATCH_SPEC_KEYS || [])], spec: globalThis.__WATCH_SPEC ?? null };
 }
 
@@ -142,8 +170,24 @@ for (const q of SPECS) {
   gate(a.fingerprint.hash === b.fingerprint.hash && a.fingerprint.units === b.fingerprint.units,
     `fingerprint identical: Chromium ${a.fingerprint.hash} / native ${b.fingerprint.hash} (${b.fingerprint.units} units, ${b.fingerprint.poseCount} poses)`);
   const names = [...new Set([...Object.keys(a.digests.units), ...Object.keys(b.digests.units)])].sort();
-  const placeDiff = names.filter((n) => a.digests.units[n]?.place !== b.digests.units[n]?.place);
-  gate(placeDiff.length === 0, `PLACE digest identical for all ${names.length} units over ${b.digests.poseCount} poses${placeDiff.length ? ' — moved: ' + placeDiff.join(', ') : ''}`);
+  // PLACE, judged at the digest's OWN resolution. The hash compares 1/DIGEST_PLACE_Q cells, so two placements a
+  // femtometre apart that straddle a cell edge hash differently: that is what a last-ulp difference in the two V8s'
+  // transcendentals does wherever the pose net samples an ill-conditioned instant (the Balance at maintHold 0.5, τ
+  // 2.6e-12 s apart, its metal 1.2e-9). §152 declared the cell the size of "the same place", so the gate is the cell
+  // itself, never a second tolerance: a unit whose hash agrees agrees exactly, and a unit whose hash differs agrees
+  // only if every coordinate of every matrix at every pose is within one cell. The straddles are REPORTED.
+  const tol = 1 / b.placeQ;
+  if (!(a.placeQ === b.placeQ)) gate(false, `the two hosts quantize PLACE alike (Chromium ${a.placeQ}, native ${b.placeQ})`);
+  const raw = (h, n) => (h.placeRaw[n] ? new Float64Array(Buffer.from(h.placeRaw[n], 'base64').buffer.slice(0)) : null);
+  const maxDev = (A, B) => { if (!A || !B || A.length !== B.length) return Infinity; let m = 0; for (let k = 0; k < A.length; k++) { const d = Math.abs(A[k] - B[k]); if (d > m) m = d; } return m; };
+  const straddle = [], placeDiff = [];
+  for (const n of names) {
+    if (a.digests.units[n]?.place === b.digests.units[n]?.place) continue;
+    const dev = maxDev(raw(a, n), raw(b, n));
+    (dev < tol ? straddle : placeDiff).push(`${n} (max |ΔM| ${Number.isFinite(dev) ? dev.toExponential(2) : 'no matrices to compare'})`);
+  }
+  gate(placeDiff.length === 0, `PLACE agrees for all ${names.length} units over ${b.digests.poseCount} poses within one ${tol.toExponential(0)} digest cell${placeDiff.length ? ' — moved: ' + placeDiff.join(', ') : ''}`);
+  console.log(`  REPORT PLACE hash straddles a cell edge for ${straddle.length} unit(s) whose metal agrees within the cell${straddle.length ? ': ' + straddle.join(', ') : ''}`);
   const shapeDiff = names.filter((n) => a.digests.units[n]?.shape !== b.digests.units[n]?.shape);
   console.log(`  REPORT SHAPE digest differs for ${shapeDiff.length} of ${names.length} units (not gated: see the header)`);
   const tally = { 'index-order': 0, positions: 0, topology: 0, 'not a label unit': 0 };
@@ -170,5 +214,17 @@ const [q0, q1] = SPECS;
 gate(native[q0].fingerprint.hash !== chrome[q1].fingerprint.hash,
   `native '${q0 || 'identity'}' (${native[q0].fingerprint.hash}) differs from Chromium '${q1}' (${chrome[q1].fingerprint.hash}): the comparison can fail, and the spec reaches the build`);
 
-console.log(fails.length ? `\nFAIL — ${fails.length} gate(s)` : '\nPASS — the native host builds the browser\'s movement (fingerprint and every PLACE digest), and SHAPE is reported');
+// The PLACE tolerance's own controls, so "within one cell" is something the comparison can fail to find: two
+// DIFFERENT builds must part by more than a cell somewhere, and one coordinate moved by two cells must be caught.
+{
+  const tol = 1 / native[q0].placeQ;
+  const rawOf = (h, n) => (h.placeRaw[n] ? new Float64Array(Buffer.from(h.placeRaw[n], 'base64').buffer.slice(0)) : null);
+  const dev = (A, B) => { if (!A || !B || A.length !== B.length) return Infinity; let m = 0; for (let k = 0; k < A.length; k++) m = Math.max(m, Math.abs(A[k] - B[k])); return m; };
+  const apart = Object.keys(native[q0].placeRaw).filter((n) => !(dev(rawOf(native[q0], n), rawOf(chrome[q1], n)) < tol));
+  gate(apart.length > 0, `native '${q0 || 'identity'}' and Chromium '${q1}' part by more than one PLACE cell in ${apart.length} unit(s): the tolerance can fail`);
+  const n0 = Object.keys(chrome[q0].placeRaw).find((n) => rawOf(chrome[q0], n)?.length) , A = rawOf(chrome[q0], n0), B = A.slice(); B[B.length >> 1] += 2 * tol;
+  gate(!(dev(A, B) < tol), `a planted two-cell move in '${n0}' is caught (max |ΔM| ${dev(A, B).toExponential(2)} against ${tol.toExponential(0)})`);
+}
+
+console.log(fails.length ? `\nFAIL — ${fails.length} gate(s)` : '\nPASS — the native host builds the browser\'s movement (fingerprint, and every unit\'s PLACE within one digest cell), and SHAPE is reported');
 process.exit(fails.length ? 1 : 0);

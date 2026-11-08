@@ -15,7 +15,7 @@ says how to add a row.
 <!-- roadmap:rows -->
 | Item | What | Status | Branch | Since |
 |---|---|---|---|---|
-| §339 | A twin-barrel going train: two smaller mainspring drums feeding the one fusee chain, so a form case can be cut smaller around them. | Proposed; measuring where the drum binds the form case | `claude/hopeful-cori-3t4xn7` | 2026-11-08 |
+| §339 | A twin-barrel going train: two smaller mainspring drums feeding the one fusee chain, so a form case can be cut smaller around them. | Landing 1's line spec holds: a parallel pair stores the single drum's energy with the chain drum at half its radius; folding it into the alarm-free fitted case is next | `claude/hopeful-cori-3t4xn7` | 2026-11-08 |
 <!-- /roadmap:rows -->
 
 ## Stopped

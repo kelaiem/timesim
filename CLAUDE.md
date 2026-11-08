@@ -1042,7 +1042,9 @@ GPU, the DOM, the network and the frames; the spec roster is
 `src/spec-fields.js`, which index.html imports too). Build code that reaches
 for the page while cutting metal (a new fetch, a DOM read) breaks that host;
 `native-host.yml` runs `probe-338-native-boot.mjs`, which holds the
-fingerprint and every PLACE digest equal to Chromium's. SHAPE is reported, not
+fingerprint equal to Chromium's and every unit's PLACE within one
+`DIGEST_PLACE_Q` cell of it (the hash where it agrees, the raw matrices where a
+last-ulp difference straddles a cell edge, which it reports). SHAPE is reported, not
 gated: the two hosts' V8 versions disagree in the last ulp of transcendentals,
 and a few meshes change vertex count on it.
 

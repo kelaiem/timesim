@@ -38,7 +38,7 @@ import { ZERO_AREA_MAX, CLEAR_MARGIN, HANDOFF_TRACK_TOL, UNIT_MM, Z_DIAL, SLENDE
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME, SPEC,                                    // §36 Apply: the same predicate that builds the unit, and the same name
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, rigidSplit,
-  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R_SPEC, BALANCE_R_REF, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG, STOPWORK_BUILT, GEARED_BUILT } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
+  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, MAINSPRING_ALPHA_MIN, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R_SPEC, BALANCE_R_REF, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG, STOPWORK_BUILT, GEARED_BUILT } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 import { auditLubrication, LUBRICATION, LUBRICATION_DEBT, LUBRICATION_WAIVERS } from './lubrication.js';   // §247 tier one
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
@@ -10967,8 +10967,20 @@ export function checkOscillator(clock) {
 //     ribbon's release over the arbor's turning) times each corner's stages up
 //     to the fourth arbor's pivots, the ceiling the adverse corner's, and the
 //     reset rod's mean load at it inside the 50 mN its transfer row prices.
+// 19. THE RIBBONS' PACKING (TODO 291) — each ribbon's α = r/e (its collar over
+//     its strip's thickness) re-derived from the record's section and held to
+//     MAINSPRING_ALPHA_MIN, the low end of the trade's band. A ribbon under it is
+//     waived by NAME in RIBBON_PACKING_WAIVERS, and a waiver whose ribbon meets
+//     it is STALE. The control is the going ribbon as it stood before TODO 291
+//     (a 0.22008 half-thickness on the 1.5 collar, α 3.41), which the same rule
+//     must refuse.
 // TODO 193 — the ribbons over their alloy, by name. A row cites the TODO whose
 // fix path brings it under, and FAILS when its ribbon already is (stale).
+// TODO 291 — the ribbons under the packing band, by name; RIBBON_STRESS_WAIVERS' convention.
+export const RIBBON_PACKING_WAIVERS = {
+  // (going: never waived — TODO 291 solved its collar to the band)
+  alarm: 'TODO 201 — α 3.12 on its 0.594 collar (TODO 291 measured it); the ribbon is re-proportioned and re-cut as a strip together with §104\'s governor solve, and that solve takes MAINSPRING_ALPHA_MIN beside the stress',
+};
 export const RIBBON_STRESS_WAIVERS = {
   // (going: RETIRED by TODO 192 step 3 — the ribbon is proportioned to the limit, so its waiver went stale and the gate said so)
   alarm: 'TODO 201 — over the alloy\'s TENSILE strength at full wind; the ribbon is re-proportioned and re-cut as a strip together with §104\'s governor solve',
@@ -11390,6 +11402,23 @@ export function checkEqualisation(clock) {
       failures.push({ what: 'ribbon over its alloy at full wind', ribbon: half, sigma_MPa: st.sigma_Pa[1] / 1e6, limit_MPa: MAINSPRING_SIGMA_Y_PA / 1e6 });
     if (!over && waiver)
       failures.push({ what: 'stale ribbon stress waiver', ribbon: half, cites: waiver, sigma_MPa: st.sigma_Pa[1] / 1e6 });
+  }
+  // Row 19 (TODO 291) — THE RIBBONS' PACKING.
+  const packs = (rCollar, a) => rCollar / (2 * a) >= MAINSPRING_ALPHA_MIN - 1e-9;
+  if (packs(1.5, 0.22007610004803033))
+    failures.push({ what: 'ribbon packing control', note: 'the pre-TODO 291 going ribbon (α 3.41) passed the packing rule — the rule measures nothing' });
+  for (const [half, R] of [['going', g], ['alarm', a]]) {
+    const pk = R.packing;
+    if (!pk) { failures.push({ what: 'ribbon packing rows', ribbon: half, note: 'equalisation.' + half + '.packing is missing' }); continue; }
+    if (!(rel(pk.thicknessU, 2 * R.section.a) <= 1e-12 && rel(pk.alpha, pk.collarR / (2 * R.section.a)) <= 1e-12))
+      failures.push({ what: 'ribbon packing identity', ribbon: half, record: pk, section_a: R.section.a });
+    if (!(pk.limit === MAINSPRING_ALPHA_MIN))
+      failures.push({ what: 'ribbon packing limit', ribbon: half, record: pk.limit, layout: MAINSPRING_ALPHA_MIN });
+    const under = !packs(pk.collarR, R.section.a), waiver = RIBBON_PACKING_WAIVERS[half];
+    if (under && !waiver)
+      failures.push({ what: 'ribbon under the packing band', ribbon: half, alpha: pk.alpha, limit: MAINSPRING_ALPHA_MIN });
+    if (!under && waiver)
+      failures.push({ what: 'stale ribbon packing waiver', ribbon: half, cites: waiver, alpha: pk.alpha });
   }
   // the going ribbon's k IS its strip at the alloy's modulus — the identity
   // that makes "the shape cancels" true of this record and not just of algebra
