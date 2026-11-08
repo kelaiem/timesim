@@ -43,6 +43,7 @@ export const SPEC_FIELDS = Object.freeze({
   rsvidl: 'rsvIdlers',              // §313 — idler PAIRS between the reserve train's p1 and w2 (0, 2, 4 or 6 idlers), for a station farther from the barrel than two meshes reach; null = the two-stage train as designed
   rsvsweep: 'rsvSweepDeg',          // §308 L4 option A — the reserve hand's graduated sweep, degrees (the reduction train re-solves from it; null = 300)
   arrest: { field: 'arrest', parse: String },   // §329 landing 2a — 'trailing' measures the trailing-side winding arrest's site (no metal yet); absent = §47's arrest
+  barrels: 'barrels',               // §339 landing 2b — 2 builds the going drum as a CHAIN PULLEY geared to ONE BARREL in the free disc (layout.js PULLEY_BARREL); absent (or 1) = the one drum, as designed
   drumaz: 'drumAzDeg',              // §75 step 1 — the mainspring drum's azimuth about the fusee, degrees, movement frame (counter-clockwise from +x); absent = the blended default
   strap: 'strapMm',                 // 2026-11-01 — the strap width, mm between the lugs (the spring bar's free length); absent = 19, the default; the cap is 20
   alarm: 'alarm',                   // §325 landing 3 — 0 builds the movement WITHOUT the alarm complication (no alarm, gong or pusher; their plate openings uncut); absent = the alarm, as designed

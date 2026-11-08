@@ -45,7 +45,7 @@ const PORT = 8000 + Math.floor(Math.random() * 900);
 // The rect build is the battery's `form-rect` spec point (tools/ci-battery.mjs), written out because a spec row is a URL
 const KINDS = [
   { name: 'round', q: '', twin: true, silent: true },
-  { name: 'rect', q: 'case=rect&formrect=-45.72,45.72,-44.38,44.38', twin: true, silent: false },
+  { name: 'rect', q: 'case=rect&formrect=-46.99,46.99,-43.93,43.93', twin: true, silent: false },
   { name: 'free', q: 'case=free', twin: false, silent: false },
 ];
 const srv = spawn('python3', ['-m', 'http.server', String(PORT), '--bind', '127.0.0.1'], { cwd: ROOT, stdio: 'ignore' });
