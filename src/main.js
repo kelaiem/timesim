@@ -16780,6 +16780,34 @@ const balanceCock = G.makeCock({
   const jy = balanceCockLen * COCK_JEWEL_AT;
   const cs = Math.cos(balanceCock.rotation.z), sn = Math.sin(balanceCock.rotation.z);
   balanceCock.position.set(P.balance.x + jy * sn, P.balance.y - jy * cs, COCK_MID_Z);
+  // TODO 295 — THE PIVOT'S PATH IS OPEN, measured off the cut rather than
+  // restated from the stack the builder was handed. makeCock bores the slab
+  // for its chaton now; this holds it bored, here, where the staff's axis and
+  // the placed slab are both known. A ray up the balance staff's own axis must
+  // leave the slab's metal untouched — anything it meets is nickel standing
+  // between the slab's underside and the stone, which is exactly the path
+  // BALANCE_SHOULDER_TOP_Z derives the pivot's top to run along.
+  // Both sides of the comparison are MOVEMENT-frame: P.balance and COCK_MID_Z
+  // are the layout's own coordinates, and the cock is not parented into
+  // `movement` until further down, so updateMatrixWorld leaves matrixWorld
+  // equal to its movement-frame matrix. Nothing here reads a world quantity
+  // through an ancestor, which is the one thing that call cannot do (TODO 139).
+  {
+    balanceCock.updateMatrixWorld(true);
+    const slab = balanceCock.getObjectByName('cockSlab');
+    if (!slab) {
+      console.warn('TODO 295: the balance cock has no cockSlab — its jewel bore cannot be measured');
+    } else {
+      const ray = new THREE.Raycaster(
+        new THREE.Vector3(P.balance.x, P.balance.y, COCK_MID_Z - COCK_T),
+        new THREE.Vector3(0, 0, 1), 0, COCK_T * 2);
+      const hits = ray.intersectObject(slab, false);
+      if (hits.length)
+        console.warn(`TODO 295: the balance cock's staff axis meets its own slab at z `
+          + `${hits.map((h) => h.point.z.toFixed(3)).join(', ')} — the jewel bore is not cut through, and the `
+          + `pivot is drawn into that metal (bore ${balanceCock.userData.jewelBoreR?.toFixed(3)})`);
+    }
+  }
   // BRIDGE FOOT to the BASE plate. The cock used to be plate furniture —
   // a step web and tail plate lying on the three-quarter plate's top
   // face. It is escapement furniture now: a turned leg drops from under
