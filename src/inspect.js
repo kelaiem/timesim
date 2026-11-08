@@ -3797,6 +3797,10 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Keyless works', a: 'settingDropTopPivot', b: 'settingDropTopBush', why: 'TODO 289 landing 1: the drop\'s upper pivot in its bush in the blind bore\'s floor over A, at PIVOT_BORE_CLEAR' },
   { unit: 'Keyless works', a: 'settingRiseTopPivot', b: 'settingRise', why: 'TODO 289 landing 1: the rise\'s upper pivot, turned on the rod\'s own end up past B against its tilt — one body' },
   { unit: 'Keyless works', a: 'settingRiseTopPivot', b: 'settingRiseTopBush', why: 'TODO 289 landing 1: the rise\'s upper pivot in its bush in the blind bore\'s floor over B, at PIVOT_BORE_CLEAR' },
+  // TODO 289 landing 4 — the drop running in its lower bush over the keyless minute wheel, hung from the plate
+  { unit: 'Keyless works', a: 'settingDrop', b: 'settingDropBush', why: 'TODO 289 landing 4: the drop in its lower bush between the keyless minute wheel and corner A, at PIVOT_BORE_CLEAR' },
+  { unit: 'Keyless works', a: 'settingDropBush', b: 'settingDropArm', why: 'TODO 289 landing 4: the bush welded to its hanger\'s arm' },
+  { unit: 'Keyless works', a: 'settingDropArm', b: 'settingDropColumn', why: 'TODO 289 landing 4: the arm on its column' },
   // TODO 289 landing 2 — leg 1 running in its two blocks, each let into a pocket in the plate's dial face
   { unit: 'Keyless works', a: 'settingTraverse1', b: 'settingTraverseBlockA', why: 'TODO 289 landing 2: leg 1 in its bearing block near A, at PIVOT_BORE_CLEAR' },
   { unit: 'Keyless works', a: 'settingTraverse1', b: 'settingTraverseBlockK', why: 'TODO 289 landing 2: leg 1 in its bearing block near K, at PIVOT_BORE_CLEAR' },
@@ -5187,6 +5191,7 @@ export const PLATE_SEATS = [
   { unit: "Keyless works", mesh: "settingDropTopBush", kind: "housed", why: "TODO 289 landing 1: the drop's upper bush, pressed into the blind bore's floor over A" },
   { unit: "Keyless works", mesh: "settingRiseTopPivot", kind: "pivot", why: "TODO 289 landing 1: the rise's upper pivot, run up into the blind bore's floor over B" },
   { unit: "Keyless works", mesh: "settingRiseTopBush", kind: "housed", why: "TODO 289 landing 1: the rise's upper bush, pressed into the blind bore's floor over B" },
+  { unit: "Keyless works", mesh: "settingDropColumn", kind: "planted", why: "TODO 289 landing 4: the drop's lower bush's hanger, let one section into the plate's dial face (the tail hangers' seat)" },
   { unit: "Keyless works", mesh: "settingTraverseBlockA", kind: "planted", why: "TODO 289 landing 2: leg 1's bearing block near A, its top face seated on its pocket's floor in the dial face" },
   { unit: "Keyless works", mesh: "settingTraverseBlockK", kind: "planted", why: "TODO 289 landing 2: leg 1's bearing block near K, seated on the floor of the pocket cut as one opening with the fold corner's bore" },
   { unit: "Keyless works", mesh: "settingTraverse2BlockK", kind: "planted", why: "TODO 289 landing 3: leg 2's bearing block near K, seated on the floor of its pocket, cut as one opening with the fold corner's bore and leg 1's K-side pocket" },
