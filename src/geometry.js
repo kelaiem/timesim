@@ -8506,7 +8506,9 @@ export function makeJewelSetting({ r, holeR = r * 0.5 }) {
   const collarG = new THREE.LatheGeometry(pts, 32);
   collarG.rotateX(Math.PI / 2); // stand the profile up along Z
   assertLatheOutward(collarG, 'a jewel setting\'s collar');
-  g.add(new THREE.Mesh(collarG, MATS.nickel));
+  const collar = new THREE.Mesh(collarG, MATS.nickel);
+  collar.name = 'chatonCollar';   // §322/§329: NAMED — TODO 295 declares its press fit in the host it is now bored into
+  g.add(collar);
   // TODO 12: the stone at floor stock. d·0.8 gave 0.269 u at the balance
   // cock's setting; the max floors it at 0.12 mm while staying inside the
   // collar's lathe wall, which reaches −d−0.1 (deepest stone bottom here is
@@ -8514,6 +8516,7 @@ export function makeJewelSetting({ r, holeR = r * 0.5 }) {
   const rubyDepth = st.rubyDepth;
   const ruby = new THREE.Mesh(ringExtrude(wallR - seatGap, holeR, rubyDepth, 32), MATS.ruby);
   ruby.position.z = rimTop - seatGap - rubyDepth / 2; // top sits below the rim
+  ruby.name = 'chatonStone';
   g.add(ruby);
   g.userData.r = r;
   // Where the stone is, setting-local, so a pivot can be run THROUGH it
