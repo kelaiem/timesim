@@ -23,12 +23,45 @@
 // Energies are the ribbons' own ½k(θ_full² − θ_setup²) over the service band, each at its own angles. Nothing here is
 // friction-priced: the coupling mesh is a stage loss the build's energy column takes from FRICTION when it is folded.
 import { barrelDims, barrelArborR, solveRibbon } from './ribbon-solve.js';
+import { solveSpringWind, springWindBeta, SPRING_WIND_NPT } from './fusee-wind.js';
 import { UNIT_MM, MAINSPRING_E_PA, MAINSPRING_SIGMA_Y_PA, MAINSPRING_ALPHA_MIN } from './layout.js';
 
 const U = UNIT_MM / 1000;   // metres per unit
 // The collar's floor, the law main.js's MS_COLLAR_MIN states: the arbor's working section plus the 0.6 boss wall.
 export const COLLAR_BOSS_U = 0.6;
 export const collarFloor = (R) => barrelArborR(R) + COLLAR_BOSS_U;
+
+// THE CHAIN INTERFACE (landing 2a's correction). Landing 1 held drum A's wind angles at the single drum's, and that is
+// only true at the single drum's radius: the chain coils on drum A, so A's angle per unit of chain is 1/R_wrap. What the
+// fusee actually sees is the chain's tension along its length, F = M/R_wrap, against the cone's radius. The cut is
+// r(t) = P/u(t) with u² = θ_s² + 4πW·P·t/R_wrap (the closed form; main.js' span-aware solve corrects it by under 1%), so
+// the cone is the SAME cone when θ_s and P both scale by ρ = R_wrap₀/R_wrap and the level radius r₀ = P/θ_s is held. The
+// set-up is a whole number of clicks on the set-up ratchet (SETUP_RATCHET_TEETH, equalisation's integer-click row), so ρ
+// is that count over today's, and drum A's radius is DERIVED from the click count:
+//     R_A = R_wrap₀·(clicks₀/clicks) − CHAIN_END_R_OUT.
+// The span's give is the one term that is not invariant (it reads R_wrap and the centre distance D), so the angles come
+// from the build's own solve at A's geometry, never from the scaling. The hook then needs k₀/ρ² for today's torque.
+// `fw` is the booted build's __clock.fuseeWind record.
+export function chainDrumR(clicks, fw) {
+  return fw.inputs.DRUM_WRAP_R * (fw.setupClicks / clicks) - fw.chainEndROut;
+}
+// main.js' FUSEE_DRUM_DIST = FUSEE_R_LARGE + R + 2.5: the XY gap its drum block justifies (clearance taken in z)
+export const DRUM_GAP_U = 2.5;
+export const levelP = (clicks, fw) => fw.inputs.FUSEE_LEVEL_P * (clicks / fw.setupClicks);
+export function chainDrumAngles({ R, clicks, fw }) {
+  const I = fw.inputs;
+  const SETUP_SWEEP = (clicks * 2 * Math.PI) / fw.setupTeeth;
+  const DRUM_WRAP_R = R + fw.chainEndROut;
+  // main.js' own expressions, in its order, so the default (clicks₀) reproduces the booted record to the bit
+  const FUSEE_LEVEL_P = levelP(clicks, fw);                   // r₀ = P/θ_s held: the cone's large end does not move
+  const FUSEE_R_LARGE = FUSEE_LEVEL_P / SETUP_SWEEP;
+  const FUSEE_DRUM_DIST = FUSEE_R_LARGE + R + DRUM_GAP_U;
+  const SPRING_WIND_BETA = springWindBeta({ FUSEE_WRAP_TURNS: I.FUSEE_WRAP_TURNS, FUSEE_R_LARGE, SETUP_SWEEP, DRUM_WRAP_R });
+  const sol = solveSpringWind({ ...I, FUSEE_LEVEL_P, DRUM_WRAP_R, FUSEE_DRUM_DIST, SETUP_SWEEP, SPRING_WIND_BETA });
+  const full = sol.u[I.SPRING_WIND_NPT ?? SPRING_WIND_NPT];
+  return { R, clicks, setup: SETUP_SWEEP, full, sweep: full - SETUP_SWEEP, Rw: DRUM_WRAP_R, D: FUSEE_DRUM_DIST,
+    P: FUSEE_LEVEL_P, rho: fw.inputs.DRUM_WRAP_R / DRUM_WRAP_R, sol };
+}
 
 // One drum's ribbon, solved at its own angles. `c` is the ribbon's axial half-height (the record's section.c), which
 // the drum's height sets and the twin keeps for both drums (they share the train's band).
