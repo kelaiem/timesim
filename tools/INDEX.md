@@ -4,7 +4,7 @@
 
 # The instruments
 
-416 scripts. **289 are ACCEPTANCE tests** — they decide and exit non-zero.
+417 scripts. **290 are ACCEPTANCE tests** — they decide and exit non-zero.
 **127 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -270,6 +270,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-337-geared-build.mjs` | §337 | report | §337 landing 2b, stage 2 — THE GEARED GENEVA'S METAL, measured off a boot of ?arrest=geared. A REPORT (it prints and judges nothing; stage 3 gates what it shows). |
 | `probe-337-geared-checks.mjs` | §337 | report | §337 landing 2b, stage 3 — WHAT THE INSPECTOR SAYS ABOUT THE GEARED LINE. A REPORT (it prints and judges nothing): it boots ?arrest=geared and runs the inspector checks that cover a mechanism's wiring (support / drive graph, expected contacts, intra-unit contacts, mesh integrity / coverage / phase, transmission, penetration, the wind-arrest hand-offs), then prints each verdict's size and its first rows. Stage 3 turns what it shows into rows (the geared meshes' contacts, the graph edge) and a gate. node tools/probe-337-geared-checks.mjs [reserve hours] [check …] (default 24; default checks as below) |
 | `probe-337-geared-geneva.mjs` | §337 | acceptance | §337 landing 1 — THE GEARED GENEVA'S LINE, HELD. ACCEPTANCE (exits non-zero on a failure). |
+| `probe-337-geared-invariant.mjs` | §337 | acceptance | §337, TODO 294 — THE GEARED BUILD'S INVARIANT, AT EVERY RESERVE THE KEY CUTS METAL FOR. ACCEPTANCE (exits non-zero on a failure). |
 | `probe-337-record.mjs` | §337 | acceptance | §337 landing 2b, stage 3 — THE RECORD'S MEASURED BLOCK, HELD TO THE BUILD. ACCEPTANCE (exits non-zero on a failure). |
 | `probe-338-check-profile.mjs` | §338 | acceptance | §338 landing 0 — WHERE DOES THE BATTERY'S CHECK TIME GO, BY FUNCTION? |
 | `probe-338-kernel-parity.mjs` | §338 | acceptance | §338 landing 5 — G3, KERNEL PARITY: does the compiled kernel answer what the JS reference answers, and where it does not, is it the truer of the two? |
