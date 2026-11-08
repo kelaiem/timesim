@@ -49,11 +49,16 @@ export function chainDrumR(clicks, fw) {
 export const DRUM_GAP_U = 2.5;
 export const levelP = (clicks, fw) => fw.inputs.FUSEE_LEVEL_P * (clicks / fw.setupClicks);
 export function chainDrumAngles({ R, clicks, fw }) {
+  return chainDrumAnglesAt({ R, setup: (clicks * 2 * Math.PI) / fw.setupTeeth, P: levelP(clicks, fw), fw, clicks });
+}
+// The same at any set-up angle θ_s (the pulley's: its set-up is the barrel's, carried back through the mesh), with
+// P = P₀·θ_s/θ_s₀ so r₀ = P/θ_s is held, unless P is given.
+export function chainDrumAnglesAt({ R, setup, P = null, fw, clicks = null }) {
   const I = fw.inputs;
-  const SETUP_SWEEP = (clicks * 2 * Math.PI) / fw.setupTeeth;
+  const SETUP_SWEEP = setup;
   const DRUM_WRAP_R = R + fw.chainEndROut;
   // main.js' own expressions, in its order, so the default (clicks₀) reproduces the booted record to the bit
-  const FUSEE_LEVEL_P = levelP(clicks, fw);                   // r₀ = P/θ_s held: the cone's large end does not move
+  const FUSEE_LEVEL_P = P ?? I.FUSEE_LEVEL_P * (setup / I.SETUP_SWEEP);   // r₀ = P/θ_s held: the cone's large end does not move
   const FUSEE_R_LARGE = FUSEE_LEVEL_P / SETUP_SWEEP;
   const FUSEE_DRUM_DIST = FUSEE_R_LARGE + R + DRUM_GAP_U;
   const SPRING_WIND_BETA = springWindBeta({ FUSEE_WRAP_TURNS: I.FUSEE_WRAP_TURNS, FUSEE_R_LARGE, SETUP_SWEEP, DRUM_WRAP_R });
@@ -101,4 +106,33 @@ export function seriesTwin({ R, c, setup, sweep, ...opts }) {
   if (!each) return { R, feasible: false };
   // in series the stiffnesses add as compliances: k = k₁k₂/(k₁+k₂) = k/2 for two equal ribbons
   return { R, feasible: true, each, kHook: each.k / 2, energyJ: 2 * each.energyJ };
+}
+
+// THE CHAIN PULLEY AND ONE BARREL (landing 2a', the owner's choice 2026-11-08 over the twin as specified). Drum A carries
+// the chain and NO spring: it is a toothed pulley. Drum B, the one barrel, stands in the free disc and meshes A's wall
+// band, zA teeth on A, zB on B (both pitch circles at the drums' walls, one module m), so B turns n = zA/zB times A.
+// The set-up is B's alone, a whole NB clicks on a set-up ratchet of `teeth` (the build's cut, 24), so the hook sees
+// θ_s = θ_sB/n and the torque n·k_B·(n·u) = n²·k_B·u: proportional, with nothing to match between two set-ups.
+// The cone is the same cone when θ_s·R_wrap,A = θ_s₀·R_wrap₀ =: Q (chainDrumR's invariant), and with R_A = m·zA/2 that
+// fixes the module:
+//     Q = θ_sB·(zB/zA)·(m·zA/2 + c_end)   ⇒   m = 2·(Q/θ_sB − c_end·zB/zA)/zB,   R_B = Q/θ_sB − c_end/n.
+// So (zA, zB, NB) are the design's integers and every length follows from them (rule 1).
+export function pulleyBarrel({ zA, zB, NB, fw, c, teeth = fw.setupTeeth, ...opts }) {
+  const I = fw.inputs, ce = fw.chainEndROut;
+  const n = zA / zB;
+  const setupB = (NB * 2 * Math.PI) / teeth;
+  const Q = I.SETUP_SWEEP * I.DRUM_WRAP_R;
+  const m = (2 * (Q / setupB - (ce * zB) / zA)) / zB;
+  if (!(m > 0)) return { zA, zB, NB, n, m, feasible: false, why: 'no positive module' };
+  const RA = (m * zA) / 2, RB = (m * zB) / 2;
+  const chain = chainDrumAnglesAt({ R: RA, setup: setupB / n, fw });
+  const B = drumRibbon({ R: RB, c, setup: setupB, sweep: n * chain.sweep, ...opts });
+  const out = { zA, zB, NB, n, m, RA, RB, setupB, chain, B, centreDistance: RA + RB, invariant: (chain.setup * chain.Rw) / Q - 1 };
+  if (!B) return { ...out, feasible: false, why: 'no ribbon for B' };
+  const kHook = n * n * B.k;
+  const lawDev = [0, 0.25, 0.5, 0.75, 1].reduce((mx, f) => {
+    const u = chain.setup + f * chain.sweep, T = n * B.k * (n * u);
+    return Math.max(mx, Math.abs(T / u - kHook) / kHook);
+  }, 0);
+  return { ...out, feasible: true, kHook, lawDev, energyJ: B.energyJ };
 }
