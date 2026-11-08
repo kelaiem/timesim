@@ -3762,6 +3762,12 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Keyless works', a: 'settingCapBush', b: 'settingCapArm', why: 'TODO 289: the bush welded to its hanger\'s arm' },
   { unit: 'Keyless works', a: 'settingCapArm', b: 'settingCapColumn', why: 'TODO 289: the arm on its column' },
   { unit: 'Keyless works', a: 'settingCapArbor', b: 'settingCapJewel', why: 'TODO 289: the cap arbor\'s upper pivot through the stone of a jewel set in the cap pocket\'s floor, at PIVOT_BORE_CLEAR' },
+  // TODO 289 landing 1 — the upper pivots over the drop's and the rise's corners: each the rod's own continuation
+  // through its apex (one body), running in a bush pressed into its blind bore's floor
+  { unit: 'Keyless works', a: 'settingDropTopPivot', b: 'settingDrop', why: 'TODO 289 landing 1: the drop\'s upper pivot, turned on the rod\'s own end up past A — one body' },
+  { unit: 'Keyless works', a: 'settingDropTopPivot', b: 'settingDropTopBush', why: 'TODO 289 landing 1: the drop\'s upper pivot in its bush in the blind bore\'s floor over A, at PIVOT_BORE_CLEAR' },
+  { unit: 'Keyless works', a: 'settingRiseTopPivot', b: 'settingRise', why: 'TODO 289 landing 1: the rise\'s upper pivot, turned on the rod\'s own end up past B against its tilt — one body' },
+  { unit: 'Keyless works', a: 'settingRiseTopPivot', b: 'settingRiseTopBush', why: 'TODO 289 landing 1: the rise\'s upper pivot in its bush in the blind bore\'s floor over B, at PIVOT_BORE_CLEAR' },
   // §99 found the other two joints of the same cluster, the same way the
   // declared row below found its first: the two wheels keyed to the long
   // keyless arbor sit at the measurement boundary and the flag flips
@@ -5142,6 +5148,10 @@ export const PLATE_SEATS = [
   { unit: "Keyless works", mesh: "settingCapColumn", kind: "planted", why: "TODO 289: the cap arbor bush's hanger, the same seat" },
   { unit: "Keyless works", mesh: "settingCapArbor", kind: "pivot", why: "TODO 289: the cap arbor's upper pivot, run up through the cap and its jewel's stone into the plate (the jewel's recess, not cut from the slab — the train pivots' construction)" },
   { unit: "Keyless works", mesh: "settingCapJewel", kind: "housed", why: "TODO 289: the cap arbor's jewel, its setting sunk in the cap pocket's floor a margin under the face" },
+  { unit: "Keyless works", mesh: "settingDropTopPivot", kind: "pivot", why: "TODO 289 landing 1: the drop's upper pivot, run up into the blind bore's floor over A (its bush's bore, not cut from the slab — the train pivots' construction)" },
+  { unit: "Keyless works", mesh: "settingDropTopBush", kind: "housed", why: "TODO 289 landing 1: the drop's upper bush, pressed into the blind bore's floor over A" },
+  { unit: "Keyless works", mesh: "settingRiseTopPivot", kind: "pivot", why: "TODO 289 landing 1: the rise's upper pivot, run up into the blind bore's floor over B" },
+  { unit: "Keyless works", mesh: "settingRiseTopBush", kind: "housed", why: "TODO 289 landing 1: the rise's upper bush, pressed into the blind bore's floor over B" },
   { unit: "Alarm link", mesh: "alarmLinkHanger1", kind: "planted", why: "a hanger, standing on the plate" },
   { unit: "Alarm link", mesh: "alarmLinkHanger2", kind: "planted", why: "a hanger, standing on the plate" },
   { unit: "Alarm link", mesh: "alarmLinkHanger3Upper", kind: "planted", why: "§261 2c: hanger 3's upper column — jogged round the beak's bar — standing on the plate" },
@@ -12515,7 +12525,11 @@ const TURN_LAP_MAX_FRAC = 0.5;
 // exactly — judged whole, the post read L/D 32.2 off the tip's ⌀ over the
 // whole length; alone the tip is 9.6, and the shank is cut to the target over
 // the post's whole length, which is what the body is still read over.
-const TURN_END_PIVOTS = new Set(['trainPivot', 'balancePivot', 'alarmLinkageDriverPin']);
+// TODO 289 landing 1 adds the setting fold's three shouldered pivots: the rise's past E (TODO 289's tail) and past B,
+// and the drop's past A — each a reduced step at a bar's END, turned against the rod's shoulder. With both rise pivots
+// on its ends the rise read L/D 25.3 off the lower pivot's ⌀ over the whole bar; by member the body is the rod's
+// own 0.764 over that span and each pivot is judged alone.
+const TURN_END_PIVOTS = new Set(['trainPivot', 'balancePivot', 'alarmLinkageDriverPin', 'settingRisePivot', 'settingRiseTopPivot', 'settingDropTopPivot']);
 // §280 — PARTS FITTED INTO A BORE, never turned from the bar they sit in. A
 // spring bar is a TUBE with a tip pin sprung in each end and a coil spring
 // between them: three parts, none of them stock the others are cut from. The

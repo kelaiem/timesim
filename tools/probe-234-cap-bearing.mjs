@@ -92,8 +92,10 @@ for (const row of F.scan) {
 }
 console.log('');
 let bad = 0;
-// (a) the legs as cut
-for (const [n, len, r] of [['settingTraverse1', F.len1, F.leg1R], ['settingTraverse2', F.len2, F.leg2R]]) {
+// (a) the legs as cut — apex to apex, less the run each leg stops short of the upper pivot leaving its apex
+// (TODO 289 landing 1: leg 1 short of the drop's pivot up from A, leg 2 of the rise's up from B; 0 where none is sited)
+const cutOf = (k) => { const u = F.bearings?.upper?.[k]; return u && !u.why ? u.legCut : 0; };
+for (const [n, len, r] of [['settingTraverse1', F.len1 - cutOf('drop'), F.leg1R], ['settingTraverse2', F.len2 - cutOf('rise'), F.leg2R]]) {
   const L = R.legs[n];
   const ok = L && Math.abs(L.len - len) < 1e-9 && Math.abs(L.r - r) < 1e-9;
   if (!ok) bad++;
