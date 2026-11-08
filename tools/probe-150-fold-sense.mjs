@@ -262,7 +262,9 @@ const out = await page.evaluate(async ({ bases, tauBases }) => {
   // TODO 289 — the tail's bearings are the fold's own metal (each bush reads its rod at the running fit, the
   // jewel the cap arbor): inside FOLD, so FOLD CLEAR judges the fold against what is NOT the fold
   const BEARINGS = ['settingRisePivot', 'settingRiseBush', 'settingRiseArm', 'settingRiseColumn', 'settingStubBush', 'settingStubArm',
-    'settingStubColumn', 'settingCapBush', 'settingCapArm', 'settingCapColumn', 'settingCapJewel'];
+    'settingStubColumn', 'settingCapBush', 'settingCapArm', 'settingCapColumn', 'settingCapJewel',
+    // TODO 289 landing 1 — the upper pivots over A and B (one body with the drop and the rise) and their bushes in the blind floors
+    'settingDropTopPivot', 'settingDropTopBush', 'settingRiseTopPivot', 'settingRiseTopBush'];
   const FOLD = new Set(['settingDrop', 'mwCornerDropIn', 'mwCornerDropOut', 'settingTraverse1', 'mwCornerFoldIn',
     'mwCornerFoldOut', 'settingTraverse2', ...MOVED, ...BEARINGS]);
   const labelOf = (o) => { for (let q = o; q; q = q.parent) if (q.name) return q.name; return '(unnamed)'; };

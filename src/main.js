@@ -9229,10 +9229,67 @@ async function siteTailBearings(B, F, g, cap) {
   // which fills the plate's underside), the column rising from the arm to the plate's dial face. The standoff is
   // the least that clears every blank, the cap's swept tip, the motion works' discs, every rod, the hangers
   // already placed, and foots the column on plate metal outside the merged pocket-and-bore opening.
+  // --- TODO 289 landing 1: THE UPPER PIVOTS AT A AND B, in the plate over each corner. Each corner's plate opening
+  // was cut THROUGH the slab only because its blanks' cone-distance sphere reaches into the plate's z-band; no blank
+  // reaches past the apex + coneR (makeConicalGear's bound, the one the openings are sized by), so the opening is
+  // BLIND at the floor apex.z + coneR + margin and the plate over it is metal again — the bridge the rise asked for.
+  // The rod each corner's vertical-ish shaft carries (the drop up from A, the rise up from B against its own tilt)
+  // runs on through the corner's empty sphere as a shouldered pivot into a plain BUSH pressed into that floor: its
+  // lowest rim flush with the floor, its far end inside the slab's top face. Per pivot, the largest radius that
+  //   · is no wider than its rod;
+  //   · lets the leg that meets it at the apex stop clear of it and still reach its own blank's web (the leg is cut
+  //     (r + legR + m)/sin θ short of the apex, θ the pivot's angle to the leg, and must keep zWebLo of its blank);
+  //   · passes every blank of the fold by the margin (the certified envelopes the tail is judged by);
+  //   · leaves its bush, bore r + PIVOT_BORE_CLEAR and wall STOCK_MIN_U, room in the slab above the floor for the
+  //     bush's law: a plain journal's L/D 1 where the shaft's loads are STRADDLED (the rise: its two blanks between
+  //     this bush and the one past E), the band's whole room where it is the shaft's ONLY bearing (the drop — its
+  //     lower end is still owed, and the overhung rule's ratio is reported, never met).
+  // A pivot no radius down to TRAIN_PIVOT_R admits runs as before, through its open bore, and warns.
+  const upper = {};
+  {
+    const riseHoleR = spec(moduleRise, sigmaB, MW_LEG2_R, MW_RISE_R).coneR + m;   // MW_RISE_PLATE_HOLE's law
+    const capPocketFin = capTipR + m + plateR * G.PLATE_BEVEL_F + SEAT_LAND_LAP;   // MW_CAP_BORE_MERGED's own sum, its pocket side
+    const riseMerged = Math.hypot(B.x - cap.x, B.y - cap.y) < capPocketFin + riseHoleR;
+    const sDropOut = spec(BEVEL_MODULE, 90, MW_LEG1_R, SETTING_ROD_R), sRiseIn = spec(moduleRise, sigmaB, MW_LEG2_R, MW_RISE_R);
+    const sites = [
+      // the drop: up from A, against leg 1 leaving A along leg1U; overhung (the minute wheel below is borne by nothing yet)
+      { key: 'drop', o: settingA.clone(), u: Z_UP.clone(), leg: F.leg1U.clone(), legR: MW_LEG1_R, legWeb: sDropOut.zWebLo, rodR: SETTING_ROD_R,
+        coneR: sDropOut.coneR, straddled: false, why: null },
+      // the rise: up from B against d1, against leg 2 arriving from K (so leaving B along −leg2U); straddled
+      { key: 'rise', o: B.clone(), u: d1.clone().negate(), leg: F.leg2U.clone().negate(), legR: MW_LEG2_R, legWeb: sRiseIn.zWebLo, rodR: MW_RISE_R,
+        coneR: sRiseIn.coneR, straddled: true, why: riseMerged ? 'the rise corner\'s bore is the cap pocket\'s own through-bore on this arrangement' : null },
+    ];
+    for (const st of sites) {
+      const cosP = st.u.z, sinP = Math.sqrt(Math.max(0, 1 - cosP * cosP)), sinT = st.u.clone().cross(st.leg).length();
+      const floorZ = st.o.z + st.coneR + m;
+      const geom = (r) => {
+        const bore = r + PIVOT_BORE_CLEAR, outer = bore + MW_BUSH_WALL;
+        const s0 = (floorZ - st.o.z + outer * sinP) / cosP;                         // the bush's near end: its lowest rim on the floor
+        const room = (PLATE_TOP_FACE - st.o.z - outer * sinP) / cosP - s0;          // to its far rim at the slab's top face
+        const len = st.straddled ? 2 * r * MW_BUSH_LD_MIN : room;
+        return { r, bore, outer, s0, room, len, legCut: (r + st.legR + m) / sinT };
+      };
+      const fits = (r) => { const q = geom(r);
+        return r <= st.rodR + 1e-12 && q.legCut <= st.legWeb + 1e-12 && q.room >= 2 * r * MW_BUSH_LD_MIN - 1e-12
+          && !blanksClear({ o: vArr(st.o), a: vArr(st.u), r, zLo: 0, zHi: q.s0 }, m)
+          && !blanksClear({ o: vArr(st.o), a: vArr(st.u), r: q.outer, zLo: q.s0, zHi: q.s0 + q.len }, m); };
+      if (!st.why && !fits(TRAIN_PIVOT_R)) st.why = `no ${st.key} pivot down to r ${TRAIN_PIVOT_R.toFixed(4)} fits the blind bore's floor`;
+      if (st.why) { upper[st.key] = { why: st.why }; continue; }
+      let lo = TRAIN_PIVOT_R, hi = st.rodR;
+      if (fits(hi)) lo = hi; else while (hi - lo > 1e-4) { const mid = (lo + hi) / 2; if (fits(mid)) lo = mid; else hi = mid; }
+      const q = geom(lo);
+      upper[st.key] = { why: null, o: st.o, u: st.u, leg: st.leg, floorZ, coneR: st.coneR, straddled: st.straddled, ...q,
+        sEnd: q.s0 + q.len, centre: st.o.clone().addScaledVector(st.u, q.s0 + q.len / 2) };
+    }
+  }
   const nOut = (() => { const n = Z_UP.clone().cross(t3).normalize(); const r = new THREE.Vector2(E.x - MW_WORLD.x, E.y - MW_WORLD.y); return (n.x * r.x + n.y * r.y) >= 0 ? n : n.negate(); })();
   const colR = MW_HANGER_S * Math.SQRT1_2, colTop = PLATE_BACK + MW_HANGER_SEAT;
+  // the legs as they will be cut: each stops clear of the upper pivot that leaves its apex
+  const leg1A = upper.drop.why ? settingA.clone() : settingA.clone().addScaledVector(F.leg1U, upper.drop.legCut);
+  const leg2B = upper.rise.why ? B.clone() : B.clone().addScaledVector(F.leg2U, -upper.rise.legCut);
   const rods = [   // every rod of the fold, as it will be cut: [a, b, r]
-    [settingA, new THREE.Vector3(settingA.x, settingA.y, SETTING_SPUR_Z), SETTING_ROD_R], [settingA, F.K, MW_LEG1_R], [F.K, B, MW_LEG2_R],
+    ...['drop', 'rise'].filter((k) => !upper[k].why).map((k) => [upper[k].o, upper[k].o.clone().addScaledVector(upper[k].u, upper[k].sEnd), upper[k].r]),
+    [settingA, new THREE.Vector3(settingA.x, settingA.y, SETTING_SPUR_Z), SETTING_ROD_R], [leg1A, F.K, MW_LEG1_R], [F.K, leg2B, MW_LEG2_R],
     [B, E, MW_RISE_R], ...(riseWhy ? [] : [[E, E.clone().addScaledVector(d1, riseS0 + riseBushLen), risePivotR]]), [stubA, stubB, MW_RISE_R], [arborBot, arborTop, MW_RISE_R]];
   const pocketR = capTipR + m + plateR * G.PLATE_BEVEL_F + SEAT_LAND_LAP;   // MW_CAP_POCKET's finished radius, its bevel at the face and its floor's lapped collar
   const boreRB = spec(moduleRise, sigmaB, MW_LEG2_R, MW_RISE_R).coneR + m + plateR * G.PLATE_BEVEL_F;   // MW_RISE_PLATE_HOLE's law, with the slab's bevel at the face
@@ -9279,6 +9336,7 @@ async function siteTailBearings(B, F, g, cap) {
   const capH = capWhy ? null : await hangerFor('cap', capC, Z_UP, capBushR, capBushLen);
   if (!capH && !capWhy) capWhy = 'no hanger standoff outward of the cap arbor\'s bush clears the fold';
   return {
+    upper, leg1A, leg2B,
     nOut, riseWhy, stubWhy, capWhy, risePivotR, riseS0, riseBushLen, riseRoom, riseLen, stubStart, stubEnd, stubA, stubB, stubBush: { ...stubBush, mid: stubBushMid, run: stubRun },
     capS0, capBushLen, jewelZ, stoneTopZ, stoneBotZ, arborTop, arborBot, capTipR, pocketR,
     overhang: { rise: riseLen - bevelLoadZ(sRiseOut) + riseS0, stub: Math.max(sFoot.zWebHi + m - bevelLoadZ(sFoot), sCap.zWebHi + m - bevelLoadZ(sCap)) },
@@ -9334,11 +9392,6 @@ async function buildSettingMetal(B, parent, { candidate = false } = {}) {
   await breathe(73);
   const module = foldModuleFor(F.shaftAngleDeg);
   await breathe(74);
-  const leg1 = makeRodSegment(settingA, F.K, MW_LEG1_R);
-  leg1.name = 'settingTraverse1';
-  const leg2 = makeRodSegment(F.K, B, MW_LEG2_R);
-  leg2.name = 'settingTraverse2';
-  parent.add(leg1, leg2);
   // a refused shipped B still builds (the battery judges it): the leg at the
   // scan's least-tilt ceiling, straight down, with a nominal stub
   const g = S && !S.refused ? S : capLegAt(B, F, 0, 2 * MW_CAP_ENV.R + CLEAR_MARGIN);
@@ -9352,6 +9405,13 @@ async function buildSettingMetal(B, parent, { candidate = false } = {}) {
     if (candidate) return { F, refused: T.refused, noFold };
     console.warn(`TODO 289: ${T.refused} — building the tail without them; the battery judges it`);
   }
+  // …and since landing 1 the LEGS follow the upper pivots the same way: leg 1 stops clear of the drop's pivot up
+  // from A, leg 2 of the rise's up from B, each still through its own blank's web (siteTailBearings: legCut)
+  const leg1 = makeRodSegment(T.leg1A ?? settingA, F.K, MW_LEG1_R);
+  leg1.name = 'settingTraverse1';
+  const leg2 = makeRodSegment(F.K, T.leg2B ?? B, MW_LEG2_R);
+  leg2.name = 'settingTraverse2';
+  parent.add(leg1, leg2);
   const rise = makeRodSegment(B, E, MW_RISE_R);
   rise.name = 'settingRise';
   const stub = T.refused ? makeRodSegment(E, D, MW_RISE_R) : makeRodSegment(T.stubA, T.stubB, MW_RISE_R);
@@ -9462,6 +9522,21 @@ async function buildSettingMetal(B, parent, { candidate = false } = {}) {
     jewel.traverse((o) => { if (o.isMesh) o.name = 'settingCapJewel'; });
     parent.add(jewel);
     bearings.jewel = jewel;
+    // TODO 289 landing 1 — the upper pivots at A and B and their bushes in the blind bores' floors
+    // (siteTailBearings: upper). The pivot is the rod's own continuation through the apex (one body with the drop,
+    // or with the rise); the bush is pressed into the plate, its bore the pivot's running fit.
+    for (const [k, tag] of [['drop', 'settingDrop'], ['rise', 'settingRise']]) {
+      const U = T.upper[k];
+      if (U.why) { if (!candidate) console.warn(`TODO 289: ${U.why} — the ${k} runs without its upper bearing on this arrangement`); continue; }
+      const pivot = makeRodSegment(U.o, U.o.clone().addScaledVector(U.u, U.sEnd), U.r);
+      pivot.name = `${tag}TopPivot`;
+      const bush = new THREE.Mesh(ringGeo(U.bore, U.outer, U.len), MATS.nickel);
+      bush.name = `${tag}TopBush`;
+      bush.position.copy(U.centre);
+      bush.quaternion.setFromUnitVectors(Z_UP, U.u);
+      parent.add(pivot, bush);
+      bearings[`${k}Top`] = { pivot, bush };
+    }
   }
   return { F, module, leg1, leg2, rise, stub, capArbor, cornerDrop, cornerFold, cornerRise, cornerFoot, cornerCap, settingCap, capXY,
     leg: S && !S.refused ? S : null, E, D, tail: T, bearings };
@@ -10029,6 +10104,25 @@ if (SETTING_METAL.bearings.jewel) {
   if (T.hangers.stub) SETTING_METAL.stub.userData.bearings = { axis: 'y', stations: [alongY(SETTING_METAL.stub, T.hangers.stub.c)] };
   SETTING_METAL.capArbor.userData.bearings = { axis: 'y', stations: [...(T.hangers.cap ? [alongY(SETTING_METAL.capArbor, T.hangers.cap.c)] : []),
     alongY(SETTING_METAL.capArbor, new THREE.Vector3(SETTING_CAP_XY.x, SETTING_CAP_XY.y, (T.stoneTopZ + T.stoneBotZ) / 2))].sort((a, b) => a - b) };
+  // TODO 289 landing 1 — the upper pivots over A and B: the pivot is its rod's (one body), the bush is a bearing;
+  // the pivot declares its bush's station, and rule 6 re-reads each law off the cut metal
+  for (const [k, sub] of [['drop', 'Setting drop'], ['rise', 'Setting rise']]) {
+    const top = SETTING_METAL.bearings[`${k}Top`], U = T.upper[k];
+    if (!top) continue;
+    registerSub('Keyless works', sub, top.pivot);
+    registerSub('Keyless works', 'Setting bearings', top.bush);
+    top.pivot.userData.bearings = { axis: 'y', stations: [alongY(top.pivot, U.centre)] };
+    const pr = top.bush.geometry.parameters;
+    const bore = Math.min(...pr.points.map((q) => q.x)), outer = Math.max(...pr.points.map((q) => q.x)), len = Math.max(...pr.points.map((q) => q.y)) - Math.min(...pr.points.map((q) => q.y));
+    const want = U.straddled ? 2 * U.r * MW_BUSH_LD_MIN : U.room;
+    if (Math.abs(bore - (U.r + PIVOT_BORE_CLEAR)) > 1e-9 || Math.abs(outer - bore - MW_BUSH_WALL) > 1e-9 || Math.abs(len - want) > 1e-9)
+      console.warn(`TODO 289: the ${k}'s upper bush is cut bore ${bore.toFixed(4)} / wall ${(outer - bore).toFixed(4)} / length ${len.toFixed(4)} against its law ${(U.r + PIVOT_BORE_CLEAR).toFixed(4)} / ${MW_BUSH_WALL.toFixed(4)} / ${want.toFixed(4)}`);
+    // the bush stands in the slab over the blind floor: its lowest rim on the floor, its highest inside the top face
+    const cosP = U.u.z, sinP = Math.sqrt(Math.max(0, 1 - cosP * cosP));
+    const lowZ = U.o.z + U.s0 * cosP - U.outer * sinP, highZ = U.o.z + U.sEnd * cosP + U.outer * sinP;
+    if (Math.abs(lowZ - U.floorZ) > 1e-9 || !(highZ <= PLATE_TOP_FACE + 1e-9))
+      console.warn(`TODO 289: the ${k}'s upper bush spans z ${lowZ.toFixed(4)}…${highZ.toFixed(4)}, not the floor ${U.floorZ.toFixed(4)} to inside the top face ${PLATE_TOP_FACE.toFixed(4)}`);
+  }
   // rule 6 — the derivations, re-read off the cut metal: each bush's bore is its journal plus the one running fit,
   // each bush as long as its law says, the rise's pivot inside the dial band by the margin, the arm one section
   // long at least, and the column's foot inside the plate's slab by the seat (the plate itself is cut far below;
@@ -11550,11 +11644,28 @@ const MW_CAP_BORE_MERGED = Math.hypot(settingB.x - SETTING_CAP_XY.x, settingB.y 
   < MW_CAP_POCKET_R + plateR * G.PLATE_BEVEL_F + SEAT_LAND_LAP + MW_RISE_PLATE_HOLE.r;
 const MW_CAP_POCKET = { x: SETTING_CAP_XY.x, y: SETTING_CAP_XY.y, depth: MW_PLATE_SINK, lap: SEAT_LAND_LAP, r: MW_CAP_POCKET_R,
   ...(MW_CAP_BORE_MERGED ? { through: MW_RISE_PLATE_HOLE } : {}) };
+// TODO 289 landing 1 — the drop's and the rise's corner bores, BLIND where siteTailBearings sited an upper pivot
+// over them: the same opening (coneR + margin, the bound no blank passes), sunk only to the floor a margin over
+// the blanks' sphere, so the plate above stands as the floor the pivot's bush is pressed into. The floor's collar
+// laps SEAT_LAND_LAP into the slab like every pocket's (TODO 172). Where no pivot was sited the bore stays through.
+const MW_BLIND_BORES = (() => {
+  const U = SETTING_METAL.tail?.upper ?? {};
+  const out = {};
+  for (const [k, hole] of [['drop', MW_DROP_PLATE_HOLE], ['rise', MW_RISE_PLATE_HOLE]]) {
+    const u = U[k];
+    if (!u || u.why) continue;
+    if (Math.abs(u.coneR + CLEAR_MARGIN - hole.r) > 1e-9)
+      console.warn(`TODO 289: the ${k} corner's blind bore was sited for coneR ${u.coneR.toFixed(4)}, but the plate's opening is cut for ${(hole.r - CLEAR_MARGIN).toFixed(4)}`);
+    out[k] = { x: hole.x, y: hole.y, r: hole.r, depth: u.floorZ - PLATE_BACK, lap: SEAT_LAND_LAP };
+  }
+  if (out.rise && MW_CAP_BORE_MERGED) console.warn('TODO 289: the rise corner\'s bore is sited blind but the plate merges it into the cap\'s pocket');
+  return out;
+})();
 // TODO 184 — the cut's arguments are ONE object, so the late re-cut below
 // (recutBackPlate) cuts the same plate with its late openings added rather
 // than restating this list.
 const BACK_PLATE_CUT = {
-  pockets: [MW_CANNON_POCKET, MW_CAP_POCKET],
+  pockets: [MW_CANNON_POCKET, MW_CAP_POCKET, ...Object.values(MW_BLIND_BORES)],
   radius: plateR, thickness: BACK_PLATE_T,
   // §307 — under ?case=rect the plate's outline is the form rectangle (the
   // movement frame is the plate's own: backPlate sits at the origin). The
@@ -11568,9 +11679,11 @@ const BACK_PLATE_CUT = {
   holes: [
     ...BACK_PLATE_HOLES,
     MW_FOLD_PLATE_HOLE,   // §234 fold — the third motion-works corner's blanks, A's precedent
-    MW_DROP_PLATE_HOLE,   // TODO 150 item 1 — the drop corner's own recess at A, same precedent
-    // (MW_RISE_PLATE_HOLE is cut with the cap's pocket — MW_CAP_POCKET.through — where the two overlap; TODO 289)
-    ...(MW_CAP_BORE_MERGED ? [] : [MW_RISE_PLATE_HOLE]),
+    // TODO 150 item 1 — the drop corner's own recess at A, same precedent (BLIND since TODO 289 landing 1, a pocket)
+    ...(MW_BLIND_BORES.drop ? [] : [MW_DROP_PLATE_HOLE]),
+    // (MW_RISE_PLATE_HOLE is cut with the cap's pocket — MW_CAP_POCKET.through — where the two overlap; TODO 289;
+    // and blind, a pocket of its own, where the rise's upper pivot is sited over it — landing 1)
+    ...(MW_CAP_BORE_MERGED || MW_BLIND_BORES.rise ? [] : [MW_RISE_PLATE_HOLE]),
     // §307 landing 2 — NOT under FORM: these bores pass the §186 clamp
     // screws through the round RIM, and the form plate has no rim (the outline
     // replaces it) and the form case builds no clamps (form-case.js) — a
@@ -65194,6 +65307,11 @@ window.__clock = {
         arborTop: vArr(T.arborTop), arborBot: vArr(T.arborBot), pocketR: T.pocketR,
         overhang: { ...T.overhang }, overhangK: MW_BEVEL_OVERHANG_K, ldMin: MW_BUSH_LD_MIN, wall: MW_BUSH_WALL, boreClear: PIVOT_BORE_CLEAR, hangerS: MW_HANGER_S, seat: MW_HANGER_SEAT,
         hangers: { rise: H(T.hangers.rise), stub: H(T.hangers.stub), cap: H(T.hangers.cap) },
+        // TODO 289 landing 1 — the upper pivots over A and B (siteTailBearings: upper), and the legs cut clear of them
+        upper: Object.fromEntries(['drop', 'rise'].map((k) => { const U = T.upper[k];
+          return [k, U.why ? { why: U.why } : { why: null, apex: vArr(U.o), axis: vArr(U.u), r: U.r, bore: U.bore, outer: U.outer, s0: U.s0, len: U.len, room: U.room,
+            sEnd: U.sEnd, centre: vArr(U.centre), floorZ: U.floorZ, coneR: U.coneR, legCut: U.legCut, straddled: U.straddled }]; })),
+        leg1A: vArr(T.leg1A), leg2B: vArr(T.leg2B), plateTop: PLATE_TOP_FACE,
       };
     })() : null,
     capLeg: SETTING_METAL.leg && {
