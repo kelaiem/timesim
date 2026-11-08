@@ -18,6 +18,10 @@
 //     hulls the build publishes (__clock.regions), its control the area the build cut, then with the drum group out and
 //     with the pulley and the barrel at the best box's seat. The case is what a wearer measures, and it is solved about
 //     the hands, so the box and the case can disagree; this row is what found that they do.
+//   - the seats SCORED BY THE CASE (a 2° subsample, the fit being a ~10 s solve), and the BOUND with the fields ignored
+//     (every other part re-sited): today's outline as the screen, the roomiest seats fitted;
+//   - and the LARGEST BARREL that clears the fields and stands inside today's outline, and inside the drum-out one: the
+//     radius a barrel's energy would have to be found in if it is to give the case area back.
 // Moving parts are read at rest, so a seat is a CANDIDATE for the fold's sweeps, not a placement.
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { bootMany } from './boot-pool.mjs';
@@ -118,7 +122,7 @@ show('smallest box', [...seats].sort((p, q) => p.area - q.area || q.margin - p.m
   const fitArea = (pts) => { const h = convexHull2(Float64Array.from(pts, (q) => q[0]), Float64Array.from(pts, (q) => q[1]), pts.length);
     const xs = h.map((q) => q[0]), ys = h.map((q) => q[1]);
     const fit = fitFittedCase(h, [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)], { margin: PLATE_RIM_MARGIN, centre: FT.centre, flatMin: FT.flatMin });
-    return { area: shapeArea(fit.shape) * mm2, b: fit.shape.bounds }; };
+    return { area: shapeArea(fit.shape) * mm2, b: fit.shape.bounds, shape: fit.shape }; };
   const circ = (x, y, r, n = 64) => Array.from({ length: n }, (_, i) => [x + (r / Math.cos(Math.PI / n)) * Math.cos((2 * Math.PI * i) / n), y + (r / Math.cos(Math.PI / n)) * Math.sin((2 * Math.PI * i) / n)]);
   const all = Object.values(FT.units).flat(), rest = Object.entries(FT.units).filter(([k]) => !DRUM.includes(k)).flatMap(([, v]) => v);
   const A0 = fitArea(all), A1 = fitArea(rest);
@@ -128,5 +132,50 @@ show('smallest box', [...seats].sort((p, q) => p.area - q.area || q.margin - p.m
   console.log(`THE FITTED CASE (fitFittedCase about the hands): the build cut ${f(FT.fitAreaMm2)} mm²; every unit re-fitted ${f(A0.area)} mm² (${Math.abs(A0.area / FT.fitAreaMm2 - 1) < 1e-5 ? 'reproduces it' : 'DOES NOT reproduce it'}), ${bx(A0)}`);
   console.log(`  the drum group out: ${f(A1.area)} mm², ${bx(A1)} — ${Math.abs(A1.area - A0.area) < 1e-3 ? 'the drum does not set the case' : `${f(A0.area - A1.area)} mm² back`}`);
   console.log(`  the pulley and barrel at the best box's seat: ${f(A2.area)} mm², ${bx(A2)} — ${f(((A2.area / A0.area) - 1) * 100, 1)}% against today`);
+  // the seat scored BY THE CASE: every seat on a 2° grid of both azimuths (a subsample: the fit is a solve per seat),
+  // the least case area, ties to the widest margin. The box above is not the case's ranking; this is.
+  const scored = seats.filter((s) => Math.abs(s.aA / 2 - Math.round(s.aA / 2)) < 1e-9 && Math.abs(s.aB / 2 - Math.round(s.aB / 2)) < 1e-9)
+    .map((s) => ({ s, fit: fitArea([...rest, ...circ(s.A.x, s.A.y, rAt), ...circ(s.B.x, s.B.y, X.RB + X.m)]) }))
+    .sort((p, q) => p.fit.area - q.fit.area || q.s.margin - p.s.margin);
+  console.log(`  scored by the case (${scored.length} seats on the 2° grid):`);
+  for (const { s, fit } of scored.slice(0, 5)) console.log(`    ${f(fit.area)} mm² (${f(((fit.area / A0.area) - 1) * 100, 1)}%), ${bx(fit)}: pulley ${s.aA}°, barrel ${s.aB}° off it, least margin ${f(s.margin, 3)}`);
+  // the BOUND: the same fit with A anywhere on its ring round the fusee and B anywhere on its mesh circle, the fields
+  // ignored (every other part could be re-sited, P3's position space). If even this does not beat today, no seat can.
+  // THE BOUND, with every other part free to move (P3's position space, the fields ignored): A anywhere on its ring
+  // round the fusee, B anywhere on its mesh circle, every 1°. A fit is a solve (about ten seconds), so the screen is
+  // TODAY'S CASE itself: a seat whose two circles stand inside today's outline at the rim margin can only fit a case
+  // no larger, so the least room any seat finds there says whether one can give area back. The six roomiest are fitted.
+  const fitR = (a, r) => { const sh = a.shape; let w = Infinity; for (const [x, y] of r) w = Math.min(w, sh.inset(x, y)); return w - PLATE_RIM_MARGIN; };
+  const pts = (aA, aB) => { const t = (aA * Math.PI) / 180, ph = (aB * Math.PI) / 180, A = [fus[0] + dA * Math.cos(t), fus[1] + dA * Math.sin(t)];
+    const B = [A[0] + X.centreDistance * Math.cos(ph), A[1] + X.centreDistance * Math.sin(ph)];
+    return [...circ(A[0], A[1], rAt, 24), ...circ(B[0], B[1], X.RB + X.m, 48)]; };
+  const room = [];
+  for (let aA = 0; aA < 360; aA++) for (let aB = 0; aB < 360; aB++) room.push({ aA, aB, w: fitR(A0, pts(aA, aB)) });
+  room.sort((p, q) => q.w - p.w);
+  console.log(`  the bound (no field: A anywhere on its ring, B anywhere on its circle, 1°): the roomiest seat stands ${f(room[0].w, 3)} ${room[0].w >= 0 ? 'inside' : 'OUTSIDE'} today's outline at the rim margin (pulley ${room[0].aA}°, barrel ${room[0].aB}° off it)`);
+  const near = []; for (const r of room) { if (near.every((q) => Math.hypot(q.aA - r.aA, q.aB - r.aB) > 20)) near.push(r); if (near.length === 6) break; }
+  for (const r of near) { const t = (r.aA * Math.PI) / 180, A = [fus[0] + dA * Math.cos(t), fus[1] + dA * Math.sin(t)], ph = (r.aB * Math.PI) / 180;
+    const ft = fitArea([...rest, ...circ(A[0], A[1], rAt), ...circ(A[0] + X.centreDistance * Math.cos(ph), A[1] + X.centreDistance * Math.sin(ph), X.RB + X.m)]);
+    console.log(`    pulley ${r.aA}°, barrel ${r.aB}° off it: room ${f(r.w, 3)}, fitted ${f(ft.area)} mm² (${f(((ft.area / A0.area) - 1) * 100, 1)}%), ${bx(ft)}`); }
+  // HOW SMALL WOULD B HAVE TO BE? Over the same rings (A at 1°, B at 1°, the fields kept, the span ignored), the largest
+  // barrel radius whose tooth tips clear the fields AND stand inside an outline at the rim margin: today's (a case no
+  // larger) and the drum-out one (all of the drum's area back). The barrel's spring scales with its plan, so this is
+  // the radius the energy would have to be found in.
+  for (const [tag, O] of [["today's outline", A0], ['the drum-out outline', A1]]) {
+    let bestR = -Infinity, at0 = null;
+    for (let aA = 0; aA < 360; aA++) { const t = (aA * Math.PI) / 180, A = [fus[0] + dA * Math.cos(t), fus[1] + dA * Math.sin(t)];
+      if (Math.min(F2(A[0], A[1]) - rAt, F1(A[0], A[1]) - rCoil) < 0 || fitR(O, circ(A[0], A[1], rAt, 24)) < 0) continue;
+      for (let aB = 0; aB < 360; aB++) { const ph = (aB * Math.PI) / 180;
+        // B's centre moves with its radius on the mesh: centres r_pA + R_B apart, the module held
+        const rB = (R) => [A[0] + (X.rpA + R) * Math.cos(ph), A[1] + (X.rpA + R) * Math.sin(ph)];
+        let lo = 0, hi = X.RB * 1.5;
+        const okR = (R) => { const B = rB(R); return F0(B[0], B[1]) >= R && F2(B[0], B[1]) >= R + X.m && fitR(O, circ(B[0], B[1], R + X.m, 48)) >= 0; };
+        if (!okR(lo + 0.5)) continue;
+        for (let it = 0; it < 30; it++) { const mid = (lo + hi) / 2; if (okR(mid)) lo = mid; else hi = mid; }
+        if (lo > bestR) { bestR = lo; at0 = { aA, aB }; } } }
+    console.log(`  the largest barrel inside ${tag} with the fields kept: R ${at0 ? f(bestR, 3) : 'none'} against the pick's ${f(X.RB, 3)}${at0 ? ` (pulley ${at0.aA}°, barrel ${at0.aB}° off it; plan ${f((bestR / X.RB) * (bestR / X.RB) * 100, 0)}% of the pick's)` : ''}`);
+  }
+  const decl = scored.find(({ s }) => s.aA === PULLEY_BARREL.pulleyAzDeg && s.aB === PULLEY_BARREL.barrelAzDeg);
+  console.log(`  the declared seat (pulley ${PULLEY_BARREL.pulleyAzDeg}°, barrel ${PULLEY_BARREL.barrelAzDeg}°): ${decl ? `${f(decl.fit.area)} mm²` : 'not on the 2° grid or not a seat'}`);
 }
 process.exit(0);
