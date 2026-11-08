@@ -1059,13 +1059,16 @@ reaches, so `tools/check-det-math.mjs` fails on it (`--fix` rewrites it as
 **Since §338 landing 3 the BATTERY runs natively too**: `node --import
 ./tools/native/loader.mjs tools/battery-native.mjs [--only a,b] [--report F]`
 drives the same `BATTERY` table through `inspect.js`, each row judged by its own
-`fails`, and `tools/report-diff.mjs` compares two `--report`s leaf for leaf
+`fails`, sharded over `--shards K` worker threads by the browser's own `COSTS` and
+`partition` (`tools/battery-plan.mjs`, shared), and `tools/report-diff.mjs` compares two `--report`s leaf for leaf
 (175,444 leaves identical between Chromium and native at landing). A new check
 needs nothing native: it runs in both hosts the day it lands. A check that
 genuinely needs a page carries `host: 'page'` in its `BATTERY` row, and the
 native runner skips it by name. **A bounds tree never writes a geometry's
 `boundingBox`** (`setBoundingBox: false`): MeshBVH's padded box made the AABB
-pre-filter a function of what the page had rendered.
+pre-filter a function of what the page had rendered. Compare reports of the SAME
+mode: a split run's census counters (the two extrema sweeps') differ from a
+whole run's on both hosts, its verdicts never do.
 
 State (camera pose, wind, τ) persists via the dev server's `/__state` temp
 file, falling back to `localStorage`. **Back it up before clearing it** —
