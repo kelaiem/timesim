@@ -808,19 +808,26 @@ jobs:
   # job's own timing once it has run): ~26 + 194 + 226 s is ~7.4 min, times
   # 1.66, 12.3 -> 13. The battery's gate step waits the same 13.
   #
-  # 13 -> 18 for §337 stage 3's geared-Geneva line, and this row is PROJECTED,
-  # not measured in a dev container like the two above - say so rather than let
-  # it read as the same kind of number. probe-337-geared-geneva.mjs boots the
-  # THIRTEEN reserves 12..48 h (each only to read its own fusee stall torque;
-  # the rules are then pure math) through boot-pool.mjs, whose default lane
-  # count on a 4-vCPU runner is 2. Measured here, M2 Max 2026-11-07: 201.2 s at
-  # one lane, 105.1 s at two, 40.2 s at eight. The projection uses boot-pool's
-  # OWN measured ubuntu-latest table rather than this box: a solo boot there is
-  # 31.8 s against ~13.9 s here (2.29x), and two at once amortise to 19.1 s a
-  # boot, so 13 boots at the runner's own default is ~250 s, call it ~280 with
-  # node's start. 13 min already covers ~740 s of runner wall, so ~1020 s is
-  # 17.0 -> 18. RE-DERIVE FROM THIS JOB'S OWN TIMING once it has run, which is
-  # the standing rule the two rows above carry too.
+  # 13 -> 18 for §337 stage 3's geared-Geneva line. This row is the only one
+  # here MEASURED ON THE RUNNER ITSELF, re-derived as the rule above demands
+  # from the first run that ever executed the probe in CI (run 42432485347, job
+  # 128584226352, PR #918, 2026-11-08): probe-337-geared-geneva.mjs took
+  # 228.3 s of this job's wall, and the job as a whole 744.0 s, 12.4 min, which
+  # the 18 clears with 336 s spare (1.45x). The old 13 would have left 36 s,
+  # so the raise was needed; 18 is kept because it is what has now been
+  # observed to hold, not because 1020 s was ever projected.
+  #
+  # TWO THINGS THAT PROJECTION GOT WRONG, left here because the rows above
+  # reason the same way. It read "13 min already covers ~740 s of runner wall":
+  # that 740 was the dev-container figure times 1.66, not an observation, and
+  # these probes without §337's actually take 515.7 s (744.0 - 228.3). So the
+  # 1.66x same-tree spread OVER-PREDICTS this job - observed 515.7 / 446 is
+  # 1.16x - and §337's own projection was high the same way, ~280 s against
+  # 228.3 measured, 1.23x. The two caps above are still derived through 1.66
+  # and may therefore be looser than they need to be; they are NOT touched
+  # here, because this is ONE SAMPLE of one job and nothing above has been
+  # measured on the runner yet. Re-derive each from its own timing, not from
+  # this one.
   battery-probes:
     name: battery probes
     needs: route
