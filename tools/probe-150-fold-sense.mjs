@@ -268,7 +268,9 @@ const out = await page.evaluate(async ({ bases, tauBases }) => {
     // TODO 289 landing 2 — leg 1's two blocks, let into the plate
     'settingTraverseBlockA', 'settingTraverseBlockK',
     // TODO 289 landing 3 — leg 2's two blocks
-    'settingTraverse2BlockK', 'settingTraverse2BlockB'];
+    'settingTraverse2BlockK', 'settingTraverse2BlockB',
+    // TODO 289 landing 4 — the drop's lower bush and its hanger
+    'settingDropBush', 'settingDropArm', 'settingDropColumn'];
   const FOLD = new Set(['settingDrop', 'mwCornerDropIn', 'mwCornerDropOut', 'settingTraverse1', 'mwCornerFoldIn',
     'mwCornerFoldOut', 'settingTraverse2', ...MOVED, ...BEARINGS]);
   const labelOf = (o) => { for (let q = o; q; q = q.parent) if (q.name) return q.name; return '(unnamed)'; };
