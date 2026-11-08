@@ -841,6 +841,20 @@ jobs:
   # the real figure is 515.7 s. The two rows above are superseded revisions of
   # THIS number, not separate caps. Derive from measured wall times the spread,
   # as here.
+  #
+  # SAMPLES OF THIS JOB'S WALL. Append a run here rather than replacing the
+  # figure above: the 1.66x exists because this job has a DISTRIBUTION, and a
+  # distribution needs a population. One run is what got the 18 wrong.
+  #   744.0 s  run 42432485347  PR #918  2026-11-08  (the 21 above derives from this)
+  #   763.0 s  run 42435601495  PR #919  2026-11-08
+  # Those two sit 19 s apart, 1.026x, and that says NOTHING about whether 1.66
+  # is loose - both landed on healthy runners, while the 1.66 came from a run
+  # that took 4082.8 s against 2459.1 s on the same tree. Do not read a narrow
+  # pair as a narrow tail; that is the same mistake in the other direction.
+  # Strict rounding off the slower sample gives 22, not 21, over by 7 s. Left at
+  # 21 on purpose: a timeout is a one-line revert, 763.0 s uses 61% of it, and
+  # two samples cannot tell a fast run from a slow one. Revisit when these rows
+  # outnumber the guesses - with more wall times, not another projection.
   battery-probes:
     name: battery probes
     needs: route
