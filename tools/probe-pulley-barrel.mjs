@@ -16,20 +16,24 @@
 //   1. REFERENCE: the ribbon solve and the fusee solve, re-run from the booted inputs, reproduce the record to the bit
 //      (ribbon to 1e-12). Controls: a drum 0.01 smaller reproduces neither.
 //   2. THE PICK, by a stated rule: over every reduced ratio n = p/q (q ≤ 60) and B's set-up clicks, the geometry the
-//      invariant fixes (R_B = Q/θ_sB − c_end/n, R_A = n·R_B) that passes the floors —
-//        R_B no larger than the target build's free disc;
+//      invariant fixes (R_A = Q·n/θ_sB − c_end, the flange's pitch r_pA = R_A + 2·c_end + CLEAR_MARGIN, R_B = r_pA/n)
+//      that passes the floors —
+//        B's tooth tips (R_B + m) inside the target build's free disc;
 //        A's chain no tighter than the cone's own smallest wrap (R_A + c_end ≥ P/u(1), a bend the chain already takes);
 //        a module m ≥ MODULE_MIN_U (§50's floor) with at least CENTRE_PINION_LEAVES teeth on A, the module the one of
 //          those nearest the great wheel's (TRAIN.barrel.module, the mesh carrying the same torque class);
-//      — the smallest R_A whose barrel stores at least the single drum's energy, ties to the most energy.
+//      — the smallest R_A whose barrel drives the train at least as hard as today's drum (the fusee's level torque
+//      k_hook·P/R_wrap ≥ k₀·P₀/R_wrap₀), and of those the one nearest today's, so the balance, its rim and the
+//      amplitude rows (TODO 207, solved at today's drive) are not re-opened by a stronger spring. Then B's ribbon
+//      height is cut to the train's demand (k ∝ c at a fixed stress), so the drive is today's to float noise.
 //      Its rows: the cone invariant to 1e-12, the hook's law proportional to 1e-12, the ribbon at r/e ≥ the floor and on
 //      the stress limit at full wind, and the energy at least the single drum's.
-//   3. CONTROL for the invariant: the same integers at a module 1% coarser break it.
-// REPORTED: the train's torque against today's, the width estimate, and the twin as specified beside it.
+//   3. CONTROL for the invariant: the same integers on a pulley 1% larger break it.
+// REPORTED: the width estimate.
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { bootMany } from './boot-pool.mjs';
 import { EXPR as ROOM_EXPR } from './probe-twin-barrel-room.mjs';
-import { drumRibbon, chainDrumAngles, chainDrumAnglesAt, pulleyBarrel } from '../src/twin-barrel.js';
+import { drumRibbon, chainDrumAngles, chainDrumAnglesAt, pulleyBarrel, flangeDelta } from '../src/twin-barrel.js';
 import { MAINSPRING_ALPHA_MIN, MAINSPRING_SIGMA_Y_PA, TRAIN, CENTRE_PINION_LEAVES } from '../src/layout.js';
 import { MODULE_MIN_U } from '../src/geared-geneva.js';
 
@@ -71,20 +75,22 @@ console.log(`target ${TARGET}: the drum sets ${side[0]} by ${side[1].toFixed(2)}
 // 2. THE PICK
 const Q = fw.inputs.SETUP_SWEEP * fw.inputs.DRUM_WRAP_R, ce = fw.chainEndROut, teeth = fw.setupTeeth;
 const rMin = fw.inputs.FUSEE_LEVEL_P / fw.full;   // the cone's smallest wrap: invariant under the scaling, so the bound is today's
-const mGW = TRAIN.barrel.module;
+const mGW = TRAIN.barrel.module, delta = flangeDelta(fw);
 const gcd = (a, b) => (b ? gcd(b, a % b) : a);
 const cands = [];
 for (let q = 2; q <= 60; q++) for (let p = 1; p < q; p++) {
   if (gcd(p, q) !== 1) continue;
   const n = p / q;
   for (let NB = 1; NB <= 4 * teeth; NB++) {
-    const setupB = (NB * 2 * Math.PI) / teeth, RB = Q / setupB - ce / n, RA = n * RB;
-    if (!(RB <= discCap) || RB < 3 || RA + ce < rMin) continue;
-    // the multiple k of (p, q): at least CENTRE_PINION_LEAVES on A and m ≥ MODULE_MIN_U, the module nearest the great wheel's
+    const setupB = (NB * 2 * Math.PI) / teeth, RA = (Q * n) / setupB - ce, rpA = RA + delta, RB = rpA / n;
+    if (RB < 3 || RA + ce < rMin) continue;
+    // the multiple k of (p, q): at least CENTRE_PINION_LEAVES on A and m ≥ MODULE_MIN_U, the module nearest the great
+    // wheel's; B's tooth tips (an addendum m past its wall, in the flange's band) inside the free disc
     let best = null;
     for (let k = Math.ceil(CENTRE_PINION_LEAVES / p); ; k++) {
-      const m = (2 * RB) / (k * q);
+      const m = (2 * rpA) / (k * p);
       if (m < MODULE_MIN_U) break;
+      if (RB + m > discCap) continue;
       if (!best || Math.abs(m - mGW) < Math.abs(best.m - mGW)) best = { k, m };
     }
     if (best) cands.push({ zA: best.k * p, zB: best.k * q, NB, RA, RB, m: best.m });
@@ -94,19 +100,27 @@ cands.sort((a, b) => a.RA - b.RA || b.RB - a.RB);
 console.log(`candidates: ${cands.length} geometries pass the floors (R_A ${cands[0]?.RA.toFixed(3)}–${cands.at(-1)?.RA.toFixed(3)}); the cone's smallest wrap r ${rMin.toFixed(4)}`);
 const warn0 = console.warn; let refused = 0;
 console.warn = (m, ...r) => (String(m).startsWith('TODO 291: no whole number') ? refused++ : warn0(m, ...r));
+// the drive's SIZE the train sees: the fusee's level torque k·P/R_wrap (its output is k·u·r/R_wrap with u·r = P)
+const train0 = (R0.k * fw.inputs.FUSEE_LEVEL_P) / fw.inputs.DRUM_WRAP_R;
+const trainOf = (X) => (X.kHook * X.chain.P) / X.chain.Rw / train0;
 let pick = null, tried = 0;
 for (const x of cands) {
   if (pick && x.RA > pick.RA + 1e-12) break;
   tried++;
   const P = pulleyBarrel({ zA: x.zA, zB: x.zB, NB: x.NB, fw, c });
-  if (P.feasible && P.energyJ >= S.energyJ && (!pick || P.energyJ > pick.energyJ)) pick = P;
+  if (P.feasible && trainOf(P) >= 1 && (!pick || trainOf(P) < trainOf(pick))) pick = P;
 }
 console.warn = warn0;
+// B's ribbon height sized to the train's demand: the full-height pick drives it harder than today's drum, and that
+// surplus would re-open TODO 207's rim and every amplitude row for this build. k ∝ c at a fixed stress, so
+// c_B = c·(T₀/T) lands the fusee's level torque on today's to float noise, with every radius and angle unchanged.
+const full = pick;
+if (pick) pick = pulleyBarrel({ zA: pick.zA, zB: pick.zB, NB: pick.NB, fw, c, cB: c / trainOf(pick) });
 console.log(`search: ${tried} geometries solved, ${refused} with no ribbon at r/e ≥ ${MAINSPRING_ALPHA_MIN} that fits and takes its wind`);
 if (!pick) { row(false, 'no pulley and barrel under the disc holds the single drum\'s energy'); process.exit(1); }
 const pct = (E) => ((E / S.energyJ) * 100).toFixed(1);
 console.log(`pick: zA ${pick.zA}, zB ${pick.zB} (n ${pick.n.toFixed(4)}), module ${pick.m.toFixed(4)} (great wheel ${mGW.toFixed(4)}), B's set-up ${pick.NB} clicks of ${teeth}`);
-console.log(`  pulley A: R ${pick.RA.toFixed(4)} (wrap ${pick.chain.Rw.toFixed(4)}, ρ ${pick.chain.rho.toFixed(4)}), centre ${pick.chain.D.toFixed(4)} from the fusee; the hook winds ${pick.chain.setup.toFixed(4)} → ${pick.chain.full.toFixed(4)} rad (${(pick.chain.sweep / (2 * Math.PI)).toFixed(3)} turns of chain on A)`);
+console.log(`  pulley A: R ${pick.RA.toFixed(4)}, flange pitch r ${pick.rpA.toFixed(4)} (wrap ${pick.chain.Rw.toFixed(4)}, ρ ${pick.chain.rho.toFixed(4)}), centre ${pick.chain.D.toFixed(4)} from the fusee; the hook winds ${pick.chain.setup.toFixed(4)} → ${pick.chain.full.toFixed(4)} rad (${(pick.chain.sweep / (2 * Math.PI)).toFixed(3)} turns of chain on A)`);
 console.log(`  barrel B: R ${pick.RB.toFixed(4)}, ${pick.B.sol.coils} coils on a ${pick.B.sol.collarR.toFixed(3)} collar, e ${(2 * pick.B.a).toFixed(4)} u, L ${pick.B.L.toFixed(1)}, binds ${pick.B.sol.binds}, winds ${pick.setupB.toFixed(4)} → ${(pick.setupB + pick.n * pick.chain.sweep).toFixed(4)} rad; centre distance ${pick.centreDistance.toFixed(3)}`);
 row(Math.abs(pick.invariant) <= 1e-12, `the cone's invariant θ_s·R_wrap = θ_s₀·R_wrap₀ holds (${pick.invariant.toExponential(2)})`);
 row(pick.lawDev <= 1e-12, `the hook's law is proportional over the service band (max deviation ${pick.lawDev.toExponential(2)})`);
@@ -116,15 +130,14 @@ row(pick.energyJ >= S.energyJ, `the barrel stores at least the single drum's ene
 
 // 3. CONTROL: the invariant must read a wrong module
 {
-  const m = pick.m * 1.01, RA = (m * pick.zA) / 2;
+  const RA = pick.RA * 1.01;
   const ch = chainDrumAnglesAt({ R: RA, setup: pick.setupB / pick.n, fw });
   const inv = (ch.setup * ch.Rw) / Q - 1;
-  row(Math.abs(inv) > 1e-6, `invariant control: the same integers at a module 1% coarser read ${inv.toExponential(2)}`);
+  row(Math.abs(inv) > 1e-6, `invariant control: the same integers on a pulley 1% larger read ${inv.toExponential(2)}`);
 }
 
 // REPORTED
-const trainRatio = (pick.kHook * pick.chain.P / pick.chain.Rw) / (R0.k * fw.inputs.FUSEE_LEVEL_P / fw.inputs.DRUM_WRAP_R);
-console.log(`REPORT the train's torque: ${(trainRatio * 100).toFixed(2)}% of today's (k_hook·P/R_wrap) — the balance's rim re-solves on equalisation's rule if this moves its amplitude row`);
+row(Math.abs(trainOf(pick) - 1) <= 1e-12, `the train's torque is today's: ${(trainOf(pick) * 100).toFixed(6)}% (k_hook·P/R_wrap; ${(trainOf(full) * 100).toFixed(2)}% at the drum's full height, B's ribbon ${(pick.cB * 2).toFixed(4)} u tall against ${(c * 2).toFixed(4)})`);
 const axis = side[0].endsWith('y') ? Math.abs(room.reach.drumDir[1]) : Math.abs(room.reach.drumDir[0]);
 const giveBack = Math.min(Math.max(side[1], 0), 2 * (RA0 - pick.RA) * axis);
 console.log(`REPORT width the pulley could give back on ${side[0]} of ${TARGET}: ≤ ${giveBack.toFixed(2)} u (${(giveBack * 0.379).toFixed(2)} mm), an estimate the fold's re-fit measures; B's own placement is the fold's`);

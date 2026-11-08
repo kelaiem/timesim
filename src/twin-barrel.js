@@ -24,7 +24,7 @@
 // friction-priced: the coupling mesh is a stage loss the build's energy column takes from FRICTION when it is folded.
 import { barrelDims, barrelArborR, solveRibbon } from './ribbon-solve.js';
 import { solveSpringWind, springWindBeta, SPRING_WIND_NPT } from './fusee-wind.js';
-import { UNIT_MM, MAINSPRING_E_PA, MAINSPRING_SIGMA_Y_PA, MAINSPRING_ALPHA_MIN } from './layout.js';
+import { CLEAR_MARGIN, UNIT_MM, MAINSPRING_E_PA, MAINSPRING_SIGMA_Y_PA, MAINSPRING_ALPHA_MIN } from './layout.js';
 
 const U = UNIT_MM / 1000;   // metres per unit
 // The collar's floor, the law main.js's MS_COLLAR_MIN states: the arbor's working section plus the 0.6 boss wall.
@@ -108,26 +108,33 @@ export function seriesTwin({ R, c, setup, sweep, ...opts }) {
   return { R, feasible: true, each, kHook: each.k / 2, energyJ: 2 * each.energyJ };
 }
 
-// THE CHAIN PULLEY AND ONE BARREL (landing 2a', the owner's choice 2026-11-08 over the twin as specified). Drum A carries
-// the chain and NO spring: it is a toothed pulley. Drum B, the one barrel, stands in the free disc and meshes A's wall
-// band, zA teeth on A, zB on B (both pitch circles at the drums' walls, one module m), so B turns n = zA/zB times A.
+// THE CHAIN PULLEY AND ONE BARREL (landing 2a', the owner's choice 2026-11-08 over the twin as landing 1 specified it).
+// Drum A carries the chain and NO spring: it is a pulley. Drum B, the one barrel, stands in the free disc, and its teeth
+// (cut on its wall, a going barrel's) mesh a toothed FLANGE on A, zA teeth on A, zB on B, one module m, so B turns
+// n = zA/zB times A. The flange is under the chain (the coupling band, landing 0 (c)) and its pitch circle stands
+//     r_pA = R_A + FLANGE_DELTA,   FLANGE_DELTA = 2·c_end + CLEAR_MARGIN,
+// because B's wall stands on that circle all the way up its height, and above the flange it must clear the chain coiled
+// on A (outer metal R_A + 2·c_end) by the margin. B's wall, its pitch circle, is R_B = m·zB/2 with m = 2·r_pA/zA.
 // The set-up is B's alone, a whole NB clicks on a set-up ratchet of `teeth` (the build's cut, 24), so the hook sees
 // θ_s = θ_sB/n and the torque n·k_B·(n·u) = n²·k_B·u: proportional, with nothing to match between two set-ups.
-// The cone is the same cone when θ_s·R_wrap,A = θ_s₀·R_wrap₀ =: Q (chainDrumR's invariant), and with R_A = m·zA/2 that
-// fixes the module:
-//     Q = θ_sB·(zB/zA)·(m·zA/2 + c_end)   ⇒   m = 2·(Q/θ_sB − c_end·zB/zA)/zB,   R_B = Q/θ_sB − c_end/n.
-// So (zA, zB, NB) are the design's integers and every length follows from them (rule 1).
-export function pulleyBarrel({ zA, zB, NB, fw, c, teeth = fw.setupTeeth, ...opts }) {
+// The cone is the same cone when θ_s·R_wrap,A = θ_s₀·R_wrap₀ =: Q (chainDrumR's invariant), which fixes the pulley:
+//     R_A = Q/(θ_sB/n) − c_end,   R_B = r_pA/n,
+// so (zA, zB, NB) are the design's integers, and every length follows from them (rule 1). The multiple of a ratio sets
+// only the module.
+export function flangeDelta(fw) { return 2 * fw.chainEndROut + CLEAR_MARGIN; }
+// `cB` is B's ribbon half-height, `c` by default: the drive's SIZE goes as the strip's height (k ∝ c at a fixed stress,
+// which the section's height does not enter), so the caller can size B to the train's demand without moving a radius.
+export function pulleyBarrel({ zA, zB, NB, fw, c, cB = c, teeth = fw.setupTeeth, ...opts }) {
   const I = fw.inputs, ce = fw.chainEndROut;
   const n = zA / zB;
   const setupB = (NB * 2 * Math.PI) / teeth;
   const Q = I.SETUP_SWEEP * I.DRUM_WRAP_R;
-  const m = (2 * (Q / setupB - (ce * zB) / zA)) / zB;
-  if (!(m > 0)) return { zA, zB, NB, n, m, feasible: false, why: 'no positive module' };
-  const RA = (m * zA) / 2, RB = (m * zB) / 2;
+  const RA = Q / (setupB / n) - ce;
+  if (!(RA > 0)) return { zA, zB, NB, n, feasible: false, why: 'no positive pulley' };
+  const rpA = RA + flangeDelta(fw), m = (2 * rpA) / zA, RB = (m * zB) / 2;
   const chain = chainDrumAnglesAt({ R: RA, setup: setupB / n, fw });
-  const B = drumRibbon({ R: RB, c, setup: setupB, sweep: n * chain.sweep, ...opts });
-  const out = { zA, zB, NB, n, m, RA, RB, setupB, chain, B, centreDistance: RA + RB, invariant: (chain.setup * chain.Rw) / Q - 1 };
+  const B = drumRibbon({ R: RB, c: cB, setup: setupB, sweep: n * chain.sweep, ...opts });
+  const out = { cB, zA, zB, NB, n, m, RA, rpA, RB, setupB, chain, B, centreDistance: rpA + RB, invariant: (chain.setup * chain.Rw) / Q - 1 };
   if (!B) return { ...out, feasible: false, why: 'no ribbon for B' };
   const kHook = n * n * B.k;
   const lawDev = [0, 0.25, 0.5, 0.75, 1].reduce((mx, f) => {
