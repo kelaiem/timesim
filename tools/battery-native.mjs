@@ -156,6 +156,9 @@ if (!isMainThread) {
     if (KERNEL === 'shadow') {
       const bs = (k) => ks.reduce((a, x) => a + ((x.bool && x.bool[k]) || 0), 0);
       console.log(`kernel shadow, boolean: ${bs('calls')} intersection calls, ${bs('agree')} agree; js true where wasm false: ${bs('refOnly')}; js false where wasm true: ${bs('kernelOnly')}; time js ${(bs('refMs') / 1000).toFixed(1)} s, wasm ${(bs('wasmMs') / 1000).toFixed(1)} s`);
+      const edges = ks.find((x) => x.bool && x.bool.gapEdges)?.bool.gapEdges || [];
+      const gaps = edges.map((_, i) => ks.reduce((a, x) => a + ((x.bool && x.bool.refOnlyGap[i]) || 0), 0)).concat([ks.reduce((a, x) => a + ((x.bool && x.bool.refOnlyGap[edges.length]) || 0), 0)]);
+      console.log(`  js-only trues by the kernel's exact distance: ${gaps.map((n, i) => `${i < edges.length ? `< ${edges[i]}` : `≥ ${edges[edges.length - 1]}`}: ${n}`).join(', ')}`);
     }
     if (KERNEL === 'shadow') for (const x of ks.flatMap((k) => k.samples || []).slice(0, 8)) console.log(`  disagreement: js ${x.ref} wasm ${x.kernel} bound ${x.upper} (${x.nA} × ${x.nB} triangles)`);
   }

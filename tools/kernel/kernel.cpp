@@ -1,5 +1,7 @@
 // §338 landing 5 — THE KERNEL'S FIRST PRIMITIVE: the closest distance between two
-// triangle meshes, one placed in the other's frame by a rigid matrix.
+// triangle meshes, one placed in the other's frame by a rigid matrix. Since
+// landing 6 the second: whether any triangle of one meets any of the other
+// (`intersects`, below the distance query).
 //
 // Built by tools/kernel-build.mjs to wasm32 (src/kernel-wasm.js, GENERATED; never
 // edit it), and called only through src/kernel.js' `Kernel` interface. The JS path

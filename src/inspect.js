@@ -1051,6 +1051,20 @@ const Kernel = {
     if (k === 'shadow') shadowTallyBool(gA, gB, m.elements, r, performance.now() - t0);
     return r;
   },
+  // CONTACT, which is not the same question. meshesIntersect asks whether two
+  // parts are in contact, and contact here includes a running fit (its
+  // arbitration accepts a sampled gap under 1e-4), which an exact intersection
+  // test deliberately refuses. Measured in shadow (§338 landing 6): of 720,028
+  // boolean calls, 1,913 had the reference true and the exact test false —
+  // 1,898 of them pairs ≥ 1e-4 apart (the reference's false positives, which
+  // inspection's raw EXPECTED path counts as contact) and 15 touches under
+  // 1e-4, which the exact test would turn from contact into none. So contact
+  // stays the reference's predicate in every kernel mode until an exact
+  // contact primitive (meet, or exact distance under the arbitration's 1e-4)
+  // is landed on purpose, with the inspection reports it moves.
+  touches(gA, gB, m) {
+    return bvhForGeometry(gA).intersectsGeometry(gB, m);
+  },
 };
 
 function bvhForGeometry(geometry) {
@@ -1121,7 +1135,7 @@ function _meshesIntersectInner(a, b, raw = false) {
   const bvhA = bvhFor(a);
   bvhFor(b); // intersectsGeometry needs the other side indexed; building its tree indexes it
   _mat.copy(a.matrixWorld).invert().multiply(b.matrixWorld);
-  if (!Kernel.intersects(a.geometry, b.geometry, _mat)) return false;
+  if (!Kernel.touches(a.geometry, b.geometry, _mat)) return false;
   // §122 fix two — `raw` trusts the positive WITHOUT arbitration. Only
   // runInspection may pass it, and only for a declared-EXPECTED pair whose
   // contact on the current axis has already been arbitrated once (the

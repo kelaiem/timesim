@@ -35,8 +35,12 @@ export function kernelMode() { return mode; }
 // §338 landing 6 — the boolean's own tally: where the two answers agree, and
 // each way they part (the reference's `true` the exact test refutes is its
 // recorded false-positive mode; the other way round would be a kernel miss).
-const boolStats = { calls: 0, agree: 0, refOnly: 0, kernelOnly: 0, wasmMs: 0, refMs: 0 };
-export function kernelStats() { return { mode, ...stats, bool: { ...boolStats } }; }
+// `refOnlyGap` buckets each reference-only `true` by the kernel's exact distance
+// for the same pair: under 1e-9 is a touch the boolean cannot call either way,
+// past 1e-4 (meshesIntersect's own contact threshold) a pair that stands apart.
+const GAP_EDGES = [1e-12, 1e-9, 1e-6, 1e-4, 1e-2];
+const boolStats = { calls: 0, agree: 0, refOnly: 0, kernelOnly: 0, wasmMs: 0, refMs: 0, refOnlyGap: new Array(GAP_EDGES.length + 1).fill(0) };
+export function kernelStats() { return { mode, ...stats, bool: { ...boolStats, refOnlyGap: [...boolStats.refOnlyGap], gapEdges: GAP_EDGES } }; }
 
 export async function useKernel(name) {
   if (!['js', 'wasm', 'shadow'].includes(name)) throw new Error(`useKernel: unknown kernel '${name}' (js, wasm or shadow)`);
@@ -50,7 +54,7 @@ export async function useKernel(name) {
   }
   mode = name;
   for (const k of Object.keys(stats)) stats[k] = k === 'maxAt' ? null : k === 'samples' ? [] : 0;
-  for (const k of Object.keys(boolStats)) boolStats[k] = 0;
+  for (const k of Object.keys(boolStats)) boolStats[k] = k === 'refOnlyGap' ? new Array(GAP_EDGES.length + 1).fill(0) : 0;
   return mode;
 }
 
@@ -119,8 +123,12 @@ export function shadowTallyBool(gA, gB, m, ref, refMs) {
   boolStats.refMs += refMs;
   boolStats.calls++;
   if (k === ref) boolStats.agree++;
-  else if (ref) boolStats.refOnly++;
-  else boolStats.kernelOnly++;
+  else if (ref) {
+    boolStats.refOnly++;
+    const d = wasmDistance(gA, gB, m, Infinity);
+    let i = 0; while (i < GAP_EDGES.length && !(d < GAP_EDGES[i])) i++;
+    boolStats.refOnlyGap[i]++;
+  } else boolStats.kernelOnly++;
 }
 
 // The shadow's tally, beside the reference's answer `ref` for the same call.
