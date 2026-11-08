@@ -807,12 +807,26 @@ jobs:
   # three, 226 s measured uncontended in a dev container (re-derive from this
   # job's own timing once it has run): ~26 + 194 + 226 s is ~7.4 min, times
   # 1.66, 12.3 -> 13. The battery's gate step waits the same 13.
+  #
+  # 13 -> 18 for §337 stage 3's geared-Geneva line, and this row is PROJECTED,
+  # not measured in a dev container like the two above - say so rather than let
+  # it read as the same kind of number. probe-337-geared-geneva.mjs boots the
+  # THIRTEEN reserves 12..48 h (each only to read its own fusee stall torque;
+  # the rules are then pure math) through boot-pool.mjs, whose default lane
+  # count on a 4-vCPU runner is 2. Measured here, M2 Max 2026-11-07: 201.2 s at
+  # one lane, 105.1 s at two, 40.2 s at eight. The projection uses boot-pool's
+  # OWN measured ubuntu-latest table rather than this box: a solo boot there is
+  # 31.8 s against ~13.9 s here (2.29x), and two at once amortise to 19.1 s a
+  # boot, so 13 boots at the runner's own default is ~250 s, call it ~280 with
+  # node's start. 13 min already covers ~740 s of runner wall, so ~1020 s is
+  # 17.0 -> 18. RE-DERIVE FROM THIS JOB'S OWN TIMING once it has run, which is
+  # the standing rule the two rows above carry too.
   battery-probes:
     name: battery probes
     needs: route
     if: needs.route.outputs.tiers_job == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 13
+    timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
 
@@ -833,13 +847,14 @@ jobs:
       - name: Install Chromium
         uses: ./.github/actions/install-chromium   # bounded apt from cached .debs, then the cached browser
 
-      - name: Case relief, casing path, back envelope, lands and the clearance witness (§186, §187, §328, TODO 282)
+      - name: Case relief, casing path, back envelope, lands, the clearance witness and the geared Geneva's line (§186, §187, §328, TODO 282, §337)
         run: |
           node tools/probe-case-relief.mjs
           node tools/probe-187-casing-path.mjs
           node tools/probe-back-envelope.mjs
           node tools/probe-328-lands.mjs
           node tools/probe-282-witness.mjs
+          node tools/probe-337-geared-geneva.mjs
 
   battery:
     needs: route
@@ -1248,13 +1263,16 @@ jobs:
       # therefore holds exactly as a failing probe step after the harness did:
       # the report is still uploaded, nothing is published or seeded.
       #
-      # Its cap is the probes job's own (13 min since §328 step 1b): the
-      # battery reaches it ~12 min in, so a probes job that started with the
-      # battery finishes, or is killed, within a minute of it. A step killed at
-      # the cap fails, which is the safe side.
-      - name: The case relief, casing path, back envelope and lands probes passed (§186, §187, §328)
+      # Its cap is the probes job's own (18 min since §337 stage 3): the
+      # battery reaches it ~12 min in and may now wait past its own ~19 min, so
+      # a probes job that started with the battery finishes, or is killed,
+      # inside this step either way. A step killed at the cap fails, which is
+      # the safe side, and the battery job's own cap (95-150 min) is nowhere
+      # near. The two must move together: a wait shorter than the probes job's
+      # cap would fail a probe that was still running and had not yet failed.
+      - name: The case relief, casing path, back envelope, lands, witness and geared-line probes passed (§186, §187, §328, TODO 282, §337)
         if: env.TIERS_JOB == 'true' && env.MATRIX != 'true'
-        timeout-minutes: 13
+        timeout-minutes: 18
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -1271,7 +1289,7 @@ jobs:
               completed:success)
                 echo "§186/§187: 'battery probes' passed" | tee -a "$GITHUB_STEP_SUMMARY"; exit 0 ;;
               completed:*)
-                echo "::error::'battery probes' ended $st — case relief, casing path, back envelope or lands failed (see that job); this battery does not pass"
+                echo "::error::'battery probes' ended $st — case relief, casing path, back envelope, lands, the clearance witness or the geared Geneva's line failed (see that job); this battery does not pass"
                 echo "§186/§187: 'battery probes' ended $st — the battery FAILS" >> "$GITHUB_STEP_SUMMARY"
                 exit 1 ;;
             esac
@@ -1341,6 +1359,27 @@ jobs:
       - name: Clearance witness (TODO 282)
         if: (env.MATRIX != 'true' || matrix.worker == 1) && env.TIERS_JOB != 'true'   # on the fan-out path the `battery probes` job runs it
         run: node tools/probe-282-witness.mjs
+
+      # ---- §337 stage 3: the geared Geneva's line, which no gate read
+      #
+      # §337's spec points boot the geared stop-work's METAL at the two reserves
+      # it is built for; this holds the LINE src/geared-geneva.js designs at all
+      # thirteen (12..48 h) - every finger's travel exactly its star's
+      # m + ½ + 1/n against a slot-by-slot simulation, every pair cuttable, every
+      # Geneva's floors and hub clearance and its pin and stud under yield, and
+      # every orbit the smallest the line may take. It boots each reserve only to
+      # read that reserve's OWN fusee stall torque; the rules are pure math over
+      # the module, so nothing here duplicates a sweep.
+      #
+      # IT WAS RED ON MAIN and nothing ran it: landing 2b's lock fix made
+      # sizeGeneva scan from LOCK_R1_MIN, so rule M - "the orbit is the smallest
+      # that holds" - stopped describing the code, and the probe exited 1 at all
+      # thirteen reserves for as long as the fix had been in. Stage 3 fixed the
+      # rule to read the lock floor as well; this step is why that cannot rot
+      # again. Acceptance, exit 1 on a finding.
+      - name: The geared Geneva's line (§337)
+        if: (env.MATRIX != 'true' || matrix.worker == 1) && env.TIERS_JOB != 'true'   # on the fan-out path the `battery probes` job runs it
+        run: node tools/probe-337-geared-geneva.mjs
 
       # ---- §227: what this run measured, so a merge can tell ----------------
       #

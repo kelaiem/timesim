@@ -25,8 +25,7 @@
 // sizeGeneva start its scan at LOCK_R1_MIN, so the orbit the line takes is the smallest that holds the lock AS WELL as the
 // floors — and at every one of the thirteen reserves it is now the lock floor exactly (2.700 at n = 4). M read only the
 // floors, so "a step in still holds" was TRUE at all thirteen and this probe exited 1 on main for as long as the fix had
-// been in. Stage 3 fixed the rule; the .github/workflows/battery.yml wiring that would keep it from recurring is written
-// but NOT LANDED, so until it is, this probe is still a local boot and nothing fails when it goes red.
+// been in. It is in CI since stage 3 (.github/workflows/battery.yml) precisely so that cannot recur.
 //   node tools/probe-337-geared-geneva.mjs [--par N]
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
