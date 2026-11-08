@@ -4,8 +4,8 @@
 
 # The instruments
 
-400 scripts. **275 are ACCEPTANCE tests** — they decide and exit non-zero.
-**125 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
+401 scripts. **275 are ACCEPTANCE tests** — they decide and exit non-zero.
+**126 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
 **Grep this file by what you want to know, not by section number.** The names encode
@@ -392,6 +392,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-tiers-spec-hand.mjs` |  | acceptance | §264/§265 FANNED OUT — DO THE HAND-OFF FILES PUT BACK TOGETHER AS THE WHOLE OF EACH TIER, AND IS EVERY OTHER SHAPE OF HAND-OFF REFUSED? Acceptance: exits non-zero on any failed row. |
 | `probe-touch-ghost-pointer.mjs` |  | acceptance | DOES ONE FINGER STILL ORBIT AFTER A RELEASE THE CANVAS NEVER HEARD? — the ghost-pointer pinch, measured. |
 | `probe-train-mesh-phase.mjs` |  | acceptance | DOES THE GOING TRAIN STAY IN MESH PHASE WHILE IT RUNS? |
+| `probe-twin-barrel-room.mjs` |  | report | WHAT DOES THE MAINSPRING DRUM BIND, AND IS THERE ROOM FOR A SECOND ONE? A REPORT (BACKLOG §339 landing 0: a twin-barrel going train): it boots each spec and prints, judging nothing. |
 | `probe-wind.mjs` |  | report | TODO 38 W4 probe: registry reversal verdicts and the restoring audit under the new `wind` axis. Usage: node probe-wind.mjs out.json |
 | `probe-wound-sense.mjs` |  | acceptance | WHICH WAY DOES EACH WOUND PART WIND? — TODO 115's unmeasured half. |
 | `rebrickable-subset.mjs` |  | acceptance | Writes src/technic-rebrickable.js (BUILT §309): the SUBSET of Rebrickable's full download (rebrickable.com/downloads, CSV) and BrickLink's catalogue download that the parts list's SUBSTITUTES need, so every candidate id, relationship, mapping and count is READ from those files and never typed (§300's rule, §301's pattern). The whole downloads are ~160 MB and are not committed. |
