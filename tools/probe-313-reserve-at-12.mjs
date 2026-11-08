@@ -38,6 +38,10 @@ import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { UNIT_MM, CASE_CLEAR, CASE_BAND_T, CASE_WIDTH_MAX, ARRANGEMENT } from '../src/layout.js';
 import { GONG_SEATS } from '../src/gong-seats.js';
+import { defaultSeatMode } from '../src/case-shape.js';
+// a kind's default seat's fit: the spiral where one closes, else the bar (§317, case-shape.js defaultSeatMode; TODO 294
+// left the rect with only a bar)
+const seatFit = (kind) => GONG_SEATS[kind][defaultSeatMode(GONG_SEATS, kind)].formrect.join(',');
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -53,9 +57,9 @@ const BUILDS = [
   { id: 'R', name: 'round, as designed', q: 'arrangement=designed' },   // §314: the bare URL is the arrangement
   { id: 'N', name: 'round, its default (the arrangement)', q: '' },
   { id: 'S', name: 'round, the arrangement spelled out', q: ARR },
-  { id: 'F-rect', name: 'rect, its default', q: `case=rect&formrect=${GONG_SEATS.rect.spiral.formrect.join(',')}`, form: true },
-  { id: 'F-cushion', name: 'cushion, its default', q: `case=cushion&formrect=${GONG_SEATS.cushion.spiral.formrect.join(',')}`, form: true },
-  { id: 'F-tonneau', name: 'tonneau, its default', q: `case=tonneau&formrect=${GONG_SEATS.tonneau.spiral.formrect.join(',')}`, form: true },
+  { id: 'F-rect', name: 'rect, its default', q: `case=rect&formrect=${seatFit('rect')}`, form: true },
+  { id: 'F-cushion', name: 'cushion, its default', q: `case=cushion&formrect=${seatFit('cushion')}`, form: true },
+  { id: 'F-tonneau', name: 'tonneau, its default', q: `case=tonneau&formrect=${seatFit('tonneau')}`, form: true },
   { id: 'C0', name: 'control: no idlers', q: ARR.replace(/&rsvidl=\d+/, ''), control: LINK_REFUSED },
   { id: 'C80', name: 'control: the module at 80°', q: ARR.replace(/alarmmod=\d+/, 'alarmmod=80'), control: LINK_REFUSED },
 ];

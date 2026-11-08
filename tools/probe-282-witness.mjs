@@ -123,7 +123,7 @@ const fail = (s) => { fails.push(s); console.log('  FAIL ' + s); };
 const f4 = (x) => (Number.isFinite(x) ? x.toFixed(4) : String(x));
 const NEW = await run('', false);
 const OLD = await run('', true);
-const FORM = await run('case=rect&formrect=-45.72,45.72,-44.38,44.38', false);
+const FORM = await run('case=rect&formrect=-46.99,46.99,-43.93,43.93', false);
 
 console.log('== doubled: a rod through a slab cut as two boxes sharing a face ==');
 console.log(`  slab census: ${NEW.slab.edges} edges, bad ${NEW.slab.bad}, over ${NEW.slab.over}, odd ${NEW.slab.odd}; rod: bad ${NEW.rodCensus.bad}`);
