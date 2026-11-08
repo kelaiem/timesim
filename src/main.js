@@ -17195,19 +17195,74 @@ const TQ_WINDOW_INTENTS = [
   // crosses the plate band, and the stud is 7 away), so the window is cut
   // whole under it. The probe reports both reveals: clear of the plate, and
   // clear of everything.
+  //
+  // §201 LANDING 2 — AND IT FRAMES THE ENGAGEMENT, because the whole disc is
+  // not on offer any more. §314's pusher linkage hangs crank A's stud from
+  // THIS plate 1.578 from the cross's axis — inside the rim disc landing 1
+  // asked for — and a bossless window cut all-or-nothing cannot open round a
+  // stud it surrounds: the ray through it reads 1.111 where a window must keep
+  // one land (TQ_LAND_MIN, 1.9) of opening, so that bearing closes, the run
+  // splits in two, and §115 refuses the knife-edged spur between the halves.
+  // MEASURED, not inferred: pointed back at the whole disc with the yield
+  // taken out, this row reports NOT CUT, 34 of 360 bearings shut, the
+  // narrowest ray 1.111. That refusal is right and stands. What landing 1 asked for is what was
+  // wrong: a Geneva's stop is not the disc, it is THE PIN IN THE SLOT — the
+  // wind is limited where the finger's pin enters a slot and, at the ceiling,
+  // banks on the blank arm, and that happens at the rim on the line of
+  // centres. So the frame is the ENGAGEMENT: the pin's own entry and exit on
+  // the cross's rim, derived in the arrest block from the same three solved
+  // radii the cross and the finger are cut to (ARREST_ENGAGEMENT). Measured,
+  // it stands 4.039 off crank A's stud against the 2.367 a window of its size
+  // needs, so it is cut at full reach, open all the way round, and the one
+  // thing the stop-work does is the thing the plate shows. Measured on the
+  // built scene: every vertex of the finger's PIN has a path out through the
+  // plate (88/88, 70 of them past everything), the finger's locking disc
+  // 92.6%, and the cross 19.3% — its near rim, where the slot is. The frame
+  // takes in the finger's own disc and pin, which landing 1 declared out of
+  // frame: an engagement is a PAIR, and framing where the two members meet
+  // means framing both of them there.
+  //
+  // IT IS DERIVED FROM THE STOP-WORK AND NOT FROM THE STUD, and that is an
+  // ORDER, not a preference. The linkage's rod line is searched against these
+  // very discs (windowDiscs on __clock, tools/probe-314-linkage-line.mjs), so
+  // a frame sized off the stud's station would make the two solves argue in a
+  // circle rather than in an order — the rule sweepTqKeeps already keeps for
+  // the plate screws next door. The build's own order says the same thing: the
+  // linkage is solved six thousand lines after this frame is, so
+  // ALARM_LINKAGE_STUDS is still null here. The stud reaches the window the
+  // one way a late window lets it — as a keep in the field the re-cut
+  // measures, and as the yield below.
+  //
+  // Landing 1's disc is still ARREST_WINDOW and still the reference the
+  // declared-versus-cut assert at the cross build measures the cut metal
+  // against: the frame shrank, the claim about the cross did not.
   {
     name: 'arrest',
     late: true,
-    at: () => ARREST_WINDOW,
-    discs: () => [{ x: ARREST_WINDOW.x, y: ARREST_WINDOW.y, r: ARREST_WINDOW.r + CLEAR_MARGIN }],
+    at: () => ARREST_ENGAGEMENT,
+    discs: () => [{ x: ARREST_ENGAGEMENT.x, y: ARREST_ENGAGEMENT.y, r: ARREST_ENGAGEMENT.r }],
     // §314 — A WINDOW CARRIES NO FORCE, SO IT YIELDS TO A STUD THE PLATE CARRIES. The arranged movement's
     // pusher linkage (its rod line searched round the arrest's tower, tools/probe-314-linkage-line.mjs)
     // plants crank A's stud inside this reveal; a bossless window cut all-or-nothing cannot open round it,
     // so the plate keeps its metal over the cross and the row is reported as yielded, never as NOT CUT.
+    //
+    // §201 landing 2 — AND THE TEST IS NOW THE ONE THE SOLVE ASKS. A stud
+    // INSIDE the reveal — within a clearance of its edge — is a stud the
+    // window would have to open round, which is the case §314 measured and
+    // refused. §314 wrote the inequality with TQ_LAND_MIN in it, which is the
+    // LINKAGE's own siting rule: the land a stud is kept outside a window
+    // while the rod line is searched (windowDiscs on __clock). Against a
+    // WINDOW that land is the wrong quantity — a keep is held at CLEAR_MARGIN
+    // here and by checkPlateWindows check 1, and a land is what two OPENINGS
+    // owe each other — and it yields every window within 4.267 of the stud,
+    // the engagement's frame included, which is a window the solve cuts
+    // cleanly: the engagement's frame stands 4.039 off the stud, so the land
+    // version of the test — which refuses anything inside 4.267 — yields it
+    // too, and the stop-work stays buried.
     yieldsTo: () => {
       if (!ALARM_LINKAGE_STUDS) return null;
       for (const st of ALARM_LINKAGE_STUDS)
-        if (Math.hypot(st.x - ARREST_WINDOW.x, st.y - ARREST_WINDOW.y) < ARREST_WINDOW.r + CLEAR_MARGIN + TQ_LAND_MIN + st.r)
+        if (Math.hypot(st.x - ARREST_ENGAGEMENT.x, st.y - ARREST_ENGAGEMENT.y) < ARREST_ENGAGEMENT.r + CLEAR_MARGIN + st.r)
           return `the pusher linkage's ${st.name} stud, planted in the plate inside its reveal`;
       return null;
     },
@@ -17219,6 +17274,10 @@ let ALARM_LINKAGE_STUDS = null;
 // §201 — the late intent's centre. null until the arrest block has placed the
 // cross's stud; the solver reports the row as deferred while it is null.
 let ARREST_WINDOW = null;
+// §201 landing 2 — what the window FRAMES: the engagement, derived in the
+// arrest block from the same spec the cross and the finger are cut to. null
+// until then, so the row reports as deferred exactly as landing 1's did.
+let ARREST_ENGAGEMENT = null;
 // TODO 266 — the strike group's opening in a FORM plate, cut at the re-cut (null on the round build)
 let STRIKE_PLATE_OPENING = null;
 let ROUND_TQ_OUTLINE = null;   // §325 landing 16 — the round three-quarter plate notched round the strike group, set at the re-cut
@@ -37993,6 +38052,41 @@ const arrestStud = {
 // radius from here: the same solved station and the same spec the cross is
 // cut to, so the frame and the metal cannot be two descriptions.
 ARREST_WINDOW = { x: arrestStud.x, y: arrestStud.y, r: ARREST_SPEC.b };
+// §201 landing 2 — THE ENGAGEMENT, which is what the window frames now that
+// crank A's stud stands inside the rim disc (the intent says why).
+//
+// The pin crosses the cross's RIM where its own circle about the finger's
+// axis — radius ARREST_SPEC.a, the crank the pin stands on — meets the rim
+// circle of radius ARREST_SPEC.b: two points, the entry and the exit, one
+// each side of the line of centres, and the stop-work's whole job happens
+// between them. Solved as a circle–circle intersection off the three solved
+// radii, NOT off d² = a² + b²: that identity is true of this spec and is a
+// property of a Geneva whose pin enters radially, not one the plate's window
+// should be built on — re-gear the stop-work and the frame follows the metal.
+//
+// The radius is the half chord plus one margin of visual reveal — the frame
+// those two points need — floored at TQ_LAND_MIN, because an opening narrower
+// than one land is not a window the solve will cut (§115 step 2: it would
+// leave the strip beside it exactly as thin as the opening), so asking for a
+// smaller one asks for NOT CUT rather than for a smaller window.
+ARREST_ENGAGEMENT = (() => {
+  const dx = arrestFingerPos.x - arrestStud.x, dy = arrestFingerPos.y - arrestStud.y;
+  const dd = Math.hypot(dx, dy);
+  const t = (dd * dd + ARREST_SPEC.b * ARREST_SPEC.b - ARREST_SPEC.a * ARREST_SPEC.a) / (2 * dd);  // along the line of centres
+  const h2 = ARREST_SPEC.b * ARREST_SPEC.b - t * t;                                               // the half chord, squared
+  if (!(h2 > 0)) {
+    // A pin that never reaches the rim is not a Geneva; the frame falls back
+    // to landing 1's disc, which the yield then refuses, and this says why.
+    console.warn(`§201: the finger's pin circle (a ${ARREST_SPEC.a.toFixed(3)}) does not cross the cross's rim `
+      + `(b ${ARREST_SPEC.b.toFixed(3)}) at d ${dd.toFixed(3)} — there is no engagement for the window to frame`);
+    return { x: arrestStud.x, y: arrestStud.y, r: ARREST_SPEC.b + CLEAR_MARGIN, half: 0 };
+  }
+  const half = Math.sqrt(h2);
+  return {
+    x: arrestStud.x + dx / dd * t, y: arrestStud.y + dy / dd * t,
+    r: Math.max(half + CLEAR_MARGIN, TQ_LAND_MIN), half,
+  };
+})();
 // WHICH ARM IS BLANK is derived, not declared — the assembly clocking a
 // watchmaker performs: fit the cross with its un-slotted arm where the pin
 // arrives at full wind. Assuming station 0 was wrong twice over: the cross
@@ -38268,12 +38362,17 @@ subIdlerSpin = null; subPinBSpin = null; subDiff = null;
   cSpin.add(cross);
   alarmArrestUnit.add(cSpin);
   arrestCrossSpin = cSpin;
-  // §201 — DECLARED VERSUS CUT, §115's pattern: the window solver frames
-  // ARREST_WINDOW.r about the stud, and this measures the cut cross against
-  // it — the greatest distance from the stud's axis to any vertex of the
-  // cross. A cross that out-reaches its declared disc is framed short, and
-  // nothing downstream would say so. Pose-independent: the cross is a
-  // revolver about this axis.
+  // §201 — DECLARED VERSUS CUT, §115's pattern: ARREST_WINDOW is the cross's
+  // own rim disc about its stud, and this measures the cut cross against it —
+  // the greatest distance from the stud's axis to any vertex of the cross. A
+  // cross that out-reaches the rim its spec declares is cut to something other
+  // than the spec, and nothing downstream would say so. Pose-independent: the
+  // cross is a revolver about this axis.
+  //
+  // §201 landing 2 — this was the FRAME's guard too while the window asked for
+  // that whole disc. The window frames the engagement inside it now
+  // (ARREST_ENGAGEMENT, off the same spec), so what is left here is the claim
+  // about the metal, which is the half that was always load-bearing.
   {
     alarmArrestUnit.updateMatrixWorld(true);
     const v = new THREE.Vector3();
@@ -38287,8 +38386,8 @@ subIdlerSpin = null; subPinBSpin = null; subDiff = null;
     if (!pos.count)
       console.warn('§201: the cross has no vertices to measure — the declared-vs-cut check is measuring nothing');
     if (reach > ARREST_WINDOW.r + 1e-6)
-      console.warn(`§201: the arrest window frames ${ARREST_WINDOW.r.toFixed(3)} about the cross's stud but the cut cross reaches `
-        + `${reach.toFixed(3)} — the plate frames the stop-work short`);
+      console.warn(`§201: the spec declares a rim of ${ARREST_WINDOW.r.toFixed(3)} about the cross's stud but the cut cross reaches `
+        + `${reach.toFixed(3)} — the metal is not the cross the spec describes`);
   }
   column(arrestStud.x, arrestStud.y, ARREST_SPEC.studR,
     ARREST_Z + ARREST_PLATE_T * 2, 'alarmArrestStud');
