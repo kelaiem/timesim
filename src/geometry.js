@@ -7161,6 +7161,29 @@ export function makeBackPlate({ radius, thickness, holes = [], slots = [], secto
     floor.name = 'backPlate';   // support resolves the plate by this exact name
     m.add(floor);
   }
+  // TODO 289 landing 2 — a `through` may carry its own `depth`: a BLIND bore of another depth cut as one opening
+  // with the pocket (a bearing block's pocket beside a corner's blind bore). Its floor is the bore's disc, lapped into
+  // the stock like every floor, less the pocket's opening (the pocket's own floor stands under that, deeper or
+  // shallower), so the two floors meet face to face where the openings join and neither overlaps the other's hole.
+  for (const pk of pockets) {
+    if (!(pk.through && pk.through.depth > 0)) continue;
+    const h = 2 * faceZ - pk.through.depth;
+    if (!(h > 0)) continue;
+    const B = { x: pk.through.x, y: pk.through.y, r: pk.through.r + bevelSize + pk.lap };
+    const A = { x: pk.x, y: pk.y, r: pk.r + bevelSize };
+    const d = Math.hypot(A.x - B.x, A.y - B.y);
+    if (!(Math.abs(B.r - A.r) < d && d < A.r + B.r)) {
+      console.warn(`TODO 289: a blind through-bore's floor (r ${B.r.toFixed(3)}) and its pocket's opening (r ${A.r.toFixed(3)}, ${d.toFixed(3)} apart) do not cross — the floor's crescent is undefined`);
+      continue;
+    }
+    const fs = new THREE.Shape();
+    fs.setFromPoints(discLessDisc(B, A));
+    const fg = new THREE.ExtrudeGeometry(fs, { depth: h, bevelEnabled: false, curveSegments: 72 });
+    fg.translate(0, 0, faceZ - h);
+    const floor = new THREE.Mesh(fg, MATS.perledNickel);
+    floor.name = 'backPlate';
+    m.add(floor);
+  }
   return m;
 }
 
