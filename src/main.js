@@ -14086,6 +14086,7 @@ let MAINT_BLADE = null;        // TODO 224: the blade's posed frames, built with
 // barrelMeshAngle's real run against the cut and measures which flank the beak
 // climbs.
 const MAINT_RING_RUN = MOVEMENT_SENSE;
+let MAINT_TIP_OVERHANG = null;   // TODO 291/293 — set when the blade's tip is trimmed to clear the hub land at the stop: how far its face runs past the contact
 let MAINT_RING_POLY = null;   // the ring's cut outline, ring-local — the detent rides THIS, not sawRadiusAt
 {
   const ring = G.makeRatchetAndClick({ radius: MAINT_RING_R, teeth: MAINT_RING_TEETH, thickness: MAINT_RING_T, includeClick: false,
@@ -14130,17 +14131,22 @@ let MAINT_RING_POLY = null;   // the ring's cut outline, ring-local — the dete
   // stands WHILE THE WATCH RUNS, deflected by the working torque: free, its tip
   // would stand MAINT_SPRING.deflWork_u further toward the stop.
   const M = MAINT_SPRING, gm = M.geom;
-  const outline = [[gm.xTip, gm.yB], [gm.xRoot, gm.yB], [gm.xRoot, M.bevel], [gm.xFootOut, M.bevel], [gm.xFootOut, gm.yB + M.t]];
-  const NT = 32;                                        // the taper, sampled from the root to the contact, then the floor to the tip end
-  for (let i = NT; i >= 0; i--) { const xr = (M.L * i) / NT; outline.push([gm.xc + xr, gm.yB + M.tAt(xr)]); }
-  outline.push([gm.xTip, gm.yB + M.tAt(gm.xTip - gm.xc)]);
-  const sh = new THREE.Shape();
-  outline.forEach(([x, y], i) => { const q = M.toGw(x, y); if (i === 0) sh.moveTo(q.x, q.y); else sh.lineTo(q.x, q.y); });
-  sh.closePath();
-  const blade = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: M.b, bevelEnabled: false }), MATS.blueSteel);
-  blade.geometry.translate(0, 0, M.zMid - M.b / 2);   // flush with the wheel's stock faces
-  if (blade.geometry.attributes.position.count / 3 !== 4 * outline.length - 4)
-    console.warn(`TODO 219 maintaining spring: the blade extruded to ${blade.geometry.attributes.position.count / 3} triangles where a simple ${outline.length}-gon gives ${4 * outline.length - 4}`);
+  // The CUT, one law for the first cut and for the re-cut the tip's clearance below may ask for.
+  const cutBlade = () => {
+    const outline = [[gm.xTip, gm.yB], [gm.xRoot, gm.yB], [gm.xRoot, M.bevel], [gm.xFootOut, M.bevel], [gm.xFootOut, gm.yB + M.t]];
+    const NT = 32;                                      // the taper, sampled from the root to the contact, then the floor to the tip end
+    for (let i = NT; i >= 0; i--) { const xr = (M.L * i) / NT; outline.push([gm.xc + xr, gm.yB + M.tAt(xr)]); }
+    outline.push([gm.xTip, gm.yB + M.tAt(gm.xTip - gm.xc)]);
+    const sh = new THREE.Shape();
+    outline.forEach(([x, y], i) => { const q = M.toGw(x, y); if (i === 0) sh.moveTo(q.x, q.y); else sh.lineTo(q.x, q.y); });
+    sh.closePath();
+    const g = new THREE.ExtrudeGeometry(sh, { depth: M.b, bevelEnabled: false });
+    g.translate(0, 0, M.zMid - M.b / 2);              // flush with the wheel's stock faces
+    if (g.attributes.position.count / 3 !== 4 * outline.length - 4)
+      console.warn(`TODO 219 maintaining spring: the blade extruded to ${g.attributes.position.count / 3} triangles where a simple ${outline.length}-gon gives ${4 * outline.length - 4}`);
+    return g;
+  };
+  const blade = new THREE.Mesh(cutBlade(), MATS.blueSteel);
   blade.name = 'maintSpring';
   greatWheel.add(blade);
   // The PIN, hung from the ring's underside into the crossing: pin stock
@@ -14274,6 +14280,32 @@ let MAINT_RING_POLY = null;   // the ring's cut outline, ring-local — the dete
     };
     // the face offset at X under the load at s, relative to the cut
     const dyAt = (X, L) => (L.F * kern(X, L.a) - Fw * kern(X, gm.xc)) / U;
+    // TODO 291 — THE TIP CLEARS THE HUB LAND AT EVERY POSE, not only as cut. MAINT_SPRING stands the tip one
+    // CLEAR_MARGIN off the hub land in the CUT (working) shape, but the hold relaxes the blade toward the stop flank,
+    // and the free end swings inward with it. The stop is the extreme: travel there is the whole run and the load only
+    // the floor, and the posed face moves monotonically with the travel. Under TODO 291's softer spring the run grew
+    // (0.224 → 0.297 rad, the ring 35 → 25 teeth) and the tip's pin-side corner went 0.056 into the hub land by the stop
+    // (intraUnit, maintHold f ≥ 0.67). So the tip is the SHORTEST that keeps that corner, posed at the stop, one margin
+    // off the land, bisected on the posed shape's own law. The stub beyond the contact carries no load (the
+    // compliance runs from the contact to the root), so trimming it moves no spring quantity; it must still reach past
+    // the contact's station at every pose, which the guard holds.
+    {
+      const stopL = loadAt(M.run), need = M.innerMetalR + CLEAR_MARGIN;
+      const cornerR = (X) => Math.hypot(X, gm.yB + dyAt(X, stopL));
+      if (cornerR(gm.xTip) < need) {
+        let lo = gm.xTip, hi = gm.xc;
+        for (let i = 0; i < 80 && hi - lo > 1e-12; i++) { const m = (lo + hi) / 2; if (cornerR(m) >= need) hi = m; else lo = m; }
+        gm.xTip = hi;
+        // The face must still run past the contact at every pose (the pin bears ON it). The cut wanted a pin radius
+        // past it; under the hub that is not available at this run, and the shortfall is TODO 293's, published below.
+        const aMin = Math.min(loadAt(0).a, stopL.a);
+        if (!(gm.xTip < aMin))
+          console.warn(`TODO 291 maintaining spring: the tip that clears the hub land at the stop (x ${gm.xTip.toFixed(4)}) no longer reaches the contact (stations from ${aMin.toFixed(4)})`);
+        MAINT_TIP_OVERHANG = { u: aMin - gm.xTip, wanted_u: gm.rPin, todo: 'TODO 293' };
+        blade.geometry.dispose();
+        blade.geometry = cutBlade();
+      }
+    }
     const step = gm.rPin * (1 - Math.cos(Math.PI / 16));
     const tipSpan = gm.yPin - pinAt(M.run).y;             // the pin's whole fall toward the flank, run 0 → stop
     const K = Math.ceil(tipSpan / step);
@@ -65474,7 +65506,7 @@ window.__clock = {
     return { holdNet: MAINT_HOLD.holdNet, dHold: MAINT_HOLD.dHold, crestNet: MAINT_HOLD.crestNet, rCrest: MAINT_HOLD.rCrest,
       pitch: MAINT_HOLD.pitch, run: MAINT_HOLD.run, REC: MAINT_HOLD.REC, frames: B.K, frameStep: B.step, tipSpan: B.tipSpan,
       stop: B.stop, tauAt: (s) => B.tauAt(s), loadAt: (s) => { const L = B.loadAt(s); return { F_N: L.F, x: L.p.x, y: L.p.y }; },
-      tauGo: MAINT_SPRING.tauGo, tauFloor: MAINT_SPRING.tauFloor, geom: MAINT_SPRING.geom, detentAz: MAINT_DETENT_AZ,
+      tauGo: MAINT_SPRING.tauGo, tauFloor: MAINT_SPRING.tauFloor, geom: MAINT_SPRING.geom, detentAz: MAINT_DETENT_AZ, tipOverhang: MAINT_TIP_OVERHANG,
       begin: (tau0) => MAINT_HOLD.begin(tau0) };
   },
   get stemSawPitch() { return STEM_SAW_SPEC.pitch; }, // …and its pitch (the stemSlip axis reads this)

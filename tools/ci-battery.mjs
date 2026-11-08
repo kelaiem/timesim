@@ -1415,7 +1415,10 @@ const SPEC_POINTS = [
   // and this table must not imply one (validated-configs takes only clean rows). A boot, at the cost of a boot: 31.2 s and
   // 41.4 s solo against the default's 13.7 (M2 Max, 2026-11-07), which is what SPEC_BOOT_RATIO's two rows carry.
   { name: 'geared-24', q: 'arrest=geared&reserveh=24', expect: 'declared',
-    expectWarns: ['TODO 53: the drum\'s hook plane', 'TODO 221 detent beak: the face flank\'s relief is not bracketed',
+    // TODO 291 moved this reserve's own debt by one row each way: the honest spring's lower torque brackets the
+    // detent beak's relief solve (TODO 221's row went), and the 30 h balance it re-solved knocks at 24 h's serviced
+    // corner (TODO 216's row came: 236.50° hanging, 334.00° dial-flat, against the knock at 310.46°).
+    expectWarns: ['TODO 53: the drum\'s hook plane', 'TODO 216: the serviced (nominal) corner knocks',
       'TODO 192: AMPLITUDE_CLAIM_DEG', 'TODO 207/242: BAL_RIM_F',
       'TODO 206 arming spring: follower-B\'s seat sits at the nose\'s margin',
       '§325: the strike group\'s notch in the round three-quarter plate'],
@@ -1424,11 +1427,12 @@ const SPEC_POINTS = [
   // range, which stage 3's two-endpoint sweep would have missed (24 h's lands on the endpoint, so one of the two would
   // have read right by luck). Its set is 24 h's plus §254's flank-slope row, which a 36 h wrap carries on its own.
   { name: 'geared-36', q: 'arrest=geared&reserveh=36', expect: 'declared',
-    expectWarns: ['fusee §254: flank slope', 'TODO 53: the drum\'s hook plane', 'TODO 221 detent beak: the face flank\'s relief is not bracketed',
+    // TODO 291: TODO 221's row went here too (the lower torque brackets the beak's relief solve).
+    expectWarns: ['fusee §254: flank slope', 'TODO 53: the drum\'s hook plane',
       'TODO 192: AMPLITUDE_CLAIM_DEG', 'TODO 207/242: BAL_RIM_F',
       'TODO 206 arming spring: follower-B\'s seat sits at the nose\'s margin',
       '§325: the strike group\'s notch in the round three-quarter plate'],
-    why: '§337 landing 2b stage 3 — the geared Geneva at 36 h, 25 : 14, the reserve whose worst pressure angle is INTERIOR to its range; boots exactly ?reserveh=36\'s own seven rows, the arrest\'s six gone' },
+    why: '§337 landing 2b stage 3 — the geared Geneva at 36 h, 25 : 14, the reserve whose worst pressure angle is INTERIOR to its range; boots exactly ?reserveh=36\'s own six rows, the arrest\'s six gone' },
 ];
 // A SPEC_BOOT_RATIO row naming no declared point is a stale measurement (the waiver tables' rule): it fails here,
 // before any browser starts, rather than quietly applying to nothing.
