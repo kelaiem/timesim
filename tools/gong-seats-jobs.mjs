@@ -15,7 +15,7 @@
 // THE MERGE. The committed table is read once. A (kind, mode) whose run logs `<mode> closed:` replaces that row with
 // the child's. One that does not close is DROPPED: the serial tool's own outcome, where a kind keeps its other
 // mode and the build then defaults to it (§317, case-shape.js defaultSeatMode). A kind left with neither mode
-// fails, as the serial tool fails it. Nothing is written until every process has finished, and only by this one,
+// keeps its committed rows and fails the run, as the serial tool does. Nothing is written until every process has finished, and only by this one,
 // so there is one writer (never two `--write`s of one file at once). The children read src/gong-seats.js as
 // committed. A (kind, mode) never reads its sibling's new row, and in the serial tool it read only the other
 // mode's ARC build, which no row moves, so the merged table is the one a serial run derives.
@@ -66,7 +66,13 @@ for (const r of runs) {
   if (!got) { console.error(`${r.kind} ${r.mode}: logged closed but wrote no row`); failed = true; continue; }
   (base[r.kind] ??= {})[r.mode] = got;
 }
-for (const kind of kinds) if (!base[kind]?.bar && !base[kind]?.spiral) { console.error(`${kind}: no seat closes in either mode`); failed = true; delete base[kind]; }
+// a kind that closes in NEITHER mode keeps its committed rows and fails the run, the serial tool's outcome (it writes
+// a kind's rows only when one of its modes closes)
+const prior = SPECQ ? committed.arranged[arrKey] ?? {} : committed.designed;
+for (const kind of kinds) if (!base[kind]?.bar && !base[kind]?.spiral) {
+  console.error(`${kind}: no seat closes in either mode — its committed rows are kept`); failed = true;
+  if (prior[kind]) base[kind] = JSON.parse(JSON.stringify(prior[kind])); else delete base[kind];
+}
 for (const kind of kinds) if (base[kind] && !base[kind].spiral && base[kind].bar) console.log(`${kind}: no spiral seat — its default is the bar`);
 const text = SPECQ ? fileText(committed.designed, { ...committed.arranged, [arrKey]: base }) : fileText(base, committed.arranged);
 rmSync(tmp, { recursive: true, force: true });
