@@ -15887,6 +15887,23 @@ const MAINT_HOLD = (() => {
     for (let i = 0; i < 90; i++) { const m = (lo + hi) / 2; if (g(m) <= adv) lo = m; else hi = m; }
     return lo;
   };
+  // §338 — THE HELD POSE STANDS AT A REST. tauAt inverts the GREAT WHEEL'S
+  // angle, which turns about once an hour, so a last-ulp difference in that
+  // angle (another engine's sin, a re-recorded maths library) reaches τ
+  // multiplied by 1/ω: measured, 4e-12 s of τ and 2e-9 of the balance's metal
+  // under a synthetic 1-ulp engine, five orders over every other pose
+  // (tools/probe-338-pose-conditioning.mjs, which also holds the fix). A hold
+  // is posed instead at the last EXTREME of the balance at or before that τ —
+  // (τ − BALANCE_PHASE_TAU)·2F = k + ½, balanceTheta's own turning points: the
+  // fork banked, the wheel locked, the balance at rest, so a shift of τ moves
+  // no metal to first order and k is an integer the noise cannot reach. The
+  // wheel there has advanced no further than the target (the train is locked
+  // between the rest and τ). Never earlier than the drive-off, τ0, a literal.
+  // The STOP is not snapped: τ_stop is where the pin meets the flank, a place.
+  const restAtOrBefore = (t, tau0) => {
+    const k = Math.floor((t - BALANCE_PHASE_TAU) * 2 * F_BALANCE - 0.5);
+    return Math.max(tau0, BALANCE_PHASE_TAU + (k + 0.5) / (2 * F_BALANCE));
+  };
   // The drive comes off at movement time τ0: the ring stands where it was on
   // the wheel, and recoils from there.
   const begin = (tau0) => {
@@ -15901,7 +15918,7 @@ const MAINT_HOLD = (() => {
     const travel = H.recoil + adv;
     return { adv, travel, rho: REC * travel };
   };
-  return { RUN, REC, pitch, run: R, holdNet, dHold, crestNet, rCrest, begin, poseAt, tauAt };
+  return { RUN, REC, pitch, run: R, holdNet, dHold, crestNet, rCrest, begin, poseAt, tauAt, restAtOrBefore };
 })();
 // TODO 224 — the hold's restoring answer, on TODO 206's rule. The ring
 // reciprocates now (the maintHold axis takes it back onto the beak and the
@@ -65853,7 +65870,10 @@ window.__clock = {
       pitch: MAINT_HOLD.pitch, run: MAINT_HOLD.run, REC: MAINT_HOLD.REC, frames: B.K, frameStep: B.step, tipSpan: B.tipSpan,
       stop: B.stop, tauAt: (s) => B.tauAt(s), loadAt: (s) => { const L = B.loadAt(s); return { F_N: L.F, x: L.p.x, y: L.p.y }; },
       tauGo: MAINT_SPRING.tauGo, tauFloor: MAINT_SPRING.tauFloor, geom: MAINT_SPRING.geom, detentAz: MAINT_DETENT_AZ, tipOverhang: MAINT_TIP_OVERHANG,
-      begin: (tau0) => MAINT_HOLD.begin(tau0) };
+      begin: (tau0) => MAINT_HOLD.begin(tau0),
+      // §338 — the hold's τ as the train's law inverts it, BEFORE the rest it is
+      // posed at: tools/probe-338-pose-conditioning.mjs poses it as its control.
+      advanceTau: (tau0, A0, adv) => MAINT_HOLD.tauAt(tau0, A0, adv) };
   },
   get stemSawPitch() { return STEM_SAW_SPEC.pitch; }, // …and its pitch (the stemSlip axis reads this)
   // TODO 115 — the ONE stem⇄bank gearing constant, exposed because an
@@ -66177,7 +66197,8 @@ window.__clock = {
       const h = clamp(+p.maintHold || 0, 0, 1);
       if (h > 0) {
         const H = MAINT_HOLD.begin(tauIntegrated);
-        tauIntegrated = MAINT_HOLD.tauAt(H.tau0, H.A0, h * (MAINT_HOLD.run - H.recoil));
+        const t = MAINT_HOLD.tauAt(H.tau0, H.A0, h * (MAINT_HOLD.run - H.recoil));
+        tauIntegrated = h < 1 ? MAINT_HOLD.restAtOrBefore(t, H.tau0) : t;   // §338: a hold stands at a rest; the stop is a place
         maintHold = p.maintPickUp ? null : H;
       } else maintHold = null;
     }
