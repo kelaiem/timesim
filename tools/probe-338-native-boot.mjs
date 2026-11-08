@@ -60,10 +60,10 @@ import { matchDeclaredWarns } from './battery-points.mjs';
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SPECS = ['', 'arrangement=designed'];   // the identity, and ci-battery's first swept spec point
 // Each spec's boot is held to EXACTLY its declared warning set, ci-battery's own rule (matchDeclaredWarns, by
-// prefix): the identity's is empty; `designed` declares TODO 289 landing 3's leg-2 K-block row (LEG2_K_ROW on its
-// SPEC_POINTS row in tools/ci-battery.mjs, copied here because importing that file runs the battery). A warning
+// prefix): both are empty (TODO 289 landing 3's leg-2 K-block row on `designed` retired with landing 5; a set is copied
+// here from its SPEC_POINTS row in tools/ci-battery.mjs, because importing that file runs the battery). A warning
 // beyond the set, or a declared row that stops firing, fails in either host.
-const DECLARED = { '': [], 'arrangement=designed': ['TODO 289: leg 2\'s K block'] };
+const DECLARED = { '': [], 'arrangement=designed': [] };
 const JSON_OUT = (() => { const i = process.argv.indexOf('--json'); return i > 0 ? process.argv[i + 1] : null; })();
 
 async function loadPlaywright() {

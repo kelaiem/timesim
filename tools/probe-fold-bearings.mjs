@@ -182,6 +182,10 @@ if (R.upper?.rise && !R.upper.rise.why) console.log(`  rise  straddled since lan
 else console.log(`  rise  ${(R.riseBushLen / R.overhang.rise).toFixed(2)}×  (bush ${R.riseBushLen.toFixed(3)}, overhang ${R.overhang.rise.toFixed(3)}; the dial band caps the bush — TODO 289 residue)`);
 if (R.dropLower && !R.dropLower.why && R.upper?.drop && !R.upper.drop.why) console.log(`  drop  ${((R.upper.drop.centre[2] - R.dropLower.centre[2]) / R.dropLower.overhang).toFixed(2)}×  (two bushes ${(R.upper.drop.centre[2] - R.dropLower.centre[2]).toFixed(3)} apart, the minute wheel overhung ${R.dropLower.overhang.toFixed(3)} past the lower; corner A straddled — landing 4)`);
 else if (R.upper?.drop && !R.upper.drop.why) console.log(`  drop  ONE bearing, its upper bush over A (${R.upper.drop.len.toFixed(3)} long, the band's room); the minute wheel at its foot is overhung ${(R.upper.drop.s0 + X.rods.settingDrop.len).toFixed(3)} below the bush — its lower bearing refused here: ${R.dropLower?.why}`);
+if (R.foldOpening) { const O = R.foldOpening, K = [O.x, O.y];
+  const ext = (dir) => Math.max(...O.pts.map(([x, y]) => (x - K[0]) * dir[0] + (y - K[1]) * dir[1]));
+  const u = X.rods.settingTraverse2.dir, lat = [-u[1], u[0]];
+  console.log(`  fold opening (landing 5): the blanks' footprint, ${O.pts.length} vertices — along leg 2 ${ext(u).toFixed(3)} / back ${ext([-u[0], -u[1]]).toFixed(3)}, across ${ext(lat).toFixed(3)} / ${ext([-lat[0], -lat[1]]).toFixed(3)}, circumscribed ${O.r.toFixed(3)}; the sphere's circle it replaced r ${O.sphereR.toFixed(3)}`); }
 console.log(`  stub  ${(R.stubBush.len / R.overhang.stub).toFixed(2)}×  (bush ${R.stubBush.len.toFixed(3)}, overhang ${R.overhang.stub.toFixed(3)})`);
 console.log(`  cap   straddled (jewel to bush ${(X.rods.settingCapArbor.len).toFixed(3)} of arbor)`);
 console.log('\nREPORT — the drop and both legs: nearest metal outside the fold');
