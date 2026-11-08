@@ -27,6 +27,7 @@
 // (plateR − CLEAR_MARGIN to within 0.01), and a form build's drum must read a positive excursion on the side §327 found
 // it setting (alarm=0&case=fitted: +y). A boot with an unknown query key is refused (tool-construction §3).
 import { writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { bootMany } from './boot-pool.mjs';
 
 const DEFAULT_SPECS = [
@@ -39,7 +40,7 @@ const DEFAULT_SPECS = [
   'case=free&alarm=0&barrelstep=-140&rsvaz=0&rsvidl=2&frame=lands', // the lands preview (docs/built/0075.md)
 ];
 
-const EXPR = `(() => {
+export const EXPR = `(() => {
   const c = window.__clock, CM = 0.15, RES = 0.2;
   const DRUM_UNITS = ['Mainspring drum', 'Chain', 'Set-up work'];
   const SKIP = /^Case\\b|liner/i;
@@ -79,7 +80,7 @@ const EXPR = `(() => {
     return { x0, x1, y0, y1, r: rr, farthestBy: by, sideBy: side }; };
   const g = ext((d) => d.drum), rest = ext((d) => !d.drum && counted(d));
   const reach = { drumGroup: g, rest, excursion: { '-x': rest.x0 - g.x0, '+x': g.x1 - rest.x1, '-y': rest.y0 - g.y0, '+y': g.y1 - rest.y1 },
-    plateR: c.plateR, drumFarthest: Math.hypot(D.x, D.y) + D.reachR, restFarthestR: rest.r, drumCentre: [D.x, D.y], drumDist: D.dist, drumReachR: D.reachR };
+    plateR: c.plateR, drumFarthest: Math.hypot(D.x, D.y) + D.reachR, restFarthestR: rest.r, drumCentre: [D.x, D.y], drumDir: [D.dirX, D.dirY], drumDist: D.dist, drumReachR: D.reachR };
   // (b) free discs
   const hull = (pts) => { pts.sort((a, b) => a[0] - b[0] || a[1] - b[1]); const cr = (o, a, b) => (a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]);
     const lo = [], up = []; for (const p of pts) { while (lo.length >= 2 && cr(lo[lo.length-2], lo[lo.length-1], p) <= 0) lo.pop(); lo.push(p); }
@@ -179,7 +180,7 @@ const EXPR = `(() => {
 })()`;
 
 // (c) the chain over the reserve: its own expression, posing first
-const CHAIN_EXPR = `(async () => {
+export const CHAIN_EXPR = `(async () => {
   const c = window.__clock, D = c.drum, out = [];
   const chain = c.labelEntries.find((e) => e.name === 'Chain').obj;
   const drumR = D.reachR;   // the coil's outermost metal
@@ -198,6 +199,7 @@ const CHAIN_EXPR = `(async () => {
   return out;
 })()`;
 
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
 const args = process.argv.slice(2);
 let jsonOut = null;
 const qs = [];
@@ -237,3 +239,4 @@ for (let k = 0; k < specs.length; k++) {
 }
 if (jsonOut) writeFileSync(jsonOut, JSON.stringify(all, null, 1));
 console.log(`\n${specs.length} boot(s), ${((Date.now() - t0) / 1000).toFixed(0)} s`);
+}

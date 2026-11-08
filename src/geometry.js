@@ -6,6 +6,8 @@ import * as THREE from 'three';
 import { MATS, CRYSTAL_GLASS, SAPPHIRE_IOR, DIAL_GLASS, XRAY_CLEAR, CASE_POLISH_ATTR, ALLOY_COLORS, STEEL_FINISH } from './materials.js';
 import { aesthetics } from './aesthetics.js';
 import { tongsAt } from './slide-cam.js';
+import { freeCoilLength, ribbonFrameLength, RIBBON_K_MAX, barrelDims, solveRibbon, barrelArborR } from './ribbon-solve.js';   // TODO 291 / §339: the ribbon's laws, pure, so a line spec can call the build's own solve in Node
+export { freeCoilLength, ribbonFrameLength, RIBBON_K_MAX, barrelDims, solveRibbon, barrelArborR };
 import { STOCK_MIN_U, CLEAR_MARGIN, PIVOT_BORE_CLEAR, SLENDER_TARGET, FORK_BEVEL_FRAC, UNIT_MM,
   mmForArcmin, RESOLVE_ARCMIN, IDENTIFY_ARCMIN, GLANCE_ARCMIN, CAP_PER_EM, MOVEMENT_SENSE,
   CASE_LUG_T, CASE_LUG_EDGE_R, CASE_SPRING_BAR_D, CASE_SPRING_BAR_TIP_D, caseLugPlan,
@@ -6375,40 +6377,6 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
 // alarm barrel (§89) exactly as it was.
 // `sense`: the train this spring drives — MOVEMENT_SENSE for the going drum,
 // ALARM_SENSE for the alarm barrel (layout.js says why they are two).
-// TODO 192 step 3 — the FREE coil's developed length: the even-pitch spiral
-// from innerR to outerR over A radians, ∫₀^A √(r² + r′²) da, by the same
-// composite 2-point Gauss–Legendre (128 panels, open) mainspringFrames' arcLen
-// uses for its k = 1 frame — so a ribbon proportioned with this number is
-// priced by the record against the identical length.
-export function freeCoilLength(innerR, outerR, A) {
-  const QN = 128, GX = 1 / Math.sqrt(3), h = A / QN, dr = (outerR - innerR) / A;
-  const f = (a) => Math.hypot(innerR + dr * a, dr);
-  let s = 0;
-  for (let i = 0; i < QN; i++) {
-    const c = (i + 0.5) * h, e = (h / 2) * GX;
-    s += f(c - e) + f(c + e);
-  }
-  return s * (h / 2);
-}
-// THE WIND FAMILY'S LENGTH, one law (mainspringFrames reads it, and since TODO 291 so does makeBarrel's ribbon solve):
-// the frame wound to total angle A at distribution exponent k, r(a) = innerR + P·a + S·(a/A)^k with P the coil-bind
-// pitch per radian and S the slack, developed by composite 2-point Gauss–Legendre (mainspringFrames' comment says why
-// the rule must be OPEN). The arithmetic is the one mainspringFrames always ran, in the same order.
-export function ribbonFrameLength(innerR, outerR, ribbonR, A, k) {
-  const pBind = ribbonR * 2;
-  const P = pBind / (Math.PI * 2);
-  const S = (outerR - innerR) - P * A, QN = 128, GX = 1 / Math.sqrt(3), h = A / QN;
-  const f = (a) => Math.hypot(innerR + P * a + S * Math.pow(a / A, k), P + (S * k * Math.pow(a / A, k - 1)) / A);
-  let s = 0;
-  for (let i = 0; i < QN; i++) {
-    const c = (i + 0.5) * h, e = (h / 2) * GX;
-    s += f(c - e) + f(c + e);
-  }
-  return s * (h / 2);
-}
-// The largest distribution exponent mainspringFrames' k-solve brackets. A wound frame whose length at this k still
-// exceeds the ribbon's has no solution in the family: the ribbon is too short to take that wind on its collar.
-export const RIBBON_K_MAX = 60;
 export function mainspringFrames({ innerR, outerR, coils, ribbonR, sweep, setup = 0,
                                    sense = MOVEMENT_SENSE }) {
   const pBind = ribbonR * 2;              // coil bind — see above
@@ -6575,7 +6543,6 @@ export function mainspringFrames({ innerR, outerR, coils, ribbonR, sweep, setup 
 // bore the body turns on is an argument to the builder below — and a
 // proportion that lives in two places is a proportion that will disagree with
 // itself.
-export const barrelArborR = (radius) => radius * 0.09;
 
 // arborH: full length of the central arbor (centred on the body's
 // mid-plane) — the caller sizes it to reach its actual bearings; the
@@ -6662,10 +6629,7 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
   const g = new THREE.Group();
   if (!arbor && arborBoreR === null)
     console.warn('makeBarrel: arbor: false without arborBoreR — the body has nothing to turn on and no bore to turn on it');
-  const pitchR = plain ? radius : pitchRadius(module, teeth);
-  const rootR = plain ? radius : pitchR - module * 1.15;
-  const wallModule = module || radius * 0.06;
-  const drumInnerR = Math.max(rootR - wallModule * 2.2, radius * 0.3);
+  const { pitchR, rootR, wallModule, drumInnerR, springOuter } = barrelDims({ radius, teeth, module, plain });   // ribbon-solve.js: the one law
 
   if (plain) {
     // Smooth drum wall — the chain wraps around this.
@@ -6717,7 +6681,6 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
   g.add(new THREE.Mesh(lidGeo, MATS.brass));
 
   // Spiral mainspring ribbon (tall in Z), hooked to wall & arbor. name='spring'.
-  const springOuter = drumInnerR - wallModule * 0.5;
   // TODO 192 step 3 — `ribbonSolve` PROPORTIONS the ribbon to its material and
   // its drum instead of to a fraction (the going drum passes it; the alarm
   // barrel, TODO 201, does not and keeps the legacy fraction below).
@@ -6759,49 +6722,7 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
   //    most whose collar there meets α, and the record names which constraint
   //    bound. Without `alphaMin` the collar is `springArborR` as before,
   //    bit-exact.
-  const solved = (() => {
-    if (!(ribbonSolve && springArborR !== null && springWindSweep > 0)) return null;
-    const thetaF = springSetupSweep + springWindSweep;
-    const kappa = ribbonSolve.sigmaOverE / thetaF;
-    const at = (r, n) => {
-      let a = 0.1;
-      for (let it = 0; it < 200; it++) {
-        const L = freeCoilLength(r + a, springOuter, n * Math.PI * 2);
-        const next = kappa * L;
-        if (Math.abs(next - a) < 1e-12) { a = next; break; }
-        a = next;
-      }
-      const L = freeCoilLength(r + a, springOuter, n * Math.PI * 2);
-      const Afull = n * Math.PI * 2 + thetaF;
-      return { ribbonR: a, devLen: L, fill: (2 * a * L) / (Math.PI * (springOuter ** 2 - r ** 2)),
-        windLen: ribbonFrameLength(r + a, springOuter, a, Afull, RIBBON_K_MAX) };
-    };
-    const alphaMin = ribbonSolve.alphaMin ?? null;
-    let best = null;
-    for (let n = 1; n <= 40; n++) {
-      if (alphaMin === null) {
-        const c = at(springArborR, n);
-        if (c.fill > 0.5) break;
-        const { windLen, ...rest } = c;
-        best = { coils: n, ...rest, collarR: springArborR, kappa, thetaF };
-        continue;
-      }
-      const ok = (c) => c.fill <= 0.5 && c.windLen <= c.devLen;
-      if (!ok(at(springArborR, n))) continue;
-      let lo = springArborR, hi = springOuter * 0.95;
-      if (!ok(at(hi, n))) for (let it = 0; it < 80 && hi - lo > 1e-10; it++) { const m = (lo + hi) / 2; if (ok(at(m, n))) lo = m; else hi = m; }
-      else lo = hi;
-      const c = at(lo, n), alpha = lo / (2 * c.ribbonR);
-      if (alpha < alphaMin) continue;
-      const binds = c.fill > 0.5 - 1e-6 ? 'fill' : 'wind';
-      if (!best || c.ribbonR * c.devLen > best.ribbonR * best.devLen)
-        best = { coils: n, ribbonR: c.ribbonR, devLen: c.devLen, fill: c.fill, windLen: c.windLen, collarR: lo, alpha, alphaMin, binds, kappa, thetaF };
-    }
-    if (!best) console.warn(alphaMin === null
-      ? 'TODO 192: no whole number of coils keeps the solved ribbon inside half the barrel'
-      : `TODO 291: no whole number of coils gives a ribbon at r/e ≥ ${alphaMin} that fits half the barrel and takes its full wind`);
-    return best;
-  })();
+  const solved = solveRibbon({ springOuter, springArborR, springWindSweep, springSetupSweep, ribbonSolve });   // ribbon-solve.js
   const sCoils = solved ? solved.coils : 5;
   // The ribbon's section, and with it the inner radius. Legacy form: the inner
   // radius is a fraction of the drum and the section follows. Morph form: the
