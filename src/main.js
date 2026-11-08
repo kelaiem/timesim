@@ -214,6 +214,17 @@ for (const w of globalThis.__detMath ? globalThis.__detMath.warns : ['§338: det
 // false-silence this buffer was added to kill. So the warns get their own
 // surface, which means "there are warns" and never "the boot finished".
 window.__bootWarns = __bootWarns;
+// §338 — WHERE THE BUILD ENDS. The buffer above keeps every warn for the life of
+// the page, and the live loop starts on this module's LAST line
+// (requestAnimationFrame(frame)), so on a page a starved frame can warn after the
+// build and before a harness takes its sweep hold: tick's §38/TODO 8 guard did,
+// under CI load, and read as an undeclared BOOT warn on two unrelated PRs (§234
+// and §328 record the same guard firing under load on unchanged main). The
+// length at that last line is the boundary: `buildWarns` is the build's own
+// warns (its tick(0) included, which is deterministic), `runWarns` everything the
+// running page said after. `bootWarns` stays the whole buffer for every reader
+// that steps the movement and reads it afterwards on purpose.
+let __buildWarnEnd = null;
 // The fatal error itself, for the same reason: at R 13 the diagnosis is the
 // TypeError, not the warn that precedes it. Only claimed while __clock is
 // absent — after boot, an error belongs to whatever raised it.
@@ -65818,6 +65829,8 @@ window.__clock = {
   // where the notch actually stands, and whether the roller moved it.
   get resetContact() { return { ...resetContactNow, seatD: HEART_FREE_D0, retractD: HEART_FREE_D1 }; },
   get bootWarns() { return __bootWarns; },
+  get buildWarns() { return __buildWarnEnd === null ? __bootWarns.slice() : __bootWarns.slice(0, __buildWarnEnd); },   // §338
+  get runWarns() { return __buildWarnEnd === null ? [] : __bootWarns.slice(__buildWarnEnd); },
   // §106 — the arrest's verification surface. The BANK is the entry's whole
   // acceptance and it cannot be posed: both the tick law and setPose clamp to
   // the ceiling, so the only way to ask "is the stop metal or is it the clamp"
@@ -66614,4 +66627,5 @@ if (window.__bootPrefsApplyLate) {
   for (const [p, v] of Object.entries(window.__bootPrefs || {})) window.__bootPrefsApply(p, v);
 }
 
+__buildWarnEnd = __bootWarns.length;   // §338: the build ends here, the live loop starts on the next line
 requestAnimationFrame(frame);

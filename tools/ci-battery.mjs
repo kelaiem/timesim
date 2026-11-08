@@ -1277,7 +1277,7 @@ async function specBoot(browser, base, q, timeoutMs = BOOT_TIMEOUT_MS) {
   try {
     await page.goto(url, { waitUntil: 'load', timeout: timeoutMs });
     await page.waitForFunction(() => !!window.__clock, null, { timeout: timeoutMs });
-    const warns = await page.evaluate(() => (window.__clock.bootWarns || []).slice());
+    const warns = await page.evaluate(() => (window.__clock.buildWarns || []).slice());   // §338: the build's, not a live frame's
     const nonFinite = await page.evaluate(NON_FINITE_WALK);
     const config = await page.evaluate(() => window.__clock.config ?? null);   // TODO 158: what the build says it is, and whether it calls itself verified
     return { alive: true, warns, errors, nonFinite, config };
