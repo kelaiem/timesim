@@ -1012,11 +1012,12 @@ const SPEC_POINTS = [
   // since TODO 274 closed it is CLEAN and listed in validated-configs.js, so
   // the validated-configs gate fails the run the day it stops sweeping clean.
   //
-  // `formrect=` is GONG_SEATS.rect.spiral.formrect (§314: the spiral is the form default), written out because a spec
+  // `formrect=` is the rect's DEFAULT seat's fit, GONG_SEATS.rect.bar.formrect since TODO 297 (§314 made the spiral the form
+  // default; with the dial's feet inside the outline no rect spiral seat closes, so the rect takes its bar, §317), written out because a spec
   // row is a URL; the probe holds it equal to the generated seat, so a
   // re-solved seat that moves the fit fails there rather than leaving this
   // row on an outline nobody cuts.
-  { name: 'form-rect', q: 'case=rect&formrect=-45.72,45.72,-44.38,44.38', expect: 'declared', sweep: true,
+  { name: 'form-rect', q: 'case=rect&formrect=-46.99,46.99,-43.93,43.93', expect: 'declared', sweep: true,
     expectWarns: ['§186: the rim-to-bore fit', '§261: cased assembly'],
     why: '§310 landing 4 / §313 — the rect form case at its default (ARRANGEMENT, the spiral seat since §314) and that seat\'s fit; swept, booting exactly the two rows every form build carries' },
   // §328 step 1b — THE APPLIED PILLARS. Since step 1b the default frame is the back plate on lands the base plate raises
@@ -1277,7 +1278,7 @@ async function specBoot(browser, base, q, timeoutMs = BOOT_TIMEOUT_MS) {
   try {
     await page.goto(url, { waitUntil: 'load', timeout: timeoutMs });
     await page.waitForFunction(() => !!window.__clock, null, { timeout: timeoutMs });
-    const warns = await page.evaluate(() => (window.__clock.bootWarns || []).slice());
+    const warns = await page.evaluate(() => (window.__clock.buildWarns || []).slice());   // §338: the build's, not a live frame's
     const nonFinite = await page.evaluate(NON_FINITE_WALK);
     const config = await page.evaluate(() => window.__clock.config ?? null);   // TODO 158: what the build says it is, and whether it calls itself verified
     return { alive: true, warns, errors, nonFinite, config };

@@ -152,5 +152,5 @@ export async function bootNative(opts = {}) {
   const ms = performance.now() - t0;
   const g = globalThis;
   if (!g.__clock) throw new Error(`native host: main.js evaluated without publishing __clock${g.__bootError ? `: ${g.__bootError.message}` : ''}`);
-  return { clock: g.__clock, ms, warns: (g.__clock.bootWarns || []).slice(), touched: Object.fromEntries(touched) };
+  return { clock: g.__clock, ms, warns: (g.__clock.buildWarns || []).slice(), touched: Object.fromEntries(touched) };
 }

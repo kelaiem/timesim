@@ -6643,7 +6643,7 @@ export function* makeBarrelSteps({ radius, height, teeth, module, plain = false,
                              ratchet = !plain, springArborR = null, springWindSweep = 0,
                              springSetupSweep = 0, ribbonSection = 'strip', ribbonSolve = null,
                              arbor = true, arborBoreR = null,
-                             sense = MOVEMENT_SENSE }) {
+                             sense = MOVEMENT_SENSE, spring: hasSpring = true }) {
   const g = new THREE.Group();
   if (!arbor && arborBoreR === null)
     console.warn('makeBarrel: arbor: false without arborBoreR — the body has nothing to turn on and no bore to turn on it');
@@ -6740,149 +6740,153 @@ export function* makeBarrelSteps({ radius, height, teeth, module, plain = false,
   //    most whose collar there meets α, and the record names which constraint
   //    bound. Without `alphaMin` the collar is `springArborR` as before,
   //    bit-exact.
-  const solved = solveRibbon({ springOuter, springArborR, springWindSweep, springSetupSweep, ribbonSolve });   // ribbon-solve.js
-  const sCoils = solved ? solved.coils : 5;
-  // The ribbon's section, and with it the inner radius. Legacy form: the inner
-  // radius is a fraction of the drum and the section follows. Morph form: the
-  // inner coil BEARS ON the arbor collar, so springInner = arborR + sRibbon and
-  // the section solves out of its own definition —
-  //   rib = (0.1/coils)(outerR − arborR − rib)  ⇒  rib = q(outerR − arborR)/(1 + q)
-  // — which also closes a 0.036 burial of the ribbon in the collar that the
-  // fraction had left standing (an EXPECTED pair, so nothing measured it).
-  const morph = springArborR !== null && springWindSweep > 0;
-  const collarR = solved ? solved.collarR : springArborR;   // TODO 291: the solve's collar, or the caller's
-  const q = 0.1 / sCoils;
-  const sRibbon = solved ? solved.ribbonR : morph
-    ? Math.max((q * (springOuter - collarR)) / (1 + q), 0.08)
-    : Math.max(((springOuter - radius * 0.16) / sCoils) * 0.1, 0.08);
-  const springInner = morph ? collarR + sRibbon : radius * 0.16;
-  const wind = morph ? (yield* mainspringFramesSteps({
-    innerR: springInner, outerR: springOuter, coils: sCoils, ribbonR: sRibbon,
-    sweep: springWindSweep, setup: springSetupSweep, sense,
-  })) : null;
-  // TODO 193 — cut as a STRIP (stripSweepGeometry), on the curve and frames
-  // the old TubeGeometry swept: the same polyline, the same segment count, the
-  // same half-extent sRibbon, corners where the rhombus had its points.
-  // `ribbonSection: 'rhombus4'` keeps the old four-segment tube for a caller
-  // whose ribbon has not been re-specified yet (the alarm barrel — its k is
-  // §104's governor constant, and TODO 201 re-proportions the two together).
-  const strip = ribbonSection === 'strip';
-  const sweep = (curve, segs) => (strip
-    ? stripSweepGeometry(curve, segs, sRibbon)
-    : new THREE.TubeGeometry(curve, segs, sRibbon, 4, false));
-  const tubeOf = (pts) => sweep(
-    new THREE.CatmullRomCurve3(pts.map(([x, y]) => new THREE.Vector3(x, y, 0))), wind.segs);
-  let windGeos = null;
-  if (morph) { windGeos = []; for (const f of wind.frames) { windGeos.push(tubeOf(f)); yield; } }   // wind.frames.map(tubeOf), a frame a step
-  const sGeo = morph ? windGeos[windGeos.length - 1]
-    : sweep(new ArchimedeanSpiral(springInner, springOuter, sCoils), sCoils * 48);
-  const springMesh = new THREE.Mesh(sGeo, MATS.steel);
-  springMesh.name = 'mainspringRibbon'; // TODO 12 triage: SPRING stock — the coil IS the mainspring (real ones 0.05–0.20 mm); named so §50's kind table sees it
-  // §78 part two — the ribbon's own winding, exported for the schematic. The
-  // §66 blade pass finds this mesh by its name and drew a 9-point zigzag along
-  // its longest local axis, which is the glyph for a straight LEAF spring:
-  // wrong about the one thing a coiled ribbon is. These are the exact
-  // arguments the ArchimedeanSpiral above is swept along, so the line and the
-  // tube are the same curve at different fidelities.
-  // (Morph form: `spiral` stays the FREE plan — the ribbon as coiled, which is
-  // what the three-spring tripwire counts — and `spiralFrames` carries the
-  // wind states' real polylines so the drawn line rides the morph instead of
-  // quoting a plan the metal has left behind. Consumers that find frames must
-  // use them: the linear parametrisation is only true at k = 1.)
-  springMesh.userData.spiral = { innerR: springInner, outerR: springOuter, coils: sCoils };
-  springMesh.scale.z = Math.max((height * 0.7) / (sRibbon * 2), 1);
-  const spring = new THREE.Group();
-  spring.name = 'spring';
-  spring.add(springMesh);
-  // Outer hook to the barrel wall.
-  const oh = new THREE.Mesh(
-    new THREE.BoxGeometry(wallModule * 1.5, sRibbon * 2.2, height * 0.55),
-    MATS.steel
-  );
-  oh.name = 'mainspringHook'; // TODO 12 triage: the spring's own hook tab — spring stock with the ribbon it belongs to
-  oh.position.set(springOuter, 0, 0);   // drum-local azimuth 0 — the morph's fixed outer end
-  spring.add(oh);
-  g.add(spring);
+  // §339 landing 2b — `spring: false` builds the BODY only (the chain pulley at ?barrels=2: a drum with no ribbon in it).
+  if (hasSpring) {
+    const solved = solveRibbon({ springOuter, springArborR, springWindSweep, springSetupSweep, ribbonSolve });   // ribbon-solve.js
+    const sCoils = solved ? solved.coils : 5;
+    // The ribbon's section, and with it the inner radius. Legacy form: the inner
+    // radius is a fraction of the drum and the section follows. Morph form: the
+    // inner coil BEARS ON the arbor collar, so springInner = arborR + sRibbon and
+    // the section solves out of its own definition —
+    //   rib = (0.1/coils)(outerR − arborR − rib)  ⇒  rib = q(outerR − arborR)/(1 + q)
+    // — which also closes a 0.036 burial of the ribbon in the collar that the
+    // fraction had left standing (an EXPECTED pair, so nothing measured it).
+    const morph = springArborR !== null && springWindSweep > 0;
+    const collarR = solved ? solved.collarR : springArborR;   // TODO 291: the solve's collar, or the caller's
+    const q = 0.1 / sCoils;
+    const sRibbon = solved ? solved.ribbonR : morph
+      ? Math.max((q * (springOuter - collarR)) / (1 + q), 0.08)
+      : Math.max(((springOuter - radius * 0.16) / sCoils) * 0.1, 0.08);
+    const springInner = morph ? collarR + sRibbon : radius * 0.16;
+    const wind = morph ? (yield* mainspringFramesSteps({
+      innerR: springInner, outerR: springOuter, coils: sCoils, ribbonR: sRibbon,
+      sweep: springWindSweep, setup: springSetupSweep, sense,
+    })) : null;
+    // TODO 193 — cut as a STRIP (stripSweepGeometry), on the curve and frames
+    // the old TubeGeometry swept: the same polyline, the same segment count, the
+    // same half-extent sRibbon, corners where the rhombus had its points.
+    // `ribbonSection: 'rhombus4'` keeps the old four-segment tube for a caller
+    // whose ribbon has not been re-specified yet (the alarm barrel — its k is
+    // §104's governor constant, and TODO 201 re-proportions the two together).
+    const strip = ribbonSection === 'strip';
+    const sweep = (curve, segs) => (strip
+      ? stripSweepGeometry(curve, segs, sRibbon)
+      : new THREE.TubeGeometry(curve, segs, sRibbon, 4, false));
+    const tubeOf = (pts) => sweep(
+      new THREE.CatmullRomCurve3(pts.map(([x, y]) => new THREE.Vector3(x, y, 0))), wind.segs);
+    let windGeos = null;
+    if (morph) { windGeos = []; for (const f of wind.frames) { windGeos.push(tubeOf(f)); yield; } }   // wind.frames.map(tubeOf), a frame a step
+    const sGeo = morph ? windGeos[windGeos.length - 1]
+      : sweep(new ArchimedeanSpiral(springInner, springOuter, sCoils), sCoils * 48);
+    const springMesh = new THREE.Mesh(sGeo, MATS.steel);
+    springMesh.name = 'mainspringRibbon'; // TODO 12 triage: SPRING stock — the coil IS the mainspring (real ones 0.05–0.20 mm); named so §50's kind table sees it
+    // §78 part two — the ribbon's own winding, exported for the schematic. The
+    // §66 blade pass finds this mesh by its name and drew a 9-point zigzag along
+    // its longest local axis, which is the glyph for a straight LEAF spring:
+    // wrong about the one thing a coiled ribbon is. These are the exact
+    // arguments the ArchimedeanSpiral above is swept along, so the line and the
+    // tube are the same curve at different fidelities.
+    // (Morph form: `spiral` stays the FREE plan — the ribbon as coiled, which is
+    // what the three-spring tripwire counts — and `spiralFrames` carries the
+    // wind states' real polylines so the drawn line rides the morph instead of
+    // quoting a plan the metal has left behind. Consumers that find frames must
+    // use them: the linear parametrisation is only true at k = 1.)
+    springMesh.userData.spiral = { innerR: springInner, outerR: springOuter, coils: sCoils };
+    springMesh.scale.z = Math.max((height * 0.7) / (sRibbon * 2), 1);
+    const spring = new THREE.Group();
+    spring.name = 'spring';
+    spring.add(springMesh);
+    // Outer hook to the barrel wall.
+    const oh = new THREE.Mesh(
+      new THREE.BoxGeometry(wallModule * 1.5, sRibbon * 2.2, height * 0.55),
+      MATS.steel
+    );
+    oh.name = 'mainspringHook'; // TODO 12 triage: the spring's own hook tab — spring stock with the ribbon it belongs to
+    oh.position.set(springOuter, 0, 0);   // drum-local azimuth 0 — the morph's fixed outer end
+    spring.add(oh);
+    g.add(spring);
 
-  if (morph) {
-    // The wind state, and everything the caller needs to place the OTHER end.
-    // The inner end sits at drum-local angle A, so its azimuth in the frame the
-    // drum turns in is A + drumRot ≡ sweepFull — constant, which is the whole
-    // claim: that end is bolted to a static arbor and the drum turns under it.
-    // The arbor's hook lug therefore goes at `innerAnchorAz`, DERIVED, not
-    // placed by eye.
-    const last = windGeos.length - 1;
-    let cur = last;
-    const setWind = (A) => {
-      const f = (A - wind.sweepDown) / springWindSweep;         // 0 run down (set-up held) … 1 fully wound
-      const i = Math.max(0, Math.min(last, Math.round((1 - f) * last)));
-      if (i === cur) return;
-      cur = i;
-      springMesh.geometry = windGeos[i];
-      springMesh.userData.spiralFrame = i;
-      writeSpiralLine(springMesh.userData.spiralLine, wind.frames[i]); // §83: one writer, shared with the hairspring
-    };
-    springMesh.userData.spiralFrames = wind.frames;
-    springMesh.userData.spiralFrame = last;
-    spring.userData.mainspring = {
-      setWind,
-      sweepFree: wind.sweepFree, sweepDown: wind.sweepDown, sweepFull: wind.sweepFull,
-      setupSweep: wind.setupSweep,
-      innerAnchorAz: wind.sweepFull % (Math.PI * 2),
-      innerR: springInner, outerR: springOuter, ribbonR: sRibbon, pBind: wind.pBind,
-      solve: solved, coils: sCoils, collarR,
-      height: height * 0.7, frames: windGeos.length, segs: wind.segs,
-      devLen: wind.devLen, capacity: wind.capacity, minPitch: wind.minPitch,
-      maxStep: wind.maxStep, lenErr: wind.lenErr, cutSpread: wind.cutSpread,
-      // TODO 32 / TODO 193 — the SECTION AS CUT. Since TODO 193 the ribbon
-      // is a STRIP (stripSweepGeometry): half-thickness a = ribbonR radially
-      // (the bending direction) and half-width c = max(height·0.7/2, ribbonR)
-      // axially once scale.z stands it on edge — the floor mirrors scale.z's
-      // own Math.max. I about the axial centre-line = (2c)(2a)³/12 = 4a³c/3,
-      // the b·h³/12 the entry always sketched; the rhombus four tube segments
-      // used to cut was a quarter of it. Units^4; main.js converts through
-      // §39's UNIT_MM for the EQUALISATION record.
-      // (A 'rhombus4' caller keeps the old publish: I = a³c/3 about the axial
-      // diagonal, the section four tube segments cut.)
-      section: (() => {
-        const a = sRibbon, c = Math.max((height * 0.7) / 2, sRibbon);
-        return strip ? { shape: 'strip', a, c, I_u4: 4 * (Math.pow(a, 3)) * c / 3 }
-          : { shape: 'rhombus4', a, c, I_u4: (Math.pow(a, 3)) * c / 3 };
-      })(),
-    };
-    setWind(wind.sweepFull);   // built fully wound, which is where the sim boots
-    // Rule 6 asserts — every one of them a constraint the family above claims.
-    // Two of them can bite and two are tripwires, and the difference is worth
-    // stating. CAPACITY and LENGTH are the real gates: run the reserve spec up
-    // and the annulus eventually cannot hold the turns (capacity), and before
-    // that the k-solve stops reaching the ribbon's length (lenErr) — which is
-    // what "this spring is too short for this reserve" looks like as a number.
-    // COIL BIND cannot fail while the affine term exists, since that term IS
-    // the bind; it is kept as a regression tripwire on the radial law, not as
-    // a design gate. Measured across the spec's whole 12–48 h range, the wound
-    // sweep runs 5.704 → 7.814 turns and the tightest gap 0.579 → 0.2698: at
-    // 48 h the spring is exactly coil-bound, which is the honest report that
-    // the drum is then completely full.
-    if (wind.capacity <= 0)
-      console.warn(`TODO 1: the drum's annulus (${(springOuter - springInner).toFixed(3)}) cannot hold ${(wind.sweepFull / (Math.PI * 2)).toFixed(3)} turns of ${wind.pBind.toFixed(4)}-thick ribbon at coil bind — capacity ${wind.capacity.toFixed(3)}`);
-    if (wind.lenErr > 1e-6)
-      console.warn(`TODO 1: mainspring wind frames differ in developed length by ${(wind.lenErr * 100).toFixed(4)}% — the k-solve is not reaching ${wind.devLen.toFixed(3)}, so the ribbon is being stretched rather than wound`);
-    if (wind.cutSpread > wind.pBind)
-      console.warn(`TODO 1: the CUT mainspring varies ${wind.cutSpread.toFixed(3)} in length across the wind range against a ${wind.pBind.toFixed(4)} ribbon — ${wind.segs} segments is too coarse a tessellation to hold the length constraint`);
-    // §104 — held at float noise, not at strict <: the affine term IS the
-    // bind, so analytically pitch = pBind + S·[((a+2π)/A)^k − (a/A)^k] ≥
-    // pBind always (S > 0, the bracket is monotone). At deep winds the
-    // k-solve runs the distribution term to underflow on the inner coils
-    // ("the coils come down to bind and simply stay there"), and the
-    // measured difference is pure cancellation noise — the alarm barrel's
-    // 4.25-turn set-up total measures minPitch − pBind = −1.9e-16 against a
-    // 0.19 ribbon. 1e-9 is the equalisation level product's own float-noise
-    // convention; a REAL pass-through (a law change, not an underflow) is
-    // orders of magnitude past it.
-    if (wind.minPitch < wind.pBind - 1e-9)
-      console.warn(`TODO 1: mainspring coils close to ${wind.minPitch.toFixed(4)} against a ${wind.pBind.toFixed(4)} ribbon — the turns pass through each other`);
-    if (wind.maxStep > wind.pBind)
-      console.warn(`TODO 1: mainspring wind steps ${wind.maxStep.toFixed(4)} between frames against a ${wind.pBind.toFixed(4)} ribbon — ${windGeos.length} frames is too few for the measured ${wind.dPdA.toFixed(3)} u/rad`);
+    if (morph) {
+      // The wind state, and everything the caller needs to place the OTHER end.
+      // The inner end sits at drum-local angle A, so its azimuth in the frame the
+      // drum turns in is A + drumRot ≡ sweepFull — constant, which is the whole
+      // claim: that end is bolted to a static arbor and the drum turns under it.
+      // The arbor's hook lug therefore goes at `innerAnchorAz`, DERIVED, not
+      // placed by eye.
+      const last = windGeos.length - 1;
+      let cur = last;
+      const setWind = (A) => {
+        const f = (A - wind.sweepDown) / springWindSweep;         // 0 run down (set-up held) … 1 fully wound
+        const i = Math.max(0, Math.min(last, Math.round((1 - f) * last)));
+        if (i === cur) return;
+        cur = i;
+        springMesh.geometry = windGeos[i];
+        springMesh.userData.spiralFrame = i;
+        writeSpiralLine(springMesh.userData.spiralLine, wind.frames[i]); // §83: one writer, shared with the hairspring
+      };
+      springMesh.userData.spiralFrames = wind.frames;
+      springMesh.userData.spiralFrame = last;
+      spring.userData.mainspring = {
+        setWind,
+        sweepFree: wind.sweepFree, sweepDown: wind.sweepDown, sweepFull: wind.sweepFull,
+        setupSweep: wind.setupSweep,
+        innerAnchorAz: wind.sweepFull % (Math.PI * 2),
+        innerR: springInner, outerR: springOuter, ribbonR: sRibbon, pBind: wind.pBind,
+        solve: solved, coils: sCoils, collarR,
+        height: height * 0.7, frames: windGeos.length, segs: wind.segs,
+        devLen: wind.devLen, capacity: wind.capacity, minPitch: wind.minPitch,
+        maxStep: wind.maxStep, lenErr: wind.lenErr, cutSpread: wind.cutSpread,
+        // TODO 32 / TODO 193 — the SECTION AS CUT. Since TODO 193 the ribbon
+        // is a STRIP (stripSweepGeometry): half-thickness a = ribbonR radially
+        // (the bending direction) and half-width c = max(height·0.7/2, ribbonR)
+        // axially once scale.z stands it on edge — the floor mirrors scale.z's
+        // own Math.max. I about the axial centre-line = (2c)(2a)³/12 = 4a³c/3,
+        // the b·h³/12 the entry always sketched; the rhombus four tube segments
+        // used to cut was a quarter of it. Units^4; main.js converts through
+        // §39's UNIT_MM for the EQUALISATION record.
+        // (A 'rhombus4' caller keeps the old publish: I = a³c/3 about the axial
+        // diagonal, the section four tube segments cut.)
+        section: (() => {
+          const a = sRibbon, c = Math.max((height * 0.7) / 2, sRibbon);
+          return strip ? { shape: 'strip', a, c, I_u4: 4 * (Math.pow(a, 3)) * c / 3 }
+            : { shape: 'rhombus4', a, c, I_u4: (Math.pow(a, 3)) * c / 3 };
+        })(),
+      };
+      setWind(wind.sweepFull);   // built fully wound, which is where the sim boots
+      // Rule 6 asserts — every one of them a constraint the family above claims.
+      // Two of them can bite and two are tripwires, and the difference is worth
+      // stating. CAPACITY and LENGTH are the real gates: run the reserve spec up
+      // and the annulus eventually cannot hold the turns (capacity), and before
+      // that the k-solve stops reaching the ribbon's length (lenErr) — which is
+      // what "this spring is too short for this reserve" looks like as a number.
+      // COIL BIND cannot fail while the affine term exists, since that term IS
+      // the bind; it is kept as a regression tripwire on the radial law, not as
+      // a design gate. Measured across the spec's whole 12–48 h range, the wound
+      // sweep runs 5.704 → 7.814 turns and the tightest gap 0.579 → 0.2698: at
+      // 48 h the spring is exactly coil-bound, which is the honest report that
+      // the drum is then completely full.
+      if (wind.capacity <= 0)
+        console.warn(`TODO 1: the drum's annulus (${(springOuter - springInner).toFixed(3)}) cannot hold ${(wind.sweepFull / (Math.PI * 2)).toFixed(3)} turns of ${wind.pBind.toFixed(4)}-thick ribbon at coil bind — capacity ${wind.capacity.toFixed(3)}`);
+      if (wind.lenErr > 1e-6)
+        console.warn(`TODO 1: mainspring wind frames differ in developed length by ${(wind.lenErr * 100).toFixed(4)}% — the k-solve is not reaching ${wind.devLen.toFixed(3)}, so the ribbon is being stretched rather than wound`);
+      if (wind.cutSpread > wind.pBind)
+        console.warn(`TODO 1: the CUT mainspring varies ${wind.cutSpread.toFixed(3)} in length across the wind range against a ${wind.pBind.toFixed(4)} ribbon — ${wind.segs} segments is too coarse a tessellation to hold the length constraint`);
+      // §104 — held at float noise, not at strict <: the affine term IS the
+      // bind, so analytically pitch = pBind + S·[((a+2π)/A)^k − (a/A)^k] ≥
+      // pBind always (S > 0, the bracket is monotone). At deep winds the
+      // k-solve runs the distribution term to underflow on the inner coils
+      // ("the coils come down to bind and simply stay there"), and the
+      // measured difference is pure cancellation noise — the alarm barrel's
+      // 4.25-turn set-up total measures minPitch − pBind = −1.9e-16 against a
+      // 0.19 ribbon. 1e-9 is the equalisation level product's own float-noise
+      // convention; a REAL pass-through (a law change, not an underflow) is
+      // orders of magnitude past it.
+      if (wind.minPitch < wind.pBind - 1e-9)
+        console.warn(`TODO 1: mainspring coils close to ${wind.minPitch.toFixed(4)} against a ${wind.pBind.toFixed(4)} ribbon — the turns pass through each other`);
+      if (wind.maxStep > wind.pBind)
+        console.warn(`TODO 1: mainspring wind steps ${wind.maxStep.toFixed(4)} between frames against a ${wind.pBind.toFixed(4)} ribbon — ${windGeos.length} frames is too few for the measured ${wind.dPdA.toFixed(3)} u/rad`);
+    }
+
   }
 
   // Central arbor — only where it TURNS WITH the body (see the `arbor` note).

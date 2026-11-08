@@ -154,6 +154,8 @@ export const stopworkReaches = (reserveHours) => {
   return false;
 };
 export const STOPWORK_SITED_HOURS = Object.freeze([30]);
+// §339 landing 2b — the reserve PULLEY_BARREL's integers were solved at (the default's: SPEC.reserveHours' own fallback).
+export const PULLEY_BARREL_HOURS = 30;
 export const SPEC = (() => {
   const raw0 = (typeof globalThis !== 'undefined' && globalThis.__WATCH_SPEC) || {};
   const given = (v) => v !== undefined && v !== null && v !== '';
@@ -423,7 +425,12 @@ export const SPEC = (() => {
     : null;
   const drumAzDeg = raw.drumAzDeg !== undefined && raw.drumAzDeg !== null && raw.drumAzDeg !== '' && Number.isFinite(Number(raw.drumAzDeg))
     ? ((Number(raw.drumAzDeg) % 360) + 360) % 360 : null;
-  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, rsvIdlers, alarmr, subdialr, dialr, studr, caseShape, frame, hands, formRectSpec, gongSeat, alarm, strapMm, drumAzDeg, arrest });
+  // §339 landing 2b — ?barrels=2: the chain pulley and one barrel (PULLEY_BARREL below). Its integers were solved at the
+  // reserve PULLEY_BARREL_HOURS, where the cone's invariant and the drive's size were measured, so another reserve is
+  // refused loudly and builds the one drum. null = the one drum (a `1` is that null, so it is not a second key).
+  const barrels = Number(raw.barrels) === 2 ? (reserveHours === PULLEY_BARREL_HOURS ? 2
+    : (console.warn(`§339: ?barrels=2 is refused at ${reserveHours} h — PULLEY_BARREL was solved at ${PULLEY_BARREL_HOURS} h; building the one drum`), null)) : null;
+  return Object.freeze({ barrels, vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, rsvIdlers, alarmr, subdialr, dialr, studr, caseShape, frame, hands, formRectSpec, gongSeat, alarm, strapMm, drumAzDeg, arrest });
 })();
 // §325 landing 3 — whether this build carries the alarm complication (SPEC.alarm above)
 export const ALARM_BUILT = SPEC.alarm !== false;
@@ -1465,6 +1472,19 @@ export const MAINSPRING_ALPHA_BAND = Object.freeze({
   why: 'r/e, the innermost coil\'s radius over the strip\'s thickness: ~10 today, ~14 historically, 16 per Defossez (D. Ichim, SJX Watches, 2025-11-07)',
 });
 export const MAINSPRING_ALPHA_MIN = MAINSPRING_ALPHA_BAND.low;
+// BACKLOG §339 landing 2a' — A CHAIN PULLEY AND ONE BARREL, the design's integers DECLARED: the teeth on the pulley's
+// flange (zA) and on the barrel's wall (zB), and the barrel's set-up clicks (NB) on the build's 24-tooth set-up ratchet.
+// Every length follows from them (src/twin-barrel.js' pulleyBarrel: the cone held the same cone, the flange one margin
+// outside the chain coiled on the pulley). They are the answer of pickPulleyBarrel's stated rule at the
+// alarm=0&case=fitted build's free disc, and tools/probe-pulley-barrel.mjs re-derives them and fails if they part.
+export const PULLEY_BARREL = Object.freeze({ zA: 38, zB: 104, NB: 29,
+  // THE SEAT (tools/probe-pulley-barrel-place.mjs, at rest, on alarm=0&case=fitted): the pulley's azimuth round the fusee
+  // and the barrel's round the pulley, movement frame, degrees counter-clockwise from +x. The rule: the seat whose box is
+  // smallest, ties to the widest margin, among those clear of the three fields and of both sides of the chain's span.
+  pulleyAzDeg: 115.5, barrelAzDeg: 192.5 });
+// The drum's azimuth every reader takes (main.js' drumDir and the form rectangle's reach): ?drumaz= when given, else the
+// pulley's declared seat at ?barrels=2, else null (drumDirOf's blend, the shipped watch, bit-exact).
+export const DRUM_AZ_DEG = SPEC.drumAzDeg !== null ? SPEC.drumAzDeg : SPEC.barrels === 2 ? PULLEY_BARREL.pulleyAzDeg : null;
 // TODO 221 — THE CLICK STEEL, named, and why a CONTACT needs it where a beam
 // does not. The maintaining detent's beak bears the whole hold (the going
 // torque on the ring's face, ~2.2 N) across a line one click-thickness long
@@ -5324,7 +5344,7 @@ export function solveKeyless({
   // and its metal, the chain coil on its wall, stood outside the box a first form boot cut the plates to. Its circle
   // enters under the same rim margin as every station, at the place main.js puts it (drumDirOf, the one law).
   const drumCircle = drum ? (() => {
-    const d = drumDirOf(uWind, vPerp, sideSign, SPEC.drumAzDeg);
+    const d = drumDirOf(uWind, vPerp, sideSign, DRUM_AZ_DEG);
     return [{ x: P.barrel.x + d.x * drum.dist, y: P.barrel.y + d.y * drum.dist, r: drum.r, rim: PLATE_RIM_MARGIN }];
   })() : [];
   const formPlate = formRect([

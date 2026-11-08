@@ -127,7 +127,7 @@ function measure(I) {
     tris.sort();
     u.triSet = fnv(new TextEncoder().encode(tris.join(';')), 0x811c9dc5);
   }
-  return { fingerprint, digests, units, placeRaw, placeQ: I.DIGEST_PLACE_Q, warns: (c.bootWarns || []).slice(),
+  return { fingerprint, digests, units, placeRaw, placeQ: I.DIGEST_PLACE_Q, warns: (c.buildWarns || []).slice(), runWarns: (c.runWarns || []).slice(),
     detMath: globalThis.__detMath ? { installed: globalThis.__detMath.installed, failed: globalThis.__detMath.failed, katN: globalThis.__detMath.katN } : null,
     roster: [...(globalThis.__WATCH_SPEC_KEYS || [])], spec: globalThis.__WATCH_SPEC ?? null };
 }
@@ -147,6 +147,9 @@ async function chromiumBoots() {
       await Promise.all(SPECS.map(async (q) => {
         const { page, context } = await virginBoot(browser, base, 600000, q ? `?${q}` : '');
         await prepPage(page);
+        // The control for the build/run boundary: a warn the RUNNING page raises
+        // must land in runWarns and never in the build's set the gates read.
+        await page.evaluate(() => console.warn('§338 control: a warn raised after the build'));
         out[q] = await page.evaluate(`(${measure})(window.__I)`);
         await context.close();
       }));
@@ -186,6 +189,12 @@ for (const q of SPECS) {
     const { unmatched, stale } = matchDeclaredWarns(DECLARED[q], r.warns);
     gate(!unmatched.length && !stale.length, `${host} boot warns exactly its declared set (${DECLARED[q].length ? DECLARED[q].join(' | ') : 'silent'})`
       + (unmatched.length ? ` — undeclared: ${unmatched.join(' | ')}` : '') + (stale.length ? ` — declared but silent: ${stale.join(' | ')}` : ''));
+  }
+  {
+    const CTL = '§338 control: a warn raised after the build';
+    const live = a.runWarns.filter((w) => w !== CTL);
+    gate(a.runWarns.includes(CTL) && !a.warns.includes(CTL), `control: a warn raised after the build lands in Chromium's run warns, not its build warns (${a.runWarns.length} run warn(s))`);
+    if (live.length) console.log(`  REPORT the running page warned ${live.length} time(s) after the build (a live frame, not the build): ${live.map((w) => w.slice(0, 140)).join(' | ')}`);
   }
   gate(JSON.stringify(a.roster) === JSON.stringify(b.roster) && JSON.stringify(a.spec) === JSON.stringify(b.spec),
     `the build read one roster (${b.roster.length} keys) and one spec ${JSON.stringify(b.spec)} in both hosts`);
