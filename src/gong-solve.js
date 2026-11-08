@@ -62,7 +62,7 @@ const mul = (A, B, C) => { for (let i = 0; i < 6; i++) for (let j = 0; j < 6; j+
 export const expm = (A) => {
   let norm = 0; for (let i = 0; i < 6; i++) { let r = 0; for (let j = 0; j < 6; j++) r += Math.abs(A[i * 6 + j]); norm = Math.max(norm, r); }
   const s = Math.max(0, Math.ceil(Math.log2(norm / 0.25)));
-  const B = A.map((v) => v / 2 ** s), X = new Float64Array(36), T = new Float64Array(36), P = new Float64Array(36);
+  const B = A.map((v) => v / Math.pow(2, s)), X = new Float64Array(36), T = new Float64Array(36), P = new Float64Array(36);
   for (let i = 0; i < 6; i++) { X[i * 7] = 1; T[i * 7] = 1; }
   for (let k = 1; k <= 14; k++) { mul(T, B, P); for (let i = 0; i < 36; i++) { T[i] = P[i] / k; X[i] += T[i]; } }
   for (let q = 0; q < s; q++) { mul(X, X, P); X.set(P); }
@@ -83,7 +83,7 @@ const det3 = (T) => { const m = (r, c) => T[(3 + r) * 6 + 3 + c];
 export const freqDet = (segs, S, Om, fam = 'in') => det3(transfer(segs, S, Om, fam));
 // the lowest nMax roots in g (sign scan from g0 at `step`, then bisection)
 export const modes = (segs, S, { nMax = 3, gMax = 20, fam = 'in', step = 0.004, g0 = 0.3 } = {}) => {
-  const roots = [], det = (g) => freqDet(segs, S, g ** 4, fam);
+  const roots = [], det = (g) => freqDet(segs, S, Math.pow(g, 4), fam);
   let a = g0, da = det(a);
   for (let b = a + step; b <= gMax && roots.length < nMax; b += step) { const db = det(b);
     if (Math.sign(db) !== Math.sign(da)) { let lo = a, hi = b, dlo = da; for (let it = 0; it < 50; it++) { const mid = (lo + hi) / 2, dm = det(mid); if (Math.sign(dm) === Math.sign(dlo)) { lo = mid; dlo = dm; } else hi = mid; } roots.push((lo + hi) / 2); }
@@ -92,13 +92,13 @@ export const modes = (segs, S, { nMax = 3, gMax = 20, fam = 'in', step = 0.004, 
 };
 // Hz from g for a wire of length L_m (m) and diameter d_m: w = g^2 k_g c / L^2
 export const hz = (g, L_m, d_m) => g * g * (d_m / 4) * STEEL_C / (2 * Math.PI * L_m * L_m);
-export const sOf = (L_m, d_m) => (L_m / (d_m / 4)) ** 2;
+export const sOf = (L_m, d_m) => Math.pow(L_m / (d_m / 4), 2);
 // a mode's shape: the clamp's free initial values are the free-end 3x3's null
 // vector; propagated to ~nSamp points. w is the displacement a blow normal to
 // the wire drives (in plane: the normal w; out of plane: v), tip-normalised;
 // mass the generalised mass of that shape (int (u^2 + w^2) ds).
 export const shape = (segs, S, g, { nSamp = 200, fam = 'in' } = {}) => {
-  const sys = SYS[fam], Om = g ** 4, T = transfer(segs, S, Om, fam), m = (r, c) => T[(3 + r) * 6 + 3 + c];
+  const sys = SYS[fam], Om = Math.pow(g, 4), T = transfer(segs, S, Om, fam), m = (r, c) => T[(3 + r) * 6 + 3 + c];
   const rows = [0, 1, 2].map((r) => [m(r, 0), m(r, 1), m(r, 2)]);
   const cr = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
   const v = [cr(rows[0], rows[1]), cr(rows[1], rows[2]), cr(rows[0], rows[2])].reduce((b, c) => (Math.hypot(...c) > Math.hypot(...b) ? c : b));
@@ -109,7 +109,7 @@ export const shape = (segs, S, g, { nSamp = 200, fam = 'in' } = {}) => {
       z = nz; pos += sg.ds / n; s.push(pos); if (fam === 'out') { u.push(0); w.push(z[0]); } else { u.push(z[0]); w.push(z[1]); } } }
   const tip = w[w.length - 1] || 1; let mass = 0;
   for (let i = 0; i < w.length; i++) { w[i] /= tip; u[i] /= tip; }
-  for (let i = 1; i < w.length; i++) mass += (s[i] - s[i - 1]) * ((w[i] ** 2 + u[i] ** 2 + w[i - 1] ** 2 + u[i - 1] ** 2) / 2);
+  for (let i = 1; i < w.length; i++) mass += (s[i] - s[i - 1]) * ((Math.pow(w[i], 2) + Math.pow(u[i], 2) + Math.pow(w[i - 1], 2) + Math.pow(u[i - 1], 2)) / 2);
   return { s, w, u, mass };
 };
 export const shapeAt = (sh, x) => { const s = sh.s; let i = 1; while (i < s.length - 1 && s[i] < x) i++;
@@ -173,7 +173,7 @@ export const solveGong = (map, opts, progress = () => {}) => {
   const hfree = gridFree(M.hammer?.arm), sfree = gridFree(M.hammer?.staff);
   const march = (gen, Lmax) => { for (let s = 0; s <= Lmax; s += STEP) { const p = gen(s); if (!p || !free(p[0], p[1])) return Math.max(0, s - STEP); } return Lmax; };
   const allFree = (pts) => pts.every(([x, y]) => free(x, y));
-  const Lstraight = (f) => Math.sqrt(1.8751 ** 2 * (D / 4) * STEEL_C / (2 * Math.PI * f)) / U_M;
+  const Lstraight = (f) => Math.sqrt(Math.pow(1.8751, 2) * (D / 4) * STEEL_C / (2 * Math.PI * f)) / U_M;
   const S = (Lu) => sOf(Lu * U_M, D);
   const f1Of = (segs, Lu) => { const g = modes(segs, S(Lu), { nMax: 1, gMax: 6, step: 0.05, g0: 0.6 }); return g.length ? hz(g[0], Lu * U_M, D) : NaN; };
   // the length that rings fT, by Newton on f ~ L^-2, for a wire whose curvature pieces at length L are segsAt(L)
@@ -405,7 +405,7 @@ export const seatCurve = (c) => {
     for (let it = 0; it < 2; it++) { const a = phs[lo], sOf = ss[lo] + (ph - a) / 6 * (sp(a) + 4 * sp((a + ph) / 2) + sp(ph)); ph -= (sOf - s) / sp(ph); }
     return ph; };
   return { L: c.L, at: (s) => { const ph = phOf(s), [x, y] = pos(ph), [dx, dy] = der(ph), l = Math.hypot(dx, dy), r = r0 - b * ph;
-    return { x, y, tx: dx / l, ty: dy / l, k: turn * (r * r + 2 * b * b) / (r * r + b * b) ** 1.5 }; } };
+    return { x, y, tx: dx / l, ty: dy / l, k: turn * (r * r + 2 * b * b) / Math.pow(r * r + b * b, 1.5) }; } };
 };
 // The strike on a seat, exactly: the root of |P(s) - Q| - rho nearest `guess`
 // (arc length from the free end), the face on side `sg` of the wire's left
@@ -470,7 +470,7 @@ export const seatStrikeEnd = (curve, { Q, rho, tanLen, side, gap }, alpha = 0) =
 // level at the contact, strikeLevelDb), which the caller prices with `shape`: sliding costs 0.12 dB per percent
 // of the wire from the tip on a straight bar, and a node strike (purest) is not tolerance-eligible.
 export const STRIKE_TOL_DB = 0.5;
-export const STRIKE_ALPHA_MAX = Math.acos(10 ** (-STRIKE_TOL_DB / 20));
+export const STRIKE_ALPHA_MAX = Math.acos(Math.pow(10, -STRIKE_TOL_DB / 20));
 export const STRIKE_ALPHA_STEP = Math.PI / 720;   // 0.25°, the search's step: the window's edge is found to a quarter degree, then bisected
 export const strikeDriveDb = (alpha) => 20 * Math.log10(Math.cos(alpha));
 // the smallest-|alpha| strike the tolerance admits: the untilted solve first (so a seat that has an exact

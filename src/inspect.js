@@ -8054,7 +8054,7 @@ export async function buildSweptRegistry(clock, {
     // 1e-9 of their own spread; collinear sets sit at float noise, orders
     // below).
     const det = 2 * (suu * svv - suv * suv);
-    if (Math.abs(det) < 1e-9 * Math.max(1e-24, (suu + svv) ** 2)) return null;
+    if (Math.abs(det) < 1e-9 * Math.max(1e-24, Math.pow(suu + svv, 2))) return null;
     const uc = (svv * (suuu + suvv) - suv * (svvv + svuu)) / det;
     const vc = (suu * (svvv + svuu) - suv * (suuu + suvv)) / det;
     const cx = mx + uc, cy = my + vc;
@@ -9797,7 +9797,7 @@ export function checkSlenderness(clock, opts = {}) {
     const ceiling = SLENDER_MAX_BY_KIND[kind] || max;
     const a = tMin * UNIT_MM * 1e-3, c = tMid * UNIT_MM * 1e-3;
     const I = (a * c * c * c) / 12;
-    const kOf = (L_u, coeff) => +(coeff * SLENDER_E_PA * I / (L_u * UNIT_MM * 1e-3) ** 3).toFixed(1);
+    const kOf = (L_u, coeff) => +(coeff * SLENDER_E_PA * I / Math.pow(L_u * UNIT_MM * 1e-3, 3)).toFixed(1);
 
     const decl = mesh.userData && mesh.userData.bearings;
     if (!decl) {
@@ -11012,7 +11012,7 @@ export function checkEqualisation(clock) {
     });
     if (!ms || !ms.section || !tube) { failures.push({ what: 'declared vs cut', unit: unitName, error: 'mainspring payload or ribbon mesh not found' }); return; }
     const sec = ms.section, s = tube.scale.z || 1;
-    const Ilaw = { strip: (a, c) => 4 * a ** 3 * c / 3, rhombus4: (a, c) => a ** 3 * c / 3 }[sec.shape];
+    const Ilaw = { strip: (a, c) => 4 * Math.pow(a, 3) * c / 3, rhombus4: (a, c) => Math.pow(a, 3) * c / 3 }[sec.shape];
     if (!Ilaw || Math.abs(sec.a - ms.ribbonR) > 1e-9 || Math.abs(sec.a * s - sec.c) > 1e-6
         || Math.abs(sec.I_u4 - Ilaw(sec.a, sec.c)) > 1e-12)
       failures.push({ what: 'declared vs cut', unit: unitName, declared: sec,
@@ -11048,7 +11048,7 @@ export function checkEqualisation(clock) {
   if (!en || typeof en !== 'object' || !en.corners) {
     failures.push({ what: 'energy column', note: 'going.energy is missing — TODO 192 step 1 regressed to a frictionless record' });
   } else {
-    const released = 0.5 * g.k_Nm_per_rad * (g.windFullRad ** 2 - g.setup.sweepRad ** 2);
+    const released = 0.5 * g.k_Nm_per_rad * (Math.pow(g.windFullRad, 2) - Math.pow(g.setup.sweepRad, 2));
     if (!(rel(en.released_J, released) <= 1e-12))
       failures.push({ what: 'energy identity: released', record: en.released_J, fromKAndAngles: released });
     const esc = en.released_J / (en.fuseeTurns * 2 * Math.PI) / en.trainRatio;
@@ -11178,7 +11178,7 @@ export function checkEqualisation(clock) {
     } else {
       for (const r of st.rows) {
         const d = r.d_u * UNIT_MM / 1000;
-        const sigma = 32 * r.load_N * (r.length_u * UNIT_MM / 1000) / (Math.PI * d ** 3);
+        const sigma = 32 * r.load_N * (r.length_u * UNIT_MM / 1000) / (Math.PI * Math.pow(d, 3));
         if (!(rel(r.sigma_Pa, sigma) <= 1e-12))
           failures.push({ what: 'pivot stress identity', pivot: r.pivot, record: r.sigma_Pa, fromLoad: sigma });
         if (!(r.d_u >= PIVOT_MIN_U - 1e-12))
@@ -11216,7 +11216,7 @@ export function checkEqualisation(clock) {
       if (!(rel(a.sigma_Pa, armSigma) <= 1e-12))
         failures.push({ what: 'hold identity: arm stress', record: a.sigma_Pa, fromLoad: armSigma });
       const b = ho.beak, bw = b.width_u * U, bt = b.t_u * U;
-      const secSigma = (q) => F / (q.width_u * U * bt) + 6 * F * q.offset_u * U / (bt * (q.width_u * U) ** 2);
+      const secSigma = (q) => F / (q.width_u * U * bt) + 6 * F * q.offset_u * U / (bt * Math.pow(q.width_u * U, 2));
       const beakRootSigma = secSigma(b);
       if (!(rel(b.sigma_Pa, beakRootSigma) <= 1e-12))
         failures.push({ what: 'hold identity: beak stress', record: b.sigma_Pa, fromLoad: beakRootSigma });
@@ -11302,16 +11302,16 @@ export function checkEqualisation(clock) {
         {
           const n = 2000, h = sp.L_u / n;
           for (let i = 0; i <= n; i++) {
-            const x = i * h, tt = Math.max(sp.tMin_u, sp.tRoot_u * Math.sqrt(x / sp.L_u)) * U, I = (sp.b_u * U) * tt ** 3 / 12;
-            c += (i === 0 || i === n ? 1 : i % 2 ? 4 : 2) * (x * U) ** 2 / (sp.E_Pa * I);
+            const x = i * h, tt = Math.max(sp.tMin_u, sp.tRoot_u * Math.sqrt(x / sp.L_u)) * U, I = (sp.b_u * U) * Math.pow(tt, 3) / 12;
+            c += (i === 0 || i === n ? 1 : i % 2 ? 4 : 2) * Math.pow(x * U, 2) / (sp.E_Pa * I);
           }
           c *= (h * U) / 3;
         }
-        if (!(rel(sp.compliance_m_per_N, c) <= 1e-12 && rel((sp.rE_u * U) ** 2 / c, k) <= 1e-9))
-          failures.push({ what: 'spring identity: the blade\'s compliance gives k', record: sp.compliance_m_per_N, fromProfile: c, kFromBlade: (sp.rE_u * U) ** 2 / c, kFromSpan: k });
+        if (!(rel(sp.compliance_m_per_N, c) <= 1e-12 && rel(Math.pow(sp.rE_u * U, 2) / c, k) <= 1e-9))
+          failures.push({ what: 'spring identity: the blade\'s compliance gives k', record: sp.compliance_m_per_N, fromProfile: c, kFromBlade: Math.pow(sp.rE_u * U, 2) / c, kFromSpan: k });
         if (!(sp.tMin_u >= STOCK_MIN_U - 1e-12))
           failures.push({ what: 'spring tip under the §50 floor', tMin_u: sp.tMin_u, floor_u: STOCK_MIN_U });
-        const sW = 6 * (sp.torqueRun_Nm / (sp.rE_u * U)) * (sp.L_u * U) / (sp.b_u * U * (sp.tRoot_u * U) ** 2);
+        const sW = 6 * (sp.torqueRun_Nm / (sp.rE_u * U)) * (sp.L_u * U) / (sp.b_u * U * Math.pow(sp.tRoot_u * U, 2));
         const sS = sW * sp.floor_Nm / sp.torqueRun_Nm;
         if (!(rel(sp.sigmaWork_Pa, sW) <= 1e-12 && rel(sp.sigmaStop_Pa, sS) <= 1e-12))
           failures.push({ what: 'spring identity: root stress', record: [sp.sigmaWork_Pa, sp.sigmaStop_Pa], fromLoad: [sW, sS] });
@@ -11385,7 +11385,7 @@ export function checkEqualisation(clock) {
       failures.push({ what: 'ribbon stress rows', ribbon: half, note: 'equalisation.' + half + '.stress is missing — the ribbon is not held to its material' });
       continue;
     }
-    const aM = R.section.a * UNIT_MM / 1000, IM = R.section.I_u4 * (UNIT_MM / 1000) ** 4;
+    const aM = R.section.a * UNIT_MM / 1000, IM = R.section.I_u4 * Math.pow(UNIT_MM / 1000, 4);
     const thetas = half === 'going' ? R.windRangeRad : R.windRangeRad;
     thetas.forEach((th, i) => {
       const sigma = R.k_Nm_per_rad * th * aM / IM;
@@ -11423,7 +11423,7 @@ export function checkEqualisation(clock) {
   // the going ribbon's k IS its strip at the alloy's modulus — the identity
   // that makes "the shape cancels" true of this record and not just of algebra
   if (g.section.shape === 'strip') {
-    const kStrip = MAINSPRING_E_PA * g.section.I_u4 * (UNIT_MM / 1000) ** 4 / (g.devLen_u * UNIT_MM / 1000);
+    const kStrip = MAINSPRING_E_PA * g.section.I_u4 * Math.pow(UNIT_MM / 1000, 4) / (g.devLen_u * UNIT_MM / 1000);
     if (!(rel(g.k_Nm_per_rad, kStrip) <= 1e-12))
       failures.push({ what: 'going k is not its strip', record: g.k_Nm_per_rad, fromSection: kStrip });
   }
@@ -12786,7 +12786,7 @@ export async function turnedBars(clock, opts = {}) {
           const x = turnDot(off, ux), y = turnDot(off, wx);
           sxx += x * x; syy += y * y; sxy += x * y; n++;
         }
-        const tr2 = (sxx + syy) / 2, det = Math.sqrt(((sxx - syy) / 2) ** 2 + sxy * sxy);
+        const tr2 = (sxx + syy) / 2, det = Math.sqrt(Math.pow((sxx - syy) / 2, 2) + sxy * sxy);
         const lamMin = tr2 - det, lamMax = tr2 + det;
         if (n > 2 && lamMax > 0 && lamMin / lamMax < TURN_CROSS_ANISO) return false;
       }
@@ -13783,7 +13783,7 @@ export const LINE_SPECS = [
         derivedFrom: 'post stock, the alarmLockSpringStud precedent (ALARM_ROCKER_POST_R)' },
       { key: 'postW', kind: 'spec', unit: 'u', value: (r) => r.tipR + CLEAR_MARGIN + r.postR, measure: 'rockerPostW',
         derivedFrom: '§171’s rule: a rod crossing the saw’s band stands one margin clear of its tips' },
-      { key: 'arm', kind: 'spec', unit: 'u', value: (r) => Math.sqrt(r.postW ** 2 - r.readR ** 2), measure: 'rockerArm',
+      { key: 'arm', kind: 'spec', unit: 'u', value: (r) => Math.sqrt(Math.pow(r.postW, 2) - Math.pow(r.readR, 2)), measure: 'rockerArm',
         derivedFrom: '§183, Thales: the pivot stands perpendicular to the wheel radius at the read station, so the smallest arm whose post clears the saw is √(postW² − readR²)' },
       { key: 'gain', kind: 'spec', unit: 'ratio', value: 1, measure: 'readGain',
         derivedFrom: 'the read is RADIAL, which is the rocker’s reason to exist: TODO 90 finding 5 measured 0.00114 of radial excursion when the beak rode the lever’s own tail' },
@@ -13805,7 +13805,7 @@ export const LINE_SPECS = [
         derivedFrom: 'LIFTED, the beak in a gap: the finger one margin clear of the tips' },
       { key: 'lift', kind: 'spec', unit: 'rad',
         value: (r) => {
-          const at = (d) => Math.acos((r.lockD ** 2 + r.lockL ** 2 - d * d) / (2 * r.lockD * r.lockL));
+          const at = (d) => Math.acos((Math.pow(r.lockD, 2) + Math.pow(r.lockL, 2) - d * d) / (2 * r.lockD * r.lockL));
           return at(r.release) - at(r.seat);
         },
         measure: 'leverLift',
@@ -13912,7 +13912,7 @@ LINE_SPECS.push({
   rows: [
     { key: 'travel', kind: 'spec', unit: 'u', value: (r, L) => L.release.travel, measure: 'sleeveLift',
       derivedFrom: '§45: the sleeve rises the cone’s stroke (ALARM_SLEEVE_DR, the tail pin’s radial travel at 45°) plus the rest gap (ALARM_SLEEVE_GAP) — and the collar’s rise is cut to the same figure, so the line carries it 1:1 at its input' },
-    { key: 'padArm', kind: 'spec', unit: 'u', value: (r, L) => ((r.travel / 2) ** 2 + L.release.fit ** 2) / (2 * L.release.fit), measure: 'padArm',
+    { key: 'padArm', kind: 'spec', unit: 'u', value: (r, L) => (Math.pow(r.travel / 2, 2) + Math.pow(L.release.fit, 2)) / (2 * L.release.fit), measure: 'padArm',
       derivedFrom: 'TODO 236: the lifter’s pad arm is the LEAST whose dead-centre swing through the rise scrubs the pad along the collar by no more than the working fit, a(1 − cos(asin(c/2a))) = δ ⇒ a = ((c/2)² + δ²)/(2δ)' },
     { key: 'helixR', kind: 'spec', unit: 'u', value: (r, L) => L.release.helixR, measure: 'helixRollerR',
       derivedFrom: 'TODO 236: the helix is cut at the rollers’ centres, mid-plate, the plates one margin outside the selector rocker’s orbit or at the owner’s 5.0 floor (ALARM_SLEEVE_HELIX_R)' },
@@ -14773,7 +14773,7 @@ function lineSpecStrike(clock) {
         Izz += (v6 / 6) * sxy / 20;
       }
     }); }
-  const rotorI = Izz * L.metresPerU ** 5 * L.steelRho;   // kg·m²
+  const rotorI = Izz * Math.pow(L.metresPerU, 5) * L.steelRho;   // kg·m²
   poseAt(1); const atDraw = read();            // a whole strike: a lobe's release, the hammer at its draw
   // mid-fall, half the build's own fall time into the free swing; the time is
   // the phase the build will read (its fractional part) through the same
@@ -15938,9 +15938,14 @@ export function fingerprintDiff(before, after) {
 //
 // TWO HALVES, because the obvious one is only half the answer.
 //
-//   · SHAPE — the position and index buffers' BYTES. Bit patterns, not decimal
-//     renderings: two builds differing in the last ulp are two geometries, and
-//     that is the answer this wants rather than one a rounding would hide.
+//   · SHAPE — the position buffer's BYTES and the index buffer's TRIANGLE SET.
+//     Bit patterns, not decimal renderings: two builds differing in the last
+//     ulp are two geometries, and that is the answer this wants rather than one
+//     a rounding would hide. The index is hashed as a SET (§338 landing 2,
+//     indexSetHash below), not as bytes, because three-mesh-bvh's
+//     computeBoundsTree reorders a geometry's index in place: which trees the
+//     page's first frames happened to build was in the key, and the native
+//     host, which runs no frames, read 18 units "changed" with identical metal.
 //   · PLACE — every mesh's world matrix, quantised to PLACE_Q. A vertex digest
 //     alone is BLIND to a part that is moved but not re-cut, which is what
 //     every §13-class layout re-solve does: same metal, new station, different
@@ -15986,6 +15991,33 @@ export const DIGEST_ALWAYS_CHANGED = ['Chain'];
 // visibly the same function over different input; a typed array is read as
 // its underlying bytes rather than element-wise, so a Float32Array and a
 // Uint16Array need no separate cases and no float is ever stringified.
+// §338 landing 2 — a triangle list's hash that is independent of the ORDER of
+// its triangles (a bounds tree permutes them) and keeps everything else: each
+// triangle is rotated to start at its smallest index, which preserves its
+// winding, then hashed; the per-triangle hashes are SUMMED under two
+// independent mixes (a sum, never an XOR, so a repeated triangle cannot cancel
+// itself), and the count rides beside them. O(n), no sort, no allocation.
+function triMix(a, b, c, seed) {
+  let h = seed;
+  h = Math.imul(h ^ a, 0x85ebca6b); h ^= h >>> 13;
+  h = Math.imul(h ^ b, 0xc2b2ae35); h ^= h >>> 16;
+  h = Math.imul(h ^ c, 0x27d4eb2f); h ^= h >>> 15;
+  return h >>> 0;
+}
+const _setHash = new Uint32Array(3);
+function indexSetHash(idx) {
+  let s1 = 0, s2 = 0;
+  for (let i = 0; i + 2 < idx.length; i += 3) {
+    let a = idx[i], b = idx[i + 1], c = idx[i + 2];
+    if (b < a && b <= c) { const t = a; a = b; b = c; c = t; }          // (b, c, a)
+    else if (c < a && c < b) { const t = c; c = b; b = a; a = t; }     // (c, a, b)
+    s1 = (s1 + triMix(a, b, c, 0x9e3779b9)) >>> 0;
+    s2 = (s2 + triMix(a, b, c, 0x7f4a7c15)) >>> 0;
+  }
+  _setHash[0] = s1; _setHash[1] = s2; _setHash[2] = idx.length;
+  return _setHash;
+}
+
 function hashBytes(arr, h) {
   const b = new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength);
   for (let i = 0; i < b.length; i++) {
@@ -16073,7 +16105,7 @@ export function unitDigests(clock, { poses } = {}) {
       for (const m of u.meshes) {
         const g = m.geometry;
         hs = hashBytes(g.attributes.position.array, hs);
-        if (g.index) hs = hashBytes(g.index.array, hs);
+        if (g.index) hs = hashBytes(indexSetHash(g.index.array), hs);   // §338: the triangle SET, not the order a bounds tree left it in
         // The vertex COUNT, so a buffer that is a prefix of another cannot
         // collide with it — a stream hash over bytes alone would.
         hs = hashBytes(new Uint32Array([g.attributes.position.count]), hs);

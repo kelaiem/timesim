@@ -12,14 +12,14 @@ export const REST = 0.8;                                    // coefficient of re
 export const CONTACT_NU = 0.29;
 export const aWeight = (f) => {                         // IEC 61672 A-weighting, dB
   const f2 = f * f;
-  const num = 12194 ** 2 * f2 * f2;
-  const den = (f2 + 20.6 ** 2) * Math.sqrt((f2 + 107.7 ** 2) * (f2 + 737.9 ** 2)) * (f2 + 12194 ** 2);
+  const num = Math.pow(12194, 2) * f2 * f2;
+  const den = (f2 + Math.pow(20.6, 2)) * Math.sqrt((f2 + Math.pow(107.7, 2)) * (f2 + Math.pow(737.9, 2))) * (f2 + Math.pow(12194, 2));
   return 20 * Math.log10(num / den) + 2.0;
 };
 
 // §197 — the hand-off: the share of the blow's energy an elastic impact of restitution `rest` leaves in a
 // body of mass ratio mu (the head over the mass the wire presents at the contact), peaking at mu = 1.
-export const eta = (mu, rest = REST) => (4 * mu / (1 + mu) ** 2) * ((1 + rest) / 2) ** 2;
+export const eta = (mu, rest = REST) => (4 * mu / Math.pow(1 + mu, 2)) * Math.pow((1 + rest) / 2, 2);
 // §197 — the contact's spectrum: a half-sine force pulse of duration tau drives a mode at f by this factor
 // (1 at f = 0, a zero at f = 1.5/tau), so the blow reaches only the modes its contact is short enough for.
 export const contactSpectrum = (f, tau) => { const x = 2 * f * tau;

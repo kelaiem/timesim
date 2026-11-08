@@ -4,7 +4,7 @@
 
 # The instruments
 
-405 scripts. **279 are ACCEPTANCE tests** — they decide and exit non-zero.
+409 scripts. **283 are ACCEPTANCE tests** — they decide and exit non-zero.
 **126 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -27,11 +27,15 @@ when a question was asked; the summaries are what it answered.
 | `bricklink-subset.mjs` |  | acceptance | Writes src/technic-bricklink.js: the SUBSET of BrickLink's catalogue downloads (Parts, Colors, Codes — https://www.bricklink.com/catalogDownload.asp, tab- delimited) that the parts list needs, so the purchase ids and colour ids are READ from BrickLink and never typed (BUILT §300's rule). The three whole files are 14 MB and are not committed; this keeps one row per LDraw id the builds place, one row per LDraw colour the role table may use, and the element codes those pairs have. `--check` re-derives the file from the same three downloads and fails if it differs; with no downloads it only reads the committed file back and checks its shape. |
 | `build-pages.mjs` |  | acceptance | §88 — turn one extracted payload tree into one deployable GitHub Pages environment. The workflow (.github/workflows/pages.yml) extracts the tree with `git archive` — the same payload definition release.yml uses, so Pages and QA serve the same bytes — and this script finishes it. |
 | `check-bvh-patches.mjs` |  | acceptance | Verifies the three local patches in vendor/three-mesh-bvh.module.js (see vendor/README.md) still hold — run after any vendor bump, before trusting a single clearance number. |
+| `check-det-math.mjs` |  | acceptance | §338 landing 2 — IS THE BUILD'S MATHS THE REPOSITORY'S, NOT THE ENGINE'S? |
 | `check-item-numbers.mjs` |  | acceptance | The item-number gate. See docs/item-numbers/README.md for why it exists. |
 | `check-roadmap.mjs` |  | acceptance | The public-roadmap gate (§272). docs/ROADMAP.md lists the work that is IN PROGRESS and has been deliberately published; this holds it true. |
 | `ci-battery.mjs` |  | acceptance | §52 — the inspector battery as a CI gate. |
 | `claim-item.mjs` |  | acceptance | Reserve the next item number, and write the claim file that reserves it. |
+| `compare-338-hosts.mjs` |  | acceptance | §338 landing 2 — IS THE METAL THE SAME ON EVERY MACHINE THAT BUILT IT? |
 | `derive-203-alloys.mjs` |  | acceptance | §203 step 3 — DERIVE the case alloys' base colours from measured optical constants. ACCEPTANCE: exits non-zero if its own controls fail. |
+| `det-math-kat.mjs` |  | acceptance | §338 landing 2 — WRITES src/det-math-kat.js: the known answers of the installed deterministic maths (src/det-math.js' knownAnswers), recorded. |
+| `det-math-vendor.mjs` |  | acceptance | §338 landing 2 — WRITES vendor/det-math.module.js and vendor/LICENSE-stdlib.txt: the engine-independent maths the build installs over Math (src/det-math.js). |
 | `dial-band-scan.mjs` |  | report | THE DIAL-SIDE BAND'S TENANTS, OVER THE POSE NET — the scan itself, as a function a page can run, shared by its two callers: probe-261-dial-band.mjs (the free-volume map, §261 step 2) and probe-261-fold-site.mjs (where the alarm switch can stand under the dial, §261 step 4). One copy, because two copies of a measuring method drift the way two copies of a law do. |
 | `explain-i18n.mjs` |  | acceptance | §73 tier two — the STATIC PAGES' translation tooling. |
 | `explain-quotes.mjs` |  | acceptance | §73 tier two — DOES THE EXPLAINER STILL QUOTE THE SOURCE? |

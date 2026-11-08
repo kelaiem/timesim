@@ -101,7 +101,7 @@ function bisect(f, a, b, iters = 80) {
 // MOVEMENT_SENSE (the wheel's direction of rotation about +z).
 export function leverEscapement({ span, beatRad, bank0Rad, sense, lockDeg = LOCK_DEG, runDeg = RUN_DEG }) {
   const R = span / (2 * Math.sin(EMBRACE_DEG * D2R));
-  const D = span / 2 + Math.sqrt(Math.max(R * R - (span / 2) ** 2, 0));
+  const D = span / 2 + Math.sqrt(Math.max(R * R - Math.pow(span / 2, 2), 0));
   const W0 = [0, D];
   const lock = lockDeg * D2R, run = runDeg * D2R, drop = DROP_DEG * D2R, draw = DRAW_DEG * D2R;
   const beat = beatRad;
