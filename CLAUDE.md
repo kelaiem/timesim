@@ -1035,6 +1035,17 @@ Worktrees live under the served root, so load the worktree's build directly:
 http://localhost:8347/.claude/worktrees/<name>/index.html
 ```
 
+**Since §338 landing 1 the build also boots NATIVELY**, with no browser:
+`node --import ./tools/native/loader.mjs tools/native/boot.mjs ['k=v' spec]`
+runs `main.js` unchanged in Node (`tools/native/host.mjs` stands in for the
+GPU, the DOM, the network and the frames; the spec roster is
+`src/spec-fields.js`, which index.html imports too). Build code that reaches
+for the page while cutting metal (a new fetch, a DOM read) breaks that host;
+`native-host.yml` runs `probe-338-native-boot.mjs`, which holds the
+fingerprint and every PLACE digest equal to Chromium's. SHAPE is reported, not
+gated: the two hosts' V8 versions disagree in the last ulp of transcendentals,
+and a few meshes change vertex count on it.
+
 State (camera pose, wind, τ) persists via the dev server's `/__state` temp
 file, falling back to `localStorage`. **Back it up before clearing it** —
 `GET /__state`, keep the JSON, `PUT` it back when done.

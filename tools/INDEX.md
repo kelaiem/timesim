@@ -4,7 +4,7 @@
 
 # The instruments
 
-400 scripts. **275 are ACCEPTANCE tests** — they decide and exit non-zero.
+402 scripts. **277 are ACCEPTANCE tests** — they decide and exit non-zero.
 **125 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -263,6 +263,8 @@ when a question was asked; the summaries are what it answered.
 | `probe-337-geared-build.mjs` | §337 | report | §337 landing 2b, stage 2 — THE GEARED GENEVA'S METAL, measured off a boot of ?arrest=geared. A REPORT (it prints and judges nothing; stage 3 gates what it shows). |
 | `probe-337-geared-checks.mjs` | §337 | report | §337 landing 2b, stage 3 — WHAT THE INSPECTOR SAYS ABOUT THE GEARED LINE. A REPORT (it prints and judges nothing): it boots ?arrest=geared and runs the inspector checks that cover a mechanism's wiring (support / drive graph, expected contacts, intra-unit contacts, mesh integrity / coverage / phase, transmission, penetration, the wind-arrest hand-offs), then prints each verdict's size and its first rows. Stage 3 turns what it shows into rows (the geared meshes' contacts, the graph edge) and a gate. node tools/probe-337-geared-checks.mjs [reserve hours] [check …] (default 24; default checks as below) |
 | `probe-337-geared-geneva.mjs` | §337 | acceptance | §337 landing 1 — THE GEARED GENEVA'S LINE, HELD. ACCEPTANCE (exits non-zero on a failure). |
+| `probe-338-check-profile.mjs` | §338 | acceptance | §338 landing 0 — WHERE DOES THE BATTERY'S CHECK TIME GO, BY FUNCTION? |
+| `probe-338-native-boot.mjs` | §338 | acceptance | §338 landing 1 — DOES THE NATIVE HOST BUILD THE SAME MOVEMENT AS THE BROWSER? |
 | `probe-36-apply.mjs` | §36 | acceptance | §36 Apply — the acceptance, and the only place the APPLIED tree is judged. |
 | `probe-50-clutch.mjs` | §50 | report | TODO 50 — the stem clutch, measured in the movement. |
 | `probe-50-coupling.mjs` | §50 | report | Boot test-geometry.html headless and report the build log + a lift-law sanity table. |

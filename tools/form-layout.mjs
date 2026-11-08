@@ -46,7 +46,7 @@
 // gong and anything already through the round bore excepted, the rim margin
 // added). Its objective is that rectangle's AREA, and a candidate's rectangle
 // does not depend on the outline it was cut to, so one boot judges it and its
-// `formrect=` is that rectangle. The knobs are index.html's SPEC_FIELDS rows
+// `formrect=` is that rectangle. The knobs are src/spec-fields.js' SPEC_FIELDS rows
 // that MOVE a station (the train's three steps and d4, the stem and the
 // crown's azimuths, the reserve's radius, the alarm corner's azimuth and
 // radius, the alarm module and its three bearings), each started at the value
