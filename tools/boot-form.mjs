@@ -34,7 +34,7 @@ export async function bootForm(query, expr = null) {
     : { ff: window.__clock.formFootprint, extra: ex ? await (0, eval)(ex) : null }, expr);
   // A query key the page does not read is IGNORED, silently, and the boot is the default's: `barrel=-140` for `barrelstep=-140`
   // measured the wrong arrangement for a whole probe (§329 landing 3b). So name every key that is neither a spec key
-  // (index.html's SPEC_FIELDS, published as __WATCH_SPEC_KEYS) nor one of the page's own parameters.
+  // (src/spec-fields.js' SPEC_FIELDS, published as __WATCH_SPEC_KEYS) nor one of the page's own parameters.
   const known = await page.evaluate(() => globalThis.__WATCH_SPEC_KEYS ?? null);
   const PAGE_KEYS = ['trial', 'hud', 'sync', 'lang', 'reconf', 'cam', 'focus', 'tour', 'cell'];
   out.unknownKeys = known ? [...new URLSearchParams(query)].map(([k]) => k).filter((k) => !known.includes(k) && !PAGE_KEYS.includes(k)) : null;

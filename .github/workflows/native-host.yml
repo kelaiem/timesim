@@ -1,0 +1,71 @@
+# §338 landing 1 — DOES THE NATIVE HOST STILL BUILD THE BROWSER'S MOVEMENT?
+#
+# tools/probe-338-native-boot.mjs boots the tree in headless Chromium (the
+# battery's virginBoot) and in tools/native/host.mjs (main.js unchanged, in
+# Node, the GPU and the DOM stood in for), on the identity and one swept spec
+# point, and gates: both silent, one spec roster, the §52 fingerprint and every
+# unit's §152 PLACE digest identical, plus a control that the comparison can
+# fail. The SHAPE digest is reported, not gated, until §338's deterministic-math
+# landing makes the arithmetic engine-independent; the probe's header says why.
+#
+# ITS OWN WORKFLOW for boot-yield.yml's reasons: it answers in minutes, and
+# what it judges is a boot, not a sweep. Native is the second host the build
+# must keep working in, so a change that reaches for the page during the BUILD
+# (a fetch, a DOM read the stand-in answers differently) goes red on its own PR.
+#
+# `paths` is POSITIVE, as boot-yield.yml's is: what the probe boots is
+# index.html and the module graph under src/ and vendor/, and the host is
+# tools/native/.
+name: Native host
+
+on:
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'src/**'
+      - 'vendor/**'
+      - 'tools/native/**'
+      - 'tools/probe-338-native-boot.mjs'
+      - 'tools/battery-checks.mjs'
+      - 'dev_server.py'
+      - 'tools/package-lock.json'
+      - '.github/workflows/native-host.yml'
+      - 'tools/ci-install-chromium.sh'
+      - '.github/actions/install-chromium/**'
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: native-host-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  native-host:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pinned Playwright
+        working-directory: tools
+        run: npm ci --no-audit --no-fund
+
+      - name: Cache Playwright Chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('tools/package-lock.json') }}
+
+      - name: Install Chromium
+        uses: ./.github/actions/install-chromium
+
+      - name: The native host builds the browser's movement
+        run: node tools/probe-338-native-boot.mjs
