@@ -4,7 +4,7 @@
 
 # The instruments
 
-425 scripts. **297 are ACCEPTANCE tests** — they decide and exit non-zero.
+429 scripts. **301 are ACCEPTANCE tests** — they decide and exit non-zero.
 **128 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -42,6 +42,7 @@ when a question was asked; the summaries are what it answered.
 | `dial-band-scan.mjs` |  | report | THE DIAL-SIDE BAND'S TENANTS, OVER THE POSE NET — the scan itself, as a function a page can run, shared by its two callers: probe-261-dial-band.mjs (the free-volume map, §261 step 2) and probe-261-fold-site.mjs (where the alarm switch can stand under the dial, §261 step 4). One copy, because two copies of a measuring method drift the way two copies of a law do. |
 | `explain-i18n.mjs` |  | acceptance | §73 tier two — the STATIC PAGES' translation tooling. |
 | `explain-quotes.mjs` |  | acceptance | §73 tier two — DOES THE EXPLAINER STILL QUOTE THE SOURCE? |
+| `form-fits.mjs` |  | acceptance | TODO 298 — WRITE OR CHECK src/form-fits.js, the fit each ALARM-FREE box form case is cut to. ACCEPTANCE (--check exits non-zero on drift). |
 | `form-layout.mjs` |  | acceptance | §307 — THE FORM LAYOUT OPTIMISER: which arrangement of the going train and the stem makes the movement's RECTANGLE smallest? |
 | `free-arrangement-scan.mjs` |  | report | §325 landing 5 — WHERE THE FUSEE STANDS WITHOUT THE ALARM: a scan of the going train's barrel step (solveLayout's barrelStepDeg, the bearing from the barrel's arbor to the centre wheel's — the fusee and its drum swung round the rest of the train) for the free outline of the movement built without the alarm. A REPORT: it ranks, it lands nothing; tools/free-outline.mjs is what settles a row. |
 | `free-outline.mjs` |  | acceptance | §325 — WRITE OR CHECK src/free-outlines.js, the FREE outline each movement is cut to. ACCEPTANCE (--check exits non-zero on drift). |
@@ -282,6 +283,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-338-kernel-parity.mjs` | §338 | acceptance | §338 landing 5 — G3, KERNEL PARITY: does the compiled kernel answer what the JS reference answers, and where it does not, is it the truer of the two? |
 | `probe-338-native-boot.mjs` | §338 | acceptance | §338 landing 1 — DOES THE NATIVE HOST BUILD THE SAME MOVEMENT AS THE BROWSER? |
 | `probe-338-pose-conditioning.mjs` | §338 | acceptance | §338 — THE POSE-CONDITIONING GUARD: does any pose of §152's net turn a last-ulp difference in the maths into a difference in the metal? |
+| `probe-339-arrangement-builds.mjs` | §339 | acceptance | WHAT DOES A BARREL STEP DO TO EVERY BUILD THE ARRANGEMENT REACHES? A REPORT (BACKLOG §339 2b′: it judges nothing). |
 | `probe-36-apply.mjs` | §36 | acceptance | §36 Apply — the acceptance, and the only place the APPLIED tree is judged. |
 | `probe-50-clutch.mjs` | §50 | report | TODO 50 — the stem clutch, measured in the movement. |
 | `probe-50-coupling.mjs` | §50 | report | Boot test-geometry.html headless and report the build log + a lift-law sanity table. |
@@ -369,6 +371,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-ledge-occupancy.mjs` |  | acceptance | WHAT OCCUPIES THE RIM-LEDGE ANNULUS — §186's mounting band, scanned over the pose net. |
 | `probe-lockriser-depth.mjs` |  | acceptance | HOW DEEP is a RISER in the ratchet skirt, and does it alternate? |
 | `probe-lug-geom.mjs` |  | acceptance | THE LUGS, READ OFF THE METAL — the derived radial chain held to layout.js's declaration, and the §190 wrap gap measured off the analytic bar surface. |
+| `probe-mainspring-morph.mjs` |  | acceptance | THE GOING MAINSPRING WINDS AND RUNS DOWN — does its ribbon change shape with the wind, or only turn with the drum? ACCEPTANCE. |
 | `probe-measure-readout.mjs` |  | acceptance | Does the Measure overlay report the size of the metal on every case shape? (§49's readout, re-derived for FORM.) node tools/probe-measure-readout.mjs [--par N] ['<query>' …] default: the round build and one build per form kind An ACCEPTANCE test (exits 1 on a failure). Boots each build headless (tools/boot-pool.mjs), turns Measure on through its own button, and holds `__clock.scaleReadout` — the one set the stats line, the legend and the in-scene ruler read — to the metal, never to the formula that made it: M1 the plate's plan is the WORKING outline (what FORM and plateR describe), held to the metal cut on it: · a form build: the base plate slab's CAPS — the root 'backPlate' mesh (inspect.js STRUCTURE_NODES.plate; its children of that name are pocket floors and lands), only its vertices on its two extreme z planes. A beveled extrude's outermost layer IS the shape; its flanks bulge bevelSize (0.126 mm, measured uniform) past it. The caps lie inside the plan on every side and meet all four. The three-quarter plate is no reference here: it is cut IN at its balance cutaway, measured 0.052 mm off the tonneau's +x side. · the round build: the three-quarter plate (mesh 'threeQuarterPlate') — the base slab carries §186's mounting rim there (⌀37.9), not the working circle. It lies inside the plan and meets three of four sides (its quarter cut away for the balance, 0.065 mm off +x). And on every build the plan's y bounds — where the ruler's leg and its leaders stand — meet that metal. M2 the case's plan is the band's measured x/y extent (mesh 'caseMiddle': the wall the case is cut on, lugs and crowns excluded — the 40 mm body cap's reading, §186) M3 the cased depth is the movement-plus-case z extent; the depth leaders' faces are the movement's own z extent (they read the BALANCE's box before this probe, because §39's `box` was last set by unitBox('Balance')) M4 what reaches the screen is that set: the stats line and the legend quote it, and a form build quotes no '⌀' C1 CONTROL — the old law (⌀ = plateR · 2) FAILS M1 on at least one form build, or this probe could not see the defect Tolerance: TOL_MM is float and vertex-weld noise. The readout quotes FORM's analytic bounds and the plates are cut on its polyline (FORM.loop()); measured, that loop's vertex bounds reach the analytic ones on every side of every default build (0.000 mm), so no chord sagitta needs allowing. Two orders under the 1.1–3.9 mm the old law was off by. |
 | `probe-mesh-closedness-census.mjs` |  | report | TODO 106 — HOW MUCH of the movement is open? Every parity witness in this repo (`pointInsideTree`, `probe-95-grid`, `sampledVerdict`'s insideness, and TODO 27's family) counts ray crossings and is therefore only valid against a CLOSED surface. Nothing measures how many surfaces qualify. |
 | `probe-mesh-transmission.mjs` |  | acceptance | DOES EVERY DECLARED MESH ACTUALLY TRANSMIT AT ITS TOOTH RATIO? |
@@ -437,4 +440,5 @@ when a question was asked; the summaries are what it answered.
 | `three-node-loader.mjs` |  | report | §88 — resolve the app's bare `three` specifiers when a tool imports src/ modules under Node. |
 | `timelapse-build.mjs` |  | report | Timelapse build — turns tools/timelapse-capture.mjs's frames into the scrubbable site: sprite sheets per view, a data block, and the viewer page. |
 | `timelapse-capture.mjs` |  | report | Timelapse capture — one frame per hosted release per camera preset, so the movement's evolution can be scrubbed as a film. |
+| `todo-handles.mjs` |  | acceptance | TODO handles — holds docs/todo/HANDLES.md to TODO.md's generated index. |
 | `validated-configs.mjs` |  | acceptance | TODO 158 — WRITE OR CHECK src/validated-configs.js, the set of configuration keys the battery has swept. ACCEPTANCE (--check exits non-zero on drift). |

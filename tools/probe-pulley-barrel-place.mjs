@@ -1,7 +1,10 @@
 // WHERE DOES THE BARREL GO, AND WHAT DOES THE FORM CASE GIVE BACK? A REPORT (BACKLOG §339 landing 2a', before the fold:
 // it moves no metal, and it judges nothing).
 //
-//   node tools/probe-pulley-barrel-place.mjs [--cache FILE]
+//   node tools/probe-pulley-barrel-place.mjs [--cache FILE] [--ref FILE] [--extra 'k=v&…'] [--quick]
+//   --extra adds keys to the target's query (an arrangement: name ALL of layout.js ARRANGEMENT's keys, since a URL naming
+//   one takes none of the others); --ref caches the default's record, which no arrangement moves; --quick prints only the
+//   case rows and the largest barrel, and a RESULT line (JSON) for a scan to collect.
 //
 // It boots `alarm=0&case=fitted` (§339's target: the drum sets that case's +y) and the round default (the record's laws),
 // and reads the declared PULLEY_BARREL through twin-barrel.js' pulleyBarrel. Then, in the drum's z band:
@@ -33,10 +36,11 @@ import { installDetMath } from '../src/det-math.js';
 // holds Node's solve to the booted record to the bit is otherwise comparing two engines' last ulps
 installDetMath(Math);
 
-const ci = process.argv.indexOf('--cache'), cache = ci >= 0 ? process.argv[ci + 1] : null;
+const argOf = (k) => { const i = process.argv.indexOf(k); return i >= 0 ? process.argv[i + 1] : null; };
+const cache = argOf('--cache'), refCache = argOf('--ref'), EXTRA = argOf('--extra'), QUICK = process.argv.includes('--quick');
 const REF_EXPR = `(() => { const g = window.__clock.equalisation.going;
   return { k: g.k_Nm_per_rad, section: g.section, fw: window.__clock.fuseeWind }; })()`;
-const TARGET = 'alarm=0&case=fitted';
+const TARGET = 'alarm=0&case=fitted' + (EXTRA ? `&${EXTRA}` : '');
 const FLANGE_TOP = 4.26;
 // THE RAISE a taller barrel B may take above the drum's top (the top read off this boot's depth row, held below): the
 // smaller barrel that gives the case back drives the train at ~0.954 of today at the ribbon's height 2c, so its ribbon
@@ -45,7 +49,9 @@ const DRUM_TOP = 7.97, RAISE = 0.20;   // landing 0 (c): the top of the band the
 let boots;
 if (cache && existsSync(cache)) boots = JSON.parse(readFileSync(cache, 'utf8'));
 else {
-  const [[ref], [tgt]] = await Promise.all([bootMany([''], `({ ref: ${REF_EXPR} })`),
+  // the default's record is the same whatever the target's arrangement, so a scan boots it once (--ref FILE)
+  const refHeld = refCache && existsSync(refCache) ? JSON.parse(readFileSync(refCache, 'utf8')) : null;
+  const [[ref], [tgt]] = await Promise.all([refHeld ? [{ extra: { ref: refHeld } }] : bootMany([''], `({ ref: ${REF_EXPR} })`),
     bootMany([TARGET], `({ room: (() => { const I = window.__clock.fuseeWind.inputs, ce = window.__clock.fuseeWind.chainEndROut, CM = ${CLEAR_MARGIN};
       // the span's heights (the fusee's lowest groove to the drum's hook plane, a chain plate's half-width and a margin
       // either side) and the coupling band landing 0 (c) measured clear of the chain (z 2.93–4.26)
@@ -57,12 +63,20 @@ else {
           centre: F.fitted.centre, flatMin: F.fitted.flatMin, fitAreaMm2: F.fitAreaMm2, rect: F.rect }; })() })`)]);
   for (const [q, r] of [['(default)', ref], [TARGET, tgt]])
     if (r.unknownKeys?.length || r.bootError || !r.extra) { console.log(`FAIL boot ${q}: ${r.bootError ?? 'unknown keys ' + r.unknownKeys}`); process.exit(1); }
-  boots = { ref: ref.extra.ref, room: tgt.extra.room, fit: tgt.extra.fit };
+  boots = { ref: ref.extra.ref, room: tgt.extra.room, fit: tgt.extra.fit, warns: tgt.warnings ?? tgt.warns ?? null };
+  if (refCache && !refHeld) writeFileSync(refCache, JSON.stringify(ref.extra.ref));
   if (cache) writeFileSync(cache, JSON.stringify(boots));
 }
 const { fw } = boots.ref, c = boots.ref.section.c, room = boots.room, Rr = room.reach;
-const discCap = room.free.withDrumA.discs[0].r;
+// the pick's cap is the declared barrel's own tips, not this boot's free disc: the default's disc reproduces the declared
+// integers (held below), and an arrangement whose free disc is smaller (a scan's) still has a barrel to place. What the
+// rows below ask is where it could stand, not whether this boot's largest disc fits it.
+const X0 = pulleyBarrel({ ...PULLEY_BARREL, fw, c });
+// (plus 1e-9: the pick computes the candidate's module as 2r_pA/(k·p), and that sum can land an ulp over this one's)
+const discCap = X0.RB + X0.m + 1e-9;
 const { pick } = pickPulleyBarrel({ fw, k0: boots.ref.k, c, discCap });
+if (!pick || pick.zA !== PULLEY_BARREL.zA || pick.zB !== PULLEY_BARREL.zB || pick.NB !== PULLEY_BARREL.NB) {
+  console.log(`FAIL: the pick rule does not reproduce PULLEY_BARREL (got ${pick ? `${pick.zA}:${pick.zB} NB ${pick.NB}` : 'none'})`); process.exit(1); }
 const X = pulleyBarrel({ ...PULLEY_BARREL, fw, c, cB: pick.cB });
 const f = (x, d = 2) => (+x).toFixed(d);
 console.log(`target ${TARGET}: PULLEY_BARREL zA ${X.zA} zB ${X.zB} NB ${X.NB}: pulley R ${f(X.RA, 3)} (flange pitch ${f(X.rpA, 3)}), barrel R ${f(X.RB, 3)}, module ${f(X.m, 4)}, centres ${f(X.centreDistance, 3)} apart`);
@@ -112,13 +126,13 @@ for (let aA = 0; aA < 360; aA += 0.5) {
     seats.push({ aA, aB: k / 4, A, B, margin: Math.min(mA, mB, ...sc), box: b, area: area(b) });
   }
 }
-if (!seats.length) { console.log('no seat: no pulley azimuth with a barrel on its mesh circle clears the fields and both sides of the span'); process.exit(0); }
+if (!seats.length && !QUICK) { console.log('no seat: no pulley azimuth with a barrel on its mesh circle clears the fields and both sides of the span'); process.exit(0); }
 const aAs = [...new Set(seats.map((s) => s.aA))].sort((p, q) => p - q), arcs = [];
 for (const d of aAs) { const a = arcs.at(-1); if (a && Math.abs(d - a[1] - 0.5) < 1e-9) a[1] = d; else arcs.push([d, d]); }
 console.log(`seats: ${seats.length}, the pulley at ${arcs.map(([a, b]) => `${a}°–${b}°`).join(', ')} round the fusee`);
 const show = (tag, s) => { const b = s.box;
   console.log(`  ${tag}: pulley ${s.aA}° (${f(s.A.x)}, ${f(s.A.y)}), barrel ${s.aB}° off it (${f(s.B.x)}, ${f(s.B.y)}), least margin ${f(s.margin, 2)}; box x ${f(b.x0)}…${f(b.x1)}, y ${f(b.y0)}…${f(b.y1)}: ${['x0', 'x1', 'y0', 'y1'].map((kk) => `${kk} ${f(kk.endsWith('0') ? b[kk] - box0[kk] : box0[kk] - b[kk])}`).join(', ')} back, area ${f((1 - s.area / area(box0)) * 100, 1)}% less`); };
-show('smallest box', [...seats].sort((p, q) => p.area - q.area || q.margin - p.margin)[0]);
+if (seats.length) show('smallest box', [...seats].sort((p, q) => p.area - q.area || q.margin - p.margin)[0]);
 // THE CASE, not the box: the fitted case is solved about the hands (layout.js fitFittedCase, the build's own fit) from
 // the counted metal's hull, which the build publishes per unit (__clock.regions). Control: every unit's hull re-fitted
 // must read the area the build cut. Then the same fit with the drum group out, and with the pulley and the barrel in.
@@ -132,17 +146,18 @@ show('smallest box', [...seats].sort((p, q) => p.area - q.area || q.margin - p.m
   const all = Object.values(FT.units).flat(), rest = Object.entries(FT.units).filter(([k]) => !DRUM.includes(k)).flatMap(([, v]) => v);
   const A0 = fitArea(all), A1 = fitArea(rest);
   const best = [...seats].sort((p, q) => p.area - q.area || q.margin - p.margin)[0];
-  const A2 = fitArea([...rest, ...circ(best.A.x, best.A.y, rAt), ...circ(best.B.x, best.B.y, X.RB + X.m)]);
+  const full = !QUICK && best;
+  const A2 = full && fitArea([...rest, ...circ(best.A.x, best.A.y, rAt), ...circ(best.B.x, best.B.y, X.RB + X.m)]);
   const bx = (r) => `x ${f(r.b.xMin)}…${f(r.b.xMax)}, y ${f(r.b.yMin)}…${f(r.b.yMax)}`;
   console.log(`THE FITTED CASE (fitFittedCase about the hands): the build cut ${f(FT.fitAreaMm2)} mm²; every unit re-fitted ${f(A0.area)} mm² (${Math.abs(A0.area / FT.fitAreaMm2 - 1) < 1e-5 ? 'reproduces it' : 'DOES NOT reproduce it'}), ${bx(A0)}`);
   console.log(`  the drum group out: ${f(A1.area)} mm², ${bx(A1)} — ${Math.abs(A1.area - A0.area) < 1e-3 ? 'the drum does not set the case' : `${f(A0.area - A1.area)} mm² back`}`);
-  console.log(`  the pulley and barrel at the best box's seat: ${f(A2.area)} mm², ${bx(A2)} — ${f(((A2.area / A0.area) - 1) * 100, 1)}% against today`);
+  if (full) console.log(`  the pulley and barrel at the best box's seat: ${f(A2.area)} mm², ${bx(A2)} — ${f(((A2.area / A0.area) - 1) * 100, 1)}% against today`);
   // the seat scored BY THE CASE: every seat on a 2° grid of both azimuths (a subsample: the fit is a solve per seat),
   // the least case area, ties to the widest margin. The box above is not the case's ranking; this is.
-  const scored = seats.filter((s) => Math.abs(s.aA / 2 - Math.round(s.aA / 2)) < 1e-9 && Math.abs(s.aB / 2 - Math.round(s.aB / 2)) < 1e-9)
+  const scored = !full ? [] : seats.filter((s) => Math.abs(s.aA / 2 - Math.round(s.aA / 2)) < 1e-9 && Math.abs(s.aB / 2 - Math.round(s.aB / 2)) < 1e-9)
     .map((s) => ({ s, fit: fitArea([...rest, ...circ(s.A.x, s.A.y, rAt), ...circ(s.B.x, s.B.y, X.RB + X.m)]) }))
     .sort((p, q) => p.fit.area - q.fit.area || q.s.margin - p.s.margin);
-  console.log(`  scored by the case (${scored.length} seats on the 2° grid):`);
+  if (full) console.log(`  scored by the case (${scored.length} seats on the 2° grid):`);
   for (const { s, fit } of scored.slice(0, 5)) console.log(`    ${f(fit.area)} mm² (${f(((fit.area / A0.area) - 1) * 100, 1)}%), ${bx(fit)}: pulley ${s.aA}°, barrel ${s.aB}° off it, least margin ${f(s.margin, 3)}`);
   // the BOUND: the same fit with A anywhere on its ring round the fusee and B anywhere on its mesh circle, the fields
   // ignored (every other part could be re-sited, P3's position space). If even this does not beat today, no seat can.
@@ -155,9 +170,9 @@ show('smallest box', [...seats].sort((p, q) => p.area - q.area || q.margin - p.m
     const B = [A[0] + X.centreDistance * Math.cos(ph), A[1] + X.centreDistance * Math.sin(ph)];
     return [...circ(A[0], A[1], rAt, 24), ...circ(B[0], B[1], X.RB + X.m, 48)]; };
   const room = [];
-  for (let aA = 0; aA < 360; aA++) for (let aB = 0; aB < 360; aB++) room.push({ aA, aB, w: fitR(A0, pts(aA, aB)) });
+  if (full) for (let aA = 0; aA < 360; aA++) for (let aB = 0; aB < 360; aB++) room.push({ aA, aB, w: fitR(A0, pts(aA, aB)) });
   room.sort((p, q) => q.w - p.w);
-  console.log(`  the bound (no field: A anywhere on its ring, B anywhere on its circle, 1°): the roomiest seat stands ${f(room[0].w, 3)} ${room[0].w >= 0 ? 'inside' : 'OUTSIDE'} today's outline at the rim margin (pulley ${room[0].aA}°, barrel ${room[0].aB}° off it)`);
+  if (full) console.log(`  the bound (no field: A anywhere on its ring, B anywhere on its circle, 1°): the roomiest seat stands ${f(room[0].w, 3)} ${room[0].w >= 0 ? 'inside' : 'OUTSIDE'} today's outline at the rim margin (pulley ${room[0].aA}°, barrel ${room[0].aB}° off it)`);
   const near = []; for (const r of room) { if (near.every((q) => Math.hypot(q.aA - r.aA, q.aB - r.aB) > 20)) near.push(r); if (near.length === 6) break; }
   for (const r of near) { const t = (r.aA * Math.PI) / 180, A = [fus[0] + dA * Math.cos(t), fus[1] + dA * Math.sin(t)], ph = (r.aB * Math.PI) / 180;
     const ft = fitArea([...rest, ...circ(A[0], A[1], rAt), ...circ(A[0] + X.centreDistance * Math.cos(ph), A[1] + X.centreDistance * Math.sin(ph), X.RB + X.m)]);
@@ -166,6 +181,7 @@ show('smallest box', [...seats].sort((p, q) => p.area - q.area || q.margin - p.m
   // barrel radius whose tooth tips clear the fields AND stand inside an outline at the rim margin: today's (a case no
   // larger) and the drum-out one (all of the drum's area back). The barrel's spring scales with its plan, so this is
   // the radius the energy would have to be found in.
+  const largest = {};
   for (const [tag, O, raised] of [["today's outline", A0, false], ['the drum-out outline', A1, false], [`the drum-out outline, B raised ${RAISE}`, A1, true]]) {
     let bestR = -Infinity, at0 = null;
     for (let aA = 0; aA < 360; aA++) { const t = (aA * Math.PI) / 180, A = [fus[0] + dA * Math.cos(t), fus[1] + dA * Math.sin(t)];
@@ -183,8 +199,11 @@ show('smallest box', [...seats].sort((p, q) => p.area - q.area || q.margin - p.m
         if (!okR(lo + 0.5)) continue;
         for (let it = 0; it < 30; it++) { const mid = (lo + hi) / 2; if (okR(mid)) lo = mid; else hi = mid; }
         if (lo > bestR) { bestR = lo; at0 = { aA, aB }; } } }
+    largest[tag] = at0 ? { R: +bestR.toFixed(3), ...at0 } : null;
     console.log(`  the largest barrel inside ${tag} with the fields kept: R ${at0 ? f(bestR, 3) : 'none'} against the pick's ${f(X.RB, 3)}${at0 ? ` (pulley ${at0.aA}°, barrel ${at0.aB}° off it, the span clear both sides; plan ${f((bestR / X.RB) * (bestR / X.RB) * 100, 0)}% of the pick's)` : ''}`);
   }
+  console.log('RESULT ' + JSON.stringify({ target: TARGET, built: +FT.fitAreaMm2.toFixed(2), refit: +A0.area.toFixed(2), drumOut: +A1.area.toFixed(2),
+    seats: seats.length, largest, warns: boots.warns }));
   const decl = scored.find(({ s }) => s.aA === PULLEY_BARREL.pulleyAzDeg && s.aB === PULLEY_BARREL.barrelAzDeg);
   console.log(`  the declared seat (pulley ${PULLEY_BARREL.pulleyAzDeg}°, barrel ${PULLEY_BARREL.barrelAzDeg}°): ${decl ? `${f(decl.fit.area)} mm²` : 'not on the 2° grid or not a seat'}`);
 }

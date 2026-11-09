@@ -32,6 +32,7 @@ on:
       - 'tools/check-item-numbers.mjs'
       - 'tools/claim-item.mjs'
       - 'tools/item-docs.mjs'
+      - 'tools/todo-handles.mjs'
       - '.github/workflows/item-numbers.yml'
   push:
     branches: [main]
@@ -44,6 +45,7 @@ on:
       - 'tools/check-item-numbers.mjs'
       - 'tools/claim-item.mjs'
       - 'tools/item-docs.mjs'
+      - 'tools/todo-handles.mjs'
 
 jobs:
   item-numbers:
@@ -64,3 +66,10 @@ jobs:
       # indexes carry no item heading, and the index is current.
       - name: Check the item files and their indexes
         run: node tools/item-docs.mjs --check
+      # The handles beside them: every indexed item has exactly one nickname in
+      # docs/todo/HANDLES.md, every nickname is unique and short, and none names
+      # a number the index dropped. A handle is authored, not derived, so this is
+      # the only thing holding it — and it is what makes "a new item owes its row"
+      # a gate rather than a hope.
+      - name: Check the TODO handles
+        run: node tools/todo-handles.mjs --check
