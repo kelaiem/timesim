@@ -37,7 +37,11 @@ const ci = process.argv.indexOf('--cache'), cache = ci >= 0 ? process.argv[ci + 
 const REF_EXPR = `(() => { const g = window.__clock.equalisation.going;
   return { k: g.k_Nm_per_rad, section: g.section, fw: window.__clock.fuseeWind }; })()`;
 const TARGET = 'alarm=0&case=fitted';
-const FLANGE_TOP = 4.26;   // landing 0 (c): the top of the band the chain never reaches on today's drum (the fold re-measures it on the pulley)
+const FLANGE_TOP = 4.26;
+// THE RAISE a taller barrel B may take above the drum's top (the top read off this boot's depth row, held below): the
+// smaller barrel that gives the case back drives the train at ~0.954 of today at the ribbon's height 2c, so its ribbon
+// wants 2c(1/0.954 − 1) ≈ 0.169 more; RAISE is that rounded up, and the probe refuses a pick asking more than it.
+const DRUM_TOP = 7.97, RAISE = 0.20;   // landing 0 (c): the top of the band the chain never reaches on today's drum (the fold re-measures it on the pulley)
 let boots;
 if (cache && existsSync(cache)) boots = JSON.parse(readFileSync(cache, 'utf8'));
 else {
@@ -45,7 +49,7 @@ else {
     bootMany([TARGET], `({ room: (() => { const I = window.__clock.fuseeWind.inputs, ce = window.__clock.fuseeWind.chainEndROut, CM = ${CLEAR_MARGIN};
       // the span's heights (the fusee's lowest groove to the drum's hook plane, a chain plate's half-width and a margin
       // either side) and the coupling band landing 0 (c) measured clear of the chain (z 2.93–4.26)
-      window.__roomGrid = { bands: [[I.FUSEE_Z0 - ce - CM, I.COIL_TOP + ce + CM], [2.93 - CM, ${FLANGE_TOP} + CM]] };
+      window.__roomGrid = { bands: [[I.FUSEE_Z0 - ce - CM, I.COIL_TOP + ce + CM], [2.93 - CM, ${FLANGE_TOP} + CM], [${DRUM_TOP} - CM, ${DRUM_TOP + RAISE} + CM]] };
       return ${ROOM_EXPR}; })(),
       // the fitted case's own inputs: each unit's plan hull (FORM_REGIONS), the centre, the flat ends and the area cut
       fit: (() => { const c = window.__clock, F = c.formFootprint;
@@ -66,7 +70,8 @@ console.log(`target ${TARGET}: PULLEY_BARREL zA ${X.zA} zB ${X.zB} NB ${X.NB}: p
 // the fields: the drum's whole band, the span's heights, the flange's band (all with the drum group removed)
 const mk = (G) => (x, y) => { const i = Math.round((x - G.bx0) / G.res), j = Math.round((y - G.by0) / G.res);
   return i < 0 || j < 0 || i >= G.nx || j >= G.ny ? -Infinity : G.r[j * G.nx + i]; };
-const F0 = mk(room.free.withoutDrumGroup.grid), F1 = mk(room.free.bands[0].grid), F2 = mk(room.free.bands[1].grid);
+const F0 = mk(room.free.withoutDrumGroup.grid), F1 = mk(room.free.bands[0].grid), F2 = mk(room.free.bands[1].grid), F3 = mk(room.free.bands[2].grid);
+if (!(room.depth.drumZ[1] <= DRUM_TOP)) { console.log(`FAIL: the drum's top ${room.depth.drumZ[1]} stands above DRUM_TOP ${DRUM_TOP}`); process.exit(1); }
 const fus = Rr.fuseeCentre, RL = fw.fuseeRLarge, ce = fw.chainEndROut, CM = CLEAR_MARGIN;
 const dA = RL + X.RA + DRUM_GAP_U, rAt = X.rpA + X.m, rCoil = X.RA + 2 * ce;
 const azOf = (v) => ((Math.atan2(v[1], v[0]) * 180) / Math.PI + 360) % 360;
@@ -161,19 +166,24 @@ show('smallest box', [...seats].sort((p, q) => p.area - q.area || q.margin - p.m
   // barrel radius whose tooth tips clear the fields AND stand inside an outline at the rim margin: today's (a case no
   // larger) and the drum-out one (all of the drum's area back). The barrel's spring scales with its plan, so this is
   // the radius the energy would have to be found in.
-  for (const [tag, O] of [["today's outline", A0], ['the drum-out outline', A1]]) {
+  for (const [tag, O, raised] of [["today's outline", A0, false], ['the drum-out outline', A1, false], [`the drum-out outline, B raised ${RAISE}`, A1, true]]) {
     let bestR = -Infinity, at0 = null;
     for (let aA = 0; aA < 360; aA++) { const t = (aA * Math.PI) / 180, A = [fus[0] + dA * Math.cos(t), fus[1] + dA * Math.sin(t)];
       if (Math.min(F2(A[0], A[1]) - rAt, F1(A[0], A[1]) - rCoil) < 0 || fitR(O, circ(A[0], A[1], rAt, 24)) < 0) continue;
+      // the span, both sides (a seat whichever way the chain runs), clear in its own heights
+      const T = tangents({ x: A[0], y: A[1] }), sides = [0, 1];
+      if (sides.some((i) => !(spanClear(T[i], { x: A[0], y: A[1] }) >= 0))) continue;
       for (let aB = 0; aB < 360; aB++) { const ph = (aB * Math.PI) / 180;
         // B's centre moves with its radius on the mesh: centres r_pA + R_B apart, the module held
         const rB = (R) => [A[0] + (X.rpA + R) * Math.cos(ph), A[1] + (X.rpA + R) * Math.sin(ph)];
         let lo = 0, hi = X.RB * 1.5;
-        const okR = (R) => { const B = rB(R); return F0(B[0], B[1]) >= R && F2(B[0], B[1]) >= R + X.m && fitR(O, circ(B[0], B[1], R + X.m, 48)) >= 0; };
+        const okR = (R) => { const B = rB(R); return F0(B[0], B[1]) >= R && F2(B[0], B[1]) >= R + X.m && (!raised || F3(B[0], B[1]) >= R)
+          && fitR(O, circ(B[0], B[1], R + X.m, 48)) >= 0
+          && sides.every((i) => segD(B[0], B[1], ...T[i]) - ce - R >= CM); };
         if (!okR(lo + 0.5)) continue;
         for (let it = 0; it < 30; it++) { const mid = (lo + hi) / 2; if (okR(mid)) lo = mid; else hi = mid; }
         if (lo > bestR) { bestR = lo; at0 = { aA, aB }; } } }
-    console.log(`  the largest barrel inside ${tag} with the fields kept: R ${at0 ? f(bestR, 3) : 'none'} against the pick's ${f(X.RB, 3)}${at0 ? ` (pulley ${at0.aA}°, barrel ${at0.aB}° off it; plan ${f((bestR / X.RB) * (bestR / X.RB) * 100, 0)}% of the pick's)` : ''}`);
+    console.log(`  the largest barrel inside ${tag} with the fields kept: R ${at0 ? f(bestR, 3) : 'none'} against the pick's ${f(X.RB, 3)}${at0 ? ` (pulley ${at0.aA}°, barrel ${at0.aB}° off it, the span clear both sides; plan ${f((bestR / X.RB) * (bestR / X.RB) * 100, 0)}% of the pick's)` : ''}`);
   }
   const decl = scored.find(({ s }) => s.aA === PULLEY_BARREL.pulleyAzDeg && s.aB === PULLEY_BARREL.barrelAzDeg);
   console.log(`  the declared seat (pulley ${PULLEY_BARREL.pulleyAzDeg}°, barrel ${PULLEY_BARREL.barrelAzDeg}°): ${decl ? `${f(decl.fit.area)} mm²` : 'not on the 2° grid or not a seat'}`);
