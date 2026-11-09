@@ -190,7 +190,7 @@ export default {
   ['PAWLS ×2']: 'CÓC ĐẨY ×2',
   ['SPRING · under']: 'LÒ XO · bên dưới',
   ['inner ring — base ratchet flange, keyed to the fusee']: 'vành trong — mặt bích bánh cóc đế, gắn cố định với fusee',
-  ['MAINT_TEETH 24 on the flange, 35 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 trên mặt bích, 35 trên vành · hai cóc đẩy cách nhau π = 12 bước, nên tác động đồng thời',
+  ['MAINT_TEETH 24 on the flange, 25 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 trên mặt bích, 25 trên vành · hai cóc đẩy cách nhau π = 12 bước, nên tác động đồng thời',
   ['THE LIVE TORQUE PATH']: 'ĐƯỜNG MÔ-MEN HIỆN TẠI',
   ['crown → winding spur']: 'núm vặn → bánh trụ lên dây',
   ['fusee cone → base ratchet flange']: 'côn fusee → mặt bích bánh cóc đế',

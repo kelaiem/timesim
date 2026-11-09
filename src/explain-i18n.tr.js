@@ -193,7 +193,7 @@ export default {
   ['PAWLS ×2']: 'TIRNAK ×2',
   ['SPRING · under']: 'YAY · altta',
   ['inner ring — base ratchet flange, keyed to the fusee']: 'iç halka — temel cırcır flanşı, fusee\'ye kamalı',
-  ['MAINT_TEETH 24 on the flange, 35 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 flanşta, halkada 35 · π arayla iki tırnak = 12 adım, birlikte çalışır',
+  ['MAINT_TEETH 24 on the flange, 25 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 flanşta, halkada 25 · π arayla iki tırnak = 12 adım, birlikte çalışır',
   ['THE LIVE TORQUE PATH']: 'CANLI TORK YOLU',
   ['crown → winding spur']: 'kurma kolu → düz kurma çarkı',
   ['fusee cone → base ratchet flange']: 'fusee konisi → temel cırcır flanşı',

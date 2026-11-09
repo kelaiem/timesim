@@ -190,7 +190,7 @@ export default {
   ['PAWLS ×2']: '폴 ×2',
   ['SPRING · under']: '스프링 · 아래',
   ['inner ring — base ratchet flange, keyed to the fusee']: '안쪽 링 — 베이스 래칫 플랜지, 퓨지에 고정',
-  ['MAINT_TEETH 24 on the flange, 35 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 플랜지 24, 링 35 · 두 폴은 π 간격 = 12 피치, 그래서 함께 작동',
+  ['MAINT_TEETH 24 on the flange, 25 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 플랜지 24, 링 25 · 두 폴은 π 간격 = 12 피치, 그래서 함께 작동',
   ['THE LIVE TORQUE PATH']: '실제 토크 경로',
   ['crown → winding spur']: '용두 → 감기 스퍼',
   ['fusee cone → base ratchet flange']: '퓨지 원뿔 → 베이스 래칫 플랜지',

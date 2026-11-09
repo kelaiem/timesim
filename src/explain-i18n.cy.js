@@ -192,7 +192,7 @@ export default {
   ['PAWLS ×2']: 'CRAFANGAU ×2',
   ['SPRING · under']: 'SBRING · islaw',
   ['inner ring — base ratchet flange, keyed to the fusee']: 'cylch mewnol — fflans y glicied sylfaen, ynghlwm wrth y fusee',
-  ['MAINT_TEETH 24 on the flange, 35 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 ar y fflans, 35 ar y cylch · dwy grafanc π ar wahân = 12 traw, felly gweithredant yn unsain',
+  ['MAINT_TEETH 24 on the flange, 25 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 ar y fflans, 25 ar y cylch · dwy grafanc π ar wahân = 12 traw, felly gweithredant yn unsain',
   ['THE LIVE TORQUE PATH']: 'LLWYBR Y TRORYM BYW',
   ['crown → winding spur']: 'coron → sbardun weindio',
   ['fusee cone → base ratchet flange']: 'côn y fusee → fflans y glicied sylfaen',

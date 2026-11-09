@@ -210,7 +210,7 @@ export default {
   ['PAWLS ×2']: 'UÑAS ×2',
   ['SPRING · under']: 'MUELLE · debajo',
   ['inner ring — base ratchet flange, keyed to the fusee']: 'anillo interior — brida del trinquete base, enchavetada al caracol',
-  ['MAINT_TEETH 24 on the flange, 35 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 en la brida, 35 en el anillo · dos uñas a π = 12 pasos, así que actúan al unísono',
+  ['MAINT_TEETH 24 on the flange, 25 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 en la brida, 25 en el anillo · dos uñas a π = 12 pasos, así que actúan al unísono',
   ['THE LIVE TORQUE PATH']: 'LA VÍA VIVA DEL PAR',
   ['crown → winding spur']: 'corona → rueda recta de cuerda',
   ['fusee cone → base ratchet flange']: 'cono del caracol → brida del trinquete base',
