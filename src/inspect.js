@@ -38,7 +38,7 @@ import { ZERO_AREA_MAX, CLEAR_MARGIN, HANDOFF_TRACK_TOL, UNIT_MM, Z_DIAL, SLENDE
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME, SPEC,                                    // §36 Apply: the same predicate that builds the unit, and the same name
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, rigidSplit,
-  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, MAINSPRING_ALPHA_MIN, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R_SPEC, BALANCE_R_REF, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG, STOPWORK_BUILT, GEARED_BUILT } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
+  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, ESCAPE_STEEL_SIGMA_Y_PA, ESCAPE_TIP_R_M, ESCAPE_TIP_R_BAND, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, MAINSPRING_ALPHA_MIN, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R_SPEC, BALANCE_R_REF, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG, STOPWORK_BUILT, GEARED_BUILT } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 import { auditLubrication, LUBRICATION, LUBRICATION_DEBT, LUBRICATION_WAIVERS } from './lubrication.js';   // §247 tier one
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
@@ -11075,6 +11075,33 @@ export function checkOscillator(clock) {
 //     it is STALE. The control is the going ribbon as it stood before TODO 291
 //     (a 0.22008 half-thickness on the 1.5 collar, α 3.41), which the same rule
 //     must refuse.
+// 20. THE CLUB TOOTH'S TIP CARRIES THE ESCAPEMENT (TODO 296) — the escape
+//     wheel's teeth are a 10.83° wedge whose last 0.038 mm is 0.010 mm wide,
+//     thinner in the sheet than PIVOT_MIN_U, and nothing priced them: §50's
+//     floor reads a geometry-local bounding box whose smallest side here is the
+//     DEPTH. So `escapeTooth`, on row 12's and row 16's shape one part along.
+//     The geometry first, because an arm read off the wrong edge is a plausible
+//     number: the two flanks that meet at the tip lie on the SAME side of its
+//     radius (so the club's width is their difference — read as a sum the wedge
+//     comes out 59° and every section 4.6× too fat), the locking flank leaves
+//     at the declared TOOTH_RAKE_DEG, the band the tip stands at full radius in
+//     is inside the wheel's thickness, every contact arm is in (0, radius], and
+//     each arm satisfies VIRTUAL WORK against the escapement solve's own
+//     gearing (arm_fork/arm_wheel = dδ/dφ) — the one control that would notice
+//     both arms being wrong together. Then the loads: F = τ/arm with a FORWARD
+//     run carrying the corner's T·η and the UNLOCK carrying T/η, because the
+//     balance drives the train backward through the draw (§238's reading) — so
+//     the corners are ordered one way for a forward run and the OTHER way for
+//     the recoil, which is the sign a careless row gets wrong. Then the tip,
+//     priced as TODO 221 priced the maintaining beak's apex, because a point is
+//     singular in both currencies: Hertz (a steel radius on the ruby's flat,
+//     p0 = √(F'E*/πρ), E* re-derived from the two bodies the record names)
+//     against LINE_CONTACT_FIRST_YIELD_P0_PER_Y × ESCAPE_STEEL_SIGMA_Y_PA, and
+//     the wedge's section where the arc leaves it (bending plus the whole load
+//     axial) against the same steel. Both go as 1/ρ, so each inverts to its own
+//     first-yield radius, ρ_min is the larger, `binds` names it, and ρ_min must
+//     be at or under ESCAPE_TIP_R_M — the SHARP end of the declared finish
+//     band, the loaded reading. No waiver: row 16's beak arc has none either.
 // TODO 193 — the ribbons over their alloy, by name. A row cites the TODO whose
 // fix path brings it under, and FAILS when its ribbon already is (stale).
 // TODO 291 — the ribbons under the packing band, by name; RIBBON_STRESS_WAIVERS' convention.
@@ -11289,6 +11316,138 @@ export function checkEqualisation(clock) {
         if (!(r.sigma_Pa <= SPRING_SIGMA_Y_PA * (1 + 1e-9)))
           failures.push({ what: 'pivot over yield at service load', pivot: r.pivot, sigma_MPa: r.sigma_Pa / 1e6, yield_MPa: SPRING_SIGMA_Y_PA / 1e6 });
       }
+    }
+    // Row 20 (TODO 296) — THE CLUB TOOTH'S TIP. The roster above says why each
+    // clause is here; the load-bearing ones are the geometry's (an arm off the
+    // wrong edge reads plausible) and the corner ORDER per flow (the unlock's
+    // recoil inverts it).
+    const et = en.escapeTooth;
+    if (!et || !Array.isArray(et.rows) || !et.rows.length || !et.geom) {
+      failures.push({ what: 'escape tooth rows', note: 'going.energy.escapeTooth is missing \u2014 the club tooth\'s tip is unpriced (TODO 296 regressed)' });
+    } else {
+      const U = UNIT_MM / 1000;
+      const g = et.geom, w = g.wedge;
+      if (!w.sameSide)
+        failures.push({ what: 'the club\'s tip flanks straddle its radius', note: 'the wedge is their SUM, not their difference \u2014 this record\'s sections are not the cut ones' });
+      if (!(Math.abs(Math.abs(w.lockFlankDeg) - w.rakeDeg) <= 1e-6))
+        failures.push({ what: 'the locking flank is not at the declared rake', measuredDeg: w.lockFlankDeg, declaredDeg: w.rakeDeg });
+      if (!(w.fullDeg > 0 && w.fullDeg < 90))
+        failures.push({ what: 'the club\'s wedge angle is not a wedge', fullDeg: w.fullDeg });
+      // AND THE WEDGE IS THE FLANKS' DIFFERENCE, re-derived from the two flank
+      // angles the record also carries. Without this the trap passes: a record
+      // that read the flanks as a SUM would carry a self-consistent 58.83° and
+      // every clause below, which recomputes from its own halfRad, would hold.
+      const dDeg = Math.abs(Math.abs(w.lockFlankDeg) - Math.abs(w.impulseFlankDeg));
+      const dWpd = Math.abs(Math.tan(Math.abs(w.impulseFlankDeg) * Math.PI / 180) - Math.tan(Math.abs(w.lockFlankDeg) * Math.PI / 180));
+      if (!(rel(w.fullDeg, dDeg) <= 1e-12))
+        failures.push({ what: 'the club\'s wedge is not its flanks\' DIFFERENCE', fullDeg: w.fullDeg, difference: dDeg, sum: Math.abs(w.lockFlankDeg) + Math.abs(w.impulseFlankDeg) });
+      if (!(rel(w.widthPerDepth, dWpd) <= 1e-12))
+        failures.push({ what: 'the club\'s width per radial depth is not its flanks\' DIFFERENCE', record: w.widthPerDepth, difference: dWpd });
+      if (!(rel(w.halfRad * 2 * 180 / Math.PI, w.fullDeg) <= 1e-12))
+        failures.push({ what: 'the wedge\'s half-angle is not half its full angle', halfRad: w.halfRad, fullDeg: w.fullDeg });
+      // AND WHICH WAY THE POWER RUNS ON EACH FACE, structurally rather than by
+      // its prose: the impulse face only ever receives the wheel's drive, and
+      // each stone's locking face carries exactly one of each — the tooth
+      // standing at the banking (forward) and the balance driving it back down
+      // the draw (recoil). A record that priced the unlock forward would pass
+      // every identity and only this.
+      for (const st of [-1, 1]) {
+        const mine = g.runs.filter((q) => q.stone === st);
+        const imp = mine.filter((q) => q.face === 'impulse'), lk = mine.filter((q) => q.face === 'lock');
+        if (imp.some((q) => q.flow !== 'forward'))
+          failures.push({ what: 'an impulse-face run is not driven forward by the wheel', stone: st, runs: imp });
+        if (!(lk.filter((q) => q.flow === 'recoil').length === 1 && lk.filter((q) => q.flow === 'forward').length === 1))
+          failures.push({ what: 'a stone\'s locking face does not carry exactly one forward run and one recoil run', stone: st, runs: lk });
+      }
+      if (!(g.band.t_u > 0 && g.band.t_u <= g.band.thickness_u * (1 + 1e-6)))
+        failures.push({ what: 'the tip\'s full-radius band is not inside the wheel\'s thickness', band_u: g.band.t_u, thickness_u: g.band.thickness_u });
+      if (!(g.virtualWork && g.virtualWork.rel < 1e-5))
+        failures.push({ what: 'the contact arms fail virtual work against the escapement solve', worst: g.virtualWork || null });
+      for (const q of g.runs)
+        if (!(q.arm_u > 0 && q.arm_u <= g.radius_u + 1e-9))
+          failures.push({ what: 'contact arm outside the wheel', run: q.run, stone: q.stone, arm_u: q.arm_u, radius_u: g.radius_u });
+      // the limits are layout.js's, never the record's
+      const rho = ESCAPE_TIP_R_M, a = w.halfRad, tM = et.line_u * U;
+      const EstarFrom = 1 / ((1 - Math.pow(et.bodies.tooth.nu, 2)) / et.bodies.tooth.E_Pa
+                           + (1 - Math.pow(et.bodies.stone.nu, 2)) / et.bodies.stone.E_Pa);
+      const allow = LINE_CONTACT_FIRST_YIELD_P0_PER_Y * ESCAPE_STEEL_SIGMA_Y_PA;
+      if (!(rel(et.Estar_Pa, EstarFrom) <= 1e-12))
+        failures.push({ what: 'escape tooth contact modulus identity', record: et.Estar_Pa, fromBodies: EstarFrom });
+      if (!(rel(et.p0Allow_Pa, allow) <= 1e-12))
+        failures.push({ what: 'escape tooth allowable is not first yield of the escape steel\'s low end', record: et.p0Allow_Pa, fromLimit: allow });
+      if (!(Math.abs(et.rho_m - rho) <= 1e-18))
+        failures.push({ what: 'escape tooth priced at a radius that is not the finish band\'s sharp end', record: et.rho_m, sharp_m: rho });
+      if (!(ESCAPE_TIP_R_M === ESCAPE_TIP_R_BAND.sharp_m))
+        failures.push({ what: 'ESCAPE_TIP_R_M is not the band\'s sharp end', value: ESCAPE_TIP_R_M, band: { ...ESCAPE_TIP_R_BAND } });
+      const secW = 2 * rho * Math.cos(a), secArm = rho * (1 - Math.sin(a));
+      const byKey = new Map();
+      for (const r of et.rows) {
+        const key = `${r.stone}|${r.run}`;
+        if (!byKey.has(key)) byKey.set(key, new Map());
+        byKey.get(key).set(r.corner, r);
+        const run = g.runs.find((q) => q.stone === r.stone && q.run === r.run);
+        if (!run) { failures.push({ what: 'escape tooth row names no measured run', row: r }); continue; }
+        if (!(rel(r.arm_u, run.arm_u) <= 1e-12))
+          failures.push({ what: 'escape tooth row arm is not the measured one', run: r.run, row: r.arm_u, measured: run.arm_u });
+        // the row's η is its CORNER's, not a number of its own: without this a
+        // row could wear one corner's name and another's efficiency and every
+        // identity below would still hold
+        const Cc = en.corners[r.corner];
+        if (!Cc) { failures.push({ what: 'escape tooth row names no corner', row: r }); continue; }
+        const etaC = Cc.stages.filter((q) => q.name !== 'lever escapement').reduce((x, q) => x * q.eta, 1);
+        if (!(rel(r.etaPath, etaC) <= 1e-12))
+          failures.push({ what: 'escape tooth row\u2019s \u03b7 is not its corner\u2019s', run: r.run, corner: r.corner, record: r.etaPath, fromCorner: etaC });
+        const tq = r.flow === 'recoil' ? en.escapeTorque_Nm / r.etaPath : en.escapeTorque_Nm * r.etaPath;
+        if (!(rel(r.torque_Nm, tq) <= 1e-12))
+          failures.push({ what: 'escape tooth torque identity', run: r.run, corner: r.corner, flow: r.flow, record: r.torque_Nm, fromCorner: tq });
+        const F = r.torque_Nm / (r.arm_u * U);
+        if (!(rel(r.load_N, F) <= 1e-12))
+          failures.push({ what: 'escape tooth load identity', run: r.run, corner: r.corner, record: r.load_N, fromTorque: F });
+        const p0 = Math.sqrt((F / tM) * et.Estar_Pa / (Math.PI * rho));
+        const sigma = 6 * F * secArm / (tM * secW * secW) + F / (tM * secW);
+        if (!(rel(r.p0_Pa, p0) <= 1e-12))
+          failures.push({ what: 'escape tooth Hertz identity', run: r.run, corner: r.corner, record: r.p0_Pa, fromLoad: p0 });
+        if (!(rel(r.sigma_Pa, sigma) <= 1e-12))
+          failures.push({ what: 'escape tooth tip beam identity', run: r.run, corner: r.corner, record: r.sigma_Pa, fromLoad: sigma });
+        // each criterion inverts to the radius at which it would first yield
+        const rH = (F / tM) * et.Estar_Pa / (Math.PI * allow * allow);
+        const kB = (6 * (1 - Math.sin(a)) / (4 * Math.pow(Math.cos(a), 2)) + 1 / (2 * Math.cos(a))) / tM;
+        const rB = kB * F / ESCAPE_STEEL_SIGMA_Y_PA;
+        if (!(rel(r.rhoHertz_m, rH) <= 1e-12) || !(rel(r.rhoBeam_m, rB) <= 1e-12))
+          failures.push({ what: 'escape tooth first-yield radius identity', run: r.run, corner: r.corner,
+            hertz: [r.rhoHertz_m, rH], beam: [r.rhoBeam_m, rB] });
+        const bind = rH >= rB ? 'hertz' : 'beam';
+        if (r.binds !== bind || !(rel(r.rhoMin_m, Math.max(rH, rB)) <= 1e-12))
+          failures.push({ what: 'escape tooth rho_min is not the larger criterion', run: r.run, corner: r.corner, record: [r.rhoMin_m, r.binds], derived: [Math.max(rH, rB), bind] });
+        // THE BAR: the tip carries the load at the finish band's sharp end
+        if (!(r.p0_Pa <= allow * (1 + 1e-9)))
+          failures.push({ what: 'club tooth tip over first yield in contact', run: r.run, corner: r.corner,
+            p0_GPa: r.p0_Pa / 1e9, allow_GPa: allow / 1e9 });
+        if (!(r.sigma_Pa <= ESCAPE_STEEL_SIGMA_Y_PA * (1 + 1e-9)))
+          failures.push({ what: 'club tooth tip over yield in bending', run: r.run, corner: r.corner,
+            sigma_MPa: r.sigma_Pa / 1e6, yield_MPa: ESCAPE_STEEL_SIGMA_Y_PA / 1e6 });
+        if (!(r.rhoMin_m <= rho * (1 + 1e-9)))
+          failures.push({ what: 'club tooth needs a blunter tip than the finish band\'s sharp end', run: r.run, corner: r.corner,
+            rhoMin_um: r.rhoMin_m * 1e6, sharp_um: rho * 1e6, binds: r.binds });
+      }
+      // THE CORNERS, ordered PER FLOW: a forward run's load falls with the
+      // corner (the train delivers less), the unlock's recoil RISES with it
+      // (the balance pays the backward friction). Both senses, because a row
+      // that priced the recoil forward would still look monotone.
+      for (const [key, m] of byKey) {
+        const f = m.get('favourable'), nn = m.get('nominal'), d = m.get('adverse');
+        if (!f || !nn || !d) { failures.push({ what: 'escape tooth run missing a corner', run: key, corners: [...m.keys()] }); continue; }
+        const up = f.flow === 'recoil';
+        const ok = up ? (f.load_N <= nn.load_N + 1e-18 && nn.load_N <= d.load_N + 1e-18)
+                      : (f.load_N >= nn.load_N - 1e-18 && nn.load_N >= d.load_N - 1e-18);
+        if (!ok)
+          failures.push({ what: up ? 'the unlock\'s recoil load does not rise toward the adverse corner'
+                                   : 'a forward run\'s load does not fall toward the adverse corner',
+            run: key, flow: f.flow, loads_uN: [f.load_N * 1e6, nn.load_N * 1e6, d.load_N * 1e6] });
+      }
+      const worstRow = et.rows.reduce((x, y) => (y.margin < x.margin ? y : x));
+      if (et.worst.run !== worstRow.run || et.worst.corner !== worstRow.corner || !(rel(et.worst.margin, worstRow.margin) <= 1e-12))
+        failures.push({ what: 'escape tooth worst row is not the lowest margin', record: et.worst, lowest: { run: worstRow.run, corner: worstRow.corner, margin: worstRow.margin } });
     }
     // Row 16 (TODO 217) — THE MAINTAINING DETENT'S HOLD. The face load is the
     // going torque over the face normal's moment arm, the torque being the
@@ -11630,6 +11789,16 @@ export function checkEqualisation(clock) {
         pivots: en.pivots && en.pivots.strength ? {
           trainPivotR_u: +en.pivots.trainPivotR_u.toFixed(5), balancePivotR_u: +en.pivots.balancePivotR_u.toFixed(5),
           worst: en.pivots.strength.worst, worstMargin: +en.pivots.strength.worstMargin.toFixed(3),
+        } : null,
+        // TODO 296 — the club tooth's tip, REPORTED beside them (row 20 gates it)
+        escapeTooth: en.escapeTooth ? {
+          wedgeDeg: +en.escapeTooth.wedgeDeg.toFixed(4), tipRho_um: +(en.escapeTooth.rho_m * 1e6).toFixed(4),
+          line_u: +en.escapeTooth.line_u.toFixed(4), worstArm_u: +en.escapeTooth.worstArm_u.toFixed(4),
+          worstLoad_uN: +(Math.max(...en.escapeTooth.rows.map((r) => r.load_N)) * 1e6).toFixed(2),
+          worst: `${en.escapeTooth.worst.corner} / ${en.escapeTooth.worst.run}`,
+          worstMargin: +en.escapeTooth.worst.margin.toFixed(3), binds: en.escapeTooth.worst.binds,
+          rhoMin_nm: +(en.escapeTooth.rhoMin_m * 1e9).toFixed(3), sharp_nm: +(en.escapeTooth.tipBand.sharp_m * 1e9).toFixed(0),
+          yield_MPa: en.escapeTooth.yield_Pa / 1e6, p0Allow_GPa: +(en.escapeTooth.p0Allow_Pa / 1e9).toFixed(4),
         } : null,
         corners: Object.fromEntries(Object.entries(en.corners).map(([c, C]) => [c, {
           etaTrain: +C.etaTrain.toFixed(4), etaTotal: +C.etaTotal.toFixed(4), delivered_nJ: +(C.delivered_J * 1e9).toFixed(4),

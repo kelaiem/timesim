@@ -83,6 +83,7 @@ import {
   STOCK, ALLOY_STOCK,                          // §269: the stocks' densities and moduli, for the watch's mass and the receiver's first modes
   STEEL_E_PA, STEEL_G_PA, SPRING_SIGMA_Y_PA, SPRING_TAU_Y_PA, cantileverK_N_per_m,
   CLICK_STEEL_SIGMA_Y_BAND, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU,   // TODO 221: the click steel and the line contact's first yield
+  ESCAPE_STEEL_SIGMA_Y_BAND, ESCAPE_STEEL_SIGMA_Y_PA, ESCAPE_TIP_R_BAND, ESCAPE_TIP_R_M,   // TODO 296: the escape wheel's own steel, and the radius its club tip is priced on
   MAINSPRING_E_PA, MAINSPRING_SIGMA_Y_BAND, MAINSPRING_SIGMA_Y_PA, MAINSPRING_ALPHA_BAND, MAINSPRING_ALPHA_MIN,   // TODO 193: the ribbons' alloy, cited  // §137: the one steel, the one cantilever law; §164 names its other properties beside it
   MU_STEEL, ALARM_SPRING_HEADROOM,            // TODO 144: the one steel-on-steel friction coefficient, and the drag-against-hold margin — the disc's drag and its seat are priced on both
   FRICTION, FRICTION_CORNERS,                  // TODO 192 / §247 tier two: the friction bands the power budget is priced at — three corners, never one number
@@ -1983,6 +1984,143 @@ const escapeWheel = G.makeEscapeWheel({
 });
 if (Math.abs(escapeWheel.userData.r - escapeWheelR) > 1e-12)
   console.warn(`TODO 226 step 3: the escape wheel was cut at r ${escapeWheel.userData.r}, not the ${escapeWheelR} the stations were laid out from`);
+// TODO 296 — THE CLUB TOOTH'S SECTION AND WHAT BEARS ON IT, read off the cut.
+// The owner's eye ("the teeth look a little thin at the ends") was right and
+// the number is worse than it looks: the club is a WEDGE of about 11°, and the
+// lock, the draw and the impulse all bear on its point, because TODO 226 step
+// 3's undercut was cut so that only the tip touches and `deltaOnImpulseFace`
+// puts the tooth CIRCLE on the stone's face — so the tip is the ONE bearing
+// station through the whole beat, not three stations with three sections (the
+// item guessed otherwise; this is the metal's answer).
+//
+// Published here as GEOMETRY; the load is the energy column's and the stresses
+// are priced in EQUALISATION, beside the pivots and the maintaining hold, which
+// is MAINT_DET_HOLD_GEOM's split for the same reason (the column is defined
+// after the fusee).
+//
+//  · THE WEDGE, off the AUTHORED outline — which for this wheel IS the cut
+//    metal's section: `bevelOffset = -bevel` ends the chamfer ON the outline
+//    (TODO 131), so the body band is this polygon and the band's HEIGHT is what
+//    a line contact at the tip has to work with. The height is measured off the
+//    mesh at the tip radius rather than taken from `thickness`.
+//  · THE TRAP IT CARRIES. Both flanks that meet at the tip — the impulse face
+//    running back to the heel and the undercut's locking face raked
+//    TOOTH_RAKE_DEG behind it — lie on the SAME side of the tip's radius, so
+//    the club's width is their DIFFERENCE. Read it as a sum (the reflex for a
+//    gear tooth, whose flanks straddle its radius) and the wedge comes out 59°
+//    instead of 11° and every section 4.6x too fat. The assert below is that
+//    one fact, so a re-cut that straddles the radius cannot pass as this.
+//  · WHAT BEARS, and WHERE. The contact normal's moment arm about the wheel's
+//    axis is what turns the escape torque into a tooth load, and it is NOT the
+//    tooth circle: the locking face leans by the draw plus the angle between
+//    the fork's radial and the wheel's, so the arm is shorter than `radius` and
+//    the load correspondingly larger. Sampled over each run the tip makes — the
+//    whole unlock down the locking face, the whole impulse along the stone's
+//    impulse face — and kept at its SMALLEST, which is the largest load.
+const ESCAPE_TOOTH_GEOM = (() => {
+  const radius = escapeWheel.userData.r, poly = escapeWheel.userData.profile.poly, n = poly.length;
+  const at = (i) => poly[((i % n) + n) % n];
+  let ti = 0, tr = -Infinity;
+  for (let i = 0; i < n; i++) { const q = Math.hypot(poly[i][0], poly[i][1]); if (q > tr) { tr = q; ti = i; } }
+  const T = at(ti), azT = Math.atan2(T[1], T[0]);
+  const rd = [Math.cos(azT), Math.sin(azT)], tg = [-Math.sin(azT), Math.cos(azT)];
+  // (depth back from the tip along its inward radial, offset across it)
+  const sw = (p) => [-((p[0] - T[0]) * rd[0] + (p[1] - T[1]) * rd[1]), (p[0] - T[0]) * tg[0] + (p[1] - T[1]) * tg[1]];
+  const nbr = [at(ti - 1), at(ti + 1)].map((p) => ({ xy: p, r: Math.hypot(p[0], p[1]), sw: sw(p) }));
+  // the undercut's root stands NEARER the tip circle than the club heel does
+  const lockF = nbr[0].r > nbr[1].r ? nbr[0] : nbr[1], impF = nbr[0].r > nbr[1].r ? nbr[1] : nbr[0];
+  const angOf = (q) => Math.atan2(q.sw[1], q.sw[0]);
+  const aL = angOf(lockF), aI = angOf(impF);
+  const sameSide = Math.sign(lockF.sw[1]) === Math.sign(impF.sw[1]);
+  const halfV = Math.abs(aL - aI) / 2;
+  if (!sameSide)
+    console.warn('TODO 296: the club\'s two tip flanks straddle the tip\'s radius, so its width is their SUM and not their difference — this record\'s wedge is not the cut one');
+  if (!(Math.abs(Math.abs(aL) - TOOTH_RAKE_DEG * DEG2RAD) < 1e-6))
+    console.warn(`TODO 296: the undercut's flank leaves the tip at ${(Math.abs(aL) / DEG2RAD).toFixed(4)}° off the inward radial, not the declared ${TOOTH_RAKE_DEG}° — the wedge was read off the wrong edge`);
+  // THE BAND: the z over which the tip stands at full radius (a line contact
+  // there is this long). Measured on the mesh, not on `thickness`.
+  const toothMesh = escapeWheel.children.find((m) => m.isMesh && m.geometry.type === 'ExtrudeGeometry');
+  let zLo = Infinity, zHi = -Infinity;
+  { const pos = toothMesh.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      if (Math.hypot(pos.getX(i), pos.getY(i)) < radius - 1e-4) continue;
+      zLo = Math.min(zLo, pos.getZ(i)); zHi = Math.max(zHi, pos.getZ(i));
+    } }
+  const bandT_u = zHi - zLo;
+  // THE ARMS. v is the face's direction at fork angle phi; the normal is square
+  // to it, so the moment arm of a force along that normal about the wheel's
+  // axis is the contact radius's component ALONG the face.
+  const rot2 = (p, a) => [p[0] * Math.cos(a) - p[1] * Math.sin(a), p[0] * Math.sin(a) + p[1] * Math.cos(a)];
+  const Wc = ESCAPEMENT.W0;
+  const armAt = (st, phi, face) => {
+    const A = rot2(st.K, phi);
+    const raw = face === 'lock' ? st.tau : [st.E[0] - st.K[0], st.E[1] - st.K[1]];
+    const v = rot2(raw, phi), vl = Math.hypot(v[0], v[1]), u = [v[0] / vl, v[1] / vl];
+    const q = face === 'lock' ? ESCAPEMENT.deltaOnLockFace(st.sigma, phi) : ESCAPEMENT.deltaOnImpulseFace(st.sigma, phi);
+    if (!Number.isFinite(q.t)) return { wheel: NaN, fork: NaN, delta: NaN };
+    const d = q.t * (face === 'lock' ? 1 : vl);
+    const P = [A[0] + u[0] * d, A[1] + u[1] * d];
+    // the same component, about each axis: the wheel's centre, and the fork's
+    // pivot, which the solve puts at the origin
+    return { wheel: Math.abs((P[0] - Wc[0]) * u[0] + (P[1] - Wc[1]) * u[1]),
+             fork: Math.abs(P[0] * u[0] + P[1] * u[1]), delta: q.delta };
+  };
+  const SAMP = 64;
+  const minOver = (st, face, x0, x1) => {
+    let m = Infinity, atX = x0, fk = NaN;
+    for (let i = 0; i <= SAMP; i++) {
+      const x = x0 + (x1 - x0) * (i / SAMP), a = armAt(st, st.sigma * x, face);
+      if (Number.isFinite(a.wheel) && a.wheel < m) { m = a.wheel; atX = x; fk = a.fork; }
+    }
+    return { arm_u: m, armFork_u: fk, atForkDeg: atX / DEG2RAD };
+  };
+  //  · THE CONTROL, and it is the load-bearing part. An arm read off the wrong
+  //    face, or a normal taken square to the wrong vector, comes back a
+  //    plausible number — so each one is held to VIRTUAL WORK: the same contact
+  //    force turns the wheel about its centre and the fork about its pivot, so
+  //    arm_fork / arm_wheel must BE the solve's own gearing dδ/dφ there, by
+  //    finite difference on `deltaAt`'s branches. Nothing else in this record
+  //    would notice if both arms were wrong together.
+  const vwWorst = (() => {
+    let worst = null;
+    for (const st of ESCAPEMENT.stones)
+      for (const [face, x0, x1] of [['lock', ESCAPEMENT.bank, ESCAPEMENT.unlock], ['impulse', ESCAPEMENT.unlock, st.xE]])
+        for (const f of [0.2, 0.4, 0.6, 0.8]) {
+          const phi = st.sigma * (x0 + (x1 - x0) * f), h = 1e-6, a = armAt(st, phi, face);
+          const g = Math.abs((armAt(st, phi + h, face).delta - armAt(st, phi - h, face).delta) / (2 * h));
+          const rel = Math.abs(a.fork / a.wheel - g) / g;
+          if (!worst || rel > worst.rel) worst = { face, stone: st.sigma, f, rel, ratio: a.fork / a.wheel, gearing: g };
+        }
+    return worst;
+  })();
+  if (!(vwWorst.rel < 1e-5))
+    console.warn(`TODO 296: the contact arms fail virtual work on the ${vwWorst.face} face of stone ${vwWorst.stone} — `
+      + `arm_fork/arm_wheel ${vwWorst.ratio.toFixed(6)} against the solve's own gearing ${vwWorst.gearing.toFixed(6)} (${vwWorst.rel.toExponential(2)})`);
+  const runs = [];
+  for (const st of ESCAPEMENT.stones) {
+    const s = st.sigma;
+    runs.push({ stone: s, run: 'locked at the banking', flow: 'forward', face: 'lock',
+      ...minOver(st, 'lock', ESCAPEMENT.bank, ESCAPEMENT.bank) });
+    runs.push({ stone: s, run: 'the unlock, down the locking face', flow: 'recoil', face: 'lock',
+      ...minOver(st, 'lock', ESCAPEMENT.bank, ESCAPEMENT.unlock) });
+    runs.push({ stone: s, run: 'the impulse, along the stone\'s impulse face', flow: 'forward', face: 'impulse',
+      ...minOver(st, 'impulse', ESCAPEMENT.unlock, st.xE) });
+  }
+  for (const q of runs)
+    if (!(q.arm_u > 0 && q.arm_u <= radius + 1e-9))
+      console.warn(`TODO 296: the ${q.run} reads a contact arm of ${q.arm_u} on a wheel of ${radius} — the normal's line of action has left the metal`);
+  return Object.freeze({
+    radius_u: radius, tip: { xy: T, r: tr, azDeg: azT / DEG2RAD },
+    wedge: Object.freeze({ fullRad: 2 * halfV, halfRad: halfV, fullDeg: 2 * halfV / DEG2RAD,
+      lockFlankDeg: aL / DEG2RAD, impulseFlankDeg: aI / DEG2RAD, sameSide, rakeDeg: TOOTH_RAKE_DEG,
+      widthPerDepth: Math.abs(Math.tan(aL) - Math.tan(aI)),
+      holdsTo_u: Math.min(lockF.sw[0], impF.sw[0]) }),
+    band: Object.freeze({ t_u: bandT_u, zLo, zHi, thickness_u: 0.8 }),
+    runs: Object.freeze(runs.map(Object.freeze)),
+    worstArm_u: Math.min(...runs.map((q) => q.arm_u)),
+    virtualWork: Object.freeze(vwWorst),
+  });
+})();
 const palletFork = G.makePalletFork({
   span: forkSpan, seat: ESCAPEMENT_SEAT.slot, guard: ESCAPEMENT_SEAT.guard, thickness: FORK_T,
   stoneZReach: L_FORK - L_ESCAPE,
@@ -35987,6 +36125,91 @@ const EQUALISATION = (() => {
           + `over the ${(SPRING_SIGMA_Y_PA / 1e6).toFixed(0)} MPa yield — TRAIN_PIVOT_SIZES and this row have parted`);
       return { rows, dPivot_mm: PIVOT_MIN_U * UNIT_MM, yield_Pa: SPRING_SIGMA_Y_PA, worst: worst.pivot, worstMargin: worst.margin };
     })();
+    // TODO 296 — THE CLUB TOOTH'S TIP, priced. The owner saw it first: the
+    // escape wheel's teeth "look a little thin at the ends", and measured off
+    // the cut the club is a 10.83 degree wedge whose last 0.038 mm is 0.010 mm
+    // wide — thinner in the sheet than PIVOT_MIN_U, the floor under the most
+    // slender feature the movement admits anywhere. Four instruments passed it
+    // for four different reasons (TODO 296 lists them; stockFloor reads a
+    // geometry-LOCAL bounding box, whose smallest side here is the depth) and
+    // none of them is a strength claim. This is the strength claim.
+    //
+    //  · ONE BEARING STATION, not three. TODO 226 step 3 cut the undercut so
+    //    that only the tip touches, and `deltaOnImpulseFace` puts the tooth
+    //    CIRCLE on the stone's face, so through the lock, the draw and the
+    //    whole impulse it is the TIP that bears. The club's own impulse face
+    //    never meets the stone in this model.
+    //  · THE LOAD, from the escape torque over the arm the metal gives
+    //    (ESCAPE_TOOTH_GEOM: the contact normal's moment arm about the wheel's
+    //    axis, shorter than the tooth circle because the locking face leans by
+    //    the draw). FORWARD runs — locked at the banking, the impulse — carry
+    //    the corner's delivered torque, T.etaPath. The UNLOCK carries
+    //    T/etaPath: the balance drives the train BACKWARD through the draw, so
+    //    every stage's friction opposes it and the balance pays the reciprocal
+    //    (§238's own reading). That inverts the corners for that run, and it is
+    //    the largest tooth load in the beat — 1.9x the frictionless torque at
+    //    the adverse corner, where the forward runs read 0.53x.
+    //  · THE TIP IS AN ARC, because a point is singular. The beam's stress goes
+    //    as 1/s into the apex and the Hertz pressure as 1/sqrt(rho), so a
+    //    mathematically sharp club has no finite strength at all and the only
+    //    honest price is on the radius the METAL carries — ESCAPE_TIP_R_BAND, a
+    //    finish, read at its SHARP end. This is TODO 221's treatment of the
+    //    maintaining beak's apex applied to the one other wedge in the
+    //    movement that bears a load on its point.
+    //  · TWO CRITERIA, and the record says which BINDS. Hertz: a steel radius
+    //    on the ruby's flat face, p0 = sqrt(F' E* / (pi rho)) against
+    //    LINE_CONTACT_FIRST_YIELD_P0_PER_Y x the escape steel's low end, the
+    //    line as long as the band the tip stands at full radius in. Beam: the
+    //    wedge's section where the arc leaves it (width 2 rho cos a, the load
+    //    rho(1 - sin a) ahead of it), bending plus the WHOLE of F as axial
+    //    load, under the same steel. Both go as 1/rho, so each inverts to the
+    //    radius at which it would first yield and rhoMin is the larger.
+    //  · WHAT THIS DOES NOT PRICE, said plainly: the DROP's impact. At the
+    //    landing the wheel and the train behind it arrive with kinetic energy
+    //    some seven orders over the elastic energy this contact stores at the
+    //    working load, and that is the load a thin tip really fears — but its
+    //    path is through the stone into the fork and out at the banking pin,
+    //    none of which this models. TODO 296 carries it as the step still owed.
+    const escapeTooth = (() => {
+      const H = ESCAPE_TOOTH_GEOM, tM = H.band.t_u * OSC_U, rho = ESCAPE_TIP_R_M, a = H.wedge.halfRad;
+      // E* for STEEL on RUBY: both bodies named, the stone corundum (§269's stocks)
+      const Estar = 1 / ((1 - STEEL_NU * STEEL_NU) / STEEL_E_PA + (1 - STOCK.corundum.nu * STOCK.corundum.nu) / STOCK.corundum.E);
+      const p0Allow = LINE_CONTACT_FIRST_YIELD_P0_PER_Y * ESCAPE_STEEL_SIGMA_Y_PA;
+      const secW = 2 * rho * Math.cos(a), secArm = rho * (1 - Math.sin(a));
+      // sigma(rho) = K/rho and p0(rho) = sqrt(J/rho), so each criterion inverts
+      const kBeam = (6 * (1 - Math.sin(a)) / (4 * Math.pow(Math.cos(a), 2)) + 1 / (2 * Math.cos(a))) / tM;
+      const rows = [];
+      for (const cname of FRICTION_CORNERS) {
+        const Cc = corner(cname);
+        const etaPath = Cc.stages.filter((st) => st.name !== 'lever escapement').reduce((p, st) => p * st.eta, 1);
+        for (const run of H.runs) {
+          const tq = run.flow === 'recoil' ? escapeTorque_Nm / etaPath : escapeTorque_Nm * etaPath;
+          const F = tq / (run.arm_u * OSC_U), Fl = F / tM;
+          const p0 = Math.sqrt(Fl * Estar / (Math.PI * rho));
+          const sigma = 6 * F * secArm / (tM * secW * secW) + F / (tM * secW);
+          const rhoHertz = Fl * Estar / (Math.PI * p0Allow * p0Allow), rhoBeam = kBeam * F / ESCAPE_STEEL_SIGMA_Y_PA;
+          rows.push({ corner: cname, stone: run.stone, run: run.run, flow: run.flow, etaPath,
+            arm_u: run.arm_u, torque_Nm: tq, load_N: F,
+            p0_Pa: p0, p0Margin: p0Allow / p0, sigma_Pa: sigma, sigmaMargin: ESCAPE_STEEL_SIGMA_Y_PA / sigma,
+            rhoHertz_m: rhoHertz, rhoBeam_m: rhoBeam,
+            rhoMin_m: Math.max(rhoHertz, rhoBeam), binds: rhoHertz >= rhoBeam ? 'hertz' : 'beam',
+            margin: Math.min(p0Allow / p0, ESCAPE_STEEL_SIGMA_Y_PA / sigma) });
+        }
+      }
+      const worstT = rows.reduce((x, y) => (y.margin < x.margin ? y : x));
+      if (worstT.margin < 1 - 1e-9)
+        console.warn(`TODO 296: the club tooth's tip works past the escape steel's low end on ${worstT.run} at the ${worstT.corner} corner — `
+          + `${worstT.binds === 'hertz' ? `p0 ${(worstT.p0_Pa / 1e9).toFixed(3)} GPa against ${(p0Allow / 1e9).toFixed(3)}` : `${(worstT.sigma_Pa / 1e6).toFixed(0)} MPa against ${(ESCAPE_STEEL_SIGMA_Y_PA / 1e6).toFixed(0)}`}`
+          + ` at a tip radius of ${(rho * 1e6).toFixed(3)} µm; it needs ${(worstT.rhoMin_m * 1e6).toFixed(3)} µm — the club wants a tip LAND`);
+      return { rows, rho_m: rho, tipBand: { ...ESCAPE_TIP_R_BAND }, steel: { ...ESCAPE_STEEL_SIGMA_Y_BAND },
+        // both bodies of the contact, named, so the gate re-derives E* rather
+        // than trusting it: the tooth is steel, the stone corundum (§269's stocks)
+        bodies: { tooth: { E_Pa: STEEL_E_PA, nu: STEEL_NU }, stone: { E_Pa: STOCK.corundum.E, nu: STOCK.corundum.nu } },
+        yield_Pa: ESCAPE_STEEL_SIGMA_Y_PA, p0Allow_Pa: p0Allow, Estar_Pa: Estar, line_u: H.band.t_u,
+        wedgeDeg: H.wedge.fullDeg, worstArm_u: H.worstArm_u,
+        worst: { run: worstT.run, corner: worstT.corner, margin: worstT.margin, binds: worstT.binds },
+        rhoMin_m: Math.max(...rows.map((q) => q.rhoMin_m)), geom: H };
+    })();
     // TODO 217 — THE MAINTAINING DETENT'S HOLD, priced. While the fusee is
     // wound the detent holds the maintaining ring, and the maintaining spring's
     // reaction comes back through the ring's face into the beak: that face
@@ -36139,6 +36362,7 @@ const EQUALISATION = (() => {
       pivots: { trainStaffR_u: TRAIN_STAFF_R, trainPivotR_u: TRAIN_PIVOT_R, balancePivotR_u: BALANCE_PIVOT_R,
                 byArbor: Object.fromEntries(TRAIN_PIVOT_SIZES.map((p) => [p.arbor, { r_u: p.rU, d_u: p.dU, bound: p.bound }])),
                 fuseePivotR_u: TRAIN_STAFF_R, strength: pivotStrength },
+      escapeTooth,
       maintainingHold,
       balance: { mass_kg: mB, k_Nm_per_rad: kB, g_mps2: g, claimedDeg: AMPLITUDE_CLAIM_DEG, peakDeg: AMPLITUDE_PEAK_DEG },
       resetCoupling,
