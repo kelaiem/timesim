@@ -42,6 +42,8 @@ heading, and [the index](../../TODO.md) is where it is shown.
 
 | item | handle |
 |---|---|
+| 300 | form case unheld |
+| 298 | alarm-free unswept |
 | 299 | wear life unpriced |
 | 297 | form dial feet |
 | 296 | escape tooth tip |

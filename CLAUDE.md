@@ -779,6 +779,19 @@ it into prose either.
    TODO 254) that goes STALE the day the sink is cut. `LUBRICATION_DEBT` is the
    CLOSED arrival inventory: it only shrinks, and a joint answered while still
    listed fails),
+   and `modules` **the build's word true of the scene, controls PASS** (TODO
+   298 — the tables are written for the build WITH every module, so a row
+   naming metal a build did not cut STANDS DOWN, counted in its check's
+   `standDown`, and only on the build's own word: a MODULE it did not build
+   (`clock.modules`, the alarm under `?alarm=0`, its units declared in
+   `MODULE_UNITS`) or a mesh its solve left uncut and gave a reason for
+   (`clock.omitted`, each with that reason). Anything else missing fails as it
+   always did. This gate holds the word true both ways: a built module's units
+   all present, an absent one's all gone, every omission a mesh really missing
+   from a unit that is there. Its controls feed the judge broken copies of the
+   word. A new module adds its units to `MODULE_UNITS`. A new omission is pushed
+   at the site that decides it, and never for a gap the build did not warn
+   about: that is the silent hole this keeps shut),
    and `transmits` **0 unwaived ratio mismatches, 0 unwaived ORPHANS, 0
    malformed, 0 stale waivers, controls PASS** (§194 — does every declared mesh
    actually turn its neighbour by the amount the metal says, asked once PER

@@ -4,7 +4,7 @@
 
 # The instruments
 
-427 scripts. **299 are ACCEPTANCE tests** — they decide and exit non-zero.
+429 scripts. **301 are ACCEPTANCE tests** — they decide and exit non-zero.
 **128 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -42,6 +42,7 @@ when a question was asked; the summaries are what it answered.
 | `dial-band-scan.mjs` |  | report | THE DIAL-SIDE BAND'S TENANTS, OVER THE POSE NET — the scan itself, as a function a page can run, shared by its two callers: probe-261-dial-band.mjs (the free-volume map, §261 step 2) and probe-261-fold-site.mjs (where the alarm switch can stand under the dial, §261 step 4). One copy, because two copies of a measuring method drift the way two copies of a law do. |
 | `explain-i18n.mjs` |  | acceptance | §73 tier two — the STATIC PAGES' translation tooling. |
 | `explain-quotes.mjs` |  | acceptance | §73 tier two — DOES THE EXPLAINER STILL QUOTE THE SOURCE? |
+| `form-fits.mjs` |  | acceptance | TODO 298 — WRITE OR CHECK src/form-fits.js, the fit each ALARM-FREE box form case is cut to. ACCEPTANCE (--check exits non-zero on drift). |
 | `form-layout.mjs` |  | acceptance | §307 — THE FORM LAYOUT OPTIMISER: which arrangement of the going train and the stem makes the movement's RECTANGLE smallest? |
 | `free-arrangement-scan.mjs` |  | report | §325 landing 5 — WHERE THE FUSEE STANDS WITHOUT THE ALARM: a scan of the going train's barrel step (solveLayout's barrelStepDeg, the bearing from the barrel's arbor to the centre wheel's — the fusee and its drum swung round the rest of the train) for the free outline of the movement built without the alarm. A REPORT: it ranks, it lands nothing; tools/free-outline.mjs is what settles a row. |
 | `free-outline.mjs` |  | acceptance | §325 — WRITE OR CHECK src/free-outlines.js, the FREE outline each movement is cut to. ACCEPTANCE (--check exits non-zero on drift). |
@@ -282,6 +283,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-338-kernel-parity.mjs` | §338 | acceptance | §338 landing 5 — G3, KERNEL PARITY: does the compiled kernel answer what the JS reference answers, and where it does not, is it the truer of the two? |
 | `probe-338-native-boot.mjs` | §338 | acceptance | §338 landing 1 — DOES THE NATIVE HOST BUILD THE SAME MOVEMENT AS THE BROWSER? |
 | `probe-338-pose-conditioning.mjs` | §338 | acceptance | §338 — THE POSE-CONDITIONING GUARD: does any pose of §152's net turn a last-ulp difference in the maths into a difference in the metal? |
+| `probe-339-arrangement-builds.mjs` | §339 | acceptance | WHAT DOES A BARREL STEP DO TO EVERY BUILD THE ARRANGEMENT REACHES? A REPORT (BACKLOG §339 2b′: it judges nothing). |
 | `probe-36-apply.mjs` | §36 | acceptance | §36 Apply — the acceptance, and the only place the APPLIED tree is judged. |
 | `probe-50-clutch.mjs` | §50 | report | TODO 50 — the stem clutch, measured in the movement. |
 | `probe-50-coupling.mjs` | §50 | report | Boot test-geometry.html headless and report the build log + a lift-law sanity table. |

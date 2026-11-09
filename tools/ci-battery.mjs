@@ -1051,6 +1051,17 @@ const SPEC_POINTS = [
     // height cap (11.464 mm against CASE_HEIGHT_MAX_MM 11.367) — debt about the case, declared as the form builds declare it
     expectWarns: ['§186: the rim-to-bore fit', '§261: cased assembly'],
     why: '§329 landing 4 — the stop-work on the alarm-off free case with the drum turned to 140° (−7.5% case area); boots exactly the free build\'s §186 row and §261\'s depth row, swept' },
+  // TODO 298 landing 3 — THE BUILD WITHOUT THE ALARM, ON A BOX FORM CASE. Until TODO 298 no alarm-free box build had ever
+  // been swept: the battery's tables named the alarm's units and threw, and the case was cut to the solvers' guess, through
+  // the setting lever. Now the battery stands down the module's rows on the build's own word and the case is cut to its
+  // generated fit (src/form-fits.js), so this point sweeps the alarm-free metal on every run. The fitted kind is the one
+  // §339 measured and the smallest of the four. It boots three filed rows: §186's form-case fit (TODO 300: the form case
+  // does not hold its movement), §261's depth cap (TODO 289 landing 8 raised the no-alarm dial for the fold's lower bushes,
+  // as stopwork-140 declares it), and §311's seconds well past the form track's inner rail (TODO 298: the fitted outline
+  // brings the rail inside the round one the well was solved against).
+  { name: 'alarm-free-fitted', q: 'alarm=0&case=fitted', expect: 'declared', sweep: true,
+    expectWarns: ['§186: the rim-to-bore fit', '§261: cased assembly', '§311: the seconds well'],
+    why: 'TODO 298 landing 3 — the movement without the alarm on the fitted form case at its own generated fit; boots exactly the three filed rows, swept' },
   // §329 — THE STOP IRON ON THE DEFAULT BUILD. Since the flip the Geneva stop-work is the default arrest (swept as the default
   // itself), and §47's stop iron is the supported alternative, `?arrest=stop-iron`: swept here so it stays buildable.
   { name: 'stop-iron', q: 'arrest=stop-iron', expect: 'silent', sweep: true,
@@ -1179,6 +1190,9 @@ const POINT_COSTS = {
   // and plates, the barrel at -140°, the drum turned, the stop-work in §47's place. Carried at the designed point's reach
   // (its nearest measured kin in scope) until a run writes its own `ms` back — wall clock, never a verdict.
   'stopwork-140': 1174,
+  // TODO 298 landing 3 — against the round alarm default this build changes most of the movement (no alarm at all, a form
+  // case and plates), stopwork-140's reach; carried at its number until a run writes its own `ms` back (wall clock, never a verdict)
+  'alarm-free-fitted': 1174,
   'stop-iron': 600,   // a stand-in at the default build's own scale (pillars 587), until a run's --report writes the measured one
 };
 {

@@ -210,6 +210,8 @@ export const COSTS = {
   'restoring': 30,
   'transfers': 1,
   'lubrication': 1,
+  // TODO 298 — one collectUnits walk and a pure judge run six times: a lubrication-class cost
+  'modules': 1,
   // §122 — the verdict tier's two fixes moved this column's three largest
   // rows, and every moved entry here is the OLD CI-calibrated value scaled
   // by its measured local before/after ratio (one container, same-day runs,

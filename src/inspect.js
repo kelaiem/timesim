@@ -77,6 +77,39 @@ const EXCLUDED_UNITS = ['Dial', 'Power reserve', 'Small seconds'];
 // unit and each drive partner it has been separated from, and the drive list
 // IS that data — main.js dynamic-imports this module when explore mode first
 // turns on (never at boot, so the boot bundle and its silence are untouched).
+// TODO 298 — WHAT A BUILD LEFT OUT, ON THE BUILD'S OWN WORD. The tables below are written for the build WITH every
+// module, and §325 landing 3's `?alarm=0` builds the movement without the alarm. A row naming metal a build did not
+// cut has nothing to measure, and before this it failed (or its check threw) on every alarm-free build. It STANDS DOWN
+// now, counted and named in its check's `standDown`, only when the build says the metal was left out:
+//   - a MODULE the build did not build (`clock.modules`, main.js), whose units are declared here;
+//   - a mesh the build's own solve left uncut and WARNED about (`clock.omitted`, each with that reason).
+// Anything else missing fails exactly as before: an unwarned gap is the silent hole this exists to keep shut. The
+// `modules` check holds this declaration to the scene both ways (a built module's units all present, an absent one's
+// all gone, every omission really missing from a unit that is there), and its controls must refuse a broken copy.
+export const MODULE_UNITS = Object.freeze({
+  alarm: Object.freeze(['Alarm crown', 'Alarm setting arbor', 'Alarm disc', 'Alarm setting wheel', 'Alarm setting idler',
+    'Alarm detector idler', 'Alarm detector arbor', 'Alarm release disc', 'Alarm release seat', 'Alarm release reader',
+    'Alarm release feeler', 'Alarm selector', 'Alarm release sleeve', 'Alarm release lifter', 'Alarm release crank',
+    'Alarm release link', 'Alarm silence rocker', 'Alarm link', 'Alarm lock', 'Alarm winding train', 'Alarm click',
+    'Alarm winding arrest', 'Alarm switch', 'Alarm gong', 'Alarm hammer', 'Alarm lifting lever', 'Alarm barrel',
+    'Alarm striking wheel', 'Alarm governor', 'Alarm governor anchor']),
+});
+// the build's word, read once per call: absent units (each with its reason) and omitted meshes keyed `unit/mesh`. A
+// clock that publishes no `modules` (a page older than TODO 298, a test double) is read as building every module.
+export function buildOmissions(clock) {
+  const mods = (clock && clock.modules) || {}, units = new Map(), meshes = new Map();
+  for (const [m, list] of Object.entries(MODULE_UNITS)) if (mods[m] === false) for (const u of list) units.set(u, `the ${m} module is not built`);
+  for (const o of (clock && clock.omitted) || []) meshes.set(`${o.unit}/${o.mesh}`, o.why);
+  return { units, meshes, absentModules: Object.keys(MODULE_UNITS).filter((m) => mods[m] === false) };
+}
+// why this build left any of a row's names out, or null when it said so of none. A name is a unit (`'Alarm disc'`) or a
+// [unit, mesh] pair. ONE left-out name stands the row down: a row joining an absent part to a present one (`Alarm crown
+// → plate`) has nothing to measure. A name missing for any reason the build did not give is not left out here, so a row
+// naming only such names still fails where it fails.
+export function leftOut(om, ...names) {
+  const whys = names.map((n) => (Array.isArray(n) ? om.units.get(n[0]) ?? om.meshes.get(`${n[0]}/${n[1]}`) : om.units.get(n)));
+  return whys.some((w) => w) ? whys.find((w) => w) : null;
+}
 export const MECH_GRAPH = {
   // node 'plate' is the ground; 'mainspring' and 'crown' are force sources.
   support: [
@@ -3197,7 +3230,11 @@ export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLO
   const sameNames = (na, nb) => ([x, y]) => (na === x && nb === y) || (na === y && nb === x);
   const onlyPairsFor = (row) => table.filter((r) => r !== row && r.only
     && ((r.a === row.a && r.b === row.b) || (r.a === row.b && r.b === row.a))).flatMap((r) => r.only);
-  const pairs = rows.map((row) => {
+  // TODO 298 — a row naming a unit the build left out is not swept; it keeps its place in the table's order
+  const omE = buildOmissions(clock), namesE = new Set(collectUnits(clock, { includeExcluded: true }).map((u) => u.name));
+  const goneE = rows.map((row) => leftOut(omE, ...[row.a, row.b].filter((n) => !namesE.has(n))));
+  const liveE = rows.map((_, i) => i).filter((i) => !goneE[i]);
+  const livePairs = liveE.map((i) => rows[i]).map((row) => {
     let A = unitByName(clock, row.a), B = unitByName(clock, row.b);
     // TODO 154 — `ownMetal: true` scopes a row to each unit's OWN meshes (the
     // §40 hops rule): for a pair whose units NEST, the plain row below also
@@ -3235,15 +3272,24 @@ export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLO
   });
   // a contact name that matches NOTHING is a silent hole — report it, the
   // string-coupling convention's own failure mode
-  const unmatched = [];
-  rows.forEach((row, i) => {
-    const names = new Set([...pairs[i].A.meshes, ...pairs[i].B.meshes].map((m) => m.name).filter(Boolean));
-    for (const c of [...row.contacts, ...(row.only ?? [])]) for (const n of c) if (!names.has(n)) unmatched.push({ pair: `${row.a} ⇄ ${row.b}`, name: n });
+  const unmatched = [], standDown = [];
+  liveE.forEach((i, j) => {
+    const row = rows[i];
+    const names = new Set([...livePairs[j].A.meshes, ...livePairs[j].B.meshes].map((m) => m.name).filter(Boolean));
+    // a contact name on a mesh the build left uncut (and said so) has nothing to excuse: stood down, not unmatched
+    for (const c of [...row.contacts, ...(row.only ?? [])]) for (const n of c) if (!names.has(n)) {
+      const gone = leftOut(omE, [row.a, n], [row.b, n]);
+      if (gone) standDown.push({ pair: `${row.a} ⇄ ${row.b}`, name: n, why: gone });
+      else unmatched.push({ pair: `${row.a} ⇄ ${row.b}`, name: n });
+    }
   });
   censusStart();   // §108's experiment — report-only, see the census block
-  const { state } = await sweepClearances(clock, pairs, { axes: resolveAxes(axes), coarse, refineBand, yieldEvery });  // §152 — see checkClearances
+  const { state: liveState } = await sweepClearances(clock, livePairs, { axes: resolveAxes(axes), coarse, refineBand, yieldEvery });  // §152 — see checkClearances
   const census = censusStop();
+  const state = rows.map(() => null);
+  liveE.forEach((i, j) => { state[i] = liveState[j]; });
   const results = rows.map((row, i) => {
+    if (goneE[i]) return { pair: `${row.a} ⇄ ${row.b}`, floor: row.min, standDown: goneE[i], ok: true, waiver: row.waived, only: row.only ? row.only.map((p) => p.join(' ⇄ ')) : undefined };
     const capped = !isFinite(state[i].min);
     const meets = capped || state[i].min >= row.min - FLOOR_TIE_EPS;   // TODO 144: a derived margin is an exact tie
     return {
@@ -3267,9 +3313,9 @@ export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLO
   return {
     violations: results.filter((r) => !r.ok && !r.waived),
     waivedCount: results.filter((r) => !r.ok && r.waived).length,
-    unmatched, results, census,
+    unmatched, results, census, ...(standDown.length ? { standDown } : {}),
     // §127 tier 2a — raw minima on a narrowed run only; see checkClearances.
-    ...(resolveAxes(axes).length < AXES.length ? { rawMins: state.map((st) => (isFinite(st.min) ? st.min : null)) } : {}),
+    ...(resolveAxes(axes).length < AXES.length ? { rawMins: state.map((st) => (st && isFinite(st.min) ? st.min : null)) } : {}),
     ...(touching ? { restriction: restrictionRecord(touching, keptIndices) } : {}),
   };
 }
@@ -4455,7 +4501,7 @@ export async function checkIntraUnit(clock, { axes = AXES, samplesPerAxis = 5, y
   // below beside the declared rows. Every combination the two labels resolve
   // to is held, because a floor is a claim about the parts, not about the
   // nearest one of them.
-  const floorRows = [], floorMalformed = [];
+  const floorRows = [], floorMalformed = [], standDown = [], omI = buildOmissions(clock);
   for (const f of floors) {
     const u = units.find((x) => x.name === f.unit);
     const as = u ? u.meshes.filter((m) => meshLabel(u, m) === f.a) : [];
@@ -4463,6 +4509,9 @@ export async function checkIntraUnit(clock, { axes = AXES, samplesPerAxis = 5, y
     const combos = [];
     for (const A of as) for (const B of bs) if (A !== B) combos.push([A, B]);
     if (!combos.length) {
+      // TODO 298 — a floor on metal the build left out has nothing to hold apart
+      const gone = !u ? leftOut(omI, f.unit) : leftOut(omI, ...[!as.length && [f.unit, f.a], !bs.length && [f.unit, f.b]].filter(Boolean));
+      if (gone) { standDown.push({ table: 'INTRA_UNIT_FLOORS', unit: f.unit, a: f.a, b: f.b, why: gone }); continue; }
       floorMalformed.push({ unit: f.unit, a: f.a, b: f.b, why: !u ? 'no such unit' : (!as.length || !bs.length) ? 'a label matches no mesh' : 'both labels name the one same mesh' });
       continue;
     }
@@ -4637,10 +4686,16 @@ export async function checkIntraUnit(clock, { axes = AXES, samplesPerAxis = 5, y
   for (const [table, row] of [...contacts.map((c) => ['INTRA_UNIT_CONTACTS', c]),
     ...INTRA_UNIT_WAIVERS.map((w) => ['INTRA_UNIT_WAIVERS', w])]) {
     const ls = labelSets.get(row.unit);
-    if (!ls) { unmatchedSelectors.push({ table, ...row, miss: 'unit' }); continue; }
-    for (const k of ['a', 'b']) {
-      if (!ls.has(row[k])) unmatchedSelectors.push({ table, ...row, miss: row[k] });
+    if (!ls) {
+      const gone = leftOut(omI, row.unit);   // TODO 298
+      if (gone) standDown.push({ table, unit: row.unit, a: row.a, b: row.b, why: gone });
+      else unmatchedSelectors.push({ table, ...row, miss: 'unit' });
+      continue;
     }
+    const missing = ['a', 'b'].filter((k) => !ls.has(row[k]));
+    const gone = missing.length && leftOut(omI, ...missing.map((k) => [row.unit, row[k]]));
+    if (gone) { standDown.push({ table, unit: row.unit, a: row.a, b: row.b, why: gone }); continue; }
+    for (const k of missing) unmatchedSelectors.push({ table, ...row, miss: row[k] });
   }
 
   const all = [...seen.values()];
@@ -4691,7 +4746,7 @@ export async function checkIntraUnit(clock, { axes = AXES, samplesPerAxis = 5, y
     outOfScope: live.filter((v) => !inGate(v)),
     waived: all.filter((v) => v.waived),
     movers: movers.size, poses: poses.length,
-    tiers, frames, unmeasurable, unmatchedSelectors,
+    tiers, frames, unmeasurable, unmatchedSelectors, ...(standDown.length ? { standDown } : {}),
     declared, declaredApart, declaredNeverCompared, declaredDegenerate,
     declaredUnmeasurable,
     declaredReach: DECLARED_CONTACT_REACH,
@@ -5296,10 +5351,13 @@ export async function checkPlateSeats(clock, { seats = PLATE_SEATS, debtTable = 
     .sort((a, b) => a.min - b.min);
   const known = new Set(entries.map((e) => plateRowKey(e.unit, e.label)));
   const seatKeys = new Set(seats.map((s) => plateRowKey(s.unit, s.mesh)));
+  // TODO 298 — a seat or debt row naming metal the build left out has nothing to seat: it stands down, by name
+  const omP = buildOmissions(clock), outP = (r) => !known.has(plateRowKey(r.unit, r.mesh)) && leftOut(omP, [r.unit, r.mesh]);
+  const standDown = [...seats, ...debtTable].filter(outP).map((r) => ({ row: plateRowKey(r.unit, r.mesh), why: outP(r) }));
   const malformed = [
-    ...seats.filter((s) => !known.has(plateRowKey(s.unit, s.mesh))).map((s) => ({ seat: plateRowKey(s.unit, s.mesh), problem: 'names no mesh' })),
+    ...seats.filter((s) => !known.has(plateRowKey(s.unit, s.mesh)) && !outP(s)).map((s) => ({ seat: plateRowKey(s.unit, s.mesh), problem: 'names no mesh' })),
     ...seats.filter((s) => !s.why).map((s) => ({ seat: plateRowKey(s.unit, s.mesh), problem: 'no `why`' })),
-    ...debtTable.filter((d) => !known.has(plateRowKey(d.unit, d.mesh))).map((d) => ({ debt: plateRowKey(d.unit, d.mesh), problem: 'names no mesh' })),
+    ...debtTable.filter((d) => !known.has(plateRowKey(d.unit, d.mesh)) && !outP(d)).map((d) => ({ debt: plateRowKey(d.unit, d.mesh), problem: 'names no mesh' })),
     ...debtTable.filter((d) => !d.todo || !(d.floor >= 0)).map((d) => ({ debt: plateRowKey(d.unit, d.mesh), problem: 'needs a TODO and a floor' })),
     ...debtTable.filter((d) => seatKeys.has(plateRowKey(d.unit, d.mesh))).map((d) => ({ debt: plateRowKey(d.unit, d.mesh), problem: 'also a seat — a part is carried by the plate or clears it, not both' })),
   ];
@@ -5324,7 +5382,7 @@ export async function checkPlateSeats(clock, { seats = PLATE_SEATS, debtTable = 
   return {
     ok: control.startsWith('PASS') && !violations.length && !malformed.length && !staleSeats.length && !regressed.length && !staleDebt.length,
     control, poses: poses.length, plateMeshes: plate.length, population: entries.length, tested,
-    rows: out, violations, malformed, staleSeats, regressed, staleDebt,
+    rows: out, violations, malformed, staleSeats, regressed, staleDebt, ...(standDown.length ? { standDown } : {}),
     seatCount: seats.length, debtCount: debtTable.length,
   };
 }
@@ -5333,11 +5391,13 @@ export function checkSupportGeometry(clock, { tol = SUPPORT_TOL, edges = MECH_GR
   clock.setPose({ tau: 0, crownPullT: 0, leverEngage: 0, tension: 1 });
   clock.scene.updateMatrixWorld(true);
   const allUnits = collectUnits(clock, { includeExcluded: true });
-  const rows = [];
+  const rows = [], standDown = [], om = buildOmissions(clock);
   for (const [aName, bName] of edges) {
     const A = resolveNode(clock, allUnits, aName);
     const B = resolveNode(clock, allUnits, bName);
     if (!A || !B) {
+      const why = leftOut(om, ...[!A && aName, !B && bName].filter(Boolean));
+      if (why) { standDown.push({ edge: `${aName} → ${bName}`, why }); continue; }   // TODO 298
       rows.push({ edge: `${aName} → ${bName}`, gap: null, ok: false,
         note: !A ? `unresolved: ${aName}` : `unresolved: ${bName}` });
       continue;
@@ -5376,7 +5436,7 @@ export function checkSupportGeometry(clock, { tol = SUPPORT_TOL, edges = MECH_GR
   console.table(rows);
   const failures = rows.filter((r) => !r.ok);
   console.log(`${failures.length}/${rows.length} declared supports are not backed by geometry (tol ${tol})`);
-  return { failures, rows };
+  return { failures, rows, ...(standDown.length ? { standDown } : {}) };
 }
 
 export async function checkClearances(clock, { budgets = CLEARANCE_BUDGETS, axes = AXES, coarse = 4, refineBand = 0.4, yieldEvery = 16, pairsTouching } = {}) {
@@ -5390,7 +5450,12 @@ export async function checkClearances(clock, { budgets = CLEARANCE_BUDGETS, axes
   // All budgets ride ONE sweep: each pose is set up once and every pair
   // measured at it (per-budget axis scoping handled inside the engine) —
   // previously this re-swept the full pose space once per budget.
-  const pairs = budgets.map((bud) => ({
+  // TODO 298 — a budget naming a unit the build left out (a module it did not build) is not swept: it keeps its row, in
+  // the table's order (the §127/§152 merges align rows by index), marked `standDown` with the build's reason
+  const omC = buildOmissions(clock), namesC = new Set(collectUnits(clock, { includeExcluded: true }).map((u) => u.name));
+  const goneC = budgets.map((bud) => leftOut(omC, ...[bud.a, bud.b].filter((n) => !namesC.has(n))));
+  const live = budgets.map((_, i) => i).filter((i) => !goneC[i]);
+  const pairs = live.map((i) => budgets[i]).map((bud) => ({
     A: unitByName(clock, bud.a),
     B: unitByName(clock, bud.b),
     axes: bud.axes,
@@ -5406,9 +5471,12 @@ export async function checkClearances(clock, { budgets = CLEARANCE_BUDGETS, axes
   // two by axis, which is what an acceptance probe is for. resolveAxes over
   // the default AXES returns the same objects in the same order, so a full
   // run measures exactly what it measured before.
-  const { state } = await sweepClearances(clock, pairs, { axes: resolveAxes(axes), coarse, refineBand, yieldEvery });
+  const { state: liveState } = await sweepClearances(clock, pairs, { axes: resolveAxes(axes), coarse, refineBand, yieldEvery });
   const census = censusStop();
+  const state = budgets.map(() => null);
+  live.forEach((i, j) => { state[i] = liveState[j]; });
   const results = budgets.map((bud, i) => {
+    if (goneC[i]) return { pair: `${bud.a} ⇄ ${bud.b}`, required: bud.min, standDown: goneC[i], ok: true };
     // min === Infinity ⇒ every query pruned at the cap: the pair never came
     // within refineFloor + band of its floor anywhere in pose space. That
     // IS the verdict a budget exists for — report it as the bound proven,
@@ -5437,7 +5505,7 @@ export async function checkClearances(clock, { budgets = CLEARANCE_BUDGETS, axes
   // capped rows are carried as null and the merge reads null as Infinity.
   const sliced = resolveAxes(axes).length < AXES.length;
   return { violations: results.filter((r) => !r.ok), results, census,
-    ...(sliced ? { rawMins: state.map((st) => (isFinite(st.min) ? st.min : null)) } : {}),
+    ...(sliced ? { rawMins: state.map((st) => (st && isFinite(st.min) ? st.min : null)) } : {}),
     ...(touching ? { restriction: restrictionRecord(touching, keptIndices) } : {}) };
 }
 
@@ -5500,8 +5568,12 @@ export function checkMechanicalGraph(clock, { axes = AXES } = {}) {
   const inGraph = new Set(MECH_GRAPH.support.flat().concat(MECH_GRAPH.drive.flat()));
   const notInGraph = [...groundingNames].filter((n) => !inGraph.has(n));
   const ungrounded = [...groundingNames].filter((n) => inGraph.has(n) && !grounded.has(n));
-  const missingFromScene = [...inGraph]
+  const missingAll = [...inGraph]
     .filter((n) => !['plate', 'pillars', 'mainspring', 'alarm mainspring', 'crown'].includes(n) && !groundingNames.has(n) && !MECH_GRAPH.todo.some(([a, b]) => a === n || b === n));
+  // TODO 298 — a unit of a module this build did not build is not missing; anything else still is
+  const omG = buildOmissions(clock);
+  const standDown = missingAll.filter((n) => leftOut(omG, n)).map((n) => ({ unit: n, why: leftOut(omG, n) }));
+  const missingFromScene = missingAll.filter((n) => !leftOut(omG, n));
 
   // 2. Drive: empirical motion per axis vs force reachability.
   const fromSpring = reachable(MECH_GRAPH.drive, 'mainspring');
@@ -5555,7 +5627,11 @@ export function checkMechanicalGraph(clock, { axes = AXES } = {}) {
     // Targets may also be STRUCTURE nodes ('plate' — the balance staff's
     // lower jewel anchor) — resolveNode handles both.
     const target = resolveNode(clock, allUnits, spec.target);
-    if (!unit || !target) { anchorFailures.push({ name: spec.name, error: 'unit missing' }); continue; }
+    if (!unit || !target) {
+      const why = leftOut(omG, ...[!unit && spec.unit, !target && spec.target].filter(Boolean));   // TODO 298
+      if (why) { standDown.push({ anchor: spec.name, why }); continue; }
+      anchorFailures.push({ name: spec.name, error: 'unit missing' }); continue;
+    }
     const p = spec.point(unit, target);
     let best = Infinity;
     for (const m of target.meshes) {
@@ -5586,7 +5662,7 @@ export function checkMechanicalGraph(clock, { axes = AXES } = {}) {
   const pinionViolations = MECH_GRAPH.pinionBearing.filter((name) => !grounded.has(name));
 
   const todo = MECH_GRAPH.todo.map(([a, b, note]) => `${a} → ${b}: ${note}`);
-  const result = { notInGraph, ungrounded, missingFromScene, undriven, anchorFailures, bridgeViolations, pinionViolations, todo };
+  const result = { notInGraph, ungrounded, missingFromScene, undriven, anchorFailures, bridgeViolations, pinionViolations, todo, ...(standDown.length ? { standDown } : {}) };
   window.__mechReport = result;
   console.log('mechanical graph:', result);
   return result;
@@ -6491,12 +6567,16 @@ function sampleRadialDepth(geometry, toLocal, floorAt, zLo, zHi, exitDepth = nul
 
 export function checkPenetrationBudgets(clock, { budgets = PENETRATION_BUDGETS, axes = AXES } = {}) {
   const units = collectUnits(clock);
-  const results = [];
+  const results = [], om = buildOmissions(clock);
   for (const budget of budgets) {
     const [nameA, nameB] = budget.pair;
     const unitA = units.find((u) => u.name === nameA);
     const unitB = units.find((u) => u.name === nameB);
-    if (!unitA || !unitB) { results.push({ pair: pairKey(nameA, nameB), status: 'ERROR', error: 'unit missing' }); continue; }
+    if (!unitA || !unitB) {
+      const why = leftOut(om, ...[!unitA && nameA, !unitB && nameB].filter(Boolean));   // TODO 298
+      results.push(why ? { pair: pairKey(nameA, nameB), status: 'STOOD DOWN', why } : { pair: pairKey(nameA, nameB), status: 'ERROR', error: 'unit missing' });
+      continue;
+    }
     // A row either carries a bespoke `measure` (§61's radial seating rows —
     // MTV is meaningless for a chain that encircles what it wraps) or the
     // default MTV machinery over selected meshes.
@@ -7342,7 +7422,7 @@ function windArrestPosesFor(clock) {
 }
 
 export function checkAlarmHandoffs(clock, { tol = HANDOFF_TRACK_TOL, poses = ALARM_HANDOFF_POSES, handoffs = ALARM_HANDOFFS } = {}) {
-  const units = collectUnits(clock, { includeExcluded: true });
+  const units = collectUnits(clock, { includeExcluded: true }), om = buildOmissions(clock);
   const meshesIn = (unitName, meshName) => {
     const u = units.find((x) => x.name === unitName);
     if (!u) return [];
@@ -7366,7 +7446,9 @@ export function checkAlarmHandoffs(clock, { tol = HANDOFF_TRACK_TOL, poses = ALA
     const mA = meshesIn(h.unitA, h.meshA);
     const mB = meshesIn(h.unitB, h.meshB);
     if (!mA.length || !mB.length) {
-      rows.push({ label: h.label, status: 'ERROR', error: `mesh not found: ${!mA.length ? `${h.unitA}/${h.meshA}` : `${h.unitB}/${h.meshB}`}` });
+      const why = leftOut(om, ...[!mA.length && [h.unitA, h.meshA], !mB.length && [h.unitB, h.meshB]].filter(Boolean));   // TODO 298
+      rows.push(why ? { label: h.label, status: 'STOOD DOWN', why }
+        : { label: h.label, status: 'ERROR', error: `mesh not found: ${!mA.length ? `${h.unitA}/${h.meshA}` : `${h.unitB}/${h.meshB}`}` });
       continue;
     }
     const row = { label: h.label, tol, waived: h.waived || null, ...(h.measure ? { measure: h.measure } : {}) };
@@ -7446,6 +7528,7 @@ export function checkAlarmHandoffs(clock, { tol = HANDOFF_TRACK_TOL, poses = ALA
     ok: unwaived.length === 0,
     gate: 'GATING: every hand-off within ±tol of touch at BOTH parities, or waived citing its TODO item; a waived row is accepted debt, visible above, not a pass',
     tol, rows, waivedCount, unwaived, unwaivedCount: unwaived.length,
+    ...(rows.some((r) => r.status === 'STOOD DOWN') ? { standDown: rows.filter((r) => r.status === 'STOOD DOWN') } : {}),   // TODO 298 — rows whose metal the build left out
   };
 }
 
@@ -12527,9 +12610,61 @@ export function checkTransmits(clock) {
 // always true and the rows are the product; the battery gates what CAN be gated.
 // The controls are gated with it — a classifier that quietly stops catching bad rows
 // is a dead instrument — and each runs the very same audit on a mutated copy.
+// TODO 298 — THE BUILD'S WORD, HELD TO THE SCENE. Every other check stands a row down on `buildOmissions`, so this is
+// what makes that safe: the word must be TRUE of the metal, both ways, or a stood-down row is an excuse rather than a
+// fact. Pure over its inputs, so its controls run the same judge on broken copies of this build's own word.
+//   `modules`  the build's { name: built } (clock.modules); every MODULE_UNITS module must have a boolean
+//   `omitted`  the build's [{ unit, mesh, why }] (clock.omitted)
+//   `scene`    Map unit name → Set of its mesh labels (meshLabel, the label every table uses)
+export function judgeModules({ modules, omitted, scene }) {
+  const failures = [];
+  for (const [m, units] of Object.entries(MODULE_UNITS)) {
+    const built = modules ? modules[m] : undefined;
+    if (typeof built !== 'boolean') { failures.push({ module: m, problem: 'the build publishes no word on whether it built this module (clock.modules)' }); continue; }
+    for (const u of units) {
+      if (built && !scene.has(u)) failures.push({ module: m, unit: u, problem: 'declared in a module the build says it built, and not in the scene' });
+      if (!built && scene.has(u)) failures.push({ module: m, unit: u, problem: 'declared in a module the build says it did NOT build, and in the scene: a row on it would stand down over real metal' });
+    }
+  }
+  for (const o of omitted || []) {
+    const key = `${o.unit}/${o.mesh}`;
+    if (typeof o.why !== 'string' || o.why.trim().length < 10) failures.push({ omitted: key, problem: 'an omission without the reason the build gave (why, 10+ characters)' });
+    if (!scene.has(o.unit)) failures.push({ omitted: key, problem: 'names a unit that is not in the scene' });
+    else if (scene.get(o.unit).has(o.mesh)) failures.push({ omitted: key, problem: 'the build says it left this mesh uncut, and the mesh is there: a row on it would stand down over real metal' });
+  }
+  return failures;
+}
+export function checkModules(clock) {
+  const scene = new Map(collectUnits(clock, { includeExcluded: true }).map((u) => [u.name, new Set(u.meshes.map((m) => meshLabel(u, m)))]));
+  const modules = clock.modules, omitted = clock.omitted || [];
+  const failures = judgeModules({ modules, omitted, scene });
+  const om = buildOmissions(clock);
+  // CONTROLS: the judge must refuse a broken copy of this build's own word, each way, and the helper every check uses
+  // must not stand down a name the build never gave
+  const controls = [];
+  const expect = (name, hit) => controls.push({ name, ok: !!hit });
+  const anyUnit = [...scene.keys()][0];
+  const flipped = Object.fromEntries(Object.keys(MODULE_UNITS).map((m) => [m, !(modules && modules[m])]));
+  expect('every module\'s word flipped is refused', judgeModules({ modules: flipped, omitted, scene }).some((f) => f.unit));
+  expect('a module with no word is refused', judgeModules({ modules: {}, omitted, scene }).some((f) => f.module && !f.unit));
+  const present = [...scene.get(anyUnit)][0];
+  expect('an omission naming a mesh that is there is refused', judgeModules({ modules, omitted: [{ unit: anyUnit, mesh: present, why: 'a control, not a reason' }], scene }).length > failures.length);
+  expect('an omission with no reason is refused', judgeModules({ modules, omitted: [{ unit: anyUnit, mesh: '__no such mesh__' }], scene }).length > failures.length);
+  expect('a name the build never gave does not stand down', leftOut(om, '__no such unit__', [anyUnit, '__no such mesh__']) === null);
+  const failed = controls.filter((c) => !c.ok);
+  const control = failed.length ? `FAIL: ${failed.map((c) => c.name).join('; ')}` : `PASS (${controls.length} broken copies each refused)`;
+  return {
+    ok: !failures.length && !failed.length,
+    modules: modules ?? null, absentModules: om.absentModules,
+    absentUnits: [...om.units.keys()], omitted,
+    failures, control, controls,
+  };
+}
+
 export function checkLubrication(clock) {
   const labels = clock.labelEntries.map((e) => e.name);
-  const run = (over = {}) => auditLubrication({ graph: MECH_GRAPH, labels, ...over });
+  const absent = buildOmissions(clock).units;   // TODO 298 — joints of a module the build did not build stand down
+  const run = (over = {}) => auditLubrication({ graph: MECH_GRAPH, labels, absent, ...over });
   const real = run();
   const keys = Object.keys(LUBRICATION);
   const victim = keys.find((k) => LUBRICATION[k].regime === 'dry' && !k.includes('::')) || keys[0];
@@ -12560,6 +12695,7 @@ export function checkLubrication(clock) {
     unanswered: real.unanswered,        // outside both tables: GATED
     malformed: real.malformed,
     stale: real.stale,
+    ...(real.standDown.length ? { standDown: real.standDown } : {}),
     staleDebt: real.staleDebt,
     debtNotInPopulation: real.debtNotInPopulation,
     staleWaivers: real.staleWaivers,
@@ -14078,6 +14214,7 @@ export const LINE_SPEC_TOL = { u: 1e-6, rad: 1e-6, ratio: 1e-6, count: 0, mN: 1e
 export const LINE_SPECS = [
   {
     name: 'alarm switch drive',
+    module: 'alarm',   // TODO 298 — the alarm module's group: stands down on a build without it
     group: 'Alarm switch',
     path: 'pusher → pin in the driver’s radial slot → driver on the wheel’s arbor → pawl → column wheel',
     rows: [
@@ -14116,6 +14253,7 @@ export const LINE_SPECS = [
     // dial, and the one most likely to fork — the lever, its finger and the
     // stop wheel stay on the striking arbor wherever the wheel goes.
     name: 'alarm lock',
+    module: 'alarm',   // TODO 298 — the alarm module's group: stands down on a build without it
     group: 'Alarm lock',
     inherits: 'alarm switch drive',   // the wheel it reads: baseR, rootR, tipR and colInner come from there, never restated
     path: 'column wheel → rocker beak on the columns’ outer wall → rocker → pin in the lever’s radial slot → lock lever → finger in the stop wheel',
@@ -14187,6 +14325,7 @@ export const LINE_SPECS = [
 // radial half while the lever lay on the radius).
 LINE_SPECS.push({
   name: 'alarm link tangential',
+  module: 'alarm',   // TODO 298 — the alarm module's group: stands down on a build without it
   group: 'Alarm link',
   inherits: 'alarm switch drive',   // the wheel the nose reads: colInner, baseR, colH, the tooth (tipR − rootR)
   path: 'column wheel → tangential same-side beak lever (its pin along the nose’s radius; pivot, rod and stub along the bar’s tangent line, the stub carrying the nose inward onto the columns) → selector rod → rim finger on the lay shaft → centre pin in the fork → selector ring',
@@ -14252,6 +14391,7 @@ LINE_SPECS.push({
 // (`ALARM_RELEASE_LAWS`), so no law is written twice.
 LINE_SPECS.push({
   name: 'alarm release run',
+  module: 'alarm',   // TODO 298 — the alarm module's group: stands down on a build without it
   group: 'Alarm release sleeve',
   path: 'crown collar → lifter pad (bell crank on two studs) → tie link → crank on the dial sheet → roller in the sleeve’s fork, tangential → sleeve on three helices → 45° cone on follower A’s tail pin',
   rows: [
@@ -14292,6 +14432,7 @@ const strikeRefGeom = (r, L) => ({
 });
 LINE_SPECS.push({
   name: 'alarm strike',
+  module: 'alarm',   // TODO 298 — the alarm module's group: stands down on a build without it
   group: 'Alarm hammer',
   path: 'striking wheel’s cam (a lobe per strike) → lifting lever’s nose → its far arm’s rounded tip on the hammer’s tail → hammer on its torsion spiral → head on the gong’s wire',
   rows: [
@@ -14384,6 +14525,7 @@ LINE_SPECS.push({
 // the lever's rock for a drop at its arm.
 LINE_SPECS.push({
   name: 'alarm detector',
+  module: 'alarm',   // TODO 298 — the alarm module's group: stands down on a build without it
   group: 'Alarm release reader',
   path: 'hour wheel → reader collar (hour-carried, its pin on the disc’s track) → the notch in the track (the set-carried disc, still under the hour) → the pin’s drop → the collar’s dial face, presenting the drop at every azimuth → the feeler lever’s tip at the pin’s own radius → the lever’s rock against its banking stop',
   rows: [
@@ -15625,7 +15767,12 @@ export async function checkLineSpec(clock) {
     }
     forkFor[f.ref] = f;
   }
+  const omL = buildOmissions(clock), standDown = [];
   for (const ref of LINE_SPECS) {
+    // TODO 298 — a reference belongs to a module (every one today is the alarm's); on a build without it the group
+    // has no metal to measure, so it stands down by name. A module this file does not declare is malformed.
+    if (ref.module !== undefined && !(ref.module in MODULE_UNITS)) { malformed.push({ ref: ref.name, error: `module '${ref.module}' is not one of MODULE_UNITS` }); continue; }
+    if (ref.module !== undefined && omL.absentModules.includes(ref.module)) { standDown.push({ ref: ref.name, why: `the ${ref.module} module is not built` }); continue; }
     const reader = LINE_SPEC_READERS[ref.name];
     if (!reader) { malformed.push({ ref: ref.name, error: 'no reader for this reference' }); continue; }
     if (ref.inherits && !specs[ref.inherits]) { malformed.push({ ref: ref.name, error: `inherits '${ref.inherits}', which is not declared above it` }); continue; }
@@ -15685,11 +15832,17 @@ export async function checkLineSpec(clock) {
     else if (!/TODO \d+/.test(String(LINE_SPEC_WAIVERS[k]))) malformed.push({ waiver: k, error: 'a waiver must cite the TODO that pays it' });
   }
   const ctl = Object.entries(controls);
-  const control = ctl.length === LINE_SPECS.length && ctl.every(([, c]) => String(c).startsWith('PASS'))
+  // TODO 298 — every reference not stood down owes a passing control. When EVERY one stood down nothing was measured,
+  // and that reads as neither PASS nor FAIL: STOOD DOWN, with the modules named (the `modules` check proves the word)
+  const owed = LINE_SPECS.length - standDown.length;
+  const control = !owed && standDown.length
+    ? `STOOD DOWN — every reference belongs to a module this build does not build (${[...new Set(LINE_SPECS.map((r) => r.module))].join(', ')})`
+    : ctl.length === owed && ctl.every(([, c]) => String(c).startsWith('PASS'))
     ? `PASS — ${ctl.map(([n, c]) => `${n}: ${c.slice(7)}`).join('; ')}`
     : `FAIL — ${ctl.filter(([, c]) => !String(c).startsWith('PASS')).map(([n, c]) => `${n}: ${c}`).join('; ') || 'no control ran'}`;
   return {
     references: LINE_SPECS.length, rows, violations, staleWaivers, malformed, control, controls, forks, staleForks,
+    ...(standDown.length ? { standDown } : {}),
     waivedCount: rows.filter((r) => r.waived).length,
     gate: 'GATING — every row of every reference measured off the posed metal within float noise of its derived value '
       + '(an envelope with a bound only on its side), a forked reference measured against its fork (inputs overridden, '
@@ -15772,6 +15925,7 @@ const CHECKS = {
   // `start(clock, …)` answered "unknown check" and the only way to run §48's
   // instrument was to import the module and call it by hand (TODO 29).
   restoring: (clock, opts) => auditOscillators(clock, opts),
+  modules: (clock) => checkModules(clock),                               // TODO 298 — the build's word on what it left out (modules, uncut meshes), held to the scene both ways
   lubrication: (clock) => checkLubrication(clock),                       // §247 tier one — every joint answers with a regime or sits in the closed arrival inventory; the energy column's coefficients agree with the regime they price
   transfers: (clock, opts) => checkTransfers(clock, opts),               // §137 — every corner's idiom + arithmetic; declarations held honest, tiers gated
   meshPhase: (clock, opts) => checkMeshPhase(clock, opts),               // §194 — every declared mesh anti-phased at every pose, not just the build's; §135 gates the centre distance beside it
