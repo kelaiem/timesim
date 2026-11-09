@@ -4,7 +4,7 @@
 
 # The instruments
 
-425 scripts. **297 are ACCEPTANCE tests** — they decide and exit non-zero.
+426 scripts. **298 are ACCEPTANCE tests** — they decide and exit non-zero.
 **128 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -437,4 +437,5 @@ when a question was asked; the summaries are what it answered.
 | `three-node-loader.mjs` |  | report | §88 — resolve the app's bare `three` specifiers when a tool imports src/ modules under Node. |
 | `timelapse-build.mjs` |  | report | Timelapse build — turns tools/timelapse-capture.mjs's frames into the scrubbable site: sprite sheets per view, a data block, and the viewer page. |
 | `timelapse-capture.mjs` |  | report | Timelapse capture — one frame per hosted release per camera preset, so the movement's evolution can be scrubbed as a film. |
+| `todo-handles.mjs` |  | acceptance | TODO handles — holds docs/todo/HANDLES.md to TODO.md's generated index. |
 | `validated-configs.mjs` |  | acceptance | TODO 158 — WRITE OR CHECK src/validated-configs.js, the set of configuration keys the battery has swept. ACCEPTANCE (--check exits non-zero on drift). |
