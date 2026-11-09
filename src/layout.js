@@ -1515,6 +1515,61 @@ export const CLICK_STEEL_SIGMA_Y_PA = CLICK_STEEL_SIGMA_Y_BAND.low;
 // this factor over the steel's low end: no yield at all in the hold, the
 // strictest of the contact criteria (shakedown, 4k, would allow ~1.3× more).
 export const LINE_CONTACT_FIRST_YIELD_P0_PER_Y = 1.79;
+// TODO 296 landing 2 — AND SHAKEDOWN, from the same table. A contact that
+// repeats is not held to first yield: past it the surface yields a little,
+// residual stresses build, and the contact becomes elastic again at a HIGHER
+// load — Johnson's shakedown limit, p0 = 4.0k for a line contact (Contact
+// Mechanics (1985) §9.1 / Table 9.1, the row above's own source: its 1.79·Y IS
+// that table's elastic limit 3.1k, since 1.79·√3 = 3.100). Declared as the 4.0k
+// figure with the conversion written, so the two constants cannot drift from one
+// source; the boot asserts the identity.
+//
+// It exists because the escape wheel's club tip takes the DROP's impact ten
+// times a second for the life of the watch. Holding that to first yield would
+// say the tooth fails, when what it does is RUN IN: the first landings blunt the
+// apex until the contact shakes down, and TODO 296 landing 2 solves the radius
+// where it stops. First yield stays the criterion for a HOLD that must not yield
+// at all (TODO 221's maintaining beak) and for the escapement's quasi-static
+// load (landing 1).
+export const LINE_CONTACT_SHAKEDOWN_P0_PER_K = 4.0;
+export const LINE_CONTACT_SHAKEDOWN_P0_PER_Y = LINE_CONTACT_SHAKEDOWN_P0_PER_K / Math.sqrt(3);
+// TODO 296 — THE ESCAPE WHEEL'S OWN STEEL. Its club teeth are the only working
+// surfaces in the movement cut from a WHEEL's metal, and they are neither the
+// spring's band nor the click's by reference: a blade is drawn back soft enough
+// to come back from its working stress (SPRING_SIGMA_Y_PA), a click is hardened
+// and tempered for a hold it must not cam out of (CLICK_STEEL_SIGMA_Y_BAND),
+// and an escape wheel is hardened for WEAR at a tip that slides on ruby five
+// times a second. Nothing in this model says how hard its wheel was drawn, so a
+// BAND, FRICTION's rule, and every gate reads the LOW end. The figures are the
+// click's reasoning at the escape wheel's own practice — hardened and tempered
+// carbon steel, 48–54 HRC, Rm ≈ 1.65–2.0 GPa by the ASTM E140 hardness
+// conversion and Rp0.2 ≈ 0.9·Rm for a quenched-and-tempered carbon steel (ASM
+// Handbook Vol. 1) — so the two bands COINCIDE today and are declared apart on
+// purpose: a measurement of either part must move one band and not both.
+export const ESCAPE_STEEL_SIGMA_Y_BAND = Object.freeze({
+  low: 1500e6, high: 1800e6,
+  why: 'hardened and tempered carbon escape-wheel steel, 48–54 HRC: Rm ≈ 1.65–2.0 GPa by the ASTM E140 hardness conversion, Rp0.2 ≈ 0.9·Rm for quenched-and-tempered carbon steel (ASM Handbook Vol. 1)',
+});
+export const ESCAPE_STEEL_SIGMA_Y_PA = ESCAPE_STEEL_SIGMA_Y_BAND.low;
+// TODO 296 — AND THE RADIUS THE TIP ACTUALLY HAS, which is the whole question.
+// The club is a 10.83° wedge (the impulse face against the undercut's locking
+// face) and the lock, the draw and the impulse ALL bear on its point, so every
+// stress at a mathematically sharp apex is singular: the beam's goes as 1/s and
+// the Hertz pressure as 1/√ρ. A tooth is therefore priced the way TODO 221
+// priced the maintaining beak's apex — on the ARC the metal really carries —
+// and that radius is a property of the FINISH, not of the cut, so it cannot be
+// read off the outline. A BAND, for FRICTION's and the steel bands' reason (the
+// movement does not say how finely its wheel was polished), and every gate
+// reads the SHARP end, because a sharper tip is the loaded one: 0.1 µm is about
+// the finest edge hardened steel holds at all (a honed razor edge is 30–100 nm
+// and is not a bearing surface), 2 µm an ordinary polished corner on a
+// finished wheel. The cut's own apex is a point and the schematic draws it as
+// one; this is what the metal under it is priced at.
+export const ESCAPE_TIP_R_BAND = Object.freeze({
+  sharp_m: 0.1e-6, blunt_m: 2e-6,
+  why: 'the edge radius of a polished corner on hardened steel: 0.1 µm the finest a hardened-steel edge holds in service (a honed razor edge, 30–100 nm, is not a bearing surface), 2 µm an ordinary commercial polish',
+});
+export const ESCAPE_TIP_R_M = ESCAPE_TIP_R_BAND.sharp_m;
 // §234 — A COIL'S INDEX, D/d: the envelope a compression spring can be WOUND
 // in. Under 4 the wire cracks on the coiling arbor; over 12 the coil tangles
 // on the winder and its rate is not held — the spring-design handbooks' 4–12.

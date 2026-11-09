@@ -215,7 +215,7 @@ export default {
   ['PAWLS ×2']: 'पॉल ×2',
   ['SPRING · under']: 'स्प्रिंग · नीचे',
   ['inner ring — base ratchet flange, keyed to the fusee']: 'भीतरी रिंग — बेस रैचेट फ्लैंज, फ्यूज़ी से जुड़ा',
-  ['MAINT_TEETH 24 on the flange, 35 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 फ्लैंज पर, रिंग पर 35 · दो पॉल π दूर = 12 पिच, इसलिए वे एक साथ काम करते हैं',
+  ['MAINT_TEETH 24 on the flange, 25 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 फ्लैंज पर, रिंग पर 25 · दो पॉल π दूर = 12 पिच, इसलिए वे एक साथ काम करते हैं',
   ['THE LIVE TORQUE PATH']: 'जीवंत बलाघूर्ण पथ',
   ['crown → winding spur']: 'क्राउन → वाइंडिंग स्पर',
   ['fusee cone → base ratchet flange']: 'फ्यूज़ी शंकु → बेस रैचेट फ्लैंज',

@@ -208,7 +208,7 @@ export default {
   ['PAWLS ×2']: 'NOTTOLINI ×2',
   ['SPRING · under']: 'MOLLA · sotto',
   ['inner ring — base ratchet flange, keyed to the fusee']: 'anello interno — flangia a cricchetto, calettata al conoide',
-  ['MAINT_TEETH 24 on the flange, 35 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 sulla flangia, 35 sull’anello · due nottolini a π = 12 passi, così agiscono all’unisono',
+  ['MAINT_TEETH 24 on the flange, 25 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 sulla flangia, 25 sull’anello · due nottolini a π = 12 passi, così agiscono all’unisono',
   ['THE LIVE TORQUE PATH']: 'IL PERCORSO VIVO DELLA COPPIA',
   ['crown → winding spur']: 'corona → ruota di carica',
   ['fusee cone → base ratchet flange']: 'conoide → flangia a cricchetto di base',

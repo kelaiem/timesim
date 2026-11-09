@@ -1082,25 +1082,27 @@ from the great wheel's angle, which turns once an hour — multiplies a last-ulp
 difference by 1/ω: pose such an instant where the metal stands still (a held
 wind stands at the balance's REST, `MAINT_HOLD.restAtOrBefore`), never at the
 inverse itself.
-**Since §338 landing 5 a compiled kernel can answer the closest-point query**:
-`Kernel` in `inspect.js` is the one interface and its JS body (three-mesh-bvh) is
-the REFERENCE and the default; `--kernel wasm` (or `shadow`, which runs both) on
-`battery-native.mjs` uses `tools/kernel/kernel.cpp`, built by
+**Since §338 landing 5 a compiled kernel can answer the geometric primitives**:
+`Kernel` in `inspect.js` is the one interface — `Kernel.distance` (closest
+distance, landing 5) and `Kernel.intersects` (the boolean, landing 6) — and its
+JS body is the REFERENCE and the default. **Since landing 8 that body is EXACT**:
+`src/exact-mesh.js`, `tools/kernel/kernel.cpp` ported operation for operation,
+so `--kernel wasm` (or `shadow`, which runs both and counts any difference) on
+`battery-native.mjs` answers bit for bit what js answers. The kernel is built by
 `tools/kernel-build.mjs` into `src/kernel-wasm.js` (GENERATED, byte-reproducible,
-importing nothing; never edit it). A new check writes its query in JS through
-`Kernel` and lands; never call the compiled module from a check.
-`probe-338-kernel-parity.mjs` holds it (G3): the same verdicts, no gap read
-larger, and the leaves it reads smaller listed (the reference's false 0).
-Since landing 6 it also answers `Kernel.intersects`, the exact boolean the
-penetration bisections ask. **Since landing 7 CONTACT is exact**:
+importing nothing; never edit it), and `probe-338-kernel-parity.mjs` holds the
+two by `Object.is` (G3) — so a change to either is a change to both, and the
+probe fails the one left behind. A new check writes its query in JS through
+`Kernel` and lands; never call the compiled module from a check. three-mesh-bvh
+still answers the POINT queries (`closestPointToPoint`, the parity raycast) and
+builds the trees those use. **Since landing 7 CONTACT is exact**:
 `meshesIntersect` asks whether the surfaces meet or stand under `CONTACT_TOUCH`
-(1e-4, the running fit its arbitration always accepted) through
-`Kernel.exactMeets`/`Kernel.exactDistance`, whose JS body `src/exact-mesh.js` is
-`kernel.cpp` ported operation for operation and held to it by `Object.is` — so a
-change to either is a change to both, and the parity probe fails the one left
-behind. Every box gate in front of a contact test skips only past
-`CONTACT_TOUCH` (`boxesCanTouch`), and no pose is trusted raw any more. A flush
-seat now reads as contact, which is why `intraUnit` declares five more kisses.
+(1e-4, the running fit its arbitration always accepted). Every box gate in front
+of a contact test skips only past `CONTACT_TOUCH` (`boxesCanTouch`), and no pose
+is trusted raw any more. A flush seat reads as contact, which is why `intraUnit`
+declares five more kisses. **And since landing 8 a 0 is a meet**: `meshClearance`
+keeps `sampledVerdict` only for CONTAINMENT (a body inside another, which no
+surface distance sees), never to replace a distance.
 
 State (camera pose, wind, τ) persists via the dev server's `/__state` temp
 file, falling back to `localStorage`. **Back it up before clearing it** —
@@ -1417,29 +1419,29 @@ reference an incremental run must agree with, and `tools/probe-152-restrict.mjs`
 proves on two cheap axes that a restricted run unions back to a full one byte
 for byte.
 
-**Since TODO 186 the silent spec points are swept too, and that is what lets
-one join `src/validated-configs.js`.** Each `SPEC_POINTS` row marked `sweep:
-true` (the non-identity points that boot silent; `reconf=1` needs none, its
-key is the default's) gets `inspection`, `clearances` and
-`undeclaredClearance` restricted with `pairsTouching` to the units its build
-changes, unioned by §152's own rule (`battery-points.mjs`). **Since §308
-landing 5 a swept row may DECLARE its warnings instead of booting silent**
-(`expect: 'declared'`, `expectWarns` — a list of warning PREFIXES, the rows'
-names, never their measured numbers): both the spec tier and the point judge
-hold the boot to exactly that set (`matchDeclaredWarns`), a warning beyond it
-reads `warns`, a declared row that stops firing reads stale and fails, and the
-point's validated-configs evidence names the set. It exists because every FORM
-build carries two filed rows (§186's form-case fit, §261's depth cap) that are
-debt about the case, not a station out of its window, and a judge that read
-any warning as `warns` could never let a form build join the set however clean
-its sweeps came back; the arrangement is the first such row. A push, dispatch
-or local run sweeps every point FULL — against that run's default — and
-`--points-out` writes the whole payloads into the cached baseline beside the
-report. **Since §264 a push's tier (and a hosted dispatch's, and since §330 a hosted PR's) is MEASURED on a
-parallel job, and since §265 its spec boots too — since the fan-out on TWO
-jobs, `battery spec` and `battery points`** (`--tiers-only --tiers-part P`, one
-file per tier naming its part, `TIERS_FORMAT` 3). Each is handed to the battery
-(`--tiers-from SPEC,POINTS`, each fetched in the background by its own
+**Since TODO 186 the silent spec points are swept too, and that is what lets one
+join `src/validated-configs.js`.** Each `SPEC_POINTS` row marked `sweep: true`
+(the non-identity points that boot silent; `reconf=1` needs none, its key is the
+default's) gets `inspection`, `clearances` and `undeclaredClearance` restricted
+with `pairsTouching` to the units its build changes, unioned by §152's own rule
+(`battery-points.mjs`). **Since §308 landing 5 a swept row may DECLARE its
+warnings instead of booting silent** (`expect: 'declared'`, `expectWarns` — a
+list of warning PREFIXES, the rows' names, never their measured numbers): both
+the spec tier and the point judge hold the boot to exactly that set
+(`matchDeclaredWarns`), a warning beyond it reads `warns`, a declared row that
+stops firing reads stale and fails, and the point's validated-configs evidence
+names the set. It exists because every FORM build carries two filed rows (§186's
+form-case fit, §261's depth cap) that are debt about the case, not a station out
+of its window, and a judge that read any warning as `warns` could never let a
+form build join the set however clean its sweeps came back; the arrangement is
+the first such row. A push, dispatch or local run sweeps every point FULL —
+against that run's default — and `--points-out` writes the whole payloads into
+the cached baseline beside the report. **Since §264 a push's tier (and a hosted
+dispatch's, and since §330 a hosted PR's) is MEASURED on a parallel job, and
+since §265 its spec boots too — since the fan-out on TWO jobs, `battery spec`
+and `battery points`** (`--tiers-only --tiers-part P`, one file per tier naming
+its part, `TIERS_FORMAT` 3). Each is handed to the battery (`--tiers-from
+SPEC,POINTS`, each fetched in the background by its own
 `tools/battery-tiers-fetch.sh`), which judges them in its one assembly. Each
 tier proves itself or runs in-process and says why (`acceptTiers` in
 `tools/battery-tiers.mjs`): its file must be the format, name the part and carry
@@ -1448,46 +1450,54 @@ tier needs one row per declared point, in order; it may be SPLIT with the
 battery by `SPEC_HAND_STRIDE`, which the fan-out re-derived to 0 (both siblings
 hand over minutes before the battery reaches them, so a boot kept there only
 lengthens the critical path), the file must carry exactly the sibling's half,
-and `mergeSpecHalves` re-proves the whole (`probe-tiers-spec-hand.mjs`).
-The point tier needs the same point code, whole, every point full. A dead
-sibling or a fetcher that gave up runs THAT tier here, so the worst case is the
-run as it was. On the same path the post-battery probes run on hosted jobs of
-their own from t=0: `battery probes` (case relief, casing path, back envelope,
-the lands, the clearance witness, the geared Geneva's line and its record) and,
-since TODO 294, `battery geared invariant` alone, because its thirteen geared
-boots cost more wall than the other seven together. The `battery` job's last
-gate step reads BOTH jobs' conclusions off the run and passes only when every
-one is `success`: anything else fails `battery` (the required check, §259's rule
-that the job named `battery` is the one that gates) before provenance or
-seeding can run. A probe job whose name is not in that step's `NEED` list is a
-gate nothing enforces, so adding one means adding it there. **Since §330 a hosted, unsplit PULL REQUEST takes the same
-fan-out**: its shards stay incremental against the base's baseline, but its
-point tier is the sibling's, swept FULL with no ceiling (the one the sibling path
-accepts), so it drops `--points-pr` and `--points-base`. #866's single process
-spent 33.8 min and its ceiling skipped two of the three points; on the fan-out
-the PR costs four concurrent hosted jobs where it held one, and its minutes stay
-free (the repository is public). **Measured on the first seven hosted PRs after
-it (#882–#887), the fan-out walls 12.9–18.2 min**, the point tier its critical
-path every time — no slower than the self-hosted host (13.9 and 17.7 min on #883
-and #885). **So hosted is the default and the host is a BACKUP**: a PR opts into
+and `mergeSpecHalves` re-proves the whole (`probe-tiers-spec-hand.mjs`). The
+point tier needs the same point code, whole, every point full. A dead sibling or
+a fetcher that gave up runs THAT tier here, so the worst case is the run as it
+was. On the same path the post-battery probes run on hosted jobs of their own
+from t=0: `battery probes` (case relief, casing path, back envelope, the lands,
+the clearance witness, the geared Geneva's line and its record) and, since TODO
+294, `battery geared invariant` alone, because its thirteen geared boots cost
+more wall than the other seven together. Every job cap in that workflow is the
+slowest wall the job's series supports times 1.66, rounded up, and `node
+tools/cap-walls.mjs` is what reads it: the walls off the Actions API, the
+running average and spread, the rows the series does not support, and whether
+the number in the file is LOW. Re-derive a cap with that rather than by listing
+samples in the comment — TODO 294 cost three pull requests learning that a wall
+copied into prose goes stale the next time the job runs. The `battery` job's
+last gate step reads BOTH jobs' conclusions off the run and passes only when
+every one is `success`: anything else fails `battery` (the required check,
+§259's rule that the job named `battery` is the one that gates) before
+provenance or seeding can run. A probe job whose name is not in that step's
+`NEED` list is a gate nothing enforces, so adding one means adding it there.
+**Since §330 a hosted, unsplit PULL REQUEST takes the same fan-out**: its shards
+stay incremental against the base's baseline, but its point tier is the
+sibling's, swept FULL with no ceiling (the one the sibling path accepts), so it
+drops `--points-pr` and `--points-base`. #866's single process spent 33.8 min
+and its ceiling skipped two of the three points; on the fan-out the PR costs
+four concurrent hosted jobs where it held one, and its minutes stay free (the
+repository is public). **Measured on the first seven hosted PRs after it
+(#882–#887), the fan-out walls 12.9–18.2 min**, the point tier its critical path
+every time — no slower than the self-hosted host (13.9 and 17.7 min on #883 and
+#885). **So hosted is the default and the host is a BACKUP**: a PR opts into
 `self-hosted-battery` only when a hosted run cannot give a verdict (hosted jobs
 queued, a runner lost mid-run, a failure only the hosted runners show and the
 PR's diff cannot cause), never because its battery has not passed yet, and a
-real failure is fixed, not routed around. Matrix, self-hosted and nightly runs keep the
-probes after the harness, and no tiers jobs. Measured, §264 took the push from 89 to 63 min. Since §263 a hosted dispatch may ask for the SPLIT (`split: true`) instead,
-which spreads both tiers across its two workers, so the tiers jobs run only on
-an unsplit run. A PR off the fan-out (`--points-pr`: a self-hosted or matrix one) sweeps each point INCREMENTALLY against its own
-stored payload, re-measuring only the units the PR moved in that point's
-build; every doubt sends a point FULL and says so, and the PR's point tier is
-held to `POINT_PR_BUDGET_MS` of wall — a point that cannot finish is SKIPPED,
-named UNVERIFIED THIS RUN, never clean. Two gates: `point sweeps` fails a
-point that died or could not be unioned (a FINDING does not fail it — an
-unlisted point claims nothing), and the validated-configs gate fails a LISTED
-point that does not sweep clean. Rows join only by `node
-tools/validated-configs.mjs --write --points FILE` from a whole run's points
-file. `tools/probe-186-points.mjs` proves both unions byte for byte, a broken
-point judged a finding, every unqualified stored file sent FULL, and the
-ceiling never reading clean.
+real failure is fixed, not routed around. Matrix, self-hosted and nightly runs
+keep the probes after the harness, and no tiers jobs. Measured, §264 took the
+push from 89 to 63 min. Since §263 a hosted dispatch may ask for the SPLIT
+(`split: true`) instead, which spreads both tiers across its two workers, so the
+tiers jobs run only on an unsplit run. A PR off the fan-out (`--points-pr`: a
+self-hosted or matrix one) sweeps each point INCREMENTALLY against its own
+stored payload, re-measuring only the units the PR moved in that point's build;
+every doubt sends a point FULL and says so, and the PR's point tier is held to
+`POINT_PR_BUDGET_MS` of wall — a point that cannot finish is SKIPPED, named
+UNVERIFIED THIS RUN, never clean. Two gates: `point sweeps` fails a point that
+died or could not be unioned (a FINDING does not fail it — an unlisted point
+claims nothing), and the validated-configs gate fails a LISTED point that does
+not sweep clean. Rows join only by `node tools/validated-configs.mjs --write
+--points FILE` from a whole run's points file. `tools/probe-186-points.mjs`
+proves both unions byte for byte, a broken point judged a finding, every
+unqualified stored file sent FULL, and the ceiling never reading clean.
 
 `--report FILE` writes every check's FULL payload as JSON. **That, not the
 PASS/FAIL column, is what a performance change is accepted against**: a

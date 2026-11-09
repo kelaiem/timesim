@@ -28,13 +28,13 @@
 //   · A PAGE CHECK SAYS SO. A row whose `host` is 'page' needs a real page and
 //     is SKIPPED here, by name and counted; the browser battery runs it. No row
 //     carries the tag yet: every check measured clean natively (§338's record).
-//   · NO KERNEL YET. Every check runs the JS path, three-mesh-bvh, which is the
-//     reference any compiled kernel will be held to.
+//   · THE JS PATH IS THE REFERENCE. Every check runs inspect.js' `Kernel`, whose
+//     JS body (src/exact-mesh.js since landing 8) any compiled kernel is held to.
 //
 // --kernel (landing 5) picks the implementation behind inspect.js' `Kernel`: `js`
-// (three-mesh-bvh, the reference and the default), `wasm` (src/kernel.js' compiled
-// kernel, for the primitives it implements), or `shadow` (js answers, wasm runs
-// beside it on every call and the disagreements are tallied and printed).
+// (the reference and the default), `wasm` (src/kernel.js' compiled kernel), or
+// `shadow` (js answers, wasm runs beside it on every call and any difference is
+// tallied and printed).
 //
 // --report FILE writes `ci-battery.mjs --report`'s `checks` shape
 // ({name: {ms, sliceMs?, result}} over the WHOLE table, `neverRan` for the rest).
@@ -148,24 +148,12 @@ if (!isMainThread) {
   for (const l of lines) console.log(l);
   if (KERNEL !== 'js') {
     const ks = shards.map((s) => s.kernel);
-    const sum = (k) => ks.reduce((a, x) => a + (x[k] || 0), 0);
-    const worst = ks.reduce((a, x) => (x.maxAbs > a.maxAbs ? x : a), { maxAbs: 0, maxAt: null });
-    console.log(KERNEL === 'shadow'
-      ? `kernel shadow: ${sum('calls')} distance calls, ${sum('both')} under the bound on both, max |js − wasm| ${worst.maxAbs.toExponential(2)}${worst.maxAt ? ` (js ${worst.maxAt.ref}, wasm ${worst.maxAt.kernel}, bound ${worst.maxAt.upper})` : ''}; js 0 where wasm > 0: ${sum('refFalseZero')}; under the bound for wasm only: ${sum('kernelOnly')}, js only: ${sum('refOnly')}; js answered at or over the bound: ${sum('refAtOrOverBound')}; time js ${(sum('refMs') / 1000).toFixed(1)} s, wasm ${(sum('wasmMs') / 1000).toFixed(1)} s`
-      : `kernel: ${KERNEL}`);
-    if (KERNEL === 'shadow') {
-      const bs = (k) => ks.reduce((a, x) => a + ((x.bool && x.bool[k]) || 0), 0);
-      console.log(`kernel shadow, boolean: ${bs('calls')} intersection calls, ${bs('agree')} agree; js true where wasm false: ${bs('refOnly')}; js false where wasm true: ${bs('kernelOnly')}; time js ${(bs('refMs') / 1000).toFixed(1)} s, wasm ${(bs('wasmMs') / 1000).toFixed(1)} s`);
-      const edges = ks.find((x) => x.bool && x.bool.gapEdges)?.bool.gapEdges || [];
-      const gaps = edges.map((_, i) => ks.reduce((a, x) => a + ((x.bool && x.bool.refOnlyGap[i]) || 0), 0)).concat([ks.reduce((a, x) => a + ((x.bool && x.bool.refOnlyGap[edges.length]) || 0), 0)]);
-      console.log(`  js-only trues by the kernel's exact distance: ${gaps.map((n, i) => `${i < edges.length ? `< ${edges[i]}` : `≥ ${edges[edges.length - 1]}`}: ${n}`).join(', ')}`);
-    }
+    console.log(`kernel: ${KERNEL}`);
     if (KERNEL === 'shadow') {
       const es = (k) => ks.reduce((a, x) => a + ((x.exact && x.exact[k]) || 0), 0);
-      console.log(`kernel shadow, exact (contact): ${es('meets')} meet and ${es('distance')} distance calls, ${es('differ')} differing from wasm (the port is bit for bit, so anything but 0 is a defect)`);
-      for (const x of ks.flatMap((k) => (k.exact && k.exact.samples) || []).slice(0, 6)) console.log(`  exact differs: ${x.kind} js ${x.ref} wasm ${x.kernel}`);
+      console.log(`kernel shadow: ${es('distance')} distance and ${es('meets')} intersection calls, ${es('differ')} differing from wasm (the reference is the kernel's algorithm ported, so anything but 0 is a defect); time js ${(es('refMs') / 1000).toFixed(1)} s, wasm ${(es('wasmMs') / 1000).toFixed(1)} s`);
+      for (const x of ks.flatMap((k) => (k.exact && k.exact.samples) || []).slice(0, 6)) console.log(`  differs: ${x.kind} js ${x.ref} wasm ${x.kernel}`);
     }
-    if (KERNEL === 'shadow') for (const x of ks.flatMap((k) => k.samples || []).slice(0, 8)) console.log(`  disagreement: js ${x.ref} wasm ${x.kernel} bound ${x.upper} (${x.nA} × ${x.nB} triangles)`);
   }
   const wall = Date.now() - t0;
   const ran = results.size;

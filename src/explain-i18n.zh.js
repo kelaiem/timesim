@@ -212,7 +212,7 @@ export default {
   ['PAWLS ×2']: '棘爪 ×2',
   ['SPRING · under']: '发条 · 位于下方',
   ['inner ring — base ratchet flange, keyed to the fusee']: '内圈 —— 底棘轮盘，与塔轮锁定同转',
-  ['MAINT_TEETH 24 on the flange, 35 on the ring · two pawls π apart = 12 pitches, so they act in unison']: '底棘轮盘为 MAINT_TEETH 24、环为 35 · 两枚棘爪相隔 π = 12 个齿距，因而同步动作',
+  ['MAINT_TEETH 24 on the flange, 25 on the ring · two pawls π apart = 12 pitches, so they act in unison']: '底棘轮盘为 MAINT_TEETH 24、环为 25 · 两枚棘爪相隔 π = 12 个齿距，因而同步动作',
   ['THE LIVE TORQUE PATH']: '当前的传力路径',
   ['crown → winding spur']: '表冠 → 上条正齿轮',
   ['fusee cone → base ratchet flange']: '塔轮锥体 → 底棘轮盘',

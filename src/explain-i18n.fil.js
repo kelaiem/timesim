@@ -192,7 +192,7 @@ export default {
   ['PAWLS ×2']: 'PAWL ×2',
   ['SPRING · under']: 'SPRING · ibaba',
   ['inner ring — base ratchet flange, keyed to the fusee']: 'ring sa loob — base ratchet flange, key sa fusee',
-  ['MAINT_TEETH 24 on the flange, 35 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 sa flange, 35 sa ring · dalawang pawl π ang layo = 12 pitch, kaya sabay kumikilos',
+  ['MAINT_TEETH 24 on the flange, 25 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 sa flange, 25 sa ring · dalawang pawl π ang layo = 12 pitch, kaya sabay kumikilos',
   ['THE LIVE TORQUE PATH']: 'DAAN NG TORQUE, LIVE',
   ['crown → winding spur']: 'korona → wind spur',
   ['fusee cone → base ratchet flange']: 'kono → base ratchet flange',

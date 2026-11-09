@@ -191,7 +191,7 @@ export default {
   ['PAWLS ×2']: 'PAL ×2',
   ['SPRING · under']: 'PEGAS · bawah',
   ['inner ring — base ratchet flange, keyed to the fusee']: 'cincin dalam — flens ratchet dasar, terkunci ke fusee',
-  ['MAINT_TEETH 24 on the flange, 35 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 pada flens, 35 pada cincin · dua pal berjarak π = 12 pitch, jadi bekerja serempak',
+  ['MAINT_TEETH 24 on the flange, 25 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 pada flens, 25 pada cincin · dua pal berjarak π = 12 pitch, jadi bekerja serempak',
   ['THE LIVE TORQUE PATH']: 'JALUR TORSI AKTIF',
   ['crown → winding spur']: 'mahkota → roda lurus pemutar',
   ['fusee cone → base ratchet flange']: 'kerucut fusee → flens ratchet dasar',

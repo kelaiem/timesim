@@ -12,8 +12,10 @@
 // does not take is a thrown error, never a silent pass):
 //   doubled — a coarse slab cut as two boxes sharing a face (every edge even, two-triangle faces), a thin rod through it
 //             with no vertex or edge midpoint of either inside the other. Truth is independent: the library's raw
-//             closest point and an exact crossing count. The OLD rule must read the rod clear (the must-fail control:
-//             if it reads 0, some other witness saw it and the tier proves nothing); the NEW rule must read exactly 0.
+//             closest point and an exact crossing count. The OLD rule's witness must miss the rod (the must-fail
+//             control: if it fires, some other sample saw it and the tier proves nothing); the NEW rule's must fire.
+//             Since §338 landing 8 the witness is read directly (sampledVerdict's `inside`): meshClearance's distance
+//             is exact and reads the crossing as 0 under either rule, which the tier also holds.
 //   open    — the same rod through an open sheet (a PlaneGeometry, odd edges). The new law must still refuse it the
 //             witness: a segment crossing an open surface twice is inside no metal at all (TODO 95's guard).
 //   census  — the default build and `form-rect`: nothing accepted by the old law is refused by the new one (monotone),
@@ -79,6 +81,9 @@ const MEASURE = async () => {
     slab: I.surfaceEdgeCensus(slab.geometry), sheet: I.surfaceEdgeCensus(sheet.geometry), rodCensus: I.surfaceEdgeCensus(rod.geometry),
     rawSlab: raw(slab, rod), rawSheet: raw(sheet, rod), axisHits,
     dSlab: I.meshClearance(rod, slab), dSlabRev: I.meshClearance(slab, rod), dSheet: I.meshClearance(rod, sheet),
+    // §338 landing 8 — the witness itself, read directly: meshClearance's exact distance sees a pass-through as a
+    // meet whatever the witness says, so the law is held where it still decides, sampledVerdict's `inside`
+    wSlab: I.sampledVerdict(rod, slab).inside, wSlabRev: I.sampledVerdict(slab, rod).inside, wSheet: I.sampledVerdict(rod, sheet).inside,
   };
   // census over the build's labelled units (collectUnits' pruning: a schematic subtree is cut)
   const walk = (n, acc) => { if (n.userData && n.userData.schematic) return; if (n.isMesh && n.geometry?.attributes?.position) acc.push(n); for (const ch of n.children) walk(ch, acc); };
@@ -132,15 +137,22 @@ if (NEW.slab.odd !== 0) fail(`the slab has ${NEW.slab.odd} odd edge(s) — it is
 console.log(`  truth: the library's raw closest point ${f4(NEW.rawSlab)}; the rod's axis crosses the slab at [${NEW.axisHits.join(', ')}]`);
 if (NEW.rawSlab !== 0) fail(`the library reads the rod ${f4(NEW.rawSlab)} from the slab — the fixture does not interpenetrate`);
 if (NEW.axisHits.length < 2) fail(`the rod's axis crosses the slab ${NEW.axisHits.length} time(s) — not a pass-through`);
+// The law, where it still decides: the pass-through witness (sampledVerdict's `inside`) under each rule.
+console.log(`  witness (sampledVerdict inside), rod through slab: old rule ${OLD.wSlab}, new rule ${NEW.wSlab}; (slab, rod) new ${NEW.wSlabRev}`);
+if (OLD.wSlab !== false) fail('CONTROL: the old rule already witnesses the rod inside — some other sample sees it, so this tier proves nothing');
+if (NEW.wSlab !== true) fail('the new rule does not witness the rod through the doubled slab — the witness did not run');
+if (NEW.wSlabRev !== true) fail('the new rule does not witness the rod with the arguments swapped (sampledVerdict tests both ways round)');
+// §338 landing 8 — meshClearance's distance is exact, so it reads the pass-through as a meet under EITHER rule (an
+// edge piercing a surface is one); this is why the clearance no longer depends on the law, and it is gated.
 console.log(`  meshClearance(rod, slab): old rule ${f4(OLD.dSlab)}, new rule ${f4(NEW.dSlab)}; (slab, rod) new ${f4(NEW.dSlabRev)}`);
-if (!(OLD.dSlab > 0)) fail('CONTROL: the old rule already reads the rod as touching — some other witness sees it, so this tier proves nothing');
-if (NEW.dSlab !== 0) fail(`the new rule reads ${f4(NEW.dSlab)} for a rod through the slab — the witness did not run`);
-if (NEW.dSlabRev !== 0) fail(`the new rule reads ${f4(NEW.dSlabRev)} with the arguments swapped`);
+if (NEW.dSlab !== 0 || NEW.dSlabRev !== 0 || OLD.dSlab !== 0) fail(`meshClearance reads ${f4(OLD.dSlab)} / ${f4(NEW.dSlab)} / ${f4(NEW.dSlabRev)} for a rod through the slab — the exact distance should read the crossing as 0 under both rules`);
 
 console.log('== open: the same rod through an open sheet ==');
 console.log(`  sheet census: bad ${NEW.sheet.bad}, odd ${NEW.sheet.odd}; meshClearance new ${f4(NEW.dSheet)}, old ${f4(OLD.dSheet)}`);
 if (!(NEW.sheet.odd > 0)) fail('the sheet reads closed mod 2 — the open control is not open');
 if (NEW.dSheet !== OLD.dSheet) fail(`the open sheet's reading moved (${f4(OLD.dSheet)} → ${f4(NEW.dSheet)}) — the new law reached a surface with a boundary`);
+console.log(`  witness through the open sheet: new ${NEW.wSheet}, old ${OLD.wSheet}`);
+if (NEW.wSheet !== false) fail('the new law witnesses the rod INSIDE an open sheet — a segment crossing an open surface is in no metal (TODO 95\'s guard)');
 
 console.log('== census ==');
 for (const [tag, R] of [['default', NEW], ['form-rect', FORM]]) {
@@ -165,5 +177,5 @@ for (const [tag, R] of [['new', NEW], ['old', OLD], ['form-rect', FORM]]) {
 }
 
 await browser.close(); srv.kill();
-console.log(fails.length ? `\nFAIL — ${fails.length} problem(s)` : '\nPASS — a rod through a doubled-face slab reads 0 (the old rule read it clear), an open sheet is still refused, the census is monotone, and the case bodies are closed');
+console.log(fails.length ? `\nFAIL — ${fails.length} problem(s)` : '\nPASS — the witness sees a rod through a doubled-face slab (the old rule missed it), meshClearance reads it 0 either way, an open sheet is still refused, the census is monotone, and the case bodies are closed');
 process.exit(fails.length ? 1 : 0);

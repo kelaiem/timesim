@@ -193,7 +193,7 @@ export default {
   ['PAWLS ×2']: 'תפס מניע ×2',
   ['SPRING · under']: 'קפיץ · מתחת',
   ['inner ring — base ratchet flange, keyed to the fusee']: 'טבעת פנימית — אוגן מחגר הבסיס, מקובע לפיוזי',
-  ['MAINT_TEETH 24 on the flange, 35 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 באוגן, 35 בטבעת · שני תפסים מניעים במרחק π = 12 פסיעות, ולכן הם פועלים יחד',
+  ['MAINT_TEETH 24 on the flange, 25 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 באוגן, 25 בטבעת · שני תפסים מניעים במרחק π = 12 פסיעות, ולכן הם פועלים יחד',
   ['THE LIVE TORQUE PATH']: 'מסלול המומנט החי',
   ['crown → winding spur']: 'כתר ← גלגל המתיחה הישר',
   ['fusee cone → base ratchet flange']: 'חרוט הפיוזי ← אוגן מחגר הבסיס',
