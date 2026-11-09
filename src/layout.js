@@ -1515,6 +1515,24 @@ export const CLICK_STEEL_SIGMA_Y_PA = CLICK_STEEL_SIGMA_Y_BAND.low;
 // this factor over the steel's low end: no yield at all in the hold, the
 // strictest of the contact criteria (shakedown, 4k, would allow ~1.3× more).
 export const LINE_CONTACT_FIRST_YIELD_P0_PER_Y = 1.79;
+// TODO 296 landing 2 — AND SHAKEDOWN, from the same table. A contact that
+// repeats is not held to first yield: past it the surface yields a little,
+// residual stresses build, and the contact becomes elastic again at a HIGHER
+// load — Johnson's shakedown limit, p0 = 4.0k for a line contact (Contact
+// Mechanics (1985) §9.1 / Table 9.1, the row above's own source: its 1.79·Y IS
+// that table's elastic limit 3.1k, since 1.79·√3 = 3.100). Declared as the 4.0k
+// figure with the conversion written, so the two constants cannot drift from one
+// source; the boot asserts the identity.
+//
+// It exists because the escape wheel's club tip takes the DROP's impact ten
+// times a second for the life of the watch. Holding that to first yield would
+// say the tooth fails, when what it does is RUN IN: the first landings blunt the
+// apex until the contact shakes down, and TODO 296 landing 2 solves the radius
+// where it stops. First yield stays the criterion for a HOLD that must not yield
+// at all (TODO 221's maintaining beak) and for the escapement's quasi-static
+// load (landing 1).
+export const LINE_CONTACT_SHAKEDOWN_P0_PER_K = 4.0;
+export const LINE_CONTACT_SHAKEDOWN_P0_PER_Y = LINE_CONTACT_SHAKEDOWN_P0_PER_K / Math.sqrt(3);
 // TODO 296 — THE ESCAPE WHEEL'S OWN STEEL. Its club teeth are the only working
 // surfaces in the movement cut from a WHEEL's metal, and they are neither the
 // spring's band nor the click's by reference: a blade is drawn back soft enough
