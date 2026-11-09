@@ -1,4 +1,4 @@
-// Do the equalisation gate's club-tooth rows (TODO 296, rows 20 and 21) actually fire? It boots once, clones the EQUALISATION record, and runs `checkEqualisation` over fourteen sabotaged copies, asserting that each is REFUSED and named. Row 20, the quasi-static load: the wedge read as its flanks' SUM, the unlock priced forward, a load off its torque, a tip blunter than the finish band's sharp end, the arms' virtual work relaxed, the escape torque raised just past the multiple at which the tip first yields (derived: the worst row's margin squared, 24.6x), the binding criterion flipped, and two rows wearing each other's corner. Row 21, the drop's landing: a closing velocity off its arm, a run-in that blunts the tip past its finish band, the compliance claimed as the contact's rather than the tooth's, the landing priced at the design swing instead of the peak, a drop that takes the wheel nowhere, and the unmodelled series members left unnamed. A gate nobody has watched fire is a comment. ACCEPTANCE: exits non-zero if the unmutated clone is not clean or if any sabotage passes.
+// Do the equalisation gate's club-tooth rows (TODO 296 rows 20 and 21, TODO 299 row 22) actually fire? It boots once, clones the EQUALISATION record, and runs `checkEqualisation` over fourteen sabotaged copies, asserting that each is REFUSED and named. Row 20, the quasi-static load: the wedge read as its flanks' SUM, the unlock priced forward, a load off its torque, a tip blunter than the finish band's sharp end, the arms' virtual work relaxed, the escape torque raised just past the multiple at which the tip first yields (derived: the worst row's margin squared, 24.6x), the binding criterion flipped, and two rows wearing each other's corner. Row 21, the drop's landing: a closing velocity off its arm, a run-in that blunts the tip past its finish band, the compliance claimed as the contact's rather than the tooth's, the landing priced at the design swing instead of the peak, a drop that takes the wheel nowhere, and the unmodelled series members left unnamed. Row 22, the design life: a centre arbor that does not turn once an hour, a recession that is not Archard's, the wear priced at the hardness band's high end instead of its low, corners that do not rise with the coefficient, a row claiming every corner holds, a straddle it does not report, and the BAR itself (four times the slip, repriced consistently, so the nominal corner misses its century). A gate nobody has watched fire is a comment. ACCEPTANCE: exits non-zero if the unmutated clone is not clean or if any sabotage passes.
 //
 // Why a clone and not a re-boot. The row is arithmetic over a published record,
 // so the gate's logic is exactly what wants testing, and a doctored record
@@ -42,7 +42,7 @@ const toothFails = (E) => {
   // the row's own wording, so a failure it raises cannot be filtered out of its
   // own control (an early draft's regex said "locking flank" where the gate
   // says "locking face", and S2 read as a gate gap)
-  return (r.failures || []).filter((q) => /club|escape tooth|contact arm|wedge|locking (face|flank)|\btip\b|forward run|recoil|landing|drop|shakedown|series members|peak swing/i.test(JSON.stringify(q)));
+  return (r.failures || []).filter((q) => /club|escape tooth|contact arm|wedge|locking (face|flank)|\btip\b|forward run|recoil|landing|drop|shakedown|series members|peak swing|wear|Archard|hardness|design life|corners that hold|straddle|once an hour|once a minute|slip|budget|temper|revolution|finish|polish|fixed point|cut-back|gullet|pocket|concave/i.test(JSON.stringify(q)));
 };
 
 // ---- BASELINE: the clone path is faithful and the row is clean -------------
@@ -98,9 +98,9 @@ const SABOTAGES = [
   { name: 'S3 a load that is not its torque over its arm',
     expect: /load identity/,
     patch: (E) => { E.going.energy.escapeTooth.rows[4].load_N *= 1.05; } },
-  { name: 'S4 a tip blunter than the finish band\'s sharp end',
-    expect: /not the finish band's sharp end/,
-    patch: (E) => { E.going.energy.escapeTooth.rho_m *= 2; } },
+  { name: 'S4 rows priced at a radius that is not the derived finish',
+    expect: /not priced at the derived finish/,
+    patch: (E) => { E.going.energy.escapeTooth.rho_m *= 1.5; } },
   { name: 'S5 the arms\' virtual work relaxed',
     expect: /fail virtual work/,
     patch: (E) => { E.going.energy.escapeTooth.geom.virtualWork.rel = 1e-3; } },
@@ -133,18 +133,20 @@ const SABOTAGES = [
   { name: 'S9 a closing velocity that is not its arm times its speed',
     expect: /closing velocity identity/,
     patch: (E) => { E.going.energy.escapeTooth.landing.v0_m_s *= 1.02; } },
-  { name: 'S10 a run-in that blunts the tip past its finish band',
-    expect: /past its finish band/,
-    patch: (E) => { const lg = E.going.energy.escapeTooth.landing;
-      const k = lg.runIn.band_m[1] * 3 / lg.runIn.rho_m;
-      lg.runIn.rho_m *= k; lg.runIn.elasticRho_m *= k;
-      // keep the inversion honest so the BAR is what refuses it, not an identity
-      lg.runIn.atRunIn.p0_Pa = lg.shakedownAllow_Pa;
-      lg.runIn.recession_u = (lg.runIn.rho_m - 1e-7) * (1 / Math.sin(et0.geom.wedge.halfRad) - 1) / U; } },
+  { name: 'S10 a finish outside what a polish can hold',
+    expect: /outside what a polish can hold/,
+    patch: (E) => { const t = E.going.energy.escapeTooth, lg = t.landing, k = lg.finish.band_m[1] * 3 / lg.finish.rho_m;
+      lg.finish.rho_m *= k; t.rho_m = lg.finish.rho_m;
+      lg.finish.elasticRho_m *= k;
+      lg.finish.cutBack_u = lg.finish.rho_m * (1 / Math.sin(t.geom.wedge.halfRad) - 1) / U;
+      // keep the fixed-point identity true so the ACHIEVABILITY clause is what
+      // refuses it rather than an arithmetic one
+      lg.atFinish.p0_Pa = lg.shakedownAllow_Pa; } },
   { name: 'S11 the landing\'s compliance claimed as the CONTACT\'s, not the tooth\'s',
     expect: /compliance is not the tooth/,
-    patch: (E) => { for (const q of [E.going.energy.escapeTooth.landing.atSharp, E.going.energy.escapeTooth.landing.runIn.atRunIn]) {
-      const t = q.kTooth_N_per_m; q.kTooth_N_per_m = q.kHertz_N_per_m; q.kHertz_N_per_m = t; } } },
+    patch: (E) => { const lg = E.going.energy.escapeTooth.landing;
+      for (const q of [lg.atFinish, lg.finish.atSharp]) {
+        const t = q.kTooth_N_per_m; q.kTooth_N_per_m = q.kHertz_N_per_m; q.kHertz_N_per_m = t; } } },
   { name: 'S12 the landing priced at the design swing instead of the peak',
     expect: /not priced at the peak swing/,
     patch: (E) => { E.going.energy.escapeTooth.landing.peakDeg = 200; } },
@@ -155,6 +157,47 @@ const SABOTAGES = [
   { name: 'S14 the series members it leaves out left unnamed',
     expect: /does not name the series members/,
     patch: (E) => { E.going.energy.escapeTooth.landing.notModelled = []; } },
+  // ---- row 22 (TODO 299), the design life ---------------------------------
+  // A clone cannot carry the geometry's `lockRunAt`, so the clause that
+  // RE-SOLVES the worn crossing at the budget is covered by the real boot
+  // (where the function is there) and not by a sabotage here. Said rather than
+  // left as a silent hole.
+  { name: 'S15 a centre arbor that does not turn once an hour',
+    expect: /once an hour/,
+    patch: (E) => { E.going.energy.escapeTooth.wear.counts.control.centrePerHour = 0.5; } },
+  { name: 'S16 a recession that is not Archard\'s',
+    expect: /Archard identity/,
+    patch: (E) => { E.going.energy.escapeTooth.wear.corners.nominal.recession_m *= 1.1; } },
+  { name: 'S17 the wear priced at the hardness band\'s HIGH end',
+    expect: /not priced at the hardness band/,
+    patch: (E) => { const w = E.going.energy.escapeTooth.wear; w.hardness_Pa = w.hardnessBand.high; } },
+  { name: 'S18 wear corners that do not rise with the coefficient',
+    expect: /corners are not ordered/,
+    patch: (E) => { const c = E.going.energy.escapeTooth.wear.corners;
+      const t = c.favourable.recession_m; c.favourable.recession_m = c.adverse.recession_m; c.adverse.recession_m = t; } },
+  { name: 'S19 a row claiming every corner holds',
+    expect: /does not name the corners that hold/,
+    patch: (E) => { E.going.energy.escapeTooth.wear.holdsAt = ['favourable', 'nominal', 'adverse']; } },
+  { name: 'S20 a straddle the row does not report',
+    expect: /does not report its own straddle/,
+    patch: (E) => { E.going.energy.escapeTooth.wear.straddles = false; } },
+  // THE BAR: row 15's precedent, the design life held at the NOMINAL corner.
+  // THE BAR: row 15's precedent, the design life held at the NOMINAL corner.
+  // Shrink the BUDGET rather than the slip or the load, because both of those
+  // are tied back to what the geometry measured and the rows priced -- an
+  // earlier draft scaled the slip and the gate refused it on that identity
+  // before the bar was ever reached, which is a control testing the wrong
+  // clause.
+  { name: 'S21 a tooth that does not reach its life at the NOMINAL corner (the BAR)',
+    expect: /does not reach its design life at a corner it must/,
+    patch: (E) => { const t = E.going.energy.escapeTooth, w = t.wear, k = 4;
+      w.budget_u /= k; t.geom.budget.recession_u /= k;
+      for (const c of ['favourable', 'nominal', 'adverse']) {
+        w.corners[c].overBudget *= k;
+        w.needHardness_Pa[c] *= k * k;
+      }
+      w.holdsAt = ['favourable', 'nominal', 'adverse'].filter((c) => w.corners[c].overBudget <= 1);
+      w.straddles = w.holdsAt.length > 0 && w.holdsAt.length < 3; } },
 ];
 
 for (const s of SABOTAGES) {

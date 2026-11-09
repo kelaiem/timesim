@@ -45,7 +45,7 @@ Item numbers are permanent IDs cited as `TODO 117`, never by file or line.
 | Item | State | Title |
 |---|---|---|
 | [300](docs/todo/0300.md) | OPEN | A form case does not hold its movement: no clamp screw, no seat on the case middle's ledge, and the bore stands 2.3 u wide of the plate |
-| [299](docs/todo/0299.md) | OPEN | Nothing prices WEAR: declare the service interval and the design life, and hold the escape wheel to 100 years of 5-yearly service |
+| [299](docs/todo/0299.md) | PART DONE | Nothing prices WEAR: declare the service interval and the design life, and hold the escape wheel to 100 years of 5-yearly service |
 | [298](docs/todo/0298.md) | OPEN | The battery cannot judge a build without the alarm: its tables name the alarm's units, and the alarm-free build has never been swept |
 | [295](docs/todo/0295.md) | PART DONE | The cocks' jewel bores are not cut: the balance cock's slab has no bore at all, and both escapement bridges run an unbored arm across the one they do cut |
 | [294](docs/todo/0294.md) | OPEN | The geared stop-work builds metal at all thirteen reserves and is recorded at two: the other ten have a pair, a branch arm and a cock stall that nothing reads |

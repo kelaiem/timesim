@@ -1539,37 +1539,113 @@ export const LINE_CONTACT_SHAKEDOWN_P0_PER_Y = LINE_CONTACT_SHAKEDOWN_P0_PER_K /
 // to come back from its working stress (SPRING_SIGMA_Y_PA), a click is hardened
 // and tempered for a hold it must not cam out of (CLICK_STEEL_SIGMA_Y_BAND),
 // and an escape wheel is hardened for WEAR at a tip that slides on ruby five
-// times a second. Nothing in this model says how hard its wheel was drawn, so a
-// BAND, FRICTION's rule, and every gate reads the LOW end. The figures are the
-// click's reasoning at the escape wheel's own practice — hardened and tempered
-// carbon steel, 48–54 HRC, Rm ≈ 1.65–2.0 GPa by the ASTM E140 hardness
-// conversion and Rp0.2 ≈ 0.9·Rm for a quenched-and-tempered carbon steel (ASM
-// Handbook Vol. 1) — so the two bands COINCIDE today and are declared apart on
-// purpose: a measurement of either part must move one band and not both.
+// times a second.
+//
+// TODO 299 HARDENED IT, and the reason is the one thing this heat treatment is
+// FOR. The wheel was declared at the click's own temper, 48–54 HRC, because
+// nothing in the model asked the question the hardness decides; TODO 299's wear
+// price asked it, and a club tip at that temper loses 21.8 µm of reach over a
+// century of 5-yearly service at the adverse wear corner against a 14.1 µm lock
+// budget. So the wheel is now drawn back as little as a fine wheel can be:
+// 58–62 HRC, the top of what a hardened carbon tool steel holds while STILL
+// RUNNING IN rather than chipping — which is load-bearing, because TODO 296
+// landing 2's whole answer to the drop's impact is that the tip blunts
+// plastically and then shakes down. Past steel (silicon, a carbide, a hard
+// coating) the hardness keeps improving and that plastic run-in DISAPPEARS, so
+// the impact becomes a fracture question nothing here prices. The wear figure
+// says plainly that this does not close the gap at the adverse corner — it
+// takes it from ×1.55 over to ×1.28 — and that closing it needs 1229 HV, which
+// is no steel. TODO 299's record carries the ceiling.
+//
+// A BAND, FRICTION's rule, because the model does not say where in the temper
+// the wheel was drawn, and every gate reads the LOW end — which is the loaded
+// reading for all three criteria at once: a softer wheel yields sooner AND
+// wears faster.
 export const ESCAPE_STEEL_SIGMA_Y_BAND = Object.freeze({
-  low: 1500e6, high: 1800e6,
-  why: 'hardened and tempered carbon escape-wheel steel, 48–54 HRC: Rm ≈ 1.65–2.0 GPa by the ASTM E140 hardness conversion, Rp0.2 ≈ 0.9·Rm for quenched-and-tempered carbon steel (ASM Handbook Vol. 1)',
+  low: 1940e6, high: 2210e6,
+  why: 'hardened carbon tool steel for an escape wheel, 58–62 HRC (the hardest temper that still runs in rather than chips — TODO 299): Rm ≈ 2.15–2.45 GPa by the ASTM E140 hardness conversion, Rp0.2 ≈ 0.9·Rm for quenched-and-tempered carbon steel (ASM Handbook Vol. 1)',
 });
 export const ESCAPE_STEEL_SIGMA_Y_PA = ESCAPE_STEEL_SIGMA_Y_BAND.low;
+// TODO 299 — AND ITS INDENTATION HARDNESS, which is what a wear law needs and
+// a yield band is not. Declared from the SAME 58–62 HRC temper by the same
+// ASTM E140 conversion (653–746 HV), not derived from the yield band: Tabor's
+// H ≈ 3·σy is a relation for a fully plastic indentation and it reads a
+// hardened steel low (3 × 1.94 = 5.82 GPa against the conversion's 6.40). Two
+// properties of one heat treatment, each with its own conversion named — and
+// the build ASSERTS they agree inside that relation's accuracy, so a temper
+// changed in one place cannot leave the other behind. HV → Pa is ×9.80665e6
+// (kgf/mm² → Pa), the definition.
+export const HV_TO_PA = 9.80665e6;
+export const ESCAPE_STEEL_HARDNESS_BAND = Object.freeze({
+  low: 653 * HV_TO_PA, high: 746 * HV_TO_PA, lowHV: 653, highHV: 746,
+  why: 'the same 58–62 HRC temper as ESCAPE_STEEL_SIGMA_Y_BAND, converted to Vickers by ASTM E140 (653–746 HV)',
+});
+export const ESCAPE_STEEL_HARDNESS_PA = ESCAPE_STEEL_HARDNESS_BAND.low;
+// Tabor's ratio, named so the cross-check reads as a relation and not a fudge:
+// H/σy ≈ 3 for a fully plastic indentation (Tabor, The Hardness of Metals
+// (1951)), with ±20% covering work hardening and the elastic–plastic
+// transition a hardened steel sits nearer.
+export const TABOR_H_OVER_SIGMA_Y = 3.0;
+export const TABOR_TOLERANCE = 0.20;
 // TODO 296 — AND THE RADIUS THE TIP ACTUALLY HAS, which is the whole question.
 // The club is a 10.83° wedge (the impulse face against the undercut's locking
 // face) and the lock, the draw and the impulse ALL bear on its point, so every
 // stress at a mathematically sharp apex is singular: the beam's goes as 1/s and
 // the Hertz pressure as 1/√ρ. A tooth is therefore priced the way TODO 221
-// priced the maintaining beak's apex — on the ARC the metal really carries —
-// and that radius is a property of the FINISH, not of the cut, so it cannot be
-// read off the outline. A BAND, for FRICTION's and the steel bands' reason (the
-// movement does not say how finely its wheel was polished), and every gate
-// reads the SHARP end, because a sharper tip is the loaded one: 0.1 µm is about
-// the finest edge hardened steel holds at all (a honed razor edge is 30–100 nm
-// and is not a bearing surface), 2 µm an ordinary polished corner on a
-// finished wheel. The cut's own apex is a point and the schematic draws it as
-// one; this is what the metal under it is priced at.
+// priced the maintaining beak's apex — on the ARC the metal really carries.
+//
+// This BAND is what a polish can ACHIEVE: 0.1 µm is about the finest edge
+// hardened steel holds at all (a honed razor edge is 30–100 nm and is not a
+// bearing surface), 2 µm an ordinary polished corner on a finished wheel. It is
+// no longer what the wheel is priced at: TODO 299 landing 2 DERIVED that from
+// the impact (the energy column's `escapeTooth.landing.finish`), because
+// polishing to the sharp end was work the first landings undid. It stays a
+// RECORD and not a cut — landing 3 measured why: this outline cannot carry a
+// feature smaller than its own chamfer.
 export const ESCAPE_TIP_R_BAND = Object.freeze({
   sharp_m: 0.1e-6, blunt_m: 2e-6,
-  why: 'the edge radius of a polished corner on hardened steel: 0.1 µm the finest a hardened-steel edge holds in service (a honed razor edge, 30–100 nm, is not a bearing surface), 2 µm an ordinary commercial polish',
+  why: 'what a polished corner on hardened steel can ACHIEVE: 0.1 µm the finest a hardened-steel edge holds in service (a honed razor edge, 30–100 nm, is not a bearing surface), 2 µm an ordinary commercial polish',
 });
-export const ESCAPE_TIP_R_M = ESCAPE_TIP_R_BAND.sharp_m;
+// TODO 299 landing 2 — AND THE RADIUS IT IS CUT TO, which is not the band's
+// sharp end and should never have been. The owner put it plainly: it makes no
+// sense to pre-sharpen an edge only to have it blunted. TODO 296 landing 2 had
+// measured the drop's first landings blunting the tip plastically until the
+// contact SHAKES DOWN, and that radius is a FIXED POINT of the impact — solved
+// from starting radii across four decades it returns the same figure to 2e-16,
+// because it is where p0(ρ) meets the shakedown limit and nothing about the
+// as-cut tip enters. So it is a SPECIFICATION, not an outcome: finish the tooth
+// there and the wheel leaves the bench in the state it would have reached
+// anyway, with the only overstressed state in its life removed and the finest
+// (and only micron-scale) operation on the wheel made coarser.
+//
+// It is DERIVED in main.js, not written here — the escapement's energy, the
+// club's own compliance and the escape steel's shakedown limit all enter it, so
+// a number in this file would be a copy that could go stale. What this file
+// declares is that the derivation must land inside the achievable band, which
+// is the constraint the shop floor imposes on it.
+export const ESCAPE_TIP_R_M = ESCAPE_TIP_R_BAND.sharp_m;   // retained: the band's sharp end, for the achievability gate
+// TODO 299 landing 2 — AND WHAT CUTS THE PROFILE. The owner asked what the
+// escape wheel costs to CONSTRUCT, and a tooth ring's cost is decided by two
+// things a profile can state: whether a tool fits down its gullets, and whether
+// its concave corners are open enough that the fillet a rotary tool must leave
+// rounds a corner rather than failing to reach a pocket. Both need the tool's
+// own size, so here it is — a BAND, on ESCAPE_TIP_R_BAND's rule (this is a shop
+// capability, not a property of the watch), read at the COARSE end because a
+// fat tool is the one that does not fit.
+//
+// 0.02 mm is about the finest wire a production EDM threads and 0.1 mm a fine
+// slitting cutter or a thicker wire, so the RADIUS band is 10–50 µm.
+export const CUT_TOOL_R_BAND = Object.freeze({
+  fine_m: 10e-6, coarse_m: 50e-6,
+  why: 'the radius of the finest practical cutter or EDM wire: 0.02 mm wire at the fine end (production wire EDM), 0.1 mm for a fine slitting cutter or a thicker wire',
+});
+export const CUT_TOOL_R_M = CUT_TOOL_R_BAND.coarse_m;   // the fat tool is the one that has to fit
+// A concave corner under a right angle is a POCKET: a rotary tool leaves its
+// own radius there and cannot reach the corner at all, so the feature the
+// profile asks for is not the feature the shop delivers. At or over 90° the
+// fillet rounds a corner the profile does not depend on being sharp. Stated as
+// a constant because it is a claim about tools, not about this wheel.
+export const CUT_CONCAVE_MIN_DEG = 90;
 // §234 — A COIL'S INDEX, D/d: the envelope a compression spring can be WOUND
 // in. Under 4 the wire cracks on the coiling arbor; over 12 the coil tangles
 // on the winder and its rate is not held — the spring-design handbooks' 4–12.
@@ -1698,6 +1774,48 @@ export const FRICTION = Object.freeze({
   endContactMm: Object.freeze({ favourable: 0.01, nominal: 0.02, adverse: 0.03,
     why: 'contact radius of a rounded pivot end on its endstone' }),
 });
+
+// TODO 299 â THE SERVICE SCHEDULE, and it is what makes a wear number mean
+// anything. No watch survives a century untouched; it survives twenty
+// overhauls, and the owner's target is the ordinary one: service every five
+// years â expendable parts replaced, regreased and relubricated, and the
+// ground-up metal and old grease CLEANED OUT â with the escape wheel lasting a
+// hundred years of it. Each clause does specific work below:
+//
+//  Â· relubrication is what entitles the wear law to a BOUNDARY-LUBRICATED
+//    coefficient rather than a dry or starved one;
+//  Â· cleaning the debris out is what entitles it to a CONSTANT one rather than
+//    a runaway â no abrasive third body accumulates, so wear does not compound
+//    from one interval to the next;
+//  Â· replacing expendables splits every member into one that must last the
+//    INTERVAL and one that must last the LIFE. The escape wheel is not an
+//    expendable part, which is what puts it on the hundred-year criterion.
+//
+// The full expendable/lifetime roster is TODO 299's own next landing (it is a
+// triage over every member, LUBRICATION's arrival shape); these two numbers are
+// what the escape wheel's price needs.
+export const SERVICE_INTERVAL_YEARS = 5;      // the owner's, inside the trade's 3â7
+export const DESIGN_LIFE_YEARS = 100;         // the escape wheel's target
+export const SERVICES_IN_LIFE = DESIGN_LIFE_YEARS / SERVICE_INTERVAL_YEARS;
+// A Julian year, so a century of seconds is one definition and not a rounding:
+// 365.25 d, which is what "100 years" means for a count of beats.
+export const JULIAN_YEAR_S = 365.25 * 86400;
+// TODO 299 â AND THE WEAR LAW. Archard: the volume removed is KÂ·FÂ·s/H, K
+// dimensionless, H the SOFTER body's indentation hardness. The movement's
+// working contacts are polished steel against sapphire under a boundary film,
+// which is the MILD regime â and it is mild because the service keeps it so
+// (above). A BAND, FRICTION's rule, with every gate reading the ADVERSE end,
+// because the model cannot say how good the polish and the epilame are and that
+// is exactly what K measures. The band is wide on purpose: two decades is what
+// the handbooks' own spread for lubricated mild wear covers (Rabinowicz,
+// Friction and Wear of Materials (1995), Table 6.2 â lubricated like-on-like
+// metals 1e-7â1e-6, hard non-metal on metal lower), and TODO 299's record says
+// plainly that the escape wheel's century turns on which end is true.
+export const WEAR_K_BAND = Object.freeze({
+  favourable: 1e-8, nominal: 1e-7, adverse: 1e-6,
+  why: 'Archard K for a polished steel surface against sapphire under a boundary film, cleaned and relubricated each service: Rabinowicz, Friction and Wear of Materials (1995) Table 6.2 gives 1e-7â1e-6 for lubricated metal pairs and less for a hard non-metal counterface; the favourable corner is a mirror polish holding its epilame',
+});
+export const WEAR_K_PA = WEAR_K_BAND.adverse;   // the loaded reading
 // RESTRIDDEN STACK — solved BOTTOM-UP from the low-escapement layout: the
 // oscillator hangs under the open plate cutaway, and the plate's own floor
 // binds on the hairspring stack (the fusee was dropped to make that true —

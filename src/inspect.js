@@ -38,8 +38,9 @@ import { ZERO_AREA_MAX, CLEAR_MARGIN, HANDOFF_TRACK_TOL, UNIT_MM, Z_DIAL, SLENDE
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME, SPEC,                                    // §36 Apply: the same predicate that builds the unit, and the same name
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, rigidSplit,
-  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, ESCAPE_STEEL_SIGMA_Y_PA, ESCAPE_TIP_R_M, ESCAPE_TIP_R_BAND, LINE_CONTACT_SHAKEDOWN_P0_PER_Y, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, MAINSPRING_ALPHA_MIN, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R_SPEC, BALANCE_R_REF, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG, STOPWORK_BUILT, GEARED_BUILT } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
+  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, ESCAPE_STEEL_SIGMA_Y_PA, ESCAPE_STEEL_SIGMA_Y_BAND, ESCAPE_TIP_R_M, ESCAPE_TIP_R_BAND, LINE_CONTACT_SHAKEDOWN_P0_PER_Y, ESCAPE_STEEL_HARDNESS_BAND, TABOR_H_OVER_SIGMA_Y, TABOR_TOLERANCE, CUT_TOOL_R_M, CUT_CONCAVE_MIN_DEG, SERVICE_INTERVAL_YEARS, DESIGN_LIFE_YEARS, JULIAN_YEAR_S, WEAR_K_BAND, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, MAINSPRING_ALPHA_MIN, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R_SPEC, BALANCE_R_REF, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG, STOPWORK_BUILT, GEARED_BUILT } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 import { auditLubrication, LUBRICATION, LUBRICATION_DEBT, LUBRICATION_WAIVERS } from './lubrication.js';   // §247 tier one
+import { LOCK_DEG, RUN_DEG } from './escapement.js';   // TODO 299 row 22: the lock is declared against shock and the run is not, so the run is the wear budget's spendable share
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
 // merges into, not the app — this file still reads the RUNNING scene rather
@@ -11136,8 +11137,18 @@ export function checkOscillator(clock) {
 //     the wedge's section where the arc leaves it (bending plus the whole load
 //     axial) against the same steel. Both go as 1/ρ, so each inverts to its own
 //     first-yield radius, ρ_min is the larger, `binds` names it, and ρ_min must
-//     be at or under ESCAPE_TIP_R_M — the SHARP end of the declared finish
-//     band, the loaded reading. No waiver: row 16's beak arc has none either.
+//     be inside the band a polish can hold. No waiver: row 16's beak arc has
+//     none either.
+//     SINCE TODO 299 LANDING 2 THE FINISH IS THAT RADIUS, not the band's sharp
+//     end: the owner's point was that pre-sharpening an edge the first landings
+//     blunt is wasted work, and the blunting radius turned out to be a FIXED
+//     POINT of the impact (p0(ρ) = the shakedown limit, the same answer from
+//     starting radii four decades apart, nothing about the as-cut tip entering
+//     it). So the wheel is cut there, every row above is priced there, and the
+//     tip does NOT run in — which this row now holds as an identity (p0 at the
+//     finish IS the shakedown limit) rather than as an outcome, together with
+//     the finish being achievable and a razor finish being the OVERSTRESSED
+//     state it replaced.
 // 21. AND THE DROP'S LANDING DOES NOT BREAK IT — IT RUNS IN (TODO 296 landing
 //     2). Row 20 prices the quasi-static load; this prices the one landing 1
 //     named and left. The wheel runs FREE through the drop and the next tooth
@@ -11163,6 +11174,31 @@ export function checkOscillator(clock) {
 //     past: 1.79·√3 = 3.1k and 4.0k are the same table's elastic and shakedown
 //     limits, so the first-yield constant must reproduce 3.1 from the shakedown
 //     one's per-k figure.
+// 22. AND IT REACHES ITS DESIGN LIFE (TODO 299) — a century of 5-yearly
+//     service, which is the first row here that prices material REMOVAL rather
+//     than strength. Archard, every factor already in the record: the load the
+//     rows above price, the SLIP the escapement solve measures (the contact's
+//     travel along the face in the FORK's frame, which is the tooth slipping
+//     across the stone and not the tip's travel in the wheel's), the
+//     ENGAGEMENTS the train derives, and the escape steel's own indentation
+//     hardness — declared from the same 58–62 HRC temper as its yield band and
+//     held to it through Tabor's H ≈ 3·σy, so one heat treatment cannot be
+//     edited in one place and left in the other. The volume becomes a DEPTH
+//     through the wedge (√(A/tanα)), which is why the teeth bind where the
+//     pivots do not.
+//     Held: the counts' own control (a centre arbor turns once an HOUR and a
+//     fourth once a MINUTE — facts about a watch, and what catches a walk that
+//     lands a mesh's count on the driven arbor instead of the driver), the
+//     schedule's arithmetic, the Archard identity at each corner, the hardness
+//     pair's consistency, the BUDGET's own derivation (the recession that takes
+//     lock+run down to the LOCK_DEG declared against shock, re-solved off the
+//     worn crossing rather than taken on trust) and each corner's inverted
+//     hardness. The BAR is row 15's precedent — the design target is held at
+//     the NOMINAL corner, a serviced watch — and the ADVERSE corner is
+//     REPORTED, because at 1e-6 the tooth loses 1.37 budgets and the conclusion
+//     flips, which by FRICTION's own rule is not a conclusion. Closing the
+//     adverse corner needs 1229 HV, which is no steel, and the record says so
+//     rather than gating a number the model does not have.
 // TODO 193 — the ribbons over their alloy, by name. A row cites the TODO whose
 // fix path brings it under, and FAILS when its ribbon already is (stale).
 // TODO 291 — the ribbons under the packing band, by name; RIBBON_STRESS_WAIVERS' convention.
@@ -11427,8 +11463,12 @@ export function checkEqualisation(clock) {
       for (const q of g.runs)
         if (!(q.arm_u > 0 && q.arm_u <= g.radius_u + 1e-9))
           failures.push({ what: 'contact arm outside the wheel', run: q.run, stone: q.stone, arm_u: q.arm_u, radius_u: g.radius_u });
-      // the limits are layout.js's, never the record's
-      const rho = ESCAPE_TIP_R_M, a = w.halfRad, tM = et.line_u * U;
+      // The LIMITS are layout.js's, never the record's. The RADIUS is the
+      // record's, because since TODO 299 landing 2 it is DERIVED (the impact's
+      // fixed point) rather than read off a band — row 21 below owns that
+      // derivation and holds it; this row prices at whatever it answered, which
+      // is the only division that keeps one number in one place.
+      const rho = et.rho_m, a = w.halfRad, tM = et.line_u * U;
       const EstarFrom = 1 / ((1 - Math.pow(et.bodies.tooth.nu, 2)) / et.bodies.tooth.E_Pa
                            + (1 - Math.pow(et.bodies.stone.nu, 2)) / et.bodies.stone.E_Pa);
       const allow = LINE_CONTACT_FIRST_YIELD_P0_PER_Y * ESCAPE_STEEL_SIGMA_Y_PA;
@@ -11436,10 +11476,10 @@ export function checkEqualisation(clock) {
         failures.push({ what: 'escape tooth contact modulus identity', record: et.Estar_Pa, fromBodies: EstarFrom });
       if (!(rel(et.p0Allow_Pa, allow) <= 1e-12))
         failures.push({ what: 'escape tooth allowable is not first yield of the escape steel\'s low end', record: et.p0Allow_Pa, fromLimit: allow });
-      if (!(Math.abs(et.rho_m - rho) <= 1e-18))
-        failures.push({ what: 'escape tooth priced at a radius that is not the finish band\'s sharp end', record: et.rho_m, sharp_m: rho });
+      if (!(et.rho_m >= ESCAPE_TIP_R_BAND.sharp_m && et.rho_m <= ESCAPE_TIP_R_BAND.blunt_m))
+        failures.push({ what: 'the rows are priced at a tip no polish can hold', record: et.rho_m, band: { ...ESCAPE_TIP_R_BAND } });
       if (!(ESCAPE_TIP_R_M === ESCAPE_TIP_R_BAND.sharp_m))
-        failures.push({ what: 'ESCAPE_TIP_R_M is not the band\'s sharp end', value: ESCAPE_TIP_R_M, band: { ...ESCAPE_TIP_R_BAND } });
+        failures.push({ what: 'ESCAPE_TIP_R_M is not the band\'s sharp end, which the achievability gate reads', value: ESCAPE_TIP_R_M, band: { ...ESCAPE_TIP_R_BAND } });
       const secW = 2 * rho * Math.cos(a), secArm = rho * (1 - Math.sin(a));
       const byKey = new Map();
       for (const r of et.rows) {
@@ -11488,8 +11528,8 @@ export function checkEqualisation(clock) {
           failures.push({ what: 'club tooth tip over yield in bending', run: r.run, corner: r.corner,
             sigma_MPa: r.sigma_Pa / 1e6, yield_MPa: ESCAPE_STEEL_SIGMA_Y_PA / 1e6 });
         if (!(r.rhoMin_m <= rho * (1 + 1e-9)))
-          failures.push({ what: 'club tooth needs a blunter tip than the finish band\'s sharp end', run: r.run, corner: r.corner,
-            rhoMin_um: r.rhoMin_m * 1e6, sharp_um: rho * 1e6, binds: r.binds });
+          failures.push({ what: 'club tooth needs a blunter tip than the derived finish', run: r.run, corner: r.corner,
+            rhoMin_um: r.rhoMin_m * 1e6, finish_um: rho * 1e6, binds: r.binds });
       }
       // THE CORNERS, ordered PER FLOW: a forward run's load falls with the
       // corner (the train delivers less), the unlock's recoil RISES with it
@@ -11552,7 +11592,7 @@ export function checkEqualisation(clock) {
         // THE SERIES STACK IS THE TOOTH'S, which is what makes the 2-D contact's
         // datum-dependent compliance unable to move the answer. Asserted, not
         // assumed: a stack the contact governed would be a different claim.
-        for (const [where, q] of [['at the sharp tip', lg.atSharp], ['at the run-in radius', lg.runIn.atRunIn]]) {
+        for (const [where, q] of [['at the derived finish', lg.atFinish], ['at the band’s sharp end', lg.finish.atSharp]]) {
           if (!(rel(q.kSeries_N_per_m, q.kTooth_N_per_m) <= 0.01))
             failures.push({ what: 'the landing\'s compliance is not the tooth\'s', where, series: q.kSeries_N_per_m, tooth: q.kTooth_N_per_m, contact: q.kHertz_N_per_m });
           if (!(q.kHertz_N_per_m > 100 * q.kTooth_N_per_m))
@@ -11561,34 +11601,200 @@ export function checkEqualisation(clock) {
           if (!(rel(q.F, F) <= 1e-9))
             failures.push({ what: 'the landing\'s peak force identity', where, record: q.F, fromEnergy: F });
         }
-        // the run-in radius solves its own criterion, and lands inside the band
+        // THE FINISH IS THE FIXED POINT, which is the whole of TODO 299
+        // landing 2: p0 at the radius the wheel is cut to IS the shakedown
+        // limit, so the contact shakes down as cut and nothing runs in.
         const shake = LINE_CONTACT_SHAKEDOWN_P0_PER_Y * ESCAPE_STEEL_SIGMA_Y_PA;
+        const fin = lg.finish;
         if (!(rel(lg.shakedownAllow_Pa, shake) <= 1e-12))
-          failures.push({ what: 'the landing\'s allowable is not shakedown of the escape steel\'s low end', record: lg.shakedownAllow_Pa, fromLimit: shake });
-        if (!(rel(lg.runIn.atRunIn.p0_Pa, shake) <= 1e-6))
-          failures.push({ what: 'the run-in radius does not land on the shakedown limit', p0: lg.runIn.atRunIn.p0_Pa, allow: shake });
-        if (!(lg.atSharp.p0_Pa > shake))
-          failures.push({ what: 'the sharp tip already shakes down, so there is nothing to run in', p0: lg.atSharp.p0_Pa, allow: shake, note: 'a landing that cannot blunt the tip is a landing this row is not measuring' });
-        if (!(lg.runIn.rho_m > ESCAPE_TIP_R_M - 1e-18))
-          failures.push({ what: 'the run-in makes the tip SHARPER than its finish band\'s sharp end', runIn_m: lg.runIn.rho_m, sharp_m: ESCAPE_TIP_R_M });
-        if (!(lg.runIn.rho_m <= ESCAPE_TIP_R_BAND.blunt_m * (1 + 1e-9)))
-          failures.push({ what: 'the drop blunts the club tip past its finish band', runIn_um: lg.runIn.rho_m * 1e6, blunt_um: ESCAPE_TIP_R_BAND.blunt_m * 1e6,
-            note: 'a tip that runs in past its finish is a tooth wearing its own lock away' });
-        // the stricter criterion is reported, not gated, but it must be BLUNTER:
-        // no yield at all costs more radius than shakedown does
-        if (!(lg.runIn.elasticRho_m > lg.runIn.rho_m))
-          failures.push({ what: 'the elastic run-in radius is not blunter than the shakedown one', elastic: lg.runIn.elasticRho_m, shakedown: lg.runIn.rho_m });
-        // and the reach it costs: the arc's nearest point stands rho(1/sin a - 1)
-        // inside the sharp apex, so blunting spends that much of the tooth circle
-        const rec = (lg.runIn.rho_m - ESCAPE_TIP_R_M) * (1 / Math.sin(w.halfRad) - 1) / U;
-        if (!(rel(lg.runIn.recession_u, rec) <= 1e-9))
-          failures.push({ what: 'the run-in\'s recession identity', record: lg.runIn.recession_u, fromRadius: rec });
-        if (!(lg.runIn.recession_u < CLEAR_MARGIN))
-          failures.push({ what: 'running in costs the tip more reach than CLEAR_MARGIN', recession_u: lg.runIn.recession_u, margin: CLEAR_MARGIN });
+          failures.push({ what: 'the landing\u2019s allowable is not shakedown of the escape steel\u2019s low end', record: lg.shakedownAllow_Pa, fromLimit: shake });
+        if (!fin) {
+          failures.push({ what: 'the landing names no finish', note: 'TODO 299 landing 2 derives the tip\u2019s finish from the impact; the record does not carry it' });
+        } else {
+          if (!(rel(lg.atFinish.p0_Pa, shake) <= 1e-6))
+            failures.push({ what: 'the finish is not the impact\u2019s fixed point', p0: lg.atFinish.p0_Pa, allow: shake });
+          if (!(et.rho_m === fin.rho_m))
+            failures.push({ what: 'the rows are not priced at the derived finish', pricedAt: et.rho_m, finish: fin.rho_m });
+          if (lg.runsIn !== false)
+            failures.push({ what: 'the record still claims the tip runs in', runsIn: lg.runsIn });
+          // the shop floor's constraint: a finish no polish can hold is not a
+          // specification
+          if (!(fin.rho_m >= ESCAPE_TIP_R_BAND.sharp_m && fin.rho_m <= ESCAPE_TIP_R_BAND.blunt_m))
+            failures.push({ what: 'the derived finish is outside what a polish can hold', finish_um: fin.rho_m * 1e6,
+              band_um: [ESCAPE_TIP_R_BAND.sharp_m * 1e6, ESCAPE_TIP_R_BAND.blunt_m * 1e6] });
+          // and a RAZOR finish must be the overstressed state it replaced —
+          // otherwise the derivation bought nothing and this row is decoration
+          if (!(fin.atSharp.p0_Pa > shake))
+            failures.push({ what: 'the band\u2019s sharp end already shakes down, so deriving the finish bought nothing',
+              atSharp: fin.atSharp.p0_Pa, allow: shake });
+          if (!(rel(fin.sharpOverShakedown, fin.atSharp.p0_Pa / shake) <= 1e-12))
+            failures.push({ what: 'the sharp end\u2019s overstress identity', record: fin.sharpOverShakedown });
+          if (!(fin.elasticRho_m > fin.rho_m))
+            failures.push({ what: 'a fully elastic contact does not want a blunter tip than shakedown does', elastic: fin.elasticRho_m, finish: fin.rho_m });
+          // the reach the finish SPENDS, which row 22 books against the budget
+          const cb = fin.rho_m * (1 / Math.sin(w.halfRad) - 1) / U;
+          if (!(rel(fin.cutBack_u, cb) <= 1e-9))
+            failures.push({ what: 'the finish\u2019s cut-back identity', record: fin.cutBack_u, fromRadius: cb });
+          if (!(fin.cutBack_u > 0 && fin.cutBack_u < CLEAR_MARGIN))
+            failures.push({ what: 'the finish spends more reach than CLEAR_MARGIN', cutBack_u: fin.cutBack_u });
+        }
         // the members this landing leaves out are NAMED, and every one of them
         // would soften the stack, which is what makes the bound a bound
         if (!(Array.isArray(lg.notModelled) && lg.notModelled.length >= 3))
           failures.push({ what: 'the landing does not name the series members it leaves out', notModelled: lg.notModelled || null });
+      }
+
+      // TODO 299 landing 2 — AND WHAT THE RING COSTS TO CUT. The owner asked
+      // after the escape wheel's construction; these are the invariants a
+      // profile can state about it, and each would be broken by a re-cut that
+      // made the wheel dearer. The tip's own corner is CONVEX, so no tool
+      // radius bounds it: what bounds it is the polish, which is the finish
+      // derived above.
+      const ct2 = g.cut;
+      if (!ct2) {
+        failures.push({ what: 'the escape ring carries no cut record', note: 'TODO 299 landing 2 measures what the profile costs to cut; the geometry does not publish it' });
+      } else {
+        if (!(ct2.concave && ct2.concave.includedDeg >= CUT_CONCAVE_MIN_DEG))
+          failures.push({ what: 'the escape ring asks for a concave pocket no rotary tool can reach', sharpestDeg: ct2.concave && ct2.concave.includedDeg, floorDeg: CUT_CONCAVE_MIN_DEG, at_r: ct2.concave && ct2.concave.r_u });
+        if (!(ct2.gullet_u > 2 * (CUT_TOOL_R_M / U)))
+          failures.push({ what: 'nothing the shop has fits down the escape ring\u2019s gullet', gullet_u: ct2.gullet_u, toolDia_u: 2 * CUT_TOOL_R_M / U });
+        if (!(rel(ct2.toolR_u, CUT_TOOL_R_M / U) <= 1e-12))
+          failures.push({ what: 'the cut record is measured against a tool that is not the declared one', record: ct2.toolR_u, declared: CUT_TOOL_R_M / U });
+        // the sharpest CONVEX corner is the club's own wedge -- the one
+        // identity tying this record to the tooth's
+        if (!(ct2.convex && Math.abs(ct2.convex.includedDeg - w.fullDeg) <= 1e-6))
+          failures.push({ what: 'the ring\u2019s sharpest convex corner is not the club\u2019s wedge', convexDeg: ct2.convex && ct2.convex.includedDeg, wedgeDeg: w.fullDeg });
+        if (!(rel(ct2.aspect, g.band.t_u / ct2.gullet_u) <= 1e-12))
+          failures.push({ what: 'the gullet\u2019s aspect identity', record: ct2.aspect, derived: g.band.t_u / ct2.gullet_u });
+      }
+
+      // Row 22 (TODO 299) — THE DESIGN LIFE.
+      const wr = et.wear;
+      if (!wr) {
+        failures.push({ what: 'escape tooth wear rows', note: 'going.energy.escapeTooth.wear is missing \u2014 the design life is unpriced (TODO 299 regressed)' });
+      } else {
+        const U2 = UNIT_MM / 1000, g2 = et.geom;
+        // the schedule
+        if (!(wr.years === DESIGN_LIFE_YEARS && wr.serviceYears === SERVICE_INTERVAL_YEARS))
+          failures.push({ what: 'the wear row is not priced on the declared schedule', record: [wr.years, wr.serviceYears], declared: [DESIGN_LIFE_YEARS, SERVICE_INTERVAL_YEARS] });
+        if (!(rel(wr.services, DESIGN_LIFE_YEARS / SERVICE_INTERVAL_YEARS) <= 1e-12))
+          failures.push({ what: 'the service count is not the life over the interval', record: wr.services });
+        // THE COUNTS' CONTROL: facts about a watch, not about the arithmetic
+        const ct = wr.counts;
+        if (!ct || !ct.control)
+          failures.push({ what: 'the derived counts carry no control', counts: ct || null });
+        else {
+          if (!(Math.abs(ct.control.centrePerHour - 1) <= 1e-9))
+            failures.push({ what: 'the centre arbor does not turn once an hour', perHour: ct.control.centrePerHour });
+          if (!(Math.abs(ct.control.fourthPerMinute - 1) <= 1e-9))
+            failures.push({ what: 'the fourth arbor does not turn once a minute', perMinute: ct.control.fourthPerMinute });
+          const life = DESIGN_LIFE_YEARS * JULIAN_YEAR_S;
+          if (!(rel(ct.life_s, life) <= 1e-12))
+            failures.push({ what: 'the life is not the declared years of Julian seconds', record: ct.life_s, derived: life });
+          const beats = SPEC.vph / 3600 * life;
+          if (!(rel(ct.beats, beats) <= 1e-9))
+            failures.push({ what: 'the beat count is not the rate times the life', record: ct.beats, derived: beats });
+          if (!(rel(ct.engagementsPerTooth, ct.beats / ct.escapeTeeth) <= 1e-12))
+            failures.push({ what: 'the engagements per tooth are not the beats over the tooth count', record: ct.engagementsPerTooth, teeth: ct.escapeTeeth });
+          // the turns must DESCEND up the train: every arbor above turns slower
+          const order = ['escape', 'fourth', 'third', 'centre', 'fusee'];
+          for (let i = 1; i < order.length; i++)
+            if (!(ct.turns[order[i]] < ct.turns[order[i - 1]]))
+              failures.push({ what: 'the train\u2019s revolution counts do not fall going up it', pair: [order[i - 1], order[i]], turns: [ct.turns[order[i - 1]], ct.turns[order[i]]] });
+        }
+        // the slip, and that it is the sum of its own parts
+        const sl = g2.slip;
+        if (!sl || !(sl.perEngagement_u > 0))
+          failures.push({ what: 'the tip\u2019s slip per engagement is not measured', slip: sl || null });
+        else if (!(rel(sl.perEngagement_u, 2 * sl.lockFace_u + sl.impulseFace_u) <= 1e-12))
+          failures.push({ what: 'the slip is not its three slides', slip: sl });
+        else if (!(rel(wr.slipPerEngagement_m, sl.perEngagement_u * U2) <= 1e-12))
+          failures.push({ what: 'the wear row is priced on a slip the geometry did not measure', record: wr.slipPerEngagement_m, measured: sl.perEngagement_u * U2 });
+        if (!(rel(wr.slip_m, wr.slipPerEngagement_m * wr.engagementsPerTooth) <= 1e-9))
+          failures.push({ what: 'the century\u2019s slip is not the engagement\u2019s times the count', record: wr.slip_m });
+        // and the LOAD is the rows' own, not a number of its own: the mean over
+        // the nominal corner's runs, which is what a mean wear rate is priced at
+        // (the peak rows are strength's business). Without this the wear row
+        // could carry any load and every identity below would still hold.
+        {
+          const nom = et.rows.filter((q) => q.corner === 'nominal');
+          const mean = nom.reduce((x, q) => x + q.load_N, 0) / Math.max(1, nom.length);
+          if (!(nom.length && rel(wr.load_N, mean) <= 1e-12))
+            failures.push({ what: 'the wear row\u2019s load is not the nominal corner\u2019s mean', record: wr.load_N, fromRows: mean, rows: nom.length });
+        }
+        // THE BUDGET, re-derived rather than taken: the lock alone is the
+        // lock's share of lock+run, and the recession must put the worn
+        // crossing exactly there
+        const bg = g2.budget;
+        if (!bg || !(bg.recession_u > 0))
+          failures.push({ what: 'the wear budget is not solved', budget: bg || null });
+        else {
+          const keep = bg.lockRunFull_u * LOCK_DEG / (LOCK_DEG + RUN_DEG);
+          if (!(rel(bg.lockOnly_u, keep) <= 1e-12))
+            failures.push({ what: 'the lock\u2019s share of lock+run is not the declared lock over lock+run', record: bg.lockOnly_u, derived: keep });
+          if (typeof g2.lockRunAt === 'function') {
+            const at = g2.lockRunAt(bg.recession_u);
+            if (!(Math.abs(at - bg.lockOnly_u) <= 1e-6))
+              failures.push({ what: 'the budget\u2019s recession does not land the worn crossing on the lock', atBudget: at, lockOnly: bg.lockOnly_u });
+            if (!(g2.lockRunAt(0) > at))
+              failures.push({ what: 'wearing the tooth does not shorten the lock', asCut: g2.lockRunAt(0), atBudget: at });
+          }
+          // TODO 299 landing 2 — the wear budget is the geometry's reach from the
+          // tooth's mathematical APEX, LESS what finishing the tip already
+          // spent. A row priced against the apex figure would be claiming reach
+          // the wheel never had.
+          if (!(rel(wr.fromApex_u, bg.recession_u) <= 1e-12))
+            failures.push({ what: 'the wear row is priced against a budget the geometry did not derive', record: wr.fromApex_u, derived: bg.recession_u });
+          const cutBack = et.landing && et.landing.finish ? et.landing.finish.cutBack_u : 0;
+          if (!(rel(wr.cutBack_u, cutBack) <= 1e-12))
+            failures.push({ what: 'the wear row does not book the finish\u2019s own cut-back', record: wr.cutBack_u, fromFinish: cutBack });
+          if (!(rel(wr.budget_u, bg.recession_u - cutBack) <= 1e-12))
+            failures.push({ what: 'the wear budget is not the apex reach less the finish', record: wr.budget_u, derived: bg.recession_u - cutBack });
+          if (!(cutBack === 0 || wr.budget_u < wr.fromApex_u))
+            failures.push({ what: 'the finish spends no reach, so it is not a finish', budget: wr.budget_u, fromApex: wr.fromApex_u });
+        }
+        // the hardness pair is ONE heat treatment
+        for (const end of ['low', 'high']) {
+          const ratio = ESCAPE_STEEL_HARDNESS_BAND[end] / (TABOR_H_OVER_SIGMA_Y * ESCAPE_STEEL_SIGMA_Y_BAND[end]);
+          if (!(Math.abs(ratio - 1) <= TABOR_TOLERANCE))
+            failures.push({ what: 'the escape steel\u2019s hardness and yield are not one temper', end, ratio });
+        }
+        if (!(wr.hardness_Pa === ESCAPE_STEEL_HARDNESS_BAND.low))
+          failures.push({ what: 'the wear row is not priced at the hardness band\u2019s low end', record: wr.hardness_Pa, low: ESCAPE_STEEL_HARDNESS_BAND.low });
+        // Archard, per corner, and the inverted hardness
+        const tanA = Math.tan(g2.wedge.halfRad), line = et.line_u * U2;
+        for (const c of ['favourable', 'nominal', 'adverse']) {
+          const q = wr.corners[c];
+          if (!q) { failures.push({ what: 'the wear row is missing a corner', corner: c }); continue; }
+          if (!(q.K === WEAR_K_BAND[c]))
+            failures.push({ what: 'a wear corner is not its declared coefficient', corner: c, record: q.K, declared: WEAR_K_BAND[c] });
+          const V = q.K * wr.load_N * wr.slip_m / wr.hardness_Pa;
+          const d = Math.sqrt((V / line) / tanA);
+          if (!(rel(q.volume_m3, V) <= 1e-12) || !(rel(q.recession_m, d) <= 1e-12))
+            failures.push({ what: 'the Archard identity', corner: c, record: [q.volume_m3, q.recession_m], derived: [V, d] });
+          if (!(rel(q.overBudget, (d / U2) / wr.budget_u) <= 1e-12))
+            failures.push({ what: 'the budget ratio identity', corner: c, record: q.overBudget });
+          const needH = q.K * wr.load_N * wr.slip_m / (Math.pow(wr.budget_u * U2, 2) * line * tanA);
+          if (!(rel(wr.needHardness_Pa[c], needH) <= 1e-9))
+            failures.push({ what: 'the hardness a corner would need does not invert its own row', corner: c, record: wr.needHardness_Pa[c], derived: needH });
+        }
+        // the corners must be ORDERED: more wear at a larger coefficient
+        if (!(wr.corners.favourable.recession_m < wr.corners.nominal.recession_m
+           && wr.corners.nominal.recession_m < wr.corners.adverse.recession_m))
+          failures.push({ what: 'the wear corners are not ordered', recessions: ['favourable', 'nominal', 'adverse'].map((c) => wr.corners[c].recession_m) });
+        // THE BAR, row 15's precedent: the design target is held at the NOMINAL
+        // corner (a serviced watch). The adverse corner is the record's to
+        // report, and `straddles` must SAY so rather than reading clean.
+        for (const c of ['favourable', 'nominal']) {
+          if (!(wr.corners[c].overBudget <= 1))
+            failures.push({ what: 'the escape wheel does not reach its design life at a corner it must', corner: c,
+              recession_um: wr.corners[c].recession_m * 1e6, budget_um: wr.budget_u * U2 * 1e6, overBudget: wr.corners[c].overBudget });
+        }
+        const holds = ['favourable', 'nominal', 'adverse'].filter((c) => wr.corners[c].overBudget <= 1);
+        if (JSON.stringify(wr.holdsAt) !== JSON.stringify(holds))
+          failures.push({ what: 'the wear row does not name the corners that hold', record: wr.holdsAt, derived: holds });
+        if (wr.straddles !== (holds.length > 0 && holds.length < 3))
+          failures.push({ what: 'the wear row does not report its own straddle', record: wr.straddles, holds });
       }
     }
     // Row 16 (TODO 217) — THE MAINTAINING DETENT'S HOLD. The face load is the
@@ -11948,16 +12154,45 @@ export function checkEqualisation(clock) {
             v0_mm_s: +(en.escapeTooth.landing.v0_m_s * 1000).toFixed(3),
             mStar_mg: +(en.escapeTooth.landing.mStar_kg * 1e6).toFixed(3),
             energy_nJ: +(en.escapeTooth.landing.energy_J * 1e9).toFixed(4),
-            peakForce_mN: +(en.escapeTooth.landing.atSharp.F * 1000).toFixed(3),
-            p0AtSharp_GPa: +(en.escapeTooth.landing.atSharp.p0_Pa / 1e9).toFixed(4),
+            peakForce_mN: +(en.escapeTooth.landing.atFinish.F * 1000).toFixed(3),
+            p0AtFinish_GPa: +(en.escapeTooth.landing.atFinish.p0_Pa / 1e9).toFixed(4),
             shakedown_GPa: +(en.escapeTooth.landing.shakedownAllow_Pa / 1e9).toFixed(4),
-            kTooth_N_per_m: +en.escapeTooth.landing.atSharp.kTooth_N_per_m.toFixed(0),
-            kContact_N_per_m: +en.escapeTooth.landing.atSharp.kHertz_N_per_m.toFixed(0),
-            runIn_um: +(en.escapeTooth.landing.runIn.rho_m * 1e6).toFixed(4),
-            runInElastic_um: +(en.escapeTooth.landing.runIn.elasticRho_m * 1e6).toFixed(4),
-            band_um: en.escapeTooth.landing.runIn.band_m.map((x) => +(x * 1e6).toFixed(2)),
-            recession_u: +en.escapeTooth.landing.runIn.recession_u.toFixed(5),
+            kTooth_N_per_m: +en.escapeTooth.landing.atFinish.kTooth_N_per_m.toFixed(0),
+            kContact_N_per_m: +en.escapeTooth.landing.atFinish.kHertz_N_per_m.toFixed(0),
+            finish_um: +(en.escapeTooth.landing.finish.rho_m * 1e6).toFixed(4),
+            finishElastic_um: +(en.escapeTooth.landing.finish.elasticRho_m * 1e6).toFixed(4),
+            band_um: en.escapeTooth.landing.finish.band_m.map((x) => +(x * 1e6).toFixed(2)),
+            cutBack_u: +en.escapeTooth.landing.finish.cutBack_u.toFixed(5),
+            sharpOverShakedown: +en.escapeTooth.landing.finish.sharpOverShakedown.toFixed(3),
+            runsIn: en.escapeTooth.landing.runsIn,
             notModelled: en.escapeTooth.landing.notModelled,
+          } : null,
+          // TODO 299 — the design life: what a century of 5-yearly service costs the tip
+          wear: en.escapeTooth.wear ? {
+            years: en.escapeTooth.wear.years, serviceYears: en.escapeTooth.wear.serviceYears,
+            services: en.escapeTooth.wear.services,
+            engagements_G: +(en.escapeTooth.wear.engagementsPerTooth / 1e9).toFixed(4),
+            slipPerEngagement_um: +(en.escapeTooth.wear.slipPerEngagement_m * 1e6).toFixed(1),
+            slip_km: +(en.escapeTooth.wear.slip_m / 1000).toFixed(1),
+            load_uN: +(en.escapeTooth.wear.load_N * 1e6).toFixed(2),
+            hardness_HV: en.escapeTooth.wear.hardnessBand.lowHV,
+            budget_um: +(en.escapeTooth.wear.budget_u * UNIT_MM * 1000).toFixed(2),
+            recession_um: Object.fromEntries(Object.entries(en.escapeTooth.wear.corners).map(([c, q]) => [c, +(q.recession_m * 1e6).toFixed(2)])),
+            overBudget: Object.fromEntries(Object.entries(en.escapeTooth.wear.corners).map(([c, q]) => [c, +q.overBudget.toFixed(3)])),
+            holdsAt: en.escapeTooth.wear.holdsAt, straddles: en.escapeTooth.wear.straddles,
+            needHV: Object.fromEntries(Object.entries(en.escapeTooth.wear.needHardness_Pa).map(([c, v]) => [c, Math.round(v / 9.80665e6)])),
+            budgetFromApex_um: +(en.escapeTooth.wear.fromApex_u * UNIT_MM * 1000).toFixed(2),
+            finishSpent_um: +(en.escapeTooth.wear.cutBack_u * UNIT_MM * 1000).toFixed(2),
+          } : null,
+          // TODO 299 landing 2 — what the ring costs to CUT
+          cut: en.escapeTooth.geom.cut ? {
+            vertices: en.escapeTooth.geom.cut.vertices,
+            concaveMinDeg: +en.escapeTooth.geom.cut.concave.includedDeg.toFixed(2),
+            convexMinDeg: +en.escapeTooth.geom.cut.convex.includedDeg.toFixed(3),
+            gullet_um: +(en.escapeTooth.geom.cut.gullet_u * UNIT_MM * 1000).toFixed(1),
+            toolDia_um: +(2 * CUT_TOOL_R_M * 1e6).toFixed(0),
+            toolClearance: +(en.escapeTooth.geom.cut.gullet_u / (2 * en.escapeTooth.geom.cut.toolR_u)).toFixed(2),
+            aspect: +en.escapeTooth.geom.cut.aspect.toFixed(2),
           } : null,
         } : null,
         corners: Object.fromEntries(Object.entries(en.corners).map(([c, C]) => [c, {
