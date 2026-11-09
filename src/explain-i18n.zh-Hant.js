@@ -197,7 +197,7 @@ export default {
   ['PAWLS ×2']: '棘爪 ×2',
   ['SPRING · under']: '彈簧 · 下方',
   ['inner ring — base ratchet flange, keyed to the fusee']: '內環 — 基座棘輪法蘭，鍵合於寶塔輪',
-  ['MAINT_TEETH 24 on the flange, 35 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 法蘭 24、環 35 · 兩爪相隔 π = 12 距 — 故齊發',
+  ['MAINT_TEETH 24 on the flange, 25 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 法蘭 24、環 25 · 兩爪相隔 π = 12 距 — 故齊發',
   ['THE LIVE TORQUE PATH']: '活的扭矩路徑',
   ['crown → winding spur']: '錶冠 → 上鏈小齒',
   ['fusee cone → base ratchet flange']: '寶塔輪錐 → 基座棘輪法蘭',

@@ -244,7 +244,7 @@ export default {
   ['PAWLS ×2']: 'ZAPADKI ×2',
   ['SPRING · under']: 'SPRĘŻYNA · pod spodem',
   ['inner ring — base ratchet flange, keyed to the fusee']: 'pierścień wewn. — kołnierz zapadkowy, związany z fusee',
-  ['MAINT_TEETH 24 on the flange, 35 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 na kołnierzu, 35 na pierścieniu · dwie zapadki co π = 12 podziałek, więc działają zgodnie',
+  ['MAINT_TEETH 24 on the flange, 25 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 na kołnierzu, 25 na pierścieniu · dwie zapadki co π = 12 podziałek, więc działają zgodnie',
   ['THE LIVE TORQUE PATH']: 'ŻYWA ŚCIEŻKA MOMENTU',
   ['crown → winding spur']: 'koronka → koło walcowe naciągu',
   ['fusee cone → base ratchet flange']: 'stożek fusee → kołnierz zapadkowy',

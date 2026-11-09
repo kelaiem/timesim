@@ -187,7 +187,7 @@ export default {
   ['PAWLS ×2']: 'PALLEN ×2',
   ['SPRING · under']: 'VEER · onder',
   ['inner ring — base ratchet flange, keyed to the fusee']: 'binnenring — palradflens, vast op de snek',
-  ['MAINT_TEETH 24 on the flange, 35 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 op de flens, 35 op de ring · twee pallen π uiteen = 12 steken, dus ze grijpen gelijktijdig',
+  ['MAINT_TEETH 24 on the flange, 25 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 op de flens, 25 op de ring · twee pallen π uiteen = 12 steken, dus ze grijpen gelijktijdig',
   ['THE LIVE TORQUE PATH']: 'HET ACTUELE KOPPELPAD',
   ['crown → winding spur']: 'kroon → recht opwindrad',
   ['fusee cone → base ratchet flange']: 'snekkegel → palradflens',

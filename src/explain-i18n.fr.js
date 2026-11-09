@@ -248,7 +248,7 @@ export default {
   ['PAWLS ×2']: 'CLIQUETS ×2',
   ['SPRING · under']: 'RESSORT · dessous',
   ['inner ring — base ratchet flange, keyed to the fusee']: 'anneau intérieur — collerette du rochet de base, clavetée sur la fusée',
-  ['MAINT_TEETH 24 on the flange, 35 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 sur la collerette, 35 sur l’anneau · deux cliquets à π = 12 pas, donc ils agissent à l’unisson',
+  ['MAINT_TEETH 24 on the flange, 25 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 sur la collerette, 25 sur l’anneau · deux cliquets à π = 12 pas, donc ils agissent à l’unisson',
   ['THE LIVE TORQUE PATH']: 'LE CHEMIN VIVANT DU COUPLE',
   ['crown → winding spur']: 'couronne → pignon de remontage',
   ['fusee cone → base ratchet flange']: 'cône de fusée → collerette du rochet de base',

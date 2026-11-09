@@ -215,7 +215,7 @@ export default {
   ['PAWLS ×2']: 'الكلاّبات ×2',
   ['SPRING · under']: 'النابض · تحت',
   ['inner ring — base ratchet flange, keyed to the fusee']: 'الحلقة الداخلية — شفة السقاطة القاعدية، مُقرَنة بالفيوزي',
-  ['MAINT_TEETH 24 on the flange, 35 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 على الشفة و35 على الحلقة · كلاّبان متباعدان π = 12 خطوة، فيعملان معًا',
+  ['MAINT_TEETH 24 on the flange, 25 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 على الشفة و25 على الحلقة · كلاّبان متباعدان π = 12 خطوة، فيعملان معًا',
   ['THE LIVE TORQUE PATH']: 'مسار العزم الحي',
   ['crown → winding spur']: 'التاج ← ترس التعبئة المستقيم',
   ['fusee cone → base ratchet flange']: 'مخروط الفيوزي ← شفة السقاطة القاعدية',
