@@ -72,7 +72,8 @@ const { fw } = boots.ref, c = boots.ref.section.c, room = boots.room, Rr = room.
 // integers (held below), and an arrangement whose free disc is smaller (a scan's) still has a barrel to place. What the
 // rows below ask is where it could stand, not whether this boot's largest disc fits it.
 const X0 = pulleyBarrel({ ...PULLEY_BARREL, fw, c });
-const discCap = X0.RB + X0.m;
+// (plus 1e-9: the pick computes the candidate's module as 2r_pA/(k·p), and that sum can land an ulp over this one's)
+const discCap = X0.RB + X0.m + 1e-9;
 const { pick } = pickPulleyBarrel({ fw, k0: boots.ref.k, c, discCap });
 if (!pick || pick.zA !== PULLEY_BARREL.zA || pick.zB !== PULLEY_BARREL.zB || pick.NB !== PULLEY_BARREL.NB) {
   console.log(`FAIL: the pick rule does not reproduce PULLEY_BARREL (got ${pick ? `${pick.zA}:${pick.zB} NB ${pick.NB}` : 'none'})`); process.exit(1); }
