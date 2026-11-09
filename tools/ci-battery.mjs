@@ -224,7 +224,11 @@ const SPEC_BOOT_RATIO = Object.freeze({
   // with ~50 paying the cap leg and the tail. Native host (tools/native/boot.mjs), one at a time on the dev container: the
   // default 28.8 s, the point 61.4 s at main and 95.7 s with the landing (3.3×); rounded up to a tenth. The POINT tier
   // reads this table too (its boot is the same build): at 120 s flat it was DEAD on the hosted runner while its spec boot lived.
-  'stopwork-140': 3.4,   // 95.7 s against 28.8 s
+  // Re-measured 2026-11-09 by TODO 289 landing 8, heavier again: the reserve's idlers are judged now and the tail's
+  // hangers re-sited round them, so a candidate the reserve refuses is cut twice more (its links left out for the
+  // swing, then its hangers held off the reserve at that swing); the walk opens at −103.87°. The default 28.6 s, the
+  // point 122.5 s (4.28×), the same way.
+  'stopwork-140': 4.3,   // 122.5 s against 28.6 s
   'alarmaz=180': 1.8,    // 21.2 s
   // §337 stage 3's two geared points, measured the same way on 2026-11-07, M2 Max, two solo passes each (the default 13.7
   // and 13.9 s on the same two passes; each ratio is the slowest point over the fastest default, rounded up to a tenth, as
@@ -1041,22 +1045,23 @@ const SPEC_POINTS = [
   // the setting fold's judge then took the hour wheel and the reserve input pinion as envelopes (FOLD_WHEEL_ENVELOPES in
   // main.js), which removed the keyless fold's two. The cocks' 0.0122 remains.
   { name: 'stopwork-140', q: 'case=free&alarm=0&barrelstep=-140&rsvaz=0&rsvidl=2&frame=lands&drumaz=140', expect: 'declared', sweep: true,
-    // TODO 289 — the no-alarm dial stands 1 u nearer the plate (DIAL_RECLAIM_NO_ALARM), and the setting fold's tail hangs its
-    // bearings into that band: here no station under E or under D clears the rise's or the cap arbor's bush, so both run
-    // unborne on this arrangement (the stub's bush and the cap's jewel are built) — debt about the arrangement, declared
-    expectWarns: ['§186: the rim-to-bore fit', 'TODO 289: no station under E clears the rise\'s bush', 'TODO 289: no station under D clears the cap arbor\'s bush'],
-    why: '§329 landing 4 — the stop-work on the alarm-off free case with the drum turned to 140° (−7.5% case area); boots exactly the free build\'s §186 row and TODO 289\'s two unborne-tail rows, swept' },
+    // TODO 289 landing 8 — the no-alarm dial's reclaim is now the largest that leaves the setting fold's tail its two lower
+    // bushes (layout.js DIAL_RECLAIM_NO_ALARM, bound on THIS build: the rise's bush at L/D 1), so the two unborne-tail rows
+    // are gone; the dial stands 0.51 u further from the plate for them, which puts this free case over the round build's
+    // height cap (11.464 mm against CASE_HEIGHT_MAX_MM 11.367) — debt about the case, declared as the form builds declare it
+    expectWarns: ['§186: the rim-to-bore fit', '§261: cased assembly'],
+    why: '§329 landing 4 — the stop-work on the alarm-off free case with the drum turned to 140° (−7.5% case area); boots exactly the free build\'s §186 row and §261\'s depth row, swept' },
   // TODO 298 landing 3 — THE BUILD WITHOUT THE ALARM, ON A BOX FORM CASE. Until TODO 298 no alarm-free box build had ever
   // been swept: the battery's tables named the alarm's units and threw, and the case was cut to the solvers' guess, through
   // the setting lever. Now the battery stands down the module's rows on the build's own word and the case is cut to its
   // generated fit (src/form-fits.js), so this point sweeps the alarm-free metal on every run. The fitted kind is the one
-  // §339 measured and the smallest of the four. It boots four filed rows: §186's form-case fit (TODO 300: the form case
-  // does not hold its movement), TODO 289's two unborne tail bearings (the no-alarm dial's band, as stopwork-140), and
-  // §311's seconds well past the form track's inner rail (TODO 298: the fitted outline brings the rail inside the round
-  // one the well was solved against).
+  // §339 measured and the smallest of the four. It boots three filed rows: §186's form-case fit (TODO 300: the form case
+  // does not hold its movement), §261's depth cap (TODO 289 landing 8 raised the no-alarm dial for the fold's lower bushes,
+  // as stopwork-140 declares it), and §311's seconds well past the form track's inner rail (TODO 298: the fitted outline
+  // brings the rail inside the round one the well was solved against).
   { name: 'alarm-free-fitted', q: 'alarm=0&case=fitted', expect: 'declared', sweep: true,
-    expectWarns: ['§186: the rim-to-bore fit', 'TODO 289: no station under E clears the rise\'s bush', 'TODO 289: no station under D clears the cap arbor\'s bush', '§311: the seconds well'],
-    why: 'TODO 298 landing 3 — the movement without the alarm on the fitted form case at its own generated fit; boots exactly the four filed rows, swept' },
+    expectWarns: ['§186: the rim-to-bore fit', '§261: cased assembly', '§311: the seconds well'],
+    why: 'TODO 298 landing 3 — the movement without the alarm on the fitted form case at its own generated fit; boots exactly the three filed rows, swept' },
   // §329 — THE STOP IRON ON THE DEFAULT BUILD. Since the flip the Geneva stop-work is the default arrest (swept as the default
   // itself), and §47's stop iron is the supported alternative, `?arrest=stop-iron`: swept here so it stays buildable.
   { name: 'stop-iron', q: 'arrest=stop-iron', expect: 'silent', sweep: true,

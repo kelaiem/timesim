@@ -8094,27 +8094,55 @@ function siftReserveBands(pts) {
   }
   return { w1Reach, p1Z, inW1, inHub, inP1 };
 }
+// THE RESERVE'S SWINGING MEMBERS AT A SWING dl, one law for the swing solve (clearAt) and for the tail's hangers
+// (TODO 289 landing 8, TAIL_RESERVE_DISCS): w1 at rsvD0 off the barrel on the swung line, its hub, p1 on w1's
+// arbor, and the idlers (§308 L4 option B, RSV_IDLERS > 0 on a sector station only), each on the w1→pivot line at
+// the centre distances its pitch radii give, the build's own stations (rsvIdlers). Each member is a swept disc
+// {name, x, y, r, zLo, zHi} at its face reach, no margin added; `band` names the sifted point set it is read against.
+// The idlers stand in p1's plane, 1.0 thick against p1's 1.2, so p1's band (sifted at its widest) holds every point
+// that can reach them. Unjudged, the second idler met the cap arbor's hanger column on stopwork-140 at 0.0000.
+function reserveMembersAt(dl) {
+  const cs = Math.cos(dl), sn = Math.sin(dl);
+  const ux = rsvU.x * cs - rsvU.y * sn, uy = rsvU.x * sn + rsvU.y * cs;
+  const wx = P.barrel.x + ux * rsvD0, wy = P.barrel.y + uy * rsvD0;
+  // the fixed point: this candidate's own stage-two module, hence p1's reach
+  const m1 = (2 * Math.hypot(rsvPivotXY.x - wx, rsvPivotXY.y - wy)) / RSV_STAGE2_TEETH;
+  if (!(m1 > 0)) return null;
+  const w1Reach = G.gearFaceReach({ module: rsvModule0, teeth: rsvTeethW1, mates: [rsvTeethP0], thickness: 1.0, boreR: RSV_W1_BORE_R });
+  const p1Z = Z_RSV - RSV_Z_STEP;
+  // TODO 162 — gearOuterR (TODO 86) OVER-reads the built polygon by rounding
+  // out past its own tip vertex, which used to cancel w1's under-read above
+  // and hide the pair's true clearance. Read p1's bound off the metal too,
+  // for the exact args its build (far below) uses, memoized by module —
+  // every candidate swing re-derives m1, so this caches per distinct module.
+  const p1TipR = cutTipR(G.makePinion, { module: m1, teeth: rsvTeethP1, mates: [RSV_P1_MATE], thickness: 1.2, boreR: RSV_W1_BORE_R, material: MATS.steel });
+  const p1Reach = G.gearFaceReach({ module: m1, thickness: 1.2, pinion: true }).body;
+  const members = [
+    { name: 'w1', band: 'w1', x: wx, y: wy, r: rsvW1TipR, zLo: Z_RSV - w1Reach.body, zHi: Z_RSV + w1Reach.body },
+    { name: 'w1 hub', band: 'hub', x: wx, y: wy, r: w1Reach.hub.r, zLo: Z_RSV - w1Reach.hub.half, zHi: Z_RSV + w1Reach.hub.half },
+    { name: 'p1', band: 'p1', x: wx, y: wy, r: p1TipR, zLo: p1Z - p1Reach, zHi: p1Z + p1Reach },
+  ];
+  if (RSV_IDLERS > 0) {
+    const ddx = rsvPivotXY.x - wx, ddy = rsvPivotXY.y - wy, dd = Math.hypot(ddx, ddy);
+    for (let k = 1; k <= RSV_IDLERS; k++) {
+      const along = m1 * (rsvTeethP1 / 2 + RSV_IDLER_T / 2 + (k - 1) * RSV_IDLER_T);
+      const mates = [k === 1 ? rsvTeethP1 : RSV_IDLER_T, k === RSV_IDLERS ? rsvTeethW2 : RSV_IDLER_T];
+      const args = { module: m1, teeth: RSV_IDLER_T, mates, thickness: 1.0, boreR: RSV_IDLER_BORE_R };
+      const reach = G.gearFaceReach(args).body;
+      members.push({ name: `idler ${k}`, band: 'p1', x: wx + ddx / dd * along, y: wy + ddy / dd * along,
+        r: cutTipR(G.makeGear, { ...args, spokes: 0, material: MATS.brass }), zLo: p1Z - reach, zHi: p1Z + reach });
+    }
+  }
+  return { wx, wy, m1, members };
+}
 async function solveReserveSwing(pts, statics = null) {
-  const { w1Reach, p1Z, inW1, inHub, inP1 } = siftReserveBands(pts);
+  const bands = siftReserveBands(pts);
   // TODO 188 — the sift above reads every obstacle point once (~1.9M for the
   // confirmation call, 100–150 ms), so the thread goes back before the scan.
   await breathe(55);
   const clearAt = (dl) => {
-    const cs = Math.cos(dl), sn = Math.sin(dl);
-    const ux = rsvU.x * cs - rsvU.y * sn, uy = rsvU.x * sn + rsvU.y * cs;
-    const wx = P.barrel.x + ux * rsvD0, wy = P.barrel.y + uy * rsvD0;
-    // the fixed point: this candidate's own stage-two module, hence p1's reach
-    const m1 = (2 * Math.hypot(rsvPivotXY.x - wx, rsvPivotXY.y - wy))
-      / RSV_STAGE2_TEETH;
-    if (!(m1 > 0)) return { c: -Infinity, member: 'p1 (no module)' };
-    // TODO 162 — gearOuterR (TODO 86) OVER-reads the built polygon by rounding
-    // out past its own tip vertex, which used to cancel w1's under-read above
-    // and hide the pair's true clearance. Read p1's bound off the metal too,
-    // for the exact args its build (far below) uses, memoized by module —
-    // every candidate swing re-derives m1, so this caches per distinct module.
-    const p1TipR = cutTipR(G.makePinion, { module: m1, teeth: rsvTeethP1, mates: [RSV_P1_MATE], thickness: 1.2, boreR: RSV_W1_BORE_R, material: MATS.steel });
-    const p1Reach = G.gearFaceReach({ module: m1, thickness: 1.2, pinion: true }).body;
-    const p1Lo = p1Z - p1Reach - CLEAR_MARGIN, p1Hi = p1Z + p1Reach + CLEAR_MARGIN;
+    const R = reserveMembersAt(dl);
+    if (!R) return { c: -Infinity, member: 'p1 (no module)' };
     // A point either of whose plan legs, less the member's reach, stands at
     // or past the clearance so far cannot lower it (a distance is never under
     // its larger leg; LEG_LO takes the leg 1e-12 down, a thousand times what
@@ -8122,33 +8150,32 @@ async function solveReserveSwing(pts, statics = null) {
     // member that set it are the same.
     const LEG_LO = 1 - 1e-12;
     // one band's least clearance from `c0` down: the one law both the static
-    // memo and the candidate's points are measured by
-    const seg = (arr, R, c0, zBand) => {
+    // memo and the candidate's points are measured by. w1 and its hub are read
+    // over their sifted bands as they stand; p1 and the idlers, whose bands ride
+    // the swing's module, over their own band (the member's reach plus a margin)
+    const seg = (arr, mb, c0) => {
+      const banded = mb.band === 'p1', lo = mb.zLo - CLEAR_MARGIN, hi = mb.zHi + CLEAR_MARGIN;
       let m = c0;
       for (const q of arr) {
-        if (zBand && (q[2] < p1Lo || q[2] > p1Hi)) continue;
-        if (Math.abs(wx - q[0]) * LEG_LO - R >= m || Math.abs(wy - q[1]) * LEG_LO - R >= m) continue;
-        const d = Math.hypot(wx - q[0], wy - q[1]) - R;
+        if (banded && (q[2] < lo || q[2] > hi)) continue;
+        if (Math.abs(mb.x - q[0]) * LEG_LO - mb.r >= m || Math.abs(mb.y - q[1]) * LEG_LO - mb.r >= m) continue;
+        const d = Math.hypot(mb.x - q[0], mb.y - q[1]) - mb.r;
         if (d < m) m = d;
       }
       return m;
     };
+    const ptsOf = (mb, S) => mb.band === 'w1' ? S.inW1 : mb.band === 'hub' ? S.inHub : S.inP1;
     let st = null;
     if (statics) {
       st = statics.at.get(dl);
-      if (!st) {
-        st = { w1: seg(statics.inW1, rsvW1TipR, Infinity), hub: seg(statics.inHub, w1Reach.hub.r, Infinity), p1: seg(statics.inP1, p1TipR, Infinity, true) };
-        statics.at.set(dl, st);
-      }
+      if (!st) { st = R.members.map((mb) => seg(ptsOf(mb, statics), mb, Infinity)); statics.at.set(dl, st); }
     }
     let c = Infinity, member = 'none';
     const take = (v, name) => { if (v < c) { c = v; member = name; } };
-    if (st) take(st.w1, 'w1');
-    take(seg(inW1, rsvW1TipR, c), 'w1');
-    if (st) take(st.hub, 'w1 hub');
-    take(seg(inHub, w1Reach.hub.r, c), 'w1 hub');
-    if (st) take(st.p1, 'p1');
-    take(seg(inP1, p1TipR, c, true), 'p1');
+    for (const [j, mb] of R.members.entries()) {
+      if (st) take(st[j], mb.name);
+      take(seg(ptsOf(mb, bands), mb, c), mb.name);
+    }
     return { c, member };
   };
   let best = { c: -Infinity, member: 'none', swing: 0 };
@@ -9260,9 +9287,9 @@ async function siteTailBearings(B, F, g, cap) {
   // bound; a pivot under the train pivots' own radius is refused.
   const pivotDisc = (r) => ({ o: vArr(E), a: vArr(d1), r, zLo: 0, zHi: 2 * sFoot.coneR });
   // The rise's bearing is BEST EFFORT, never a clause on the cap bearing: an arrangement whose dial band leaves no
-  // room under E (the no-alarm dial stands nearer the plate; ?barrelstep=-140&alarm=0) builds the rise UNBORNE and
-  // warns — that arrangement's point declares the warning as its debt — rather than refusing every B for a bearing
-  // the fold's own clauses never asked about.
+  // room under E builds the rise with its upper pivot alone and warns, rather than refusing every B for a bearing the
+  // fold's own clauses never asked about. Since TODO 289 landing 8 no shipped build does: the no-alarm dial's reclaim
+  // (layout.js DIAL_RECLAIM_NO_ALARM) is the largest that still sites this bush, and the cap arbor's, at L/D 1.
   let riseWhy = null;
   let risePivotR = Math.min(MW_RISE_R, sFoot.zWebLo * Math.cos(phi) - MW_RISE_R - m);
   if (blanksClear(pivotDisc(risePivotR), m)) {
@@ -9281,11 +9308,18 @@ async function siteTailBearings(B, F, g, cap) {
   // (the bush's rim hangs bushR·sinφ below its axis end on a tilted journal, so the band is read at the rim)
   const riseRoom = (E.z - Z_DIAL - m - riseBushR * Math.sin(phi)) / Math.cos(phi);
   const riseBushLenAt = (s0) => Math.min(bushLengthFor(risePivotR, [riseLen - bevelLoadZ(sRiseOut) + s0, s0 + bevelLoadZ(sFoot)]), riseRoom - s0);
-  const riseDisc = (s0) => ({ o: vArr(E), a: vArr(d1), r: riseBushR, zLo: s0, zHi: s0 + riseBushLenAt(s0) });
   // (judged against the stub as it will be cut beside a sited pivot; the cap's end is settled below and only moves the stub's far end)
   const stubA0 = E.clone().addScaledVector(t3, stubStartFor(risePivotR)), stubB0 = D.clone().addScaledVector(t3, -stubEndFor(true));
-  const riseBushClear = (s0) => riseBushLenAt(s0) > 0 && !blanksClear(riseDisc(s0), m)
-    && segSegDist3(E.clone().addScaledVector(d1, s0), E.clone().addScaledVector(d1, s0 + riseBushLenAt(s0)), stubA0, stubB0) >= riseBushR + MW_RISE_R + m;
+  // TODO 289 landing 8 — the rise's bush is never shorter than its journal's diameter (L/D 1, the straddled journal's
+  // floor: the rise's upper pivot over B stands across corner B, so this bush is the second bearing, not an overhung
+  // one's). The station is the least s0 at which a bush of that FLOOR length clears the blanks and the stub (the foot
+  // corner's outboard blank leans over E, so its clearance only grows down the axis); the bush is then as long as the
+  // rule and the band allow from there, and judged again at that length. A floor-length probe keeps the search
+  // monotone: probing at the band-capped length, which shrinks as s0 grows, could step over a station that exists.
+  const riseBushFloor = 2 * risePivotR * MW_BUSH_LD_MIN;
+  const riseAt = (s0, len) => !blanksClear({ o: vArr(E), a: vArr(d1), r: riseBushR, zLo: s0, zHi: s0 + len }, m)
+    && segSegDist3(E.clone().addScaledVector(d1, s0), E.clone().addScaledVector(d1, s0 + len), stubA0, stubB0) >= riseBushR + MW_RISE_R + m;
+  const riseBushClear = (s0) => riseAt(s0, riseBushFloor);
   // --- the cap arbor's bush below D, the arbor's own radius: the stub ends short of the arbor, the cap corner's
   // inboard blank trails away along the stub, so the scan starts at the apex and walks down
   const capBore = MW_RISE_R + PIVOT_BORE_CLEAR, capBushR = capBore + MW_BUSH_WALL;
@@ -9305,7 +9339,8 @@ async function siteTailBearings(B, F, g, cap) {
     if (s > 0) while (hi - lo > 1e-3) { const mid = (lo + hi) / 2; if (clear(mid)) hi = mid; else lo = mid; }
     return hi;
   };
-  const riseS0 = riseWhy ? null : await leastClear(riseBushClear, riseRoom);
+  let riseS0 = riseWhy ? null : await leastClear(riseBushClear, riseRoom);
+  if (riseS0 !== null && !(riseBushLenAt(riseS0) >= riseBushFloor - 1e-9 && riseAt(riseS0, riseBushLenAt(riseS0)))) riseS0 = null;
   if (riseS0 === null && !riseWhy) riseWhy = 'no station under E clears the rise\'s bush within the dial band';
   // …and the cap arbor's bush the same: where the dial band leaves no room under D the arbor keeps its jewel alone
   let capWhy = null;
@@ -9594,12 +9629,12 @@ async function siteTailBearings(B, F, g, cap) {
   const riseC = E.clone().addScaledVector(d1, riseS0 + riseBushLen / 2);
   const stubC = E.clone().addScaledVector(t3, stubBushMid);
   const capC = new THREE.Vector3(D.x, D.y, D.z - capS0 - capBushLen / 2);
-  const rise = riseWhy ? null : await hangerFor('rise', riseC, d1, riseBushR, riseBushLen);
+  const rise = riseWhy ? null : await hangerFor('rise', riseC, d1, riseBushR, riseBushLen, { discs: TAIL_RESERVE_DISCS });
   if (!rise && !riseWhy) riseWhy = 'no hanger standoff outward of the rise\'s bush clears the fold';
   let stubWhy = null;
-  const stub = await hangerFor('stub', stubC, t3, MW_RISE_R + PIVOT_BORE_CLEAR + MW_BUSH_WALL, stubBush.len);
+  const stub = await hangerFor('stub', stubC, t3, MW_RISE_R + PIVOT_BORE_CLEAR + MW_BUSH_WALL, stubBush.len, { discs: TAIL_RESERVE_DISCS });
   if (!stub) stubWhy = 'no hanger standoff outward of the stub\'s bush clears the fold';
-  const capH = capWhy ? null : await hangerFor('cap', capC, Z_UP, capBushR, capBushLen);
+  const capH = capWhy ? null : await hangerFor('cap', capC, Z_UP, capBushR, capBushLen, { discs: TAIL_RESERVE_DISCS });
   if (!capH && !capWhy) capWhy = 'no hanger standoff outward of the cap arbor\'s bush clears the fold';
   // TODO 289 landing 4 — the drop's hanger. Its arm leaves the drop straight AWAY from the setting wheel's axis: the
   // minute wheel was folded off the stem line to the side away from the setting lever, and every other keyless member
@@ -9615,11 +9650,11 @@ async function siteTailBearings(B, F, g, cap) {
   const wheelDisc = { x: settingA.x, y: settingA.y, r: KW_MINUTE_DISC.r, zLo: SETTING_SPUR_Z - KW_MINUTE_DISC.half, zHi: SETTING_SPUR_Z + KW_MINUTE_DISC.half };
   let dropH = null, dropLowerWhy = null, dropChosen = null;
   if (!dropFoot.why) {
-    dropH = await hangerFor('drop', dropFoot.c, Z_UP, dropFoot.outer, dropFoot.len, { dir: dropDir, armBlanks: true, openings: dropOpenings, discs: [wheelDisc] });
+    dropH = await hangerFor('drop', dropFoot.c, Z_UP, dropFoot.outer, dropFoot.len, { dir: dropDir, armBlanks: true, openings: dropOpenings, discs: [wheelDisc, ...TAIL_RESERVE_DISCS] });
     if (dropH) dropChosen = dropFoot;
   }
   if (!dropChosen && !dropLowerAbove.why) {
-    dropH = await hangerFor('drop', dropLowerAbove.c, Z_UP, dropLowerAbove.outer, dropLowerAbove.len, { dir: dropDir, armBlanks: true, openings: dropOpenings });
+    dropH = await hangerFor('drop', dropLowerAbove.c, Z_UP, dropLowerAbove.outer, dropLowerAbove.len, { dir: dropDir, armBlanks: true, openings: dropOpenings, discs: TAIL_RESERVE_DISCS });
     if (dropH) dropChosen = dropLowerAbove;
   }
   if (!dropChosen) dropLowerWhy = [dropFoot.why ?? 'no hanger standoff away from the setting wheel reaches the foot bush past the minute wheel',
@@ -9813,11 +9848,17 @@ async function buildSettingMetal(B, parent, { candidate = false } = {}) {
       // lapped into the bush by its 40-gon's flat sag (RING_GEO_SEG), so the weld is metal on metal and not a
       // hairline over a flat: the arm's inner face sits at the polygon's flat, where the metal is
       const sag = h.bushR * (1 - Math.cos(Math.PI / RING_GEO_SEG));
-      const arm = new THREE.Mesh(new THREE.BoxGeometry(h.armLen + sag, MW_HANGER_S, MW_HANGER_S), MATS.nickel);
+      // TODO 289 landing 8 — the arm and the column are cut in segments of at most half a margin along their length:
+      // the reserve's swing solve reads obstacles as VERTICES (meshPoints), and a one-segment box has them only at its
+      // ends, so on stopwork-140 the rise's column stood through w1's plane with no vertex in w1's band and the solve
+      // passed it at 0.0000. Half a margin is the solve's own sampling law (a distance moves no faster than the thing
+      // measured), so every band at least that thick holds a ring of the member's metal.
+      const hangerSegs = (L) => Math.max(1, Math.ceil(L / (CLEAR_MARGIN / 2)));
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(h.armLen + sag, MW_HANGER_S, MW_HANGER_S, hangerSegs(h.armLen + sag), 1, 1), MATS.nickel);
       arm.name = `${tag}Arm`;
       arm.position.copy(h.c).addScaledVector(h.n, h.bushR - sag + (h.armLen + sag) / 2);
       arm.quaternion.copy(armFrame);
-      const col = new THREE.Mesh(new THREE.BoxGeometry(MW_HANGER_S, MW_HANGER_S, h.colTop - h.zBot), MATS.nickel);
+      const col = new THREE.Mesh(new THREE.BoxGeometry(MW_HANGER_S, MW_HANGER_S, h.colTop - h.zBot, 1, 1, hangerSegs(h.colTop - h.zBot)), MATS.nickel);
       col.name = `${tag}Column`;
       col.position.set(h.foot.x, h.foot.y, (h.zBot + h.colTop) / 2);
       col.quaternion.copy(armFrame);
@@ -9963,6 +10004,13 @@ const foldWheelClear = (pts) => {   // the worst 3D clearance of a candidate's p
 // cut the fold corner's opening to its blanks' footprint, the block stands 1.51 from K and no declared point needs
 // this; it stays as the fallback, warned, for an arrangement that would.
 let MW_LEG2_K_BEARING = true;
+// TODO 289 landing 8 — THE RESERVE AS THE TAIL'S HANGERS SEE IT: the swinging members (reserveMembersAt) at the
+// swing a candidate's reserve takes when its hangers are left out, as swept discs the rise's, stub's, cap's and
+// drop's arms and columns keep the margin from (hangerFor's `discs`). Empty on a first pass, so a candidate whose
+// hangers stand clear of the reserve builds exactly as before; set only when the honest judgement refuses a candidate
+// on a hanger, and carried by the winning candidate to the shipped build (CAP_SOLVE.tailDiscs), so the metal the
+// late confirmation judges is the metal the scan judged.
+let TAIL_RESERVE_DISCS = [];
 const CAP_SOLVE = await (async () => {
   const capAt = (dl) => {
     const cs = Math.cos(dl), sn = Math.sin(dl);
@@ -10013,7 +10061,7 @@ const CAP_SOLVE = await (async () => {
   };
   let foldsSeen = 0;   // candidates past the fold's own clauses (buildSettingMetal's noFold) — the walk's trigger below
   // returns the worst clause margin at the best swing (≥ 0 = open), with the clause named
-  const window = async (dl) => {
+  const judge = async (dl) => {
     const scratch = new THREE.Group();
     const M = await buildSettingMetal(capAt(dl), scratch, { candidate: true });
     if (!M.noFold) foldsSeen++;
@@ -10053,6 +10101,35 @@ const CAP_SOLVE = await (async () => {
     if (r.swing === null) return { m: r.bestC - CLEAR_MARGIN, clause: `reserve ${r.bestMember}`, s: r.bestSwing / DEG2RAD };
     return { m: Math.min(arbM, wh.m, r.clear - CLEAR_MARGIN), clause: 'open', s: r.swing / DEG2RAD, swing: r.swing };
   };
+  // TODO 289 landing 8 — A CANDIDATE REFUSED ON THE RESERVE gets a second pass where the tail's hangers may be what
+  // refused it: the reserve's swing is solved against the candidate with its hanger ARMS and COLUMNS left out (they
+  // only carry their bushes to the plate, so they are what re-routes, CLAUDE.md's "a link yields"; the bushes stay,
+  // they are the bearings), and the candidate is cut again with its hangers holding the margin off the reserve's
+  // members at that swing (TAIL_RESERVE_DISCS). The second cut is judged in full like the first; a candidate the
+  // reserve refuses with no hanger in the way refuses again on the first solve and costs one sift.
+  const HANGER_LINK = /^setting(Rise|Stub|Cap|Drop)(Arm|Column)$/;
+  const window = async (dl) => {
+    TAIL_RESERVE_DISCS = [];
+    const w = await judge(dl);
+    if (w.m >= 0 || !String(w.clause).startsWith('reserve ')) return w;
+    const scratch = new THREE.Group();
+    const M = await buildSettingMetal(capAt(dl), scratch, { candidate: true });
+    if (M.refused) { disposeTree(scratch); return w; }
+    const links = [];
+    scratch.traverse((o) => { if (o.isMesh && HANGER_LINK.test(o.name)) links.push(o); });
+    if (!links.length) { disposeTree(scratch); return w; }
+    for (const o of links) o.parent.remove(o);
+    const bare = await reserveObstaclePoints(scratch);
+    disposeTree(scratch);
+    for (const o of links) o.geometry.dispose();
+    const r = await solveReserveSwing(bare, rsvStatic);
+    if (r.swing === null) return w;
+    TAIL_RESERVE_DISCS = reserveMembersAt(r.swing).members;
+    const w2 = await judge(dl);
+    const tailDiscs = TAIL_RESERVE_DISCS;
+    TAIL_RESERVE_DISCS = [];
+    return w2.m >= 0 ? { ...w2, tailDiscs } : w;
+  };
   // every bearing tried is RECORDED (the clause, its margin, the best swing)
   // and published on window.__clock.settingFold for
   // tools/probe-234-cap-bearing.mjs — the derivation is silent at boot when it
@@ -10064,13 +10141,13 @@ const CAP_SOLVE = await (async () => {
   const STEP = Math.floor((CLEAR_MARGIN / 2 / capMeshD) / (0.25 * DEG2RAD)) * 0.25;   // 0.75 at capMeshD 5.7
   const searchBearings = async () => {
     let nearest = { d: 0, ...tried(0, await window(0)) };
-    if (nearest.m >= 0) return { open: { bearing: 0, swing: nearest.swing, scan } };   // the a+(b−a)≠b rule: no swing keeps every original expression
+    if (nearest.m >= 0) return { open: { bearing: 0, swing: nearest.swing, tailDiscs: nearest.tailDiscs ?? [], scan } };   // the a+(b−a)≠b rule: no swing keeps every original expression
     for (let d = STEP; d <= 60 + 1e-9; d += STEP)
       for (const sgn of [1, -1]) {
         await breathe(80);
         const w = tried(sgn * d, await window(sgn * d * DEG2RAD));
         await breathe(81);
-        if (w.m >= 0) return { open: { bearing: sgn * d * DEG2RAD, swing: w.swing, scan } };
+        if (w.m >= 0) return { open: { bearing: sgn * d * DEG2RAD, swing: w.swing, tailDiscs: w.tailDiscs ?? [], scan } };
         if (w.m > nearest.m) nearest = { d: sgn * d, ...w };
       }
     return { nearest };
@@ -10107,7 +10184,7 @@ const CAP_SOLVE = await (async () => {
   const nearest = heldNearest;
   console.warn(`setting traverse: no cap bearing within ±60° leaves the reserve a swing that clears the fold, this corner, the cap and the transfer arbor `
     + `at once — keeping the short way in; the battery judges it. Nearest: ${nearest.d > 0 ? '+' : ''}${nearest.d}° at swing ${nearest.s}°, ${nearest.clause} ${nearest.m.toFixed(3)}`);
-  return { bearing: 0, swing: null, scan };
+  return { bearing: 0, swing: null, tailDiscs: [], scan };
 })();
 const CAP_BEARING = CAP_SOLVE.bearing;
 const CAP_BEARING_SWING = CAP_SOLVE.swing;   // the reserve swing the bearing was solved against — the reserve build confirms it on the cut tree
@@ -10182,6 +10259,7 @@ const settingU = settingB.clone().sub(settingA).normalize();   // the STRAIGHT r
 // The fold is solved ONCE, by `solveSettingFold` above the cap-bearing solve
 // (which has to ask it where K lands for each candidate B), and cut here from
 // the same answer.
+TAIL_RESERVE_DISCS = CAP_SOLVE.tailDiscs ?? [];   // TODO 289 landing 8: the winning candidate's hangers, as the scan cut them
 const SETTING_METAL = await buildSettingMetal(settingB, keyless);
 const MW_FOLD = SETTING_METAL.F;
 // The cap's own XY, AFTER the build — sited by buildSettingMetal from B and
@@ -63457,7 +63535,16 @@ function tick(t) {
   // paid out. No tension term appears here on purpose: the spring's shape is a
   // consequence of where the drum is, not a second reading of the same state.
   // (TODO 1 — this was `rotation.z = tension · 1.4π` plus a 6% scale.)
-  mainspring.setWind(mainspring.sweepFull - (goingBarrelGroup ? goingBarrelGroup.rotation.z : drumRot));   // §339: the ribbon rides the drum it lives in
+  // What the drum has PAID OUT is a magnitude in the ribbon's own winding sense,
+  // not the drum's signed angle: TODO 115 put MOVEMENT_SENSE on drumRotAt, so on
+  // the reversed movement (−1) the signed angle is ≤ 0, `sweepFull − angle` read
+  // as MORE than full wind, and setWind clamped to the wound frame at every
+  // tension — the ribbon never morphed and only turned with the drum. Each
+  // barrel's ribbon is cut to its own hand (makeBarrel's `sense`: MOVEMENT_SENSE
+  // for the fusee drum, −MOVEMENT_SENSE for §339's spur-driven barrel), so the
+  // travel is that hand times the drum's rotation — one source per barrel.
+  const paidOut = goingBarrelGroup ? -MOVEMENT_SENSE * goingBarrelGroup.rotation.z : MOVEMENT_SENSE * drumRot;
+  mainspring.setWind(mainspring.sweepFull - paidOut);   // §339: the ribbon rides the drum it lives in
 
   // Cap pinion at the dial end of the motion-works arbor. It meshes the MINUTE
   // WHEEL, beside the cannon pinion that meshes the same wheel, so it turns
