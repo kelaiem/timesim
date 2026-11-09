@@ -4,7 +4,7 @@
 
 # The instruments
 
-426 scripts. **298 are ACCEPTANCE tests** — they decide and exit non-zero.
+427 scripts. **299 are ACCEPTANCE tests** — they decide and exit non-zero.
 **128 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
