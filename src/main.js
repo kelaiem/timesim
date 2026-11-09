@@ -9186,14 +9186,28 @@ async function siteTailBearings(B, F, g, cap) {
   // the overhung rule is then the PAIR's: their spread ≥ MW_BEVEL_OVERHANG_K × the overhang from this bush's end
   // to the wheel's plane (rule 6 below). A bush whose band reaches a fold blank there is refused, and the drop runs
   // as before, warned.
-  const dropLower = (() => {
+  const dropLowerAbove = (() => {
     const r = SETTING_ROD_R, bore = r + PIVOT_BORE_CLEAR, outer = bore + MW_BUSH_WALL, len = 2 * r * MW_BUSH_LD_MIN;
     const zLo = SETTING_SPUR_Z + KW_MINUTE_DISC.half + m + MEASURED_MARGIN_BAND, zHi = zLo + len;   // + the band: ALARM_SHEET_GAP's rule
     const hit = blanksClear({ o: [settingA.x, settingA.y, zLo], a: [0, 0, 1], r: outer, zLo: 0, zHi: len }, m);
     if (hit) return { why: `no room for the drop's lower bush between the keyless minute wheel and ${hit} by the margin` };
-    return { why: null, r, bore, outer, len, zLo, zHi, c: new THREE.Vector3(settingA.x, settingA.y, (zLo + zHi) / 2),
+    return { why: null, kind: 'above', r, bore, outer, len, zLo, zHi, c: new THREE.Vector3(settingA.x, settingA.y, (zLo + zHi) / 2),
       overhang: zLo - SETTING_SPUR_Z };
   })();
+  // --- TODO 289 landing 6: THE DROP'S FOOT BUSH, on the minute wheel's DIAL side. The drop's journal runs on straight
+  // down through the wheel's hub (one bar: `settingDropFoot`, the drop's own 0.382) into a plain bush under it, the
+  // same law (the running fit, STOCK_MIN_U wall, L/D 1), its top a margin (and the band) under the wheel's swept disc
+  // and its bottom a margin over the dial's back face. Corner A and the wheel then both stand between the drop's two
+  // bearings, the top bush over A and this one, and nothing on the drop is overhung. Landing 4's bush ABOVE the wheel
+  // would be a third bearing on one arbor, so it is the FALLBACK, for a dial that stands too near the plate to take
+  // the foot bush (the no-alarm dial does, DIAL_RECLAIM_NO_ALARM) or a foot no hanger can reach.
+  const dropFoot = (() => {
+    const r = SETTING_ROD_R, bore = r + PIVOT_BORE_CLEAR, outer = bore + MW_BUSH_WALL, len = 2 * r * MW_BUSH_LD_MIN;
+    const zHi = SETTING_SPUR_Z - KW_MINUTE_DISC.half - m - MEASURED_MARGIN_BAND, zLo = zHi - len;
+    if (!(zLo >= Z_DIAL + m + MEASURED_MARGIN_BAND)) return { why: `the dial band leaves ${(zHi - Z_DIAL - m).toFixed(4)} under the keyless minute wheel for the drop's foot bush, under its ${len.toFixed(4)}` };
+    return { why: null, kind: 'foot', r, bore, outer, len, zLo, zHi, c: new THREE.Vector3(settingA.x, settingA.y, (zLo + zHi) / 2), overhang: 0 };
+  })();
+  const dropLower = dropFoot.why ? dropLowerAbove : dropFoot;   // what the upper bush is straddled by: either holds A between the two
   const upper = {};
   {
     const riseHoleR = spec(moduleRise, sigmaB, MW_LEG2_R, MW_RISE_R).coneR + m;   // MW_RISE_PLATE_HOLE's law
@@ -9361,7 +9375,8 @@ async function siteTailBearings(B, F, g, cap) {
   const placed = [];
   // `dir` (default nOut) is the arm's heading; `armBlanks` also holds the arm off the fold blanks (the drop's runs
   // under corner A's), and `openings` are plate openings ({x, y, r} at the face) its foot keeps the margin from
-  const hangerFor = async (what, c, u, bushR, bushLen, { dir = nOut, armBlanks = false, openings = [] } = {}) => {
+  // (landing 6) `discs` are swept discs {x, y, r, zLo, zHi} on vertical axes the column and the arm keep the margin from
+  const hangerFor = async (what, c, u, bushR, bushLen, { dir = nOut, armBlanks = false, openings = [], discs = [] } = {}) => {
     const zBot = c.z - MW_HANGER_S / 2;
     const ownRod = (a, b) => segSegDist3(c.clone().addScaledVector(u, -bushLen / 2), c.clone().addScaledVector(u, bushLen / 2), a, b) < 1e-6;   // collinear with the bush: the journal it bears
     const clearAt = (off) => {
@@ -9372,6 +9387,11 @@ async function siteTailBearings(B, F, g, cap) {
       if (blanksClear(colDisc, m)) return false;
       if (armBlanks && blanksClear({ o: vArr(armA), a: [dir.x, dir.y, 0], r: MW_HANGER_S * Math.SQRT1_2, zLo: 0, zHi: Math.hypot(fx - armA.x, fy - armA.y) }, m)) return false;
       for (const o of openings) if (Math.hypot(fx - o.x, fy - o.y) < o.r + colR + m) return false;
+      for (const d of discs) {
+        if (!(colTop < d.zLo - m || zBot > d.zHi + m) && Math.hypot(fx - d.x, fy - d.y) < d.r + colR + m) return false;
+        const P = new THREE.Vector3(d.x, d.y, c.z);
+        if (!(c.z + MW_HANGER_S / 2 < d.zLo - m || c.z - MW_HANGER_S / 2 > d.zHi + m) && segSegDist3(armA, armB, P, P) < d.r + MW_HANGER_S * Math.SQRT1_2 + m) return false;
+      }
       const capZ = [Z_SETTING_CAP - SETTING_CAP_REACH, Z_SETTING_CAP + SETTING_CAP_REACH];
       if (!(colTop < capZ[0] || zBot > capZ[1]) && Math.hypot(fx - cap.x, fy - cap.y) < capTipR + colR + m) return false;
       for (const d of MW_FOLD_OBSTACLES) if (!(colTop < d.zLo || zBot > d.zHi) && Math.hypot(fx - d.o[0], fy - d.o[1]) < d.r + colR + m) return false;
@@ -9411,12 +9431,22 @@ async function siteTailBearings(B, F, g, cap) {
   // column's foot keeps the margin from A's plate opening: the drop's bore and leg 1's A-side block pocket, cut as
   // one opening since landing 2, each at its finished radius.
   const dropDir = new THREE.Vector3(settingA.x - KW_SETTING_ARBOR_XY.x, settingA.y - KW_SETTING_ARBOR_XY.y, 0).normalize();
-  let dropLowerWhy = dropLower.why;
-  const dropH = dropLowerWhy ? null : await hangerFor('drop', dropLower.c, Z_UP, dropLower.outer, dropLower.len, {
-    dir: dropDir, armBlanks: true,
-    openings: [{ x: settingA.x, y: settingA.y, r: dropHoleR + bev },
-      ...(leg1Blocks.why ? [] : [{ x: leg1Blocks.blocks[0].pocket.x, y: leg1Blocks.blocks[0].pocket.y, r: leg1Blocks.blocks[0].pocket.r + bev }])] });
-  if (!dropH && !dropLowerWhy) dropLowerWhy = 'no hanger standoff away from the setting wheel clears the fold';
+  const dropOpenings = [{ x: settingA.x, y: settingA.y, r: dropHoleR + bev },
+    ...(leg1Blocks.why ? [] : [{ x: leg1Blocks.blocks[0].pocket.x, y: leg1Blocks.blocks[0].pocket.y, r: leg1Blocks.blocks[0].pocket.r + bev }])];
+  // landing 6: the foot's arm passes UNDER the minute wheel and its column rises past the wheel's rim, so both keep the
+  // margin from the wheel's swept disc; landing 4's bush above the wheel is tried only when the foot finds no hanger
+  const wheelDisc = { x: settingA.x, y: settingA.y, r: KW_MINUTE_DISC.r, zLo: SETTING_SPUR_Z - KW_MINUTE_DISC.half, zHi: SETTING_SPUR_Z + KW_MINUTE_DISC.half };
+  let dropH = null, dropLowerWhy = null, dropChosen = null;
+  if (!dropFoot.why) {
+    dropH = await hangerFor('drop', dropFoot.c, Z_UP, dropFoot.outer, dropFoot.len, { dir: dropDir, armBlanks: true, openings: dropOpenings, discs: [wheelDisc] });
+    if (dropH) dropChosen = dropFoot;
+  }
+  if (!dropChosen && !dropLowerAbove.why) {
+    dropH = await hangerFor('drop', dropLowerAbove.c, Z_UP, dropLowerAbove.outer, dropLowerAbove.len, { dir: dropDir, armBlanks: true, openings: dropOpenings });
+    if (dropH) dropChosen = dropLowerAbove;
+  }
+  if (!dropChosen) dropLowerWhy = [dropFoot.why ?? 'no hanger standoff away from the setting wheel reaches the foot bush past the minute wheel',
+    dropLowerAbove.why ?? 'no hanger standoff away from the setting wheel clears the fold'].join('; and above the wheel, ');
   // a lower bush that found no hanger leaves the upper bush the drop's only bearing again: its overhung length, the
   // slab's whole room over the floor (above the floor no blank reaches, so the judge that sited it still holds)
   if (dropLowerWhy && !upper.drop.why && upper.drop.straddled) {
@@ -9424,7 +9454,7 @@ async function siteTailBearings(B, F, g, cap) {
     upper.drop = { ...U, straddled: false, len: U.room, sEnd: U.s0 + U.room, centre: U.o.clone().addScaledVector(U.u, U.s0 + U.room / 2) };
   }
   return {
-    upper, leg1A, leg2B, leg1Blocks, leg2Blocks, dropLower: dropLowerWhy ? { why: dropLowerWhy } : dropLower,
+    upper, leg1A, leg2B, leg1Blocks, leg2Blocks, dropLower: dropLowerWhy ? { why: dropLowerWhy } : { ...dropChosen, footWhy: dropFoot.why },
     nOut, riseWhy, stubWhy, capWhy, risePivotR, riseS0, riseBushLen, riseRoom, riseLen, stubStart, stubEnd, stubA, stubB, stubBush: { ...stubBush, mid: stubBushMid, run: stubRun },
     capS0, capBushLen, jewelZ, stoneTopZ, stoneBotZ, arborTop, arborBot, capTipR, pocketR,
     overhang: { rise: riseLen - bevelLoadZ(sRiseOut) + riseS0, stub: Math.max(sFoot.zWebHi + m - bevelLoadZ(sFoot), sCap.zWebHi + m - bevelLoadZ(sCap)) },
@@ -9603,6 +9633,14 @@ async function buildSettingMetal(B, parent, { candidate = false } = {}) {
       col.quaternion.copy(armFrame);
       parent.add(bush, arm, col);
       bearings[key] = { bush, arm, col };
+    }
+    // TODO 289 landing 6 — the drop's journal on through the minute wheel's hub to the foot bush under it: one bar with
+    // the drop, at its own radius, from the wheel's plane (where the drop ends, keyed in the hub) to the bush's bottom
+    if (T.hangers.drop && T.dropLower.kind === 'foot') {
+      const foot = makeRodSegment(new THREE.Vector3(settingA.x, settingA.y, SETTING_SPUR_Z), new THREE.Vector3(settingA.x, settingA.y, T.dropLower.zLo), SETTING_ROD_R);
+      foot.name = 'settingDropFoot';
+      parent.add(foot);
+      bearings.dropFoot = foot;
     }
     // the jewel: the dial-side setting, turned through π like addDialSidePivot's, its hole the arbor's running
     // fit, sunk a margin under the cap pocket's floor (siteTailBearings' jewelZ)
@@ -10255,7 +10293,14 @@ if (SETTING_METAL.bearings.jewel) {
   // TODO 289 landing 4 — the drop declares its lower bush (its upper is its pivot's, below); rule 6: the pair's
   // spread (bush centre to bush centre) carries the overhung wheel by the overhung-bevel rule's own ratio, and the
   // bush stands its margin over the wheel's swept disc
-  if (T.hangers.drop) {
+  if (T.hangers.drop && T.dropLower.kind === 'foot') {
+    // landing 6 — the foot pivot carries the foot bush; rule 6: the bush a margin under the wheel's disc and over the dial
+    const foot = SETTING_METAL.bearings.dropFoot, DL = T.dropLower;
+    registerSub('Keyless works', 'Setting drop', foot);
+    foot.userData.bearings = { axis: 'y', stations: [alongY(foot, T.hangers.drop.c)] };
+    if (Math.abs(DL.zHi - (SETTING_SPUR_Z - KW_MINUTE_DISC.half - CLEAR_MARGIN - MEASURED_MARGIN_BAND)) > 1e-9 || !(DL.zLo >= Z_DIAL + CLEAR_MARGIN - 1e-9))
+      console.warn(`TODO 289: the drop's foot bush spans ${DL.zLo.toFixed(4)}…${DL.zHi.toFixed(4)}, not a margin under the minute wheel's disc and over the dial's back (${Z_DIAL.toFixed(4)})`);
+  } else if (T.hangers.drop) {
     settingDrop.userData.bearings = { axis: 'y', stations: [alongY(settingDrop, T.hangers.drop.c)] };
     const U = T.upper.drop, DL = T.dropLower;
     if (!U.why) {
@@ -65804,6 +65849,7 @@ window.__clock = {
         // TODO 289 landing 4 — the drop's lower bush (siteTailBearings: dropLower) and the wheel it sits over
         dropLower: T.dropLower.why ? { why: T.dropLower.why } : { why: null, r: T.dropLower.r, bore: T.dropLower.bore, outer: T.dropLower.outer,
           len: T.dropLower.len, zLo: T.dropLower.zLo, zHi: T.dropLower.zHi, centre: vArr(T.dropLower.c), overhang: T.dropLower.overhang,
+          kind: T.dropLower.kind, footWhy: T.dropLower.footWhy ?? null, dialZ: Z_DIAL,
           wheel: { z: SETTING_SPUR_Z, ...KW_MINUTE_DISC }, dir: T.hangers.drop ? vArr(T.hangers.drop.n) : null },
         // TODO 289 landing 1 — the upper pivots over A and B (siteTailBearings: upper), and the legs cut clear of them
         upper: Object.fromEntries(['drop', 'rise'].map((k) => { const U = T.upper[k];

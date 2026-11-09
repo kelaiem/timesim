@@ -27,7 +27,7 @@ import { bootForm } from './boot-form.mjs';
 const q = process.argv[2] ?? '';
 const expr = `(async () => {
   const C = window.__clock, I = await import('./src/inspect.js'), L = await import('./src/layout.js');
-  const RODS = ['settingDrop', 'settingTraverse1', 'settingTraverse2', 'settingRise', 'settingRisePivot', 'settingStub', 'settingCapArbor', 'settingDropTopPivot', 'settingRiseTopPivot'];
+  const RODS = ['settingDrop', 'settingTraverse1', 'settingTraverse2', 'settingRise', 'settingRisePivot', 'settingStub', 'settingCapArbor', 'settingDropTopPivot', 'settingRiseTopPivot', 'settingDropFoot'];
   const BLANKS = ['mwCornerDropIn','mwCornerDropOut','mwCornerFoldIn','mwCornerFoldOut','mwCornerRiseIn','mwCornerRiseOut',
     'mwCornerFootIn','mwCornerFootOut','mwCornerCapIn','mwCornerCapOut','settingCap'];
   const BEARINGS = ['settingRiseBush', 'settingRiseArm', 'settingRiseColumn', 'settingStubBush', 'settingStubArm', 'settingStubColumn',
@@ -48,7 +48,8 @@ const expr = `(async () => {
     const c = m.getWorldPosition(new m.position.constructor()); return { r: g.radiusTop, len: g.height, LD: g.height / (2 * g.radiusTop), centre: [c.x, c.y, c.z], dir: [u.x, u.y, u.z] }; };
   // a part an arrangement declares refused (leg 2's K block, TODO 289 landing 3) is not missing
   const missing = [...FOLD].filter((n) => !mine[n] && !(n === 'settingTraverse2BlockK' && C.settingFold?.bearings?.leg2Blocks?.kRefused)
-    && !(n.startsWith('settingDrop') && n !== 'settingDrop' && !n.startsWith('settingDropTop') && C.settingFold?.bearings?.dropLower?.why));
+    && !(n.startsWith('settingDrop') && n !== 'settingDrop' && !n.startsWith('settingDropTop') && C.settingFold?.bearings?.dropLower?.why)
+    && !(n === 'settingDropFoot' && C.settingFold?.bearings?.dropLower?.kind !== 'foot'));
   const rec = C.settingFold.bearings, leg = C.settingFold.capLeg;
   // CLEAR: every bearing part against every mesh outside the fold, and against every fold blank
   const clear = [];
@@ -65,14 +66,14 @@ const expr = `(async () => {
     missing, rec, leg: leg && { phiDeg: leg.phiDeg, stub: leg.stub, sigmaEDeg: leg.sigmaEDeg, E: leg.E, D: leg.D, zCap: leg.zCap, zCapCorner: leg.zCapCorner },
     consts: { CLEAR_MARGIN: L.CLEAR_MARGIN, PIVOT_BORE_CLEAR: L.PIVOT_BORE_CLEAR, STOCK_MIN_U: L.STOCK_MIN_U, Z_DIAL: L.Z_DIAL, TURN_LD_TARGET: L.TURN_LD_TARGET },
     rods: Object.fromEntries(RODS.map((n) => [n, rod(n)])),
-    fit: { blockA: d('settingTraverse1', 'settingTraverseBlockA'), blockK: d('settingTraverse1', 'settingTraverseBlockK'), block2K: d('settingTraverse2', 'settingTraverse2BlockK'), block2B: d('settingTraverse2', 'settingTraverse2BlockB'), dropTop: d('settingDropTopPivot', 'settingDropTopBush'), riseTop: d('settingRiseTopPivot', 'settingRiseTopBush'), rise: d('settingRisePivot', 'settingRiseBush'), stub: d('settingStub', 'settingStubBush'), cap: d('settingCapArbor', 'settingCapBush'), jewel: d('settingCapArbor', 'settingCapJewel'), drop: d('settingDrop', 'settingDropBush') },
+    fit: { blockA: d('settingTraverse1', 'settingTraverseBlockA'), blockK: d('settingTraverse1', 'settingTraverseBlockK'), block2K: d('settingTraverse2', 'settingTraverse2BlockK'), block2B: d('settingTraverse2', 'settingTraverse2BlockB'), dropTop: d('settingDropTopPivot', 'settingDropTopBush'), riseTop: d('settingRiseTopPivot', 'settingRiseTopBush'), rise: d('settingRisePivot', 'settingRiseBush'), stub: d('settingStub', 'settingStubBush'), cap: d('settingCapArbor', 'settingCapBush'), jewel: d('settingCapArbor', 'settingCapJewel'), drop: d(C.settingFold?.bearings?.dropLower?.kind === 'foot' ? 'settingDropFoot' : 'settingDrop', 'settingDropBush') },
     held: { pivot: d('settingRise', 'settingRisePivot'), dropTop: d('settingDrop', 'settingDropTopPivot'), riseTop: d('settingRise', 'settingRiseTopPivot'),
       blockAPlate: toPlate('settingTraverseBlockA'), blockKPlate: toPlate('settingTraverseBlockK'), block2KPlate: toPlate('settingTraverse2BlockK'), block2BPlate: toPlate('settingTraverse2BlockB'),
       dropTopPivotPlate: toPlate('settingDropTopPivot'), riseTopPivotPlate: toPlate('settingRiseTopPivot'),
       riseArm: d('settingRiseBush', 'settingRiseArm'), riseCol: d('settingRiseArm', 'settingRiseColumn'), risePlate: toPlate('settingRiseColumn'),
       stubArm: d('settingStubBush', 'settingStubArm'), stubCol: d('settingStubArm', 'settingStubColumn'), stubPlate: toPlate('settingStubColumn'),
       capArm: d('settingCapBush', 'settingCapArm'), capCol: d('settingCapArm', 'settingCapColumn'), capPlate: toPlate('settingCapColumn'),
-      dropArm: d('settingDropBush', 'settingDropArm'), dropCol: d('settingDropArm', 'settingDropColumn'), dropPlate: toPlate('settingDropColumn'), jewelPlate: toPlate('settingCapJewel'), arborPlate: toPlate('settingCapArbor') },
+      dropFoot: d('settingDrop', 'settingDropFoot'), dropArm: d('settingDropBush', 'settingDropArm'), dropCol: d('settingDropArm', 'settingDropColumn'), dropPlate: toPlate('settingDropColumn'), jewelPlate: toPlate('settingCapJewel'), arborPlate: toPlate('settingCapArbor') },
     control: { mustMiss: d('settingRiseBush', 'settingStub'), mustMiss2: d('settingStubBush', 'settingCapArbor'), mustMiss3: d('settingRiseTopBush', 'settingDrop'), mustMiss4: d('settingTraverseBlockA', 'settingTraverse2'), mustMiss5: d('settingDropBush', 'settingTraverse1'),
       dropWheel: (() => { let v = Infinity; for (const x of (mine.settingDropBush ?? [])) for (const o of meshes) if (o.name === 'minuteWheel') v = Math.min(v, I.meshClearance(x, o)); return v; })() },
     inside: await (async () => {   // parity: a point in the part's metal crosses the plate's surfaces an odd number of times when it starts inside
@@ -115,7 +116,7 @@ console.log('\nFIT — each journal in its bush at the running fit (PIVOT_BORE_C
 const sagOf = (bore) => bore * (1 - Math.cos(Math.PI / X.ringSeg));
 for (const [k, fit, bore] of [['rise pivot ⇄ bush', X.fit.rise, R.risePivotR + K.PIVOT_BORE_CLEAR], ['stub ⇄ bush', X.fit.stub, 0.382 + K.PIVOT_BORE_CLEAR], ['cap arbor ⇄ bush', X.fit.cap, 0.382 + K.PIVOT_BORE_CLEAR]])
   row(fit <= K.PIVOT_BORE_CLEAR + 1e-6 && fit >= K.PIVOT_BORE_CLEAR - sagOf(bore) - 1e-6, k, `${fit.toFixed(4)} (fit ${K.PIVOT_BORE_CLEAR}, sag ≤ ${sagOf(bore).toFixed(4)})`);
-if (R.dropLower && !R.dropLower.why) row(X.fit.drop <= K.PIVOT_BORE_CLEAR + 1e-6 && X.fit.drop >= K.PIVOT_BORE_CLEAR - sagOf(R.dropLower.bore) - 1e-6, 'drop ⇄ its lower bush (landing 4)', `${X.fit.drop.toFixed(4)} (fit ${K.PIVOT_BORE_CLEAR}, sag ≤ ${sagOf(R.dropLower.bore).toFixed(4)})`);
+if (R.dropLower && !R.dropLower.why) row(X.fit.drop <= K.PIVOT_BORE_CLEAR + 1e-6 && X.fit.drop >= K.PIVOT_BORE_CLEAR - sagOf(R.dropLower.bore) - 1e-6, R.dropLower.kind === 'foot' ? 'drop\'s foot ⇄ its bush under the minute wheel (landing 6)' : 'drop ⇄ its lower bush above the minute wheel (landing 4, the fallback)', `${X.fit.drop.toFixed(4)} (fit ${K.PIVOT_BORE_CLEAR}, sag ≤ ${sagOf(R.dropLower.bore).toFixed(4)})`);
 else row(false, 'drop ⇄ its lower bush (landing 4)', R.dropLower?.why ?? 'not sited');
 for (const k of ['drop', 'rise']) { const U = R.upper?.[k]; if (!U || U.why) { row(false, `${k} upper pivot ⇄ bush`, U?.why ?? 'not sited'); continue; }
   const v = X.fit[k + 'Top']; row(v <= K.PIVOT_BORE_CLEAR + 1e-6 && v >= K.PIVOT_BORE_CLEAR - sagOf(U.bore) - 1e-6, `${k} upper pivot ⇄ bush (landing 1)`, `${v.toFixed(4)} (fit ${K.PIVOT_BORE_CLEAR}, sag ≤ ${sagOf(U.bore).toFixed(4)})`); }
@@ -132,6 +133,7 @@ for (const [k, v, what] of [['pivot ⇄ rise rod', X.held.pivot, 'one body'], ['
   ['stub bush ⇄ arm', X.held.stubArm, 'weld'], ['stub arm ⇄ column', X.held.stubCol, 'weld'], ['stub column ⇄ plate', X.held.stubPlate, 'planted'],
   ['cap bush ⇄ arm', X.held.capArm, 'weld'], ['cap arm ⇄ column', X.held.capCol, 'weld'], ['cap column ⇄ plate', X.held.capPlate, 'planted'],
   ['cap arbor ⇄ plate', X.held.arborPlate, 'the upper pivot in the jewel\'s recess'],
+  ...(R.dropLower?.kind === 'foot' ? [['drop ⇄ its foot', X.held.dropFoot, 'one body']] : []),
   ...(R.dropLower?.why ? [] : [['drop bush ⇄ arm', X.held.dropArm, 'weld'], ['drop arm ⇄ column', X.held.dropCol, 'weld'], ['drop column ⇄ plate', X.held.dropPlate, 'planted']])])
   row(v <= 1e-6, `${k} (${what})`, v.toFixed(4));
 row(X.inside.jewel === true, 'jewel housed: its collar stands inside the plate\'s metal (parity ray)', `surface distance ${X.held.jewelPlate.toFixed(4)}`);
@@ -155,9 +157,13 @@ const riseEndZ = X.leg.E[2] - (R.riseS0 + R.riseBushLen) * Math.cos(X.leg.phiDeg
 row(riseEndZ >= K.Z_DIAL + m - 1e-6, 'the rise\'s pivot ends inside the dial band by the margin', `${riseEndZ.toFixed(4)} vs ${(K.Z_DIAL + m).toFixed(4)}`);
 if (R.dropLower && !R.dropLower.why) { const DL = R.dropLower, U = R.upper?.drop;
   row(near(DL.bore, 0.382 + K.PIVOT_BORE_CLEAR) && near(DL.outer - DL.bore, K.STOCK_MIN_U) && near(DL.len, 2 * 0.382 * R.ldMin), 'the drop\'s lower bush = the drop\'s 0.382 + fit, STOCK_MIN_U wall, L/D 1', `bore ${DL.bore.toFixed(4)} len ${DL.len.toFixed(4)}`);
+  if (DL.kind === 'foot') {
+    row(near(DL.zHi, DL.wheel.z - DL.wheel.half - m, 1e-5) && DL.zLo >= DL.dialZ + m - 1e-6 && X.control.dropWheel >= m - 1e-6, 'the drop\'s foot bush stands a margin under the keyless minute wheel and over the dial (record and metal)', `z ${DL.zLo.toFixed(4)}…${DL.zHi.toFixed(4)}, wheel bottom ${(DL.wheel.z - DL.wheel.half).toFixed(4)}, dial ${DL.dialZ.toFixed(4)}, measured ${X.control.dropWheel.toFixed(4)}`);
+    row(X.rods.settingDropFoot && near(X.rods.settingDropFoot.r, 0.382) && near(X.rods.settingDropFoot.len, DL.wheel.z - DL.zLo, 1e-5), 'the drop\'s foot is its own 0.382 from the wheel\'s plane to the bush\'s bottom', X.rods.settingDropFoot && `r ${X.rods.settingDropFoot.r.toFixed(4)} len ${X.rods.settingDropFoot.len.toFixed(4)}`);
+  } else {
   row(near(DL.zLo, DL.wheel.z + DL.wheel.half + m, 1e-5) && X.control.dropWheel >= m - 1e-6, 'the drop\'s lower bush stands a margin over the keyless minute wheel (record and metal)', `rim z ${DL.zLo.toFixed(4)}, wheel top ${(DL.wheel.z + DL.wheel.half).toFixed(4)}, measured ${X.control.dropWheel.toFixed(4)}`);
-  row(near(DL.overhang, DL.zLo - DL.wheel.z), 'the wheel\'s overhang is read from the bush\'s end to the wheel\'s plane', DL.overhang.toFixed(4));
-  if (U && !U.why) { const spread = U.centre[2] - DL.centre[2];
+  row(near(DL.overhang, DL.zLo - DL.wheel.z), 'the wheel\'s overhang is read from the bush\'s end to the wheel\'s plane', DL.overhang.toFixed(4)); }
+  if (U && !U.why && DL.kind !== 'foot') { const spread = U.centre[2] - DL.centre[2];
     row(spread >= R.overhangK * DL.overhang - 1e-6, 'the drop\'s two bushes carry the overhung wheel (spread ≥ 2× its overhang)', `${spread.toFixed(4)} vs ${R.overhangK} × ${DL.overhang.toFixed(4)}`);
     row(U.straddled, 'the drop\'s upper bush is straddled now (corner A between the two)'); }
   row(R.hangers.drop?.armLen >= R.hangerS - 1e-9, 'drop hanger\'s arm at least a section long', R.hangers.drop?.armLen.toFixed(4)); }
@@ -180,7 +186,8 @@ row(X.rods.settingStub.len <= X.leg.stub - R.stubStart - R.stubEnd + 1e-6 && X.r
 console.log('\nREPORT — the overhung-bevel rule, achieved (bearing spread / overhang, rule 2×):');
 if (R.upper?.rise && !R.upper.rise.why) console.log(`  rise  straddled since landing 1 (its upper bush over B, ${R.upper.rise.len.toFixed(3)} long, and the bush past E, ${R.riseBushLen.toFixed(3)})`);
 else console.log(`  rise  ${(R.riseBushLen / R.overhang.rise).toFixed(2)}×  (bush ${R.riseBushLen.toFixed(3)}, overhang ${R.overhang.rise.toFixed(3)}; the dial band caps the bush — TODO 289 residue)`);
-if (R.dropLower && !R.dropLower.why && R.upper?.drop && !R.upper.drop.why) console.log(`  drop  ${((R.upper.drop.centre[2] - R.dropLower.centre[2]) / R.dropLower.overhang).toFixed(2)}×  (two bushes ${(R.upper.drop.centre[2] - R.dropLower.centre[2]).toFixed(3)} apart, the minute wheel overhung ${R.dropLower.overhang.toFixed(3)} past the lower; corner A straddled — landing 4)`);
+if (R.dropLower?.kind === 'foot' && R.upper?.drop && !R.upper.drop.why) console.log(`  drop  straddled since landing 6 (its upper bush over A and its foot bush under the minute wheel, ${(R.upper.drop.centre[2] - R.dropLower.centre[2]).toFixed(3)} apart; corner A and the wheel between them)`);
+else if (R.dropLower && !R.dropLower.why && R.upper?.drop && !R.upper.drop.why) console.log(`  drop  ${((R.upper.drop.centre[2] - R.dropLower.centre[2]) / R.dropLower.overhang).toFixed(2)}×  (two bushes ${(R.upper.drop.centre[2] - R.dropLower.centre[2]).toFixed(3)} apart, the minute wheel overhung ${R.dropLower.overhang.toFixed(3)} past the lower; corner A straddled — landing 4)`);
 else if (R.upper?.drop && !R.upper.drop.why) console.log(`  drop  ONE bearing, its upper bush over A (${R.upper.drop.len.toFixed(3)} long, the band's room); the minute wheel at its foot is overhung ${(R.upper.drop.s0 + X.rods.settingDrop.len).toFixed(3)} below the bush — its lower bearing refused here: ${R.dropLower?.why}`);
 if (R.foldOpening) { const O = R.foldOpening, K = [O.x, O.y];
   const ext = (dir) => Math.max(...O.pts.map(([x, y]) => (x - K[0]) * dir[0] + (y - K[1]) * dir[1]));
