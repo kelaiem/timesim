@@ -123,12 +123,9 @@ export function mergeInspection(parts, axisMeta) {
     let rec = byPair.get(row.pair);
     if (!rec) byPair.set(row.pair, rec = { pair: row.pair, class: row.class, axes: {} });
     if (rec.class !== row.class) throw new Error(`${row.pair} classed ${rec.class} and ${row.class} in two slices`);
-    // §122 fix two — coverage is a function of class (every EXPECTED row is
-    // marked raw-after-first-confirmed), so the merge re-derives it below the
-    // way it re-derives summary; here it only guards against a slice that
-    // disagrees, the class check's own pattern.
-    if ((row.coverage ?? null) !== (row.class === 'EXPECTED' ? 'raw-after-first-confirmed' : null))
-      throw new Error(`${row.pair} carries coverage '${row.coverage}' against class ${row.class}`);
+    // §338 landing 7 retired §122's coverage mark (no pose is trusted raw), so a
+    // slice still carrying one is from another tree.
+    if (row.coverage !== undefined) throw new Error(`${row.pair} carries coverage '${row.coverage}', which no row has since §338 landing 7`);
     for (const [ax, fs] of Object.entries(row.axes)) {
       if (rec.axes[ax]) throw new Error(`axis ${ax} reported by two slices for ${row.pair}`);
       rec.axes[ax] = fs;
@@ -140,7 +137,6 @@ export function mergeInspection(parts, axisMeta) {
     const ordered = {};
     for (const ax of order) if (r.axes[ax]) ordered[ax] = r.axes[ax];
     r.axes = ordered;
-    if (r.class === 'EXPECTED') r.coverage = 'raw-after-first-confirmed'; // §122 — before summary, so key order matches a whole run's rows byte for byte
     r.summary = Object.entries(r.axes)
       .map(([ax, fs]) => `${ax}: ${fs.length}/${nOf.get(ax) + 1} poses (f ${Math.min(...fs)}–${Math.max(...fs)})`)
       .join('; ');

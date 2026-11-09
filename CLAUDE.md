@@ -1092,8 +1092,15 @@ importing nothing; never edit it). A new check writes its query in JS through
 `probe-338-kernel-parity.mjs` holds it (G3): the same verdicts, no gap read
 larger, and the leaves it reads smaller listed (the reference's false 0).
 Since landing 6 it also answers `Kernel.intersects`, the exact boolean the
-penetration bisections ask; CONTACT (`Kernel.touches`, `meshesIntersect`'s
-question, which counts a running fit) stays the reference in every mode.
+penetration bisections ask. **Since landing 7 CONTACT is exact**:
+`meshesIntersect` asks whether the surfaces meet or stand under `CONTACT_TOUCH`
+(1e-4, the running fit its arbitration always accepted) through
+`Kernel.exactMeets`/`Kernel.exactDistance`, whose JS body `src/exact-mesh.js` is
+`kernel.cpp` ported operation for operation and held to it by `Object.is` — so a
+change to either is a change to both, and the parity probe fails the one left
+behind. Every box gate in front of a contact test skips only past
+`CONTACT_TOUCH` (`boxesCanTouch`), and no pose is trusted raw any more. A flush
+seat now reads as contact, which is why `intraUnit` declares five more kisses.
 
 State (camera pose, wind, τ) persists via the dev server's `/__state` temp
 file, falling back to `localStorage`. **Back it up before clearing it** —
