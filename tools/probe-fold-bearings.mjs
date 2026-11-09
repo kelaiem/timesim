@@ -193,6 +193,9 @@ if (R.foldOpening) { const O = R.foldOpening, K = [O.x, O.y];
   const ext = (dir) => Math.max(...O.pts.map(([x, y]) => (x - K[0]) * dir[0] + (y - K[1]) * dir[1]));
   const u = X.rods.settingTraverse2.dir, lat = [-u[1], u[0]];
   console.log(`  fold opening (landing 5): the blanks' footprint, ${O.pts.length} vertices — along leg 2 ${ext(u).toFixed(3)} / back ${ext([-u[0], -u[1]]).toFixed(3)}, across ${ext(lat).toFixed(3)} / ${ext([-lat[0], -lat[1]]).toFixed(3)}, circumscribed ${O.r.toFixed(3)}; the sphere's circle it replaced r ${O.sphereR.toFixed(3)}`); }
+for (const [k, pts, U] of [['A', R.dropOutline, R.upper?.drop], ['B', R.riseOutline, R.upper?.rise]]) if (pts && U && !U.why) {
+  const ox = U.apex[0], oy = U.apex[1], ext = (a) => Math.max(...pts.map(([x, y]) => (x - ox) * Math.cos(a) + (y - oy) * Math.sin(a)));
+  console.log(`  ${k}'s blind bore (landing 7): the blanks' footprint, ${pts.length} vertices — reach ${ext(0).toFixed(2)} ${ext(Math.PI / 2).toFixed(2)} ${ext(Math.PI).toFixed(2)} ${ext(-Math.PI / 2).toFixed(2)} (+x +y −x −y), where the sphere's circle reached ${U.coneR.toFixed(3)} + the margin`); }
 console.log(`  stub  ${(R.stubBush.len / R.overhang.stub).toFixed(2)}×  (bush ${R.stubBush.len.toFixed(3)}, overhang ${R.overhang.stub.toFixed(3)})`);
 console.log(`  cap   straddled (jewel to bush ${(X.rods.settingCapArbor.len).toFixed(3)} of arbor)`);
 console.log('\nREPORT — the drop and both legs: nearest metal outside the fold');
