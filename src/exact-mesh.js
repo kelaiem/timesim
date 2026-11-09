@@ -46,9 +46,32 @@ function selectK(key, idx, lo, hi, k) {
   }
 }
 
-export function exactGeom(geometry) {
-  let g = cache.get(geometry);
-  if (g) return g;
+// §338 landing 9 — A MORPHING MESH IS REFITTED, NOT REBUILT. The chain and the
+// mainspring ribbon install a NEW geometry at every pose (the chain re-wraps, the
+// ribbon winds), so this cache, keyed by geometry, missed on every pose: 721 builds
+// of the chain's 23,856 triangles on `inspection:wind` alone, 27.5% of the battery's
+// heavy check time. Both keep their TRIANGLES: the same vertices joined the same
+// way. Not their index ORDER: three-mesh-bvh's computeBoundsTree reorders a
+// geometry's index triples in place (the chain shares one index array across its
+// geometries, the ribbon's is copied), so an index compared as written matches
+// nothing. A triangle is named by its vertex triple, which a reorder moves but never
+// renumbers. So a geometry of a FAMILY already built — the same vertex count, and the
+// same SET of triples, every one of the family's found exactly once (an
+// order-independent hash only finds the candidate) — takes the family's tree SHAPE,
+// each slot holding the same triangle it held, and recomputes only what depends on
+// the positions: the triangles in tree order, every leaf's box from its triangles,
+// every inner box as the union of its children's (children are numbered after their
+// parent, so one descending pass).
+// The union of exact boxes IS the exact box of the subtree (min of mins), so every
+// box is bit-identical to the one a pass over the same triangles computes; only the
+// tree's shape is the family's rather than a fresh median split. And no answer
+// depends on the shape: a pair is pruned only when its bound clears the best by
+// PRUNE_PAD, so the distance is the exact minimum over every pair under the bound
+// and the meet is true exactly when some pair meets, whatever the order of the
+// visit (the compiled kernel still builds fresh, and shadow holds the two Object.is).
+const families = new Map();   // `${n}:${ntri}:${hash}` → the family's built tree (its slots' triples in `slotKey`)
+
+function intake(geometry) {
   const pos = geometry.attributes.position;
   const n = pos.count;
   const ix = geometry.index ? geometry.index.array : null;
@@ -57,12 +80,84 @@ export function exactGeom(geometry) {
   const f32 = new Float32Array(n * 3);
   if (pos.isInterleavedBufferAttribute || pos.itemSize !== 3) for (let i = 0; i < n; i++) { f32[3 * i] = pos.getX(i); f32[3 * i + 1] = pos.getY(i); f32[3 * i + 2] = pos.getZ(i); }
   else f32.set(pos.array.subarray(0, n * 3));
-  const raw = new Float64Array(ntri * 9), cen = new Float64Array(ntri * 3), order = new Int32Array(ntri), key = new Float64Array(ntri);
-  for (let t = 0; t < ntri; t++) {
+  const raw = new Float64Array(ntri * 9);
+  for (let t = 0; t < ntri; t++)
     for (let c = 0; c < 3; c++) {
       const v = ix ? ix[3 * t + c] : 3 * t + c;
       for (let a = 0; a < 3; a++) raw[9 * t + 3 * c + a] = f32[3 * v + a];
     }
+  // each triangle named by its vertex triple, as one exact integer (n³ < 2⁵³, else no family)
+  const keyed = n * n * n < 9007199254740992;
+  const tkey = keyed ? new Float64Array(ntri) : null;
+  let h = 0;   // order-independent: a sum of mixed triple keys, mod 2³²
+  if (keyed) for (let t = 0; t < ntri; t++) {
+    const k = ix ? (ix[3 * t] * n + ix[3 * t + 1]) * n + ix[3 * t + 2] : t;
+    tkey[t] = k;
+    let x = Math.imul((k % 4294967296) ^ Math.floor(k / 4294967296), 2654435761) >>> 0;
+    x = Math.imul(x ^ (x >>> 15), 2246822519) >>> 0;
+    h = (h + x) >>> 0;
+  }
+  return { n, ntri, raw, tkey, famKey: keyed ? `${n}:${ntri}:${h}` : null };
+}
+
+// The family's shape, this geometry's positions; null when the triangle sets differ.
+function refit(fam, raw, ntri, tkey) {
+  const { nnode, left, start, count, slotKey } = fam;
+  const where = new Map();
+  for (let t = 0; t < ntri; t++) { if (where.has(tkey[t])) return null; where.set(tkey[t], t); }
+  const order = new Int32Array(ntri);
+  for (let t = 0; t < ntri; t++) { const id = where.get(slotKey[t]); if (id === undefined) return null; order[t] = id; }
+  const tri = new Float64Array(ntri * 9);
+  for (let t = 0; t < ntri; t++) for (let k = 0; k < 9; k++) tri[9 * t + k] = raw[9 * order[t] + k];
+  const mn = new Float64Array(nnode * 3), mx = new Float64Array(nnode * 3);
+  for (let slot = nnode - 1; slot >= 0; slot--) {
+    const o = 3 * slot;
+    mn[o] = mn[o + 1] = mn[o + 2] = Infinity;
+    mx[o] = mx[o + 1] = mx[o + 2] = -Infinity;
+    if (left[slot] < 0) {
+      for (let t = start[slot]; t < start[slot] + count[slot]; t++)
+        for (let c = 0; c < 3; c++) for (let a = 0; a < 3; a++) {
+          mn[o + a] = dmin(mn[o + a], tri[9 * t + 3 * c + a]);
+          mx[o + a] = dmax(mx[o + a], tri[9 * t + 3 * c + a]);
+        }
+    } else {
+      for (const ch of [left[slot], left[slot] + 1])
+        for (let a = 0; a < 3; a++) {
+          mn[o + a] = dmin(mn[o + a], mn[3 * ch + a]);
+          mx[o + a] = dmax(mx[o + a], mx[3 * ch + a]);
+        }
+    }
+  }
+  // the scratch AS B is per query (stamped by query id), so a family shares it
+  return { ntri, nnode, tri, mn, mx, left, start, count, slotKey,
+    btri: fam.btri, bmn: fam.bmn, bmx: fam.bmx, boxStamp: fam.boxStamp, triStamp: fam.triStamp };
+}
+
+export const exactStats = { builds: 0, refits: 0 };   // read by the battery's report and the probe
+
+export function exactGeom(geometry) {
+  let g = cache.get(geometry);
+  if (g) return g;
+  const { ntri, raw, tkey, famKey } = intake(geometry);
+  const fam = famKey !== null && ntri > LEAF ? families.get(famKey) : undefined;
+  if (fam) {
+    g = refit(fam, raw, ntri, tkey);
+    if (g) { exactStats.refits++; cache.set(geometry, g); return g; }
+  }
+  g = build(raw, ntri);
+  exactStats.builds++;
+  if (famKey !== null && ntri > LEAF) {
+    g.slotKey = new Float64Array(ntri);
+    for (let t = 0; t < ntri; t++) g.slotKey[t] = tkey[g.order[t]];
+    families.set(famKey, g);
+  }
+  cache.set(geometry, g);
+  return g;
+}
+
+function build(raw, ntri) {
+  const cen = new Float64Array(ntri * 3), order = new Int32Array(ntri), key = new Float64Array(ntri);
+  for (let t = 0; t < ntri; t++) {
     for (let a = 0; a < 3; a++) cen[3 * t + a] = (raw[9 * t + a] + raw[9 * t + 3 + a] + raw[9 * t + 6 + a]) / 3.0;
     order[t] = t;
   }
@@ -81,7 +176,7 @@ export function exactGeom(geometry) {
       }
     }
   };
-  const build = (slot, s, cnt) => {
+  const split = (slot, s, cnt) => {
     boxOf(s, cnt, slot);
     start[slot] = s; count[slot] = cnt; left[slot] = -1;
     if (cnt <= LEAF) return;
@@ -94,19 +189,17 @@ export function exactGeom(geometry) {
     selectK(key, order, s, s + cnt, s + half);
     const l = nnode; nnode += 2;
     left[slot] = l;
-    build(l, s, half);
-    build(l + 1, s + half, cnt - half);
+    split(l, s, half);
+    split(l + 1, s + half, cnt - half);
   };
-  if (ntri) build(0, 0, ntri);
+  if (ntri) split(0, 0, ntri);
   else { mn.fill(Infinity, 0, 3); mx.fill(-Infinity, 0, 3); left[0] = -1; start[0] = 0; count[0] = 0; }
   const tri = new Float64Array(ntri * 9);
   for (let t = 0; t < ntri; t++) for (let k = 0; k < 9; k++) tri[9 * t + k] = raw[9 * order[t] + k];
-  g = { ntri, nnode, tri, mn, mx, left, start, count,
+  return { ntri, nnode, tri, mn, mx, left, start, count, order,
     // this geometry's scratch AS B: its triangles and boxes mapped into a query's A frame
     btri: new Float64Array(ntri * 9), bmn: new Float64Array(nnode * 3), bmx: new Float64Array(nnode * 3),
     boxStamp: new Uint32Array(nnode), triStamp: new Uint32Array(nnode) };
-  cache.set(geometry, g);
-  return g;
 }
 
 // ---------------------------------------------------------------------------

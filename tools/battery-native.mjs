@@ -65,7 +65,8 @@ async function runShard({ query, tasks, kernel = 'js' }) {
       if (st.state === 'error') { out.push({ key: t.key, error: String(st.error) }); break; }
     }
   }
-  return { bootMs, warns, axes: I.AXES.map((a) => ({ name: a.name, n: a.n })), out, kernel: I.kernelStats() };
+  const X = await import('../src/exact-mesh.js');   // §338 landing 9 — the js trees: built fresh, or refitted from a family
+  return { bootMs, warns, axes: I.AXES.map((a) => ({ name: a.name, n: a.n })), out, kernel: I.kernelStats(), trees: { ...X.exactStats } };
 }
 
 if (!isMainThread) {
@@ -146,6 +147,7 @@ if (!isMainThread) {
     console.log(`  ${n ? 'FAIL' : 'PASS'}  ${e.name.padEnd(20)} ${String((r.ms / 1000).toFixed(1)).padStart(7)} s  ${e.gate}${n ? ` (${n} failing)` : ''}${note}`.slice(0, 400));
   }
   for (const l of lines) console.log(l);
+  { const ts = (k) => shards.reduce((a, x) => a + ((x.trees && x.trees[k]) || 0), 0); console.log(`exact trees (js body): ${ts('builds')} built, ${ts('refits')} refitted from a family`); }
   if (KERNEL !== 'js') {
     const ks = shards.map((s) => s.kernel);
     console.log(`kernel: ${KERNEL}`);
