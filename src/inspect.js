@@ -48,8 +48,8 @@ import { auditLubrication, LUBRICATION, LUBRICATION_DEBT, LUBRICATION_WAIVERS } 
 // is the one main.js already evaluated: importing it here re-runs no boot
 // handshake and arms no marker.
 import { aesthetics, mergeAesthetics } from './aesthetics.js';
-import { kernelMode, wasmDistance, shadowTally, wasmIntersects, shadowTallyBool, shadowTallyExact } from './kernel.js';   // §338 landings 5–7
-import { exactDistance, exactMeets } from './exact-mesh.js';   // §338 landing 7 — the exact primitives' JS reference
+import { kernelMode, wasmDistance, wasmIntersects, shadowTallyExact } from './kernel.js';   // §338 landings 5–8
+import { exactDistance, exactMeets } from './exact-mesh.js';   // §338 landings 7–8 — the primitives' JS reference
 export { useKernel, kernelMode, kernelStats } from './kernel.js';
 
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
@@ -998,7 +998,7 @@ function bvhFor(mesh) {
 // `meshesIntersect`'s boolean, `mtvDepth` / `stoneIntersectsWheel` (whose
 // bisected depth is a WORLD translation) and `sawRideDepth` (a world rotation)
 // were already exact and are left alone. The distance paths are what read a
-// frame's units: `meshClearance`, `sampledVerdict`, `sampledClearance`, the
+// frame's units: `meshClearance`, `sampledVerdict`, the
 // anchor checks' `closestPointToPoint`, and the hand-off rulers.
 const _frameCache = new WeakMap();   // mesh → its reused view
 const _bakeCache = new WeakMap();    // source geometry → { key, ver, geometry }
@@ -1021,56 +1021,37 @@ function bakedGeometry(src, L) {
   return g;
 }
 // §338 landing 5 — THE KERNEL INTERFACE. Every geometric primitive a check asks
-// for goes through `Kernel`, and its JS body (three-mesh-bvh) is the REFERENCE: a
-// new check writes its query here, in JS, and lands (§338's first design rule).
-// src/kernel.js may answer a primitive with the compiled kernel instead, held to
-// this body by tools/probe-338-kernel-parity.mjs; it can answer `distance`
-// (landing 5) and `intersects` (landing 6).
+// for goes through `Kernel`, and its JS body is the REFERENCE: a new check writes
+// its query here, in JS, and lands (§338's first design rule). Since landing 8 both
+// primitives are EXACT on the computed corners in every mode: their JS body is
+// src/exact-mesh.js, an operation-for-operation port of tools/kernel/kernel.cpp, and
+// src/kernel.js may answer with the compiled kernel instead, bit for bit
+// (tools/probe-338-kernel-parity.mjs holds Object.is on every answer; shadow runs
+// both and tallies any difference). Until then the JS body was three-mesh-bvh, whose
+// tri–tri distance short-circuits to a false 0 and whose boolean has a measured
+// false-positive mode (landing 6's shadow: 1,898 of 720,028 calls).
 const Kernel = {
   // The closest distance between `gA` (its own frame) and `gB` placed by `m`
-  // (B's frame → A's), or a value at or over `upper` (Infinity included) when no
-  // pair is closer than it.
+  // (B's frame → A's), or Infinity when no pair is closer than `upper`. Exact only
+  // between RIGID frames (rigidFrame), as any distance is.
   distance(gA, gB, m, upper) {
     const k = kernelMode();
     if (k === 'wasm') return wasmDistance(gA, gB, m.elements, upper);
-    const t0 = k === 'shadow' ? performance.now() : 0;
-    const bvh = bvhForGeometry(gA);
-    bvhForGeometry(gB);
-    const hit = bvh.closestPointToGeometry(gB, m, {}, {}, 0, upper);
-    const d = hit ? hit.distance : Infinity;
-    if (k === 'shadow') shadowTally(gA, gB, m.elements, upper, d, performance.now() - t0);
-    return d;
+    if (k !== 'shadow') return exactDistance(gA, gB, m.elements, upper);
+    const t0 = performance.now(), r = exactDistance(gA, gB, m.elements, upper), t1 = performance.now();
+    const w = wasmDistance(gA, gB, m.elements, upper);
+    shadowTallyExact('distance', r, w, t1 - t0, performance.now() - t1);
+    return r;
   },
-  // Does any triangle of `gA` (its own frame) meet any triangle of `gB` placed
-  // by `m`? An incidence predicate, so `m` may be any invertible affine map —
-  // the three boolean sites pass world matrices as they stand.
+  // Does any triangle of `gA` (its own frame) meet any triangle of `gB` placed by
+  // `m`? An incidence predicate, so `m` may be any invertible affine map.
   intersects(gA, gB, m) {
     const k = kernelMode();
     if (k === 'wasm') return wasmIntersects(gA, gB, m.elements);
-    const t0 = k === 'shadow' ? performance.now() : 0;
-    const r = bvhForGeometry(gA).intersectsGeometry(gB, m);
-    if (k === 'shadow') shadowTallyBool(gA, gB, m.elements, r, performance.now() - t0);
-    return r;
-  },
-  // §338 landing 7 — the EXACT primitives, which CONTACT is built on. The two
-  // above keep three-mesh-bvh's answers, false 0 and false positive included,
-  // because the sweeps that read them were landed against those answers. These
-  // are exact on the computed corners in every mode: src/exact-mesh.js is their
-  // JS body, an operation-for-operation port of tools/kernel/kernel.cpp, and the
-  // compiled kernel accelerates it bit for bit (probe-338-kernel-parity.mjs holds
-  // Object.is on every answer; shadow runs both and tallies any difference).
-  exactMeets(gA, gB, m) {
-    const k = kernelMode();
-    if (k === 'wasm') return wasmIntersects(gA, gB, m.elements);
-    const r = exactMeets(gA, gB, m.elements);
-    if (k === 'shadow') shadowTallyExact('meets', r, wasmIntersects(gA, gB, m.elements));
-    return r;
-  },
-  exactDistance(gA, gB, m, upper) {
-    const k = kernelMode();
-    if (k === 'wasm') return wasmDistance(gA, gB, m.elements, upper);
-    const r = exactDistance(gA, gB, m.elements, upper);
-    if (k === 'shadow') shadowTallyExact('distance', r, wasmDistance(gA, gB, m.elements, upper));
+    if (k !== 'shadow') return exactMeets(gA, gB, m.elements);
+    const t0 = performance.now(), r = exactMeets(gA, gB, m.elements), t1 = performance.now();
+    const w = wasmIntersects(gA, gB, m.elements);
+    shadowTallyExact('meets', r, w, t1 - t0, performance.now() - t1);
     return r;
   },
 };
@@ -1140,8 +1121,8 @@ const _matRev = new THREE.Matrix4();
 // bought (landing 6, 720,028 calls): 1,898 positives on pairs at least 1e-4 apart,
 // which the raw path counted as contact on EXPECTED pairs, and 15 running fits under
 // 1e-4 the boolean said false, which no path ever asked about. Both were answers
-// about the instrument rather than the metal. The exact primitives (Kernel.exactMeets,
-// Kernel.exactDistance) refuse both, in every kernel mode and both hosts, and they are
+// about the instrument rather than the metal. The exact primitives (Kernel.intersects,
+// Kernel.distance) refuse both, in every kernel mode and both hosts, and they are
 // cheap enough to ask at every pose, so the raw path is gone.
 //
 // The meet is an incidence question, asked under the world map as it stands (any
@@ -1171,10 +1152,10 @@ function _meshesIntersectInner(a, b) {
   // Between rigid frames an exact distance of 0 IS a meet (the kernel's boolean is
   // exactly "its distance is 0", G3 holds it), so two rigid meshes need one bounded
   // traversal, not two; only a baked side reads its meet through its own geometry.
-  if (Kernel.exactDistance(ga, vb.geometry, _mat, CONTACT_TOUCH) < CONTACT_TOUCH) return true;
+  if (Kernel.distance(ga, vb.geometry, _mat, CONTACT_TOUCH) < CONTACT_TOUCH) return true;
   if (rigidA && vb.rigid) return false;
   _mat.copy(a.matrixWorld).invert().multiply(b.matrixWorld);
-  return Kernel.exactMeets(a.geometry, b.geometry, _mat);
+  return Kernel.intersects(a.geometry, b.geometry, _mat);
 }
 
 // A mesh's world AABB at the CURRENT pose, computed once per pose instead of
@@ -1946,28 +1927,8 @@ function boxDistance(a, b) {
   return Math.hypot(dx, dy, dz);
 }
 
-// Exact vertex→surface fallback: every vertex of each mesh queried against
-// the OTHER mesh's tree (closestPointToPoint — the single-tree path, which
-// has never misbehaved), both directions. Slightly conservative (it can
-// only see vertex-to-face distances, not face-interior-to-face-interior),
-// but immune to the tri-to-tri failure it exists to guard against.
-const _sampleV = new THREE.Vector3();
-function sampledClearance(a, b, upperBound = Infinity) {
-  let best = upperBound;
-  for (const [src, dst] of [[b, a], [a, b]]) {
-    // TODO 159 — measured between RIGID frames (rigidFrame), so in world units.
-    const vs = rigidFrame(src), vd = rigidFrame(dst);
-    const tree = bvhForGeometry(vd.geometry);
-    _mat.copy(vd.frame).invert().multiply(vs.frame);
-    const pos = vs.geometry.attributes.position;
-    for (let i = 0; i < pos.count; i++) {
-      _sampleV.fromBufferAttribute(pos, i).applyMatrix4(_mat);
-      const hit = tree.closestPointToPoint(_sampleV, {}, 0, best);
-      if (hit && hit.distance < best) best = hit.distance;
-    }
-  }
-  return best;
-}
+const _sampleV = new THREE.Vector3();   // sampledVerdict's sample point, reused
+
 
 // --- The ARBITER the tri-tri machinery finally forced (TODO 6 pass) --------
 // Two failure modes are now MEASURED, in opposite directions, on live pairs:
@@ -2343,40 +2304,21 @@ function _meshClearanceInner(a, b, upperBound = Infinity) {
   const va = rigidFrame(a), vb = rigidFrame(b);
   _mat.copy(va.frame).invert().multiply(vb.frame);
   let d = Kernel.distance(va.geometry, vb.geometry, _mat, upperBound); // Infinity ⇒ nothing within upperBound
-  // Cross-check near-zeros. closestPointToGeometry's tri-to-tri distance
-  // short-circuits to 0 through its own triangle-intersection test, and
-  // that test can FALSELY report an intersection for plainly separated
-  // meshes at specific relative transforms (first observed: a balance
-  // timing screw vs the escape bridge's fork jewel; later the alarm hand ⇄
-  // hour tube, 2.32 apart, where the boolean lied in BOTH directions too —
-  // so the boolean can no longer arbitrate). Near-zeros go to
-  // sampledVerdict: a contained sample proves the contact genuine.
+  // §338 landing 8 — THE DISTANCE IS EXACT, so a 0 is a meet and a gap is the gap.
+  // Until then this was three-mesh-bvh's closestPointToGeometry, whose tri-to-tri
+  // distance short-circuits to 0 through its own intersection test and FALSELY
+  // reported one for plainly separated meshes (a balance timing screw vs the fork
+  // jewel; the alarm hand ⇄ hour tube, 2.32 apart). So every near-zero went to
+  // sampledVerdict, and a 0 with nothing contained was replaced by the sampled
+  // minimum (TODO 197's one branch where the sampler's figure stood, an UPPER bound,
+  // the branch TODO 95's 2.6104 came through). With an exact distance that branch
+  // has nothing left to arbitrate, and min(d, v.d) can only return d.
   //
-  // TODO 197 — THE SAMPLER DECIDES CONTACT, NEVER A DISTANCE. This used to
-  // publish `Math.max(d, v.d)` whenever nothing was contained, and `v.d` is a
-  // VERTEX-AND-MIDPOINT minimum: it cannot see an edge-to-edge closest pair,
-  // so it is an UPPER bound on the true gap and the max RAISED the library's
-  // exact figure — measured 0.0358 for a true 0.0221, and on
-  // probe-159-frame-scale's band rows 26 of 60 seeded near pairs over-read,
-  // worst 0.0266 read as 0.0604. Over-reading is the unsafe direction, so:
-  //   · inside → 0: a contained sample (or TODO 95's pass-through witness)
-  //     proves the contact;
-  //   · d > 0 → min(d, v.d): the library's tri-to-tri figure is exact, and
-  //     any sampled pair of surface points is an upper bound on the true gap,
-  //     so the minimum can only be the truer of the two (a v.d under d would
-  //     be §82's over-estimate class back again, caught rather than masked);
-  //   · d === 0 with nothing contained → v.d: the only branch where the
-  //     sampler's figure replaces the library's, because there the library's
-  //     0 is not a distance. distanceToTriangle short-circuits to exactly 0
-  //     through intersectsTriangle, which is the measured false-positive mode
-  //     above; with no witness of contact, the sampled minimum is the only
-  //     measured gap there is. This is the branch TODO 95's 2.6104 came
-  //     through, and the pass-through witness is what closed it for a closed
-  //     surface — the branch itself is unchanged by TODO 197.
-  if (d < 0.05) {
-    const v = sampledVerdict(a, b, upperBound);
-    d = v.inside ? Math.min(d, 0) : d > 0 ? Math.min(d, v.d) : v.d;
-  }
+  // What the sampler still witnesses is CONTAINMENT, which no surface distance can
+  // see: a body wholly inside another, or passing clean through it (TODO 95's
+  // segment witness), has every surface pair apart and is still in the metal. So a
+  // positive near-zero keeps the parity test, and a contained sample reads 0.
+  if (d > 0 && d < 0.05 && sampledVerdict(a, b, upperBound).inside) d = 0;
   return d;
 }
 
@@ -7453,8 +7395,8 @@ export function checkAlarmHandoffs(clock, { tol = HANDOFF_TRACK_TOL, poses = ALA
             // along ±z (the working axis of every hand-off declared here)
             // and bisect the smallest offset that makes the boolean
             // intersect — that offset IS the axial separation. Falls back
-            // to the exact/sampled arbitration only when no nudge within
-            // 2·tol connects (the meshes genuinely stand apart).
+            // to the exact distance only when no nudge within 2·tol connects
+            // (the meshes genuinely stand apart).
             // TODO 159 — the distance between RIGID frames (world units);
             // the z-nudge below is a boolean on the meshes as they stand,
             // which an affine map cannot change, so it keeps its own tree.
@@ -7474,8 +7416,10 @@ export function checkAlarmHandoffs(clock, { tol = HANDOFF_TRACK_TOL, poses = ALA
                 zSep = Math.min(zSep, hi);
               }
             }
+            // §338 landing 8 — `d` is exact, so the old guard against its false 0
+            // (max with the vertex-sampled clearance, an UPPER bound on the gap)
+            // could only over-read now, TODO 197's class; the exact figure stands.
             if (zSep < Infinity) d = Math.min(d, zSep);
-            else if (d < 0.05) d = Math.max(d, sampledClearance(a, b, gap));
             if (d < gap) gap = d;
           }
         }
