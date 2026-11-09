@@ -4,7 +4,7 @@
 
 # The instruments
 
-424 scripts. **296 are ACCEPTANCE tests** — they decide and exit non-zero.
+425 scripts. **297 are ACCEPTANCE tests** — they decide and exit non-zero.
 **128 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -28,6 +28,7 @@ when a question was asked; the summaries are what it answered.
 | `boot-progress.mjs` |  | acceptance | THE BOOT BAR'S TABLE — §267. Where the build IS, as a share of how long it takes, read off a measured boot rather than a clock or a count. |
 | `bricklink-subset.mjs` |  | acceptance | Writes src/technic-bricklink.js: the SUBSET of BrickLink's catalogue downloads (Parts, Colors, Codes — https://www.bricklink.com/catalogDownload.asp, tab- delimited) that the parts list needs, so the purchase ids and colour ids are READ from BrickLink and never typed (BUILT §300's rule). The three whole files are 14 MB and are not committed; this keeps one row per LDraw id the builds place, one row per LDraw colour the role table may use, and the element codes those pairs have. `--check` re-derives the file from the same three downloads and fails if it differs; with no downloads it only reads the committed file back and checks its shape. |
 | `build-pages.mjs` |  | acceptance | §88 — turn one extracted payload tree into one deployable GitHub Pages environment. The workflow (.github/workflows/pages.yml) extracts the tree with `git archive` — the same payload definition release.yml uses, so Pages and QA serve the same bytes — and this script finishes it. |
+| `cap-walls.mjs` |  | acceptance | TODO 294 — WHAT DOES A CAPPED CI JOB ACTUALLY WALL, and is the newest row an OUTLIER or a CHANGE? It prints the walls, their running average and spread, what the cap rule makes of them, and which reading the series supports. About the CAPS it is a REPORT: it judges none of them and exits 0 whatever it reads, because the cap is the owner's number and a quiet API is not a measurement. The index lists it as acceptance because its own `--self-test` gates, which is the only thing in here that can fail. |
 | `check-bvh-patches.mjs` |  | acceptance | Verifies the three local patches in vendor/three-mesh-bvh.module.js (see vendor/README.md) still hold — run after any vendor bump, before trusting a single clearance number. |
 | `check-det-math.mjs` |  | acceptance | §338 landing 2 — IS THE BUILD'S MATHS THE REPOSITORY'S, NOT THE ENGINE'S? |
 | `check-item-numbers.mjs` |  | acceptance | The item-number gate. See docs/item-numbers/README.md for why it exists. |
