@@ -1082,25 +1082,27 @@ from the great wheel's angle, which turns once an hour — multiplies a last-ulp
 difference by 1/ω: pose such an instant where the metal stands still (a held
 wind stands at the balance's REST, `MAINT_HOLD.restAtOrBefore`), never at the
 inverse itself.
-**Since §338 landing 5 a compiled kernel can answer the closest-point query**:
-`Kernel` in `inspect.js` is the one interface and its JS body (three-mesh-bvh) is
-the REFERENCE and the default; `--kernel wasm` (or `shadow`, which runs both) on
-`battery-native.mjs` uses `tools/kernel/kernel.cpp`, built by
+**Since §338 landing 5 a compiled kernel can answer the geometric primitives**:
+`Kernel` in `inspect.js` is the one interface — `Kernel.distance` (closest
+distance, landing 5) and `Kernel.intersects` (the boolean, landing 6) — and its
+JS body is the REFERENCE and the default. **Since landing 8 that body is EXACT**:
+`src/exact-mesh.js`, `tools/kernel/kernel.cpp` ported operation for operation,
+so `--kernel wasm` (or `shadow`, which runs both and counts any difference) on
+`battery-native.mjs` answers bit for bit what js answers. The kernel is built by
 `tools/kernel-build.mjs` into `src/kernel-wasm.js` (GENERATED, byte-reproducible,
-importing nothing; never edit it). A new check writes its query in JS through
-`Kernel` and lands; never call the compiled module from a check.
-`probe-338-kernel-parity.mjs` holds it (G3): the same verdicts, no gap read
-larger, and the leaves it reads smaller listed (the reference's false 0).
-Since landing 6 it also answers `Kernel.intersects`, the exact boolean the
-penetration bisections ask. **Since landing 7 CONTACT is exact**:
+importing nothing; never edit it), and `probe-338-kernel-parity.mjs` holds the
+two by `Object.is` (G3) — so a change to either is a change to both, and the
+probe fails the one left behind. A new check writes its query in JS through
+`Kernel` and lands; never call the compiled module from a check. three-mesh-bvh
+still answers the POINT queries (`closestPointToPoint`, the parity raycast) and
+builds the trees those use. **Since landing 7 CONTACT is exact**:
 `meshesIntersect` asks whether the surfaces meet or stand under `CONTACT_TOUCH`
-(1e-4, the running fit its arbitration always accepted) through
-`Kernel.exactMeets`/`Kernel.exactDistance`, whose JS body `src/exact-mesh.js` is
-`kernel.cpp` ported operation for operation and held to it by `Object.is` — so a
-change to either is a change to both, and the parity probe fails the one left
-behind. Every box gate in front of a contact test skips only past
-`CONTACT_TOUCH` (`boxesCanTouch`), and no pose is trusted raw any more. A flush
-seat now reads as contact, which is why `intraUnit` declares five more kisses.
+(1e-4, the running fit its arbitration always accepted). Every box gate in front
+of a contact test skips only past `CONTACT_TOUCH` (`boxesCanTouch`), and no pose
+is trusted raw any more. A flush seat reads as contact, which is why `intraUnit`
+declares five more kisses. **And since landing 8 a 0 is a meet**: `meshClearance`
+keeps `sampledVerdict` only for CONTAINMENT (a body inside another, which no
+surface distance sees), never to replace a distance.
 
 State (camera pose, wind, τ) persists via the dev server's `/__state` temp
 file, falling back to `localStorage`. **Back it up before clearing it** —

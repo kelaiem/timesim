@@ -18,20 +18,17 @@
 //     pair the dense bound puts apart, that is the reference's documented false-0
 //     (inspect.js' meshClearance), counted and reported, never held against wasm.
 //
-// THE BATTERY (--reports). G3 does not ask for bit identity (§338: a different
-// traversal may find an equal minimum by another route). It asks:
+// THE BATTERY (--reports). Since §338 landing 8 the js body IS the kernel's algorithm
+// (src/exact-mesh.js), so G3 asks for IDENTITY:
 //   1. every BATTERY row's gate reaches the SAME verdict on both reports (each row's
 //      own `fails`, standing rule 4's one definition);
 //   2. the `census` counters (work done, not findings) are excluded BY NAME and
 //      counted, report-diff's rule for timing;
-//   3. a minimum's WITNESS (`at`, `refinedAt`, `meshes`: where and between which
-//      meshes a minimum was found) is excluded by name and counted. §338's G3 says
-//      why: two arithmetics of one distance can order an exact tie between poses
-//      differently by an ulp, and the minimum's own value is a leaf that is held;
-//   4. every other leaf is equal, or is a distance the compiled kernel reads SMALLER.
-//      The reference's only measured way to differ is reading a sampled upper bound
-//      after its false-0 (TODO 197's over-read class), so a kernel leaf LARGER than
-//      the reference is a kernel defect and fails, and a smaller one is listed.
+//   3. every other leaf is equal, a minimum's WITNESS (`at`, `refinedAt`, `meshes`)
+//      included. Until landing 8 the reference was three-mesh-bvh, and a witness
+//      could move between two arithmetics' exact ties and a kernel leaf read smaller
+//      than the reference's sampled upper bound after its false 0; both were
+//      listed. Now either is a port defect, and fails.
 // Its control plants a larger leaf and a moved verdict into a copy of the kernel's
 // report, and fails unless both are caught.
 import { readFileSync } from 'node:fs';
@@ -114,11 +111,11 @@ if (argv[0] === '--reports') {
   for (const s of r.larger.slice(0, 10)) console.log(`          LARGER ${s}`);
   line(r.other.length === 0, `no leaf differs in any other way (strings, shapes, presence)`);
   for (const s of r.other.slice(0, 10)) console.log(`          OTHER ${s}`);
-  console.log(`  REPORT ${r.witness.length} witness(es) differ (where an equal minimum was found):`);
-  for (const s of r.witness.slice(0, 10)) console.log(`          ${s}`);
-  console.log(`  REPORT ${r.smaller.length} leaf(s) read smaller by the kernel (the reference's sampled upper bound after its false 0):`);
-  for (const s of r.smaller.slice(0, 20)) console.log(`          ${s}`);
-  console.log(`\n${fails.length ? `FAIL — ${fails.length} gate(s)` : 'PASS — the compiled kernel reaches the reference\'s verdicts, and reads no gap larger than it'}`);
+  line(r.witness.length === 0, `no witness differs (where a minimum was found, and between which meshes)`);
+  for (const s of r.witness.slice(0, 10)) console.log(`          WITNESS ${s}`);
+  line(r.smaller.length === 0, `no kernel distance reads SMALLER either: the two reports are leaf-identical (${r.leaves} leaves)`);
+  for (const s of r.smaller.slice(0, 20)) console.log(`          SMALLER ${s}`);
+  console.log(`\n${fails.length ? `FAIL — ${fails.length} gate(s)` : 'PASS — the compiled kernel\'s report is the reference\'s, leaf for leaf'}`);
   process.exit(fails.length ? 1 : 0);
 }
 
