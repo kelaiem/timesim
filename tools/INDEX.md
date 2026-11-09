@@ -4,7 +4,7 @@
 
 # The instruments
 
-426 scripts. **298 are ACCEPTANCE tests** — they decide and exit non-zero.
+427 scripts. **299 are ACCEPTANCE tests** — they decide and exit non-zero.
 **128 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -42,6 +42,7 @@ when a question was asked; the summaries are what it answered.
 | `dial-band-scan.mjs` |  | report | THE DIAL-SIDE BAND'S TENANTS, OVER THE POSE NET — the scan itself, as a function a page can run, shared by its two callers: probe-261-dial-band.mjs (the free-volume map, §261 step 2) and probe-261-fold-site.mjs (where the alarm switch can stand under the dial, §261 step 4). One copy, because two copies of a measuring method drift the way two copies of a law do. |
 | `explain-i18n.mjs` |  | acceptance | §73 tier two — the STATIC PAGES' translation tooling. |
 | `explain-quotes.mjs` |  | acceptance | §73 tier two — DOES THE EXPLAINER STILL QUOTE THE SOURCE? |
+| `form-fits.mjs` |  | acceptance | TODO 298 — WRITE OR CHECK src/form-fits.js, the fit each ALARM-FREE box form case is cut to. ACCEPTANCE (--check exits non-zero on drift). |
 | `form-layout.mjs` |  | acceptance | §307 — THE FORM LAYOUT OPTIMISER: which arrangement of the going train and the stem makes the movement's RECTANGLE smallest? |
 | `free-arrangement-scan.mjs` |  | report | §325 landing 5 — WHERE THE FUSEE STANDS WITHOUT THE ALARM: a scan of the going train's barrel step (solveLayout's barrelStepDeg, the bearing from the barrel's arbor to the centre wheel's — the fusee and its drum swung round the rest of the train) for the free outline of the movement built without the alarm. A REPORT: it ranks, it lands nothing; tools/free-outline.mjs is what settles a row. |
 | `free-outline.mjs` |  | acceptance | §325 — WRITE OR CHECK src/free-outlines.js, the FREE outline each movement is cut to. ACCEPTANCE (--check exits non-zero on drift). |
