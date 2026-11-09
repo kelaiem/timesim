@@ -1926,9 +1926,20 @@ export const DIAL_RECLAIM = 0.58;
 // measured the §278 landing 6 way (tools/probe-278-dial-step.mjs, QUERY=alarm=0 RECLAIM=DIAL_RECLAIM_NO_ALARM) and
 // rounded DOWN to the fund's 0.01 grid. The motion works hold their world planes (main.js MW_CEIL_LOCAL), so what
 // stops the dial is the keyless works' setting wheel on the winding stem's plane, met at +0.997 past the alarm's
-// 0.58 (the yoke's boss next, at +1.394): 0.58 + 0.99. The cased depth falls 0.375 mm with it (round 11.045 → 10.670,
-// the free outline 11.645 → 11.270).
-export const DIAL_RECLAIM_NO_ALARM = 1.57;
+// 0.58 (the yoke's boss next, at +1.394): 0.58 + 0.99.
+// TODO 289 landing 8 — THE FOLD'S TAIL STOPS IT FIRST. That measure read only meshes that were already built, and
+// since TODO 289 the setting fold's tail hangs two bushes into the dial band: the rise's under E and the cap arbor's
+// under D, each its shaft's second bearing (the rise's upper pivot over B and the cap's jewel are the first). At
+// 1.57 neither had a station (the foot corner's outboard blank leans over E to 1.988 along the rise, the cap corner's
+// inboard blank under D to 1.261), so both shafts ran in one bearing. The dial may come plate-ward only while each
+// bush still sites at its floor length, L/D 1, a margin over the dial: the rise's binds, at z −8.4710 on stopwork-140,
+// whose rise pivot is the larger (r 0.1778, the bare ?alarm=0 build's 0.1739 binds at −8.4627; the cap's −8.0914 on
+// both). −8.4710 + 9.54 = 1.0690, rounded DOWN to the fund's 0.01 grid, and booted both sides: at 1.06 both builds
+// site the bush, at 1.07 stopwork-140 does not (main.js refuses a bush under its floor, siteTailBearings' riseWhy).
+// The no-alarm dial now stands 0.48 nearer the plate than the alarm's, where it stood 0.99: 0.51 u (0.193 mm) of the
+// depth §325 took off the case goes back (the bare ?alarm=0 build 10.670 → 10.863 mm), and stopwork-140's free case
+// (11.270 → 11.464 mm) stands over CASE_HEIGHT_MAX_MM, declared on its point as the form builds declare theirs.
+export const DIAL_RECLAIM_NO_ALARM = 1.06;
 export const Z_DIAL_WITH_ALARM = -9.54 + DIAL_RECLAIM;   // the dial plane the alarm's strata were solved against
 export const Z_DIAL = ALARM_BUILT ? Z_DIAL_WITH_ALARM : -9.54 + DIAL_RECLAIM_NO_ALARM;
 // The dial as MATTER. Real watch dials are brass sheet ~0.35–0.5 mm; 0.4 mm is

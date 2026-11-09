@@ -9088,9 +9088,9 @@ async function siteTailBearings(B, F, g, cap) {
   // bound; a pivot under the train pivots' own radius is refused.
   const pivotDisc = (r) => ({ o: vArr(E), a: vArr(d1), r, zLo: 0, zHi: 2 * sFoot.coneR });
   // The rise's bearing is BEST EFFORT, never a clause on the cap bearing: an arrangement whose dial band leaves no
-  // room under E (the no-alarm dial stands nearer the plate; ?barrelstep=-140&alarm=0) builds the rise UNBORNE and
-  // warns — that arrangement's point declares the warning as its debt — rather than refusing every B for a bearing
-  // the fold's own clauses never asked about.
+  // room under E builds the rise with its upper pivot alone and warns, rather than refusing every B for a bearing the
+  // fold's own clauses never asked about. Since TODO 289 landing 8 no shipped build does: the no-alarm dial's reclaim
+  // (layout.js DIAL_RECLAIM_NO_ALARM) is the largest that still sites this bush, and the cap arbor's, at L/D 1.
   let riseWhy = null;
   let risePivotR = Math.min(MW_RISE_R, sFoot.zWebLo * Math.cos(phi) - MW_RISE_R - m);
   if (blanksClear(pivotDisc(risePivotR), m)) {
@@ -9109,11 +9109,18 @@ async function siteTailBearings(B, F, g, cap) {
   // (the bush's rim hangs bushR·sinφ below its axis end on a tilted journal, so the band is read at the rim)
   const riseRoom = (E.z - Z_DIAL - m - riseBushR * Math.sin(phi)) / Math.cos(phi);
   const riseBushLenAt = (s0) => Math.min(bushLengthFor(risePivotR, [riseLen - bevelLoadZ(sRiseOut) + s0, s0 + bevelLoadZ(sFoot)]), riseRoom - s0);
-  const riseDisc = (s0) => ({ o: vArr(E), a: vArr(d1), r: riseBushR, zLo: s0, zHi: s0 + riseBushLenAt(s0) });
   // (judged against the stub as it will be cut beside a sited pivot; the cap's end is settled below and only moves the stub's far end)
   const stubA0 = E.clone().addScaledVector(t3, stubStartFor(risePivotR)), stubB0 = D.clone().addScaledVector(t3, -stubEndFor(true));
-  const riseBushClear = (s0) => riseBushLenAt(s0) > 0 && !blanksClear(riseDisc(s0), m)
-    && segSegDist3(E.clone().addScaledVector(d1, s0), E.clone().addScaledVector(d1, s0 + riseBushLenAt(s0)), stubA0, stubB0) >= riseBushR + MW_RISE_R + m;
+  // TODO 289 landing 8 — the rise's bush is never shorter than its journal's diameter (L/D 1, the straddled journal's
+  // floor: the rise's upper pivot over B stands across corner B, so this bush is the second bearing, not an overhung
+  // one's). The station is the least s0 at which a bush of that FLOOR length clears the blanks and the stub (the foot
+  // corner's outboard blank leans over E, so its clearance only grows down the axis); the bush is then as long as the
+  // rule and the band allow from there, and judged again at that length. A floor-length probe keeps the search
+  // monotone: probing at the band-capped length, which shrinks as s0 grows, could step over a station that exists.
+  const riseBushFloor = 2 * risePivotR * MW_BUSH_LD_MIN;
+  const riseAt = (s0, len) => !blanksClear({ o: vArr(E), a: vArr(d1), r: riseBushR, zLo: s0, zHi: s0 + len }, m)
+    && segSegDist3(E.clone().addScaledVector(d1, s0), E.clone().addScaledVector(d1, s0 + len), stubA0, stubB0) >= riseBushR + MW_RISE_R + m;
+  const riseBushClear = (s0) => riseAt(s0, riseBushFloor);
   // --- the cap arbor's bush below D, the arbor's own radius: the stub ends short of the arbor, the cap corner's
   // inboard blank trails away along the stub, so the scan starts at the apex and walks down
   const capBore = MW_RISE_R + PIVOT_BORE_CLEAR, capBushR = capBore + MW_BUSH_WALL;
@@ -9133,7 +9140,8 @@ async function siteTailBearings(B, F, g, cap) {
     if (s > 0) while (hi - lo > 1e-3) { const mid = (lo + hi) / 2; if (clear(mid)) hi = mid; else lo = mid; }
     return hi;
   };
-  const riseS0 = riseWhy ? null : await leastClear(riseBushClear, riseRoom);
+  let riseS0 = riseWhy ? null : await leastClear(riseBushClear, riseRoom);
+  if (riseS0 !== null && !(riseBushLenAt(riseS0) >= riseBushFloor - 1e-9 && riseAt(riseS0, riseBushLenAt(riseS0)))) riseS0 = null;
   if (riseS0 === null && !riseWhy) riseWhy = 'no station under E clears the rise\'s bush within the dial band';
   // …and the cap arbor's bush the same: where the dial band leaves no room under D the arbor keeps its jewel alone
   let capWhy = null;
