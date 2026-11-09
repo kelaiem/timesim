@@ -908,6 +908,14 @@ jobs:
   # 1346 s = 22.4 min -> 23, which is where the cap already was. The job did
   # not grow; it just got read properly.
   #
+  # THE SPLIT ITSELF IS MEASURED, which is the other half of the claim above.
+  # The two runs after it - 42529912428 and 42535617947, the same pair that
+  # first ran the invariant on its own job - walled 629 s and 624 s here, with
+  # the probe step at 606 s and 605 s: inside the six-sample band on both
+  # counts (487-811 s job, 464-790 s step) and nowhere near the 1154 s and
+  # 883 s this job walled while it carried the invariant. The probe left, and
+  # the job went back to the size it was.
+  #
   # ONE SAMPLE NEARLY WENT IN THE WRONG COLUMN, and the correction is kept here
   # because it is the only kind of error this block cannot catch by arithmetic.
   # 63011007 is main at 883 s on the same day, and it is NOT a 7-probe run: it
@@ -965,19 +973,30 @@ jobs:
   # It costs the gate step in `battery` a SECOND sibling to wait on, which is the
   # whole price.
   #
-  # THE CAP, 10 min. This probe's wall has never been measured ALONE; what
-  # exists is the step next door with it (two samples, 1126 s and 863 s, mean
-  # 995 s) and the same step without it (six samples the same day, 464-790 s,
-  # mean 667 s). DIFFERENCING the means gives the probe 327 s - and that is the
-  # only honest reading of it, because the pairwise differences run from 73 s
-  # (the 863 s eight against the 790 s seven) to 662 s (the 1126 s eight against
-  # the 464 s seven) - a span of nearly ten to one, which is runner spread
-  # talking, not the probe. 327 s plus this job's measured setup (23 s) is 350
-  # s, and 350 x 1.66 = 581 s = 9.7 min -> 10. That is also, to the minute, what
-  # the ~300 s derivation in the probes job's cap block predicted for a job of
-  # its own before any of this was measured. THE FIRST RUN OF THIS JOB OWES THE
-  # MEASUREMENT this row stands in for, and should replace it with its own wall
-  # x 1.66.
+  # THE CAP, 10 min, AND IT IS NOW MEASURED - the demand this row used to make
+  # of the job's first run is discharged. Two runs have executed this job:
+  # 42529912428 (PR #941 at 0ed47f85) walled 295 s and 42535617947 (main at
+  # c7ed902f) walled 308 s. In BOTH of them the probe step itself walled 272 s,
+  # to the second; the 13 s between the two job walls is setup and the runner's
+  # own book-ends, not metal - the setup steps alone (checkout, node and the
+  # Chromium install) differ by 10 s, 22 s against 32 s.
+  # 308 x 1.66 = 511 s = 8.5 min, so the 10 STANDS: two rows do not buy the
+  # minute down to 9, and tightening a cap toward the fast end of a two-row
+  # sample is the mistake this file keeps warning about. Revisit it when these
+  # rows outnumber the two.
+  #
+  # THE DERIVATION THE 10 CAME FROM is kept, because the method is what carries
+  # over to the next job that has no wall of its own yet. With no standalone
+  # wall to read, the 10 came from DIFFERENCING the means of the step next door
+  # WITH this probe (two samples, 1126 s and 863 s, mean 995 s) and WITHOUT it
+  # (six the same day, 464-790 s, mean 667 s): 327 s for the probe, plus a 23 s
+  # setup, x 1.66 = 581 s = 9.7 min -> 10. Measured, the probe and its setup
+  # together are 294-304 s against that 350 s, so the differencing ran 15 %
+  # HIGH - conservative, which is the direction a cap wants to err. The
+  # pairwise differences spanned 73-662 s and the truth is 272 s, sitting
+  # inside that span and near neither end: the means were the only honest
+  # reading, and any single pair of walls would have been out by a factor of
+  # two or more.
   battery-geared-invariant:
     name: battery geared invariant
     needs: route
