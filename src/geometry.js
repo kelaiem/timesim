@@ -7102,6 +7102,35 @@ export function convexGap(P, Q) {
   }
   return d;
 }
+// (landing 7) A convex CCW polygon less a disc that crosses its boundary exactly twice: the polygon's boundary outside the
+// disc, run CCW from where it leaves the disc to where it enters it, then the disc's arc inside the polygon back to the
+// start. Returns CCW points, or null when the disc does not cross the boundary exactly twice.
+export function convexLessDisc(P, cx, cy, r, n = 144) {
+  const N = P.length, inD = (q) => Math.hypot(q[0] - cx, q[1] - cy) < r, hits = [];
+  for (let i = 0; i < N; i++) {
+    const a = P[i], b = P[(i + 1) % N], dx = b[0] - a[0], dy = b[1] - a[1], fx = a[0] - cx, fy = a[1] - cy;
+    const A = dx * dx + dy * dy, B2 = 2 * (fx * dx + fy * dy), C = fx * fx + fy * fy - r * r, D = B2 * B2 - 4 * A * C;
+    if (D <= 0 || A === 0) continue;
+    for (const t of [(-B2 - Math.sqrt(D)) / (2 * A), (-B2 + Math.sqrt(D)) / (2 * A)]) if (t >= 0 && t < 1) {
+      const q = [a[0] + t * dx, a[1] + t * dy], ahead = [a[0] + Math.min(1, t + 1e-6) * dx, a[1] + Math.min(1, t + 1e-6) * dy];
+      hits.push({ i, t, q, enters: inD(ahead) });
+    }
+  }
+  if (hits.length !== 2) return null;
+  const X = hits.find((h) => !h.enters), Y = hits.find((h) => h.enters);
+  if (!X || !Y) return null;
+  const out = [X.q];
+  for (let i = (X.i + 1) % N; ; i = (i + 1) % N) { out.push(P[i]); if (i === Y.i) break; }
+  out.push(Y.q);
+  // back along the arc inside the polygon, from Y to X: the direction whose midpoint lies inside P
+  const aY = Math.atan2(Y.q[1] - cy, Y.q[0] - cx), aX = Math.atan2(X.q[1] - cy, X.q[0] - cx);
+  let cw = aY - aX; while (cw < 0) cw += 2 * Math.PI;   // clockwise span from Y to X
+  const mid = aY - cw / 2, inP = (() => { const x = cx + r * Math.cos(mid), y = cy + r * Math.sin(mid);
+    for (let i = 0; i < N; i++) { const a = P[i], b = P[(i + 1) % N]; if ((b[0] - a[0]) * (y - a[1]) - (b[1] - a[1]) * (x - a[0]) < 0) return false; } return true; })();
+  const span = inP ? -cw : 2 * Math.PI - cw, k = Math.max(2, Math.ceil((Math.abs(span) / (2 * Math.PI)) * n));
+  for (let j = 1; j < k; j++) { const a = aY + (span * j) / k; out.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]); }
+  return out;
+}
 const _circlePts = (x, y, r, n = 144) => Array.from({ length: n }, (_, k) => [x + r * Math.cos((2 * Math.PI * k) / n), y + r * Math.sin((2 * Math.PI * k) / n)]);
 export function makeBackPlate({ radius, thickness, holes = [], slots = [], sectors = [], rim = null, pockets = [], outline = null }) {
   const bevelSize = radius * PLATE_BEVEL_F;
@@ -7206,6 +7235,9 @@ export function makeBackPlate({ radius, thickness, holes = [], slots = [], secto
   for (const pk of pockets) {
     if (pk.through && shared.get(throughKey(pk.through)).length > 1) continue;   // cut with its group above
     const A = { x: pk.x, y: pk.y, r: pk.r + bevelSize };
+    if (pk.pts) {   // landing 7: a blind pocket cut to an outline (a corner's blind bore standing alone)
+      const p = new THREE.Path(); p.setFromPoints(cutOf(pk).map(v2).reverse()); shape.holes.push(p); continue;
+    }
     if (pk.through?.pts) {
       const T = cutOf(pk.through), Ap = _circlePts(A.x, A.y, A.r), p = new THREE.Path();
       if (convexGap(T, Ap) < 0) { p.setFromPoints(unionLoops([T, Ap]).map(v2).reverse()); shape.holes.push(p); }
@@ -7235,7 +7267,7 @@ export function makeBackPlate({ radius, thickness, holes = [], slots = [], secto
         const e = byThrough.get(k);
         if (e) { e.d.push(pk); e.what += ` + pocket ${i}`; }
         else byThrough.set(k, { what: `pocket ${i} (${pk.x.toFixed(2)}, ${pk.y.toFixed(2)}) r ${pk.r.toFixed(3)}${pk.through ? ' + through r ' + pk.through.r.toFixed(3) : ''}`,
-          d: [pk, ...(pk.through && !pk.through.pts ? [pk.through] : [])], P: pk.through?.pts ? [pk.through.pts] : [] });
+          d: [...(pk.pts ? [] : [pk]), ...(pk.through && !pk.through.pts ? [pk.through] : [])], P: [...(pk.pts ? [pk.pts] : []), ...(pk.through?.pts ? [pk.through.pts] : [])] });
       });
       for (const e of byThrough.values()) discs.push(e);
     }
@@ -7302,7 +7334,8 @@ export function makeBackPlate({ radius, thickness, holes = [], slots = [], secto
     if (!(h > 0)) continue;   // cut through: no floor
     const A = { x: pk.x, y: pk.y, r: pk.r + bevelSize + pk.lap };
     const fs = new THREE.Shape();
-    if (pk.through?.pts) {
+    if (pk.pts) fs.setFromPoints(dilateConvex(pk.pts, bevelSize + pk.lap).map(v2));   // landing 7: the outline, lapped like a disc
+    else if (pk.through?.pts) {
       const c = discLessConvex(A.r, pk.through.pts.map(([x, y]) => [x - A.x, y - A.y]));
       if (!c) continue;   // warned above
       fs.setFromPoints(c.map(([x, y]) => new THREE.Vector2(x + A.x, y + A.y)));
@@ -7319,9 +7352,20 @@ export function makeBackPlate({ radius, thickness, holes = [], slots = [], secto
   // the stock like every floor, less the pocket's opening (the pocket's own floor stands under that, deeper or
   // shallower), so the two floors meet face to face where the openings join and neither overlaps the other's hole.
   for (const pk of pockets) {
-    if (!(pk.through && pk.through.depth > 0) || pk.through.pts) continue;
+    if (!(pk.through && pk.through.depth > 0)) continue;
     const h = 2 * faceZ - pk.through.depth;
     if (!(h > 0)) continue;
+    if (pk.through.pts) {   // landing 7: an outlined blind bore's floor, lapped, less the pocket's opening
+      const c = convexLessDisc(dilateConvex(pk.through.pts, bevelSize + pk.lap), pk.x, pk.y, pk.r + bevelSize);
+      if (!c) { console.warn(`TODO 289: an outlined blind bore's floor and its pocket's opening (r ${(pk.r + bevelSize).toFixed(3)}) do not cross exactly twice — the floor's crescent is undefined`); continue; }
+      const fs = new THREE.Shape(); fs.setFromPoints(c.map(v2));
+      const fg = new THREE.ExtrudeGeometry(fs, { depth: h, bevelEnabled: false, curveSegments: 72 });
+      fg.translate(0, 0, faceZ - h);
+      const floor = new THREE.Mesh(fg, MATS.perledNickel);
+      floor.name = 'backPlate';
+      m.add(floor);
+      continue;
+    }
     const B = { x: pk.through.x, y: pk.through.y, r: pk.through.r + bevelSize + pk.lap };
     const A = { x: pk.x, y: pk.y, r: pk.r + bevelSize };
     const d = Math.hypot(A.x - B.x, A.y - B.y);

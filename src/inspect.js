@@ -38,7 +38,7 @@ import { ZERO_AREA_MAX, CLEAR_MARGIN, HANDOFF_TRACK_TOL, UNIT_MM, Z_DIAL, SLENDE
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME, SPEC,                                    // §36 Apply: the same predicate that builds the unit, and the same name
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, rigidSplit,
-  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, MAINSPRING_ALPHA_MIN, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R_SPEC, BALANCE_R_REF, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG, STOPWORK_BUILT, GEARED_BUILT } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
+  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, ESCAPE_STEEL_SIGMA_Y_PA, ESCAPE_TIP_R_M, ESCAPE_TIP_R_BAND, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, MAINSPRING_ALPHA_MIN, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R_SPEC, BALANCE_R_REF, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG, STOPWORK_BUILT, GEARED_BUILT } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 import { auditLubrication, LUBRICATION, LUBRICATION_DEBT, LUBRICATION_WAIVERS } from './lubrication.js';   // §247 tier one
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
@@ -48,7 +48,8 @@ import { auditLubrication, LUBRICATION, LUBRICATION_DEBT, LUBRICATION_WAIVERS } 
 // is the one main.js already evaluated: importing it here re-runs no boot
 // handshake and arms no marker.
 import { aesthetics, mergeAesthetics } from './aesthetics.js';
-import { kernelMode, wasmDistance, shadowTally, wasmIntersects, shadowTallyBool } from './kernel.js';   // §338 landings 5 and 6
+import { kernelMode, wasmDistance, wasmIntersects, shadowTallyExact } from './kernel.js';   // §338 landings 5–8
+import { exactDistance, exactMeets } from './exact-mesh.js';   // §338 landings 7–8 — the primitives' JS reference
 export { useKernel, kernelMode, kernelStats } from './kernel.js';
 
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
@@ -997,7 +998,7 @@ function bvhFor(mesh) {
 // `meshesIntersect`'s boolean, `mtvDepth` / `stoneIntersectsWheel` (whose
 // bisected depth is a WORLD translation) and `sawRideDepth` (a world rotation)
 // were already exact and are left alone. The distance paths are what read a
-// frame's units: `meshClearance`, `sampledVerdict`, `sampledClearance`, the
+// frame's units: `meshClearance`, `sampledVerdict`, the
 // anchor checks' `closestPointToPoint`, and the hand-off rulers.
 const _frameCache = new WeakMap();   // mesh → its reused view
 const _bakeCache = new WeakMap();    // source geometry → { key, ver, geometry }
@@ -1020,50 +1021,38 @@ function bakedGeometry(src, L) {
   return g;
 }
 // §338 landing 5 — THE KERNEL INTERFACE. Every geometric primitive a check asks
-// for goes through `Kernel`, and its JS body (three-mesh-bvh) is the REFERENCE: a
-// new check writes its query here, in JS, and lands (§338's first design rule).
-// src/kernel.js may answer a primitive with the compiled kernel instead, held to
-// this body by tools/probe-338-kernel-parity.mjs; it can answer `distance`
-// (landing 5) and `intersects` (landing 6).
+// for goes through `Kernel`, and its JS body is the REFERENCE: a new check writes
+// its query here, in JS, and lands (§338's first design rule). Since landing 8 both
+// primitives are EXACT on the computed corners in every mode: their JS body is
+// src/exact-mesh.js, an operation-for-operation port of tools/kernel/kernel.cpp, and
+// src/kernel.js may answer with the compiled kernel instead, bit for bit
+// (tools/probe-338-kernel-parity.mjs holds Object.is on every answer; shadow runs
+// both and tallies any difference). Until then the JS body was three-mesh-bvh, whose
+// tri–tri distance short-circuits to a false 0 and whose boolean has a measured
+// false-positive mode (landing 6's shadow: 1,898 of 720,028 calls).
 const Kernel = {
   // The closest distance between `gA` (its own frame) and `gB` placed by `m`
-  // (B's frame → A's), or a value at or over `upper` (Infinity included) when no
-  // pair is closer than it.
+  // (B's frame → A's), or Infinity when no pair is closer than `upper`. Exact only
+  // between RIGID frames (rigidFrame), as any distance is.
   distance(gA, gB, m, upper) {
     const k = kernelMode();
     if (k === 'wasm') return wasmDistance(gA, gB, m.elements, upper);
-    const t0 = k === 'shadow' ? performance.now() : 0;
-    const bvh = bvhForGeometry(gA);
-    bvhForGeometry(gB);
-    const hit = bvh.closestPointToGeometry(gB, m, {}, {}, 0, upper);
-    const d = hit ? hit.distance : Infinity;
-    if (k === 'shadow') shadowTally(gA, gB, m.elements, upper, d, performance.now() - t0);
-    return d;
+    if (k !== 'shadow') return exactDistance(gA, gB, m.elements, upper);
+    const t0 = performance.now(), r = exactDistance(gA, gB, m.elements, upper), t1 = performance.now();
+    const w = wasmDistance(gA, gB, m.elements, upper);
+    shadowTallyExact('distance', r, w, t1 - t0, performance.now() - t1);
+    return r;
   },
-  // Does any triangle of `gA` (its own frame) meet any triangle of `gB` placed
-  // by `m`? An incidence predicate, so `m` may be any invertible affine map —
-  // the three boolean sites pass world matrices as they stand.
+  // Does any triangle of `gA` (its own frame) meet any triangle of `gB` placed by
+  // `m`? An incidence predicate, so `m` may be any invertible affine map.
   intersects(gA, gB, m) {
     const k = kernelMode();
     if (k === 'wasm') return wasmIntersects(gA, gB, m.elements);
-    const t0 = k === 'shadow' ? performance.now() : 0;
-    const r = bvhForGeometry(gA).intersectsGeometry(gB, m);
-    if (k === 'shadow') shadowTallyBool(gA, gB, m.elements, r, performance.now() - t0);
+    if (k !== 'shadow') return exactMeets(gA, gB, m.elements);
+    const t0 = performance.now(), r = exactMeets(gA, gB, m.elements), t1 = performance.now();
+    const w = wasmIntersects(gA, gB, m.elements);
+    shadowTallyExact('meets', r, w, t1 - t0, performance.now() - t1);
     return r;
-  },
-  // CONTACT, which is not the same question. meshesIntersect asks whether two
-  // parts are in contact, and contact here includes a running fit (its
-  // arbitration accepts a sampled gap under 1e-4), which an exact intersection
-  // test deliberately refuses. Measured in shadow (§338 landing 6): of 720,028
-  // boolean calls, 1,913 had the reference true and the exact test false —
-  // 1,898 of them pairs ≥ 1e-4 apart (the reference's false positives, which
-  // inspection's raw EXPECTED path counts as contact) and 15 touches under
-  // 1e-4, which the exact test would turn from contact into none. So contact
-  // stays the reference's predicate in every kernel mode until an exact
-  // contact primitive (meet, or exact distance under the arbitration's 1e-4)
-  // is landed on purpose, with the inspection reports it moves.
-  touches(gA, gB, m) {
-    return bvhForGeometry(gA).intersectsGeometry(gB, m);
   },
 };
 
@@ -1119,45 +1108,54 @@ export function rigidFrame(mesh) {
 
 const _mat = new THREE.Matrix4();
 const _matRev = new THREE.Matrix4();
-function meshesIntersect(a, b, raw = false) {
+// §338 landing 7 — CONTACT, exactly. Two parts are in contact when their surfaces
+// meet or stand closer than CONTACT_TOUCH. That threshold is not new: it is the
+// running fit this predicate has accepted since its arbitration (2026-07, the
+// sampled verdict's `d < 1e-4`), kept so that what "contact" means does not move
+// with how it is measured; it stands an order over the f32 noise of the metal it
+// is read on (an f32 ulp is 7.6e-6 at |x| ≤ 64, the movement's coordinates).
+//
+// Until landing 7 the predicate was three-mesh-bvh's boolean, arbitrated by
+// sampledVerdict where it said true and trusted RAW after a pair's first
+// confirmed contact on an axis (§122 fix two's cost cut). Shadow measured what that
+// bought (landing 6, 720,028 calls): 1,898 positives on pairs at least 1e-4 apart,
+// which the raw path counted as contact on EXPECTED pairs, and 15 running fits under
+// 1e-4 the boolean said false, which no path ever asked about. Both were answers
+// about the instrument rather than the metal. The exact primitives (Kernel.intersects,
+// Kernel.distance) refuse both, in every kernel mode and both hosts, and they are
+// cheap enough to ask at every pose, so the raw path is gone.
+//
+// The meet is an incidence question, asked under the world map as it stands (any
+// invertible affine map); the running fit is a DISTANCE, asked between rigid frames
+// (rigidFrame bakes a scale or shear into a copy), because a distance read through a
+// non-rigid map reads in the wrong units. Between rigid frames the distance alone
+// answers both (its 0 is the meet), which is every pair but a scaled or sheared one.
+export const CONTACT_TOUCH = 1e-4;
+function meshesIntersect(a, b) {
   if (SWEEP_CENSUS.on) {
     const c = SWEEP_CENSUS.c;
     c.exactCalls++;
     const t0 = performance.now();
-    const r = _meshesIntersectInner(a, b, raw);
+    const r = _meshesIntersectInner(a, b);
     c.exactMs += performance.now() - t0;
     if (r) c.boolTrue++; else c.boolFalse++;
     return r;
   }
-  return _meshesIntersectInner(a, b, raw);
+  return _meshesIntersectInner(a, b);
 }
-function _meshesIntersectInner(a, b, raw = false) {
-  const bvhA = bvhFor(a);
-  bvhFor(b); // intersectsGeometry needs the other side indexed; building its tree indexes it
+function _meshesIntersectInner(a, b) {
+  bvhFor(a); bvhFor(b);   // the index side effect, which every later reader of these geometries relies on
+  const va = rigidFrame(a), ga = va.geometry, rigidA = va.rigid;
+  _mat.copy(va.frame).invert();
+  const vb = rigidFrame(b);
+  _mat.multiply(vb.frame);
+  // Between rigid frames an exact distance of 0 IS a meet (the kernel's boolean is
+  // exactly "its distance is 0", G3 holds it), so two rigid meshes need one bounded
+  // traversal, not two; only a baked side reads its meet through its own geometry.
+  if (Kernel.distance(ga, vb.geometry, _mat, CONTACT_TOUCH) < CONTACT_TOUCH) return true;
+  if (rigidA && vb.rigid) return false;
   _mat.copy(a.matrixWorld).invert().multiply(b.matrixWorld);
-  if (!Kernel.touches(a.geometry, b.geometry, _mat)) return false;
-  // §122 fix two — `raw` trusts the positive WITHOUT arbitration. Only
-  // runInspection may pass it, and only for a declared-EXPECTED pair whose
-  // contact on the current axis has already been arbitrated once (the
-  // first hit per (pair, axis) always takes the full path below). A raw
-  // positive can be one of the tri-tri false positives the verdict exists
-  // to refute — the caller's payload SAYS so (coverage:
-  // 'raw-after-first-confirmed'), which is the entry's sanctioned,
-  // documented semantics change for EXPECTED pose-coverage lists. Nothing
-  // gated consumes a raw answer: FORBIDDEN candidates never take this path.
-  if (raw) return true;
-  // A POSITIVE is never trusted raw. The tree-vs-tree path has a measured
-  // false-positive mode at specific relative transforms (2026-07: balance
-  // rim ⇄ fork-cock boss, 0.69 apart, one direction lying; 2026-08: alarm
-  // hand ⇄ hour tube, 2.32 apart, BOTH directions lying — which retired the
-  // both-directions cross-check this function used to run, and with it the
-  // closestPointToGeometry arbitration, whose own false-0 mode rubber-
-  // stamped the lie). sampledVerdict arbitrates: a contained sample (vertex
-  // or edge midpoint, parity raycast) proves the crossing; otherwise the
-  // sampled distance decides, and only a genuine running fit reads as
-  // contact.
-  const v = sampledVerdict(a, b, 1e-3);
-  return v.inside || v.d < 1e-4;
+  return Kernel.intersects(a.geometry, b.geometry, _mat);
 }
 
 // A mesh's world AABB at the CURRENT pose, computed once per pose instead of
@@ -1276,15 +1274,15 @@ function memoPairQuery(memo, tag, a, b, param, compute) {
 }
 
 const _uiA = new THREE.Box3(), _uiB = new THREE.Box3();
-function unitsIntersect(A, B, raw = false, boxCache = null, memo = null) {
+function unitsIntersect(A, B, boxCache = null, memo = null) {
   const cen = SWEEP_CENSUS.on ? SWEEP_CENSUS.c : null;
   for (const a of A.meshes) {
     for (const b of B.meshes) {
       // Cheap per-mesh AABB gate before the triangle test.
       if (cen) cen.aabbTests++;
-      if (!poseBox(boxCache, a, _uiA).intersectsBox(poseBox(boxCache, b, _uiB))) continue;
+      if (!boxesCanTouch(poseBox(boxCache, a, _uiA), poseBox(boxCache, b, _uiB))) continue;
       if (cen) cen.aabbPass++;
-      if (memoPairQuery(memo, 'i', a, b, raw, () => meshesIntersect(a, b, raw))) return true;
+      if (memoPairQuery(memo, 'i', a, b, CONTACT_TOUCH, () => meshesIntersect(a, b))) return true;
     }
   }
   return false;
@@ -1914,6 +1912,12 @@ export function checkAxisEntry(clock, { axes = AXES, fractions = [0, 1] } = {}) 
 // movement transforms are unit-scale, so bvh-local distance == world
 // distance.
 // ---------------------------------------------------------------------------
+// §338 landing 7 — the box gate in front of a CONTACT test. Contact includes a
+// running fit under CONTACT_TOUCH, which can stand between boxes that do not
+// overlap, so "the boxes overlap" stopped being the gate when the predicate became
+// exact: the box gap is a lower bound on the mesh gap, and a pair is skipped only
+// when that bound is already over the threshold.
+function boxesCanTouch(a, b) { return !(boxDistance(a, b) > CONTACT_TOUCH); }
 function boxDistance(a, b) {
   // Min distance between two AABBs (0 if overlapping) — cheap lower bound
   // used to skip mesh pairs that cannot beat the current best.
@@ -1923,28 +1927,8 @@ function boxDistance(a, b) {
   return Math.hypot(dx, dy, dz);
 }
 
-// Exact vertex→surface fallback: every vertex of each mesh queried against
-// the OTHER mesh's tree (closestPointToPoint — the single-tree path, which
-// has never misbehaved), both directions. Slightly conservative (it can
-// only see vertex-to-face distances, not face-interior-to-face-interior),
-// but immune to the tri-to-tri failure it exists to guard against.
-const _sampleV = new THREE.Vector3();
-function sampledClearance(a, b, upperBound = Infinity) {
-  let best = upperBound;
-  for (const [src, dst] of [[b, a], [a, b]]) {
-    // TODO 159 — measured between RIGID frames (rigidFrame), so in world units.
-    const vs = rigidFrame(src), vd = rigidFrame(dst);
-    const tree = bvhForGeometry(vd.geometry);
-    _mat.copy(vd.frame).invert().multiply(vs.frame);
-    const pos = vs.geometry.attributes.position;
-    for (let i = 0; i < pos.count; i++) {
-      _sampleV.fromBufferAttribute(pos, i).applyMatrix4(_mat);
-      const hit = tree.closestPointToPoint(_sampleV, {}, 0, best);
-      if (hit && hit.distance < best) best = hit.distance;
-    }
-  }
-  return best;
-}
+const _sampleV = new THREE.Vector3();   // sampledVerdict's sample point, reused
+
 
 // --- The ARBITER the tri-tri machinery finally forced (TODO 6 pass) --------
 // Two failure modes are now MEASURED, in opposite directions, on live pairs:
@@ -1974,7 +1958,10 @@ function pointInsideTree(tree, pLocal) {
   for (const h of hits) if (h.distance > 1e-9) n++;
   return (n % 2) === 1;
 }
-function sampledVerdict(a, b, upperBound = Infinity) {
+// Exported for instruments only (probe-282-witness.mjs reads the witness directly,
+// since landing 8's exact distance means meshClearance no longer depends on it for a
+// pass-through: an edge piercing a surface IS a meet, d = 0).
+export function sampledVerdict(a, b, upperBound = Infinity) {
   if (SWEEP_CENSUS.on) {
     const c = SWEEP_CENSUS.c;
     c.verdictCalls++;
@@ -2320,40 +2307,21 @@ function _meshClearanceInner(a, b, upperBound = Infinity) {
   const va = rigidFrame(a), vb = rigidFrame(b);
   _mat.copy(va.frame).invert().multiply(vb.frame);
   let d = Kernel.distance(va.geometry, vb.geometry, _mat, upperBound); // Infinity ⇒ nothing within upperBound
-  // Cross-check near-zeros. closestPointToGeometry's tri-to-tri distance
-  // short-circuits to 0 through its own triangle-intersection test, and
-  // that test can FALSELY report an intersection for plainly separated
-  // meshes at specific relative transforms (first observed: a balance
-  // timing screw vs the escape bridge's fork jewel; later the alarm hand ⇄
-  // hour tube, 2.32 apart, where the boolean lied in BOTH directions too —
-  // so the boolean can no longer arbitrate). Near-zeros go to
-  // sampledVerdict: a contained sample proves the contact genuine.
+  // §338 landing 8 — THE DISTANCE IS EXACT, so a 0 is a meet and a gap is the gap.
+  // Until then this was three-mesh-bvh's closestPointToGeometry, whose tri-to-tri
+  // distance short-circuits to 0 through its own intersection test and FALSELY
+  // reported one for plainly separated meshes (a balance timing screw vs the fork
+  // jewel; the alarm hand ⇄ hour tube, 2.32 apart). So every near-zero went to
+  // sampledVerdict, and a 0 with nothing contained was replaced by the sampled
+  // minimum (TODO 197's one branch where the sampler's figure stood, an UPPER bound,
+  // the branch TODO 95's 2.6104 came through). With an exact distance that branch
+  // has nothing left to arbitrate, and min(d, v.d) can only return d.
   //
-  // TODO 197 — THE SAMPLER DECIDES CONTACT, NEVER A DISTANCE. This used to
-  // publish `Math.max(d, v.d)` whenever nothing was contained, and `v.d` is a
-  // VERTEX-AND-MIDPOINT minimum: it cannot see an edge-to-edge closest pair,
-  // so it is an UPPER bound on the true gap and the max RAISED the library's
-  // exact figure — measured 0.0358 for a true 0.0221, and on
-  // probe-159-frame-scale's band rows 26 of 60 seeded near pairs over-read,
-  // worst 0.0266 read as 0.0604. Over-reading is the unsafe direction, so:
-  //   · inside → 0: a contained sample (or TODO 95's pass-through witness)
-  //     proves the contact;
-  //   · d > 0 → min(d, v.d): the library's tri-to-tri figure is exact, and
-  //     any sampled pair of surface points is an upper bound on the true gap,
-  //     so the minimum can only be the truer of the two (a v.d under d would
-  //     be §82's over-estimate class back again, caught rather than masked);
-  //   · d === 0 with nothing contained → v.d: the only branch where the
-  //     sampler's figure replaces the library's, because there the library's
-  //     0 is not a distance. distanceToTriangle short-circuits to exactly 0
-  //     through intersectsTriangle, which is the measured false-positive mode
-  //     above; with no witness of contact, the sampled minimum is the only
-  //     measured gap there is. This is the branch TODO 95's 2.6104 came
-  //     through, and the pass-through witness is what closed it for a closed
-  //     surface — the branch itself is unchanged by TODO 197.
-  if (d < 0.05) {
-    const v = sampledVerdict(a, b, upperBound);
-    d = v.inside ? Math.min(d, 0) : d > 0 ? Math.min(d, v.d) : v.d;
-  }
+  // What the sampler still witnesses is CONTAINMENT, which no surface distance can
+  // see: a body wholly inside another, or passing clean through it (TODO 95's
+  // segment witness), has every surface pair apart and is still in the metal. So a
+  // positive near-zero keeps the parity test, and a contained sample reads 0.
+  if (d > 0 && d < 0.05 && sampledVerdict(a, b, upperBound).inside) d = 0;
   return d;
 }
 
@@ -3740,6 +3708,7 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Winding arrest', a: 'windArrestSpring', b: 'windArrestSpringPost', why: '§47: the blade\'s fixed end on its post — the torsion arc\'s reaction point' },
   { unit: 'Alarm click', a: 'alarmClickPawl', b: 'alarmClickStud', why: '§99: the click on its shoulder screw (the hook carries no bore — the blade seats on the stud, the set-up click\'s own construction)' },
   { unit: 'Alarm click', a: 'alarmClickPawl', b: 'alarmClickScrewHead', why: '§99: the click under its screw head — the head retains it axially, faces sharing the plane' },
+  { unit: 'Alarm click', a: 'alarmClickStud', b: 'alarmClickScrewHead', why: '§338 landing 7: the shoulder screw\'s head on its own post, the two faces sharing the post\'s top plane (3.4e-8 apart, exact). The boolean never saw a flush face; the exact contact does' },
   { unit: 'Alarm click', a: 'alarmClickPawl', b: 'alarmClickSpring', why: '§99: the spring\'s torus kisses the click\'s flank by construction (tube tangent at the local half-width) — §48-declared spring contact, kept as a row because a float hair puts a kiss on either side of zero' },
   { unit: 'Alarm lock', a: 'alarmLockArm', b: 'alarmLockPivotPost', why: 'lock lever on its pivot post (this selector was CylinderGeometry#4, then #6 when TODO 24 added the beak riser+nose, then #5 when §171 deleted a sibling mesh; §171 named the POST, and TODO 90 finding 5 named the ARM when the fold removed a box and added two — both halves are claims about the parts now, not about what else the unit contains)' },
   { unit: 'Alarm lock', a: 'alarmLockTail', b: 'alarmLockPivotPost', why: 'lever tail on the same post' },
@@ -3758,6 +3727,8 @@ export const INTRA_UNIT_CONTACTS = [
   // it one part along.
   { unit: 'Alarm switch', a: 'alarmColBase', b: 'alarmColStud', why: 'the base disc\'s bore on the column wheel\'s stud' },
   { unit: 'Alarm switch', a: 'alarmColSkirt', b: 'alarmColStud', why: 'the ratchet skirt\'s bore on the same stud — one arbor, two seated bodies' },
+  { unit: 'Alarm switch', a: 'alarmLinkageCrankAOut', b: 'alarmLinkageRod', why: '§338 landing 7: crank A\'s output arm under the rod at their pin joint, the arm\'s top face and the rod\'s underside sharing ALARM_LINKAGE_ROD_Z − T/2 (4.0e-9 apart, exact) — a stacked pin joint, the pin through both' },
+  { unit: 'Alarm switch', a: 'alarmLinkageCrankBIn', b: 'alarmLinkageRod', why: '§338 landing 7: crank B\'s input arm under the rod at its joint, the same stack as crank A\'s (4.0e-9 apart, exact)' },
   // §173 — the SAUTOIR that replaced the click. Four joints, and the shape of
   // the list is the point: the blade IS the spring, so there is no arm-and-
   // -blade pair to declare and no chance of the two parting (which is what the
@@ -4036,6 +4007,8 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm disc', a: 'alarmRockerPivot', b: 'alarmRockerFinger', why: 'TODO 222: the finger bar runs from the eye\'s far face, through the same undrilled eye the pin passes' },
   { unit: 'Alarm disc', a: 'alarmTubeFlange', b: 'alarmPinBSpring', why: 'TODO 222: follower-B\'s seat blade, its root clamped flat on the flange\'s top face (the band spend set the root there)' },
   { unit: 'Alarm disc', a: 'alarmPinArmBBar', b: 'alarmPinBSpring', why: 'TODO 222: the seat blade\'s free end on the arm\'s underside — the working contact that seats the pin, preloaded at every parity (alarmHandoffs holds it)' },
+  { unit: 'Alarm disc', a: 'alarmPinBSpringClamp', b: 'alarmPinBSpring', why: '§338 landing 7: the clamp screwed down over the seat blade\'s root, its underside on the blade\'s top face (6.6e-10 apart, exact) — the clamp IS that contact' },
+  { unit: 'Alarm disc', a: 'alarmSelFingerB', b: 'alarmPinArmBTail', why: '§338 landing 7: the lift — the rocker\'s finger pin under follower-B\'s tail at every parity (9.6e-5 apart at alarmPress f=0.25, exact), the working contact alarmHandoffs holds shut' },
   { unit: 'Alarm disc', a: 'alarmPivotPost', b: 'alarmFollowerBar', why: '§121: the follower bar turning ON its post — the §48 follower\'s bearing (0.16 of the post in the bar\'s eye)' },
   // TODO 194 — the return spiral's two working joints (the blade and its
   // stud, which reached nothing, are retired with their row). The collet's
@@ -4405,7 +4378,7 @@ export async function checkIntraUnit(clock, { axes = AXES, samplesPerAxis = 5, y
     const boxes = fix.map((m) => new THREE.Box3().setFromObject(m));
     for (let i = 0; i < fix.length; i++) {
       for (let j = i + 1; j < fix.length; j++) {
-        if (boxDistance(boxes[i], boxes[j]) > 0) continue;
+        if (!boxesCanTouch(boxes[i], boxes[j])) continue;
         if (nearestElsewhere(u, fix[i], fix[j])) continue;
         const la = meshLabel(u, fix[i]), lb = meshLabel(u, fix[j]);
         const key = `${u.name} / ${[la, lb].sort().join(' ⇄ ')}`;
@@ -4525,7 +4498,7 @@ export async function checkIntraUnit(clock, { axes = AXES, samplesPerAxis = 5, y
           _cbA.setFromObject(a);
           for (const b of fix) {
             _cbB.setFromObject(b);
-            if (boxDistance(_cbA, _cbB) > 0) continue;
+            if (!boxesCanTouch(_cbA, _cbB)) continue;
             if (nearestElsewhere(u, a, b)) continue;
             const la = meshLabel(u, a), lb = meshLabel(u, b);
             const key = `${u.name} / ${la} ⇄ ${lb}`;
@@ -4540,7 +4513,7 @@ export async function checkIntraUnit(clock, { axes = AXES, samplesPerAxis = 5, y
         if (nearestElsewhere(u, a, b)) continue;
         _cbA.setFromObject(a);
         _cbB.setFromObject(b);
-        if (boxDistance(_cbA, _cbB) > 0) continue;
+        if (!boxesCanTouch(_cbA, _cbB)) continue;
         const la = meshLabel(u, a), lb = meshLabel(u, b);
         const key = `${u.name} / ${[la, lb].sort().join(' ⇄ ')}`;
         if (seen.has(key) || allowed(u.name, la, lb)) continue;
@@ -7425,8 +7398,8 @@ export function checkAlarmHandoffs(clock, { tol = HANDOFF_TRACK_TOL, poses = ALA
             // along ±z (the working axis of every hand-off declared here)
             // and bisect the smallest offset that makes the boolean
             // intersect — that offset IS the axial separation. Falls back
-            // to the exact/sampled arbitration only when no nudge within
-            // 2·tol connects (the meshes genuinely stand apart).
+            // to the exact distance only when no nudge within 2·tol connects
+            // (the meshes genuinely stand apart).
             // TODO 159 — the distance between RIGID frames (world units);
             // the z-nudge below is a boolean on the meshes as they stand,
             // which an affine map cannot change, so it keeps its own tree.
@@ -7446,8 +7419,10 @@ export function checkAlarmHandoffs(clock, { tol = HANDOFF_TRACK_TOL, poses = ALA
                 zSep = Math.min(zSep, hi);
               }
             }
+            // §338 landing 8 — `d` is exact, so the old guard against its false 0
+            // (max with the vertex-sampled clearance, an UPPER bound on the gap)
+            // could only over-read now, TODO 197's class; the exact figure stands.
             if (zSep < Infinity) d = Math.min(d, zSep);
-            else if (d < 0.05) d = Math.max(d, sampledClearance(a, b, gap));
             if (d < gap) gap = d;
           }
         }
@@ -7480,13 +7455,8 @@ export async function runInspection(clock, { axes: axisArg = AXES, yieldEvery = 
   const touching = resolvePairsTouching(clock, pairsTouching);
   const units = collectUnits(clock, { includeExcluded });
   const findings = new Map(); // pairKey -> { class, axes: {axisName: [f,...]} }
-  // §122 fix two — the EXPECTED classification is pure string work over a
-  // declaration, so it is computed ONCE here rather than re-derived at every
-  // contact (where it used to live), because the sweep now needs it BEFORE
-  // measuring: a declared-EXPECTED pair whose contact on the current axis
-  // has already been arbitrated takes the raw boolean for the remaining
-  // poses. FORBIDDEN and undeclared pairs are untouched — full arbitration
-  // at every pose, exactly as before.
+  // The EXPECTED classification is pure string work over a declaration, so it is
+  // computed ONCE here rather than re-derived at every contact.
   const expectedAt = units.map((A) => units.map((B) => inList(EXPECTED_PAIRS, A.name, B.name)));
   censusStart();   // §108's experiment — report-only, see the census block
   let unitPairTests = 0, unitPairPass = 0;   // the unit-level broad phase, this check's own outer gate
@@ -7507,18 +7477,11 @@ export async function runInspection(clock, { axes: axisArg = AXES, yieldEvery = 
           if (inList(IGNORED_PAIRS, A.name, B.name)) continue;
           if (touching && !touching.touches(A.name, B.name)) continue;   // §152
           unitPairTests++;
-          if (!boxes[ai].intersectsBox(boxes[bi])) continue;
+          if (!boxesCanTouch(boxes[ai], boxes[bi])) continue;
           unitPairPass++;
           const key = pairKey(A.name, B.name);
-          // §122 fix two — the first-confirmed flag is ZERO new state: a
-          // (pair, axis) with a recorded pose necessarily had its first
-          // contact arbitrated by the full path, so its existence is
-          // honestly proven and the remaining poses of THIS axis take the
-          // raw boolean. Slice-safe by construction: §127 runs one axis per
-          // browser context, so the flag never crosses a slice boundary.
           const isExpected = expectedAt[ai][bi];
-          const confirmed = isExpected && findings.get(key)?.axes[axis.name]?.length > 0;
-          if (!unitsIntersect(A, B, confirmed, boxCache, memo)) continue;
+          if (!unitsIntersect(A, B, boxCache, memo)) continue;
           let rec = findings.get(key);
           if (!rec) {
             rec = {
@@ -7538,12 +7501,9 @@ export async function runInspection(clock, { axes: axisArg = AXES, yieldEvery = 
   const report = [...findings.values()].sort((x, y) =>
     x.class === y.class ? x.pair.localeCompare(y.pair) : x.class === 'FORBIDDEN' ? -1 : 1
   );
-  // §122 fix two — the payload SAYS what its EXPECTED coverage means: the
-  // first contact per (pair, axis) is arbitrated, the rest of that axis's
-  // pose list is the raw BVH boolean (which can include the tri-tri false
-  // positives the verdict would have refuted). A report that silently
-  // changed what its numbers mean would be worse than a slow one.
-  for (const r of report) if (r.class === 'EXPECTED') r.coverage = 'raw-after-first-confirmed';
+  // §338 landing 7 — every pose's contact is the exact predicate, so an EXPECTED
+  // row no longer carries §122's 'raw-after-first-confirmed' coverage mark: no
+  // pose of it was trusted raw.
   // Compact per-axis summary: hit fraction + range.
   for (const r of report) {
     r.summary = Object.entries(r.axes)
@@ -11062,6 +11022,33 @@ export function checkOscillator(clock) {
 //     it is STALE. The control is the going ribbon as it stood before TODO 291
 //     (a 0.22008 half-thickness on the 1.5 collar, α 3.41), which the same rule
 //     must refuse.
+// 20. THE CLUB TOOTH'S TIP CARRIES THE ESCAPEMENT (TODO 296) — the escape
+//     wheel's teeth are a 10.83° wedge whose last 0.038 mm is 0.010 mm wide,
+//     thinner in the sheet than PIVOT_MIN_U, and nothing priced them: §50's
+//     floor reads a geometry-local bounding box whose smallest side here is the
+//     DEPTH. So `escapeTooth`, on row 12's and row 16's shape one part along.
+//     The geometry first, because an arm read off the wrong edge is a plausible
+//     number: the two flanks that meet at the tip lie on the SAME side of its
+//     radius (so the club's width is their difference — read as a sum the wedge
+//     comes out 59° and every section 4.6× too fat), the locking flank leaves
+//     at the declared TOOTH_RAKE_DEG, the band the tip stands at full radius in
+//     is inside the wheel's thickness, every contact arm is in (0, radius], and
+//     each arm satisfies VIRTUAL WORK against the escapement solve's own
+//     gearing (arm_fork/arm_wheel = dδ/dφ) — the one control that would notice
+//     both arms being wrong together. Then the loads: F = τ/arm with a FORWARD
+//     run carrying the corner's T·η and the UNLOCK carrying T/η, because the
+//     balance drives the train backward through the draw (§238's reading) — so
+//     the corners are ordered one way for a forward run and the OTHER way for
+//     the recoil, which is the sign a careless row gets wrong. Then the tip,
+//     priced as TODO 221 priced the maintaining beak's apex, because a point is
+//     singular in both currencies: Hertz (a steel radius on the ruby's flat,
+//     p0 = √(F'E*/πρ), E* re-derived from the two bodies the record names)
+//     against LINE_CONTACT_FIRST_YIELD_P0_PER_Y × ESCAPE_STEEL_SIGMA_Y_PA, and
+//     the wedge's section where the arc leaves it (bending plus the whole load
+//     axial) against the same steel. Both go as 1/ρ, so each inverts to its own
+//     first-yield radius, ρ_min is the larger, `binds` names it, and ρ_min must
+//     be at or under ESCAPE_TIP_R_M — the SHARP end of the declared finish
+//     band, the loaded reading. No waiver: row 16's beak arc has none either.
 // TODO 193 — the ribbons over their alloy, by name. A row cites the TODO whose
 // fix path brings it under, and FAILS when its ribbon already is (stale).
 // TODO 291 — the ribbons under the packing band, by name; RIBBON_STRESS_WAIVERS' convention.
@@ -11276,6 +11263,138 @@ export function checkEqualisation(clock) {
         if (!(r.sigma_Pa <= SPRING_SIGMA_Y_PA * (1 + 1e-9)))
           failures.push({ what: 'pivot over yield at service load', pivot: r.pivot, sigma_MPa: r.sigma_Pa / 1e6, yield_MPa: SPRING_SIGMA_Y_PA / 1e6 });
       }
+    }
+    // Row 20 (TODO 296) — THE CLUB TOOTH'S TIP. The roster above says why each
+    // clause is here; the load-bearing ones are the geometry's (an arm off the
+    // wrong edge reads plausible) and the corner ORDER per flow (the unlock's
+    // recoil inverts it).
+    const et = en.escapeTooth;
+    if (!et || !Array.isArray(et.rows) || !et.rows.length || !et.geom) {
+      failures.push({ what: 'escape tooth rows', note: 'going.energy.escapeTooth is missing \u2014 the club tooth\'s tip is unpriced (TODO 296 regressed)' });
+    } else {
+      const U = UNIT_MM / 1000;
+      const g = et.geom, w = g.wedge;
+      if (!w.sameSide)
+        failures.push({ what: 'the club\'s tip flanks straddle its radius', note: 'the wedge is their SUM, not their difference \u2014 this record\'s sections are not the cut ones' });
+      if (!(Math.abs(Math.abs(w.lockFlankDeg) - w.rakeDeg) <= 1e-6))
+        failures.push({ what: 'the locking flank is not at the declared rake', measuredDeg: w.lockFlankDeg, declaredDeg: w.rakeDeg });
+      if (!(w.fullDeg > 0 && w.fullDeg < 90))
+        failures.push({ what: 'the club\'s wedge angle is not a wedge', fullDeg: w.fullDeg });
+      // AND THE WEDGE IS THE FLANKS' DIFFERENCE, re-derived from the two flank
+      // angles the record also carries. Without this the trap passes: a record
+      // that read the flanks as a SUM would carry a self-consistent 58.83° and
+      // every clause below, which recomputes from its own halfRad, would hold.
+      const dDeg = Math.abs(Math.abs(w.lockFlankDeg) - Math.abs(w.impulseFlankDeg));
+      const dWpd = Math.abs(Math.tan(Math.abs(w.impulseFlankDeg) * Math.PI / 180) - Math.tan(Math.abs(w.lockFlankDeg) * Math.PI / 180));
+      if (!(rel(w.fullDeg, dDeg) <= 1e-12))
+        failures.push({ what: 'the club\'s wedge is not its flanks\' DIFFERENCE', fullDeg: w.fullDeg, difference: dDeg, sum: Math.abs(w.lockFlankDeg) + Math.abs(w.impulseFlankDeg) });
+      if (!(rel(w.widthPerDepth, dWpd) <= 1e-12))
+        failures.push({ what: 'the club\'s width per radial depth is not its flanks\' DIFFERENCE', record: w.widthPerDepth, difference: dWpd });
+      if (!(rel(w.halfRad * 2 * 180 / Math.PI, w.fullDeg) <= 1e-12))
+        failures.push({ what: 'the wedge\'s half-angle is not half its full angle', halfRad: w.halfRad, fullDeg: w.fullDeg });
+      // AND WHICH WAY THE POWER RUNS ON EACH FACE, structurally rather than by
+      // its prose: the impulse face only ever receives the wheel's drive, and
+      // each stone's locking face carries exactly one of each — the tooth
+      // standing at the banking (forward) and the balance driving it back down
+      // the draw (recoil). A record that priced the unlock forward would pass
+      // every identity and only this.
+      for (const st of [-1, 1]) {
+        const mine = g.runs.filter((q) => q.stone === st);
+        const imp = mine.filter((q) => q.face === 'impulse'), lk = mine.filter((q) => q.face === 'lock');
+        if (imp.some((q) => q.flow !== 'forward'))
+          failures.push({ what: 'an impulse-face run is not driven forward by the wheel', stone: st, runs: imp });
+        if (!(lk.filter((q) => q.flow === 'recoil').length === 1 && lk.filter((q) => q.flow === 'forward').length === 1))
+          failures.push({ what: 'a stone\'s locking face does not carry exactly one forward run and one recoil run', stone: st, runs: lk });
+      }
+      if (!(g.band.t_u > 0 && g.band.t_u <= g.band.thickness_u * (1 + 1e-6)))
+        failures.push({ what: 'the tip\'s full-radius band is not inside the wheel\'s thickness', band_u: g.band.t_u, thickness_u: g.band.thickness_u });
+      if (!(g.virtualWork && g.virtualWork.rel < 1e-5))
+        failures.push({ what: 'the contact arms fail virtual work against the escapement solve', worst: g.virtualWork || null });
+      for (const q of g.runs)
+        if (!(q.arm_u > 0 && q.arm_u <= g.radius_u + 1e-9))
+          failures.push({ what: 'contact arm outside the wheel', run: q.run, stone: q.stone, arm_u: q.arm_u, radius_u: g.radius_u });
+      // the limits are layout.js's, never the record's
+      const rho = ESCAPE_TIP_R_M, a = w.halfRad, tM = et.line_u * U;
+      const EstarFrom = 1 / ((1 - Math.pow(et.bodies.tooth.nu, 2)) / et.bodies.tooth.E_Pa
+                           + (1 - Math.pow(et.bodies.stone.nu, 2)) / et.bodies.stone.E_Pa);
+      const allow = LINE_CONTACT_FIRST_YIELD_P0_PER_Y * ESCAPE_STEEL_SIGMA_Y_PA;
+      if (!(rel(et.Estar_Pa, EstarFrom) <= 1e-12))
+        failures.push({ what: 'escape tooth contact modulus identity', record: et.Estar_Pa, fromBodies: EstarFrom });
+      if (!(rel(et.p0Allow_Pa, allow) <= 1e-12))
+        failures.push({ what: 'escape tooth allowable is not first yield of the escape steel\'s low end', record: et.p0Allow_Pa, fromLimit: allow });
+      if (!(Math.abs(et.rho_m - rho) <= 1e-18))
+        failures.push({ what: 'escape tooth priced at a radius that is not the finish band\'s sharp end', record: et.rho_m, sharp_m: rho });
+      if (!(ESCAPE_TIP_R_M === ESCAPE_TIP_R_BAND.sharp_m))
+        failures.push({ what: 'ESCAPE_TIP_R_M is not the band\'s sharp end', value: ESCAPE_TIP_R_M, band: { ...ESCAPE_TIP_R_BAND } });
+      const secW = 2 * rho * Math.cos(a), secArm = rho * (1 - Math.sin(a));
+      const byKey = new Map();
+      for (const r of et.rows) {
+        const key = `${r.stone}|${r.run}`;
+        if (!byKey.has(key)) byKey.set(key, new Map());
+        byKey.get(key).set(r.corner, r);
+        const run = g.runs.find((q) => q.stone === r.stone && q.run === r.run);
+        if (!run) { failures.push({ what: 'escape tooth row names no measured run', row: r }); continue; }
+        if (!(rel(r.arm_u, run.arm_u) <= 1e-12))
+          failures.push({ what: 'escape tooth row arm is not the measured one', run: r.run, row: r.arm_u, measured: run.arm_u });
+        // the row's η is its CORNER's, not a number of its own: without this a
+        // row could wear one corner's name and another's efficiency and every
+        // identity below would still hold
+        const Cc = en.corners[r.corner];
+        if (!Cc) { failures.push({ what: 'escape tooth row names no corner', row: r }); continue; }
+        const etaC = Cc.stages.filter((q) => q.name !== 'lever escapement').reduce((x, q) => x * q.eta, 1);
+        if (!(rel(r.etaPath, etaC) <= 1e-12))
+          failures.push({ what: 'escape tooth row\u2019s \u03b7 is not its corner\u2019s', run: r.run, corner: r.corner, record: r.etaPath, fromCorner: etaC });
+        const tq = r.flow === 'recoil' ? en.escapeTorque_Nm / r.etaPath : en.escapeTorque_Nm * r.etaPath;
+        if (!(rel(r.torque_Nm, tq) <= 1e-12))
+          failures.push({ what: 'escape tooth torque identity', run: r.run, corner: r.corner, flow: r.flow, record: r.torque_Nm, fromCorner: tq });
+        const F = r.torque_Nm / (r.arm_u * U);
+        if (!(rel(r.load_N, F) <= 1e-12))
+          failures.push({ what: 'escape tooth load identity', run: r.run, corner: r.corner, record: r.load_N, fromTorque: F });
+        const p0 = Math.sqrt((F / tM) * et.Estar_Pa / (Math.PI * rho));
+        const sigma = 6 * F * secArm / (tM * secW * secW) + F / (tM * secW);
+        if (!(rel(r.p0_Pa, p0) <= 1e-12))
+          failures.push({ what: 'escape tooth Hertz identity', run: r.run, corner: r.corner, record: r.p0_Pa, fromLoad: p0 });
+        if (!(rel(r.sigma_Pa, sigma) <= 1e-12))
+          failures.push({ what: 'escape tooth tip beam identity', run: r.run, corner: r.corner, record: r.sigma_Pa, fromLoad: sigma });
+        // each criterion inverts to the radius at which it would first yield
+        const rH = (F / tM) * et.Estar_Pa / (Math.PI * allow * allow);
+        const kB = (6 * (1 - Math.sin(a)) / (4 * Math.pow(Math.cos(a), 2)) + 1 / (2 * Math.cos(a))) / tM;
+        const rB = kB * F / ESCAPE_STEEL_SIGMA_Y_PA;
+        if (!(rel(r.rhoHertz_m, rH) <= 1e-12) || !(rel(r.rhoBeam_m, rB) <= 1e-12))
+          failures.push({ what: 'escape tooth first-yield radius identity', run: r.run, corner: r.corner,
+            hertz: [r.rhoHertz_m, rH], beam: [r.rhoBeam_m, rB] });
+        const bind = rH >= rB ? 'hertz' : 'beam';
+        if (r.binds !== bind || !(rel(r.rhoMin_m, Math.max(rH, rB)) <= 1e-12))
+          failures.push({ what: 'escape tooth rho_min is not the larger criterion', run: r.run, corner: r.corner, record: [r.rhoMin_m, r.binds], derived: [Math.max(rH, rB), bind] });
+        // THE BAR: the tip carries the load at the finish band's sharp end
+        if (!(r.p0_Pa <= allow * (1 + 1e-9)))
+          failures.push({ what: 'club tooth tip over first yield in contact', run: r.run, corner: r.corner,
+            p0_GPa: r.p0_Pa / 1e9, allow_GPa: allow / 1e9 });
+        if (!(r.sigma_Pa <= ESCAPE_STEEL_SIGMA_Y_PA * (1 + 1e-9)))
+          failures.push({ what: 'club tooth tip over yield in bending', run: r.run, corner: r.corner,
+            sigma_MPa: r.sigma_Pa / 1e6, yield_MPa: ESCAPE_STEEL_SIGMA_Y_PA / 1e6 });
+        if (!(r.rhoMin_m <= rho * (1 + 1e-9)))
+          failures.push({ what: 'club tooth needs a blunter tip than the finish band\'s sharp end', run: r.run, corner: r.corner,
+            rhoMin_um: r.rhoMin_m * 1e6, sharp_um: rho * 1e6, binds: r.binds });
+      }
+      // THE CORNERS, ordered PER FLOW: a forward run's load falls with the
+      // corner (the train delivers less), the unlock's recoil RISES with it
+      // (the balance pays the backward friction). Both senses, because a row
+      // that priced the recoil forward would still look monotone.
+      for (const [key, m] of byKey) {
+        const f = m.get('favourable'), nn = m.get('nominal'), d = m.get('adverse');
+        if (!f || !nn || !d) { failures.push({ what: 'escape tooth run missing a corner', run: key, corners: [...m.keys()] }); continue; }
+        const up = f.flow === 'recoil';
+        const ok = up ? (f.load_N <= nn.load_N + 1e-18 && nn.load_N <= d.load_N + 1e-18)
+                      : (f.load_N >= nn.load_N - 1e-18 && nn.load_N >= d.load_N - 1e-18);
+        if (!ok)
+          failures.push({ what: up ? 'the unlock\'s recoil load does not rise toward the adverse corner'
+                                   : 'a forward run\'s load does not fall toward the adverse corner',
+            run: key, flow: f.flow, loads_uN: [f.load_N * 1e6, nn.load_N * 1e6, d.load_N * 1e6] });
+      }
+      const worstRow = et.rows.reduce((x, y) => (y.margin < x.margin ? y : x));
+      if (et.worst.run !== worstRow.run || et.worst.corner !== worstRow.corner || !(rel(et.worst.margin, worstRow.margin) <= 1e-12))
+        failures.push({ what: 'escape tooth worst row is not the lowest margin', record: et.worst, lowest: { run: worstRow.run, corner: worstRow.corner, margin: worstRow.margin } });
     }
     // Row 16 (TODO 217) — THE MAINTAINING DETENT'S HOLD. The face load is the
     // going torque over the face normal's moment arm, the torque being the
@@ -11617,6 +11736,16 @@ export function checkEqualisation(clock) {
         pivots: en.pivots && en.pivots.strength ? {
           trainPivotR_u: +en.pivots.trainPivotR_u.toFixed(5), balancePivotR_u: +en.pivots.balancePivotR_u.toFixed(5),
           worst: en.pivots.strength.worst, worstMargin: +en.pivots.strength.worstMargin.toFixed(3),
+        } : null,
+        // TODO 296 — the club tooth's tip, REPORTED beside them (row 20 gates it)
+        escapeTooth: en.escapeTooth ? {
+          wedgeDeg: +en.escapeTooth.wedgeDeg.toFixed(4), tipRho_um: +(en.escapeTooth.rho_m * 1e6).toFixed(4),
+          line_u: +en.escapeTooth.line_u.toFixed(4), worstArm_u: +en.escapeTooth.worstArm_u.toFixed(4),
+          worstLoad_uN: +(Math.max(...en.escapeTooth.rows.map((r) => r.load_N)) * 1e6).toFixed(2),
+          worst: `${en.escapeTooth.worst.corner} / ${en.escapeTooth.worst.run}`,
+          worstMargin: +en.escapeTooth.worst.margin.toFixed(3), binds: en.escapeTooth.worst.binds,
+          rhoMin_nm: +(en.escapeTooth.rhoMin_m * 1e9).toFixed(3), sharp_nm: +(en.escapeTooth.tipBand.sharp_m * 1e9).toFixed(0),
+          yield_MPa: en.escapeTooth.yield_Pa / 1e6, p0Allow_GPa: +(en.escapeTooth.p0Allow_Pa / 1e9).toFixed(4),
         } : null,
         corners: Object.fromEntries(Object.entries(en.corners).map(([c, C]) => [c, {
           etaTrain: +C.etaTrain.toFixed(4), etaTotal: +C.etaTotal.toFixed(4), delivered_nJ: +(C.delivered_J * 1e9).toFixed(4),

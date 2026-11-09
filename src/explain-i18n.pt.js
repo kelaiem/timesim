@@ -209,7 +209,7 @@ export default {
   ['PAWLS ×2']: 'LINGUETAS ×2',
   ['SPRING · under']: 'MOLA · embaixo',
   ['inner ring — base ratchet flange, keyed to the fusee']: 'anel interno — flange do roquete base, chavetado ao caracol',
-  ['MAINT_TEETH 24 on the flange, 35 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 na flange, 35 no anel · duas linguetas a π = 12 passos, logo em uníssono',
+  ['MAINT_TEETH 24 on the flange, 25 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 na flange, 25 no anel · duas linguetas a π = 12 passos, logo em uníssono',
   ['THE LIVE TORQUE PATH']: 'A VIA VIVA DO TORQUE',
   ['crown → winding spur']: 'coroa → roda de corda',
   ['fusee cone → base ratchet flange']: 'cone do caracol → flange do roquete base',

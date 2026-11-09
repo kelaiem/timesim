@@ -32,7 +32,7 @@ that band's swept footprint.
 
 | § | Title | Parts |
 |---|---|---|
-| [§338](built/0338.md) | A native battery: one deterministic library, WebAssembly kernels, identical results on ARM and x86 — PARTIAL: landing 0's check profile, landing 1 (the native host), landing 2 (deterministic maths), landing 3 (the native battery), landing 4 (the pose-conditioning guard), landing 5 (the compiled kernel's first primitive) and landing 6 (its second, the boolean intersection) shipped | 1 |
+| [§338](built/0338.md) | A native battery: one deterministic library, WebAssembly kernels, identical results on ARM and x86 — PARTIAL: landing 0's check profile, landing 1 (the native host), landing 2 (deterministic maths), landing 3 (the native battery), landing 4 (the pose-conditioning guard), landing 5 (the compiled kernel's first primitive), landing 6 (its second, the boolean intersection), landing 7 (exact contact) and landing 8 (exact primitives in every mode) shipped | 1 |
 | [§337](built/0337.md) | The geared Geneva stop-work: a finger wheel geared off the cone, so every reserve has an exact star | 1 |
 | [§336](built/0336.md) | The fusee cock: the fusee's top bush on a cranked cock standing on the base plate | 1 |
 | [§335](built/0335.md) | Fusee gear window: the great wheel framed through a second window outside the cone's | 1 |

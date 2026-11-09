@@ -218,7 +218,7 @@ export default {
   ['PAWLS ×2']: 'ЗАЩЁЛКИ ×2',
   ['SPRING · under']: 'ПРУЖИНА · снизу',
   ['inner ring — base ratchet flange, keyed to the fusee']: 'внутреннее кольцо — фланец храповика основания, жёстко на фузее',
-  ['MAINT_TEETH 24 on the flange, 35 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 на фланце, 35 на кольце · две защёлки через π = 12 шагов, поэтому работают в унисон',
+  ['MAINT_TEETH 24 on the flange, 25 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 на фланце, 25 на кольце · две защёлки через π = 12 шагов, поэтому работают в унисон',
   ['THE LIVE TORQUE PATH']: 'ЖИВОЙ ПУТЬ МОМЕНТА',
   ['crown → winding spur']: 'головка → заводная шестерня',
   ['fusee cone → base ratchet flange']: 'конус фузеи → фланец храповика основания',
