@@ -879,54 +879,29 @@ jobs:
   # samples cannot bound a tail, a timeout is a one-line revert, and tightening
   # a cap toward the fastest runs is the same mistake the 18 was.
   #
-  # 23 -> 32 WAS TAKEN, AND IS REVERTED HERE. probe-337-geared-invariant.mjs
-  # (TODO 294's option 6) joined the step below on 4aee50af and ran ONCE: run
-  # 42521704332, job 1154 s, its probe step 1126 s, this job's setup 23 s. The
-  # derivation that set the 32 was: the probe boots ?arrest=geared at all
-  # THIRTEEN reserves, 414 s of boot in all locally (25-37 s each, mean 31.9),
-  # carried over by the per-boot runner/local factor three rows up (1.42x,
-  # lanes divided out) to 31.9 x 1.42 = 45.3 s a boot, 13 boots at the runner's
-  # 2 lanes is 7 waves, ~317 s, taken as ~300 on top of the 826 s the row above
-  # budgeted. The MEASUREMENT it owed says 1154 x 1.66 = 31.9 min -> 32: the
-  # same cap, to the minute. Do not read that as the derivation vindicated in
-  # detail - it budgeted a JOB total of 1126 s and the STEP walled 1126 s,
-  # which is a collision of two different quantities, and one wall still cannot
-  # say what the probe alone costs.
+  # TODO 294 PUT A PROBE HERE AND THE SPLIT TOOK IT BACK OUT, and the walls
+  # that bracket that are no longer listed in this comment: `node
+  # tools/cap-walls.mjs 'battery probes'` reads them off the API with the
+  # running average, the spread, the outlier flags and what the rule asks for.
+  # Read on 2026-11-09: 19 rows, 479-831 s, median 660 s, MAD 115 s, no
+  # outliers, and the rule asking for exactly the 23 on file. Two walls stay in
+  # prose because the API cannot tell you what made them special - 1154 s and
+  # 883 s are the only two taken while this job also ran
+  # probe-337-geared-invariant.mjs, against 479-831 s without it, and they are
+  # why that probe now has a job of its own.
   #
-  # The probe then moved to a JOB OF ITS OWN, the alternative this row used to
-  # offer, so this cap stops carrying it. Its own cap is derived at that job,
-  # just below.
-  #
-  # 32 -> 23, THE 23 UNCHANGED, and this block's standing demand is discharged
-  # with wall times rather than another projection. Six more 7-probe samples,
-  # all from main on 2026-11-08, slowest last: b1431249 487 s, 470f2a35 635 s,
-  # 144c746b 649 s, 6e87a329 765 s, b5852475 800 s, 0e64bb37 811 s (job walls;
-  # the probe step inside them runs 464-790 s). Beside the 689.0 and 763.0
-  # above that is eight samples spanning 487-811 s, 1.67x - the first row in
-  # this block entitled to say the 1.66 spread is MEASURED on this job rather
-  # than carried in from the header. The slowest still governs: 811 x 1.66 =
-  # 1346 s = 22.4 min -> 23, which is where the cap already was. The job did
-  # not grow; it just got read properly.
-  #
-  # THE SPLIT ITSELF IS MEASURED, which is the other half of the claim above.
-  # Three of the runs after it - 42535617947, 42529912428 and 42551697718, three
-  # of the four that have run the invariant on its own job - walled 624 s, 629 s
-  # and 635 s here, with the probe step at 605 s, 606 s and 610 s: inside the
-  # six-sample band on both counts (487-811 s job, 464-790 s step) and nowhere
-  # near the 1154 s and 883 s this job walled while it carried the invariant.
-  # The probe left, and the job went back to the size it was. Those three sit
-  # within 1.02x of each other, which is NOT a reason to re-derive the 1.66 from
-  # them: three runs of one week on one tree say nothing about the spread the
-  # header's factor is there to cover.
-  #
-  # ONE SAMPLE NEARLY WENT IN THE WRONG COLUMN, and the correction is kept here
-  # because it is the only kind of error this block cannot catch by arithmetic.
-  # 63011007 is main at 883 s on the same day, and it is NOT a 7-probe run: it
-  # is the merge commit of the PR that put the invariant probe HERE, so its
-  # step ran eight. Counted as a seventh 7-probe sample it made this job look
-  # as if it had grown to 883 s and pulled the cap to 25. A sample's column is
-  # decided by reading the workflow at ITS OWN sha (`git show <sha>:
-  # .github/workflows/battery.yml`), never by the date or the branch.
+  # TWO LESSONS FROM THAT WEEK, kept because neither is a number any tool can
+  # re-derive:
+  #   * A SAMPLE'S COLUMN IS READ FROM THE WORKFLOW AT ITS OWN SHA
+  #     (`git show <sha>:.github/workflows/battery.yml`), never from the date or
+  #     the branch. 63011007 is main at 883 s on the right day, and it is the
+  #     merge commit that put the eighth probe here; counted as a seven-probe
+  #     row it made this job look as though it had grown, and pulled this cap
+  #     to 25 for one commit.
+  #   * TWO SAMPLES THAT AGREE ARE STILL TWO SAMPLES. The invariant job's first
+  #     two runs walled its step at 272 s each, to the second, and the block
+  #     next door called the probe steady on it; the third walled 254 s and the
+  #     fourth 337 s. Agreement is the first thing a third row takes away.
   battery-probes:
     name: battery probes
     needs: route
@@ -976,55 +951,40 @@ jobs:
   # It costs the gate step in `battery` a SECOND sibling to wait on, which is the
   # whole price.
   #
-  # THE CAP, 10 min, AND IT IS MEASURED - the demand this row used to make of
-  # the job's first run is discharged. FOUR runs have executed this job, in
-  # order: 42529912428 (PR #941 at 0ed47f85) walled 295 s, 42535617947 (main
-  # at c7ed902f) 308 s, 42551697718 (PR #948) 281 s and 42553899657 (PR #949)
-  # 360 s, with the probe step itself at 272, 272, 254 and 337 s and the rest
-  # in setup and the runner's own book-ends (19-36 s - checkout, node and the
-  # Chromium install, not metal). The slowest is also the newest, which is what
-  # a slow tail looks like when it arrives. It governs: 360 x 1.66 = 598 s =
-  # 9.96 min -> 10, so this cap is EXACTLY its own derivation now, with 2 s of
-  # slack. RE-READ IT THE FIRST TIME A WALL PASSES 361 s - at 362 s the rule
-  # asks for 11, and raising it then is the rule working, not a loosening. The
-  # four rows span 1.28x, inside the 1.66 the header carries: the factor is
-  # covering the spread it was measured to cover.
+  # THE CAP, 11 min, AND THE ROWS LIVE IN THE API, not here. The rule is this
+  # file's: the slowest wall the series supports, times the 1.66 same-tree
+  # spread, rounded up to the minute. `node tools/cap-walls.mjs 'battery geared
+  # invariant'` applies it to the last 30 runs and says whether this number is
+  # still right; it also separates a freak slow run from the series actually
+  # MOVING, which is the distinction three pull requests' worth of prose here
+  # kept getting wrong. Read on 2026-11-09: 20 rows, 206-383 s, span 1.86x,
+  # median 294.5 s, MAD 56.5 s, no outliers, and the rule asking for 11 - which
+  # is where this cap now is, raised from a 10 that four rows had supported.
   #
-  # AND DO NOT CUT IT TOWARD THE FAST ROWS. On the two rows this block had
-  # first the rule gave 9; on the fastest row alone it gives 8. A 360 s run
-  # walks straight through either one. REVISIT AT SIX ROWS - the number it took
-  # to read the probes job next door properly - and remember that the row
-  # before this one said "revisit when these rows outnumber the two", which the
-  # very push that merged it satisfied: a threshold a cap block can act on has
-  # a NUMBER in it.
+  # WHEN TO RE-READ IT: when cap-walls.mjs says THE FILE IS LOW. That is the
+  # whole trigger, and it is the TOOL's line rather than a number in this
+  # comment because a number here goes stale the next time the job runs. The
+  # row this one replaced said "revisit when these rows outnumber the two", and
+  # the very push that merged it satisfied that. A cap over what the rule asks
+  # is slack and stays; a cap under it is a job that can be killed
+  # mid-measurement.
   #
-  # WHAT EACH NEW ROW TOOK BACK, kept because the shape of the error outlasts
-  # the numbers. The first two runs walled the step at 272 s each, to the
-  # second, and for one commit this block said so as though it meant the probe
-  # was steady; the third walled 254 s and took the agreement away. Those three
-  # then spanned a tidy 1.10x and this block said THAT; the fourth walled 337 s
-  # and took the tidiness away. Two samples that agree are still two samples,
-  # three that sit close are still three, and no sample promises you the tail.
-  #
-  # THE DERIVATION THE 10 CAME FROM is kept, because the method is what carries
-  # over to the next job that has no wall of its own yet. With no standalone
-  # wall to read, the 10 came from DIFFERENCING the means of the step next door
-  # WITH this probe (two samples, 1126 s and 863 s, mean 995 s) and WITHOUT it
-  # (six the same day, 464-790 s, mean 667 s): 327 s for the probe, plus a 23 s
-  # setup, x 1.66 = 581 s = 9.7 min -> 10. Measured, the probe and its setup
-  # together are 281-356 s against that 350 s, so the differencing did NOT run
-  # high: the slowest row is 2 % OVER it. The row before this one called the
-  # method conservative on three fast samples, which is this block's own mistake
-  # in a friendlier costume. The pairwise differences spanned 73-662 s and the
-  # truth is 254-337 s, sitting inside that span and near neither end: the means
-  # were the only honest reading, and any single pair of walls would have been
-  # out by a factor of two or more.
+  # THE DERIVATION THE FIRST 10 CAME FROM is kept, because the method is what
+  # carries over to the next job with no wall of its own. With nothing to read,
+  # the cap came from DIFFERENCING the means of the step next door WITH this
+  # probe (1126 s and 863 s, mean 995 s) and WITHOUT it (six the same day,
+  # 464-790 s, mean 667 s): 327 s for the probe, plus a 23 s setup, x 1.66 =
+  # 581 s = 9.7 min -> 10. Measured since, this job walls 206-383 s, so the
+  # differencing landed inside the series it was predicting - neither
+  # conservative nor generous. An earlier version of this row called it
+  # 15-25 % conservative off the three fastest rows then in hand; that was this
+  # block's own mistake in a friendlier costume.
   battery-geared-invariant:
     name: battery geared invariant
     needs: route
     if: needs.route.outputs.tiers_job == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 11
     steps:
       - uses: actions/checkout@v4
 
@@ -1466,7 +1426,10 @@ jobs:
       # and had not yet failed. That is `battery probes`' 23 min (21 before §337
       # stage 3's record gate, 18 before the measured re-derivation, 32 for the
       # two runs that carried the invariant probe on that job - see its comment
-      # for all of them) against `battery geared invariant`'s 10, so 23. The
+      # for all of them) against `battery geared invariant`'s 11, so 23. Both
+      # are read by `node tools/cap-walls.mjs`, and THIS number is the only one
+      # that is not: it is max(the two), so it moves when either of them does.
+      # The
       # battery reaches this step ~12 min in and may wait past its own ~19 min;
       # a sibling that started with the battery finishes, or is killed, inside
       # this step either way. A step killed at the cap fails, which is the safe
