@@ -9618,6 +9618,10 @@ async function siteTailBearings(B, F, g, cap) {
 // `candidate` true refuses a B that has no fold worth building (returns
 // { F, refused }); the shipped build warns instead and builds anyway, so a
 // solve that found no window still leaves a tree the battery can judge.
+// TODO 298 — WHAT THE SHIPPED BUILD LEFT UNCUT, on its own word: every mesh a table might name that this build's own
+// solve decided not to cut, with the reason the build warned. inspect.js stands a row down only on this record (and on a
+// module the build did not build, `clock.modules`), so a mesh that is missing for any other reason still fails as it did.
+const BUILD_OMITTED = [];
 async function buildSettingMetal(B, parent, { candidate = false } = {}) {
   const F = solveSettingFold(B);
   let refused = null;
@@ -9746,6 +9750,7 @@ async function buildSettingMetal(B, parent, { candidate = false } = {}) {
   if (!T.refused) {
     for (const [k, why] of [['rise', T.riseWhy], ['stub', T.stubWhy], ['cap arbor', T.capWhy]])
       if (why && !candidate) console.warn(`TODO 289: ${why} — the ${k} runs unborne on this arrangement`);
+    if (T.riseWhy && !candidate) BUILD_OMITTED.push({ unit: 'Keyless works', mesh: 'settingRisePivot', why: `TODO 289: ${T.riseWhy}` });
     if (!T.riseWhy) {
       const pivotLen = T.riseS0 + T.riseBushLen;
       const risePivot = makeRodSegment(E, E.clone().addScaledVector(d1, pivotLen), T.risePivotR);
@@ -9754,6 +9759,13 @@ async function buildSettingMetal(B, parent, { candidate = false } = {}) {
       bearings.risePivot = risePivot;
     }
     if (T.dropLower.why && !candidate) console.warn(`TODO 289: ${T.dropLower.why} — the drop runs without its lower bearing on this arrangement`);
+    // a hanger the siting gave no seat is not cut: its bush, arm and column are the record's, with the reason it WARNED.
+    // A hanger missing with no warning is not recorded, so a row naming it still fails: an unwarned gap is TODO 298's
+    if (!candidate) for (const [key, why] of [['rise', T.riseWhy], ['stub', T.stubWhy], ['cap', T.capWhy], ['drop', T.dropLower.why]]) {
+      if (T.hangers[key] || !why) continue;
+      const tag = key === 'cap' ? 'settingCap' : key === 'stub' ? 'settingStub' : key === 'drop' ? 'settingDrop' : 'settingRise';
+      for (const part of ['Bush', 'Arm', 'Column']) BUILD_OMITTED.push({ unit: 'Keyless works', mesh: `${tag}${part}`, why: `TODO 289: ${why}` });
+    }
     for (const [key, h, bore] of [['rise', T.hangers.rise, T.risePivotR + PIVOT_BORE_CLEAR], ['stub', T.hangers.stub, MW_RISE_R + PIVOT_BORE_CLEAR], ['cap', T.hangers.cap, MW_RISE_R + PIVOT_BORE_CLEAR],
       ['drop', T.hangers.drop, SETTING_ROD_R + PIVOT_BORE_CLEAR]].filter(([, h]) => h)) {
       const tag = key === 'cap' ? 'settingCap' : key === 'stub' ? 'settingStub' : key === 'drop' ? 'settingDrop' : 'settingRise';
@@ -9780,6 +9792,12 @@ async function buildSettingMetal(B, parent, { candidate = false } = {}) {
     }
     // TODO 289 landing 6 — the drop's journal on through the minute wheel's hub to the foot bush under it: one bar with
     // the drop, at its own radius, from the wheel's plane (where the drop ends, keyed in the hub) to the bush's bottom
+    // the foot is cut only when the drop's lower bearing IS the foot; the siting refuses it with a reason (`footWhy`)
+    // and bears the drop from above instead, or finds no lower bearing at all (`why`, warned above). Either is the build's word
+    if (!(T.hangers.drop && T.dropLower.kind === 'foot') && !candidate) {
+      const why = T.dropLower.why ? `TODO 289: ${T.dropLower.why}` : T.dropLower.footWhy ? `TODO 289: the foot bush is refused (${T.dropLower.footWhy}), so the drop bears ${T.dropLower.kind} instead` : null;
+      if (why) BUILD_OMITTED.push({ unit: 'Keyless works', mesh: 'settingDropFoot', why });
+    }
     if (T.hangers.drop && T.dropLower.kind === 'foot') {
       const foot = makeRodSegment(new THREE.Vector3(settingA.x, settingA.y, SETTING_SPUR_Z), new THREE.Vector3(settingA.x, settingA.y, T.dropLower.zLo), SETTING_ROD_R);
       foot.name = 'settingDropFoot';
@@ -66277,7 +66295,7 @@ window.__clock = {
     sigmaY_Pa: SPRING_SIGMA_Y_PA, unitMM: UNIT_MM,
     stud: { lifterR: ALARM_LIFT_STUD_R, crankR: ALARM_RELEASE_STUD_R, crankL: ALARM_RELEASE_STUD_L },
   }) : null,
-  get lineLaws() { return Object.assign(Object.create(ALARM_LINK_LAWS), { release: ALARM_RELEASE_LAWS, strike: alarmStrikeLineLaws(), detector: ALARM_DETECTOR_LAWS }); }, // §70 step 3 — the alarm link's own laws (seat solve, pin arm, rim top), for its line spec to evaluate at the reference's inputs; TODO 236 — and the release run's (`release`); §278 — and the strike corner's (`strike`); §278 landing 4 — and the detector's (`detector`)
+  get lineLaws() { if (!ALARM_BUILT) return null; return Object.assign(Object.create(ALARM_LINK_LAWS), { release: ALARM_RELEASE_LAWS, strike: alarmStrikeLineLaws(), detector: ALARM_DETECTOR_LAWS }); }, // §70 step 3 — the alarm link's own laws (seat solve, pin arm, rim top), for its line spec to evaluate at the reference's inputs; TODO 236 — and the release run's (`release`); §278 — and the strike corner's (`strike`); §278 landing 4 — and the detector's (`detector`)
   get alarmSetHold() { return alarmSetHoldRecord(); }, // TODO 144 — the release disc's drag and what holds it (null until a hold is cut), for probe-144-set-hold
   get meshes() { return meshAudit(); },        // §194 — every declared gear mesh, its two named members and the inputs that drive it
   meshCandidates(tol) { return meshCandidates(tol); }, // §135 item 4 — every pair of rotors that MESHES in the metal at the current pose, by §194's criteria, for the coverage check to diff against the rows
@@ -66293,6 +66311,8 @@ window.__clock = {
   // where the notch actually stands, and whether the roller moved it.
   get resetContact() { return { ...resetContactNow, seatD: HEART_FREE_D0, retractD: HEART_FREE_D1 }; },
   get bootWarns() { return __bootWarns; },
+  get modules() { return { alarm: ALARM_BUILT }; },   // TODO 298 — which modules this build cut (§325 landing 3's ?alarm=0 builds none of the alarm), for inspect.js' module-aware tables
+  get omitted() { return BUILD_OMITTED.map((o) => ({ ...o })); },   // TODO 298 — the meshes the build's own solve left uncut, each with the reason it warned
   get buildWarns() { return __buildWarnEnd === null ? __bootWarns.slice() : __bootWarns.slice(0, __buildWarnEnd); },   // §338
   get runWarns() { return __buildWarnEnd === null ? [] : __bootWarns.slice(__buildWarnEnd); },
   // §106 — the arrest's verification surface. The BANK is the entry's whole

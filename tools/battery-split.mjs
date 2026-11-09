@@ -284,10 +284,14 @@ export function mergeExtrema(parts, axisMeta) {
           + ' — that list is read off the declared table, so it cannot depend on which axis ran');
       }
     }
+    // TODO 298 — the stood-down list is the TABLE's against the build's word, like `unmatched`: every slice reads the same
+    const standDown = parts[0].result.standDown;
+    for (const p of parts) if (JSON.stringify(p.result.standDown) !== JSON.stringify(standDown))
+      throw new Error(`slice ${p.slice} stood down different rows than ${parts[0].slice} — that list is read off the build's own omissions`);
     return {
       violations: results.filter((r) => !r.ok && !r.waived),
       waivedCount: results.filter((r) => !r.ok && r.waived).length,
-      unmatched, results, census,
+      unmatched, results, census, ...(standDown ? { standDown } : {}),
       ...(restriction ? { restriction } : {}),
     };
   }

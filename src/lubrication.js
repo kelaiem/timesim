@@ -235,18 +235,22 @@ export function lubricationJoints(graph) {
 // ---------------------------------------------------------------------------
 // The audit. Pure: it takes the tables it judges, so the check can run it on the
 // real ones and on mutated copies (its controls).
-export function auditLubrication({ graph, labels, rows = LUBRICATION, debt = LUBRICATION_DEBT, waivers = LUBRICATION_WAIVERS, friction = FRICTION }) {
+// `absent` (TODO 298) maps a unit the build left out (a module it did not build) to the reason: a row on a joint between
+// such units has no metal to lubricate and stands down by name. Empty by default, so every caller before it reads as before.
+export function auditLubrication({ graph, labels, rows = LUBRICATION, debt = LUBRICATION_DEBT, waivers = LUBRICATION_WAIVERS, friction = FRICTION, absent = new Map() }) {
   const joints = lubricationJoints(graph);
   const population = new Map(joints.map((j) => [j.key, j]));
   const labelSet = new Set(labels);
   const inputs = new Set(INPUT_NODES);
-  const malformed = [], stale = [], unanswered = [], staleDebt = [], debtNotInPopulation = [], staleWaivers = [];
+  const malformed = [], stale = [], unanswered = [], staleDebt = [], debtNotInPopulation = [], staleWaivers = [], standDown = [];
   const answered = [];
 
   for (const [key, row] of Object.entries(rows)) {
     const j = population.get(key);
     if (!j) { stale.push({ key, why: 'no such joint in MECH_GRAPH — a row naming no metal answers nothing' }); continue; }
     const missing = j.units.filter((u) => !labelSet.has(u));
+    const gone = missing.find((u) => absent.has(u));
+    if (gone) { standDown.push({ key, why: absent.get(gone) }); continue; }
     if (missing.length) { stale.push({ key, why: `unit label(s) ${missing.map((m) => `'${m}'`).join(', ')} not registered in the scene` }); continue; }
     const bad = (problem) => malformed.push({ key, problem });
     if (!LUBRICATION_REGIMES.includes(row.regime)) { bad(`regime '${row.regime}' is not one of ${LUBRICATION_REGIMES.join(', ')}`); continue; }
@@ -282,6 +286,6 @@ export function auditLubrication({ graph, labels, rows = LUBRICATION, debt = LUB
   }
   const byRegime = {};
   for (const a of answered) byRegime[a.regime] = (byRegime[a.regime] || 0) + 1;
-  return { population: joints.length, joints, answered, unanswered, malformed, stale, staleDebt, debtNotInPopulation, staleWaivers,
+  return { population: joints.length, joints, answered, unanswered, malformed, stale, staleDebt, debtNotInPopulation, staleWaivers, standDown,
     debtCount: debt.length, byRegime, inputs: [...inputs] };
 }

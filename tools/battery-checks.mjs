@@ -54,7 +54,7 @@ export const BATTERY = [
   { name: 'graph', opts: {},
     gate: 'every violation list empty (todo allowed)',
     fails: (r) => Object.entries(r)
-      .filter(([k]) => k !== 'todo')
+      .filter(([k]) => k !== 'todo' && k !== 'standDown')   // TODO 298 — units of a module the build did not build, reported
       .flatMap(([k, v]) => (Array.isArray(v) && v.length ? [{ [k]: v }] : [])) },
   // §161 — the override merge's guarantees, over a fixture table. First in the
   // report because it is the cheapest thing here and the only one that needs
@@ -79,25 +79,26 @@ export const BATTERY = [
       + `${r.leak.units.length} units move (worst ${r.leak.units[0]?.unit ?? '—'} ${r.leak.units[0]?.worst ?? 0})` },
   { name: 'penetration', opts: {},
     gate: 'every budget row OK or waived (waived rows reported as debt)',
-    fails: (r) => r.filter((row) => row.status !== 'OK' && row.status !== 'WAIVED'),
-    note: (r) => { const w = r.filter((row) => row.status === 'WAIVED').length; return w ? `${w} waived (accepted debt)` : null; } },
+    fails: (r) => r.filter((row) => row.status !== 'OK' && row.status !== 'WAIVED' && row.status !== 'STOOD DOWN'),
+    note: (r) => { const w = r.filter((row) => row.status === 'WAIVED').length, d = r.filter((row) => row.status === 'STOOD DOWN').length;
+      return [w && `${w} waived (accepted debt)`, d && `${d} stood down (TODO 298: the build left their units out)`].filter(Boolean).join('; ') || null; } },
   { name: 'alarmHandoffs', opts: {},
     gate: 'every declared hand-off within ±tol of touch at both parities, or waived',
     fails: (r) => r.unwaived,
-    note: (r) => `${r.rows.length} hand-offs, ${r.waivedCount} waived (accepted debt)` },
+    note: (r) => `${r.rows.length} hand-offs, ${r.waivedCount} waived (accepted debt)${r.standDown ? `, ${r.standDown.length} stood down (TODO 298: the build left their metal out)` : ''}` },
   // §47 — the going side's two arrest contacts, the same instrument as the
   // alarm rows through its own pose table (full wind = shut, slack = free).
   { name: 'windArrestHandoff', opts: {},
     gate: 'the arrest shut at full wind and free at slack, both contacts',
     fails: (r) => r.unwaived,
-    note: (r) => `${r.rows.length} hand-offs, ${r.waivedCount} waived (accepted debt)` },
+    note: (r) => `${r.rows.length} hand-offs, ${r.waivedCount} waived (accepted debt)${r.standDown ? `, ${r.standDown.length} stood down (TODO 298: the build left their metal out)` : ''}` },
   // TODO 50 — the stem clutch's coupling: contact at every engaged parity
   // (seated faces, backlash tip-on-valley, camming ramps — the yoke spring
   // holds the one-sided constraint closed), free pulled out.
   { name: 'stemClutchHandoff', opts: {},
     gate: 'the coupling in contact seated/backlash/camming and free pulled out',
     fails: (r) => r.unwaived,
-    note: (r) => `${r.rows.length} hand-offs, ${r.waivedCount} waived (accepted debt)` },
+    note: (r) => `${r.rows.length} hand-offs, ${r.waivedCount} waived (accepted debt)${r.standDown ? `, ${r.standDown.length} stood down (TODO 298: the build left their metal out)` : ''}` },
   // §198 — the strike chain's two contacts through the lifting lever: the
   // nose on the cam's flank mid-rise and free of it in the fall and rebound,
   // the tip on the hammer's tail at every phase (the lever's restoring
@@ -105,20 +106,20 @@ export const BATTERY = [
   { name: 'strikeHandoff', opts: {},
     gate: 'the nose on the flank lifting and free falling/rebounding; the tip on the tail at every phase',
     fails: (r) => r.unwaived,
-    note: (r) => `${r.rows.length} hand-offs, ${r.waivedCount} waived (accepted debt)` },
+    note: (r) => `${r.rows.length} hand-offs, ${r.waivedCount} waived (accepted debt)${r.standDown ? `, ${r.standDown.length} stood down (TODO 298: the build left their metal out)` : ''}` },
   // TODO 210 — the maintaining detent's blade on the click's tail, in contact
   // at every phase of a tooth (the click's restoring answer, measured).
   { name: 'maintDetentHandoff', opts: {},
     gate: 'the detent blade on the click\'s tail at every phase of a tooth',
     fails: (r) => r.unwaived,
-    note: (r) => `${r.rows.length} hand-offs, ${r.waivedCount} waived (accepted debt)` },
+    note: (r) => `${r.rows.length} hand-offs, ${r.waivedCount} waived (accepted debt)${r.standDown ? `, ${r.standDown.length} stood down (TODO 298: the build left their metal out)` : ''}` },
   // TODO 226 step 3b — the impulse pin on the notch's walls, in contact
   // through the passage in both directions and dial-flat (the escapement's
   // working contact, measured).
   { name: 'escapementHandoff', opts: {},
     gate: 'the impulse pin on the notch wall it drives or is driven by, through the passage, both ways and dial-flat',
     fails: (r) => r.unwaived,
-    note: (r) => `${r.rows.length} hand-offs, ${r.waivedCount} waived (accepted debt)` },
+    note: (r) => `${r.rows.length} hand-offs, ${r.waivedCount} waived (accepted debt)${r.standDown ? `, ${r.standDown.length} stood down (TODO 298: the build left their metal out)` : ''}` },
   { name: 'stockFloor', opts: {},
     gate: '0 degenerate and 0 unwaived',
     fails: (r) => [...r.degenerate, ...r.violations],
@@ -160,7 +161,7 @@ export const BATTERY = [
   { name: 'lineSpec', opts: {},
     gate: 'controls PASS, every row within float noise of its derived value (a forked reference against its fork), 0 unwaived, 0 stale waivers, 0 stale forks, 0 malformed',
     fails: (r) => [
-      ...(String(r.control).startsWith('PASS') ? [] : [{ control: r.control }]),
+      ...(String(r.control).startsWith('PASS') || (String(r.control).startsWith('STOOD DOWN') && (r.standDown || []).length === r.references) ? [] : [{ control: r.control }]),   // TODO 298
       ...r.violations, ...r.staleWaivers, ...(r.staleForks || []), ...r.malformed],
     note: (r) => `${r.references} reference(s), ${r.rows.length} rows, ${(r.forks || []).length} fork(s) moving ${(r.forks || []).reduce((n, f) => n + f.rows.length, 0)} rows, ${r.waivedCount} waived` },
   // TODO 181 — the minute jumper's siting solve reads the metal at the BUILD
@@ -333,7 +334,7 @@ export const BATTERY = [
     // regression; declared without `only:` it is malformed — it excuses every
     // pair of the two units, which is how TODO 101's waiver hid TODO 177 and 178.
     fails: (r) => [...r.violations, ...r.unmatched.map((u) => ({ unmatchedContactSelector: u })),
-      ...r.results.filter((x) => x.waiver && x.ok).map((x) => ({ staleWaiver: x.pair, waiver: x.waiver })),
+      ...r.results.filter((x) => x.waiver && x.ok && !x.standDown).map((x) => ({ staleWaiver: x.pair, waiver: x.waiver })),   // TODO 298: a stood-down row measures nothing, so its waiver is not stale
       ...r.results.filter((x) => x.waiver && !x.only).map((x) => ({ malformedWaiver: x.pair, why: 'a waiver must name its pairs in only: — a whole-row waiver excuses every pair of the two units' }))],
     note: (r) => `${r.results.length} pairs, ${r.waivedCount} waived (accepted debt)` },
   { name: 'oscillator', opts: {},
@@ -451,6 +452,15 @@ export const BATTERY = [
   // every coefficient the energy column prices a joint with agreeing with the
   // regime it is declared in, and an oiled bearing with no oil sink waived
   // against a filed item.
+  // TODO 298 — every check above and below stands a row down only on the build's own word (a module it did not build,
+  // a mesh its solve left uncut and warned about). This holds that word to the scene both ways, so a stood-down row is
+  // a fact about the metal and never an excuse: a built module's units all present, an absent module's all gone, every
+  // omission a mesh really missing from a unit that is there. Its controls feed the judge broken copies of the word.
+  { name: 'modules', opts: {},
+    gate: 'the build publishes a word on every declared module, and the word and every omission are true of the scene, controls PASS',
+    fails: (r) => [...r.failures, ...(String(r.control).startsWith('PASS') ? [] : [{ control: r.control }])],
+    note: (r) => `${r.absentModules.length ? `built without ${r.absentModules.join(', ')} (${r.absentUnits.length} units)` : 'every module built'}; `
+      + `${r.omitted.length} mesh(es) left uncut on the build's word; ${r.control}` },
   { name: 'lubrication', opts: {},
     gate: '0 joints outside the table and the arrival inventory, 0 malformed, 0 stale rows, 0 stale inventory entries, 0 stale waivers, controls PASS',
     fails: (r) => [
