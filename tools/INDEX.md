@@ -4,7 +4,7 @@
 
 # The instruments
 
-422 scripts. **294 are ACCEPTANCE tests** — they decide and exit non-zero.
+423 scripts. **295 are ACCEPTANCE tests** — they decide and exit non-zero.
 **128 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -279,6 +279,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-338-kernel-parity.mjs` | §338 | acceptance | §338 landing 5 — G3, KERNEL PARITY: does the compiled kernel answer what the JS reference answers, and where it does not, is it the truer of the two? |
 | `probe-338-native-boot.mjs` | §338 | acceptance | §338 landing 1 — DOES THE NATIVE HOST BUILD THE SAME MOVEMENT AS THE BROWSER? |
 | `probe-338-pose-conditioning.mjs` | §338 | acceptance | §338 — THE POSE-CONDITIONING GUARD: does any pose of §152's net turn a last-ulp difference in the maths into a difference in the metal? |
+| `probe-339-arrangement-builds.mjs` | §339 | acceptance | WHAT DOES A BARREL STEP DO TO EVERY BUILD THE ARRANGEMENT REACHES? A REPORT (BACKLOG §339 2b′: it judges nothing). |
 | `probe-36-apply.mjs` | §36 | acceptance | §36 Apply — the acceptance, and the only place the APPLIED tree is judged. |
 | `probe-50-clutch.mjs` | §50 | report | TODO 50 — the stem clutch, measured in the movement. |
 | `probe-50-coupling.mjs` | §50 | report | Boot test-geometry.html headless and report the build log + a lift-law sanity table. |
