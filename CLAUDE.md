@@ -1103,6 +1103,11 @@ is trusted raw any more. A flush seat reads as contact, which is why `intraUnit`
 declares five more kisses. **And since landing 8 a 0 is a meet**: `meshClearance`
 keeps `sampledVerdict` only for CONTAINMENT (a body inside another, which no
 surface distance sees), never to replace a distance.
+**And since landing 9 a morphing mesh's tree is REFITTED**: a new geometry with
+the same vertex count and the same set of vertex triples (in any index order —
+three-mesh-bvh reorders an index in place) takes its family's tree shape and only
+its boxes are recomputed, which cannot move an answer (only exact boxes and
+`PRUNE_PAD` decide one). `meshesIntersect` builds no three-mesh-bvh tree.
 
 State (camera pose, wind, τ) persists via the dev server's `/__state` temp
 file, falling back to `localStorage`. **Back it up before clearing it** —

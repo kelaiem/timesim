@@ -1144,7 +1144,13 @@ function meshesIntersect(a, b) {
   return _meshesIntersectInner(a, b);
 }
 function _meshesIntersectInner(a, b) {
-  bvhFor(a); bvhFor(b);   // the index side effect, which every later reader of these geometries relies on
+  // §338 landing 9 — no three-mesh-bvh tree here. This line used to build one per
+  // geometry "for the index side effect"; the exact primitives read the positions and
+  // the index as they stand (indexed or not), and every mesh reaches the scene
+  // indexed since §81. On a morphing mesh it built a whole tree per pose that the
+  // contact never read (10.7% of `inspection:wind`), and reordered the index under it.
+  // The readers that do need a tree (sampledVerdict, rigidFrame's bake, the z-nudge)
+  // build their own on demand.
   const va = rigidFrame(a), ga = va.geometry, rigidA = va.rigid;
   _mat.copy(va.frame).invert();
   const vb = rigidFrame(b);

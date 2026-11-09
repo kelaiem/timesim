@@ -322,5 +322,41 @@ console.log(`  REPORT the reference read 0 for ${refFalseZero} pair(s) the kerne
   line(refDiffers > 0 && met > 0 && met < N7, `exact control: the comparison is not vacuous — B's vertices scaled by 1 + 2^-23 (an f32 ulp where the product does not round back) move the port's answer off the kernel's on ${refDiffers} of ${ulpTried} pair(s) apart, and the population both meets and stands apart`);
 }
 
+// ---------------------------------------------------------------------------
+// §338 landing 9 — THE REFIT. A geometry of a family already built (the same vertex
+// count and the same SET of vertex triples, in any index order) takes the family's
+// tree shape and only its boxes are recomputed; the compiled kernel still builds every geometry fresh. So
+// a morphing mesh is the test: every vertex moved at each step, a full scramble every
+// 50th (where the family's order means nothing spatially), the morphed mesh on both
+// sides of the query, every answer Object.is the kernel's.
+{
+  const X = await import('../src/exact-mesh.js');
+  const NT = 400, idx = new Uint32Array(NT * 3).map((_, i) => i);
+  // each morph's index lists the SAME triangles in a fresh order, as three-mesh-bvh's computeBoundsTree leaves it
+  // (it moves whole triples in place and never renumbers a vertex)
+  const mk = (pts) => {
+    const ord = [...Array(NT).keys()]; for (let i = NT - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [ord[i], ord[j]] = [ord[j], ord[i]]; }
+    const ix = new Uint32Array(NT * 3); ord.forEach((t, i) => { ix[3 * i] = idx[3 * t]; ix[3 * i + 1] = idx[3 * t + 1]; ix[3 * i + 2] = idx[3 * t + 2]; });
+    const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pts, 3)); g.setIndex(new T.BufferAttribute(ix, 1)); return g;
+  };
+  let pts = Array.from({ length: NT * 9 }, () => (rnd() - 0.5) * 3);
+  const other = soup(300, [0, 0, 0], 3);
+  const r0 = X.exactStats.refits;
+  const STEPS = 300;
+  let answers = 0, differ = 0;
+  for (let k = 0; k < STEPS; k++) {
+    pts = k % 50 === 49 ? pts.map(() => (rnd() - 0.5) * 3) : pts.map((v) => v + (rnd() - 0.5) * 0.2);
+    const g = mk(pts);
+    const m = new T.Matrix4().makeRotationFromEuler(new T.Euler(rnd() * 6.3, rnd() * 6.3, rnd() * 6.3)).setPosition(rnd() * 2, rnd() - 0.5, rnd() - 0.5);
+    for (const up of [Infinity, 0.3, 1e-4]) {
+      for (const [a, b] of [[g, other], [other, g]]) { answers++; if (!Object.is(X.exactDistance(a, b, m.elements, up), K.wasmDistance(a, b, m.elements, up))) differ++; }
+    }
+    answers++; if (X.exactMeets(g, other, m.elements) !== K.wasmIntersects(g, other, m.elements)) differ++;
+  }
+  const refits = X.exactStats.refits - r0;
+  line(differ === 0, `refit: a morphing mesh's refitted trees answer Object.is the kernel's fresh ones (${answers} answers over ${STEPS} morphs, every index reordered, six of them full scrambles, the morph on both sides)`);
+  line(refits === STEPS - 1, `refit control: the tier exercised the refit, not the build — ${refits} refits for ${STEPS - 1} morphs after the first`);
+}
+
 console.log(`\n${fails.length ? `FAIL — ${fails.length} gate(s)` : 'PASS — the compiled distance and boolean are the reference\'s, exact where the reference is not, and the exact primitives\' JS body bit for bit'}`);
 process.exit(fails.length ? 1 : 0);
