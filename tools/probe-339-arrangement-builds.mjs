@@ -3,8 +3,11 @@
 //   node tools/probe-339-arrangement-builds.mjs [--step 0] [--par N] [--json FILE] ['<query>' …]
 //
 // layout.js' ARRANGEMENT (barrelStepDeg −20 today) is every build's that names none of its keys, so a step measured on one
-// build (the alarm-free fitted case, where 0° gives the case 8.7% back with no new warning) is adopted only once every build
-// the arrangement reaches is read at it. Each query below is booted twice, with the arrangement's keys NAMED both times
+// build is adopted only once every build the arrangement reaches is read at it. WHAT THIS CANNOT SEE: a collision. It reads
+// BUILD warnings, and a part through another is the battery's sweep finding, not a warning: 0° gave the alarm-free fitted
+// case 8.7% back here with no new warning, and puts the great wheel through the third wheel's arbor (13.59 between the
+// axes against the 17.43 ARRANGEMENT's comment derives, which the step first reaches at −19°). A step this reads clean is
+// a CANDIDATE for the battery, never a landing. Each query below is booted twice, with the arrangement's keys NAMED both times
 // (a URL naming one takes none of the others, so both carry all four): once at ARRANGEMENT's own values (the control,
 // which must read exactly what the bare query builds: the same build warnings and the same case area) and once with
 // barrelstep set to --step. Per build it prints the case area (formFootprint.fitAreaMm2 on a form case, null on the
