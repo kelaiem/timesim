@@ -425,6 +425,117 @@ console.log('\n6. CONTROLS ON THE LANDING');
 }
 
 // ---------------------------------------------------------------------------
+// 7. THE DESIGN LIFE (TODO 299), recomputed, and what the hardening bought.
+// ---------------------------------------------------------------------------
+const wr = et.wear;
+ok(!!wr, 'the record carries no wear block', null);
+const mine7 = (() => {
+  // the slip, measured again off the re-solved escapement
+  let slip = null;
+  for (const st of ES.stones) {
+    const s2 = st.sigma, chord = Math.hypot(st.E[0] - st.K[0], st.E[1] - st.K[1]);
+    const down = Math.abs(ES.deltaOnLockFace(s2, s2 * ES.bank).t);
+    const imp = Math.abs(ES.deltaOnImpulseFace(s2, s2 * st.xE).t - ES.deltaOnImpulseFace(s2, s2 * ES.unlock).t) * chord;
+    const tot = 2 * down + imp;
+    if (!slip || tot > slip.perEngagement_u) slip = { stone: s2, lockFace_u: down, impulseFace_u: imp, perEngagement_u: tot };
+  }
+  // the counts, walked off layout's TRAIN rather than off the record
+  const life = L.DESIGN_LIFE_YEARS * L.JULIAN_YEAR_S;
+  const beats = L.SPEC.vph / 3600 * life;
+  const turns = { escape: beats * L.BEAT_DEG / 360 };
+  turns.fourth = turns.escape * L.TRAIN.fourth.pinion / L.TRAIN.fourth.teeth;
+  turns.third = turns.fourth * L.TRAIN.third.pinion / L.TRAIN.third.teeth;
+  turns.centre = turns.third * L.TRAIN.center.pinion / L.TRAIN.center.teeth;
+  const engPerTooth = beats / 15;
+  // the budget, re-solved from the worn crossing with this probe's own root finder
+  const rot = ([x, y], aa) => [x * Math.cos(aa) - y * Math.sin(aa), x * Math.sin(aa) + y * Math.cos(aa)];
+  const lockRunAt = (dR) => {
+    const Rw = ES.R - dR;
+    return Math.min(...ES.stones.map((st) => {
+      const phi = st.sigma * ES.bank, A = rot(st.K, phi), v = rot(st.tau, phi);
+      const wv = [A[0] - ES.W0[0], A[1] - ES.W0[1]];
+      const qa = v[0] * v[0] + v[1] * v[1], qb = 2 * (wv[0] * v[0] + wv[1] * v[1]);
+      const qc = wv[0] * wv[0] + wv[1] * wv[1] - Rw * Rw, disc = qb * qb - 4 * qa * qc;
+      if (disc < 0) return 0;
+      const sq = Math.sqrt(disc), t1 = (-qb - sq) / (2 * qa), t2 = (-qb + sq) / (2 * qa);
+      return Math.abs(Math.abs(t1) <= Math.abs(t2) ? t1 : t2);
+    }));
+  };
+  const full = lockRunAt(0), keep = full * E.LOCK_DEG / (E.LOCK_DEG + E.RUN_DEG);
+  let lo = 0, hi = 0.5;
+  for (let i = 0; i < 90; i++) { const m = (lo + hi) / 2; if (lockRunAt(m) >= keep) lo = m; else hi = m; }
+  const nom = et.rows.filter((q) => q.corner === 'nominal');
+  const Fmean = nom.reduce((x, q) => x + q.load_N, 0) / nom.length;
+  const tanA = Math.tan(halfV);
+  const recess = (K, H, slipTotal) => Math.sqrt((K * Fmean * slipTotal / H) / tM / tanA);
+  const slipTotal = slip.perEngagement_u * U * engPerTooth;
+  return { slip, turns, beats, engPerTooth, budget_u: lo, lockRunFull_u: full, lockOnly_u: keep,
+    Fmean, tanA, slipTotal, recess, lockRunAt,
+    control: { centrePerHour: turns.centre / (life / 3600), fourthPerMinute: turns.fourth / (life / 60) } };
+})();
+console.log('\n7. THE DESIGN LIFE, recomputed');
+console.log(`   ${L.DESIGN_LIFE_YEARS} years at ${L.SERVICE_INTERVAL_YEARS}-yearly service = ${L.SERVICES_IN_LIFE} services; ${(mine7.engPerTooth / 1e9).toFixed(4)}e9 engagements per tooth`);
+console.log(`   slip ${f(mine7.slip.perEngagement_u * U * 1e6, 1)} \u00b5m per engagement (${f(mine7.slip.lockFace_u, 4)} u down the lock face \u00d72 + ${f(mine7.slip.impulseFace_u, 4)} u along the impulse) \u2192 ${f(mine7.slipTotal / 1000, 1)} km`);
+console.log(`   budget ${f(mine7.budget_u * U * 1e6, 2)} \u00b5m (lock+run ${f(mine7.lockRunFull_u, 5)} u \u2192 lock ${f(mine7.lockOnly_u, 5)} u)`);
+near(mine7.slip.perEngagement_u, et.geom.slip.perEngagement_u, 1e-12, 'the slip per engagement disagrees');
+near(mine7.engPerTooth, wr.engagementsPerTooth, 1e-12, 'the engagements per tooth disagree');
+near(mine7.budget_u, wr.budget_u, 1e-6, 'the wear budget disagrees');
+near(mine7.Fmean, wr.load_N, 1e-12, 'the wear load disagrees');
+for (const c of L.FRICTION_CORNERS) {
+  const d = mine7.recess(L.WEAR_K_BAND[c], L.ESCAPE_STEEL_HARDNESS_PA, mine7.slipTotal);
+  console.log(`   ${c.padEnd(11)} K=${L.WEAR_K_BAND[c].toExponential(0)}  recession ${f(d * 1e6, 2).padStart(6)} \u00b5m  \u00d7${f((d / U) / mine7.budget_u, 3)} of budget  ${(d / U) <= mine7.budget_u ? 'HOLDS' : 'OVER'}`);
+  near(d, wr.corners[c].recession_m, 1e-9, `the recession disagrees at the ${c} corner`);
+}
+console.log(`   holds at ${wr.holdsAt.join(' and ')}${wr.straddles ? ' \u2014 STRADDLES, so the coefficient decides the century' : ''}`);
+ok(wr.corners.nominal.overBudget <= 1, 'the escape wheel misses its design life at the nominal corner', wr.corners.nominal);
+
+console.log('\n8. CONTROLS ON THE DESIGN LIFE');
+// W1 -- the counts' own control, recomputed here: facts about a watch.
+{
+  console.log(`   W1 centre arbor ${f(mine7.control.centrePerHour, 9)} turns an hour, fourth ${f(mine7.control.fourthPerMinute, 9)} a minute (both must be 1)`);
+  near(mine7.control.centrePerHour, 1, 1e-12, 'W1: the centre arbor does not turn once an hour');
+  near(mine7.control.fourthPerMinute, 1, 1e-12, 'W1: the fourth arbor does not turn once a minute');
+  // and the counts must FALL going up the train, by more than a token amount
+  ok(mine7.turns.escape / mine7.turns.centre > 500, 'W1: the escape arbor does not turn far faster than the centre', mine7.turns);
+}
+// W2 -- the budget really is where the lock runs out, by this probe's own
+// root find, and wearing the tooth really does shorten the lock.
+{
+  const atB = mine7.lockRunAt(mine7.budget_u);
+  console.log(`   W2 at the budget the worn crossing stands at ${f(atB, 5)} u against the lock's ${f(mine7.lockOnly_u, 5)} u; as cut it is ${f(mine7.lockRunAt(0), 5)}`);
+  ok(Math.abs(atB - mine7.lockOnly_u) < 1e-6, 'W2: the budget does not land the worn crossing on the lock', { atB, keep: mine7.lockOnly_u });
+  ok(mine7.lockRunAt(0) > atB, 'W2: wearing the tooth does not shorten the lock, so the budget is not a budget', { asCut: mine7.lockRunAt(0), atB });
+}
+// W3/W4 -- the law reads its inputs: recession goes as 1/sqrt(H) and sqrt(K).
+{
+  const base = mine7.recess(L.WEAR_K_BAND.adverse, L.ESCAPE_STEEL_HARDNESS_PA, mine7.slipTotal);
+  const harder = mine7.recess(L.WEAR_K_BAND.adverse, 2 * L.ESCAPE_STEEL_HARDNESS_PA, mine7.slipTotal);
+  const rougher = mine7.recess(100 * L.WEAR_K_BAND.adverse, L.ESCAPE_STEEL_HARDNESS_PA, mine7.slipTotal);
+  console.log(`   W3 twice the hardness: recession \u00d7${f(harder / base, 9)} (need 1/\u221a2 = ${f(1 / Math.SQRT2, 9)})`);
+  console.log(`   W4 a hundred times the coefficient: \u00d7${f(rougher / base, 9)} (need 10)`);
+  near(harder / base, 1 / Math.SQRT2, 1e-12, 'W3: recession does not go as 1/\u221aH');
+  near(rougher / base, 10, 1e-12, 'W4: recession does not go as \u221aK');
+}
+// W5 -- WHAT THE HARDENING BOUGHT, measured against the temper the wheel
+// carried before TODO 299 (48-54 HRC, 510 HV by the same conversion).
+{
+  const soft = 510 * L.HV_TO_PA;
+  const was = mine7.recess(L.WEAR_K_BAND.adverse, soft, mine7.slipTotal);
+  const now = mine7.recess(L.WEAR_K_BAND.adverse, L.ESCAPE_STEEL_HARDNESS_PA, mine7.slipTotal);
+  console.log(`   W5 at the old 510 HV temper the adverse corner lost ${f(was * 1e6, 2)} \u00b5m (\u00d7${f((was / U) / mine7.budget_u, 3)} of budget); hardened to ${L.ESCAPE_STEEL_HARDNESS_BAND.lowHV} HV it loses ${f(now * 1e6, 2)} (\u00d7${f((now / U) / mine7.budget_u, 3)})`);
+  ok(now < was, 'W5: hardening did not reduce the wear, so the change bought nothing', { was, now });
+  ok((now / U) / mine7.budget_u > 1, 'W5: the adverse corner now HOLDS \u2014 this control and TODO 299\'s record have parted', { over: (now / U) / mine7.budget_u });
+}
+// W6 -- THE CEILING, reported: the hardness that would close the adverse
+// corner, and that no steel reaches it.
+{
+  const need = L.WEAR_K_BAND.adverse * mine7.Fmean * mine7.slipTotal / (Math.pow(mine7.budget_u * U, 2) * tM * mine7.tanA);
+  console.log(`   W6 closing the adverse corner needs H \u2265 ${f(need / 1e9, 2)} GPa (${f(need / L.HV_TO_PA, 0)} HV) \u2014 steel's practical ceiling is about 800 HV, so this is silicon, a carbide or a coating`);
+  near(need, wr.needHardness_Pa.adverse, 1e-9, 'W6: the record\'s needed hardness disagrees');
+  ok(need / L.HV_TO_PA > 800, 'W6: the needed hardness is inside steel\'s range, so the ceiling this landing reports is wrong', { needHV: need / L.HV_TO_PA });
+}
+
+// ---------------------------------------------------------------------------
 console.log('');
 if (argJson) {
   writeFileSync(argJson, JSON.stringify({ meshWedge, mineRuns, vw, mine, worst, landing: lg, fails }, null, 1));
@@ -435,11 +546,12 @@ if (fails.length) {
   for (const q of fails) console.error(' ', q.what, JSON.stringify(q.detail));
   process.exit(1);
 }
-console.log(`PASS — the record and this computation agree on ${et.rows.length} rows, ${et.geom.runs.length} contact arms and the drop's landing; all ten controls fired.`);
+console.log(`PASS — the record and this computation agree on ${et.rows.length} rows, ${et.geom.runs.length} contact arms, the drop's landing and the century's wear; all sixteen controls fired.`);
 const margin = Math.min(worst.p0Margin, worst.sigmaMargin);
 console.log(`       The club tooth carries the escapement at ×${f(margin, 2)} on the ${worst.binds} criterion; its tip needs ${f(worst.rhoMin * 1e9, 2)} nm of radius and the finish band's sharp end gives ${f(L.ESCAPE_TIP_R_M * 1e9, 0)}.`);
 // Hertz binds and p0 ∵ √F, so the torque at which the tip first yields is the
 // margin SQUARED — the headroom over the escapement's own load, in one number.
 console.log(`       It first yields at ×${f(margin * margin, 1)} the escape torque. The owner's eye was right that the metal is thin; the LOAD is ${f(worst.load_N * 1e6, 0)} µN.`);
 console.log(`       The DROP's landing does go over — so the tip blunts to ${f(lg.runIn.rho_m * 1e6, 3)} µm and then shakes down, inside the finish band, for ${f(lg.runIn.recession_u, 5)} u of reach.`);
+console.log(`       Over ${wr.years} years of ${wr.serviceYears}-yearly service each tooth slides ${f(wr.slip_m / 1000, 0)} km and loses ${f(wr.corners.nominal.recession_m * 1e6, 2)} µm of reach at the nominal corner against a ${f(wr.budget_u * U * 1e6, 2)} µm lock budget — ${wr.straddles ? `but ${f(wr.corners.adverse.recession_m * 1e6, 2)} µm at the adverse, which the lock cannot spend: the coefficient decides the century.` : 'at every corner.'}`);
 process.exit(0);

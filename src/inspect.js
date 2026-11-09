@@ -38,8 +38,9 @@ import { ZERO_AREA_MAX, CLEAR_MARGIN, HANDOFF_TRACK_TOL, UNIT_MM, Z_DIAL, SLENDE
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME, SPEC,                                    // §36 Apply: the same predicate that builds the unit, and the same name
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, rigidSplit,
-  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, ESCAPE_STEEL_SIGMA_Y_PA, ESCAPE_TIP_R_M, ESCAPE_TIP_R_BAND, LINE_CONTACT_SHAKEDOWN_P0_PER_Y, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, MAINSPRING_ALPHA_MIN, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R_SPEC, BALANCE_R_REF, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG, STOPWORK_BUILT, GEARED_BUILT } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
+  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, ESCAPE_STEEL_SIGMA_Y_PA, ESCAPE_STEEL_SIGMA_Y_BAND, ESCAPE_TIP_R_M, ESCAPE_TIP_R_BAND, LINE_CONTACT_SHAKEDOWN_P0_PER_Y, ESCAPE_STEEL_HARDNESS_BAND, TABOR_H_OVER_SIGMA_Y, TABOR_TOLERANCE, SERVICE_INTERVAL_YEARS, DESIGN_LIFE_YEARS, JULIAN_YEAR_S, WEAR_K_BAND, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, MAINSPRING_ALPHA_MIN, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R_SPEC, BALANCE_R_REF, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG, STOPWORK_BUILT, GEARED_BUILT } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 import { auditLubrication, LUBRICATION, LUBRICATION_DEBT, LUBRICATION_WAIVERS } from './lubrication.js';   // §247 tier one
+import { LOCK_DEG, RUN_DEG } from './escapement.js';   // TODO 299 row 22: the lock is declared against shock and the run is not, so the run is the wear budget's spendable share
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
 // merges into, not the app — this file still reads the RUNNING scene rather
@@ -11074,6 +11075,31 @@ export function checkOscillator(clock) {
 //     past: 1.79·√3 = 3.1k and 4.0k are the same table's elastic and shakedown
 //     limits, so the first-yield constant must reproduce 3.1 from the shakedown
 //     one's per-k figure.
+// 22. AND IT REACHES ITS DESIGN LIFE (TODO 299) — a century of 5-yearly
+//     service, which is the first row here that prices material REMOVAL rather
+//     than strength. Archard, every factor already in the record: the load the
+//     rows above price, the SLIP the escapement solve measures (the contact's
+//     travel along the face in the FORK's frame, which is the tooth slipping
+//     across the stone and not the tip's travel in the wheel's), the
+//     ENGAGEMENTS the train derives, and the escape steel's own indentation
+//     hardness — declared from the same 58–62 HRC temper as its yield band and
+//     held to it through Tabor's H ≈ 3·σy, so one heat treatment cannot be
+//     edited in one place and left in the other. The volume becomes a DEPTH
+//     through the wedge (√(A/tanα)), which is why the teeth bind where the
+//     pivots do not.
+//     Held: the counts' own control (a centre arbor turns once an HOUR and a
+//     fourth once a MINUTE — facts about a watch, and what catches a walk that
+//     lands a mesh's count on the driven arbor instead of the driver), the
+//     schedule's arithmetic, the Archard identity at each corner, the hardness
+//     pair's consistency, the BUDGET's own derivation (the recession that takes
+//     lock+run down to the LOCK_DEG declared against shock, re-solved off the
+//     worn crossing rather than taken on trust) and each corner's inverted
+//     hardness. The BAR is row 15's precedent — the design target is held at
+//     the NOMINAL corner, a serviced watch — and the ADVERSE corner is
+//     REPORTED, because at 1e-6 the tooth loses 1.37 budgets and the conclusion
+//     flips, which by FRICTION's own rule is not a conclusion. Closing the
+//     adverse corner needs 1229 HV, which is no steel, and the record says so
+//     rather than gating a number the model does not have.
 // TODO 193 — the ribbons over their alloy, by name. A row cites the TODO whose
 // fix path brings it under, and FAILS when its ribbon already is (stale).
 // TODO 291 — the ribbons under the packing band, by name; RIBBON_STRESS_WAIVERS' convention.
@@ -11501,6 +11527,124 @@ export function checkEqualisation(clock) {
         if (!(Array.isArray(lg.notModelled) && lg.notModelled.length >= 3))
           failures.push({ what: 'the landing does not name the series members it leaves out', notModelled: lg.notModelled || null });
       }
+
+      // Row 22 (TODO 299) — THE DESIGN LIFE.
+      const wr = et.wear;
+      if (!wr) {
+        failures.push({ what: 'escape tooth wear rows', note: 'going.energy.escapeTooth.wear is missing \u2014 the design life is unpriced (TODO 299 regressed)' });
+      } else {
+        const U2 = UNIT_MM / 1000, g2 = et.geom;
+        // the schedule
+        if (!(wr.years === DESIGN_LIFE_YEARS && wr.serviceYears === SERVICE_INTERVAL_YEARS))
+          failures.push({ what: 'the wear row is not priced on the declared schedule', record: [wr.years, wr.serviceYears], declared: [DESIGN_LIFE_YEARS, SERVICE_INTERVAL_YEARS] });
+        if (!(rel(wr.services, DESIGN_LIFE_YEARS / SERVICE_INTERVAL_YEARS) <= 1e-12))
+          failures.push({ what: 'the service count is not the life over the interval', record: wr.services });
+        // THE COUNTS' CONTROL: facts about a watch, not about the arithmetic
+        const ct = wr.counts;
+        if (!ct || !ct.control)
+          failures.push({ what: 'the derived counts carry no control', counts: ct || null });
+        else {
+          if (!(Math.abs(ct.control.centrePerHour - 1) <= 1e-9))
+            failures.push({ what: 'the centre arbor does not turn once an hour', perHour: ct.control.centrePerHour });
+          if (!(Math.abs(ct.control.fourthPerMinute - 1) <= 1e-9))
+            failures.push({ what: 'the fourth arbor does not turn once a minute', perMinute: ct.control.fourthPerMinute });
+          const life = DESIGN_LIFE_YEARS * JULIAN_YEAR_S;
+          if (!(rel(ct.life_s, life) <= 1e-12))
+            failures.push({ what: 'the life is not the declared years of Julian seconds', record: ct.life_s, derived: life });
+          const beats = SPEC.vph / 3600 * life;
+          if (!(rel(ct.beats, beats) <= 1e-9))
+            failures.push({ what: 'the beat count is not the rate times the life', record: ct.beats, derived: beats });
+          if (!(rel(ct.engagementsPerTooth, ct.beats / ct.escapeTeeth) <= 1e-12))
+            failures.push({ what: 'the engagements per tooth are not the beats over the tooth count', record: ct.engagementsPerTooth, teeth: ct.escapeTeeth });
+          // the turns must DESCEND up the train: every arbor above turns slower
+          const order = ['escape', 'fourth', 'third', 'centre', 'fusee'];
+          for (let i = 1; i < order.length; i++)
+            if (!(ct.turns[order[i]] < ct.turns[order[i - 1]]))
+              failures.push({ what: 'the train\u2019s revolution counts do not fall going up it', pair: [order[i - 1], order[i]], turns: [ct.turns[order[i - 1]], ct.turns[order[i]]] });
+        }
+        // the slip, and that it is the sum of its own parts
+        const sl = g2.slip;
+        if (!sl || !(sl.perEngagement_u > 0))
+          failures.push({ what: 'the tip\u2019s slip per engagement is not measured', slip: sl || null });
+        else if (!(rel(sl.perEngagement_u, 2 * sl.lockFace_u + sl.impulseFace_u) <= 1e-12))
+          failures.push({ what: 'the slip is not its three slides', slip: sl });
+        else if (!(rel(wr.slipPerEngagement_m, sl.perEngagement_u * U2) <= 1e-12))
+          failures.push({ what: 'the wear row is priced on a slip the geometry did not measure', record: wr.slipPerEngagement_m, measured: sl.perEngagement_u * U2 });
+        if (!(rel(wr.slip_m, wr.slipPerEngagement_m * wr.engagementsPerTooth) <= 1e-9))
+          failures.push({ what: 'the century\u2019s slip is not the engagement\u2019s times the count', record: wr.slip_m });
+        // and the LOAD is the rows' own, not a number of its own: the mean over
+        // the nominal corner's runs, which is what a mean wear rate is priced at
+        // (the peak rows are strength's business). Without this the wear row
+        // could carry any load and every identity below would still hold.
+        {
+          const nom = et.rows.filter((q) => q.corner === 'nominal');
+          const mean = nom.reduce((x, q) => x + q.load_N, 0) / Math.max(1, nom.length);
+          if (!(nom.length && rel(wr.load_N, mean) <= 1e-12))
+            failures.push({ what: 'the wear row\u2019s load is not the nominal corner\u2019s mean', record: wr.load_N, fromRows: mean, rows: nom.length });
+        }
+        // THE BUDGET, re-derived rather than taken: the lock alone is the
+        // lock's share of lock+run, and the recession must put the worn
+        // crossing exactly there
+        const bg = g2.budget;
+        if (!bg || !(bg.recession_u > 0))
+          failures.push({ what: 'the wear budget is not solved', budget: bg || null });
+        else {
+          const keep = bg.lockRunFull_u * LOCK_DEG / (LOCK_DEG + RUN_DEG);
+          if (!(rel(bg.lockOnly_u, keep) <= 1e-12))
+            failures.push({ what: 'the lock\u2019s share of lock+run is not the declared lock over lock+run', record: bg.lockOnly_u, derived: keep });
+          if (typeof g2.lockRunAt === 'function') {
+            const at = g2.lockRunAt(bg.recession_u);
+            if (!(Math.abs(at - bg.lockOnly_u) <= 1e-6))
+              failures.push({ what: 'the budget\u2019s recession does not land the worn crossing on the lock', atBudget: at, lockOnly: bg.lockOnly_u });
+            if (!(g2.lockRunAt(0) > at))
+              failures.push({ what: 'wearing the tooth does not shorten the lock', asCut: g2.lockRunAt(0), atBudget: at });
+          }
+          if (!(rel(wr.budget_u, bg.recession_u) <= 1e-12))
+            failures.push({ what: 'the wear row is priced against a budget the geometry did not derive', record: wr.budget_u, derived: bg.recession_u });
+        }
+        // the hardness pair is ONE heat treatment
+        for (const end of ['low', 'high']) {
+          const ratio = ESCAPE_STEEL_HARDNESS_BAND[end] / (TABOR_H_OVER_SIGMA_Y * ESCAPE_STEEL_SIGMA_Y_BAND[end]);
+          if (!(Math.abs(ratio - 1) <= TABOR_TOLERANCE))
+            failures.push({ what: 'the escape steel\u2019s hardness and yield are not one temper', end, ratio });
+        }
+        if (!(wr.hardness_Pa === ESCAPE_STEEL_HARDNESS_BAND.low))
+          failures.push({ what: 'the wear row is not priced at the hardness band\u2019s low end', record: wr.hardness_Pa, low: ESCAPE_STEEL_HARDNESS_BAND.low });
+        // Archard, per corner, and the inverted hardness
+        const tanA = Math.tan(g2.wedge.halfRad), line = et.line_u * U2;
+        for (const c of ['favourable', 'nominal', 'adverse']) {
+          const q = wr.corners[c];
+          if (!q) { failures.push({ what: 'the wear row is missing a corner', corner: c }); continue; }
+          if (!(q.K === WEAR_K_BAND[c]))
+            failures.push({ what: 'a wear corner is not its declared coefficient', corner: c, record: q.K, declared: WEAR_K_BAND[c] });
+          const V = q.K * wr.load_N * wr.slip_m / wr.hardness_Pa;
+          const d = Math.sqrt((V / line) / tanA);
+          if (!(rel(q.volume_m3, V) <= 1e-12) || !(rel(q.recession_m, d) <= 1e-12))
+            failures.push({ what: 'the Archard identity', corner: c, record: [q.volume_m3, q.recession_m], derived: [V, d] });
+          if (!(rel(q.overBudget, (d / U2) / wr.budget_u) <= 1e-12))
+            failures.push({ what: 'the budget ratio identity', corner: c, record: q.overBudget });
+          const needH = q.K * wr.load_N * wr.slip_m / (Math.pow(wr.budget_u * U2, 2) * line * tanA);
+          if (!(rel(wr.needHardness_Pa[c], needH) <= 1e-9))
+            failures.push({ what: 'the hardness a corner would need does not invert its own row', corner: c, record: wr.needHardness_Pa[c], derived: needH });
+        }
+        // the corners must be ORDERED: more wear at a larger coefficient
+        if (!(wr.corners.favourable.recession_m < wr.corners.nominal.recession_m
+           && wr.corners.nominal.recession_m < wr.corners.adverse.recession_m))
+          failures.push({ what: 'the wear corners are not ordered', recessions: ['favourable', 'nominal', 'adverse'].map((c) => wr.corners[c].recession_m) });
+        // THE BAR, row 15's precedent: the design target is held at the NOMINAL
+        // corner (a serviced watch). The adverse corner is the record's to
+        // report, and `straddles` must SAY so rather than reading clean.
+        for (const c of ['favourable', 'nominal']) {
+          if (!(wr.corners[c].overBudget <= 1))
+            failures.push({ what: 'the escape wheel does not reach its design life at a corner it must', corner: c,
+              recession_um: wr.corners[c].recession_m * 1e6, budget_um: wr.budget_u * U2 * 1e6, overBudget: wr.corners[c].overBudget });
+        }
+        const holds = ['favourable', 'nominal', 'adverse'].filter((c) => wr.corners[c].overBudget <= 1);
+        if (JSON.stringify(wr.holdsAt) !== JSON.stringify(holds))
+          failures.push({ what: 'the wear row does not name the corners that hold', record: wr.holdsAt, derived: holds });
+        if (wr.straddles !== (holds.length > 0 && holds.length < 3))
+          failures.push({ what: 'the wear row does not report its own straddle', record: wr.straddles, holds });
+      }
     }
     // Row 16 (TODO 217) — THE MAINTAINING DETENT'S HOLD. The face load is the
     // going torque over the face normal's moment arm, the torque being the
@@ -11869,6 +12013,21 @@ export function checkEqualisation(clock) {
             band_um: en.escapeTooth.landing.runIn.band_m.map((x) => +(x * 1e6).toFixed(2)),
             recession_u: +en.escapeTooth.landing.runIn.recession_u.toFixed(5),
             notModelled: en.escapeTooth.landing.notModelled,
+          } : null,
+          // TODO 299 — the design life: what a century of 5-yearly service costs the tip
+          wear: en.escapeTooth.wear ? {
+            years: en.escapeTooth.wear.years, serviceYears: en.escapeTooth.wear.serviceYears,
+            services: en.escapeTooth.wear.services,
+            engagements_G: +(en.escapeTooth.wear.engagementsPerTooth / 1e9).toFixed(4),
+            slipPerEngagement_um: +(en.escapeTooth.wear.slipPerEngagement_m * 1e6).toFixed(1),
+            slip_km: +(en.escapeTooth.wear.slip_m / 1000).toFixed(1),
+            load_uN: +(en.escapeTooth.wear.load_N * 1e6).toFixed(2),
+            hardness_HV: en.escapeTooth.wear.hardnessBand.lowHV,
+            budget_um: +(en.escapeTooth.wear.budget_u * UNIT_MM * 1000).toFixed(2),
+            recession_um: Object.fromEntries(Object.entries(en.escapeTooth.wear.corners).map(([c, q]) => [c, +(q.recession_m * 1e6).toFixed(2)])),
+            overBudget: Object.fromEntries(Object.entries(en.escapeTooth.wear.corners).map(([c, q]) => [c, +q.overBudget.toFixed(3)])),
+            holdsAt: en.escapeTooth.wear.holdsAt, straddles: en.escapeTooth.wear.straddles,
+            needHV: Object.fromEntries(Object.entries(en.escapeTooth.wear.needHardness_Pa).map(([c, v]) => [c, Math.round(v / 9.80665e6)])),
           } : null,
         } : null,
         corners: Object.fromEntries(Object.entries(en.corners).map(([c, C]) => [c, {

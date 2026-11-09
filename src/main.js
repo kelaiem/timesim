@@ -84,6 +84,8 @@ import {
   STEEL_E_PA, STEEL_G_PA, SPRING_SIGMA_Y_PA, SPRING_TAU_Y_PA, cantileverK_N_per_m,
   CLICK_STEEL_SIGMA_Y_BAND, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, LINE_CONTACT_SHAKEDOWN_P0_PER_Y,   // TODO 221: the click steel and the line contact's first yield
   ESCAPE_STEEL_SIGMA_Y_BAND, ESCAPE_STEEL_SIGMA_Y_PA, ESCAPE_TIP_R_BAND, ESCAPE_TIP_R_M,   // TODO 296: the escape wheel's own steel, and the radius its club tip is priced on
+  ESCAPE_STEEL_HARDNESS_BAND, ESCAPE_STEEL_HARDNESS_PA, TABOR_H_OVER_SIGMA_Y, TABOR_TOLERANCE, HV_TO_PA,   // TODO 299: its indentation hardness, which a wear law needs and a yield band is not
+  SERVICE_INTERVAL_YEARS, DESIGN_LIFE_YEARS, SERVICES_IN_LIFE, JULIAN_YEAR_S, WEAR_K_BAND,   // TODO 299: the service schedule and Archard's coefficient
   MAINSPRING_E_PA, MAINSPRING_SIGMA_Y_BAND, MAINSPRING_SIGMA_Y_PA, MAINSPRING_ALPHA_BAND, MAINSPRING_ALPHA_MIN,   // TODO 193: the ribbons' alloy, cited  // §137: the one steel, the one cantilever law; §164 names its other properties beside it
   MU_STEEL, ALARM_SPRING_HEADROOM,            // TODO 144: the one steel-on-steel friction coefficient, and the drag-against-hold margin — the disc's drag and its seat are priced on both
   FRICTION, FRICTION_CORNERS,                  // TODO 192 / §247 tier two: the friction bands the power budget is priced at — three corners, never one number
@@ -2130,6 +2132,56 @@ const ESCAPE_TOOTH_GEOM = (() => {
   })();
   if (!(landing && landing.arm_u > 0 && landing.arm_u <= radius + 1e-9))
     console.warn(`TODO 296 landing 2: the landing reads a contact arm of ${landing && landing.arm_u} on a wheel of ${radius} — the normal's line of action has left the metal`);
+  // TODO 299 — HOW FAR THE TIP SLIDES ACROSS A STONE in one engagement, and
+  // WHAT THE ESCAPEMENT CAN AFFORD TO LOSE. Both off the same solve.
+  //
+  //  · THE SLIP. `t` from the solve's own face crossings is the contact's
+  //    position ALONG the face in the FORK's frame, so a change in it IS the
+  //    tooth slipping across the stone's surface — which is what an Archard
+  //    volume needs and what a tip's travel in the WHEEL's frame is not. Three
+  //    slides make one engagement: down the locking face at the landing, back
+  //    up it through the unlock, and along the stone's impulse face.
+  //  · THE BUDGET, derived rather than picked. Re-read the crossings with the
+  //    tooth circle SHORTENED and the stones left where they were set, and the
+  //    LOCK is what goes (the drop falls too, which is the opposite sign to the
+  //    textbook's worn-tooth rule — that one is about a step worn into the
+  //    impulse FACE, a different mode). LOCK_DEG is declared against shock and
+  //    RUN_DEG is not, so the run is the spendable share: the budget is the
+  //    recession that takes lock+run down to the lock alone.
+  const slip = (() => {
+    let worst = null;
+    for (const st of ESCAPEMENT.stones) {
+      const s2 = st.sigma, chord = Math.hypot(st.E[0] - st.K[0], st.E[1] - st.K[1]);
+      const down = Math.abs(ESCAPEMENT.deltaOnLockFace(s2, s2 * ESCAPEMENT.bank).t);
+      const imp = Math.abs(ESCAPEMENT.deltaOnImpulseFace(s2, s2 * st.xE).t
+                         - ESCAPEMENT.deltaOnImpulseFace(s2, s2 * ESCAPEMENT.unlock).t) * chord;
+      const total = 2 * down + imp;     // landing, unlock, impulse
+      if (!worst || total > worst.perEngagement_u)
+        worst = { stone: s2, lockFace_u: down, impulseFace_u: imp, perEngagement_u: total };
+    }
+    return worst;
+  })();
+  const lockRunAt = (dR) => {
+    const Rw = radius - dR;
+    return Math.min(...ESCAPEMENT.stones.map((st) => {
+      const phi = st.sigma * ESCAPEMENT.bank, A = rot2(st.K, phi), v = rot2(st.tau, phi);
+      const wv = [A[0] - Wc[0], A[1] - Wc[1]];
+      const qa = v[0] * v[0] + v[1] * v[1], qb = 2 * (wv[0] * v[0] + wv[1] * v[1]);
+      const qc = wv[0] * wv[0] + wv[1] * wv[1] - Rw * Rw, disc = qb * qb - 4 * qa * qc;
+      if (disc < 0) return 0;
+      const sq = Math.sqrt(disc), t1 = (-qb - sq) / (2 * qa), t2 = (-qb + sq) / (2 * qa);
+      return Math.abs(Math.abs(t1) <= Math.abs(t2) ? t1 : t2);
+    }));
+  };
+  const budget = (() => {
+    const full = lockRunAt(0);
+    const keep = full * LOCK_DEG / (LOCK_DEG + RUN_DEG);   // the lock alone
+    let lo = 0, hi = 0.5;                                   // u; well past any credible wear
+    for (let i = 0; i < 90; i++) { const m = (lo + hi) / 2; if (lockRunAt(m) >= keep) lo = m; else hi = m; }
+    return { lockRunFull_u: full, lockOnly_u: keep, recession_u: lo };
+  })();
+  if (!(budget.recession_u > 0 && budget.recession_u < budget.lockRunFull_u))
+    console.warn(`TODO 299: the wear budget solved to ${budget.recession_u} u of recession against a lock+run of ${budget.lockRunFull_u} — the worn-tooth crossing did not resolve`);
   return Object.freeze({
     radius_u: radius, tip: { xy: T, r: tr, azDeg: azT / DEG2RAD },
     wedge: Object.freeze({ fullRad: 2 * halfV, halfRad: halfV, fullDeg: 2 * halfV / DEG2RAD,
@@ -2141,6 +2193,8 @@ const ESCAPE_TOOTH_GEOM = (() => {
     worstArm_u: Math.min(...runs.map((q) => q.arm_u)),
     virtualWork: Object.freeze(vwWorst),
     landing: Object.freeze(landing),
+    slip: Object.freeze(slip), budget: Object.freeze(budget),
+    lockRunAt,
   });
 })();
 const palletFork = G.makePalletFork({
@@ -12944,6 +12998,54 @@ const TRAIN_STAGES = (() => {
     { name: 'fourth → escape pinion',      z1: TRAIN.fourth.teeth, z2: TRAIN.fourth.pinion, arbor: 'escape', obj: escapeArbor, rIn: rP(TRAIN.fourth), rOut: escapeWheelR },
   ];
 })();
+// TODO 299 — HOW MANY TIMES EACH MEMBER MOVES IN A SERVICE LIFE, derived off
+// the train and never typed. Standing rule 2's rule for angles is the rule for
+// COUNTS too: the hour hand is not minuteA/12, and the centre arbor's
+// revolutions are not "one an hour" written down — they arrive by the tooth
+// counts multiplying, and a wear price that typed them would not move when the
+// train was re-geared.
+//
+// The walk goes UP from the escape wheel, because that is the member the beat
+// rate fixes: the wheel advances BEAT_DEG per beat, and a mesh's DRIVING wheel
+// sits on the arbor above it, so dividing by teeth/pinion lands on the DRIVER's
+// arbor. Getting that backwards lands each count on the driven arbor instead
+// and reads the centre at 51,135 turns against its true 876,600 — which is
+// exactly what the control catches: a centre arbor turns once an HOUR and a
+// fourth once a MINUTE, facts about a watch rather than about this arithmetic.
+// Each of the 15 teeth meets a stone twice per wheel revolution.
+const SERVICE_COUNTS = (() => {
+  const life_s = DESIGN_LIFE_YEARS * JULIAN_YEAR_S;
+  const beats = SPEC.vph / 3600 * life_s;
+  const escTurns = beats * BEAT_DEG / 360;
+  const turns = { escape: escTurns };
+  // the stages above the escape wheel, each named by the arbor that DRIVES it
+  for (const [arbor, mesh] of [['fourth', TRAIN.fourth], ['third', TRAIN.third], ['centre', TRAIN.center]]) {
+    const below = arbor === 'fourth' ? turns.escape : arbor === 'third' ? turns.fourth : turns.third;
+    turns[arbor] = below * mesh.pinion / mesh.teeth;
+  }
+  turns.fusee = turns.centre * TRAIN.barrel.pinion / TRAIN.barrel.teeth;
+  const hours = life_s / 3600, minutes = life_s / 60;
+  const ctrl = { centrePerHour: turns.centre / hours, fourthPerMinute: turns.fourth / minutes };
+  if (Math.abs(ctrl.centrePerHour - 1) > 1e-9 || Math.abs(ctrl.fourthPerMinute - 1) > 1e-9)
+    console.warn(`TODO 299: the derived counts put the centre arbor at ${ctrl.centrePerHour.toFixed(6)} turns an hour and the fourth at `
+      + `${ctrl.fourthPerMinute.toFixed(6)} a minute — both must be 1, so the walk has landed a count on the wrong arbor`);
+  return Object.freeze({
+    years: DESIGN_LIFE_YEARS, serviceYears: SERVICE_INTERVAL_YEARS, services: SERVICES_IN_LIFE,
+    life_s, beats, oscillations: beats / 2,
+    escapeTeeth: 15, engagementsPerTooth: beats * 2 / (2 * 15),
+    turns: Object.freeze(turns), control: Object.freeze(ctrl),
+  });
+})();
+// TODO 299 — and the escape steel's two properties must describe ONE temper:
+// the ASTM E140 hardness and the yield band are each converted from 58–62 HRC,
+// so Tabor's H ≈ 3·σy has to reproduce one from the other inside its own
+// accuracy. A temper edited in one declaration and not the other fails here.
+for (const end of ['low', 'high']) {
+  const ratio = ESCAPE_STEEL_HARDNESS_BAND[end] / (TABOR_H_OVER_SIGMA_Y * ESCAPE_STEEL_SIGMA_Y_BAND[end]);
+  if (Math.abs(ratio - 1) > TABOR_TOLERANCE)
+    console.warn(`TODO 299: the escape steel's ${end} hardness ${(ESCAPE_STEEL_HARDNESS_BAND[end] / 1e9).toFixed(3)} GPa is `
+      + `${ratio.toFixed(3)}× Tabor's 3·σy — past the relation's ±${(TABOR_TOLERANCE * 100).toFixed(0)}%, so the two bands are not one heat treatment`);
+}
 // TODO 193 — AND THE PIVOTS ARE SIZED TO IT. TODO 192 step 2 cut every
 // jewelled pivot at §50's floor on the claim that friction is linear in r and
 // the load does not bind; with the ribbon cut as the strip it is, the train
@@ -36359,7 +36461,65 @@ const EQUALISATION = (() => {
             atRunIn: peak(rhoShake) },
           notModelled: ['the fork\u2019s arm', 'the stone\u2019s seat', 'the banking pin'] };
       })();
-      return { rows, landing, rho_m: rho, tipBand: { ...ESCAPE_TIP_R_BAND }, steel: { ...ESCAPE_STEEL_SIGMA_Y_BAND },
+      // TODO 299 — THE CENTURY'S WEAR, which is what the hardening was for.
+      // Archard: the volume removed is K·F·s/H. Every factor is already here or
+      // declared — F the tooth load the rows above price, s the slip the
+      // geometry measured times the engagements the train derives, H the escape
+      // steel's own indentation hardness — and the only new one is K, a BAND
+      // read at its adverse end because what it measures is how good the polish
+      // and the epilame are, which the model cannot say.
+      //
+      // The volume becomes a DEPTH through the wedge: a tip losing area A at
+      // its apex recedes √(A/tanα), A the volume over the line the tip stands
+      // at full radius in. That concentration is why the teeth are the binding
+      // site and the pivots are not — a pivot spreads the same kind of volume
+      // over its whole projected area and loses sub-micron depth, a wedge tip
+      // spends it all in one place.
+      //
+      // WHAT THIS DOES NOT SETTLE, and the record says it in the same breath:
+      // at the adverse corner the recession is 1.28× the budget and at the
+      // nominal it is a third of it, so the conclusion FLIPS between corners
+      // and by FRICTION's own rule that is not a conclusion. TODO 299's record
+      // carries the ceiling — holding at the adverse corner needs 1229 HV,
+      // which is no steel — and why the wheel stops at steel anyway: past it
+      // the plastic run-in that answers the drop's impact (landing 2)
+      // disappears and the impact becomes a fracture question nothing prices.
+      const wear = (() => {
+        const K = SERVICE_COUNTS, sl = H.slip, H_Pa = ESCAPE_STEEL_HARDNESS_PA;
+        const slip_m = sl.perEngagement_u * OSC_U;
+        const total_m = slip_m * K.engagementsPerTooth;
+        const tanA = Math.tan(a);
+        // the load the century's slip happens under: the NOMINAL corner's runs,
+        // averaged over the engagement (the peak rows are strength's business,
+        // not a mean wear rate's)
+        const nom = rows.filter((q) => q.corner === 'nominal');
+        const Fmean = nom.reduce((x, q) => x + q.load_N, 0) / nom.length;
+        const at = (kk) => {
+          const V = kk * Fmean * total_m / H_Pa;
+          const area = V / tM;
+          const recess_m = Math.sqrt(area / tanA);
+          return { K: kk, volume_m3: V, recession_m: recess_m, recession_u: recess_m / OSC_U,
+            overBudget: (recess_m / OSC_U) / H.budget.recession_u };
+        };
+        const corners = Object.fromEntries(FRICTION_CORNERS.map((c) => [c, at(WEAR_K_BAND[c])]));
+        // the hardness that would hold at each corner: recession ∝ 1/√H
+        const needH = Object.fromEntries(FRICTION_CORNERS.map((c) => [c,
+          WEAR_K_BAND[c] * Fmean * total_m / (Math.pow(H.budget.recession_u * OSC_U, 2) * tM * tanA)]));
+        const holds = FRICTION_CORNERS.filter((c) => corners[c].overBudget <= 1);
+        if (!holds.length)
+          console.warn(`TODO 299: the club tooth loses ${(corners.favourable.recession_m * 1e6).toFixed(2)} µm of reach over `
+            + `${K.years} years at the FAVOURABLE wear corner, past the ${(H.budget.recession_u * OSC_U * 1e6).toFixed(2)} µm `
+            + 'the lock can spend — the escape wheel does not reach its design life at any corner');
+        return { years: K.years, serviceYears: K.serviceYears, services: K.services,
+          engagementsPerTooth: K.engagementsPerTooth, slipPerEngagement_m: slip_m, slip_m: total_m,
+          load_N: Fmean, hardness_Pa: H_Pa, hardnessBand: { ...ESCAPE_STEEL_HARDNESS_BAND },
+          kBand: { ...WEAR_K_BAND }, budget_u: H.budget.recession_u,
+          lockRunFull_u: H.budget.lockRunFull_u, lockOnly_u: H.budget.lockOnly_u,
+          corners, needHardness_Pa: needH, holdsAt: holds,
+          straddles: holds.length > 0 && holds.length < FRICTION_CORNERS.length,
+          counts: K };
+      })();
+      return { rows, landing, wear, rho_m: rho, tipBand: { ...ESCAPE_TIP_R_BAND }, steel: { ...ESCAPE_STEEL_SIGMA_Y_BAND },
         // both bodies of the contact, named, so the gate re-derives E* rather
         // than trusting it: the tooth is steel, the stone corundum (§269's stocks)
         bodies: { tooth: { E_Pa: STEEL_E_PA, nu: STEEL_NU }, stone: { E_Pa: STOCK.corundum.E, nu: STOCK.corundum.nu } },

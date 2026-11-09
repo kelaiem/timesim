@@ -35,7 +35,7 @@ Item numbers are permanent IDs cited as `TODO 117`, never by file or line.
 
 | Item | State | Title |
 |---|---|---|
-| [299](docs/todo/0299.md) | OPEN | Nothing prices WEAR: declare the service interval and the design life, and hold the escape wheel to 100 years of 5-yearly service |
+| [299](docs/todo/0299.md) | PART DONE | Nothing prices WEAR: declare the service interval and the design life, and hold the escape wheel to 100 years of 5-yearly service |
 | [295](docs/todo/0295.md) | PART DONE | The cocks' jewel bores are not cut: the balance cock's slab has no bore at all, and both escapement bridges run an unbored arm across the one they do cut |
 | [294](docs/todo/0294.md) | OPEN | The geared stop-work builds metal at all thirteen reserves and is recorded at two: the other ten have a pair, a branch arm and a cock stall that nothing reads |
 | [293](docs/todo/0293.md) | OPEN | The maintaining spring's blade bears near its tip: the face runs 0.069 past the contact where the cut wanted a pin radius |
