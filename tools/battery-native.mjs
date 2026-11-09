@@ -160,6 +160,11 @@ if (!isMainThread) {
       const gaps = edges.map((_, i) => ks.reduce((a, x) => a + ((x.bool && x.bool.refOnlyGap[i]) || 0), 0)).concat([ks.reduce((a, x) => a + ((x.bool && x.bool.refOnlyGap[edges.length]) || 0), 0)]);
       console.log(`  js-only trues by the kernel's exact distance: ${gaps.map((n, i) => `${i < edges.length ? `< ${edges[i]}` : `≥ ${edges[edges.length - 1]}`}: ${n}`).join(', ')}`);
     }
+    if (KERNEL === 'shadow') {
+      const es = (k) => ks.reduce((a, x) => a + ((x.exact && x.exact[k]) || 0), 0);
+      console.log(`kernel shadow, exact (contact): ${es('meets')} meet and ${es('distance')} distance calls, ${es('differ')} differing from wasm (the port is bit for bit, so anything but 0 is a defect)`);
+      for (const x of ks.flatMap((k) => (k.exact && k.exact.samples) || []).slice(0, 6)) console.log(`  exact differs: ${x.kind} js ${x.ref} wasm ${x.kernel}`);
+    }
     if (KERNEL === 'shadow') for (const x of ks.flatMap((k) => k.samples || []).slice(0, 8)) console.log(`  disagreement: js ${x.ref} wasm ${x.kernel} bound ${x.upper} (${x.nA} × ${x.nB} triangles)`);
   }
   const wall = Date.now() - t0;

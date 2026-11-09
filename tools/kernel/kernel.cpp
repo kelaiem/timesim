@@ -312,6 +312,20 @@ static double box_dist2(const double* amn, const double* amx, const double* bmn,
   return s;
 }
 
+// §338 landing 7 — THE TRIANGLE PAIR'S OWN BOX, a cheap bound in front of the exact
+// test. A leaf pair holds up to 64 triangle pairs and each exact test is six
+// point–triangle and nine segment–segment distances, which a contact query bounded
+// at 1e-4 almost never needs: a pair is skipped on the rule a node is (its box gap
+// clear of the best by PRUNE_PAD, or, for the meet, over PRUNE_PAD), so for the same
+// reason no skipped pair could have set the answer, and every answer is the one the
+// unfiltered loop gave, bit for bit.
+static inline void tri_box(const double* t, double* mn, double* mx) {
+  for (int a = 0; a < 3; a++) {
+    mn[a] = dmin(dmin(t[a], t[3 + a]), t[6 + a]);
+    mx[a] = dmax(dmax(t[a], t[3 + a]), t[6 + a]);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // The query. B is mapped into A's frame LAZILY: a B node's box is the axis-aligned
 // box of its own box's eight corners mapped (a superset, so a distance to it is
@@ -438,12 +452,17 @@ static void visit(Query& Q, int a, int b) {
   const Node& nb = Q.B->node[b];
   if (na.left < 0 && nb.left < 0) {
     leaf_tris(Q, b);
-    for (int i = na.start; i < na.start + na.count; i++)
+    double tbmn[3 * LEAF], tbmx[3 * LEAF], tamn[3], tamx[3];
+    for (int j = 0; j < nb.count; j++) tri_box(Q.btri + 9 * (nb.start + j), tbmn + 3 * j, tbmx + 3 * j);
+    for (int i = na.start; i < na.start + na.count; i++) {
+      tri_box(Q.A->tri + 9 * i, tamn, tamx);
       for (int j = nb.start; j < nb.start + nb.count; j++) {
+        if (!(box_dist2(tamn, tamx, tbmn + 3 * (j - nb.start), tbmx + 3 * (j - nb.start)) < Q.prune2)) continue;
         Q.pairs++;
         double d = tri_tri2(Q.A->tri + 9 * i, Q.btri + 9 * j, Q.best2);
         if (d < Q.best2) { Q.best2 = d; Q.prune2 = pad2(d); if (d == 0) { Q.done = true; return; } }
       }
+    }
     return;
   }
   // Descend the node with the larger box (A on a tie), nearer child first.
@@ -548,11 +567,17 @@ static void visit_meets(Query& Q, int a, int b) {
   const Node& nb = Q.B->node[b];
   if (na.left < 0 && nb.left < 0) {
     leaf_tris(Q, b);
-    for (int i = na.start; i < na.start + na.count; i++)
+    double tbmn[3 * LEAF], tbmx[3 * LEAF], tamn[3], tamx[3];
+    const double pad = PRUNE_PAD * PRUNE_PAD;
+    for (int j = 0; j < nb.count; j++) tri_box(Q.btri + 9 * (nb.start + j), tbmn + 3 * j, tbmx + 3 * j);
+    for (int i = na.start; i < na.start + na.count; i++) {
+      tri_box(Q.A->tri + 9 * i, tamn, tamx);
       for (int j = nb.start; j < nb.start + nb.count; j++) {
+        if (box_dist2(tamn, tamx, tbmn + 3 * (j - nb.start), tbmx + 3 * (j - nb.start)) > pad) continue;
         Q.pairs++;
         if (tri_meets(Q.A->tri + 9 * i, Q.btri + 9 * j)) { Q.done = true; return; }
       }
+    }
     return;
   }
   bool splitA;
