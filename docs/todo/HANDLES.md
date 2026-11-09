@@ -23,15 +23,19 @@ them. The headings are also what `tools/item-docs.mjs` generates TODO.md's
 index from, so a handle written into one would arrive in the index's Title
 column as though it were part of the title.
 
-**Nothing re-derives this file, and that is a real gap rather than an
-oversight.** A handle is a naming choice, not a measurement, so there is no
-derivation to hold it to — but three things a check COULD hold are unwritten:
-every item in the index having exactly one row here, every handle unique, and
-no row naming a number that does not exist. Until that exists, a newly filed
-item owes its row by hand, and a handle for a number nobody claimed will sit
-here unnoticed. Written 2026-11-09 against the 294 items TODO.md's index
-carried at `a28f3576`, with uniqueness and the four-word ceiling checked at
-that commit.
+**A handle is authored, not derived — so what holds this file is a gate, not a
+derivation.** `node tools/todo-handles.mjs --check` reads TODO.md's generated
+index and holds four things: every indexed item has exactly ONE row here; no
+row names a number the index does not carry (a renumbered or deleted item
+leaves its handle pointing at nothing); every handle is unique, compared
+case-insensitively on collapsed whitespace, since two items answering to one
+name is the defect that makes handles worse than numbers; and every handle is
+non-empty and at most four words, because a sixth word is a title growing back.
+A missing row is reported WITH the item's title, which is what anyone needs to
+write the handle. Every rule carries a control that plants its own defect and
+fails the run if the rule stays silent, and `item-numbers.yml` runs the check
+beside the numbering gates — so a newly filed item owes its row here, and
+nothing merges without it.
 
 Newest first. State is not repeated here — it is read from each item's own
 heading, and [the index](../../TODO.md) is where it is shown.
