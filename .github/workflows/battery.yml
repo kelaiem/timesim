@@ -909,12 +909,15 @@ jobs:
   # not grow; it just got read properly.
   #
   # THE SPLIT ITSELF IS MEASURED, which is the other half of the claim above.
-  # The two runs after it - 42529912428 and 42535617947, the same pair that
-  # first ran the invariant on its own job - walled 629 s and 624 s here, with
-  # the probe step at 606 s and 605 s: inside the six-sample band on both
-  # counts (487-811 s job, 464-790 s step) and nowhere near the 1154 s and
-  # 883 s this job walled while it carried the invariant. The probe left, and
-  # the job went back to the size it was.
+  # Three of the runs after it - 42535617947, 42529912428 and 42551697718, three
+  # of the four that have run the invariant on its own job - walled 624 s, 629 s
+  # and 635 s here, with the probe step at 605 s, 606 s and 610 s: inside the
+  # six-sample band on both counts (487-811 s job, 464-790 s step) and nowhere
+  # near the 1154 s and 883 s this job walled while it carried the invariant.
+  # The probe left, and the job went back to the size it was. Those three sit
+  # within 1.02x of each other, which is NOT a reason to re-derive the 1.66 from
+  # them: three runs of one week on one tree say nothing about the spread the
+  # header's factor is there to cover.
   #
   # ONE SAMPLE NEARLY WENT IN THE WRONG COLUMN, and the correction is kept here
   # because it is the only kind of error this block cannot catch by arithmetic.
@@ -973,17 +976,35 @@ jobs:
   # It costs the gate step in `battery` a SECOND sibling to wait on, which is the
   # whole price.
   #
-  # THE CAP, 10 min, AND IT IS NOW MEASURED - the demand this row used to make
-  # of the job's first run is discharged. Two runs have executed this job:
-  # 42529912428 (PR #941 at 0ed47f85) walled 295 s and 42535617947 (main at
-  # c7ed902f) walled 308 s. In BOTH of them the probe step itself walled 272 s,
-  # to the second; the 13 s between the two job walls is setup and the runner's
-  # own book-ends, not metal - the setup steps alone (checkout, node and the
-  # Chromium install) differ by 10 s, 22 s against 32 s.
-  # 308 x 1.66 = 511 s = 8.5 min, so the 10 STANDS: two rows do not buy the
-  # minute down to 9, and tightening a cap toward the fast end of a two-row
-  # sample is the mistake this file keeps warning about. Revisit it when these
-  # rows outnumber the two.
+  # THE CAP, 10 min, AND IT IS MEASURED - the demand this row used to make of
+  # the job's first run is discharged. FOUR runs have executed this job, in
+  # order: 42529912428 (PR #941 at 0ed47f85) walled 295 s, 42535617947 (main
+  # at c7ed902f) 308 s, 42551697718 (PR #948) 281 s and 42553899657 (PR #949)
+  # 360 s, with the probe step itself at 272, 272, 254 and 337 s and the rest
+  # in setup and the runner's own book-ends (19-36 s - checkout, node and the
+  # Chromium install, not metal). The slowest is also the newest, which is what
+  # a slow tail looks like when it arrives. It governs: 360 x 1.66 = 598 s =
+  # 9.96 min -> 10, so this cap is EXACTLY its own derivation now, with 2 s of
+  # slack. RE-READ IT THE FIRST TIME A WALL PASSES 361 s - at 362 s the rule
+  # asks for 11, and raising it then is the rule working, not a loosening. The
+  # four rows span 1.28x, inside the 1.66 the header carries: the factor is
+  # covering the spread it was measured to cover.
+  #
+  # AND DO NOT CUT IT TOWARD THE FAST ROWS. On the two rows this block had
+  # first the rule gave 9; on the fastest row alone it gives 8. A 360 s run
+  # walks straight through either one. REVISIT AT SIX ROWS - the number it took
+  # to read the probes job next door properly - and remember that the row
+  # before this one said "revisit when these rows outnumber the two", which the
+  # very push that merged it satisfied: a threshold a cap block can act on has
+  # a NUMBER in it.
+  #
+  # WHAT EACH NEW ROW TOOK BACK, kept because the shape of the error outlasts
+  # the numbers. The first two runs walled the step at 272 s each, to the
+  # second, and for one commit this block said so as though it meant the probe
+  # was steady; the third walled 254 s and took the agreement away. Those three
+  # then spanned a tidy 1.10x and this block said THAT; the fourth walled 337 s
+  # and took the tidiness away. Two samples that agree are still two samples,
+  # three that sit close are still three, and no sample promises you the tail.
   #
   # THE DERIVATION THE 10 CAME FROM is kept, because the method is what carries
   # over to the next job that has no wall of its own yet. With no standalone
@@ -991,12 +1012,13 @@ jobs:
   # WITH this probe (two samples, 1126 s and 863 s, mean 995 s) and WITHOUT it
   # (six the same day, 464-790 s, mean 667 s): 327 s for the probe, plus a 23 s
   # setup, x 1.66 = 581 s = 9.7 min -> 10. Measured, the probe and its setup
-  # together are 294-304 s against that 350 s, so the differencing ran 15 %
-  # HIGH - conservative, which is the direction a cap wants to err. The
-  # pairwise differences spanned 73-662 s and the truth is 272 s, sitting
-  # inside that span and near neither end: the means were the only honest
-  # reading, and any single pair of walls would have been out by a factor of
-  # two or more.
+  # together are 281-356 s against that 350 s, so the differencing did NOT run
+  # high: the slowest row is 2 % OVER it. The row before this one called the
+  # method conservative on three fast samples, which is this block's own mistake
+  # in a friendlier costume. The pairwise differences spanned 73-662 s and the
+  # truth is 254-337 s, sitting inside that span and near neither end: the means
+  # were the only honest reading, and any single pair of walls would have been
+  # out by a factor of two or more.
   battery-geared-invariant:
     name: battery geared invariant
     needs: route
