@@ -42,6 +42,7 @@ heading, and [the index](../../TODO.md) is where it is shown.
 
 | item | handle |
 |---|---|
+| 299 | wear life unpriced |
 | 297 | form dial feet |
 | 296 | escape tooth tip |
 | 295 | cock jewel bores |
