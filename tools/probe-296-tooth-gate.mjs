@@ -1,4 +1,4 @@
-// Does the equalisation gate's club-tooth row (TODO 296, row 20) actually fire? It boots once, clones the EQUALISATION record, and runs `checkEqualisation` over eight sabotaged copies — the wedge read as its flanks' SUM, the unlock priced forward, a load off its torque, a tip blunter than the finish band's sharp end, the arms' virtual work relaxed, the escape torque raised just past the multiple at which the tip first yields (derived: the worst row's margin squared, 24.6x), the binding criterion flipped and two rows wearing each other's corner — asserting that each is REFUSED and named. A gate nobody has watched fire is a comment. ACCEPTANCE: exits non-zero if the unmutated clone is not clean or if any sabotage passes.
+// Do the equalisation gate's club-tooth rows (TODO 296, rows 20 and 21) actually fire? It boots once, clones the EQUALISATION record, and runs `checkEqualisation` over fourteen sabotaged copies, asserting that each is REFUSED and named. Row 20, the quasi-static load: the wedge read as its flanks' SUM, the unlock priced forward, a load off its torque, a tip blunter than the finish band's sharp end, the arms' virtual work relaxed, the escape torque raised just past the multiple at which the tip first yields (derived: the worst row's margin squared, 24.6x), the binding criterion flipped, and two rows wearing each other's corner. Row 21, the drop's landing: a closing velocity off its arm, a run-in that blunts the tip past its finish band, the compliance claimed as the contact's rather than the tooth's, the landing priced at the design swing instead of the peak, a drop that takes the wheel nowhere, and the unmodelled series members left unnamed. A gate nobody has watched fire is a comment. ACCEPTANCE: exits non-zero if the unmutated clone is not clean or if any sabotage passes.
 //
 // Why a clone and not a re-boot. The row is arithmetic over a published record,
 // so the gate's logic is exactly what wants testing, and a doctored record
@@ -42,7 +42,7 @@ const toothFails = (E) => {
   // the row's own wording, so a failure it raises cannot be filtered out of its
   // own control (an early draft's regex said "locking flank" where the gate
   // says "locking face", and S2 read as a gate gap)
-  return (r.failures || []).filter((q) => /club|escape tooth|contact arm|wedge|locking (face|flank)|\btip\b|forward run|recoil/i.test(JSON.stringify(q)));
+  return (r.failures || []).filter((q) => /club|escape tooth|contact arm|wedge|locking (face|flank)|\btip\b|forward run|recoil|landing|drop|shakedown|series members|peak swing/i.test(JSON.stringify(q)));
 };
 
 // ---- BASELINE: the clone path is faithful and the row is clean -------------
@@ -129,6 +129,32 @@ const SABOTAGES = [
       const fw = t.rows.filter((r) => r.flow === 'forward' && r.run === first.run && r.stone === first.stone);
       const favo = fw.find((r) => r.corner === 'favourable'), adv = fw.find((r) => r.corner === 'adverse');
       favo.corner = 'adverse'; adv.corner = 'favourable'; } },
+  // ---- row 21 (TODO 296 landing 2), the drop's landing -------------------
+  { name: 'S9 a closing velocity that is not its arm times its speed',
+    expect: /closing velocity identity/,
+    patch: (E) => { E.going.energy.escapeTooth.landing.v0_m_s *= 1.02; } },
+  { name: 'S10 a run-in that blunts the tip past its finish band',
+    expect: /past its finish band/,
+    patch: (E) => { const lg = E.going.energy.escapeTooth.landing;
+      const k = lg.runIn.band_m[1] * 3 / lg.runIn.rho_m;
+      lg.runIn.rho_m *= k; lg.runIn.elasticRho_m *= k;
+      // keep the inversion honest so the BAR is what refuses it, not an identity
+      lg.runIn.atRunIn.p0_Pa = lg.shakedownAllow_Pa;
+      lg.runIn.recession_u = (lg.runIn.rho_m - 1e-7) * (1 / Math.sin(et0.geom.wedge.halfRad) - 1) / U; } },
+  { name: 'S11 the landing\'s compliance claimed as the CONTACT\'s, not the tooth\'s',
+    expect: /compliance is not the tooth/,
+    patch: (E) => { for (const q of [E.going.energy.escapeTooth.landing.atSharp, E.going.energy.escapeTooth.landing.runIn.atRunIn]) {
+      const t = q.kTooth_N_per_m; q.kTooth_N_per_m = q.kHertz_N_per_m; q.kHertz_N_per_m = t; } } },
+  { name: 'S12 the landing priced at the design swing instead of the peak',
+    expect: /not priced at the peak swing/,
+    patch: (E) => { E.going.energy.escapeTooth.landing.peakDeg = 200; } },
+  { name: 'S13 the drop taking the wheel nowhere',
+    expect: /does not accelerate through the drop|energy identity/,
+    patch: (E) => { const lg = E.going.energy.escapeTooth.landing;
+      lg.omegaLand_rad_s = lg.omegaLetoff_rad_s; } },
+  { name: 'S14 the series members it leaves out left unnamed',
+    expect: /does not name the series members/,
+    patch: (E) => { E.going.energy.escapeTooth.landing.notModelled = []; } },
 ];
 
 for (const s of SABOTAGES) {
