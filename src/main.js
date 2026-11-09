@@ -9211,6 +9211,11 @@ async function siteTailBearings(B, F, g, cap) {
     { e: bevelEnv(F.shaftAngleDeg, foldModuleFor(F.shaftAngleDeg), MW_LEG1_R, MW_LEG2_R), f: { o: vArr(F.K), a: vArr(F.leg1U.clone().negate()) }, name: 'mwCornerFoldIn' },
     { e: bevelEnv(F.shaftAngleDeg, foldModuleFor(F.shaftAngleDeg), MW_LEG2_R, MW_LEG1_R), f: { o: vArr(F.K), a: vArr(F.leg2U) }, name: 'mwCornerFoldOut' });
   const blanksClear = (disc, target) => { for (const b of blanks) if (!G.revolvedBlankDiscClearance(b.e, b.f, disc, target).ok) return b.name; return null; };
+  // TODO 289 landing 7 — corners A's and B's plate openings cut to their blanks' footprint above the dial face, landing
+  // 5's construction (G.blanksPlanFootprint): the outline `pts` rides beside the sphere's circle `r` (coneR + margin,
+  // the certified bound no blank passes), which every reader that knows only discs keeps holding the opening by
+  const cornerOutline = (names) => G.blanksPlanFootprint(blanks.filter((b) => names.includes(b.name)).map(({ e, f }) => ({ e, f })), PLATE_BACK - m, m);
+  const dropOutline = cornerOutline(['mwCornerDropIn', 'mwCornerDropOut']), riseOutline = cornerOutline(['mwCornerRiseIn', 'mwCornerRiseOut']);
   const capTipR = G.gearOuterR({ module: MW_MODULE_1, teeth: SETTING_CAP_TEETH, thickness: SETTING_CAP_T, mates: [{ teeth: MW_MINUTE_TEETH, mates: MW_MINUTE_MATES }] });
   // --- the rise's pivot: shouldered to the largest radius the stub's start admits. The stub must reach the foot
   // corner's outboard web (zWebLo from E) while starting clear of the pivot's cylinder through E, so the pivot is
@@ -9470,7 +9475,7 @@ async function siteTailBearings(B, F, g, cap) {
   const lenAK = settingA.distanceTo(F.K);
   const leg1Blocks = (() => {
     const LB = legBlocks({ o: settingA, u: F.leg1U, lenT: lenAK, sStart: settingA.distanceTo(leg1A), sEnd: lenAK, r: MW_LEG1_R,
-      ends: [{ merge: { x: settingA.x, y: settingA.y, r: dropHoleR, ...(upper.drop.why ? {} : { depth: upper.drop.floorZ - PLATE_BACK }) }, lands: [] },
+      ends: [{ merge: { x: settingA.x, y: settingA.y, r: dropHoleR, ...(upper.drop.why ? {} : { depth: upper.drop.floorZ - PLATE_BACK, pts: dropOutline }) }, lands: [] },
              { merge: foldOpening, lands: [] }],
       loads: [sDropOut, sFoldIn] });
     return LB.why ? LB : { ...LB, dropHoleR, foldHoleR, endToDropBore: LB.endGaps[0], endToFoldBore: LB.endGaps[1] };
@@ -9494,7 +9499,7 @@ async function siteTailBearings(B, F, g, cap) {
       ends: [{ merge: foldOpening, lands: leg1K && !leg1K.through ? [{ x: leg1K.x, y: leg1K.y, r: leg1K.r }] : [] },
              riseMergedHere
                ? { merge: null, lands: [{ x: B.x, y: B.y, r: riseHoleR }, { x: cap.x, y: cap.y, r: capPocketR }] }
-               : { merge: { x: B.x, y: B.y, r: riseHoleR, ...(upper.rise.why ? {} : { depth: upper.rise.floorZ - PLATE_BACK }) }, lands: [] }],
+               : { merge: { x: B.x, y: B.y, r: riseHoleR, ...(upper.rise.why ? {} : { depth: upper.rise.floorZ - PLATE_BACK, pts: riseOutline }) }, lands: [] }],
       loads: [sFoldOut, sRiseInL] });
     if (LB.why) return LB;
     LB.blocks.forEach((b, i) => { b.end = i === 0 ? 'K' : 'B'; });
@@ -9592,6 +9597,7 @@ async function siteTailBearings(B, F, g, cap) {
     upper.drop = { ...U, straddled: false, len: U.room, sEnd: U.s0 + U.room, centre: U.o.clone().addScaledVector(U.u, U.s0 + U.room / 2) };
   }
   return {
+    dropOutline, riseOutline,
     upper, leg1A, leg2B, leg1Blocks, leg2Blocks, dropLower: dropLowerWhy ? { why: dropLowerWhy } : { ...dropChosen, footWhy: dropFoot.why },
     nOut, riseWhy, stubWhy, capWhy, risePivotR, riseS0, riseBushLen, riseRoom, riseLen, stubStart, stubEnd, stubA, stubB, stubBush: { ...stubBush, mid: stubBushMid, run: stubRun },
     capS0, capBushLen, jewelZ, stoneTopZ, stoneBotZ, arborTop, arborBot, capTipR, pocketR,
@@ -12019,7 +12025,27 @@ const MW_BLIND_BORES = (() => {
     if (!u || u.why) continue;
     if (Math.abs(u.coneR + CLEAR_MARGIN - hole.r) > 1e-9)
       console.warn(`TODO 289: the ${k} corner's blind bore was sited for coneR ${u.coneR.toFixed(4)}, but the plate's opening is cut for ${(hole.r - CLEAR_MARGIN).toFixed(4)}`);
-    out[k] = { x: hole.x, y: hole.y, r: hole.r, depth: u.floorZ - PLATE_BACK, lap: SEAT_LAND_LAP };
+    // landing 7: the blind bore is cut to its blanks' outline (siteTailBearings' dropOutline / riseOutline)
+    const pts = SETTING_METAL.tail?.[k + 'Outline'];
+    out[k] = { x: hole.x, y: hole.y, r: hole.r, depth: u.floorZ - PLATE_BACK, lap: SEAT_LAND_LAP, ...(pts ? { pts } : {}) };
+  }
+  // rule 6: each built corner's blanks, as cut, stand inside their blind bore's outline by the margin above the dial face
+  for (const [k, names] of [['drop', ['mwCornerDropIn', 'mwCornerDropOut']], ['rise', ['mwCornerRiseIn', 'mwCornerRiseOut']]]) {
+    if (!out[k]?.pts) continue;
+    let worst = Infinity, at = null;
+    const v = new THREE.Vector3();
+    keyless.traverse((o) => {
+      if (!o.isMesh || !names.includes(o.name)) return;
+      o.updateWorldMatrix(true, false);
+      const p = o.geometry.attributes.position;
+      for (let i = 0; i < p.count; i++) {
+        v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld);
+        if (v.z < PLATE_BACK) continue;
+        const g = -G.pointConvexGap(out[k].pts, v.x, v.y);
+        if (g < worst) { worst = g; at = o.name; }
+      }
+    });
+    if (worst < CLEAR_MARGIN - 1e-6) console.warn(`TODO 289: the ${k} corner's blind bore stands ${worst.toFixed(4)} off ${at} above the dial face — need CLEAR_MARGIN ${CLEAR_MARGIN}`);
   }
   if (out.rise && MW_CAP_BORE_MERGED) console.warn('TODO 289: the rise corner\'s bore is sited blind but the plate merges it into the cap\'s pocket');
   return out;
@@ -66083,6 +66109,8 @@ window.__clock = {
         // TODO 289 landing 5 — the fold corner's opening as cut (foldOpeningFor), and the sphere's circle it replaced
         foldOpening: { x: MW_FOLD_PLATE_HOLE.x, y: MW_FOLD_PLATE_HOLE.y, r: MW_FOLD_PLATE_HOLE.r, pts: MW_FOLD_PLATE_HOLE.pts.map((q) => [...q]),
           sphereR: cornerFold.spec.coneR + CLEAR_MARGIN },
+        // TODO 289 landing 7 — A's and B's blind bores' outlines (null where a corner's bore is cut as the sphere's circle)
+        dropOutline: T.dropOutline ? T.dropOutline.map((q) => [...q]) : null, riseOutline: T.riseOutline ? T.riseOutline.map((q) => [...q]) : null,
         // TODO 289 landing 2 — leg 1's bearing blocks, let into the plate
         ...Object.fromEntries(['leg1Blocks', 'leg2Blocks'].map((k) => [k, T[k].why ? { why: T[k].why }
           : (({ blocks, ...LB }) => ({ ...LB, blocks: blocks.map((b) => ({ s: b.s, centre: vArr(b.centre), merged: b.merged, pocket: { ...b.pocket } })) }))(T[k])])),
