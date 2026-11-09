@@ -1597,9 +1597,11 @@ export const TABOR_TOLERANCE = 0.20;
 // This BAND is what a polish can ACHIEVE: 0.1 µm is about the finest edge
 // hardened steel holds at all (a honed razor edge is 30–100 nm and is not a
 // bearing surface), 2 µm an ordinary polished corner on a finished wheel. It is
-// no longer what the wheel is priced at — see ESCAPE_TIP_FINISH_M below, which
-// TODO 299 landing 2 DERIVED, because polishing to the sharp end was work the
-// first landings undid.
+// no longer what the wheel is priced at: TODO 299 landing 2 DERIVED that from
+// the impact (the energy column's `escapeTooth.landing.finish`), because
+// polishing to the sharp end was work the first landings undid. It stays a
+// RECORD and not a cut — landing 3 measured why: this outline cannot carry a
+// feature smaller than its own chamfer.
 export const ESCAPE_TIP_R_BAND = Object.freeze({
   sharp_m: 0.1e-6, blunt_m: 2e-6,
   why: 'what a polished corner on hardened steel can ACHIEVE: 0.1 µm the finest a hardened-steel edge holds in service (a honed razor edge, 30–100 nm, is not a bearing surface), 2 µm an ordinary commercial polish',
