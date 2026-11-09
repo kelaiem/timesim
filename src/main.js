@@ -63413,7 +63413,16 @@ function tick(t) {
   // paid out. No tension term appears here on purpose: the spring's shape is a
   // consequence of where the drum is, not a second reading of the same state.
   // (TODO 1 — this was `rotation.z = tension · 1.4π` plus a 6% scale.)
-  mainspring.setWind(mainspring.sweepFull - (goingBarrelGroup ? goingBarrelGroup.rotation.z : drumRot));   // §339: the ribbon rides the drum it lives in
+  // What the drum has PAID OUT is a magnitude in the ribbon's own winding sense,
+  // not the drum's signed angle: TODO 115 put MOVEMENT_SENSE on drumRotAt, so on
+  // the reversed movement (−1) the signed angle is ≤ 0, `sweepFull − angle` read
+  // as MORE than full wind, and setWind clamped to the wound frame at every
+  // tension — the ribbon never morphed and only turned with the drum. Each
+  // barrel's ribbon is cut to its own hand (makeBarrel's `sense`: MOVEMENT_SENSE
+  // for the fusee drum, −MOVEMENT_SENSE for §339's spur-driven barrel), so the
+  // travel is that hand times the drum's rotation — one source per barrel.
+  const paidOut = goingBarrelGroup ? -MOVEMENT_SENSE * goingBarrelGroup.rotation.z : MOVEMENT_SENSE * drumRot;
+  mainspring.setWind(mainspring.sweepFull - paidOut);   // §339: the ribbon rides the drum it lives in
 
   // Cap pinion at the dial end of the motion-works arbor. It meshes the MINUTE
   // WHEEL, beside the cannon pinion that meshes the same wheel, so it turns
