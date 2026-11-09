@@ -1958,7 +1958,10 @@ function pointInsideTree(tree, pLocal) {
   for (const h of hits) if (h.distance > 1e-9) n++;
   return (n % 2) === 1;
 }
-function sampledVerdict(a, b, upperBound = Infinity) {
+// Exported for instruments only (probe-282-witness.mjs reads the witness directly,
+// since landing 8's exact distance means meshClearance no longer depends on it for a
+// pass-through: an edge piercing a surface IS a meet, d = 0).
+export function sampledVerdict(a, b, upperBound = Infinity) {
   if (SWEEP_CENSUS.on) {
     const c = SWEEP_CENSUS.c;
     c.verdictCalls++;
