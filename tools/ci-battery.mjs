@@ -224,7 +224,11 @@ const SPEC_BOOT_RATIO = Object.freeze({
   // with ~50 paying the cap leg and the tail. Native host (tools/native/boot.mjs), one at a time on the dev container: the
   // default 28.8 s, the point 61.4 s at main and 95.7 s with the landing (3.3×); rounded up to a tenth. The POINT tier
   // reads this table too (its boot is the same build): at 120 s flat it was DEAD on the hosted runner while its spec boot lived.
-  'stopwork-140': 3.4,   // 95.7 s against 28.8 s
+  // Re-measured 2026-11-09 by TODO 289 landing 8, heavier again: the reserve's idlers are judged now and the tail's
+  // hangers re-sited round them, so a candidate the reserve refuses is cut twice more (its links left out for the
+  // swing, then its hangers held off the reserve at that swing); the walk opens at −103.87°. The default 28.6 s, the
+  // point 122.5 s (4.28×), the same way.
+  'stopwork-140': 4.3,   // 122.5 s against 28.6 s
   'alarmaz=180': 1.8,    // 21.2 s
   // §337 stage 3's two geared points, measured the same way on 2026-11-07, M2 Max, two solo passes each (the default 13.7
   // and 13.9 s on the same two passes; each ratio is the slowest point over the fastest default, rounded up to a tenth, as
