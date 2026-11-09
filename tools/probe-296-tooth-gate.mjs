@@ -42,7 +42,7 @@ const toothFails = (E) => {
   // the row's own wording, so a failure it raises cannot be filtered out of its
   // own control (an early draft's regex said "locking flank" where the gate
   // says "locking face", and S2 read as a gate gap)
-  return (r.failures || []).filter((q) => /club|escape tooth|contact arm|wedge|locking (face|flank)|\btip\b|forward run|recoil|landing|drop|shakedown|series members|peak swing|wear|Archard|hardness|design life|corners that hold|straddle|once an hour|once a minute|slip|budget|temper|revolution/i.test(JSON.stringify(q)));
+  return (r.failures || []).filter((q) => /club|escape tooth|contact arm|wedge|locking (face|flank)|\btip\b|forward run|recoil|landing|drop|shakedown|series members|peak swing|wear|Archard|hardness|design life|corners that hold|straddle|once an hour|once a minute|slip|budget|temper|revolution|finish|polish|fixed point|cut-back|gullet|pocket|concave/i.test(JSON.stringify(q)));
 };
 
 // ---- BASELINE: the clone path is faithful and the row is clean -------------
@@ -98,9 +98,9 @@ const SABOTAGES = [
   { name: 'S3 a load that is not its torque over its arm',
     expect: /load identity/,
     patch: (E) => { E.going.energy.escapeTooth.rows[4].load_N *= 1.05; } },
-  { name: 'S4 a tip blunter than the finish band\'s sharp end',
-    expect: /not the finish band's sharp end/,
-    patch: (E) => { E.going.energy.escapeTooth.rho_m *= 2; } },
+  { name: 'S4 rows priced at a radius that is not the derived finish',
+    expect: /not priced at the derived finish/,
+    patch: (E) => { E.going.energy.escapeTooth.rho_m *= 1.5; } },
   { name: 'S5 the arms\' virtual work relaxed',
     expect: /fail virtual work/,
     patch: (E) => { E.going.energy.escapeTooth.geom.virtualWork.rel = 1e-3; } },
@@ -133,18 +133,20 @@ const SABOTAGES = [
   { name: 'S9 a closing velocity that is not its arm times its speed',
     expect: /closing velocity identity/,
     patch: (E) => { E.going.energy.escapeTooth.landing.v0_m_s *= 1.02; } },
-  { name: 'S10 a run-in that blunts the tip past its finish band',
-    expect: /past its finish band/,
-    patch: (E) => { const lg = E.going.energy.escapeTooth.landing;
-      const k = lg.runIn.band_m[1] * 3 / lg.runIn.rho_m;
-      lg.runIn.rho_m *= k; lg.runIn.elasticRho_m *= k;
-      // keep the inversion honest so the BAR is what refuses it, not an identity
-      lg.runIn.atRunIn.p0_Pa = lg.shakedownAllow_Pa;
-      lg.runIn.recession_u = (lg.runIn.rho_m - 1e-7) * (1 / Math.sin(et0.geom.wedge.halfRad) - 1) / U; } },
+  { name: 'S10 a finish outside what a polish can hold',
+    expect: /outside what a polish can hold/,
+    patch: (E) => { const t = E.going.energy.escapeTooth, lg = t.landing, k = lg.finish.band_m[1] * 3 / lg.finish.rho_m;
+      lg.finish.rho_m *= k; t.rho_m = lg.finish.rho_m;
+      lg.finish.elasticRho_m *= k;
+      lg.finish.cutBack_u = lg.finish.rho_m * (1 / Math.sin(t.geom.wedge.halfRad) - 1) / U;
+      // keep the fixed-point identity true so the ACHIEVABILITY clause is what
+      // refuses it rather than an arithmetic one
+      lg.atFinish.p0_Pa = lg.shakedownAllow_Pa; } },
   { name: 'S11 the landing\'s compliance claimed as the CONTACT\'s, not the tooth\'s',
     expect: /compliance is not the tooth/,
-    patch: (E) => { for (const q of [E.going.energy.escapeTooth.landing.atSharp, E.going.energy.escapeTooth.landing.runIn.atRunIn]) {
-      const t = q.kTooth_N_per_m; q.kTooth_N_per_m = q.kHertz_N_per_m; q.kHertz_N_per_m = t; } } },
+    patch: (E) => { const lg = E.going.energy.escapeTooth.landing;
+      for (const q of [lg.atFinish, lg.finish.atSharp]) {
+        const t = q.kTooth_N_per_m; q.kTooth_N_per_m = q.kHertz_N_per_m; q.kHertz_N_per_m = t; } } },
   { name: 'S12 the landing priced at the design swing instead of the peak',
     expect: /not priced at the peak swing/,
     patch: (E) => { E.going.energy.escapeTooth.landing.peakDeg = 200; } },

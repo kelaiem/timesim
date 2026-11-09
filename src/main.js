@@ -86,6 +86,7 @@ import {
   ESCAPE_STEEL_SIGMA_Y_BAND, ESCAPE_STEEL_SIGMA_Y_PA, ESCAPE_TIP_R_BAND, ESCAPE_TIP_R_M,   // TODO 296: the escape wheel's own steel, and the radius its club tip is priced on
   ESCAPE_STEEL_HARDNESS_BAND, ESCAPE_STEEL_HARDNESS_PA, TABOR_H_OVER_SIGMA_Y, TABOR_TOLERANCE, HV_TO_PA,   // TODO 299: its indentation hardness, which a wear law needs and a yield band is not
   SERVICE_INTERVAL_YEARS, DESIGN_LIFE_YEARS, SERVICES_IN_LIFE, JULIAN_YEAR_S, WEAR_K_BAND,   // TODO 299: the service schedule and Archard's coefficient
+  CUT_TOOL_R_BAND, CUT_TOOL_R_M, CUT_CONCAVE_MIN_DEG,   // TODO 299 landing 2: what cuts the tooth ring, for the construction-cost invariants
   MAINSPRING_E_PA, MAINSPRING_SIGMA_Y_BAND, MAINSPRING_SIGMA_Y_PA, MAINSPRING_ALPHA_BAND, MAINSPRING_ALPHA_MIN,   // TODO 193: the ribbons' alloy, cited  // §137: the one steel, the one cantilever law; §164 names its other properties beside it
   MU_STEEL, ALARM_SPRING_HEADROOM,            // TODO 144: the one steel-on-steel friction coefficient, and the drag-against-hold margin — the disc's drag and its seat are priced on both
   FRICTION, FRICTION_CORNERS,                  // TODO 192 / §247 tier two: the friction bands the power budget is priced at — three corners, never one number
@@ -2182,6 +2183,56 @@ const ESCAPE_TOOTH_GEOM = (() => {
   })();
   if (!(budget.recession_u > 0 && budget.recession_u < budget.lockRunFull_u))
     console.warn(`TODO 299: the wear budget solved to ${budget.recession_u} u of recession against a lock+run of ${budget.lockRunFull_u} — the worn-tooth crossing did not resolve`);
+  // TODO 299 landing 2 — WHAT THE RING COSTS TO CUT, off the same outline. The
+  // owner asked after the escape wheel's construction, and these are the
+  // invariants a profile can actually state about it: the ring is ONE closed
+  // curve (so the teeth, the gullets and the crossings are one piercing, not a
+  // tooth-at-a-time operation), its sharpest CONCAVE corner decides whether a
+  // rotary tool's fillet rounds a corner or fails to reach a pocket, and its
+  // narrowest GULLET decides whether the tool fits down between two teeth at
+  // all. The tip's own corner is CONVEX, so no tool radius bounds it — what
+  // bounds it is the polish, which is the one micron-scale operation on the
+  // whole wheel and the one TODO 299 landing 2 just made coarser.
+  const cut = (() => {
+    let area2 = 0;
+    for (let i = 0; i < n; i++) { const q = at(i), q2 = at(i + 1); area2 += q[0] * q2[1] - q2[0] * q[1]; }
+    const ccw = area2 > 0;
+    let conc = null, conv = null;
+    for (let i = 0; i < n; i++) {
+      const q0 = at(i - 1), q1 = at(i), q2 = at(i + 1);
+      const u1 = [q1[0] - q0[0], q1[1] - q0[1]], u2 = [q2[0] - q1[0], q2[1] - q1[1]];
+      const l1 = Math.hypot(u1[0], u1[1]), l2 = Math.hypot(u2[0], u2[1]);
+      if (!(l1 > 1e-9 && l2 > 1e-9)) continue;
+      const cr = (u1[0] * u2[1] - u1[1] * u2[0]) / (l1 * l2), dt = (u1[0] * u2[0] + u1[1] * u2[1]) / (l1 * l2);
+      const turn = Math.atan2(cr, dt), included = (Math.PI - Math.abs(turn)) / DEG2RAD;
+      const isConcave = ccw ? turn < 0 : turn > 0;          // for a CCW ring the interior is to the left
+      const row = { i, r_u: Math.hypot(q1[0], q1[1]), includedDeg: included };
+      if (isConcave) { if (!conc || included < conc.includedDeg) conc = row; }
+      else if (!conv || included < conv.includedDeg) conv = row;
+    }
+    // the narrowest gap between NEIGHBOURING teeth: a tool has to pass it
+    const pitch = 2 * Math.PI / 15;
+    let gull = Infinity, gullAt = null;
+    for (let i = 0; i < n; i++) {
+      const q = at(i), aq = Math.atan2(q[1], q[0]);
+      for (let j = 0; j < n; j++) {
+        if (i === j) continue;
+        const q2 = at(j), a2 = Math.atan2(q2[1], q2[0]);
+        let d = a2 - aq; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+        if (Math.abs(d) < pitch * 0.35 || Math.abs(d) > pitch * 1.6) continue;   // same tooth, or not a neighbour
+        const dist = Math.hypot(q2[0] - q[0], q2[1] - q[1]);
+        if (dist < gull) { gull = dist; gullAt = [i, j]; }
+      }
+    }
+    return { vertices: n, ccw, concave: conc, convex: conv, gullet_u: gull, gulletAt: gullAt,
+      aspect: bandT_u / gull, toolR_u: CUT_TOOL_R_M / (UNIT_MM / 1000) };
+  })();
+  if (!(cut.concave && cut.concave.includedDeg >= CUT_CONCAVE_MIN_DEG))
+    console.warn(`TODO 299 landing 2: the escape ring's sharpest concave corner is ${cut.concave ? cut.concave.includedDeg.toFixed(2) : '?'}°, under the `
+      + `${CUT_CONCAVE_MIN_DEG}° a rotary tool can round rather than fail to reach — the profile asks for a pocket no cutter cuts`);
+  if (!(cut.gullet_u > 2 * cut.toolR_u))
+    console.warn(`TODO 299 landing 2: the escape ring's narrowest gullet is ${cut.gullet_u.toFixed(4)} u against a `
+      + `${(2 * cut.toolR_u).toFixed(4)} u tool — nothing the shop has fits between two teeth`);
   return Object.freeze({
     radius_u: radius, tip: { xy: T, r: tr, azDeg: azT / DEG2RAD },
     wedge: Object.freeze({ fullRad: 2 * halfV, halfRad: halfV, fullDeg: 2 * halfV / DEG2RAD,
@@ -2193,7 +2244,7 @@ const ESCAPE_TOOTH_GEOM = (() => {
     worstArm_u: Math.min(...runs.map((q) => q.arm_u)),
     virtualWork: Object.freeze(vwWorst),
     landing: Object.freeze(landing),
-    slip: Object.freeze(slip), budget: Object.freeze(budget),
+    slip: Object.freeze(slip), budget: Object.freeze(budget), cut: Object.freeze(cut),
     lockRunAt,
   });
 })();
@@ -36321,10 +36372,70 @@ const EQUALISATION = (() => {
     //    path is through the stone into the fork and out at the banking pin,
     //    none of which this models. TODO 296 carries it as the step still owed.
     const escapeTooth = (() => {
-      const H = ESCAPE_TOOTH_GEOM, tM = H.band.t_u * OSC_U, rho = ESCAPE_TIP_R_M, a = H.wedge.halfRad;
+      const H = ESCAPE_TOOTH_GEOM, tM = H.band.t_u * OSC_U, a = H.wedge.halfRad;
       // E* for STEEL on RUBY: both bodies named, the stone corundum (§269's stocks)
       const Estar = 1 / ((1 - STEEL_NU * STEEL_NU) / STEEL_E_PA + (1 - STOCK.corundum.nu * STOCK.corundum.nu) / STOCK.corundum.E);
       const p0Allow = LINE_CONTACT_FIRST_YIELD_P0_PER_Y * ESCAPE_STEEL_SIGMA_Y_PA;
+      const shakeAllow = LINE_CONTACT_SHAKEDOWN_P0_PER_Y * ESCAPE_STEEL_SIGMA_Y_PA;
+      // TODO 299 landing 2 — THE TIP'S FINISH, DERIVED, and it sets everything
+      // below. The owner's point: it makes no sense to pre-sharpen an edge only
+      // to have it blunted. Landing 2 of TODO 296 measured the drop's first
+      // landings blunting the tip until the contact shakes down; that radius is
+      // a FIXED POINT of the impact (p0(ρ) = the shakedown limit), and nothing
+      // about the as-cut tip enters it — solved from starting radii four decades
+      // apart it returns the same figure to 2e-16. So the wheel is FINISHED
+      // there: it leaves the bench in the state it would have reached anyway,
+      // the only overstressed moment in its life is gone, and the one
+      // micron-scale operation on the whole wheel gets coarser.
+      //
+      // The impact's own stack first, because the fixed point needs it: the
+      // landing's energy, and the series compliance that is the TOOTH's and not
+      // the contact's (TODO 296 landing 2 says why, and the gate asserts it).
+      const impact = (() => {
+        const Lg = H.landing, cr = FORK_CROSSING;
+        if (!Lg || !cr) return null;
+        const aW = Lg.arm_u * OSC_U, aF = Lg.armFork_u * OSC_U, Iw = cr.I_wheel, If = cr.I_fork;
+        const Apk = AMPLITUDE_PEAK_DEG * DEG2RAD, wB = 2 * Math.PI * F_BALANCE, thL = PIN_FORK.liftHalf, hh = 1e-7;
+        const thetaDot = Apk * wB * Math.cos(Math.asin(Math.min(1, thL / Apk)));
+        const dPhi = Math.abs((PIN_FORK.notch.lead(thL + hh) - PIN_FORK.notch.lead(thL - hh)) / (2 * hh));
+        const gear = Math.max(...ESCAPEMENT.stones.map((stE) => {
+          const phiE = stE.sigma * stE.xE;
+          return Math.abs((ESCAPEMENT.deltaOnImpulseFace(stE.sigma, phiE + hh).delta
+                         - ESCAPEMENT.deltaOnImpulseFace(stE.sigma, phiE - hh).delta) / (2 * hh));
+        }));
+        const omega0 = gear * dPhi * thetaDot;
+        const omega = Math.sqrt(omega0 * omega0 + 2 * escapeTorque_Nm * ESCAPEMENT.drop / Iw);
+        const mStar = 1 / (aW * aW / Iw + aF * aF / If);
+        const v0 = aW * omega;
+        return { Iw, If, aW, aF, thetaDot, dPhi, gear, omega0, omega, mStar, v0,
+          energy: 0.5 * mStar * v0 * v0, dropRad: ESCAPEMENT.drop };
+      })();
+      const sArcOf = (rr) => rr * Math.pow(Math.cos(a), 2) / Math.sin(a);
+      const sRootW = Math.abs(H.wedge.holdsTo_u) * OSC_U, kWid = H.wedge.widthPerDepth;
+      const kTooth = (rr) => {
+        const sa = sArcOf(rr), A0 = 12 / (STEEL_E_PA * tM * Math.pow(kWid, 3));
+        return 1 / (A0 * (sa / sRootW - 1 + Math.log(sRootW / sa)));
+      };
+      const kHertz = (rr, F) => {
+        const Fl = F / tM, ha = Math.sqrt(4 * Fl * rr / (Math.PI * Estar));
+        return F / Math.max((2 * Fl / (Math.PI * Estar)) * (Math.log(4 * rr / ha) - 1), 1e-18);
+      };
+      const impactAt = (rr) => {
+        if (!impact) return null;
+        let F = 1e-3;
+        for (let i = 0; i < 160; i++) F = Math.sqrt(2 * impact.energy / (1 / kTooth(rr) + 1 / kHertz(rr, F)));
+        const kT = kTooth(rr), kH = kHertz(rr, F);
+        return { F, kTooth_N_per_m: kT, kHertz_N_per_m: kH, kSeries_N_per_m: 1 / (1 / kT + 1 / kH),
+          p0_Pa: Math.sqrt((F / tM) * Estar / (Math.PI * rr)) };
+      };
+      // the fixed point, from an arbitrary start (it has none of its own)
+      const rhoFixed = (p0a) => { let rr = 1e-7; for (let i = 0; i < 300; i++) rr = Math.min(1e-3, Math.max(1e-11, rr * Math.pow(impactAt(rr).p0_Pa / p0a, 2))); return rr; };
+      const rho = impact ? rhoFixed(shakeAllow) : ESCAPE_TIP_R_M;
+      // the shop floor's constraint on the derivation: a finish it cannot reach
+      // is not a specification
+      if (!(rho >= ESCAPE_TIP_R_BAND.sharp_m && rho <= ESCAPE_TIP_R_BAND.blunt_m))
+        console.warn(`TODO 299 landing 2: the impact asks the club tip to be finished at ${(rho * 1e6).toFixed(4)} µm, outside the `
+          + `${(ESCAPE_TIP_R_BAND.sharp_m * 1e6).toFixed(2)}–${(ESCAPE_TIP_R_BAND.blunt_m * 1e6).toFixed(2)} µm a polish can hold — the finish is not a specification the shop can meet`);
       const secW = 2 * rho * Math.cos(a), secArm = rho * (1 - Math.sin(a));
       // sigma(rho) = K/rho and p0(rho) = sqrt(J/rho), so each criterion inverts
       const kBeam = (6 * (1 - Math.sin(a)) / (4 * Math.pow(Math.cos(a), 2)) + 1 / (2 * Math.cos(a))) / tM;
@@ -36398,67 +36509,35 @@ const EQUALISATION = (() => {
       //    (p0 ∝ ρ^−½ at fixed F). A tooth that ran in PAST its finish band would
       //    be a tooth wearing its own lock away; that is what the gate holds.
       const landing = (() => {
-        const Lg = H.landing, cr = FORK_CROSSING;
-        if (!Lg || !cr) return null;
-        const aW = Lg.arm_u * OSC_U, aF = Lg.armFork_u * OSC_U;
-        const Iw = cr.I_wheel, If = cr.I_fork;
-        // the let-off kinematics, off the posed laws at the peak swing
-        const Apk = AMPLITUDE_PEAK_DEG * DEG2RAD, wB = 2 * Math.PI * F_BALANCE;
-        const thL = PIN_FORK.liftHalf, hh = 1e-7;
-        const thetaDot = Apk * wB * Math.cos(Math.asin(Math.min(1, thL / Apk)));
-        const dPhi = Math.abs((PIN_FORK.notch.lead(thL + hh) - PIN_FORK.notch.lead(thL - hh)) / (2 * hh));
-        // the impulse face's gearing at the let-off, the FASTER of the two stones:
-        // they are not mirror images here (the fork's radial and the wheel's meet
-        // at 19° on one and 4° on the other), so one stone throws the wheel off
-        // harder than the other and the peak load is that one's
-        const gear = Math.max(...ESCAPEMENT.stones.map((stE) => {
-          const phiE = stE.sigma * stE.xE;
-          return Math.abs((ESCAPEMENT.deltaOnImpulseFace(stE.sigma, phiE + hh).delta
-                         - ESCAPEMENT.deltaOnImpulseFace(stE.sigma, phiE - hh).delta) / (2 * hh));
-        }));
-        const omegaLetoff = gear * dPhi * thetaDot;
-        const dropRad = ESCAPEMENT.drop;
-        const omegaLand = Math.sqrt(omegaLetoff * omegaLetoff + 2 * escapeTorque_Nm * dropRad / Iw);
-        const mStar = 1 / (aW * aW / Iw + aF * aF / If);
-        const v0 = aW * omegaLand, Eimp = 0.5 * mStar * v0 * v0;
-        // the stack: the club's own taper, then the contact
-        const sArc = (rr) => rr * Math.pow(Math.cos(a), 2) / Math.sin(a);
-        const sRoot = Math.abs(H.wedge.holdsTo_u) * OSC_U, kW = H.wedge.widthPerDepth;
-        const kTooth = (rr) => {
-          const sa = sArc(rr), A0 = 12 / (STEEL_E_PA * tM * Math.pow(kW, 3));
-          return 1 / (A0 * (sa / sRoot - 1 + Math.log(sRoot / sa)));
-        };
-        const kHertz = (rr, F) => {
-          const Fl = F / tM, ha = Math.sqrt(4 * Fl * rr / (Math.PI * Estar));
-          return F / Math.max((2 * Fl / (Math.PI * Estar)) * (Math.log(4 * rr / ha) - 1), 1e-18);
-        };
-        const peak = (rr) => {
-          let F = 1e-3;
-          for (let i = 0; i < 120; i++) F = Math.sqrt(2 * Eimp / (1 / kTooth(rr) + 1 / kHertz(rr, F)));
-          const kT = kTooth(rr), kH = kHertz(rr, F);
-          return { F, kTooth_N_per_m: kT, kHertz_N_per_m: kH, kSeries_N_per_m: 1 / (1 / kT + 1 / kH),
-            p0_Pa: Math.sqrt((F / tM) * Estar / (Math.PI * rr)) };
-        };
-        const rhoFor = (p0a) => { let rr = rho; for (let i = 0; i < 160; i++) rr = Math.min(1e-3, Math.max(1e-10, rr * Math.pow(peak(rr).p0_Pa / p0a, 2))); return rr; };
-        const shakeAllow = LINE_CONTACT_SHAKEDOWN_P0_PER_Y * ESCAPE_STEEL_SIGMA_Y_PA;
-        const atSharp = peak(rho);
-        const rhoShake = rhoFor(shakeAllow), rhoElastic = rhoFor(p0Allow);
-        // the tip's own recession as it blunts: the arc's nearest point stands
-        // rho(1/sin a - 1) inside the sharp apex, so running in costs the lock
-        // that much of the tooth circle
-        const recession_u = (rhoShake - rho) * (1 / Math.sin(a) - 1) / OSC_U;
-        if (!(rhoShake <= ESCAPE_TIP_R_BAND.blunt_m * (1 + 1e-9)))
-          console.warn(`TODO 296 landing 2: the drop's landing blunts the club tip to ${(rhoShake * 1e6).toFixed(3)} µm before it shakes down, past the ${(ESCAPE_TIP_R_BAND.blunt_m * 1e6).toFixed(1)} µm its finish band allows — the tooth wears its own lock away`);
-        if (!(recession_u < CLEAR_MARGIN))
-          console.warn(`TODO 296 landing 2: running in costs the club tip ${recession_u.toFixed(5)} u of reach, over CLEAR_MARGIN — the lock cannot absorb the wear`);
-        return { peakDeg: AMPLITUDE_PEAK_DEG, thetaDot_rad_s: thetaDot, dPhiDTheta: dPhi, impulseGearing: gear,
-          omegaLetoff_rad_s: omegaLetoff, dropRad, omegaLand_rad_s: omegaLand,
-          I_wheel: Iw, I_fork: If, arm_u: Lg.arm_u, armFork_u: Lg.armFork_u, atForkDeg: Lg.atForkDeg,
-          mStar_kg: mStar, v0_m_s: v0, energy_J: Eimp,
-          atSharp, shakedownAllow_Pa: shakeAllow, elasticAllow_Pa: p0Allow,
-          runIn: { rho_m: rhoShake, elasticRho_m: rhoElastic, recession_u,
+        if (!impact) return null;
+        const Lg = H.landing;
+        const atFinish = impactAt(rho);
+        // the finish IS the fixed point, so the contact shakes down as cut and
+        // the tip does not run in. Reported as the identity it is: p0 at the
+        // finish equals the shakedown limit, and the radius a FULLY elastic
+        // contact would want is blunter still (that one is not specified — no
+        // yield at all is a stricter criterion than a repeated contact needs).
+        const elasticRho = rhoFixed(p0Allow);
+        // what a razor finish would have cost, kept because it is the reason
+        // the finish is derived rather than read off the band's sharp end
+        const atSharp = impactAt(ESCAPE_TIP_R_BAND.sharp_m);
+        const cutBack_u = rho * (1 / Math.sin(a) - 1) / OSC_U;
+        if (!(atFinish.p0_Pa <= shakeAllow * (1 + 1e-6)))
+          console.warn(`TODO 299 landing 2: the club tip finished at ${(rho * 1e6).toFixed(4)} µm still takes the drop at `
+            + `${(atFinish.p0_Pa / 1e9).toFixed(3)} GPa, over the ${(shakeAllow / 1e9).toFixed(3)} GPa shakedown limit — the finish is not the fixed point`);
+        return { peakDeg: AMPLITUDE_PEAK_DEG, thetaDot_rad_s: impact.thetaDot, dPhiDTheta: impact.dPhi,
+          impulseGearing: impact.gear, omegaLetoff_rad_s: impact.omega0, dropRad: impact.dropRad,
+          omegaLand_rad_s: impact.omega, I_wheel: impact.Iw, I_fork: impact.If,
+          arm_u: Lg.arm_u, armFork_u: Lg.armFork_u, atForkDeg: Lg.atForkDeg,
+          mStar_kg: impact.mStar, v0_m_s: impact.v0, energy_J: impact.energy,
+          atFinish, shakedownAllow_Pa: shakeAllow, elasticAllow_Pa: p0Allow,
+          finish: { rho_m: rho, elasticRho_m: elasticRho, cutBack_u,
             band_m: [ESCAPE_TIP_R_BAND.sharp_m, ESCAPE_TIP_R_BAND.blunt_m],
-            atRunIn: peak(rhoShake) },
+            atSharp, sharp_m: ESCAPE_TIP_R_BAND.sharp_m,
+            // what the derivation saved: the razor finish's own overstress, and
+            // the polishing that produced it
+            sharpOverShakedown: atSharp.p0_Pa / shakeAllow },
+          runsIn: false,
           notModelled: ['the fork\u2019s arm', 'the stone\u2019s seat', 'the banking pin'] };
       })();
       // TODO 299 — THE CENTURY'S WEAR, which is what the hardening was for.
@@ -36489,6 +36568,21 @@ const EQUALISATION = (() => {
         const slip_m = sl.perEngagement_u * OSC_U;
         const total_m = slip_m * K.engagementsPerTooth;
         const tanA = Math.tan(a);
+        // TODO 299 landing 2 — AND THE FINISH IS BOOKED AGAINST THE SAME BUDGET.
+        // The geometry's `budget.recession_u` is the reach from the tooth's
+        // MATHEMATICAL apex to where the lock runs out, because that is the only
+        // thing a profile can say. A tooth finished at a radius ρ does not have
+        // that apex: its tip already stands ρ(1/sinα − 1) inside it. That is
+        // reach spent at the bench, in the same currency the century spends, so
+        // it comes off the budget — and it is the honest cost of the derivation
+        // above, not a free improvement. (It is the same cost the run-in used to
+        // charge; what the derivation removes is the overstress and the
+        // polishing, not the reach.)
+        const cutBack_u = landing ? landing.finish.cutBack_u : 0;
+        const budget_u = H.budget.recession_u - cutBack_u;
+        if (!(budget_u > 0))
+          console.warn(`TODO 299 landing 2: finishing the club tip at ${(rho * 1e6).toFixed(4)} µm spends ${cutBack_u.toFixed(5)} u of reach, `
+            + `all of the ${H.budget.recession_u.toFixed(5)} u the lock had — the wheel has no wear budget left as cut`);
         // the load the century's slip happens under: the NOMINAL corner's runs,
         // averaged over the engagement (the peak rows are strength's business,
         // not a mean wear rate's)
@@ -36499,21 +36593,21 @@ const EQUALISATION = (() => {
           const area = V / tM;
           const recess_m = Math.sqrt(area / tanA);
           return { K: kk, volume_m3: V, recession_m: recess_m, recession_u: recess_m / OSC_U,
-            overBudget: (recess_m / OSC_U) / H.budget.recession_u };
+            overBudget: (recess_m / OSC_U) / budget_u };
         };
         const corners = Object.fromEntries(FRICTION_CORNERS.map((c) => [c, at(WEAR_K_BAND[c])]));
         // the hardness that would hold at each corner: recession ∝ 1/√H
         const needH = Object.fromEntries(FRICTION_CORNERS.map((c) => [c,
-          WEAR_K_BAND[c] * Fmean * total_m / (Math.pow(H.budget.recession_u * OSC_U, 2) * tM * tanA)]));
+          WEAR_K_BAND[c] * Fmean * total_m / (Math.pow(budget_u * OSC_U, 2) * tM * tanA)]));
         const holds = FRICTION_CORNERS.filter((c) => corners[c].overBudget <= 1);
         if (!holds.length)
           console.warn(`TODO 299: the club tooth loses ${(corners.favourable.recession_m * 1e6).toFixed(2)} µm of reach over `
-            + `${K.years} years at the FAVOURABLE wear corner, past the ${(H.budget.recession_u * OSC_U * 1e6).toFixed(2)} µm `
+            + `${K.years} years at the FAVOURABLE wear corner, past the ${(budget_u * OSC_U * 1e6).toFixed(2)} µm `
             + 'the lock can spend — the escape wheel does not reach its design life at any corner');
         return { years: K.years, serviceYears: K.serviceYears, services: K.services,
           engagementsPerTooth: K.engagementsPerTooth, slipPerEngagement_m: slip_m, slip_m: total_m,
           load_N: Fmean, hardness_Pa: H_Pa, hardnessBand: { ...ESCAPE_STEEL_HARDNESS_BAND },
-          kBand: { ...WEAR_K_BAND }, budget_u: H.budget.recession_u,
+          kBand: { ...WEAR_K_BAND }, budget_u, fromApex_u: H.budget.recession_u, cutBack_u,
           lockRunFull_u: H.budget.lockRunFull_u, lockOnly_u: H.budget.lockOnly_u,
           corners, needHardness_Pa: needH, holdsAt: holds,
           straddles: holds.length > 0 && holds.length < FRICTION_CORNERS.length,

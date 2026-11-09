@@ -202,16 +202,20 @@ const priceAt = (F, rho, a = halfV) => {
 const etaOf = (cname) => en.corners[cname].stages.filter((s) => s.name !== 'lever escapement').reduce((p, s) => p * s.eta, 1);
 near(Estar, et.Estar_Pa, 1e-12, 'the contact modulus disagrees');
 near(allow, et.p0Allow_Pa, 1e-12, 'the allowable contact pressure disagrees');
-ok(et.rho_m === L.ESCAPE_TIP_R_BAND.sharp_m, 'the record is not priced at the finish band\'s SHARP end', { record: et.rho_m, band: L.ESCAPE_TIP_R_BAND });
+// since TODO 299 landing 2 the radius is DERIVED (the impact's fixed point),
+// so what is asserted here is that it lies inside what a polish can hold; that
+// it IS the fixed point is section 5's, and the rows are priced at it below
+ok(et.rho_m >= L.ESCAPE_TIP_R_BAND.sharp_m && et.rho_m <= L.ESCAPE_TIP_R_BAND.blunt_m,
+  'the record is priced at a tip no polish can hold', { record: et.rho_m, band: L.ESCAPE_TIP_R_BAND });
 
-console.log('\n3. THE PRICE, recomputed  (tip ρ ' + f(L.ESCAPE_TIP_R_M * 1e6, 3) + ' µm, line ' + f(tM * 1e3, 4) + ' mm, E* ' + f(Estar / 1e9, 1) + ' GPa, allow ' + f(allow / 1e9, 3) + ' GPa)');
+console.log('\n3. THE PRICE, recomputed  (tip ρ ' + f(et.rho_m * 1e6, 4) + ' µm, line ' + f(tM * 1e3, 4) + ' mm, E* ' + f(Estar / 1e9, 1) + ' GPa, allow ' + f(allow / 1e9, 3) + ' GPa)');
 const mine = [];
 for (const cname of L.FRICTION_CORNERS) {
   const eta = etaOf(cname);
   for (const run of mineRuns) {
     const tq = run.flow === 'recoil' ? en.escapeTorque_Nm / eta : en.escapeTorque_Nm * eta;
     const F = tq / (run.arm_u * U);
-    const q = priceAt(F, L.ESCAPE_TIP_R_M);
+    const q = priceAt(F, et.rho_m);
     mine.push({ corner: cname, stone: run.stone, run: run.run, flow: run.flow, etaPath: eta, load_N: F, ...q });
     const r = et.rows.find((x) => x.corner === cname && x.stone === run.stone && x.run === run.run);
     if (!ok(!!r, 'the record has no row for', { cname, run })) continue;
@@ -226,7 +230,7 @@ for (const cname of L.FRICTION_CORNERS) {
 const worst = mine.reduce((a, b) => (Math.min(b.p0Margin, b.sigmaMargin) < Math.min(a.p0Margin, a.sigmaMargin) ? b : a));
 for (const q of mine.filter((x) => x.stone === worst.stone))
   console.log(`   ${q.corner.padEnd(11)} ${q.flow.padEnd(8)} F ${f(q.load_N * 1e6, 2).padStart(7)} µN   p0 ${f(q.p0 / 1e9, 4)} GPa ×${f(q.p0Margin, 2).padStart(6)}   σ ${f(q.sigma / 1e6, 2).padStart(6)} MPa ×${f(q.sigmaMargin, 1).padStart(6)}   ρ_min ${f(q.rhoMin * 1e9, 3)} nm ${q.binds}`);
-console.log(`   WORST  ${worst.corner} / ${worst.run}: ×${f(Math.min(worst.p0Margin, worst.sigmaMargin), 3)} on ${worst.binds}, ρ_min ${f(worst.rhoMin * 1e9, 3)} nm against the band's sharp ${f(L.ESCAPE_TIP_R_M * 1e9, 0)} nm`);
+console.log(`   WORST  ${worst.corner} / ${worst.run}: ×${f(Math.min(worst.p0Margin, worst.sigmaMargin), 3)} on ${worst.binds}, ρ_min ${f(worst.rhoMin * 1e9, 3)} nm against the band's sharp ${f(et.rho_m * 1e9, 0)} nm`);
 ok(worst.p0Margin >= 1 && worst.sigmaMargin >= 1, 'the club tooth does not carry its load at the band\'s sharp end', worst);
 ok(et.worst.corner === worst.corner && et.worst.run === worst.run, 'the record names a different worst row', { record: et.worst, mine: { corner: worst.corner, run: worst.run } });
 
@@ -246,7 +250,7 @@ const Fw = worst.load_N;
   const tL = Math.tan(Math.abs(et.geom.wedge.lockFlankDeg) * DEG), tI = Math.tan(Math.abs(et.geom.wedge.impulseFlankDeg) * DEG);
   const diff = Math.abs(tI - tL), sum = tI + tL;
   const sumHalf = (Math.abs(et.geom.wedge.lockFlankDeg) + Math.abs(et.geom.wedge.impulseFlankDeg)) * DEG / 2;
-  const trap = priceAt(Fw, L.ESCAPE_TIP_R_M, sumHalf);
+  const trap = priceAt(Fw, et.rho_m, sumHalf);
   console.log(`   C1 width per radial depth: ${f(diff, 5)} as the DIFFERENCE, ${f(sum, 5)} as the sum (×${f(sum / diff, 3)} fatter) — at 0.10 u back, ${f(diff * 0.1 * L.UNIT_MM * 1000, 1)} µm against ${f(sum * 0.1 * L.UNIT_MM * 1000, 1)} µm`);
   console.log(`      and at the TIP the error is nearly invisible: σ ×${f(trap.sigma / worst.sigma, 4)}, p0 ×${f(trap.p0 / worst.p0, 4)} — the arc's section is 2ρcosα, so the verdict survives it`);
   near(et.geom.wedge.widthPerDepth, diff, 1e-12, 'C1: the record\'s width-per-depth is not the flanks\' DIFFERENCE');
@@ -268,8 +272,8 @@ const Fw = worst.load_N;
 }
 // C3 — a tip a hundred times sharper must go over.
 {
-  const sharp = priceAt(Fw, L.ESCAPE_TIP_R_M / 100);
-  console.log(`   C3 tip ρ/100 (${f(L.ESCAPE_TIP_R_M * 1e6 / 100, 5)} µm): p0 ${f(sharp.p0 / 1e9, 3)} GPa ×${f(sharp.p0Margin, 3)}, σ ${f(sharp.sigma / 1e6, 0)} MPa ×${f(sharp.sigmaMargin, 2)}`);
+  const sharp = priceAt(Fw, et.rho_m / 100);
+  console.log(`   C3 tip ρ/100 (${f(et.rho_m * 1e6 / 100, 5)} µm): p0 ${f(sharp.p0 / 1e9, 3)} GPa ×${f(sharp.p0Margin, 3)}, σ ${f(sharp.sigma / 1e6, 0)} MPa ×${f(sharp.sigmaMargin, 2)}`);
   ok(sharp.p0Margin < 1, 'C3 did not fire: a hundredfold sharper tip still passes in contact, so the criterion is vacuous', sharp);
 }
 // C4 — the arm taken square to the face instead of along it.
@@ -289,7 +293,7 @@ const Fw = worst.load_N;
 // sqrt(2) and rho_min by 2: a price that reads the load linearly, not a
 // coincidence at one value.
 {
-  const twice = priceAt(2 * Fw, L.ESCAPE_TIP_R_M);
+  const twice = priceAt(2 * Fw, et.rho_m);
   console.log(`   C5 twice the load: p0 ×${f(twice.p0 / worst.p0, 9)} (need √2), ρ_min ×${f(twice.rhoMin / worst.rhoMin, 9)} (need 2), σ ×${f(twice.sigma / worst.sigma, 9)} (need 2)`);
   near(twice.p0 / worst.p0, Math.SQRT2, 1e-12, 'C5: p0 does not go as √F');
   near(twice.rhoMin / worst.rhoMin, 2, 1e-12, 'C5: ρ_min does not go as F');
@@ -339,7 +343,7 @@ const mine5 = (() => {
     return { F, kT, kH, kS: 1 / (1 / kT + 1 / kH + 1 / extra), p0: Math.sqrt((F / tM) * Estar / (Math.PI * rr)) };
   };
   const rhoFor = (p0a, E_ = Eimp, extra = Infinity, hMul = 1) => {
-    let rr = L.ESCAPE_TIP_R_M;
+    let rr = 1e-7;   // an arbitrary start: C11 proves the fixed point has none of its own
     for (let i = 0; i < 300; i++) rr = Math.min(1e-3, Math.max(1e-10, rr * (peak(rr, E_, extra, hMul).p0 / p0a) ** 2));
     return rr;
   };
@@ -357,15 +361,23 @@ near(mine5.v0, lg.v0_m_s, 1e-12, 'the closing velocity disagrees');
 near(mine5.Eimp, lg.energy_J, 1e-12, 'the impact energy disagrees');
 near(mine5.shake, lg.shakedownAllow_Pa, 1e-12, 'the shakedown allowable disagrees');
 {
-  const q = mine5.peak(L.ESCAPE_TIP_R_M), rIn = mine5.rhoFor(mine5.shake), rEl = mine5.rhoFor(allow);
-  console.log(`   at the band's sharp ${f(L.ESCAPE_TIP_R_M * 1e6, 3)} µm: F ${f(q.F * 1000, 3)} mN, p0 ${f(q.p0 / 1e9, 4)} GPa against shakedown ${f(mine5.shake / 1e9, 4)} — OVER, so the tip blunts`);
-  console.log(`   it runs in to ${f(rIn * 1e6, 4)} µm (shakedown) / ${f(rEl * 1e6, 4)} µm (no yield at all), inside the ${f(L.ESCAPE_TIP_R_BAND.sharp_m * 1e6, 2)}–${f(L.ESCAPE_TIP_R_BAND.blunt_m * 1e6, 2)} µm finish band`);
-  console.log(`   costing the tip ${f((rIn - L.ESCAPE_TIP_R_M) * (1 / Math.sin(halfV) - 1) / U, 5)} u of reach (CLEAR_MARGIN is ${L.CLEAR_MARGIN})`);
-  near(q.F, lg.atSharp.F, 1e-9, 'the peak force at the sharp tip disagrees');
-  near(q.p0, lg.atSharp.p0_Pa, 1e-9, 'the peak contact pressure disagrees');
-  near(rIn, lg.runIn.rho_m, 1e-6, 'the run-in radius disagrees');
-  near(rEl, lg.runIn.elasticRho_m, 1e-6, 'the elastic run-in radius disagrees');
-  ok(rIn <= L.ESCAPE_TIP_R_BAND.blunt_m, 'the drop blunts the tip past its finish band', { rIn, band: L.ESCAPE_TIP_R_BAND });
+  const fin = lg.finish;
+  const rFin = mine5.rhoFor(mine5.shake), rEl = mine5.rhoFor(allow);
+  const q = mine5.peak(rFin), atSharp = mine5.peak(L.ESCAPE_TIP_R_BAND.sharp_m);
+  console.log(`   the tip is FINISHED at ${f(rFin * 1e6, 5)} \u00b5m, where the landing peaks at ${f(q.F * 1000, 3)} mN and p0 ${f(q.p0 / 1e9, 4)} GPa`);
+  console.log(`   = the shakedown limit ${f(mine5.shake / 1e9, 4)} GPa exactly, so the contact shakes down AS CUT and the tip does not run in`);
+  console.log(`   a razor finish (${f(L.ESCAPE_TIP_R_BAND.sharp_m * 1e6, 2)} \u00b5m) would stand at ${f(atSharp.p0 / 1e9, 3)} GPa = \u00d7${f(atSharp.p0 / mine5.shake, 3)} of it \u2014 the overstress the derivation removes`);
+  console.log(`   finishing there spends ${f(fin.cutBack_u * U * 1e6, 3)} \u00b5m of reach, and a fully elastic contact would want ${f(rEl * 1e6, 4)} \u00b5m`);
+  near(rFin, fin.rho_m, 1e-9, 'the derived finish disagrees');
+  near(q.p0, lg.atFinish.p0_Pa, 1e-9, 'the peak contact pressure at the finish disagrees');
+  near(q.F, lg.atFinish.F, 1e-9, 'the peak force at the finish disagrees');
+  near(rEl, fin.elasticRho_m, 1e-6, 'the elastic finish disagrees');
+  near(atSharp.p0, fin.atSharp.p0_Pa, 1e-9, 'the razor finish\'s pressure disagrees');
+  near(q.p0, mine5.shake, 1e-9, 'the finish is not the fixed point');
+  ok(lg.runsIn === false, 'the record still claims the tip runs in', lg.runsIn);
+  ok(rFin >= L.ESCAPE_TIP_R_BAND.sharp_m && rFin <= L.ESCAPE_TIP_R_BAND.blunt_m,
+    'the derived finish is outside what a polish can hold', { rFin, band: L.ESCAPE_TIP_R_BAND });
+  ok(et.rho_m === fin.rho_m, 'the rows are not priced at the derived finish', { pricedAt: et.rho_m, finish: fin.rho_m });
 }
 
 console.log('\n6. CONTROLS ON THE LANDING');
@@ -380,15 +392,15 @@ console.log('\n6. CONTROLS ON THE LANDING');
   console.log(`   C6 contact stiffness ×10 and ÷10: run-in ${f(base * 1e6, 5)} → ${f(stiff * 1e6, 5)} / ${f(soft * 1e6, 5)} µm (${f(100 * dS, 4)}% / ${f(100 * dW, 4)}%)`);
   ok(dS > 0 && dW > 0, 'C6 did not fire: the multiplier changed nothing, so this control is its own no-op', { base, stiff, soft });
   ok(dS < 0.01 && dW < 0.05, 'C6 did not fire: the answer depends on the contact’s datum-dependent compliance', { base, stiff, soft, dS, dW });
-  ok(lg.atSharp.kHertz_N_per_m > 100 * lg.atSharp.kTooth_N_per_m,
-    'C6 did not fire: the contact is not far stiffer than the tooth, so the stack is not the tooth\'s', lg.atSharp);
+  ok(lg.atFinish.kHertz_N_per_m > 100 * lg.atFinish.kTooth_N_per_m,
+    'C6 did not fire: the contact is not far stiffer than the tooth, so the stack is not the tooth\'s', lg.atFinish);
 }
 // C7 — a SOFTER stack must run the tip in LESS, which is what makes the
 // unmodelled members (the fork's arm, the stone's seat, the banking pin) leave
 // this an upper bound rather than a guess.
 {
   const base = mine5.rhoFor(mine5.shake);
-  const withFork = mine5.rhoFor(mine5.shake, mine5.Eimp, lg.atSharp.kTooth_N_per_m);   // one more member as soft as the tooth
+  const withFork = mine5.rhoFor(mine5.shake, mine5.Eimp, lg.atFinish.kTooth_N_per_m);   // one more member as soft as the tooth
   console.log(`   C7 one more series member as soft as the tooth: run-in ${f(base * 1e6, 4)} → ${f(withFork * 1e6, 4)} µm — ${withFork < base ? 'LESS' : 'MORE'}, so leaving them out bounds it`);
   ok(withFork < base * 0.999, 'C7 did not fire: softening the stack does not reduce the run-in, so the bound\'s direction is unproven', { base, withFork });
 }
@@ -421,7 +433,7 @@ console.log('\n6. CONTROLS ON THE LANDING');
   const rIn = mine5.rhoFor(mine5.shake, Et);
   console.log(`   C10 without the drop's acceleration: ${f(Et * 1e9, 4)} nJ of ${f(mine5.Eimp * 1e9, 4)}, run-in ${f(rIn * 1e6, 4)} µm — the drop contributes ${f(100 * (1 - Et / mine5.Eimp), 1)}% of the energy`);
   ok(Et < mine5.Eimp && rIn < mine5.rhoFor(mine5.shake), 'C10 did not fire: the drop does not add energy', { Et, Eimp: mine5.Eimp });
-  ok(rIn > L.ESCAPE_TIP_R_M, 'C10: even the let-off speed alone should blunt a 0.1 µm tip', { rIn });
+  ok(rIn > L.ESCAPE_TIP_R_BAND.sharp_m, 'C10: even the let-off speed alone should ask for more than a razor tip', { rIn });
 }
 
 // ---------------------------------------------------------------------------
@@ -473,17 +485,33 @@ const mine7 = (() => {
     Fmean, tanA, slipTotal, recess, lockRunAt,
     control: { centrePerHour: turns.centre / (life / 3600), fourthPerMinute: turns.fourth / (life / 60) } };
 })();
+// C11 -- THE PREMISE. Finishing the tooth at the blunting radius is only a
+// SPECIFICATION if that radius is a property of the impact and not of the tip
+// the wheel happened to be cut with. Solve it from starting radii four decades
+// apart: the same fixed point, or the idea is circular and the landing is void.
+{
+  const starts = [1e-9, 1e-8, 1e-7, 3e-7, 1e-6, 1e-5];
+  const got = starts.map((s0) => { let rr = s0; for (let i = 0; i < 400; i++) rr = Math.min(1e-3, Math.max(1e-11, rr * (mine5.peak(rr).p0 / mine5.shake) ** 2)); return rr; });
+  const spread = Math.max(...got) / Math.min(...got) - 1;
+  console.log(`   C11 the finish solved from ${starts.length} starting radii over ${f(Math.log10(starts[starts.length - 1] / starts[0]), 0)} decades: spread ${g3(spread)}`);
+  ok(spread < 1e-9, 'C11 did not fire: the finish depends on the radius it was solved from, so specifying it is circular', { got, spread });
+  near(got[0], lg.finish.rho_m, 1e-9, 'C11: the fixed point is not the record\'s finish');
+}
+
 console.log('\n7. THE DESIGN LIFE, recomputed');
 console.log(`   ${L.DESIGN_LIFE_YEARS} years at ${L.SERVICE_INTERVAL_YEARS}-yearly service = ${L.SERVICES_IN_LIFE} services; ${(mine7.engPerTooth / 1e9).toFixed(4)}e9 engagements per tooth`);
 console.log(`   slip ${f(mine7.slip.perEngagement_u * U * 1e6, 1)} \u00b5m per engagement (${f(mine7.slip.lockFace_u, 4)} u down the lock face \u00d72 + ${f(mine7.slip.impulseFace_u, 4)} u along the impulse) \u2192 ${f(mine7.slipTotal / 1000, 1)} km`);
-console.log(`   budget ${f(mine7.budget_u * U * 1e6, 2)} \u00b5m (lock+run ${f(mine7.lockRunFull_u, 5)} u \u2192 lock ${f(mine7.lockOnly_u, 5)} u)`);
+console.log(`   budget from the apex ${f(mine7.budget_u * U * 1e6, 2)} \u00b5m (lock+run ${f(mine7.lockRunFull_u, 5)} u \u2192 lock ${f(mine7.lockOnly_u, 5)} u)`);
 near(mine7.slip.perEngagement_u, et.geom.slip.perEngagement_u, 1e-12, 'the slip per engagement disagrees');
 near(mine7.engPerTooth, wr.engagementsPerTooth, 1e-12, 'the engagements per tooth disagree');
-near(mine7.budget_u, wr.budget_u, 1e-6, 'the wear budget disagrees');
+near(mine7.budget_u, wr.fromApex_u, 1e-6, 'the wear budget from the apex disagrees');
+near(mine7.budget_u - lg.finish.cutBack_u, wr.budget_u, 1e-6, 'the wear budget does not book the finish\'s cut-back');
+console.log(`   the finish spends ${f(lg.finish.cutBack_u * U * 1e6, 2)} \u00b5m of that, leaving ${f(wr.budget_u * U * 1e6, 2)} \u00b5m for the century`);
 near(mine7.Fmean, wr.load_N, 1e-12, 'the wear load disagrees');
 for (const c of L.FRICTION_CORNERS) {
   const d = mine7.recess(L.WEAR_K_BAND[c], L.ESCAPE_STEEL_HARDNESS_PA, mine7.slipTotal);
-  console.log(`   ${c.padEnd(11)} K=${L.WEAR_K_BAND[c].toExponential(0)}  recession ${f(d * 1e6, 2).padStart(6)} \u00b5m  \u00d7${f((d / U) / mine7.budget_u, 3)} of budget  ${(d / U) <= mine7.budget_u ? 'HOLDS' : 'OVER'}`);
+  const budget = mine7.budget_u - lg.finish.cutBack_u;
+  console.log(`   ${c.padEnd(11)} K=${L.WEAR_K_BAND[c].toExponential(0)}  recession ${f(d * 1e6, 2).padStart(6)} \u00b5m  \u00d7${f((d / U) / budget, 3)} of budget  ${(d / U) <= budget ? 'HOLDS' : 'OVER'}`);
   near(d, wr.corners[c].recession_m, 1e-9, `the recession disagrees at the ${c} corner`);
 }
 console.log(`   holds at ${wr.holdsAt.join(' and ')}${wr.straddles ? ' \u2014 STRADDLES, so the coefficient decides the century' : ''}`);
@@ -522,17 +550,49 @@ console.log('\n8. CONTROLS ON THE DESIGN LIFE');
   const soft = 510 * L.HV_TO_PA;
   const was = mine7.recess(L.WEAR_K_BAND.adverse, soft, mine7.slipTotal);
   const now = mine7.recess(L.WEAR_K_BAND.adverse, L.ESCAPE_STEEL_HARDNESS_PA, mine7.slipTotal);
-  console.log(`   W5 at the old 510 HV temper the adverse corner lost ${f(was * 1e6, 2)} \u00b5m (\u00d7${f((was / U) / mine7.budget_u, 3)} of budget); hardened to ${L.ESCAPE_STEEL_HARDNESS_BAND.lowHV} HV it loses ${f(now * 1e6, 2)} (\u00d7${f((now / U) / mine7.budget_u, 3)})`);
+  console.log(`   W5 at the old 510 HV temper the adverse corner lost ${f(was * 1e6, 2)} \u00b5m (\u00d7${f((was / U) / (mine7.budget_u - lg.finish.cutBack_u), 3)} of budget); hardened to ${L.ESCAPE_STEEL_HARDNESS_BAND.lowHV} HV it loses ${f(now * 1e6, 2)} (\u00d7${f((now / U) / (mine7.budget_u - lg.finish.cutBack_u), 3)})`);
   ok(now < was, 'W5: hardening did not reduce the wear, so the change bought nothing', { was, now });
-  ok((now / U) / mine7.budget_u > 1, 'W5: the adverse corner now HOLDS \u2014 this control and TODO 299\'s record have parted', { over: (now / U) / mine7.budget_u });
+  ok((now / U) / (mine7.budget_u - lg.finish.cutBack_u) > 1, 'W5: the adverse corner now HOLDS \u2014 this control and TODO 299\'s record have parted', { over: (now / U) / (mine7.budget_u - lg.finish.cutBack_u) });
 }
 // W6 -- THE CEILING, reported: the hardness that would close the adverse
 // corner, and that no steel reaches it.
 {
-  const need = L.WEAR_K_BAND.adverse * mine7.Fmean * mine7.slipTotal / (Math.pow(mine7.budget_u * U, 2) * tM * mine7.tanA);
+  const need = L.WEAR_K_BAND.adverse * mine7.Fmean * mine7.slipTotal / (Math.pow((mine7.budget_u - lg.finish.cutBack_u) * U, 2) * tM * mine7.tanA);
   console.log(`   W6 closing the adverse corner needs H \u2265 ${f(need / 1e9, 2)} GPa (${f(need / L.HV_TO_PA, 0)} HV) \u2014 steel's practical ceiling is about 800 HV, so this is silicon, a carbide or a coating`);
   near(need, wr.needHardness_Pa.adverse, 1e-9, 'W6: the record\'s needed hardness disagrees');
   ok(need / L.HV_TO_PA > 800, 'W6: the needed hardness is inside steel\'s range, so the ceiling this landing reports is wrong', { needHV: need / L.HV_TO_PA });
+}
+
+// ---------------------------------------------------------------------------
+// 9. WHAT THE RING COSTS TO CUT (TODO 299 landing 2), recomputed off the
+//    authored outline, because the owner asked after the wheel's construction.
+// ---------------------------------------------------------------------------
+{
+  const ct = et.geom.cut;
+  ok(!!ct, 'the geometry carries no cut record', null);
+  const poly2 = wheel.userData.profile.poly, m = poly2.length;
+  const atP = (i) => poly2[((i % m) + m) % m];
+  let area2 = 0;
+  for (let i = 0; i < m; i++) { const q = atP(i), q2 = atP(i + 1); area2 += q[0] * q2[1] - q2[0] * q[1]; }
+  let conc = Infinity, conv = Infinity;
+  for (let i = 0; i < m; i++) {
+    const q0 = atP(i - 1), q1 = atP(i), q2 = atP(i + 1);
+    const u1 = [q1[0] - q0[0], q1[1] - q0[1]], u2 = [q2[0] - q1[0], q2[1] - q1[1]];
+    const l1 = Math.hypot(u1[0], u1[1]), l2 = Math.hypot(u2[0], u2[1]);
+    if (!(l1 > 1e-9 && l2 > 1e-9)) continue;
+    const cr = (u1[0] * u2[1] - u1[1] * u2[0]) / (l1 * l2), dt = (u1[0] * u2[0] + u1[1] * u2[1]) / (l1 * l2);
+    const turn = Math.atan2(cr, dt), inc = (Math.PI - Math.abs(turn)) * 180 / Math.PI;
+    if ((area2 > 0) ? turn < 0 : turn > 0) conc = Math.min(conc, inc); else conv = Math.min(conv, inc);
+  }
+  console.log('\n9. WHAT THE RING COSTS TO CUT');
+  console.log(`   one closed ring of ${m} vertices; sharpest CONCAVE corner ${f(conc, 2)}\u00b0 (floor ${L.CUT_CONCAVE_MIN_DEG}\u00b0), sharpest CONVEX ${f(conv, 3)}\u00b0 = the club's wedge`);
+  console.log(`   narrowest gullet ${f(ct.gullet_u * L.UNIT_MM * 1000, 1)} \u00b5m against a ${f(2 * L.CUT_TOOL_R_M * 1e6, 0)} \u00b5m tool \u2014 \u00d7${f(ct.gullet_u / (2 * ct.toolR_u), 2)} clearance; cut depth / gullet ${f(ct.aspect, 2)}`);
+  console.log(`   so the profile is ONE piercing and the only micron-scale operation on the wheel is the tip's polish \u2014 which this landing made ${f(lg.finish.rho_m / L.ESCAPE_TIP_R_BAND.sharp_m, 2)}x coarser`);
+  near(conc, ct.concave.includedDeg, 1e-9, 'the sharpest concave corner disagrees');
+  near(conv, ct.convex.includedDeg, 1e-9, 'the sharpest convex corner disagrees');
+  near(conv, et.geom.wedge.fullDeg, 1e-6, 'the sharpest convex corner is not the club\'s wedge');
+  ok(conc >= L.CUT_CONCAVE_MIN_DEG, 'the ring asks for a pocket no rotary tool can reach', { conc, floor: L.CUT_CONCAVE_MIN_DEG });
+  ok(ct.gullet_u > 2 * ct.toolR_u, 'nothing the shop has fits down the gullet', { gullet: ct.gullet_u, tool: 2 * ct.toolR_u });
 }
 
 // ---------------------------------------------------------------------------
@@ -546,12 +606,12 @@ if (fails.length) {
   for (const q of fails) console.error(' ', q.what, JSON.stringify(q.detail));
   process.exit(1);
 }
-console.log(`PASS — the record and this computation agree on ${et.rows.length} rows, ${et.geom.runs.length} contact arms, the drop's landing and the century's wear; all sixteen controls fired.`);
+console.log(`PASS — the record and this computation agree on ${et.rows.length} rows, ${et.geom.runs.length} contact arms, the drop's landing and the century's wear; all seventeen controls fired.`);
 const margin = Math.min(worst.p0Margin, worst.sigmaMargin);
-console.log(`       The club tooth carries the escapement at ×${f(margin, 2)} on the ${worst.binds} criterion; its tip needs ${f(worst.rhoMin * 1e9, 2)} nm of radius and the finish band's sharp end gives ${f(L.ESCAPE_TIP_R_M * 1e9, 0)}.`);
+console.log(`       The club tooth carries the escapement at ×${f(margin, 2)} on the ${worst.binds} criterion; its tip needs ${f(worst.rhoMin * 1e9, 2)} nm of radius for that and the DERIVED finish gives ${f(et.rho_m * 1e9, 0)}.`);
 // Hertz binds and p0 ∵ √F, so the torque at which the tip first yields is the
 // margin SQUARED — the headroom over the escapement's own load, in one number.
 console.log(`       It first yields at ×${f(margin * margin, 1)} the escape torque. The owner's eye was right that the metal is thin; the LOAD is ${f(worst.load_N * 1e6, 0)} µN.`);
-console.log(`       The DROP's landing does go over — so the tip blunts to ${f(lg.runIn.rho_m * 1e6, 3)} µm and then shakes down, inside the finish band, for ${f(lg.runIn.recession_u, 5)} u of reach.`);
+console.log(`       The DROP's landing is why the tip is FINISHED at ${f(lg.finish.rho_m * 1e6, 4)} µm — the impact's own fixed point, where it shakes down as cut, so it never runs in; a razor ${f(L.ESCAPE_TIP_R_BAND.sharp_m * 1e6, 2)} µm would stand ×${f(lg.finish.sharpOverShakedown, 3)} over it.`);
 console.log(`       Over ${wr.years} years of ${wr.serviceYears}-yearly service each tooth slides ${f(wr.slip_m / 1000, 0)} km and loses ${f(wr.corners.nominal.recession_m * 1e6, 2)} µm of reach at the nominal corner against a ${f(wr.budget_u * U * 1e6, 2)} µm lock budget — ${wr.straddles ? `but ${f(wr.corners.adverse.recession_m * 1e6, 2)} µm at the adverse, which the lock cannot spend: the coefficient decides the century.` : 'at every corner.'}`);
 process.exit(0);

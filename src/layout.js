@@ -1592,20 +1592,58 @@ export const TABOR_TOLERANCE = 0.20;
 // face) and the lock, the draw and the impulse ALL bear on its point, so every
 // stress at a mathematically sharp apex is singular: the beam's goes as 1/s and
 // the Hertz pressure as 1/√ρ. A tooth is therefore priced the way TODO 221
-// priced the maintaining beak's apex — on the ARC the metal really carries —
-// and that radius is a property of the FINISH, not of the cut, so it cannot be
-// read off the outline. A BAND, for FRICTION's and the steel bands' reason (the
-// movement does not say how finely its wheel was polished), and every gate
-// reads the SHARP end, because a sharper tip is the loaded one: 0.1 µm is about
-// the finest edge hardened steel holds at all (a honed razor edge is 30–100 nm
-// and is not a bearing surface), 2 µm an ordinary polished corner on a
-// finished wheel. The cut's own apex is a point and the schematic draws it as
-// one; this is what the metal under it is priced at.
+// priced the maintaining beak's apex — on the ARC the metal really carries.
+//
+// This BAND is what a polish can ACHIEVE: 0.1 µm is about the finest edge
+// hardened steel holds at all (a honed razor edge is 30–100 nm and is not a
+// bearing surface), 2 µm an ordinary polished corner on a finished wheel. It is
+// no longer what the wheel is priced at — see ESCAPE_TIP_FINISH_M below, which
+// TODO 299 landing 2 DERIVED, because polishing to the sharp end was work the
+// first landings undid.
 export const ESCAPE_TIP_R_BAND = Object.freeze({
   sharp_m: 0.1e-6, blunt_m: 2e-6,
-  why: 'the edge radius of a polished corner on hardened steel: 0.1 µm the finest a hardened-steel edge holds in service (a honed razor edge, 30–100 nm, is not a bearing surface), 2 µm an ordinary commercial polish',
+  why: 'what a polished corner on hardened steel can ACHIEVE: 0.1 µm the finest a hardened-steel edge holds in service (a honed razor edge, 30–100 nm, is not a bearing surface), 2 µm an ordinary commercial polish',
 });
-export const ESCAPE_TIP_R_M = ESCAPE_TIP_R_BAND.sharp_m;
+// TODO 299 landing 2 — AND THE RADIUS IT IS CUT TO, which is not the band's
+// sharp end and should never have been. The owner put it plainly: it makes no
+// sense to pre-sharpen an edge only to have it blunted. TODO 296 landing 2 had
+// measured the drop's first landings blunting the tip plastically until the
+// contact SHAKES DOWN, and that radius is a FIXED POINT of the impact — solved
+// from starting radii across four decades it returns the same figure to 2e-16,
+// because it is where p0(ρ) meets the shakedown limit and nothing about the
+// as-cut tip enters. So it is a SPECIFICATION, not an outcome: finish the tooth
+// there and the wheel leaves the bench in the state it would have reached
+// anyway, with the only overstressed state in its life removed and the finest
+// (and only micron-scale) operation on the wheel made coarser.
+//
+// It is DERIVED in main.js, not written here — the escapement's energy, the
+// club's own compliance and the escape steel's shakedown limit all enter it, so
+// a number in this file would be a copy that could go stale. What this file
+// declares is that the derivation must land inside the achievable band, which
+// is the constraint the shop floor imposes on it.
+export const ESCAPE_TIP_R_M = ESCAPE_TIP_R_BAND.sharp_m;   // retained: the band's sharp end, for the achievability gate
+// TODO 299 landing 2 — AND WHAT CUTS THE PROFILE. The owner asked what the
+// escape wheel costs to CONSTRUCT, and a tooth ring's cost is decided by two
+// things a profile can state: whether a tool fits down its gullets, and whether
+// its concave corners are open enough that the fillet a rotary tool must leave
+// rounds a corner rather than failing to reach a pocket. Both need the tool's
+// own size, so here it is — a BAND, on ESCAPE_TIP_R_BAND's rule (this is a shop
+// capability, not a property of the watch), read at the COARSE end because a
+// fat tool is the one that does not fit.
+//
+// 0.02 mm is about the finest wire a production EDM threads and 0.1 mm a fine
+// slitting cutter or a thicker wire, so the RADIUS band is 10–50 µm.
+export const CUT_TOOL_R_BAND = Object.freeze({
+  fine_m: 10e-6, coarse_m: 50e-6,
+  why: 'the radius of the finest practical cutter or EDM wire: 0.02 mm wire at the fine end (production wire EDM), 0.1 mm for a fine slitting cutter or a thicker wire',
+});
+export const CUT_TOOL_R_M = CUT_TOOL_R_BAND.coarse_m;   // the fat tool is the one that has to fit
+// A concave corner under a right angle is a POCKET: a rotary tool leaves its
+// own radius there and cannot reach the corner at all, so the feature the
+// profile asks for is not the feature the shop delivers. At or over 90° the
+// fillet rounds a corner the profile does not depend on being sharp. Stated as
+// a constant because it is a claim about tools, not about this wheel.
+export const CUT_CONCAVE_MIN_DEG = 90;
 // §234 — A COIL'S INDEX, D/d: the envelope a compression spring can be WOUND
 // in. Under 4 the wire cracks on the coiling arbor; over 12 the coil tangles
 // on the winder and its rate is not held — the spring-design handbooks' 4–12.
