@@ -1,4 +1,4 @@
-// Does the escape wheel's club tooth survive the escapement's own load at its tip? It is the second reader of EQUALISATION.going.energy.escapeTooth (TODO 296): it measures the club's wedge off the CUT MESH's own triangle normals where the record measures it off the authored outline, re-solves the escapement and recomputes every contact arm, re-prices the tip's Hertz contact and its arc-root bending from layout.js's bands, and asserts the record row for row. Five CONTROLS, each a sabotage the price must refuse: the wedge read as the flanks' SUM (the trap that reads every section 4.6x too fat), the unlock priced forward instead of as recoil, a tip a hundred times sharper, an arm taken square to the face instead of along it, and the escape torque doubled. It also REPORTS the one load this landing does not price — the drop's impact — so the record's own statement about it has a source. ACCEPTANCE: exits non-zero when the record and this computation disagree, or when a control fails to fire.
+// Does the escape wheel's club tooth survive the escapement's own load at its tip? It is the second reader of EQUALISATION.going.energy.escapeTooth (TODO 296): it measures the club's wedge off the CUT MESH's own triangle normals where the record measures it off the authored outline, re-solves the escapement and recomputes every contact arm, re-prices the tip's Hertz contact and its arc-root bending from layout.js's bands, and asserts the record row for row. Since landing 2 it also recomputes the DROP's landing — the let-off kinematics at the peak swing, the drop's free run, the impact's effective mass and closing velocity, the series stack and the radius the tip runs in to before it shakes down. TEN CONTROLS, each a sabotage or a sensitivity the answer must survive: the wedge read as the flanks' SUM (the trap that reads every section 4.6x too fat), the unlock priced forward instead of as recoil, a tip a hundred times sharper, an arm taken square to the face instead of along it, the escape torque doubled, the contact's stiffness x10 and /10 (which must move the run-in by under a percent, since the compliance is the tooth's), one more series member as soft as the tooth (which must run it in LESS, proving the bound's direction), the design swing instead of the peak, the inversion's own p0 ~ rho^-1/2, and the drop's acceleration removed. ACCEPTANCE: exits non-zero when the record and this computation disagree, or when a control fails to fire.
 //
 // Why it exists. The owner reported the teeth "look a little thin at the ends"
 // by eye and they are: the club is a 10.83 degree wedge whose last 0.038 mm is
@@ -297,38 +297,137 @@ const Fw = worst.load_N;
 }
 
 // ---------------------------------------------------------------------------
-// 5. REPORT — the load this landing does not price.
+// 5. THE DROP'S LANDING (TODO 296 landing 2), recomputed, with the controls
+//    that decide whether the answer means anything.
 // ---------------------------------------------------------------------------
-const impact = (() => {
-  const cr = C.pinNotch.crossing;
-  const Iw = cr.I_wheel;                                   // escape arbor + the train reflected
-  const dropRad = E.DROP_DEG * DEG;
-  // the wheel is free through the drop and the train drives it, so it gains at
-  // least tau*theta_drop; an UPPER bound on what it can carry into the landing
-  // is the whole beat's delivered energy, which the impulse mostly spends on
-  // the balance. Both are quoted; neither is a stress.
-  const gained = en.escapeTorque_Nm * dropRad;
-  const ceiling = en.perBeat_J;
-  // the elastic energy the tip's line contact stores at the working load:
-  // a = sqrt(4 F' rho / (pi E*)), the approach of order a^2/rho, so U ~ F*delta/2
-  const Fl = worst.load_N / tM, rho = L.ESCAPE_TIP_R_M;
-  const aHalf = Math.sqrt(4 * Fl * rho / (Math.PI * Estar));
-  const approach = aHalf * aHalf / rho;
-  const stored = 0.5 * worst.load_N * approach;
-  return { I_wheel: Iw, dropDeg: E.DROP_DEG, gained_J: gained, ceiling_J: ceiling,
-    omegaFromGain: Math.sqrt(2 * gained / Iw), contactStored_J: stored,
-    ratioGain: gained / stored, ratioCeiling: ceiling / stored };
+const lg = et.landing;
+ok(!!lg, 'the record carries no landing block', null);
+const mine5 = (() => {
+  const cr = C.pinNotch.crossing, Iw = cr.I_wheel, If = cr.I_fork;
+  const aW = et.geom.landing.arm_u * U, aF = et.geom.landing.armFork_u * U;
+  // the let-off kinematics, from the model's own laws at the PEAK swing
+  const Apk = L.AMPLITUDE_PEAK_DEG * DEG, wB = 2 * Math.PI * L.F_BALANCE, thL = C.pinNotch.liftHalf, hh = 1e-7;
+  const thetaDot = Apk * wB * Math.cos(Math.asin(Math.min(1, thL / Apk)));
+  const dPhi = Math.abs((C.pinNotch.lead(thL + hh) - C.pinNotch.lead(thL - hh)) / (2 * hh));
+  const gear = Math.max(...ES.stones.map((st) => {
+    const phiE = st.sigma * st.xE;
+    return Math.abs((ES.deltaOnImpulseFace(st.sigma, phiE + hh).delta - ES.deltaOnImpulseFace(st.sigma, phiE - hh).delta) / (2 * hh));
+  }));
+  const omega0 = gear * dPhi * thetaDot;
+  const omega = Math.sqrt(omega0 * omega0 + 2 * en.escapeTorque_Nm * ES.drop / Iw);
+  const mStar = 1 / (aW * aW / Iw + aF * aF / If);
+  const v0 = aW * omega, Eimp = 0.5 * mStar * v0 * v0;
+  // the stack
+  const sArc = (rr) => rr * Math.cos(halfV) ** 2 / Math.sin(halfV);
+  const sRoot = Math.abs(et.geom.wedge.holdsTo_u) * U, kW = et.geom.wedge.widthPerDepth;
+  const kTooth = (rr) => {
+    const sa = sArc(rr), A0 = 12 / (L.STEEL_E_PA * tM * kW ** 3);
+    return 1 / (A0 * (sa / sRoot - 1 + Math.log(sRoot / sa)));
+  };
+  const kHertz = (rr, F) => {
+    const Fl = F / tM, ha = Math.sqrt(4 * Fl * rr / (Math.PI * Estar));
+    return F / Math.max((2 * Fl / (Math.PI * Estar)) * (Math.log(4 * rr / ha) - 1), 1e-18);
+  };
+  // `extra` is one more series member (control C7) and `hMul` scales the
+  // contact's own stiffness (control C6). Both are PARAMETERS, not patches: an
+  // earlier draft reassigned the exported function while these closures read the
+  // local const, and reported a 0.000% sensitivity that was its own no-op.
+  const peak = (rr, E_ = Eimp, extra = Infinity, hMul = 1) => {
+    let F = 1e-3;
+    for (let i = 0; i < 200; i++) F = Math.sqrt(2 * E_ / (1 / kTooth(rr) + 1 / (hMul * kHertz(rr, F)) + 1 / extra));
+    const kT = kTooth(rr), kH = hMul * kHertz(rr, F);
+    return { F, kT, kH, kS: 1 / (1 / kT + 1 / kH + 1 / extra), p0: Math.sqrt((F / tM) * Estar / (Math.PI * rr)) };
+  };
+  const rhoFor = (p0a, E_ = Eimp, extra = Infinity, hMul = 1) => {
+    let rr = L.ESCAPE_TIP_R_M;
+    for (let i = 0; i < 300; i++) rr = Math.min(1e-3, Math.max(1e-10, rr * (peak(rr, E_, extra, hMul).p0 / p0a) ** 2));
+    return rr;
+  };
+  const shake = L.LINE_CONTACT_SHAKEDOWN_P0_PER_Y * L.ESCAPE_STEEL_SIGMA_Y_PA;
+  return { Iw, If, aW, aF, thetaDot, dPhi, gear, omega0, omega, mStar, v0, Eimp, shake,
+    kTooth, kHertz, peak, rhoFor, sArc, sRoot, kW };
 })();
-console.log('\n5. REPORT — the DROP\'s impact, which this landing does NOT price');
-console.log(`   the reflected wheel carries I ${g3(impact.I_wheel)} kg·m²; free through the ${f(impact.dropDeg, 1)}° drop it gains ${g3(impact.gained_J)} J`);
-console.log(`   (a beat delivers ${g3(impact.ceiling_J)} J in all, the ceiling), against ${g3(impact.contactStored_J)} J stored elastically in the tip at the working load`);
-console.log(`   so the landing arrives with ${g3(impact.ratioGain)}× the contact's elastic energy — the load a thin tip really fears.`);
-console.log('   Not priced here: its path runs through the stone into the fork and out at the banking pin, none of which is modelled. TODO 296 carries it.');
+console.log('\n5. THE DROP\'s LANDING, recomputed');
+console.log(`   at the peak swing ${f(L.AMPLITUDE_PEAK_DEG, 0)}° the balance turns ${f(mine5.thetaDot, 2)} rad/s at the let-off, the fork ×${f(mine5.dPhi, 5)}, the impulse face ×${f(mine5.gear, 4)} → ω ${f(mine5.omega0, 2)} rad/s`);
+console.log(`   free through the ${f(E.DROP_DEG, 1)}° drop on I ${g3(mine5.Iw)} kg·m² → ${f(mine5.omega, 2)} rad/s; closing ${f(mine5.v0 * 1000, 3)} mm/s on ${f(mine5.mStar * 1e6, 3)} mg → ${f(mine5.Eimp * 1e9, 4)} nJ`);
+near(mine5.omega0, lg.omegaLetoff_rad_s, 1e-12, 'the let-off speed disagrees');
+near(mine5.omega, lg.omegaLand_rad_s, 1e-12, 'the landing speed disagrees');
+near(mine5.mStar, lg.mStar_kg, 1e-12, 'the effective mass disagrees');
+near(mine5.v0, lg.v0_m_s, 1e-12, 'the closing velocity disagrees');
+near(mine5.Eimp, lg.energy_J, 1e-12, 'the impact energy disagrees');
+near(mine5.shake, lg.shakedownAllow_Pa, 1e-12, 'the shakedown allowable disagrees');
+{
+  const q = mine5.peak(L.ESCAPE_TIP_R_M), rIn = mine5.rhoFor(mine5.shake), rEl = mine5.rhoFor(allow);
+  console.log(`   at the band's sharp ${f(L.ESCAPE_TIP_R_M * 1e6, 3)} µm: F ${f(q.F * 1000, 3)} mN, p0 ${f(q.p0 / 1e9, 4)} GPa against shakedown ${f(mine5.shake / 1e9, 4)} — OVER, so the tip blunts`);
+  console.log(`   it runs in to ${f(rIn * 1e6, 4)} µm (shakedown) / ${f(rEl * 1e6, 4)} µm (no yield at all), inside the ${f(L.ESCAPE_TIP_R_BAND.sharp_m * 1e6, 2)}–${f(L.ESCAPE_TIP_R_BAND.blunt_m * 1e6, 2)} µm finish band`);
+  console.log(`   costing the tip ${f((rIn - L.ESCAPE_TIP_R_M) * (1 / Math.sin(halfV) - 1) / U, 5)} u of reach (CLEAR_MARGIN is ${L.CLEAR_MARGIN})`);
+  near(q.F, lg.atSharp.F, 1e-9, 'the peak force at the sharp tip disagrees');
+  near(q.p0, lg.atSharp.p0_Pa, 1e-9, 'the peak contact pressure disagrees');
+  near(rIn, lg.runIn.rho_m, 1e-6, 'the run-in radius disagrees');
+  near(rEl, lg.runIn.elasticRho_m, 1e-6, 'the elastic run-in radius disagrees');
+  ok(rIn <= L.ESCAPE_TIP_R_BAND.blunt_m, 'the drop blunts the tip past its finish band', { rIn, band: L.ESCAPE_TIP_R_BAND });
+}
+
+console.log('\n6. CONTROLS ON THE LANDING');
+// C6 — the contact's compliance cannot move the answer. This is what makes the
+// 2-D datum ambiguity (Johnson §5.2: two cylinders' approach is only defined
+// against a reference length) harmless rather than hidden.
+{
+  const base = mine5.rhoFor(mine5.shake);
+  const stiff = mine5.rhoFor(mine5.shake, mine5.Eimp, Infinity, 10);
+  const soft = mine5.rhoFor(mine5.shake, mine5.Eimp, Infinity, 0.1);
+  const dS = Math.abs(stiff - base) / base, dW = Math.abs(soft - base) / base;
+  console.log(`   C6 contact stiffness ×10 and ÷10: run-in ${f(base * 1e6, 5)} → ${f(stiff * 1e6, 5)} / ${f(soft * 1e6, 5)} µm (${f(100 * dS, 4)}% / ${f(100 * dW, 4)}%)`);
+  ok(dS > 0 && dW > 0, 'C6 did not fire: the multiplier changed nothing, so this control is its own no-op', { base, stiff, soft });
+  ok(dS < 0.01 && dW < 0.05, 'C6 did not fire: the answer depends on the contact’s datum-dependent compliance', { base, stiff, soft, dS, dW });
+  ok(lg.atSharp.kHertz_N_per_m > 100 * lg.atSharp.kTooth_N_per_m,
+    'C6 did not fire: the contact is not far stiffer than the tooth, so the stack is not the tooth\'s', lg.atSharp);
+}
+// C7 — a SOFTER stack must run the tip in LESS, which is what makes the
+// unmodelled members (the fork's arm, the stone's seat, the banking pin) leave
+// this an upper bound rather than a guess.
+{
+  const base = mine5.rhoFor(mine5.shake);
+  const withFork = mine5.rhoFor(mine5.shake, mine5.Eimp, lg.atSharp.kTooth_N_per_m);   // one more member as soft as the tooth
+  console.log(`   C7 one more series member as soft as the tooth: run-in ${f(base * 1e6, 4)} → ${f(withFork * 1e6, 4)} µm — ${withFork < base ? 'LESS' : 'MORE'}, so leaving them out bounds it`);
+  ok(withFork < base * 0.999, 'C7 did not fire: softening the stack does not reduce the run-in, so the bound\'s direction is unproven', { base, withFork });
+}
+// C8 — the DESIGN swing instead of the peak must be kinder, which is what makes
+// pricing at AMPLITUDE_PEAK_DEG the conservative reading (TODO 192 step 4's rule).
+{
+  const Atg = L.AMPLITUDE_TARGET_DEG * DEG, wB = 2 * Math.PI * L.F_BALANCE, thL = C.pinNotch.liftHalf;
+  const thetaDotT = Atg * wB * Math.cos(Math.asin(Math.min(1, thL / Atg)));
+  const o0 = mine5.gear * mine5.dPhi * thetaDotT;
+  const o = Math.sqrt(o0 * o0 + 2 * en.escapeTorque_Nm * ES.drop / mine5.Iw);
+  const Et = 0.5 * mine5.mStar * (mine5.aW * o) ** 2;
+  const rIn = mine5.rhoFor(mine5.shake, Et);
+  console.log(`   C8 at the design swing ${f(L.AMPLITUDE_TARGET_DEG, 0)}°: ω ${f(o, 2)} rad/s, ${f(Et * 1e9, 4)} nJ, run-in ${f(rIn * 1e6, 4)} µm against the peak's ${f(mine5.rhoFor(mine5.shake) * 1e6, 4)}`);
+  ok(rIn < mine5.rhoFor(mine5.shake), 'C8 did not fire: the design swing is not kinder than the peak', { rIn, peak: mine5.rhoFor(mine5.shake) });
+}
+// C9 — the inversion is the inversion: p0 at the run-in radius IS the allowable,
+// and p0 goes as rho^-1/2 at a fixed force.
+{
+  const rIn = mine5.rhoFor(mine5.shake), q = mine5.peak(rIn);
+  const half = Math.sqrt((q.F / tM) * Estar / (Math.PI * (4 * rIn)));
+  console.log(`   C9 p0(ρ_runIn) = ${f(q.p0 / 1e9, 6)} GPa against the allowable ${f(mine5.shake / 1e9, 6)}; at 4ρ and the same F, p0 ×${f(half / q.p0, 9)} (need ½)`);
+  near(q.p0, mine5.shake, 1e-9, 'C9: the run-in radius does not land on the allowable');
+  near(half / q.p0, 0.5, 1e-12, 'C9: p0 does not go as ρ^−½');
+}
+// C10 — the drop is what does it. With no drop the wheel arrives at its let-off
+// speed alone, and the tip still has to run in: a landing this row could not see
+// would be one the drop's own energy dominated to the point of absurdity.
+{
+  const o = mine5.omega0, Et = 0.5 * mine5.mStar * (mine5.aW * o) ** 2;
+  const rIn = mine5.rhoFor(mine5.shake, Et);
+  console.log(`   C10 without the drop's acceleration: ${f(Et * 1e9, 4)} nJ of ${f(mine5.Eimp * 1e9, 4)}, run-in ${f(rIn * 1e6, 4)} µm — the drop contributes ${f(100 * (1 - Et / mine5.Eimp), 1)}% of the energy`);
+  ok(Et < mine5.Eimp && rIn < mine5.rhoFor(mine5.shake), 'C10 did not fire: the drop does not add energy', { Et, Eimp: mine5.Eimp });
+  ok(rIn > L.ESCAPE_TIP_R_M, 'C10: even the let-off speed alone should blunt a 0.1 µm tip', { rIn });
+}
 
 // ---------------------------------------------------------------------------
 console.log('');
 if (argJson) {
-  writeFileSync(argJson, JSON.stringify({ meshWedge, mineRuns, vw, mine, worst, impact, fails }, null, 1));
+  writeFileSync(argJson, JSON.stringify({ meshWedge, mineRuns, vw, mine, worst, landing: lg, fails }, null, 1));
   console.log(`wrote ${argJson}`);
 }
 if (fails.length) {
@@ -336,10 +435,11 @@ if (fails.length) {
   for (const q of fails) console.error(' ', q.what, JSON.stringify(q.detail));
   process.exit(1);
 }
-console.log(`PASS — the record and this computation agree on ${et.rows.length} rows and ${et.geom.runs.length} contact arms; all five controls fired.`);
+console.log(`PASS — the record and this computation agree on ${et.rows.length} rows, ${et.geom.runs.length} contact arms and the drop's landing; all ten controls fired.`);
 const margin = Math.min(worst.p0Margin, worst.sigmaMargin);
 console.log(`       The club tooth carries the escapement at ×${f(margin, 2)} on the ${worst.binds} criterion; its tip needs ${f(worst.rhoMin * 1e9, 2)} nm of radius and the finish band's sharp end gives ${f(L.ESCAPE_TIP_R_M * 1e9, 0)}.`);
 // Hertz binds and p0 ∵ √F, so the torque at which the tip first yields is the
 // margin SQUARED — the headroom over the escapement's own load, in one number.
 console.log(`       It first yields at ×${f(margin * margin, 1)} the escape torque. The owner's eye was right that the metal is thin; the LOAD is ${f(worst.load_N * 1e6, 0)} µN.`);
+console.log(`       The DROP's landing does go over — so the tip blunts to ${f(lg.runIn.rho_m * 1e6, 3)} µm and then shakes down, inside the finish band, for ${f(lg.runIn.recession_u, 5)} u of reach.`);
 process.exit(0);

@@ -82,7 +82,7 @@ import {
   sawCouplingLiftAt, sawSeatOffset,           // TODO 50: the stem clutch's dimensions and ride law (one arithmetic with the cut metal); TODO 115: and the mirrored pair's seat, shared by the metal and the law
   STOCK, ALLOY_STOCK,                          // §269: the stocks' densities and moduli, for the watch's mass and the receiver's first modes
   STEEL_E_PA, STEEL_G_PA, SPRING_SIGMA_Y_PA, SPRING_TAU_Y_PA, cantileverK_N_per_m,
-  CLICK_STEEL_SIGMA_Y_BAND, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU,   // TODO 221: the click steel and the line contact's first yield
+  CLICK_STEEL_SIGMA_Y_BAND, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, LINE_CONTACT_SHAKEDOWN_P0_PER_Y,   // TODO 221: the click steel and the line contact's first yield
   ESCAPE_STEEL_SIGMA_Y_BAND, ESCAPE_STEEL_SIGMA_Y_PA, ESCAPE_TIP_R_BAND, ESCAPE_TIP_R_M,   // TODO 296: the escape wheel's own steel, and the radius its club tip is priced on
   MAINSPRING_E_PA, MAINSPRING_SIGMA_Y_BAND, MAINSPRING_SIGMA_Y_PA, MAINSPRING_ALPHA_BAND, MAINSPRING_ALPHA_MIN,   // TODO 193: the ribbons' alloy, cited  // §137: the one steel, the one cantilever law; §164 names its other properties beside it
   MU_STEEL, ALARM_SPRING_HEADROOM,            // TODO 144: the one steel-on-steel friction coefficient, and the drag-against-hold margin — the disc's drag and its seat are priced on both
@@ -2109,6 +2109,27 @@ const ESCAPE_TOOTH_GEOM = (() => {
   for (const q of runs)
     if (!(q.arm_u > 0 && q.arm_u <= radius + 1e-9))
       console.warn(`TODO 296: the ${q.run} reads a contact arm of ${q.arm_u} on a wheel of ${radius} — the normal's line of action has left the metal`);
+  // TODO 296 landing 2 — AND THE LANDING, where the dropped tooth meets the next
+  // stone's locking face. The model PACES the drop across the run (escapement.js
+  // says why: every consumer of the law is a function of time that must be
+  // continuous), so the instant the tip touches is NOT resolved by it — the
+  // landing falls somewhere between the let-off and the banking. So the arms are
+  // sampled over that whole window and kept at the LARGEST wheel arm, which with
+  // the wheel's speed fixed is the fastest closing velocity and the smallest
+  // effective mass: the worst impact the window admits.
+  const landing = (() => {
+    let worst = null;
+    for (const st of ESCAPEMENT.stones)
+      for (let i = 0; i <= SAMP; i++) {
+        const x = st.xE + (-ESCAPEMENT.bank - st.xE) * (i / SAMP);
+        const a = armAt(st, st.sigma * x, 'lock');
+        if (!Number.isFinite(a.wheel)) continue;
+        if (!worst || a.wheel > worst.arm_u) worst = { stone: st.sigma, arm_u: a.wheel, armFork_u: a.fork, atForkDeg: x / DEG2RAD };
+      }
+    return worst;
+  })();
+  if (!(landing && landing.arm_u > 0 && landing.arm_u <= radius + 1e-9))
+    console.warn(`TODO 296 landing 2: the landing reads a contact arm of ${landing && landing.arm_u} on a wheel of ${radius} — the normal's line of action has left the metal`);
   return Object.freeze({
     radius_u: radius, tip: { xy: T, r: tr, azDeg: azT / DEG2RAD },
     wedge: Object.freeze({ fullRad: 2 * halfV, halfRad: halfV, fullDeg: 2 * halfV / DEG2RAD,
@@ -2119,6 +2140,7 @@ const ESCAPE_TOOTH_GEOM = (() => {
     runs: Object.freeze(runs.map(Object.freeze)),
     worstArm_u: Math.min(...runs.map((q) => q.arm_u)),
     virtualWork: Object.freeze(vwWorst),
+    landing: Object.freeze(landing),
   });
 })();
 const palletFork = G.makePalletFork({
@@ -36227,7 +36249,117 @@ const EQUALISATION = (() => {
         console.warn(`TODO 296: the club tooth's tip works past the escape steel's low end on ${worstT.run} at the ${worstT.corner} corner — `
           + `${worstT.binds === 'hertz' ? `p0 ${(worstT.p0_Pa / 1e9).toFixed(3)} GPa against ${(p0Allow / 1e9).toFixed(3)}` : `${(worstT.sigma_Pa / 1e6).toFixed(0)} MPa against ${(ESCAPE_STEEL_SIGMA_Y_PA / 1e6).toFixed(0)}`}`
           + ` at a tip radius of ${(rho * 1e6).toFixed(3)} µm; it needs ${(worstT.rhoMin_m * 1e6).toFixed(3)} µm — the club wants a tip LAND`);
-      return { rows, rho_m: rho, tipBand: { ...ESCAPE_TIP_R_BAND }, steel: { ...ESCAPE_STEEL_SIGMA_Y_BAND },
+      // TODO 296 landing 2 — THE DROP'S LANDING, which landing 1 named and left.
+      // At the let-off the tooth leaves the stone and the wheel runs FREE through
+      // the drop, driven by the escape torque, until the next tooth lands on the
+      // other stone's locking face. Landing 1 measured that it arrives with some
+      // seven million times the elastic energy the tip's contact stores at the
+      // working load, and said the load was not priced because its path runs
+      // through the stone into the fork and out at the banking pin. It is priced
+      // now, and the answer is not that the tooth breaks: it RUNS IN.
+      //
+      //  · THE WHEEL'S SPEED AT THE LANDING, through the model's own laws. The
+      //    balance at AMPLITUDE_PEAK_DEG (TODO 192 step 4's rule: a PEAK load is
+      //    priced at the largest swing the balance can reach) is turning
+      //    A·ω·cos(asin(θ/A)) at the let-off; the notch's `lead` wall carries the
+      //    fork at dφ/dθ of that; the impulse face's own gearing dδ/dφ carries the
+      //    wheel at that again. Then the drop: ½I(ω²−ω₀²) = τ·θ_drop, frictionless,
+      //    so the fastest landing the model admits. I is FORK_CROSSING's own
+      //    I_wheel — the escape arbor with the train reflected through its ratios,
+      //    weighed off the meshes at each stock's density (TODO 226 step 3b).
+      //  · THE IMPACT, with no restitution coefficient anywhere. Two bodies
+      //    colliding through a contact whose normal's moment arms about each axis
+      //    the geometry gives: the effective mass along that normal is
+      //    1/(a_w²/I_w + a_f²/I_f) and the closing velocity a_w·ω. The fork is
+      //    taken AT REST, which is the bound: between the let-off and the landing
+      //    it coasts toward its banking, which is the way the landing tooth will
+      //    push it, so any speed it has only opens the gap.
+      //  · WHERE THE ENERGY GOES, and this is the finding. The series compliance
+      //    is NOT the Hertz contact — it is the TOOTH, by three orders of
+      //    magnitude. The club is a tapered cantilever loaded at its tip arc
+      //    (EI y'' = F·s with I = t·(k·s)³/12, integrated from the arc's tangent
+      //    station to where the wedge ends), and that comes out ~21 kN/m against
+      //    the contact's ~22 MN/m. So the 2-D contact's datum-dependent approach
+      //    (Johnson §5.2: the compliance of two cylinders is only defined against
+      //    a reference length) cannot move the answer, which the gate asserts
+      //    rather than assumes. The fork's arm, the stone's seat and the banking
+      //    pin are further series members and are NOT modelled — every one would
+      //    soften the stack, so leaving them out makes the peak force, and the
+      //    run-in radius below, UPPER bounds.
+      //  · AND THE CRITERION IS SHAKEDOWN, not first yield. A contact that
+      //    repeats ten times a second for the life of the watch is held to
+      //    LINE_CONTACT_SHAKEDOWN_P0_PER_Y (Johnson's 4.0k), not to the elastic
+      //    limit: past first yield the apex deforms a little, residual stresses
+      //    build, and the contact becomes elastic again at a higher load. So the
+      //    tip does not fail — it BLUNTS until it shakes down, and `runIn` is the
+      //    radius where that stops, solved by the same inversion landing 1 used
+      //    (p0 ∝ ρ^−½ at fixed F). A tooth that ran in PAST its finish band would
+      //    be a tooth wearing its own lock away; that is what the gate holds.
+      const landing = (() => {
+        const Lg = H.landing, cr = FORK_CROSSING;
+        if (!Lg || !cr) return null;
+        const aW = Lg.arm_u * OSC_U, aF = Lg.armFork_u * OSC_U;
+        const Iw = cr.I_wheel, If = cr.I_fork;
+        // the let-off kinematics, off the posed laws at the peak swing
+        const Apk = AMPLITUDE_PEAK_DEG * DEG2RAD, wB = 2 * Math.PI * F_BALANCE;
+        const thL = PIN_FORK.liftHalf, hh = 1e-7;
+        const thetaDot = Apk * wB * Math.cos(Math.asin(Math.min(1, thL / Apk)));
+        const dPhi = Math.abs((PIN_FORK.notch.lead(thL + hh) - PIN_FORK.notch.lead(thL - hh)) / (2 * hh));
+        // the impulse face's gearing at the let-off, the FASTER of the two stones:
+        // they are not mirror images here (the fork's radial and the wheel's meet
+        // at 19° on one and 4° on the other), so one stone throws the wheel off
+        // harder than the other and the peak load is that one's
+        const gear = Math.max(...ESCAPEMENT.stones.map((stE) => {
+          const phiE = stE.sigma * stE.xE;
+          return Math.abs((ESCAPEMENT.deltaOnImpulseFace(stE.sigma, phiE + hh).delta
+                         - ESCAPEMENT.deltaOnImpulseFace(stE.sigma, phiE - hh).delta) / (2 * hh));
+        }));
+        const omegaLetoff = gear * dPhi * thetaDot;
+        const dropRad = ESCAPEMENT.drop;
+        const omegaLand = Math.sqrt(omegaLetoff * omegaLetoff + 2 * escapeTorque_Nm * dropRad / Iw);
+        const mStar = 1 / (aW * aW / Iw + aF * aF / If);
+        const v0 = aW * omegaLand, Eimp = 0.5 * mStar * v0 * v0;
+        // the stack: the club's own taper, then the contact
+        const sArc = (rr) => rr * Math.pow(Math.cos(a), 2) / Math.sin(a);
+        const sRoot = Math.abs(H.wedge.holdsTo_u) * OSC_U, kW = H.wedge.widthPerDepth;
+        const kTooth = (rr) => {
+          const sa = sArc(rr), A0 = 12 / (STEEL_E_PA * tM * Math.pow(kW, 3));
+          return 1 / (A0 * (sa / sRoot - 1 + Math.log(sRoot / sa)));
+        };
+        const kHertz = (rr, F) => {
+          const Fl = F / tM, ha = Math.sqrt(4 * Fl * rr / (Math.PI * Estar));
+          return F / Math.max((2 * Fl / (Math.PI * Estar)) * (Math.log(4 * rr / ha) - 1), 1e-18);
+        };
+        const peak = (rr) => {
+          let F = 1e-3;
+          for (let i = 0; i < 120; i++) F = Math.sqrt(2 * Eimp / (1 / kTooth(rr) + 1 / kHertz(rr, F)));
+          const kT = kTooth(rr), kH = kHertz(rr, F);
+          return { F, kTooth_N_per_m: kT, kHertz_N_per_m: kH, kSeries_N_per_m: 1 / (1 / kT + 1 / kH),
+            p0_Pa: Math.sqrt((F / tM) * Estar / (Math.PI * rr)) };
+        };
+        const rhoFor = (p0a) => { let rr = rho; for (let i = 0; i < 160; i++) rr = Math.min(1e-3, Math.max(1e-10, rr * Math.pow(peak(rr).p0_Pa / p0a, 2))); return rr; };
+        const shakeAllow = LINE_CONTACT_SHAKEDOWN_P0_PER_Y * ESCAPE_STEEL_SIGMA_Y_PA;
+        const atSharp = peak(rho);
+        const rhoShake = rhoFor(shakeAllow), rhoElastic = rhoFor(p0Allow);
+        // the tip's own recession as it blunts: the arc's nearest point stands
+        // rho(1/sin a - 1) inside the sharp apex, so running in costs the lock
+        // that much of the tooth circle
+        const recession_u = (rhoShake - rho) * (1 / Math.sin(a) - 1) / OSC_U;
+        if (!(rhoShake <= ESCAPE_TIP_R_BAND.blunt_m * (1 + 1e-9)))
+          console.warn(`TODO 296 landing 2: the drop's landing blunts the club tip to ${(rhoShake * 1e6).toFixed(3)} µm before it shakes down, past the ${(ESCAPE_TIP_R_BAND.blunt_m * 1e6).toFixed(1)} µm its finish band allows — the tooth wears its own lock away`);
+        if (!(recession_u < CLEAR_MARGIN))
+          console.warn(`TODO 296 landing 2: running in costs the club tip ${recession_u.toFixed(5)} u of reach, over CLEAR_MARGIN — the lock cannot absorb the wear`);
+        return { peakDeg: AMPLITUDE_PEAK_DEG, thetaDot_rad_s: thetaDot, dPhiDTheta: dPhi, impulseGearing: gear,
+          omegaLetoff_rad_s: omegaLetoff, dropRad, omegaLand_rad_s: omegaLand,
+          I_wheel: Iw, I_fork: If, arm_u: Lg.arm_u, armFork_u: Lg.armFork_u, atForkDeg: Lg.atForkDeg,
+          mStar_kg: mStar, v0_m_s: v0, energy_J: Eimp,
+          atSharp, shakedownAllow_Pa: shakeAllow, elasticAllow_Pa: p0Allow,
+          runIn: { rho_m: rhoShake, elasticRho_m: rhoElastic, recession_u,
+            band_m: [ESCAPE_TIP_R_BAND.sharp_m, ESCAPE_TIP_R_BAND.blunt_m],
+            atRunIn: peak(rhoShake) },
+          notModelled: ['the fork\u2019s arm', 'the stone\u2019s seat', 'the banking pin'] };
+      })();
+      return { rows, landing, rho_m: rho, tipBand: { ...ESCAPE_TIP_R_BAND }, steel: { ...ESCAPE_STEEL_SIGMA_Y_BAND },
         // both bodies of the contact, named, so the gate re-derives E* rather
         // than trusting it: the tooth is steel, the stone corundum (§269's stocks)
         bodies: { tooth: { E_Pa: STEEL_E_PA, nu: STEEL_NU }, stone: { E_Pa: STOCK.corundum.E, nu: STOCK.corundum.nu } },
