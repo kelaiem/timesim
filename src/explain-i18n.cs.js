@@ -250,7 +250,7 @@ export default {
   ['PAWLS ×2']: 'ZÁPADKY ×2',
   ['SPRING · under']: 'PERO · vespod',
   ['inner ring — base ratchet flange, keyed to the fusee']: 'vnitřní prstenec — spodní příruba rohatky, klínovaná k fusée',
-  ['MAINT_TEETH 24 on the flange, 35 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 na přírubě, 35 na prstenci · dvě západky π od sebe = 12 roztečí, takže působí souhlasně',
+  ['MAINT_TEETH 24 on the flange, 25 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 na přírubě, 25 na prstenci · dvě západky π od sebe = 12 roztečí, takže působí souhlasně',
   ['THE LIVE TORQUE PATH']: 'ŽIVÁ CESTA MOMENTU',
   ['crown → winding spur']: 'koruna → natahovací čelní kolo',
   ['fusee cone → base ratchet flange']: 'kužel fusée → spodní příruba rohatky',

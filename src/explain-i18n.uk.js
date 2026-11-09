@@ -244,7 +244,7 @@ export default {
   ['PAWLS ×2']: 'СОБАЧКИ ×2',
   ['SPRING · under']: 'ПРУЖИНА · знизу',
   ['inner ring — base ratchet flange, keyed to the fusee']: 'внутрішнє кільце — фланець базового храповика, жорстко на фузеї',
-  ['MAINT_TEETH 24 on the flange, 35 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 на фланці, 35 на кільці · дві собачки через π = 12 кроків, тож діють в унісон',
+  ['MAINT_TEETH 24 on the flange, 25 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 на фланці, 25 на кільці · дві собачки через π = 12 кроків, тож діють в унісон',
   ['THE LIVE TORQUE PATH']: 'ЖИВИЙ ШЛЯХ МОМЕНТУ',
   ['crown → winding spur']: 'головка → заводне колесо',
   ['fusee cone → base ratchet flange']: 'конус фузеї → фланець базового храповика',

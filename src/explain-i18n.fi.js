@@ -247,7 +247,7 @@ export default {
   ['PAWLS ×2']: 'SALVAT ×2',
   ['SPRING · under']: 'JOUSI · alla',
   ['inner ring — base ratchet flange, keyed to the fusee']: 'sisärengas — perusräikän laippa, kiilattu fuseeseen',
-  ['MAINT_TEETH 24 on the flange, 35 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 laipassa, 35 renkaassa · kaksi salpaa π:n päässä = 12 jakoa, joten ne toimivat yhtä aikaa',
+  ['MAINT_TEETH 24 on the flange, 25 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 laipassa, 25 renkaassa · kaksi salpaa π:n päässä = 12 jakoa, joten ne toimivat yhtä aikaa',
   ['THE LIVE TORQUE PATH']: 'ELÄVÄ VÄÄNTÖPOLKU',
   ['crown → winding spur']: 'vetonuppi → vetolieriöpyörä',
   ['fusee cone → base ratchet flange']: 'fusee-kartio → perusräikän laippa',

@@ -213,7 +213,7 @@ export default {
   ['PAWLS ×2']: 'KLINKEN ×2',
   ['SPRING · under']: 'FEDER · darunter',
   ['inner ring — base ratchet flange, keyed to the fusee']: 'innerer Ring — Sperrscheibe am Fuß, mit der Schnecke verstiftet',
-  ['MAINT_TEETH 24 on the flange, 35 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 an der Sperrscheibe, 35 am Ring · zwei Klinken π auseinander = 12 Teilungen, sie wirken also gleichzeitig',
+  ['MAINT_TEETH 24 on the flange, 25 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 an der Sperrscheibe, 25 am Ring · zwei Klinken π auseinander = 12 Teilungen, sie wirken also gleichzeitig',
   ['THE LIVE TORQUE PATH']: 'DER LEBENDE MOMENTENPFAD',
   ['crown → winding spur']: 'Krone → Aufzugsrad',
   ['fusee cone → base ratchet flange']: 'Schneckenkegel → Sperrscheibe am Fuß',

@@ -228,7 +228,7 @@ export default {
   ['PAWLS ×2']: 'つめ ×2',
   ['SPRING · under']: 'ばね · 下',
   ['inner ring — base ratchet flange, keyed to the fusee']: '内環 — 基部ラチェットのフランジ、フュジーに固定',
-  ['MAINT_TEETH 24 on the flange, 35 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH フランジ 24、環 35 · つめ二つが π = 12 ピッチ差 — つまり同時に働く',
+  ['MAINT_TEETH 24 on the flange, 25 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH フランジ 24、環 25 · つめ二つが π = 12 ピッチ差 — つまり同時に働く',
   ['THE LIVE TORQUE PATH']: '生きたトルクの経路',
   ['crown → winding spur']: 'りゅうず → 巻上げ小歯車',
   ['fusee cone → base ratchet flange']: 'フュジー円錐 → 基部ラチェットのフランジ',

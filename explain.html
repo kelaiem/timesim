@@ -1035,7 +1035,7 @@
             <text class="lbl" x="14" y="140">PAWLS ×2</text>
             <text class="lbl" x="14" y="170">SPRING · under</text>
             <text class="val val-steel" x="14" y="300">inner ring — base ratchet flange, keyed to the fusee</text>
-            <text class="val val-steel" x="14" y="318">MAINT_TEETH 24 on the flange, 35 on the ring · two pawls π apart = 12 pitches, so they act in unison</text>
+            <text class="val val-steel" x="14" y="318">MAINT_TEETH 24 on the flange, 25 on the ring · two pawls π apart = 12 pitches, so they act in unison</text>
             <g id="fmFlow"></g>
             <text class="lbl lbl-strong" x="390" y="40">THE LIVE TORQUE PATH</text>
             <text class="val" x="476" y="68">crown → winding spur</text>
@@ -4877,9 +4877,9 @@
         var RELIEF = 0.005;                                     // SEAT_RELIEF
         // TODO 219 — the RING has its own count, solved from the maintaining
         // spring's run (a wind first recoils the ring up to one pitch onto the
-        // beak, and the blade's run must cover that): 35 teeth, their depth
+        // beak, and the blade's run must cover that): 25 teeth, their depth
         // scaled with the pitch so the valley keeps the 24-tooth cut's shape.
-        var RING_TEETH = 35, RING_DEPTH = 0.2 * TEETH / RING_TEETH;   // MAINT_RING_TEETH, MAINT_RING_DEPTH_F
+        var RING_TEETH = 25, RING_DEPTH = 0.2 * TEETH / RING_TEETH;   // MAINT_RING_TEETH, MAINT_RING_DEPTH_F
         var pitch = (Math.PI * 2) / RING_TEETH;
         var RUN = 1;                                            // this plate's wheel turns + while running
         function sawPoly(R, lean) {                             // the builder's outline: root→tip over 0.72 of the pitch

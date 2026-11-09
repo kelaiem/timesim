@@ -185,7 +185,7 @@ export default {
   ['PAWLS ×2']: 'SPRŪDI ×2',
   ['SPRING · under']: 'ATSPERE · apakšā',
   ['inner ring — base ratchet flange, keyed to the fusee']: 'iekšējais gredzens — pamata sprūdrata atloks, ķīlēts fuzejai',
-  ['MAINT_TEETH 24 on the flange, 35 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 uz atloka, 35 uz gredzena · divi sprūdi π attālumā = 12 soļi, tāpēc darbojas vienlaikus',
+  ['MAINT_TEETH 24 on the flange, 25 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 uz atloka, 25 uz gredzena · divi sprūdi π attālumā = 12 soļi, tāpēc darbojas vienlaikus',
   ['THE LIVE TORQUE PATH']: 'DZĪVAIS MOMENTA CEĻŠ',
   ['crown → winding spur']: 'kronis → uzv. zobrats',
   ['fusee cone → base ratchet flange']: 'fuzejas konuss → pam. sprūdr. atloks',

@@ -62996,8 +62996,8 @@ function tick(t) {
       if (sndArrestStalled !== null && windArrestStalled && !sndArrestStalled) SND.arrestBank();
       sndArrestStalled = windArrestStalled;
       // Maintaining detent while running — one soft tick per rim tooth of
-      // movement time (TODO 219: MAINT_RING_TEETH, 35 to a barrel turn of
-      // 120/7 h — a tick every 29.4 min).
+      // movement time (TODO 219: MAINT_RING_TEETH, 25 to a barrel turn of
+      // 120/7 h — a tick every 41.1 min).
       const detIdx = Math.floor((barrelArbor.rotation.z + maintWheel.rotation.z - MAINT_DETENT_AZ) / ((Math.PI * 2) / MAINT_RING_TEETH));   // TODO 224: the ring's own angle
       if (sndDetIdx !== null && detIdx !== sndDetIdx) SND.detent();
       sndDetIdx = detIdx;

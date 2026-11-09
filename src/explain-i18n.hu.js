@@ -189,7 +189,7 @@ export default {
   ['PAWLS ×2']: 'KILINCS ×2',
   ['SPRING · under']: 'RUGÓ · alul',
   ['inner ring — base ratchet flange, keyed to the fusee']: 'belső gyűrű — alap kilincskarima, kúpcsigához ékelve',
-  ['MAINT_TEETH 24 on the flange, 35 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 a karimán, 35 a gyűrűn · két kilincs π távolságra = 12 osztás, így egyszerre működnek',
+  ['MAINT_TEETH 24 on the flange, 25 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 a karimán, 25 a gyűrűn · két kilincs π távolságra = 12 osztás, így egyszerre működnek',
   ['THE LIVE TORQUE PATH']: 'AZ ÉLŐ NYOMATÉKÚT',
   ['crown → winding spur']: 'korona → felhúzókerék',
   ['fusee cone → base ratchet flange']: 'kúpcsiga → alap kilincskarima',

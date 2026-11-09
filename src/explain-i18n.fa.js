@@ -195,7 +195,7 @@ export default {
   ['PAWLS ×2']: 'پنجه‌ها ×2',
   ['SPRING · under']: 'فنر · زیر',
   ['inner ring — base ratchet flange, keyed to the fusee']: 'حلقه‌ی درونی — فلنج جغجغه‌ی پایه، جفت‌شده با فوزه',
-  ['MAINT_TEETH 24 on the flange, 35 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 روی فلنج، 35 روی حلقه · دو پنجه با فاصله‌ی π = 12 گام، پس هم‌زمان عمل می‌کنند',
+  ['MAINT_TEETH 24 on the flange, 25 on the ring · two pawls π apart = 12 pitches, so they act in unison']: 'MAINT_TEETH 24 روی فلنج، 25 روی حلقه · دو پنجه با فاصله‌ی π = 12 گام، پس هم‌زمان عمل می‌کنند',
   ['THE LIVE TORQUE PATH']: 'مسیر زنده‌ی گشتاور',
   ['crown → winding spur']: 'تاج ← چرخ ساده‌ی کوک',
   ['fusee cone → base ratchet flange']: 'مخروط فوزه ← فلنج جغجغه‌ی پایه',
