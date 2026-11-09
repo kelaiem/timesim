@@ -7951,21 +7951,39 @@ async function solveReserveSwing(pts, statics = null) {
     const LEG_LO = 1 - 1e-12;
     // one band's least clearance from `c0` down: the one law both the static
     // memo and the candidate's points are measured by
-    const seg = (arr, R, c0, zBand) => {
+    const seg = (arr, R, c0, zBand, cx = wx, cy = wy, lo = p1Lo, hi = p1Hi) => {
       let m = c0;
       for (const q of arr) {
-        if (zBand && (q[2] < p1Lo || q[2] > p1Hi)) continue;
-        if (Math.abs(wx - q[0]) * LEG_LO - R >= m || Math.abs(wy - q[1]) * LEG_LO - R >= m) continue;
-        const d = Math.hypot(wx - q[0], wy - q[1]) - R;
+        if (zBand && (q[2] < lo || q[2] > hi)) continue;
+        if (Math.abs(cx - q[0]) * LEG_LO - R >= m || Math.abs(cy - q[1]) * LEG_LO - R >= m) continue;
+        const d = Math.hypot(cx - q[0], cy - q[1]) - R;
         if (d < m) m = d;
       }
       return m;
     };
+    // TODO 289 landing 8 — THE IDLERS SWING WITH w1 (§308 L4 option B, RSV_IDLERS > 0 on a sector station only): each
+    // stands on the w1→pivot line at the centre distances its pitch radii give, the build's own stations below
+    // (rsvIdlers), so it is judged here with the rest of the swinging train. It stands in p1's plane, 1.0 thick against
+    // p1's 1.2, so p1's band (sifted at its widest) holds every point that can reach it; its own face reach bands it
+    // exactly. Unjudged, the second idler met the cap arbor's hanger column on stopwork-140 at 0.0000.
+    const idl = [];
+    if (RSV_IDLERS > 0) {
+      const ddx = rsvPivotXY.x - wx, ddy = rsvPivotXY.y - wy, dd = Math.hypot(ddx, ddy);
+      for (let k = 1; k <= RSV_IDLERS; k++) {
+        const along = m1 * (rsvTeethP1 / 2 + RSV_IDLER_T / 2 + (k - 1) * RSV_IDLER_T);
+        const mates = [k === 1 ? rsvTeethP1 : RSV_IDLER_T, k === RSV_IDLERS ? rsvTeethW2 : RSV_IDLER_T];
+        const args = { module: m1, teeth: RSV_IDLER_T, mates, thickness: 1.0, boreR: RSV_IDLER_BORE_R };
+        const reach = G.gearFaceReach(args).body;
+        idl.push({ k, x: wx + ddx / dd * along, y: wy + ddy / dd * along, R: cutTipR(G.makeGear, { ...args, spokes: 0, material: MATS.brass }),
+          lo: p1Z - reach - CLEAR_MARGIN, hi: p1Z + reach + CLEAR_MARGIN });
+      }
+    }
     let st = null;
     if (statics) {
       st = statics.at.get(dl);
       if (!st) {
-        st = { w1: seg(statics.inW1, rsvW1TipR, Infinity), hub: seg(statics.inHub, w1Reach.hub.r, Infinity), p1: seg(statics.inP1, p1TipR, Infinity, true) };
+        st = { w1: seg(statics.inW1, rsvW1TipR, Infinity), hub: seg(statics.inHub, w1Reach.hub.r, Infinity), p1: seg(statics.inP1, p1TipR, Infinity, true),
+          idl: idl.map((i) => seg(statics.inP1, i.R, Infinity, true, i.x, i.y, i.lo, i.hi)) };
         statics.at.set(dl, st);
       }
     }
@@ -7977,6 +7995,10 @@ async function solveReserveSwing(pts, statics = null) {
     take(seg(inHub, w1Reach.hub.r, c), 'w1 hub');
     if (st) take(st.p1, 'p1');
     take(seg(inP1, p1TipR, c, true), 'p1');
+    for (const [j, i] of idl.entries()) {
+      if (st) take(st.idl[j], `idler ${i.k}`);
+      take(seg(inP1, i.R, c, true, i.x, i.y, i.lo, i.hi), `idler ${i.k}`);
+    }
     return { c, member };
   };
   let best = { c: -Infinity, member: 'none', swing: 0 };
@@ -9637,11 +9659,17 @@ async function buildSettingMetal(B, parent, { candidate = false } = {}) {
       // lapped into the bush by its 40-gon's flat sag (RING_GEO_SEG), so the weld is metal on metal and not a
       // hairline over a flat: the arm's inner face sits at the polygon's flat, where the metal is
       const sag = h.bushR * (1 - Math.cos(Math.PI / RING_GEO_SEG));
-      const arm = new THREE.Mesh(new THREE.BoxGeometry(h.armLen + sag, MW_HANGER_S, MW_HANGER_S), MATS.nickel);
+      // TODO 289 landing 8 — the arm and the column are cut in segments of at most half a margin along their length:
+      // the reserve's swing solve reads obstacles as VERTICES (meshPoints), and a one-segment box has them only at its
+      // ends, so on stopwork-140 the rise's column stood through w1's plane with no vertex in w1's band and the solve
+      // passed it at 0.0000. Half a margin is the solve's own sampling law (a distance moves no faster than the thing
+      // measured), so every band at least that thick holds a ring of the member's metal.
+      const hangerSegs = (L) => Math.max(1, Math.ceil(L / (CLEAR_MARGIN / 2)));
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(h.armLen + sag, MW_HANGER_S, MW_HANGER_S, hangerSegs(h.armLen + sag), 1, 1), MATS.nickel);
       arm.name = `${tag}Arm`;
       arm.position.copy(h.c).addScaledVector(h.n, h.bushR - sag + (h.armLen + sag) / 2);
       arm.quaternion.copy(armFrame);
-      const col = new THREE.Mesh(new THREE.BoxGeometry(MW_HANGER_S, MW_HANGER_S, h.colTop - h.zBot), MATS.nickel);
+      const col = new THREE.Mesh(new THREE.BoxGeometry(MW_HANGER_S, MW_HANGER_S, h.colTop - h.zBot, 1, 1, hangerSegs(h.colTop - h.zBot)), MATS.nickel);
       col.name = `${tag}Column`;
       col.position.set(h.foot.x, h.foot.y, (h.zBot + h.colTop) / 2);
       col.quaternion.copy(armFrame);
