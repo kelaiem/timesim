@@ -38,7 +38,7 @@ import { ZERO_AREA_MAX, CLEAR_MARGIN, HANDOFF_TRACK_TOL, UNIT_MM, Z_DIAL, SLENDE
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME, SPEC,                                    // §36 Apply: the same predicate that builds the unit, and the same name
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, rigidSplit,
-  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, ESCAPE_STEEL_SIGMA_Y_PA, ESCAPE_TIP_R_M, ESCAPE_TIP_R_BAND, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, MAINSPRING_ALPHA_MIN, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R_SPEC, BALANCE_R_REF, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG, STOPWORK_BUILT, GEARED_BUILT } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
+  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, ESCAPE_STEEL_SIGMA_Y_PA, ESCAPE_TIP_R_M, ESCAPE_TIP_R_BAND, LINE_CONTACT_SHAKEDOWN_P0_PER_Y, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, MAINSPRING_ALPHA_MIN, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R_SPEC, BALANCE_R_REF, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG, STOPWORK_BUILT, GEARED_BUILT } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 import { auditLubrication, LUBRICATION, LUBRICATION_DEBT, LUBRICATION_WAIVERS } from './lubrication.js';   // §247 tier one
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
@@ -11049,6 +11049,31 @@ export function checkOscillator(clock) {
 //     first-yield radius, ρ_min is the larger, `binds` names it, and ρ_min must
 //     be at or under ESCAPE_TIP_R_M — the SHARP end of the declared finish
 //     band, the loaded reading. No waiver: row 16's beak arc has none either.
+// 21. AND THE DROP'S LANDING DOES NOT BREAK IT — IT RUNS IN (TODO 296 landing
+//     2). Row 20 prices the quasi-static load; this prices the one landing 1
+//     named and left. The wheel runs FREE through the drop and the next tooth
+//     lands on the other stone's locking face carrying some seven million times
+//     the elastic energy the tip's contact stores at the working load, so the
+//     question is not whether the tip yields — it does — but how far it blunts
+//     before the contact SHAKES DOWN. Held: the let-off kinematics re-derived
+//     from the record's own chain (the balance at AMPLITUDE_PEAK_DEG, the
+//     notch's dφ/dθ, the impulse face's dδ/dφ), the drop's
+//     ½I(ω²−ω₀²) = τ·θ_drop on FORK_CROSSING's own reflected inertia, the
+//     effective mass 1/(a_w²/I_w + a_f²/I_f) and the closing velocity a_w·ω off
+//     the landing arm — no restitution coefficient anywhere, and the fork taken
+//     at REST because between the let-off and the landing it coasts the way the
+//     tooth will push it. Then F = √(2·k·E) on the series stack, whose stiffness
+//     must be the TOOTH's and not the contact's (asserted, within a percent:
+//     the club's taper is ~21 kN/m against the contact's ~22 MN/m, which is what
+//     makes the 2-D contact's datum-dependent compliance unable to move the
+//     answer), and p0 inverted to the radius at which it reaches
+//     LINE_CONTACT_SHAKEDOWN_P0_PER_Y × the escape steel's low end. That radius
+//     must land INSIDE ESCAPE_TIP_R_BAND — a tip that ran in past its finish is
+//     a tooth wearing its own lock away — and the reach it costs must stay under
+//     CLEAR_MARGIN. The two contact constants are held to ONE source on the way
+//     past: 1.79·√3 = 3.1k and 4.0k are the same table's elastic and shakedown
+//     limits, so the first-yield constant must reproduce 3.1 from the shakedown
+//     one's per-k figure.
 // TODO 193 — the ribbons over their alloy, by name. A row cites the TODO whose
 // fix path brings it under, and FAILS when its ribbon already is (stale).
 // TODO 291 — the ribbons under the packing band, by name; RIBBON_STRESS_WAIVERS' convention.
@@ -11395,6 +11420,87 @@ export function checkEqualisation(clock) {
       const worstRow = et.rows.reduce((x, y) => (y.margin < x.margin ? y : x));
       if (et.worst.run !== worstRow.run || et.worst.corner !== worstRow.corner || !(rel(et.worst.margin, worstRow.margin) <= 1e-12))
         failures.push({ what: 'escape tooth worst row is not the lowest margin', record: et.worst, lowest: { run: worstRow.run, corner: worstRow.corner, margin: worstRow.margin } });
+
+      // Row 21 (TODO 296 landing 2) — THE DROP'S LANDING, and the run-in.
+      // The two contact limits are the same table's two rows, so hold them to
+      // one source before using either: Johnson's elastic limit is 3.1k and his
+      // shakedown limit 4.0k, and the first-yield constant is that 3.1k written
+      // as 1.79·Y.
+      if (!(Math.abs(LINE_CONTACT_FIRST_YIELD_P0_PER_Y * Math.sqrt(3) - 3.1) <= 5e-3))
+        failures.push({ what: 'the first-yield and shakedown constants are not one source', firstYieldPerY: LINE_CONTACT_FIRST_YIELD_P0_PER_Y, perK: LINE_CONTACT_FIRST_YIELD_P0_PER_Y * Math.sqrt(3), johnson: 3.1 });
+      if (!(LINE_CONTACT_SHAKEDOWN_P0_PER_Y > LINE_CONTACT_FIRST_YIELD_P0_PER_Y))
+        failures.push({ what: 'shakedown is not above first yield', shakedown: LINE_CONTACT_SHAKEDOWN_P0_PER_Y, firstYield: LINE_CONTACT_FIRST_YIELD_P0_PER_Y });
+      const lg = et.landing;
+      if (!lg) {
+        failures.push({ what: 'escape tooth landing rows', note: 'going.energy.escapeTooth.landing is missing \u2014 the drop\'s impact is unpriced (TODO 296 landing 2 regressed)' });
+      } else {
+        const Iw = lg.I_wheel, If = lg.I_fork, aW = lg.arm_u * U, aF = lg.armFork_u * U;
+        if (!(Iw > 0 && If > 0))
+          failures.push({ what: 'the landing has no inertia to collide with', I_wheel: Iw, I_fork: If });
+        if (!(rel(lg.arm_u, g.landing.arm_u) <= 1e-12 && rel(lg.armFork_u, g.landing.armFork_u) <= 1e-12))
+          failures.push({ what: 'the landing is priced on an arm the geometry did not measure', record: [lg.arm_u, lg.armFork_u], measured: [g.landing.arm_u, g.landing.armFork_u] });
+        if (!(g.landing.arm_u > 0 && g.landing.arm_u <= g.radius_u + 1e-9))
+          failures.push({ what: 'the landing arm is outside the wheel', arm_u: g.landing.arm_u, radius_u: g.radius_u });
+        // THE PEAK SWING, because a peak load is priced at the largest swing the
+        // balance can reach (TODO 192 step 4's rule, one mechanism along)
+        if (!(lg.peakDeg === AMPLITUDE_PEAK_DEG))
+          failures.push({ what: 'the landing is not priced at the peak swing', record: lg.peakDeg, peak: AMPLITUDE_PEAK_DEG });
+        // the drop's own energy identity, and the speed it leaves
+        const wLand = Math.sqrt(lg.omegaLetoff_rad_s * lg.omegaLetoff_rad_s + 2 * en.escapeTorque_Nm * lg.dropRad / Iw);
+        if (!(rel(lg.omegaLand_rad_s, wLand) <= 1e-12))
+          failures.push({ what: 'the drop\'s energy identity', record: lg.omegaLand_rad_s, fromTorque: wLand });
+        if (!(lg.omegaLand_rad_s > lg.omegaLetoff_rad_s))
+          failures.push({ what: 'the wheel does not accelerate through the drop', letoff: lg.omegaLetoff_rad_s, landing: lg.omegaLand_rad_s });
+        // the impact, with no restitution coefficient
+        const mStar = 1 / (aW * aW / Iw + aF * aF / If);
+        const v0 = aW * lg.omegaLand_rad_s, Eimp = 0.5 * mStar * v0 * v0;
+        if (!(rel(lg.mStar_kg, mStar) <= 1e-12))
+          failures.push({ what: 'the landing\'s effective mass identity', record: lg.mStar_kg, fromArms: mStar });
+        if (!(rel(lg.v0_m_s, v0) <= 1e-12))
+          failures.push({ what: 'the landing\'s closing velocity identity', record: lg.v0_m_s, fromArm: v0 });
+        if (!(rel(lg.energy_J, Eimp) <= 1e-12))
+          failures.push({ what: 'the landing\'s energy identity', record: lg.energy_J, fromMass: Eimp });
+        // THE SERIES STACK IS THE TOOTH'S, which is what makes the 2-D contact's
+        // datum-dependent compliance unable to move the answer. Asserted, not
+        // assumed: a stack the contact governed would be a different claim.
+        for (const [where, q] of [['at the sharp tip', lg.atSharp], ['at the run-in radius', lg.runIn.atRunIn]]) {
+          if (!(rel(q.kSeries_N_per_m, q.kTooth_N_per_m) <= 0.01))
+            failures.push({ what: 'the landing\'s compliance is not the tooth\'s', where, series: q.kSeries_N_per_m, tooth: q.kTooth_N_per_m, contact: q.kHertz_N_per_m });
+          if (!(q.kHertz_N_per_m > 100 * q.kTooth_N_per_m))
+            failures.push({ what: 'the contact is not far stiffer than the tooth', where, contact: q.kHertz_N_per_m, tooth: q.kTooth_N_per_m });
+          const F = Math.sqrt(2 * lg.energy_J * q.kSeries_N_per_m);
+          if (!(rel(q.F, F) <= 1e-9))
+            failures.push({ what: 'the landing\'s peak force identity', where, record: q.F, fromEnergy: F });
+        }
+        // the run-in radius solves its own criterion, and lands inside the band
+        const shake = LINE_CONTACT_SHAKEDOWN_P0_PER_Y * ESCAPE_STEEL_SIGMA_Y_PA;
+        if (!(rel(lg.shakedownAllow_Pa, shake) <= 1e-12))
+          failures.push({ what: 'the landing\'s allowable is not shakedown of the escape steel\'s low end', record: lg.shakedownAllow_Pa, fromLimit: shake });
+        if (!(rel(lg.runIn.atRunIn.p0_Pa, shake) <= 1e-6))
+          failures.push({ what: 'the run-in radius does not land on the shakedown limit', p0: lg.runIn.atRunIn.p0_Pa, allow: shake });
+        if (!(lg.atSharp.p0_Pa > shake))
+          failures.push({ what: 'the sharp tip already shakes down, so there is nothing to run in', p0: lg.atSharp.p0_Pa, allow: shake, note: 'a landing that cannot blunt the tip is a landing this row is not measuring' });
+        if (!(lg.runIn.rho_m > ESCAPE_TIP_R_M - 1e-18))
+          failures.push({ what: 'the run-in makes the tip SHARPER than its finish band\'s sharp end', runIn_m: lg.runIn.rho_m, sharp_m: ESCAPE_TIP_R_M });
+        if (!(lg.runIn.rho_m <= ESCAPE_TIP_R_BAND.blunt_m * (1 + 1e-9)))
+          failures.push({ what: 'the drop blunts the club tip past its finish band', runIn_um: lg.runIn.rho_m * 1e6, blunt_um: ESCAPE_TIP_R_BAND.blunt_m * 1e6,
+            note: 'a tip that runs in past its finish is a tooth wearing its own lock away' });
+        // the stricter criterion is reported, not gated, but it must be BLUNTER:
+        // no yield at all costs more radius than shakedown does
+        if (!(lg.runIn.elasticRho_m > lg.runIn.rho_m))
+          failures.push({ what: 'the elastic run-in radius is not blunter than the shakedown one', elastic: lg.runIn.elasticRho_m, shakedown: lg.runIn.rho_m });
+        // and the reach it costs: the arc's nearest point stands rho(1/sin a - 1)
+        // inside the sharp apex, so blunting spends that much of the tooth circle
+        const rec = (lg.runIn.rho_m - ESCAPE_TIP_R_M) * (1 / Math.sin(w.halfRad) - 1) / U;
+        if (!(rel(lg.runIn.recession_u, rec) <= 1e-9))
+          failures.push({ what: 'the run-in\'s recession identity', record: lg.runIn.recession_u, fromRadius: rec });
+        if (!(lg.runIn.recession_u < CLEAR_MARGIN))
+          failures.push({ what: 'running in costs the tip more reach than CLEAR_MARGIN', recession_u: lg.runIn.recession_u, margin: CLEAR_MARGIN });
+        // the members this landing leaves out are NAMED, and every one of them
+        // would soften the stack, which is what makes the bound a bound
+        if (!(Array.isArray(lg.notModelled) && lg.notModelled.length >= 3))
+          failures.push({ what: 'the landing does not name the series members it leaves out', notModelled: lg.notModelled || null });
+      }
     }
     // Row 16 (TODO 217) — THE MAINTAINING DETENT'S HOLD. The face load is the
     // going torque over the face normal's moment arm, the torque being the
@@ -11746,6 +11852,24 @@ export function checkEqualisation(clock) {
           worstMargin: +en.escapeTooth.worst.margin.toFixed(3), binds: en.escapeTooth.worst.binds,
           rhoMin_nm: +(en.escapeTooth.rhoMin_m * 1e9).toFixed(3), sharp_nm: +(en.escapeTooth.tipBand.sharp_m * 1e9).toFixed(0),
           yield_MPa: en.escapeTooth.yield_Pa / 1e6, p0Allow_GPa: +(en.escapeTooth.p0Allow_Pa / 1e9).toFixed(4),
+          // TODO 296 landing 2 — the drop's landing and the run-in it costs
+          landing: en.escapeTooth.landing ? {
+            peakDeg: en.escapeTooth.landing.peakDeg,
+            omega_rad_s: +en.escapeTooth.landing.omegaLand_rad_s.toFixed(2),
+            v0_mm_s: +(en.escapeTooth.landing.v0_m_s * 1000).toFixed(3),
+            mStar_mg: +(en.escapeTooth.landing.mStar_kg * 1e6).toFixed(3),
+            energy_nJ: +(en.escapeTooth.landing.energy_J * 1e9).toFixed(4),
+            peakForce_mN: +(en.escapeTooth.landing.atSharp.F * 1000).toFixed(3),
+            p0AtSharp_GPa: +(en.escapeTooth.landing.atSharp.p0_Pa / 1e9).toFixed(4),
+            shakedown_GPa: +(en.escapeTooth.landing.shakedownAllow_Pa / 1e9).toFixed(4),
+            kTooth_N_per_m: +en.escapeTooth.landing.atSharp.kTooth_N_per_m.toFixed(0),
+            kContact_N_per_m: +en.escapeTooth.landing.atSharp.kHertz_N_per_m.toFixed(0),
+            runIn_um: +(en.escapeTooth.landing.runIn.rho_m * 1e6).toFixed(4),
+            runInElastic_um: +(en.escapeTooth.landing.runIn.elasticRho_m * 1e6).toFixed(4),
+            band_um: en.escapeTooth.landing.runIn.band_m.map((x) => +(x * 1e6).toFixed(2)),
+            recession_u: +en.escapeTooth.landing.runIn.recession_u.toFixed(5),
+            notModelled: en.escapeTooth.landing.notModelled,
+          } : null,
         } : null,
         corners: Object.fromEntries(Object.entries(en.corners).map(([c, C]) => [c, {
           etaTrain: +C.etaTrain.toFixed(4), etaTotal: +C.etaTotal.toFixed(4), delivered_nJ: +(C.delivered_J * 1e9).toFixed(4),
