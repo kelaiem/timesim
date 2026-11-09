@@ -2,7 +2,7 @@
 // §338 landing 5 — G3, KERNEL PARITY: does the compiled kernel answer what the JS
 // reference answers, and where it does not, is it the truer of the two?
 //
-//   node tools/probe-338-kernel-parity.mjs                      the primitive, on known and random geometry
+//   node tools/probe-338-kernel-parity.mjs                      the primitives, on known and random geometry
 //   node tools/probe-338-kernel-parity.mjs --reports JS WASM    two battery-native --report files of one tree
 //
 // Acceptance (exits non-zero on any failure).
@@ -279,5 +279,51 @@ console.log(`  REPORT the reference read 0 for ${refFalseZero} pair(s) the kerne
   }
 }
 
-console.log(`\n${fails.length ? `FAIL — ${fails.length} gate(s)` : 'PASS — the compiled distance and boolean are the reference\'s, and exact where the reference is not'}`);
+// ---------------------------------------------------------------------------
+// §338 landing 7 — THE EXACT PRIMITIVES' JS BODY. src/exact-mesh.js is the kernel's
+// algorithm ported operation for operation, and CONTACT (inspect.js' meshesIntersect)
+// is built on it in every mode, so here the parity is not "the same verdict": it is
+// Object.is on every answer — every distance, at every bound, and every meet — over
+// soups under rigid and sheared maps, unindexed, indexed (a shared-vertex geometry,
+// the order the kernel's intake reads an index in) and interleaved.
+{
+  const X = await import('../src/exact-mesh.js');
+  const indexed = (g) => { const p = g.attributes.position, n = p.count, h = new T.BufferGeometry();
+    // reverse the vertex order and index it back, so the index is not the identity
+    const pos = new Float32Array(n * 3), idx = new Uint32Array(n);
+    for (let i = 0; i < n; i++) { const j = n - 1 - i; pos[3 * j] = p.getX(i); pos[3 * j + 1] = p.getY(i); pos[3 * j + 2] = p.getZ(i); idx[i] = j; }
+    h.setAttribute('position', new T.BufferAttribute(pos, 3)); h.setIndex(new T.BufferAttribute(idx, 1)); return h; };
+  const interleaved = (g) => { const p = g.attributes.position, n = p.count, buf = new Float32Array(n * 4);
+    for (let i = 0; i < n; i++) { buf[4 * i] = p.getX(i); buf[4 * i + 1] = p.getY(i); buf[4 * i + 2] = p.getZ(i); buf[4 * i + 3] = 7; }
+    const h = new T.BufferGeometry(); h.setAttribute('position', new T.InterleavedBufferAttribute(new T.InterleavedBuffer(buf, 4), 3, 0)); return h; };
+  const N7 = 400;
+  let calls = 0, differ = 0, finite = 0, met = 0, refDiffers = 0, ulpTried = 0;
+  const why7 = [];
+  for (let k = 0; k < N7; k++) {
+    let A = soup(k % 3 ? 30 : 160, [0, 0, 0], 2), B = soup(k % 2 ? 40 : 90, [0, 0, 0], 2);
+    if (k % 4 === 1) A = indexed(A);
+    if (k % 4 === 2) B = interleaved(B);
+    const m = new T.Matrix4().makeRotationFromEuler(new T.Euler(rnd() * 6.3, rnd() * 6.3, rnd() * 6.3)).setPosition(0.3 + rnd() * 2.4, (rnd() - 0.5) * 0.5, (rnd() - 0.5) * 0.5);
+    if (k % 5 === 0) m.multiply(new T.Matrix4().set(1 + rnd(), 0.4 * rnd(), 0, 0, 0, 1, 0.3 * rnd(), 0, 0.2 * rnd(), 0, 0.6 + rnd(), 0, 0, 0, 0, 1));
+    for (const upper of [Infinity, 0.3, 1e-4]) {
+      const j = X.exactDistance(A, B, m.elements, upper), w = K.wasmDistance(A, B, m.elements, upper);
+      calls++; if (j < Infinity) finite++;
+      if (!Object.is(j, w)) { differ++; why7.push(`pair ${k}, bound ${upper}: js ${j}, wasm ${w}`); }
+      if (upper === Infinity && k % 4 === 0 && w < Infinity) {   // the control's evidence: B one f32 ulp off must move the answer
+        const p = B.attributes.position, n = p.count, nud = new Float32Array(n * 3), u = 1 + Math.pow(2, -23);
+        for (let i = 0; i < n; i++) { nud[3 * i] = p.getX(i) * u; nud[3 * i + 1] = p.getY(i) * u; nud[3 * i + 2] = p.getZ(i) * u; }
+        const B2 = new T.BufferGeometry(); B2.setAttribute('position', new T.BufferAttribute(nud, 3));
+        ulpTried++; if (!Object.is(X.exactDistance(A, B2, m.elements, Infinity), w)) refDiffers++;
+      }
+    }
+    const jm = X.exactMeets(A, B, m.elements), wm = K.wasmIntersects(A, B, m.elements);
+    calls++; if (jm) met++;
+    if (jm !== wm) { differ++; why7.push(`pair ${k}: meets js ${jm}, wasm ${wm}`); }
+  }
+  for (const s0 of why7.slice(0, 6)) console.log(`          ${s0}`);
+  line(differ === 0, `exact, random: src/exact-mesh.js answers Object.is the kernel's answer (${calls} answers over ${N7} pairs, ${finite} finite distances, ${met} meeting; a quarter indexed, a quarter interleaved, a fifth sheared)`);
+  line(refDiffers > 0 && met > 0 && met < N7, `exact control: the comparison is not vacuous — B's vertices scaled by 1 + 2^-23 (an f32 ulp where the product does not round back) move the port's answer off the kernel's on ${refDiffers} of ${ulpTried} pair(s) apart, and the population both meets and stands apart`);
+}
+
+console.log(`\n${fails.length ? `FAIL — ${fails.length} gate(s)` : 'PASS — the compiled distance and boolean are the reference\'s, exact where the reference is not, and the exact primitives\' JS body bit for bit'}`);
 process.exit(fails.length ? 1 : 0);

@@ -48,7 +48,8 @@ import { auditLubrication, LUBRICATION, LUBRICATION_DEBT, LUBRICATION_WAIVERS } 
 // is the one main.js already evaluated: importing it here re-runs no boot
 // handshake and arms no marker.
 import { aesthetics, mergeAesthetics } from './aesthetics.js';
-import { kernelMode, wasmDistance, shadowTally, wasmIntersects, shadowTallyBool } from './kernel.js';   // §338 landings 5 and 6
+import { kernelMode, wasmDistance, shadowTally, wasmIntersects, shadowTallyBool, shadowTallyExact } from './kernel.js';   // §338 landings 5–7
+import { exactDistance, exactMeets } from './exact-mesh.js';   // §338 landing 7 — the exact primitives' JS reference
 export { useKernel, kernelMode, kernelStats } from './kernel.js';
 
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
@@ -1051,19 +1052,26 @@ const Kernel = {
     if (k === 'shadow') shadowTallyBool(gA, gB, m.elements, r, performance.now() - t0);
     return r;
   },
-  // CONTACT, which is not the same question. meshesIntersect asks whether two
-  // parts are in contact, and contact here includes a running fit (its
-  // arbitration accepts a sampled gap under 1e-4), which an exact intersection
-  // test deliberately refuses. Measured in shadow (§338 landing 6): of 720,028
-  // boolean calls, 1,913 had the reference true and the exact test false —
-  // 1,898 of them pairs ≥ 1e-4 apart (the reference's false positives, which
-  // inspection's raw EXPECTED path counts as contact) and 15 touches under
-  // 1e-4, which the exact test would turn from contact into none. So contact
-  // stays the reference's predicate in every kernel mode until an exact
-  // contact primitive (meet, or exact distance under the arbitration's 1e-4)
-  // is landed on purpose, with the inspection reports it moves.
-  touches(gA, gB, m) {
-    return bvhForGeometry(gA).intersectsGeometry(gB, m);
+  // §338 landing 7 — the EXACT primitives, which CONTACT is built on. The two
+  // above keep three-mesh-bvh's answers, false 0 and false positive included,
+  // because the sweeps that read them were landed against those answers. These
+  // are exact on the computed corners in every mode: src/exact-mesh.js is their
+  // JS body, an operation-for-operation port of tools/kernel/kernel.cpp, and the
+  // compiled kernel accelerates it bit for bit (probe-338-kernel-parity.mjs holds
+  // Object.is on every answer; shadow runs both and tallies any difference).
+  exactMeets(gA, gB, m) {
+    const k = kernelMode();
+    if (k === 'wasm') return wasmIntersects(gA, gB, m.elements);
+    const r = exactMeets(gA, gB, m.elements);
+    if (k === 'shadow') shadowTallyExact('meets', r, wasmIntersects(gA, gB, m.elements));
+    return r;
+  },
+  exactDistance(gA, gB, m, upper) {
+    const k = kernelMode();
+    if (k === 'wasm') return wasmDistance(gA, gB, m.elements, upper);
+    const r = exactDistance(gA, gB, m.elements, upper);
+    if (k === 'shadow') shadowTallyExact('distance', r, wasmDistance(gA, gB, m.elements, upper));
+    return r;
   },
 };
 
@@ -1119,45 +1127,54 @@ export function rigidFrame(mesh) {
 
 const _mat = new THREE.Matrix4();
 const _matRev = new THREE.Matrix4();
-function meshesIntersect(a, b, raw = false) {
+// §338 landing 7 — CONTACT, exactly. Two parts are in contact when their surfaces
+// meet or stand closer than CONTACT_TOUCH. That threshold is not new: it is the
+// running fit this predicate has accepted since its arbitration (2026-07, the
+// sampled verdict's `d < 1e-4`), kept so that what "contact" means does not move
+// with how it is measured; it stands an order over the f32 noise of the metal it
+// is read on (an f32 ulp is 7.6e-6 at |x| ≤ 64, the movement's coordinates).
+//
+// Until landing 7 the predicate was three-mesh-bvh's boolean, arbitrated by
+// sampledVerdict where it said true and trusted RAW after a pair's first
+// confirmed contact on an axis (§122 fix two's cost cut). Shadow measured what that
+// bought (landing 6, 720,028 calls): 1,898 positives on pairs at least 1e-4 apart,
+// which the raw path counted as contact on EXPECTED pairs, and 15 running fits under
+// 1e-4 the boolean said false, which no path ever asked about. Both were answers
+// about the instrument rather than the metal. The exact primitives (Kernel.exactMeets,
+// Kernel.exactDistance) refuse both, in every kernel mode and both hosts, and they are
+// cheap enough to ask at every pose, so the raw path is gone.
+//
+// The meet is an incidence question, asked under the world map as it stands (any
+// invertible affine map); the running fit is a DISTANCE, asked between rigid frames
+// (rigidFrame bakes a scale or shear into a copy), because a distance read through a
+// non-rigid map reads in the wrong units. Between rigid frames the distance alone
+// answers both (its 0 is the meet), which is every pair but a scaled or sheared one.
+export const CONTACT_TOUCH = 1e-4;
+function meshesIntersect(a, b) {
   if (SWEEP_CENSUS.on) {
     const c = SWEEP_CENSUS.c;
     c.exactCalls++;
     const t0 = performance.now();
-    const r = _meshesIntersectInner(a, b, raw);
+    const r = _meshesIntersectInner(a, b);
     c.exactMs += performance.now() - t0;
     if (r) c.boolTrue++; else c.boolFalse++;
     return r;
   }
-  return _meshesIntersectInner(a, b, raw);
+  return _meshesIntersectInner(a, b);
 }
-function _meshesIntersectInner(a, b, raw = false) {
-  const bvhA = bvhFor(a);
-  bvhFor(b); // intersectsGeometry needs the other side indexed; building its tree indexes it
+function _meshesIntersectInner(a, b) {
+  bvhFor(a); bvhFor(b);   // the index side effect, which every later reader of these geometries relies on
+  const va = rigidFrame(a), ga = va.geometry, rigidA = va.rigid;
+  _mat.copy(va.frame).invert();
+  const vb = rigidFrame(b);
+  _mat.multiply(vb.frame);
+  // Between rigid frames an exact distance of 0 IS a meet (the kernel's boolean is
+  // exactly "its distance is 0", G3 holds it), so two rigid meshes need one bounded
+  // traversal, not two; only a baked side reads its meet through its own geometry.
+  if (Kernel.exactDistance(ga, vb.geometry, _mat, CONTACT_TOUCH) < CONTACT_TOUCH) return true;
+  if (rigidA && vb.rigid) return false;
   _mat.copy(a.matrixWorld).invert().multiply(b.matrixWorld);
-  if (!Kernel.touches(a.geometry, b.geometry, _mat)) return false;
-  // §122 fix two — `raw` trusts the positive WITHOUT arbitration. Only
-  // runInspection may pass it, and only for a declared-EXPECTED pair whose
-  // contact on the current axis has already been arbitrated once (the
-  // first hit per (pair, axis) always takes the full path below). A raw
-  // positive can be one of the tri-tri false positives the verdict exists
-  // to refute — the caller's payload SAYS so (coverage:
-  // 'raw-after-first-confirmed'), which is the entry's sanctioned,
-  // documented semantics change for EXPECTED pose-coverage lists. Nothing
-  // gated consumes a raw answer: FORBIDDEN candidates never take this path.
-  if (raw) return true;
-  // A POSITIVE is never trusted raw. The tree-vs-tree path has a measured
-  // false-positive mode at specific relative transforms (2026-07: balance
-  // rim ⇄ fork-cock boss, 0.69 apart, one direction lying; 2026-08: alarm
-  // hand ⇄ hour tube, 2.32 apart, BOTH directions lying — which retired the
-  // both-directions cross-check this function used to run, and with it the
-  // closestPointToGeometry arbitration, whose own false-0 mode rubber-
-  // stamped the lie). sampledVerdict arbitrates: a contained sample (vertex
-  // or edge midpoint, parity raycast) proves the crossing; otherwise the
-  // sampled distance decides, and only a genuine running fit reads as
-  // contact.
-  const v = sampledVerdict(a, b, 1e-3);
-  return v.inside || v.d < 1e-4;
+  return Kernel.exactMeets(a.geometry, b.geometry, _mat);
 }
 
 // A mesh's world AABB at the CURRENT pose, computed once per pose instead of
@@ -1276,15 +1293,15 @@ function memoPairQuery(memo, tag, a, b, param, compute) {
 }
 
 const _uiA = new THREE.Box3(), _uiB = new THREE.Box3();
-function unitsIntersect(A, B, raw = false, boxCache = null, memo = null) {
+function unitsIntersect(A, B, boxCache = null, memo = null) {
   const cen = SWEEP_CENSUS.on ? SWEEP_CENSUS.c : null;
   for (const a of A.meshes) {
     for (const b of B.meshes) {
       // Cheap per-mesh AABB gate before the triangle test.
       if (cen) cen.aabbTests++;
-      if (!poseBox(boxCache, a, _uiA).intersectsBox(poseBox(boxCache, b, _uiB))) continue;
+      if (!boxesCanTouch(poseBox(boxCache, a, _uiA), poseBox(boxCache, b, _uiB))) continue;
       if (cen) cen.aabbPass++;
-      if (memoPairQuery(memo, 'i', a, b, raw, () => meshesIntersect(a, b, raw))) return true;
+      if (memoPairQuery(memo, 'i', a, b, CONTACT_TOUCH, () => meshesIntersect(a, b))) return true;
     }
   }
   return false;
@@ -1914,6 +1931,12 @@ export function checkAxisEntry(clock, { axes = AXES, fractions = [0, 1] } = {}) 
 // movement transforms are unit-scale, so bvh-local distance == world
 // distance.
 // ---------------------------------------------------------------------------
+// §338 landing 7 — the box gate in front of a CONTACT test. Contact includes a
+// running fit under CONTACT_TOUCH, which can stand between boxes that do not
+// overlap, so "the boxes overlap" stopped being the gate when the predicate became
+// exact: the box gap is a lower bound on the mesh gap, and a pair is skipped only
+// when that bound is already over the threshold.
+function boxesCanTouch(a, b) { return !(boxDistance(a, b) > CONTACT_TOUCH); }
 function boxDistance(a, b) {
   // Min distance between two AABBs (0 if overlapping) — cheap lower bound
   // used to skip mesh pairs that cannot beat the current best.
@@ -3740,6 +3763,7 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Winding arrest', a: 'windArrestSpring', b: 'windArrestSpringPost', why: '§47: the blade\'s fixed end on its post — the torsion arc\'s reaction point' },
   { unit: 'Alarm click', a: 'alarmClickPawl', b: 'alarmClickStud', why: '§99: the click on its shoulder screw (the hook carries no bore — the blade seats on the stud, the set-up click\'s own construction)' },
   { unit: 'Alarm click', a: 'alarmClickPawl', b: 'alarmClickScrewHead', why: '§99: the click under its screw head — the head retains it axially, faces sharing the plane' },
+  { unit: 'Alarm click', a: 'alarmClickStud', b: 'alarmClickScrewHead', why: '§338 landing 7: the shoulder screw\'s head on its own post, the two faces sharing the post\'s top plane (3.4e-8 apart, exact). The boolean never saw a flush face; the exact contact does' },
   { unit: 'Alarm click', a: 'alarmClickPawl', b: 'alarmClickSpring', why: '§99: the spring\'s torus kisses the click\'s flank by construction (tube tangent at the local half-width) — §48-declared spring contact, kept as a row because a float hair puts a kiss on either side of zero' },
   { unit: 'Alarm lock', a: 'alarmLockArm', b: 'alarmLockPivotPost', why: 'lock lever on its pivot post (this selector was CylinderGeometry#4, then #6 when TODO 24 added the beak riser+nose, then #5 when §171 deleted a sibling mesh; §171 named the POST, and TODO 90 finding 5 named the ARM when the fold removed a box and added two — both halves are claims about the parts now, not about what else the unit contains)' },
   { unit: 'Alarm lock', a: 'alarmLockTail', b: 'alarmLockPivotPost', why: 'lever tail on the same post' },
@@ -3758,6 +3782,8 @@ export const INTRA_UNIT_CONTACTS = [
   // it one part along.
   { unit: 'Alarm switch', a: 'alarmColBase', b: 'alarmColStud', why: 'the base disc\'s bore on the column wheel\'s stud' },
   { unit: 'Alarm switch', a: 'alarmColSkirt', b: 'alarmColStud', why: 'the ratchet skirt\'s bore on the same stud — one arbor, two seated bodies' },
+  { unit: 'Alarm switch', a: 'alarmLinkageCrankAOut', b: 'alarmLinkageRod', why: '§338 landing 7: crank A\'s output arm under the rod at their pin joint, the arm\'s top face and the rod\'s underside sharing ALARM_LINKAGE_ROD_Z − T/2 (4.0e-9 apart, exact) — a stacked pin joint, the pin through both' },
+  { unit: 'Alarm switch', a: 'alarmLinkageCrankBIn', b: 'alarmLinkageRod', why: '§338 landing 7: crank B\'s input arm under the rod at its joint, the same stack as crank A\'s (4.0e-9 apart, exact)' },
   // §173 — the SAUTOIR that replaced the click. Four joints, and the shape of
   // the list is the point: the blade IS the spring, so there is no arm-and-
   // -blade pair to declare and no chance of the two parting (which is what the
@@ -4036,6 +4062,8 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm disc', a: 'alarmRockerPivot', b: 'alarmRockerFinger', why: 'TODO 222: the finger bar runs from the eye\'s far face, through the same undrilled eye the pin passes' },
   { unit: 'Alarm disc', a: 'alarmTubeFlange', b: 'alarmPinBSpring', why: 'TODO 222: follower-B\'s seat blade, its root clamped flat on the flange\'s top face (the band spend set the root there)' },
   { unit: 'Alarm disc', a: 'alarmPinArmBBar', b: 'alarmPinBSpring', why: 'TODO 222: the seat blade\'s free end on the arm\'s underside — the working contact that seats the pin, preloaded at every parity (alarmHandoffs holds it)' },
+  { unit: 'Alarm disc', a: 'alarmPinBSpringClamp', b: 'alarmPinBSpring', why: '§338 landing 7: the clamp screwed down over the seat blade\'s root, its underside on the blade\'s top face (6.6e-10 apart, exact) — the clamp IS that contact' },
+  { unit: 'Alarm disc', a: 'alarmSelFingerB', b: 'alarmPinArmBTail', why: '§338 landing 7: the lift — the rocker\'s finger pin under follower-B\'s tail at every parity (9.6e-5 apart at alarmPress f=0.25, exact), the working contact alarmHandoffs holds shut' },
   { unit: 'Alarm disc', a: 'alarmPivotPost', b: 'alarmFollowerBar', why: '§121: the follower bar turning ON its post — the §48 follower\'s bearing (0.16 of the post in the bar\'s eye)' },
   // TODO 194 — the return spiral's two working joints (the blade and its
   // stud, which reached nothing, are retired with their row). The collet's
@@ -4405,7 +4433,7 @@ export async function checkIntraUnit(clock, { axes = AXES, samplesPerAxis = 5, y
     const boxes = fix.map((m) => new THREE.Box3().setFromObject(m));
     for (let i = 0; i < fix.length; i++) {
       for (let j = i + 1; j < fix.length; j++) {
-        if (boxDistance(boxes[i], boxes[j]) > 0) continue;
+        if (!boxesCanTouch(boxes[i], boxes[j])) continue;
         if (nearestElsewhere(u, fix[i], fix[j])) continue;
         const la = meshLabel(u, fix[i]), lb = meshLabel(u, fix[j]);
         const key = `${u.name} / ${[la, lb].sort().join(' ⇄ ')}`;
@@ -4525,7 +4553,7 @@ export async function checkIntraUnit(clock, { axes = AXES, samplesPerAxis = 5, y
           _cbA.setFromObject(a);
           for (const b of fix) {
             _cbB.setFromObject(b);
-            if (boxDistance(_cbA, _cbB) > 0) continue;
+            if (!boxesCanTouch(_cbA, _cbB)) continue;
             if (nearestElsewhere(u, a, b)) continue;
             const la = meshLabel(u, a), lb = meshLabel(u, b);
             const key = `${u.name} / ${la} ⇄ ${lb}`;
@@ -4540,7 +4568,7 @@ export async function checkIntraUnit(clock, { axes = AXES, samplesPerAxis = 5, y
         if (nearestElsewhere(u, a, b)) continue;
         _cbA.setFromObject(a);
         _cbB.setFromObject(b);
-        if (boxDistance(_cbA, _cbB) > 0) continue;
+        if (!boxesCanTouch(_cbA, _cbB)) continue;
         const la = meshLabel(u, a), lb = meshLabel(u, b);
         const key = `${u.name} / ${[la, lb].sort().join(' ⇄ ')}`;
         if (seen.has(key) || allowed(u.name, la, lb)) continue;
@@ -7480,13 +7508,8 @@ export async function runInspection(clock, { axes: axisArg = AXES, yieldEvery = 
   const touching = resolvePairsTouching(clock, pairsTouching);
   const units = collectUnits(clock, { includeExcluded });
   const findings = new Map(); // pairKey -> { class, axes: {axisName: [f,...]} }
-  // §122 fix two — the EXPECTED classification is pure string work over a
-  // declaration, so it is computed ONCE here rather than re-derived at every
-  // contact (where it used to live), because the sweep now needs it BEFORE
-  // measuring: a declared-EXPECTED pair whose contact on the current axis
-  // has already been arbitrated takes the raw boolean for the remaining
-  // poses. FORBIDDEN and undeclared pairs are untouched — full arbitration
-  // at every pose, exactly as before.
+  // The EXPECTED classification is pure string work over a declaration, so it is
+  // computed ONCE here rather than re-derived at every contact.
   const expectedAt = units.map((A) => units.map((B) => inList(EXPECTED_PAIRS, A.name, B.name)));
   censusStart();   // §108's experiment — report-only, see the census block
   let unitPairTests = 0, unitPairPass = 0;   // the unit-level broad phase, this check's own outer gate
@@ -7507,18 +7530,11 @@ export async function runInspection(clock, { axes: axisArg = AXES, yieldEvery = 
           if (inList(IGNORED_PAIRS, A.name, B.name)) continue;
           if (touching && !touching.touches(A.name, B.name)) continue;   // §152
           unitPairTests++;
-          if (!boxes[ai].intersectsBox(boxes[bi])) continue;
+          if (!boxesCanTouch(boxes[ai], boxes[bi])) continue;
           unitPairPass++;
           const key = pairKey(A.name, B.name);
-          // §122 fix two — the first-confirmed flag is ZERO new state: a
-          // (pair, axis) with a recorded pose necessarily had its first
-          // contact arbitrated by the full path, so its existence is
-          // honestly proven and the remaining poses of THIS axis take the
-          // raw boolean. Slice-safe by construction: §127 runs one axis per
-          // browser context, so the flag never crosses a slice boundary.
           const isExpected = expectedAt[ai][bi];
-          const confirmed = isExpected && findings.get(key)?.axes[axis.name]?.length > 0;
-          if (!unitsIntersect(A, B, confirmed, boxCache, memo)) continue;
+          if (!unitsIntersect(A, B, boxCache, memo)) continue;
           let rec = findings.get(key);
           if (!rec) {
             rec = {
@@ -7538,12 +7554,9 @@ export async function runInspection(clock, { axes: axisArg = AXES, yieldEvery = 
   const report = [...findings.values()].sort((x, y) =>
     x.class === y.class ? x.pair.localeCompare(y.pair) : x.class === 'FORBIDDEN' ? -1 : 1
   );
-  // §122 fix two — the payload SAYS what its EXPECTED coverage means: the
-  // first contact per (pair, axis) is arbitrated, the rest of that axis's
-  // pose list is the raw BVH boolean (which can include the tri-tri false
-  // positives the verdict would have refuted). A report that silently
-  // changed what its numbers mean would be worse than a slow one.
-  for (const r of report) if (r.class === 'EXPECTED') r.coverage = 'raw-after-first-confirmed';
+  // §338 landing 7 — every pose's contact is the exact predicate, so an EXPECTED
+  // row no longer carries §122's 'raw-after-first-confirmed' coverage mark: no
+  // pose of it was trusted raw.
   // Compact per-axis summary: hit fraction + range.
   for (const r of report) {
     r.summary = Object.entries(r.axes)
