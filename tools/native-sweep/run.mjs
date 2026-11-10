@@ -24,7 +24,8 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const BIN = join(ROOT, 'tools/native-sweep/build/sweep');
 const opt = (k) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : null; };
 
-export async function runNativeInspection(clock, I, { axes, includeExcluded = true } = {}) {
+// `touch`, for the probe's control only, replaces the contact threshold the engine is handed.
+export async function runNativeInspection(clock, I, { axes, includeExcluded = true, touch } = {}) {
   if (!existsSync(BIN)) throw new Error(`no engine at ${BIN}: run tools/native-sweep/build.mjs`);
   const child = spawn(BIN, [], { stdio: ['pipe', 'pipe', 'inherit'] });
   const out = [];
@@ -60,7 +61,7 @@ export async function runNativeInspection(clock, I, { axes, includeExcluded = tr
   const sink = {
     async begin(h) {
       nUnits = h.units.length;
-      const j = Buffer.from(JSON.stringify(h));
+      const j = Buffer.from(JSON.stringify(touch === undefined ? h : { ...h, CONTACT_TOUCH: touch }));
       await write(Buffer.concat([Buffer.from('H'), u32(j.length), j]));
     },
     async pose({ axis, i, f, unitBoxes, changed }) {
