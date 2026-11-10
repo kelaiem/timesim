@@ -18,7 +18,8 @@
 // `clearances` must be held where the engine ASKS JS its one question, meshClearance's
 // containment witness: the shipped budgets never come within 0.05 (0 asked), so the
 // control sweeps every EXPECTED contact pair the inspection found, on one axis, and
-// requires both that the witness was asked and that the payloads agree.
+// requires both that the witness was asked and that the payloads agree; and the same
+// for `undeclaredClearance`, with those pairs LIFTED into its population.
 import { writeFileSync, mkdtempSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname, resolve } from 'node:path';
@@ -99,6 +100,16 @@ for (const [check, nat, js] of [
   console.log(`  REPORT native ${nS.toFixed(1)} s (${n.stats.verdicts} witnesses${check === 'undeclaredClearance' ? `, ${n.stats.prunes} box prunes` : ''} asked of JS), JS ${jS.toFixed(1)} s`);
   kept[check] = n.payload;
 }
+// the same witness through undeclaredClearance: its shipped population never comes
+// within 0.05 (that would already be a violation), so the control LIFTS the EXPECTED
+// contact pairs into it, which puts touching parts in reach of the witness
+const lift = budgets.map((b) => [b.a, b.b]);
+const un = await runNativeUndeclared(clock, I, { axes: cAxis, lift });
+const uj = await I.checkUndeclaredClearance(clock, { axes: cAxis, lift });
+writeFileSync(fn, wrap(un.payload, 'undeclaredClearance')); writeFileSync(fj, wrap(uj, 'undeclaredClearance'));
+const du = diff(fj, fn);
+line(du.same && un.stats.verdicts > 0, `control: undeclaredClearance with the ${lift.length} EXPECTED contact pairs lifted on '${cAxis[0]}' asks the witness ${un.stats.verdicts} time(s) and agrees leaf for leaf (${un.payload.rows.length} rows under the margin): ${(du.out.match(/^(PASS|FAIL) — .*$/m) || [''])[0]}`);
+
 if (opt('--out')) writeFileSync(opt('--out'), JSON.stringify({ checks: Object.fromEntries(Object.entries(kept).map(([k, v]) => [k, { result: v }])) }));
 console.log(`\n${fails.length ? `FAIL — ${fails.length} gate(s)` : 'PASS — the native sweep engine answers inspection, clearances, expectedContacts and undeclaredClearance exactly as the JS sweeps do'}`);
 process.exit(fails.length ? 1 : 0);

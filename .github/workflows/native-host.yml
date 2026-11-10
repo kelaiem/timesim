@@ -340,3 +340,71 @@ jobs:
 
       - name: x64 and arm64 native engines reached one inspection, leaf for leaf
         run: node tools/report-diff.mjs native-sweep-X64.json native-sweep-ARM64.json
+
+  # §338 landing 13 — the WHOLE native battery with the four ported checks routed to the
+  # native sweep engine (`--sweep native`), held leaf for leaf to the same architecture's
+  # `--sweep js` report from `battery-native`. probe.mjs holds each check with its default
+  # options; this holds the routed battery as it runs, its slices and options included.
+  battery-native-sweep:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    # battery-native's cap and reasoning: the routed battery walls under the JS one
+    # (149 s against 209 s on a local 4-vCPU run), plus the engine's build.
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install the tools' pinned packages
+        working-directory: tools
+        run: npm ci --no-audit --no-fund
+
+      - name: Install the kernel's pinned compiler (zig 0.13.0's clang, from PyPI)
+        run: python3 -m venv ~/zig && ~/zig/bin/pip install -q ziglang==0.13.0.post1
+
+      - name: Build the native sweep engine for this architecture
+        run: KERNEL_PYTHON=~/zig/bin/python node tools/native-sweep/build.mjs
+
+      - name: The battery, natively, the four ported checks on the native sweep engine
+        run: node --import ./tools/native/loader.mjs tools/battery-native.mjs --sweep native --report native-sweep-battery-${{ runner.arch }}.json
+
+      - name: Keep the report
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-sweep-battery-${{ runner.arch }}
+          path: native-sweep-battery-${{ runner.arch }}.json
+          if-no-files-found: error
+          retention-days: 14
+
+  native-sweep-battery-identity:
+    needs: [battery-native, battery-native-sweep]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: battery-native-*-js
+          merge-multiple: true
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: native-sweep-battery-*
+          merge-multiple: true
+
+      - name: x64 — the battery on the native sweep engine is the JS battery, leaf for leaf
+        run: node tools/report-diff.mjs battery-native-X64-js.json native-sweep-battery-X64.json
+
+      - name: arm64 — the battery on the native sweep engine is the JS battery, leaf for leaf
+        run: node tools/report-diff.mjs battery-native-ARM64-js.json native-sweep-battery-ARM64.json
