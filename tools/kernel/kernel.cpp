@@ -816,4 +816,22 @@ __attribute__((export_name("intersects"))) int intersects(u32 hA, u32 hB, u32 ma
 __attribute__((export_name("last_pairs"))) u32 last_pairs_get() { return last_pairs; }
 __attribute__((export_name("geom_ntri"))) u32 geom_ntri(u32 h) { return static_cast<u32>(at<const Geom>(h)->ntri); }
 
+// §338 landing 11 — A TREE'S SPREAD: the sum over EVERY node of its box's half-perimeter
+// (extent x + y + z), a surface-area-heuristic stand-in for what a query pays to descend
+// it. A refit keeps the family's shape, chosen for the founder's positions; src/kernel.js
+// compares a refit's spread with the founder's and founds the family afresh once it has
+// grown. Inner nodes are the point: a wound ribbon keeps compact leaves (neighbours on
+// the strip stay neighbours) while the founder's grouping of coils swells as they wind
+// apart, which a leaves-only sum measured as unchanged. It never decides an answer,
+// only which tree answers it.
+__attribute__((export_name("geom_spread"))) double geom_spread(u32 h) {
+  const Geom& G = *at<const Geom>(h);
+  double s = 0;
+  for (int i = 0; i < G.nnode; i++) {
+    const Node& n = G.node[i];
+    if (n.count > 0 || n.left >= 0) s += (n.box.mx.x - n.box.mn.x) + (n.box.mx.y - n.box.mn.y) + (n.box.mx.z - n.box.mn.z);
+  }
+  return s;
+}
+
 }  // extern "C"

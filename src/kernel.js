@@ -45,7 +45,7 @@ export function shadowTallyExact(kind, ref, k, refMs, wasmMs) {
 }
 export function kernelStats() { return { mode, exact: { ...exactStats, samples: [...exactStats.samples] }, trees: { ...treeStats } }; }
 // The compiled kernel's trees (§338 landing 11): built fresh, or refitted from a family.
-const treeStats = { builds: 0, refits: 0, resets: 0 };
+const treeStats = { builds: 0, refits: 0, refused: 0, reshaped: 0, resets: 0 };
 
 export async function useKernel(name) {
   if (!['js', 'wasm', 'shadow'].includes(name)) throw new Error(`useKernel: unknown kernel '${name}' (js, wasm or shadow)`);
@@ -59,7 +59,7 @@ export async function useKernel(name) {
   }
   mode = name;
   for (const k of Object.keys(exactStats)) exactStats[k] = k === 'samples' ? [] : 0;
-  treeStats.builds = treeStats.refits = treeStats.resets = 0;
+  treeStats.builds = treeStats.refits = treeStats.refused = treeStats.reshaped = treeStats.resets = 0;
   return mode;
 }
 
@@ -77,10 +77,17 @@ function resetArena() {
 // checks MEMBERSHIP itself (the same triangle count, every triple an unclaimed slot of
 // the family's table) and refits, or answers 0 and the geometry is built fresh. The
 // check is the kernel's because the first version ran it here, over two Sets, and cost
-// more than the build it saved (§338 landing 11 records it). A reset invalidates every
-// family with its handles, so the next geometry of each is built and founds it again.
-const families = new Map();   // famKey → { gen, h }
+// more than the build it saved (§338 landing 11 records it). A family's table is built
+// only when a SECOND geometry offers itself, because most geometries never have one,
+// and building a table for every one cost each of them its memory. A reset invalidates
+// every family with its handles, so the next geometry of each is built and founds it again.
+const families = new Map();   // famKey → { gen, h, spread, table: built / refused / not yet }
 const LEAF = 8;               // kernel.cpp's LEAF: exact-mesh's rule, no family at or under one leaf
+// A refit's tree keeps the founder's shape; once its leaves' spread (geom_spread) has
+// grown past this multiple of the founder's, the family is dropped and the next
+// geometry founds it afresh. A cost knob, measured in §338 landing 11, never a verdict:
+// any tree answers the same.
+const RESHAPE = 1.25;
 
 function handleFor(geometry) {
   const hit = handles.get(geometry);
@@ -90,7 +97,7 @@ function handleFor(geometry) {
   const n = pos.count;
   const idx = geometry.index ? geometry.index.array : null;
   const ntri = idx ? Math.floor(idx.length / 3) : Math.floor(n / 3);
-  const famKey = ntri > LEAF ? tripleKeys(idx, n, ntri).famKey : null;
+  const famKey = ntri > LEAF ? tripleKeys(idx, n, ntri, false).famKey : null;
   const pp = W.alloc(n * 12), ip = W.alloc(ntri * 12);
   if (!pp || !ip) throw new Error('kernel: out of memory copying a geometry');
   const f32 = new Float32Array(W.memory.buffer, pp, n * 3);
@@ -100,13 +107,15 @@ function handleFor(geometry) {
   const u32 = new Uint32Array(W.memory.buffer, ip, ntri * 3);
   if (idx) u32.set(idx.subarray(0, ntri * 3)); else for (let i = 0; i < ntri * 3; i++) u32[i] = i;
   const fam = famKey !== null ? families.get(famKey) : undefined;
-  let h = fam && fam.gen === gen ? W.geom_refit(fam.h, pp, ip, ntri) : 0;
-  if (h) treeStats.refits++;
+  const offered = fam !== undefined && fam.gen === gen && (fam.table ??= W.geom_family(fam.h) === 1);
+  let h = offered ? W.geom_refit(fam.h, pp, ip, ntri) : 0;
+  if (h) { treeStats.refits++; if (W.geom_spread(h) > RESHAPE * fam.spread) { families.delete(famKey); treeStats.reshaped++; } }
   else {
+    if (offered) treeStats.refused++;   // not a member: built fresh like any other geometry
     h = W.geom_create(pp, n, ip, ntri);
     if (!h) throw new Error('kernel: out of memory building a geometry');
     treeStats.builds++;
-    if (famKey !== null && (!fam || fam.gen !== gen) && W.geom_family(h)) families.set(famKey, { gen, h });
+    if (famKey !== null && (!families.has(famKey) || fam.gen !== gen)) families.set(famKey, { gen, h, spread: W.geom_spread(h), table: undefined });
   }
   handles.set(geometry, { gen, h });
   return h;

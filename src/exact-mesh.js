@@ -104,14 +104,14 @@ function intake(geometry) {
 // finds a candidate; membership is checked triple by triple. src/kernel.js names its
 // families with this same function (§338 landing 11), so the two kernels cannot
 // disagree about what a family is.
-export function tripleKeys(ix, n, ntri) {
+export function tripleKeys(ix, n, ntri, keys = true) {
   const keyed = n * n * n < 9007199254740992;
   if (!keyed) return { tkey: null, famKey: null };
-  const tkey = new Float64Array(ntri);
+  const tkey = keys ? new Float64Array(ntri) : null;   // kernel.js needs the candidate key alone
   let h = 0;
   for (let t = 0; t < ntri; t++) {
     const k = ix ? (ix[3 * t] * n + ix[3 * t + 1]) * n + ix[3 * t + 2] : t;
-    tkey[t] = k;
+    if (tkey) tkey[t] = k;
     let x = Math.imul((k % 4294967296) ^ Math.floor(k / 4294967296), 2654435761) >>> 0;
     x = Math.imul(x ^ (x >>> 15), 2246822519) >>> 0;
     h = (h + x) >>> 0;
