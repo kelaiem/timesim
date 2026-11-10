@@ -359,6 +359,7 @@ struct Geom {
   double* tri;     // 9 per triangle, in tree order
   Node* node;
   int depth;
+  const u32* sidx;   // the vertex indices in tree order, 3 per slot: what a family member's refit reads (§338 landing 11)
 };
 
 static constexpr int LEAF = 8;
@@ -430,8 +431,8 @@ __attribute__((export_name("geom_create"))) u32 geom_create(u32 posPtr, u32 nver
   if (!gp) return 0;
   const u32 maxNode = ntri ? 2 * ntri : 1;
   const u32 rawP = alloc(ntri * 9 * 8), triP = alloc(ntri * 9 * 8), nodeP = alloc(maxNode * sizeof(Node));
-  const u32 orderP = alloc(ntri * 4), keyP = alloc(ntri * 8), cenP = alloc(ntri * sizeof(Vec3));
-  if (!rawP || !triP || !nodeP || !orderP || !keyP || !cenP) return 0;
+  const u32 orderP = alloc(ntri * 4), keyP = alloc(ntri * 8), cenP = alloc(ntri * sizeof(Vec3)), sidxP = alloc(ntri * 12);
+  if (!rawP || !triP || !nodeP || !orderP || !keyP || !cenP || !sidxP) return 0;
   const Tris raw{ at<double>(rawP) };
   Vec3* cen = at<Vec3>(cenP);
   int* order = at<int>(orderP);
@@ -447,8 +448,55 @@ __attribute__((export_name("geom_create"))) u32 geom_create(u32 posPtr, u32 nver
   if (ntri) build_node(B, 0, 0, static_cast<int>(ntri), 0);
   else B.node[0] = { .box = Box::empty(), .left = -1, .start = 0, .count = 0, .pad = 0 };
   const Tris tri{ at<double>(triP) };
-  for (u32 t = 0; t < ntri; t++) for (int c = 0; c < 3; c++) tri.set(t, c, raw[order[t], c]);
-  *at<Geom>(gp) = { .ntri = static_cast<int>(ntri), .nnode = B.nnode, .tri = tri.p, .node = B.node, .depth = B.depth };
+  u32* sidx = at<u32>(sidxP);
+  for (u32 t = 0; t < ntri; t++) for (int c = 0; c < 3; c++) {
+    tri.set(t, c, raw[order[t], c]);
+    sidx[3 * t + c] = idx[3 * static_cast<u32>(order[t]) + c];
+  }
+  *at<Geom>(gp) = { .ntri = static_cast<int>(ntri), .nnode = B.nnode, .tri = tri.p, .node = B.node, .depth = B.depth, .sidx = sidx };
+  return gp;
+}
+
+// §338 landing 11 — THE REFIT: a geometry of the family `fam` was built from, at new
+// positions. The caller (src/kernel.js) has established that the new geometry holds
+// exactly the family's SET of vertex triples, each once, so the triangle in slot t is
+// the family's slot-t triple read at these positions, and no index is passed. The
+// family's tree SHAPE is kept (left, start, count, depth); only what depends on the
+// positions is recomputed: the triangles in tree order, every leaf's box from its
+// triangles, every inner box as the union of its children's, in one descending pass
+// (children are numbered after their parent). src/exact-mesh.js' `refit` is the same
+// pass. A union of exact boxes is the exact box, and no answer depends on the shape
+// (a pair is pruned only past PRUNE_PAD), so a refitted tree answers what a fresh one
+// does, which G3's refit tier holds by Object.is. Returns a handle, or 0 when memory
+// ran out.
+__attribute__((export_name("geom_refit"))) u32 geom_refit(u32 famH, u32 posPtr) {
+  const Geom& F = *at<const Geom>(famH);
+  const float* pos = at<const float>(posPtr);
+  const u32 ntri = static_cast<u32>(F.ntri), nnode = static_cast<u32>(F.nnode);
+  const u32 gp = alloc(sizeof(Geom)), triP = alloc(ntri * 9 * 8), nodeP = alloc(nnode * sizeof(Node));
+  if (!gp || !triP || !nodeP) return 0;
+  const Tris tri{ at<double>(triP) };
+  for (u32 t = 0; t < ntri; t++)
+    for (int c = 0; c < 3; c++) {
+      const u32 v = F.sidx[3 * t + c];
+      for (int a = 0; a < 3; a++) tri[t, c, a] = static_cast<double>(pos[3 * v + a]);
+    }
+  Node* node = at<Node>(nodeP);
+  for (int slot = static_cast<int>(nnode) - 1; slot >= 0; slot--) {
+    const Node& f = F.node[slot];
+    Box box = Box::empty();
+    if (f.left < 0) {
+      for (int t = f.start; t < f.start + f.count; t++) for (int c = 0; c < 3; c++) box.grow(tri[t, c]);
+    } else {
+      for (int ch = f.left; ch <= f.left + 1; ch++)
+        for (int a = 0; a < 3; a++) {
+          box.mn[a] = dmin(box.mn[a], node[ch].box.mn[a]);
+          box.mx[a] = dmax(box.mx[a], node[ch].box.mx[a]);
+        }
+    }
+    node[slot] = { .box = box, .left = f.left, .start = f.start, .count = f.count, .pad = 0 };
+  }
+  *at<Geom>(gp) = { .ntri = F.ntri, .nnode = F.nnode, .tri = tri.p, .node = node, .depth = F.depth, .sidx = F.sidx };
   return gp;
 }
 

@@ -18,6 +18,8 @@
 // tools/kernel/kernel.cpp (never edit it). It is imported only when asked for, so
 // the page never loads it.
 
+import { tripleKeys } from './exact-mesh.js';
+
 let mode = 'js';
 let W = null;           // the instantiated module's exports
 let gen = 0;            // the arena's generation: a reset invalidates every handle
@@ -38,7 +40,9 @@ export function shadowTallyExact(kind, ref, k, refMs, wasmMs) {
   exactStats.refMs += refMs; exactStats.wasmMs += wasmMs;
   if (!Object.is(ref, k)) { exactStats.differ++; if (exactStats.samples.length < 6) exactStats.samples.push({ kind, ref, kernel: k }); }
 }
-export function kernelStats() { return { mode, exact: { ...exactStats, samples: [...exactStats.samples] } }; }
+export function kernelStats() { return { mode, exact: { ...exactStats, samples: [...exactStats.samples] }, trees: { ...treeStats } }; }
+// The compiled kernel's trees (§338 landing 11): built fresh, or refitted from a family.
+const treeStats = { builds: 0, refits: 0 };
 
 export async function useKernel(name) {
   if (!['js', 'wasm', 'shadow'].includes(name)) throw new Error(`useKernel: unknown kernel '${name}' (js, wasm or shadow)`);
@@ -52,6 +56,7 @@ export async function useKernel(name) {
   }
   mode = name;
   for (const k of Object.keys(exactStats)) exactStats[k] = k === 'samples' ? [] : 0;
+  treeStats.builds = treeStats.refits = 0;
   return mode;
 }
 
@@ -59,6 +64,28 @@ function resetArena() {
   W.reset();
   gen++;
   matPtr = W.alloc(16 * 8);
+}
+
+// §338 landing 11 — A FAMILY'S TREE IS REFITTED, not rebuilt: src/exact-mesh.js'
+// rule (landing 9) in the compiled kernel. A geometry with the vertex count and the SET
+// of vertex triples of a family already built in this arena generation (named by
+// exact-mesh's own `tripleKeys`, and checked triple by triple: its triangle count is
+// the family's, none repeats, and every one is the family's) passes its POSITIONS
+// only, and `geom_refit` reads the family's slot triples at them and recomputes the
+// boxes. A reset invalidates every family with its handles, so the next geometry of
+// each is built fresh and becomes the family again.
+const families = new Map();   // famKey → { gen, h, keys: Set of the family's triples }
+const LEAF = 8;               // kernel.cpp's LEAF: exact-mesh's rule, no family at or under one leaf
+
+function familyMatch(fam, tkey) {
+  if (fam.keys.size !== tkey.length) return false;
+  const seen = new Set();
+  for (let t = 0; t < tkey.length; t++) {
+    const k = tkey[t];
+    if (!fam.keys.has(k) || seen.has(k)) return false;
+    seen.add(k);
+  }
+  return true;
 }
 
 function handleFor(geometry) {
@@ -69,16 +96,31 @@ function handleFor(geometry) {
   const n = pos.count;
   const idx = geometry.index ? geometry.index.array : null;
   const ntri = idx ? Math.floor(idx.length / 3) : Math.floor(n / 3);
-  const pp = W.alloc(n * 12), ip = W.alloc(ntri * 12);
-  if (!pp || !ip) throw new Error('kernel: out of memory copying a geometry');
+  const { tkey, famKey } = ntri > LEAF ? tripleKeys(idx, n, ntri) : { tkey: null, famKey: null };
+  const fam = famKey !== null ? families.get(famKey) : undefined;
+  const refit = fam !== undefined && fam.gen === gen && familyMatch(fam, tkey);
+  const pp = W.alloc(n * 12), ip = refit ? 0 : W.alloc(ntri * 12);
+  if (!pp || (!refit && !ip)) throw new Error('kernel: out of memory copying a geometry');
   const f32 = new Float32Array(W.memory.buffer, pp, n * 3);
   if (pos.isInterleavedBufferAttribute || pos.itemSize !== 3) {
     for (let i = 0; i < n; i++) { f32[3 * i] = pos.getX(i); f32[3 * i + 1] = pos.getY(i); f32[3 * i + 2] = pos.getZ(i); }
   } else f32.set(pos.array.subarray(0, n * 3));
-  const u32 = new Uint32Array(W.memory.buffer, ip, ntri * 3);
-  if (idx) u32.set(idx.subarray(0, ntri * 3)); else for (let i = 0; i < ntri * 3; i++) u32[i] = i;
-  const h = W.geom_create(pp, n, ip, ntri);
-  if (!h) throw new Error('kernel: out of memory building a geometry');
+  let h;
+  if (refit) {
+    h = W.geom_refit(fam.h, pp);
+    if (!h) throw new Error('kernel: out of memory refitting a geometry');
+    treeStats.refits++;
+  } else {
+    const u32 = new Uint32Array(W.memory.buffer, ip, ntri * 3);
+    if (idx) u32.set(idx.subarray(0, ntri * 3)); else for (let i = 0; i < ntri * 3; i++) u32[i] = i;
+    h = W.geom_create(pp, n, ip, ntri);
+    if (!h) throw new Error('kernel: out of memory building a geometry');
+    treeStats.builds++;
+    if (famKey !== null && (!fam || fam.gen !== gen)) {
+      const keys = new Set(tkey);
+      if (keys.size === ntri) families.set(famKey, { gen, h, keys });   // a repeated triple founds no family
+    }
+  }
   handles.set(geometry, { gen, h });
   return h;
 }
