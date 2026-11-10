@@ -76,7 +76,8 @@ function selectK(key, idx, lo, hi, k) {
 // depends on the shape: a pair is pruned only when its bound clears the best by
 // PRUNE_PAD, so the distance is the exact minimum over every pair under the bound
 // and the meet is true exactly when some pair meets, whatever the order of the
-// visit (the compiled kernel still builds fresh, and shadow holds the two Object.is).
+// visit (the compiled kernel builds fresh: §338 landing 11 measured its refit and
+// refused it, and shadow holds the two Object.is).
 const families = new Map();   // `${n}:${ntri}:${hash}` → the family's built tree (its slots' triples in `slotKey`)
 
 function intake(geometry) {
@@ -94,18 +95,27 @@ function intake(geometry) {
       const v = ix ? ix[3 * t + c] : 3 * t + c;
       for (let a = 0; a < 3; a++) raw[9 * t + 3 * c + a] = f32[3 * v + a];
     }
-  // each triangle named by its vertex triple, as one exact integer (n³ < 2⁵³, else no family)
+  return { n, ntri, raw, ...tripleKeys(ix, n, ntri) };
+}
+
+// Each triangle named by its vertex triple, as one exact integer (n³ < 2⁵³, else no
+// family), and the family's candidate key: the vertex and triangle counts and an
+// ORDER-INDEPENDENT hash of the triples (a sum of mixed keys, mod 2³²), which only
+// finds a candidate; membership is checked triple by triple. Exported for G3, which
+// builds a geometry that COLLIDES with a family's key to hold the refusal path.
+export function tripleKeys(ix, n, ntri) {
   const keyed = n * n * n < 9007199254740992;
-  const tkey = keyed ? new Float64Array(ntri) : null;
-  let h = 0;   // order-independent: a sum of mixed triple keys, mod 2³²
-  if (keyed) for (let t = 0; t < ntri; t++) {
+  if (!keyed) return { tkey: null, famKey: null };
+  const tkey = new Float64Array(ntri);
+  let h = 0;
+  for (let t = 0; t < ntri; t++) {
     const k = ix ? (ix[3 * t] * n + ix[3 * t + 1]) * n + ix[3 * t + 2] : t;
     tkey[t] = k;
     let x = Math.imul((k % 4294967296) ^ Math.floor(k / 4294967296), 2654435761) >>> 0;
     x = Math.imul(x ^ (x >>> 15), 2246822519) >>> 0;
     h = (h + x) >>> 0;
   }
-  return { n, ntri, raw, tkey, famKey: keyed ? `${n}:${ntri}:${h}` : null };
+  return { tkey, famKey: `${n}:${ntri}:${h}` };
 }
 
 // The family's shape, this geometry's positions; null when the triangle sets differ.

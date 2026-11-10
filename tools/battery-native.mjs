@@ -3,6 +3,7 @@
 //
 //   node --import ./tools/native/loader.mjs tools/battery-native.mjs
 //        [--shards K] [--no-split] [--only a,b] [--report FILE] [--query 'k=v'] [--kernel js|wasm|shadow]
+//        [--sweep js|native]
 //
 // Boots the build in tools/native/host.mjs (main.js unchanged, the deterministic
 // maths installed first) and runs every row of tools/battery-checks.mjs' BATTERY
@@ -48,15 +49,30 @@ import { buildTasks } from './battery-split.mjs';
 import { COSTS, partition } from './battery-plan.mjs';
 
 // One shard's work, in whatever thread it runs: boot, hold, run each task.
-async function runShard({ query, tasks, kernel = 'js' }) {
+async function runShard({ query, tasks, kernel = 'js', sweep = 'js' }) {
   const { bootNative } = await import('./native/host.mjs');
   const { clock, ms: bootMs, warns } = await bootNative({ query });
   const I = await import('../src/inspect.js');
   await I.useKernel(kernel);
   clock.beginSweepHold();   // battery-checks.mjs prepPage's rule: the whole run, geometry frozen
+  // §338 landing 12 — `--sweep native`: the four checks the native sweep engine answers
+  // run on it (tools/native-sweep/run.mjs), with the task's own options (a slice's axes
+  // among them) after the canonical reset start() performs; every other row is unchanged.
+  const N = sweep === 'native' ? await import('./native-sweep/run.mjs') : null;
+  const NATIVE = N ? { inspection: N.runNativeInspection, clearances: N.runNativeClearances,
+    expectedContacts: N.runNativeExpectedContacts, undeclaredClearance: N.runNativeUndeclared } : {};
   const out = [];
   for (const t of tasks) {
     const s0 = Date.now();
+    if (NATIVE[t.name]) {
+      if (t.opts.pairsTouching) throw new Error(`--sweep native: ${t.name} has no restricted (pairsTouching) route`);
+      try {
+        clock.resetInputs();
+        const { payload } = await NATIVE[t.name](clock, I, { axes: t.opts.axes, ...(t.name === 'inspection' ? { includeExcluded: !!t.opts.includeExcluded } : {}) });
+        out.push({ key: t.key, result: payload, ms: Date.now() - s0 });
+      } catch (err) { out.push({ key: t.key, error: String(err && err.stack || err) }); }
+      continue;
+    }
     I.start(clock, t.name, t.opts);
     for (;;) {
       await new Promise((r) => setTimeout(r, 25));
@@ -85,6 +101,8 @@ if (!isMainThread) {
   const SPLIT = !argv.includes('--no-split');
   const SHARDS = Number(opt('--shards') ?? Math.min(4, availableParallelism()));
   const KERNEL = opt('--kernel') ?? 'js';
+  const SWEEP = opt('--sweep') ?? 'js';
+  if (!['js', 'native'].includes(SWEEP)) throw new Error('--sweep wants js or native');
   if (!['js', 'wasm', 'shadow'].includes(KERNEL)) throw new Error('--kernel wants js, wasm or shadow');
   if (ONLY) for (const n of ONLY) if (!BATTERY.some((e) => e.name === n)) throw new Error(`--only names no BATTERY row: ${n}`);
   if (!(SHARDS >= 1)) throw new Error('--shards wants a positive integer');
@@ -97,7 +115,7 @@ if (!isMainThread) {
   let shards = [];
   if (SHARDS === 1) {
     // The reference path: one process, no workers.
-    const r = await runShard({ query: QUERY, tasks: tasks.map(plain), kernel: KERNEL });
+    const r = await runShard({ query: QUERY, tasks: tasks.map(plain), kernel: KERNEL, sweep: SWEEP });
     shards = [{ ...r, tasks: tasks.map((t) => t.key), cost: tasks.reduce((a, t) => a + t.cost, 0) }];
   } else {
     const parts = partition(tasks, Math.min(SHARDS, tasks.length));
@@ -106,7 +124,7 @@ if (!isMainThread) {
     // the loader for itself: clear the guard the parent's registration set.
     const env = { ...process.env, __TIMESIM_NATIVE_LOADER__: '' };
     shards = await Promise.all(parts.map((p) => new Promise((res, rej) => {
-      const w = new Worker(new URL(import.meta.url), { workerData: { query: QUERY, tasks: p.entries.map(plain), kernel: KERNEL }, env, execArgv: process.execArgv });
+      const w = new Worker(new URL(import.meta.url), { workerData: { query: QUERY, tasks: p.entries.map(plain), kernel: KERNEL, sweep: SWEEP }, env, execArgv: process.execArgv });
       w.once('message', (m) => (m.fatal ? rej(new Error(`a shard died: ${m.fatal}`)) : res({ ...m, tasks: p.entries.map((t) => t.key), cost: p.cost })));
       w.once('error', rej);
       w.once('exit', (code) => { if (code) rej(new Error(`a shard exited ${code}`)); });
@@ -164,7 +182,7 @@ if (!isMainThread) {
 
   if (REPORT) {
     const report = {
-      host: `native ${process.platform}-${process.arch} node ${process.version}`, kernel: KERNEL,
+      host: `native ${process.platform}-${process.arch} node ${process.version}`, kernel: KERNEL, sweep: SWEEP,
       query: QUERY, shards: shards.length, split: SPLIT,
       checks: Object.fromEntries(BATTERY.map(({ name }) => [name, results.has(name)
         ? { ms: results.get(name).ms, ...(sliceMs.has(name) ? { sliceMs: sliceMs.get(name) } : {}), result: results.get(name).result }

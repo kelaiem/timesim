@@ -73,6 +73,7 @@ on:
       - 'tools/probe-338-kernel-parity.mjs'
       - 'tools/kernel/**'
       - 'tools/kernel-build.mjs'
+      - 'tools/native-sweep/**'
       - 'tools/battery-native.mjs'
       - 'tools/report-diff.mjs'
       - 'tools/det-math-vendor.mjs'
@@ -278,3 +279,64 @@ jobs:
       - name: The wasm kernel reaches the js kernel's verdicts and reads no gap larger (G3)
         run: node tools/probe-338-kernel-parity.mjs --reports battery-native-X64-js.json battery-native-X64-wasm.json
 
+  # §338 landing 12 — the native sweep engine (tools/native-sweep/): `inspection`,
+  # `clearances`, `expectedContacts` and `undeclaredClearance` run as C++23 over the
+  # state the JS build poses, each held leaf for leaf
+  # to its JS sweep on every axis in one process, on both architectures, and then the
+  # two architectures' native payloads to each other.
+  native-sweep:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    # A local 4-vCPU run walls ~7.5 min (JS: inspection 117 s, clearances 23 s,
+    # expectedContacts 41 s, undeclaredClearance 43 s; native 20, 20, 24, 31 s; the boot and
+    # both controls); the cap is that times the 1.66x spread, rounded up.
+    timeout-minutes: 13
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install the tools' pinned packages
+        working-directory: tools
+        run: npm ci --no-audit --no-fund
+
+      - name: Install the kernel's pinned compiler (zig 0.13.0's clang, from PyPI)
+        run: python3 -m venv ~/zig && ~/zig/bin/pip install -q ziglang==0.13.0.post1
+
+      - name: Build the native sweep engine for this architecture
+        run: KERNEL_PYTHON=~/zig/bin/python node tools/native-sweep/build.mjs
+
+      - name: The native sweep engine answers inspection exactly as the JS sweep does
+        run: node --import ./tools/native/loader.mjs tools/native-sweep/probe.mjs --out native-sweep-${{ runner.arch }}.json
+
+      - name: Keep the payload
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-sweep-${{ runner.arch }}
+          path: native-sweep-${{ runner.arch }}.json
+          if-no-files-found: error
+          retention-days: 14
+
+  native-sweep-cross-arch:
+    needs: native-sweep
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: native-sweep-*
+          merge-multiple: true
+
+      - name: x64 and arm64 native engines reached one inspection, leaf for leaf
+        run: node tools/report-diff.mjs native-sweep-X64.json native-sweep-ARM64.json
