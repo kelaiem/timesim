@@ -364,6 +364,34 @@ console.log(`  REPORT the reference read 0 for ${refFalseZero} pair(s) the kerne
   const refits = X.exactStats.refits - r0, wrefits = K.kernelStats().trees.refits - w0;
   line(differ === 0 && met > 0 && met < STEPS, `refit: a morphing mesh's refitted trees, in the port and the kernel, answer Object.is a fresh tree's (${answers} answers over ${STEPS} morphs, ${met} meeting, every index reordered, six of them full scrambles, the morph on both sides)`);
   line(refits === STEPS - 1 && wrefits === STEPS - 1, `refit control: the tier exercised both refits, not the build — ${refits} port and ${wrefits} kernel refits for ${STEPS - 1} morphs after the first, the fresh reference never refitted`);
+  // MEMBERSHIP, driven on the module itself: a family's table must refuse every
+  // geometry that is not exactly its set of triples, each once, or a refit would read
+  // the family's triangles where the geometry has others.
+  {
+    const W = K.kernelExports();
+    // allocated in the live arena (a bump allocator): kernel.js' handles stay valid
+    const put = (f, ix) => {
+      const pp = W.alloc(f.length * 4), ip = W.alloc(ix.length * 4);
+      new Float32Array(W.memory.buffer, pp, f.length).set(f); new Uint32Array(W.memory.buffer, ip, ix.length).set(ix);
+      return { pp, ip, n: f.length / 3, ntri: ix.length / 3 };
+    };
+    const nv = 3 * NT, f = new Float32Array(pts);
+    const base = idx.slice(), perm = mk(pts).index.array.slice();
+    const F = put(f, base), h = W.geom_create(F.pp, F.n, F.ip, F.ntri);
+    const founded = W.geom_family(h) === 1;
+    const offer = (ix) => { const G = put(f, ix); return W.geom_refit(h, G.pp, G.ip, G.ntri) !== 0; };
+    const rot = perm.slice(); [rot[0], rot[1], rot[2]] = [rot[1], rot[2], rot[0]];
+    const dup = perm.slice(); dup.set(perm.subarray(3, 6), 0);
+    const foreign = perm.slice(); foreign[4] = nv - 1 === foreign[4] ? 0 : nv - 1;
+    const short = perm.slice(0, perm.length - 3);
+    const cases = [['a reordered member', perm, true], ['one triple with its corners rotated', rot, false], ['one triangle repeated in place of another', dup, false],
+      ['one corner moved to another vertex', foreign, false], ['one triangle fewer', short, false]];
+    const got = cases.map(([name, ix, want]) => [name, offer(ix), want]);
+    const D = put(f, dup), hd = W.geom_create(D.pp, D.n, D.ip, D.ntri);
+    const dupFounds = W.geom_family(hd) === 1;
+    const bad = got.filter(([, g, w]) => g !== w);
+    line(founded && !dupFounds && bad.length === 0, `refit membership: the kernel's table accepts ${got.filter(([, g]) => g).map(([n]) => n).join(', ')}, and refuses ${got.filter(([, g]) => !g).map(([n]) => n).join(', ')}; a geometry with a repeated triple founds no family${bad.length ? ` — WRONG: ${bad.map(([n, g]) => `${n} ${g ? 'accepted' : 'refused'}`).join(', ')}` : ''}`);
+  }
 }
 
 console.log(`\n${fails.length ? `FAIL — ${fails.length} gate(s)` : 'PASS — the compiled distance and boolean are the reference\'s, exact where the reference is not, and the exact primitives\' JS body bit for bit'}`);
