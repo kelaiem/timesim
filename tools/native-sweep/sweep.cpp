@@ -366,6 +366,25 @@ struct ClearanceCensus { std::uint64_t aabbTests = 0, aabbPass = 0, exactCalls =
 static void put(const void* p, std::size_t n) { std::fwrite(p, 1, n, stdout); }
 template <class T> static void put(T v) { put(&v, sizeof v); }
 
+// inspect.js' _meshClearanceInner, the ONE copy both driven checks call (§338 landing
+// 13: undeclaredClearance had its own three lines, which no shipped table ever reached):
+// the kernel's distance between the two rigid views, bounded by `upper`, and where
+// 0 < d < 0.05 meshClearance's containment witness, sampledVerdict, asked of JS ('V')
+// at the very pose being measured; a body found inside the other reads 0. `asked` says
+// whether the witness was asked, for the census.
+static double witnessed_distance(Reader& in, Engine& eng, const std::vector<MeshState>& state, std::uint32_t a, std::uint32_t b, double upper, bool& asked) {
+  double d = eng.view_distance(state[a], state[b], upper);
+  asked = false;
+  if (d > 0 && d < 0.05) {
+    asked = true;
+    put('V'); put(a); put(b); put(upper); std::fflush(stdout);
+    const char tag = in.get<char>();
+    if (tag != 'v') { std::fprintf(stderr, "sweep: expected a verdict, read '%c'\n", tag); std::exit(2); }
+    if (in.get<std::uint8_t>()) d = 0;
+  }
+  return d;
+}
+
 static int run_clearances(Reader& in, Engine& eng, const Json& h) {
   // A pair is its two MESH LISTS (a unit's meshes, or expectedContacts' own-metal
   // subset) and the mesh pairs its exclusion rule skips (expectedContacts' declared
@@ -401,15 +420,7 @@ static int run_clearances(Reader& in, Engine& eng, const Json& h) {
   // inspect.js' meshClearance: the kernel's distance, and where 0 < d < 0.05 the
   // containment witness, asked of JS; its outcome counted in the census.
   auto mesh_clearance = [&](std::uint32_t a, std::uint32_t b, double upper, bool& verdict, int& bucket) {
-    double d = eng.view_distance(state[a], state[b], upper);
-    verdict = false;
-    if (d > 0 && d < 0.05) {
-      verdict = true;
-      put('V'); put(a); put(b); put(upper); std::fflush(stdout);
-      const char tag = in.get<char>();
-      if (tag != 'v') { std::fprintf(stderr, "sweep: expected a verdict, read '%c'\n", tag); std::exit(2); }
-      if (in.get<std::uint8_t>()) d = 0;
-    }
+    const double d = witnessed_distance(in, eng, state, a, b, upper, verdict);
     bucket = (d == INF || d >= upper) ? 0 : d <= 0 ? 4 : d < 0.05 ? 3 : d < 0.4 ? 2 : 1;
     return d;
   };
@@ -603,12 +614,8 @@ static int run_undeclared(Reader& in, Engine& eng, const Json& h) {
           else {
             if (pruned[askAt.at(k)]) { d = INF; boxPruned++; }
             else {
-              d = eng.view_distance(state[a], state[b], p.bound);   // meshClearance, its witness asked of JS
-              if (d > 0 && d < 0.05) {
-                put('V'); put(a); put(b); put(p.bound); std::fflush(stdout);
-                if (in.get<char>() != 'v') { std::fputs("sweep: expected a verdict\n", stderr); std::exit(2); }
-                if (in.get<std::uint8_t>()) d = 0;
-              }
+              bool asked;   // meshClearance (no census here: this check keeps its own)
+              d = witnessed_distance(in, eng, state, a, b, p.bound, asked);
               exactCalls++;
             }
             memo[k] = { va, vb, d };

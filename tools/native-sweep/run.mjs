@@ -218,8 +218,9 @@ export async function runNativeExpectedContacts(clock, I, { axes, coarse = 4, re
 // pairs the complement of the declared ones plus the two controls, resolved by the
 // check's own undeclaredSetup; the minima written back into its pair records, which
 // undeclaredPayload reads.
-export async function runNativeUndeclared(clock, I, { axes } = {}) {
-  const setup = I.undeclaredSetup(clock, { axes });
+// `lift`, for the probe's witness control only, brings declared pairs into the population.
+export async function runNativeUndeclared(clock, I, { axes, lift = [] } = {}) {
+  const setup = I.undeclaredSetup(clock, { axes, lift });
   const P = I.sweepPoser(clock, { axes: setup.resolved, includeExcluded: true });
   const idx = meshIndexOf(P);
   const names = [...setup.units.keys()];

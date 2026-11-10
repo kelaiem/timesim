@@ -1136,8 +1136,10 @@ host, DRIVES where the pose set depends on its answers (asking JS for each pose 
 the JS sweep's order), and ASKS JS the three-mesh-bvh questions it does not port
 (`sampledVerdict`, and `undeclaredPrune` in one batch per pose); each check is split
 into a setup and a payload (`clearancesSetup`/`clearancesPayload` and their
-siblings) that both sweeps call. `probe.mjs` holds both
-leaf for leaf to the JS sweeps, on x64 and arm64 in `native-host.yml`. Change a
+siblings) that both sweeps call. `probe.mjs` holds each
+leaf for leaf to its JS sweep, and since landing 13 `battery-native-sweep` holds the
+whole `--sweep native` battery leaf for leaf to `--sweep js`, both on x64 and arm64 in
+`native-host.yml`. Change a
 ported sweep's loop and the engine owes the same change, or the probe names the
 leaves it moved; the kernel stays ONE source for both targets (its portability
 layer, never a copy).
