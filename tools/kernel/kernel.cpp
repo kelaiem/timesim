@@ -359,23 +359,7 @@ struct Geom {
   double* tri;     // 9 per triangle, in tree order
   Node* node;
   int depth;
-  const u32* sidx;   // the vertex indices in tree order, 3 per slot: what a family member's refit reads (§338 landing 11)
-  struct Family* fam;   // the slot triples' hash table, when this geometry founds a family (geom_family), else null
 };
-
-// §338 landing 11 — a family's MEMBERSHIP TABLE: its slot triples in an open-addressed
-// hash table (linear probing, capacity the power of two at or over twice the
-// triangles, an entry slot + 1 and 0 empty), and one stamp per slot so a candidate
-// that names one triple twice is refused.
-struct Family { u32 cap; u32* table; u32* seen; u32 stamp; };
-
-[[nodiscard]] static constexpr u32 triple_hash(u32 a, u32 b, u32 c) {
-  u32 h = a * 0x9E3779B1u;
-  h = (h ^ (h >> 16)) + b * 0x85EBCA77u;
-  h = (h ^ (h >> 13)) + c * 0xC2B2AE3Du;
-  h ^= h >> 16; h *= 0x7FEB352Du; h ^= h >> 15;
-  return h;
-}
 
 static constexpr int LEAF = 8;
 
@@ -446,8 +430,8 @@ __attribute__((export_name("geom_create"))) u32 geom_create(u32 posPtr, u32 nver
   if (!gp) return 0;
   const u32 maxNode = ntri ? 2 * ntri : 1;
   const u32 rawP = alloc(ntri * 9 * 8), triP = alloc(ntri * 9 * 8), nodeP = alloc(maxNode * sizeof(Node));
-  const u32 orderP = alloc(ntri * 4), keyP = alloc(ntri * 8), cenP = alloc(ntri * sizeof(Vec3)), sidxP = alloc(ntri * 12);
-  if (!rawP || !triP || !nodeP || !orderP || !keyP || !cenP || !sidxP) return 0;
+  const u32 orderP = alloc(ntri * 4), keyP = alloc(ntri * 8), cenP = alloc(ntri * sizeof(Vec3));
+  if (!rawP || !triP || !nodeP || !orderP || !keyP || !cenP) return 0;
   const Tris raw{ at<double>(rawP) };
   Vec3* cen = at<Vec3>(cenP);
   int* order = at<int>(orderP);
@@ -463,97 +447,8 @@ __attribute__((export_name("geom_create"))) u32 geom_create(u32 posPtr, u32 nver
   if (ntri) build_node(B, 0, 0, static_cast<int>(ntri), 0);
   else B.node[0] = { .box = Box::empty(), .left = -1, .start = 0, .count = 0, .pad = 0 };
   const Tris tri{ at<double>(triP) };
-  u32* sidx = at<u32>(sidxP);
-  for (u32 t = 0; t < ntri; t++) for (int c = 0; c < 3; c++) {
-    tri.set(t, c, raw[order[t], c]);
-    sidx[3 * t + c] = idx[3 * static_cast<u32>(order[t]) + c];
-  }
-  *at<Geom>(gp) = { .ntri = static_cast<int>(ntri), .nnode = B.nnode, .tri = tri.p, .node = B.node, .depth = B.depth, .sidx = sidx, .fam = nullptr };
-  return gp;
-}
-
-// §338 landing 11 — FOUND A FAMILY: build `h`'s membership table. Returns 1, or 0 when
-// a triple repeats (such a geometry founds no family) or memory ran out.
-__attribute__((export_name("geom_family"))) u32 geom_family(u32 h) {
-  Geom& G = *at<Geom>(h);
-  const u32 ntri = static_cast<u32>(G.ntri);
-  u32 cap = 1;
-  while (cap < 2 * ntri) cap <<= 1;
-  const u32 famP = alloc(sizeof(Family)), tabP = alloc(cap * 4), seenP = alloc(ntri * 4);
-  if (!famP || !tabP || !seenP) return 0;
-  Family& F = *at<Family>(famP);
-  F = { .cap = cap, .table = at<u32>(tabP), .seen = at<u32>(seenP), .stamp = 0 };
-  for (u32 i = 0; i < cap; i++) F.table[i] = 0;    // the arena is reused after a reset: nothing in it is zero
-  for (u32 t = 0; t < ntri; t++) F.seen[t] = 0;
-  for (u32 t = 0; t < ntri; t++) {
-    const u32* q = G.sidx + 3 * t;
-    for (u32 i = triple_hash(q[0], q[1], q[2]) & (cap - 1);; i = (i + 1) & (cap - 1)) {
-      if (!F.table[i]) { F.table[i] = t + 1; break; }
-      const u32* o = G.sidx + 3 * (F.table[i] - 1);
-      if (o[0] == q[0] && o[1] == q[1] && o[2] == q[2]) return 0;
-    }
-  }
-  G.fam = &F;
-  return 1;
-}
-
-// §338 landing 11 — THE REFIT: a geometry of the family `fam` founded, at new
-// positions. It is a member only if it holds exactly the family's SET of vertex
-// triples, each once: its triangle count is the family's, and each of its triples
-// (corners in their order) finds an unclaimed slot in the family's table. Anything
-// else returns 0 and the caller builds it fresh. A member's slot-t triangle is the
-// family's slot-t triple read at these positions. The
-// family's tree SHAPE is kept (left, start, count, depth); only what depends on the
-// positions is recomputed: the triangles in tree order, every leaf's box from its
-// triangles, every inner box as the union of its children's, in one descending pass
-// (children are numbered after their parent). src/exact-mesh.js' `refit` is the same
-// pass. A union of exact boxes is the exact box, and no answer depends on the shape
-// (a pair is pruned only past PRUNE_PAD), so a refitted tree answers what a fresh one
-// does, which G3's refit tier holds by Object.is. Returns a handle, or 0 when memory
-// ran out.
-__attribute__((export_name("geom_refit"))) u32 geom_refit(u32 famH, u32 posPtr, u32 idxPtr, u32 ntriIn) {
-  const Geom& F = *at<const Geom>(famH);
-  const float* pos = at<const float>(posPtr);
-  const u32* idx = at<const u32>(idxPtr);
-  const u32 ntri = static_cast<u32>(F.ntri), nnode = static_cast<u32>(F.nnode);
-  if (!F.fam || ntriIn != ntri) return 0;
-  Family& M = *F.fam;
-  if (++M.stamp == 0) { for (u32 t = 0; t < ntri; t++) M.seen[t] = 0; M.stamp = 1; }
-  for (u32 t = 0; t < ntri; t++) {
-    const u32* q = idx + 3 * t;
-    u32 slot = 0;
-    for (u32 i = triple_hash(q[0], q[1], q[2]) & (M.cap - 1);; i = (i + 1) & (M.cap - 1)) {
-      if (!M.table[i]) return 0;                     // a triple the family does not hold
-      const u32* o = F.sidx + 3 * (M.table[i] - 1);
-      if (o[0] == q[0] && o[1] == q[1] && o[2] == q[2]) { slot = M.table[i] - 1; break; }
-    }
-    if (M.seen[slot] == M.stamp) return 0;           // the same triple twice
-    M.seen[slot] = M.stamp;
-  }
-  const u32 gp = alloc(sizeof(Geom)), triP = alloc(ntri * 9 * 8), nodeP = alloc(nnode * sizeof(Node));
-  if (!gp || !triP || !nodeP) return 0;
-  const Tris tri{ at<double>(triP) };
-  for (u32 t = 0; t < ntri; t++)
-    for (int c = 0; c < 3; c++) {
-      const u32 v = F.sidx[3 * t + c];
-      for (int a = 0; a < 3; a++) tri[t, c, a] = static_cast<double>(pos[3 * v + a]);
-    }
-  Node* node = at<Node>(nodeP);
-  for (int slot = static_cast<int>(nnode) - 1; slot >= 0; slot--) {
-    const Node& f = F.node[slot];
-    Box box = Box::empty();
-    if (f.left < 0) {
-      for (int t = f.start; t < f.start + f.count; t++) for (int c = 0; c < 3; c++) box.grow(tri[t, c]);
-    } else {
-      for (int ch = f.left; ch <= f.left + 1; ch++)
-        for (int a = 0; a < 3; a++) {
-          box.mn[a] = dmin(box.mn[a], node[ch].box.mn[a]);
-          box.mx[a] = dmax(box.mx[a], node[ch].box.mx[a]);
-        }
-    }
-    node[slot] = { .box = box, .left = f.left, .start = f.start, .count = f.count, .pad = 0 };
-  }
-  *at<Geom>(gp) = { .ntri = F.ntri, .nnode = F.nnode, .tri = tri.p, .node = node, .depth = F.depth, .sidx = F.sidx, .fam = nullptr };
+  for (u32 t = 0; t < ntri; t++) for (int c = 0; c < 3; c++) tri.set(t, c, raw[order[t], c]);
+  *at<Geom>(gp) = { .ntri = static_cast<int>(ntri), .nnode = B.nnode, .tri = tri.p, .node = B.node, .depth = B.depth };
   return gp;
 }
 
@@ -815,23 +710,5 @@ __attribute__((export_name("intersects"))) int intersects(u32 hA, u32 hB, u32 ma
 
 __attribute__((export_name("last_pairs"))) u32 last_pairs_get() { return last_pairs; }
 __attribute__((export_name("geom_ntri"))) u32 geom_ntri(u32 h) { return static_cast<u32>(at<const Geom>(h)->ntri); }
-
-// §338 landing 11 — A TREE'S SPREAD: the sum over EVERY node of its box's half-perimeter
-// (extent x + y + z), a surface-area-heuristic stand-in for what a query pays to descend
-// it. A refit keeps the family's shape, chosen for the founder's positions; src/kernel.js
-// compares a refit's spread with the founder's and founds the family afresh once it has
-// grown. Inner nodes are the point: a wound ribbon keeps compact leaves (neighbours on
-// the strip stay neighbours) while the founder's grouping of coils swells as they wind
-// apart, which a leaves-only sum measured as unchanged. It never decides an answer,
-// only which tree answers it.
-__attribute__((export_name("geom_spread"))) double geom_spread(u32 h) {
-  const Geom& G = *at<const Geom>(h);
-  double s = 0;
-  for (int i = 0; i < G.nnode; i++) {
-    const Node& n = G.node[i];
-    if (n.count > 0 || n.left >= 0) s += (n.box.mx.x - n.box.mn.x) + (n.box.mx.y - n.box.mn.y) + (n.box.mx.z - n.box.mn.z);
-  }
-  return s;
-}
 
 }  // extern "C"

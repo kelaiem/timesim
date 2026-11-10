@@ -151,7 +151,6 @@ if (!isMainThread) {
   if (KERNEL !== 'js') {
     const ks = shards.map((s) => s.kernel);
     console.log(`kernel: ${KERNEL}`);
-    { const wt = (k) => ks.reduce((a, x) => a + ((x && x.trees && x.trees[k]) || 0), 0); console.log(`kernel trees (wasm): ${wt('builds')} built, ${wt('refits')} refitted from a family (${wt('refused')} offered and refused), ${wt('resets')} arena resets`); }
     if (KERNEL === 'shadow') {
       const es = (k) => ks.reduce((a, x) => a + ((x.exact && x.exact[k]) || 0), 0);
       console.log(`kernel shadow: ${es('distance')} distance and ${es('meets')} intersection calls, ${es('differ')} differing from wasm (the reference is the kernel's algorithm ported, so anything but 0 is a defect); time js ${(es('refMs') / 1000).toFixed(1)} s, wasm ${(es('wasmMs') / 1000).toFixed(1)} s`);

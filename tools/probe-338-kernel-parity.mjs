@@ -325,79 +325,46 @@ console.log(`  REPORT the reference read 0 for ${refFalseZero} pair(s) the kerne
 // ---------------------------------------------------------------------------
 // §338 landing 9 — THE REFIT. A geometry of a family already built (the same vertex
 // count and the same SET of vertex triples, in any index order) takes the family's
-// tree shape and only its boxes are recomputed; since landing 11 the compiled kernel
-// refits too. So a morphing mesh is the test: every vertex moved at each step, a full
-// scramble every 50th (where the family's order means nothing spatially), the morphed
-// mesh on both sides of the query. The REFERENCE is a FRESH tree in both kernels: the
-// same triangles with k + 1 unused vertices appended at step k, so its vertex count
-// names a family no other geometry has and it is built from scratch. Every answer of
-// either kernel's refitted tree is Object.is that fresh one's.
+// tree shape and only its boxes are recomputed; the compiled kernel builds every
+// geometry fresh (landing 11 measured a compiled refit and refused it). So a morphing
+// mesh is the test: every vertex moved at each step, a full scramble every 50th (where
+// the family's order means nothing spatially), the morphed mesh on both sides of the
+// query, placed from overlapping to clear apart so the meets are both true and false,
+// every answer of the port's refitted tree Object.is the kernel's fresh one.
 {
   const X = await import('../src/exact-mesh.js');
   const NT = 400, idx = new Uint32Array(NT * 3).map((_, i) => i);
   // each morph's index lists the SAME triangles in a fresh order, as three-mesh-bvh's computeBoundsTree leaves it
   // (it moves whole triples in place and never renumbers a vertex)
-  const mk = (pts, spare = 0) => {
+  const mk = (pts, ix0 = idx) => {
     const ord = [...Array(NT).keys()]; for (let i = NT - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [ord[i], ord[j]] = [ord[j], ord[i]]; }
-    const ix = new Uint32Array(NT * 3); ord.forEach((t, i) => { ix[3 * i] = idx[3 * t]; ix[3 * i + 1] = idx[3 * t + 1]; ix[3 * i + 2] = idx[3 * t + 2]; });
-    const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute([...pts, ...new Array(3 * spare).fill(7)], 3)); g.setIndex(new T.BufferAttribute(ix, 1)); return g;
+    const ix = new Uint32Array(NT * 3); ord.forEach((t, i) => { ix[3 * i] = ix0[3 * t]; ix[3 * i + 1] = ix0[3 * t + 1]; ix[3 * i + 2] = ix0[3 * t + 2]; });
+    const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pts, 3)); g.setIndex(new T.BufferAttribute(ix, 1)); return g;
   };
   let pts = Array.from({ length: NT * 9 }, () => (rnd() - 0.5) * 3);
   const other = soup(300, [0, 0, 0], 3);
-  const r0 = X.exactStats.refits, w0 = K.kernelStats().trees.refits, s0 = K.kernelStats().trees.reshaped;
+  const r0 = X.exactStats.refits;
   const STEPS = 300;
   let answers = 0, differ = 0, met = 0;
   for (let k = 0; k < STEPS; k++) {
     pts = k % 50 === 49 ? pts.map(() => (rnd() - 0.5) * 3) : pts.map((v) => v + (rnd() - 0.5) * 0.2);
-    const g = mk(pts), fresh = mk(pts, k + 1);
-    // placed from overlapping to clear apart, so the meets are both true and false
+    const g = mk(pts);
     const m = new T.Matrix4().makeRotationFromEuler(new T.Euler(rnd() * 6.3, rnd() * 6.3, rnd() * 6.3)).setPosition(rnd() * 8, rnd() - 0.5, rnd() - 0.5);
     for (const up of [Infinity, 0.3, 1e-4]) {
-      for (const [a, b, fa, fb] of [[g, other, fresh, other], [other, g, other, fresh]]) {
-        const ref = K.wasmDistance(fa, fb, m.elements, up);
-        answers++; if (!Object.is(X.exactDistance(a, b, m.elements, up), ref) || !Object.is(K.wasmDistance(a, b, m.elements, up), ref)) differ++;
-      }
+      for (const [a, b] of [[g, other], [other, g]]) { answers++; if (!Object.is(X.exactDistance(a, b, m.elements, up), K.wasmDistance(a, b, m.elements, up))) differ++; }
     }
-    const ref = K.wasmIntersects(fresh, other, m.elements); if (ref) met++;
-    answers++; if (X.exactMeets(g, other, m.elements) !== ref || K.wasmIntersects(g, other, m.elements) !== ref) differ++;
+    const w = K.wasmIntersects(g, other, m.elements); if (w) met++;
+    answers++; if (X.exactMeets(g, other, m.elements) !== w) differ++;
   }
-  const refits = X.exactStats.refits - r0, wrefits = K.kernelStats().trees.refits - w0, reshaped = K.kernelStats().trees.reshaped - s0;
-  line(differ === 0 && met > 0 && met < STEPS, `refit: a morphing mesh's refitted trees, in the port and the kernel, answer Object.is a fresh tree's (${answers} answers over ${STEPS} morphs, ${met} meeting, every index reordered, six of them full scrambles, the morph on both sides)`);
-  // the kernel drops a family whose refit's spread has grown (RESHAPE), and the morph after it founds the family again
-  line(refits === STEPS - 1 && wrefits + reshaped >= STEPS - 1 && wrefits + reshaped <= STEPS && reshaped > 0 && reshaped < 10, `refit control: the tier exercised both refits, not the build — ${refits} port and ${wrefits} kernel refits for ${STEPS - 1} morphs after the first (the kernel re-founded the family ${reshaped} time(s), after its spread grew past RESHAPE), the fresh reference never refitted`);
-  // MEMBERSHIP, driven on the module itself: a family's table must refuse every
-  // geometry that is not exactly its set of triples, each once, or a refit would read
-  // the family's triangles where the geometry has others.
-  {
-    const W = K.kernelExports();
-    // allocated in the live arena (a bump allocator): kernel.js' handles stay valid
-    const put = (f, ix) => {
-      const pp = W.alloc(f.length * 4), ip = W.alloc(ix.length * 4);
-      new Float32Array(W.memory.buffer, pp, f.length).set(f); new Uint32Array(W.memory.buffer, ip, ix.length).set(ix);
-      return { pp, ip, n: f.length / 3, ntri: ix.length / 3 };
-    };
-    const nv = 3 * NT, f = new Float32Array(pts);
-    const base = idx.slice(), perm = mk(pts).index.array.slice();
-    const F = put(f, base), h = W.geom_create(F.pp, F.n, F.ip, F.ntri);
-    const founded = W.geom_family(h) === 1;
-    const offer = (ix) => { const G = put(f, ix); return W.geom_refit(h, G.pp, G.ip, G.ntri) !== 0; };
-    const rot = perm.slice(); [rot[0], rot[1], rot[2]] = [rot[1], rot[2], rot[0]];
-    const dup = perm.slice(); dup.set(perm.subarray(3, 6), 0);
-    const foreign = perm.slice(); foreign[4] = nv - 1 === foreign[4] ? 0 : nv - 1;
-    const short = perm.slice(0, perm.length - 3);
-    const cases = [['a reordered member', perm, true], ['one triple with its corners rotated', rot, false], ['one triangle repeated in place of another', dup, false],
-      ['one corner moved to another vertex', foreign, false], ['one triangle fewer', short, false]];
-    const got = cases.map(([name, ix, want]) => [name, offer(ix), want]);
-    const D = put(f, dup), hd = W.geom_create(D.pp, D.n, D.ip, D.ntri);
-    const dupFounds = W.geom_family(hd) === 1;
-    const bad = got.filter(([, g, w]) => g !== w);
-    line(founded && !dupFounds && bad.length === 0, `refit membership: the kernel's table accepts ${got.filter(([, g]) => g).map(([n]) => n).join(', ')}, and refuses ${got.filter(([, g]) => !g).map(([n]) => n).join(', ')}; a geometry with a repeated triple founds no family${bad.length ? ` — WRONG: ${bad.map(([n, g]) => `${n} ${g ? 'accepted' : 'refused'}`).join(', ')}` : ''}`);
-  }
-  // REFUSED THROUGH kernel.js: a geometry whose candidate key COLLIDES with a family's
-  // (the same counts and hash, other triangles) is offered, must be refused by the
-  // kernel, and must then be built fresh and answer what the port answers. The hash is a
-  // sum of invertible 32-bit mixes, so the collision is constructed: triangle 0 becomes
-  // another triple, and triangle 1 the triple whose mix makes up the difference.
+  const refits = X.exactStats.refits - r0;
+  line(differ === 0 && met > 0 && met < STEPS, `refit: a morphing mesh's refitted trees answer Object.is the kernel's fresh ones (${answers} answers over ${STEPS} morphs, ${met} meeting, every index reordered, six of them full scrambles, the morph on both sides)`);
+  line(refits === STEPS - 1, `refit control: the tier exercised the refit, not the build — ${refits} refits for ${STEPS - 1} morphs after the first`);
+
+  // REFUSED: a geometry whose candidate key COLLIDES with the family's (the same counts and
+  // hash, other triangles) must be refused by the port's triple-by-triple check and built
+  // fresh, answering what the kernel answers. The hash is a sum of invertible 32-bit mixes,
+  // so the collision is constructed: triangle 0 becomes another triple, and triangle 1 the
+  // triple whose mix makes up the difference.
   {
     const inv = (c) => { let x = c; for (let i = 0; i < 5; i++) x = Math.imul(x, 2 - Math.imul(c, x)); return x >>> 0; };
     const mix = (k) => { let x = Math.imul((k % 4294967296) ^ Math.floor(k / 4294967296), 2654435761) >>> 0; x = Math.imul(x ^ (x >>> 15), 2246822519) >>> 0; return x; };
@@ -410,19 +377,18 @@ console.log(`  REPORT the reference read 0 for ${refFalseZero} pair(s) the kerne
       const k0n = key(a, (a + 7) % nv, (a + 19) % nv);
       const k1n = unmix((mix(k0) + mix(k1) - mix(k0n)) >>> 0);
       if (k1n >= nv * nv * nv || k1n === k0n) continue;
-      const t = [Math.floor(k1n / (nv * nv)), Math.floor(k1n / nv) % nv, k1n % nv];
-      hit = [[a, (a + 7) % nv, (a + 19) % nv], t];
+      hit = [[a, (a + 7) % nv, (a + 19) % nv], [Math.floor(k1n / (nv * nv)), Math.floor(k1n / nv) % nv, k1n % nv]];
     }
     const col = base.slice(); col.set(hit[0], 0); col.set(hit[1], 3);
+    const same = X.tripleKeys(col, nv, NT).famKey === X.tripleKeys(base, nv, NT).famKey;
     const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pts, 3)); g.setIndex(new T.BufferAttribute(col, 1));
-    const same = X.tripleKeys(col, nv, NT, false).famKey === X.tripleKeys(base, nv, NT, false).famKey;
-    const ref0 = K.kernelStats().trees.refused;
+    const b0 = X.exactStats.builds, f0 = X.exactStats.refits;
     const m = new T.Matrix4().makeRotationFromEuler(new T.Euler(0.3, 1.1, 2.0)).setPosition(1, 0.2, -0.1);
     let agree = true;
-    for (const up of [Infinity, 0.3]) if (!Object.is(K.wasmDistance(g, other, m.elements, up), X.exactDistance(g, other, m.elements, up))) agree = false;
-    if (K.wasmIntersects(g, other, m.elements) !== X.exactMeets(g, other, m.elements)) agree = false;
-    const refused = K.kernelStats().trees.refused - ref0;
-    line(same && refused === 1 && agree, `refit refusal through kernel.js: a geometry built to COLLIDE with the family's candidate key (two triples replaced, the hash unchanged: ${same}) is offered, refused by the kernel (${refused} refused) and built fresh, answering Object.is the port`);
+    for (const up of [Infinity, 0.3]) if (!Object.is(X.exactDistance(g, other, m.elements, up), K.wasmDistance(g, other, m.elements, up))) agree = false;
+    if (X.exactMeets(g, other, m.elements) !== K.wasmIntersects(g, other, m.elements)) agree = false;
+    const built = X.exactStats.builds - b0, refitted = X.exactStats.refits - f0;
+    line(same && built === 1 && refitted === 0 && agree, `refit refusal: a geometry built to COLLIDE with the family's candidate key (two triples replaced, the hash unchanged: ${same}) is refused by the port's check and built fresh (${built} built, ${refitted} refitted), answering Object.is the kernel`);
   }
 }
 

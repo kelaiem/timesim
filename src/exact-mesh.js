@@ -76,8 +76,8 @@ function selectK(key, idx, lo, hi, k) {
 // depends on the shape: a pair is pruned only when its bound clears the best by
 // PRUNE_PAD, so the distance is the exact minimum over every pair under the bound
 // and the meet is true exactly when some pair meets, whatever the order of the
-// visit (since landing 11 the compiled kernel refits the same way, `geom_refit`, and
-// G3 holds both refits Object.is a fresh tree).
+// visit (the compiled kernel builds fresh: §338 landing 11 measured its refit and
+// refused it, and shadow holds the two Object.is).
 const families = new Map();   // `${n}:${ntri}:${hash}` → the family's built tree (its slots' triples in `slotKey`)
 
 function intake(geometry) {
@@ -101,17 +101,16 @@ function intake(geometry) {
 // Each triangle named by its vertex triple, as one exact integer (n³ < 2⁵³, else no
 // family), and the family's candidate key: the vertex and triangle counts and an
 // ORDER-INDEPENDENT hash of the triples (a sum of mixed keys, mod 2³²), which only
-// finds a candidate; membership is checked triple by triple. src/kernel.js names its
-// families with this same function (§338 landing 11), so the two kernels cannot
-// disagree about what a family is.
-export function tripleKeys(ix, n, ntri, keys = true) {
+// finds a candidate; membership is checked triple by triple. Exported for G3, which
+// builds a geometry that COLLIDES with a family's key to hold the refusal path.
+export function tripleKeys(ix, n, ntri) {
   const keyed = n * n * n < 9007199254740992;
   if (!keyed) return { tkey: null, famKey: null };
-  const tkey = keys ? new Float64Array(ntri) : null;   // kernel.js needs the candidate key alone
+  const tkey = new Float64Array(ntri);
   let h = 0;
   for (let t = 0; t < ntri; t++) {
     const k = ix ? (ix[3 * t] * n + ix[3 * t + 1]) * n + ix[3 * t + 2] : t;
-    if (tkey) tkey[t] = k;
+    tkey[t] = k;
     let x = Math.imul((k % 4294967296) ^ Math.floor(k / 4294967296), 2654435761) >>> 0;
     x = Math.imul(x ^ (x >>> 15), 2246822519) >>> 0;
     h = (h + x) >>> 0;
