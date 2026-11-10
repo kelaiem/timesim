@@ -3029,7 +3029,7 @@ const {
   cwDist, pinDist, pinOutDist, clutchHomeDist, swDist, mwFoldD, minuteArborXY, windIdler,
   settingLeverPivot, settingLeverAngleAt, tailPostWorldAt, postEng, postRel,
   kwPostBow, yokePivot, yokeAngleAt, slMidAlong, canonToWorld,
-  plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, reserveWellR, secondsWellR, secondsWellCeil, alarmCornerR, rsvrWindow,
+  plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, reserveWellR, secondsWellR: SECONDS_WELL_R_ROUND, secondsWellCeil, alarmCornerR, rsvrWindow,
   printScale,   // the print-follows-case scale (layout.js solveKeyless; 1 except on the free case)
   reserveStationR, reserveWellLaw, // §308 L4 option A — the station's distance, and which side of the chapter its well is cut
   reserveSector,   // §308 L4 option B — the fan well (null unless reserveWellLaw is 'sector')
@@ -3121,6 +3121,24 @@ const freePin = (x, y, need, what) => { if (FORM?.kind === 'free') FREE_PINS.pus
 // (§308: that signed distance is the shape's own `inset` — exact for the rect
 // and the tonneau, the dense polyline's for the cushion, within its `accuracy`.)
 const FORM_SHAPE = FORM;
+// The form dial's frame and its printed track (§311; the derivation is beside its consumer further down, where these
+// used to be built). Built here, as soon as FORM is known, because the seconds well below is bounded by this rail.
+const FORM_DIAL = !FORM ? null
+  : FORM.kind === 'free' ? freeShapeOf(FORM.pts.map(([X, Y]) => [P.dial.x - X, Y - P.dial.y]).reverse(), { ...FORM.free, c: P.dial.x - FORM.cx })
+  : caseShapeOf(FORM.kind, { xMin: P.dial.x - FORM.xMax, xMax: P.dial.x - FORM.xMin, yMin: FORM.yMin - P.dial.y, yMax: FORM.yMax - P.dial.y }, formShapeOpts(FORM));
+const DIAL_TRACK = FORM ? G.dialTrack(FORM_DIAL, dialRadius) : null;
+// TODO 298 — THE SECONDS WELL YIELDS THE TRACK IT PRINTS UNDER. §125's rule is that a well's ring wall stops one
+// CLEAR_MARGIN short of the printed furniture its face runs under, and for the seconds that furniture is the railroad's
+// inner rail. The solve (layout.js secondsWellCeil) reads the ROUND rail. On a form case the face prints the FORM track
+// (§311), whose inner rail comes inside the round one where the outline is tight, and on the alarm-free fitted case the
+// well stood 1.096 inside it (§311's check below, which still runs). So the well's radius is also bounded by the rail it
+// prints under, in the check's own terms: its centre's inset to that rail, less the ring wall and the margin. Where the
+// form rail stands outside the round one at the well this bound is the looser and nothing moves; the round build has no
+// form rail at all. The floor (SUBDIAL_FLOOR, the pocket's bore, wall and margin) stays the hard minimum.
+const SECONDS_WELL_FORM_CEIL = DIAL_TRACK ? DIAL_TRACK.inner.inset(SECONDS_LOCAL.x, SECONDS_LOCAL.y) - DIAL_WALL_HALF - CLEAR_MARGIN : Infinity;
+const secondsWellR = Math.max(SUBDIAL_FLOOR, Math.min(SECONDS_WELL_R_ROUND, SECONDS_WELL_FORM_CEIL));
+if (SECONDS_WELL_FORM_CEIL < SUBDIAL_FLOOR)
+  console.warn(`TODO 298: the seconds well's form-rail ceiling ${SECONDS_WELL_FORM_CEIL.toFixed(3)} is under its floor ${SUBDIAL_FLOOR.toFixed(3)} — keeping the floor; the ${FORM.kind} track is too tight for a readable seconds well at this station`);
 // §308 L4 option A — A WELL OUTSIDE THE CHAPTER MUST LIE INSIDE THE DIAL IT IS
 // CUT IN. solveKeyless held it to the fitted outline when the URL carried one;
 // a first form boot has none, so its well was bounded by the track alone and
@@ -22828,10 +22846,7 @@ await breathe(159);
 // paints, the minute hand is cut to and the probe re-measures.
 // §325 — the free outline is symmetric about nothing, so its dial frame is the polyline itself carried through the
 // flip (x mirrored about the hands, the loop reversed to stay CCW), its strap axis with it.
-const FORM_DIAL = !FORM ? null
-  : FORM.kind === 'free' ? freeShapeOf(FORM.pts.map(([X, Y]) => [P.dial.x - X, Y - P.dial.y]).reverse(), { ...FORM.free, c: P.dial.x - FORM.cx })
-  : caseShapeOf(FORM.kind, { xMin: P.dial.x - FORM.xMax, xMax: P.dial.x - FORM.xMin, yMin: FORM.yMin - P.dial.y, yMax: FORM.yMax - P.dial.y }, formShapeOpts(FORM));
-const DIAL_TRACK = FORM ? G.dialTrack(FORM_DIAL, dialRadius) : null;
+// (FORM_DIAL and DIAL_TRACK are built just after FORM, near the top: TODO 298 bounds the seconds well by this rail.)
 if (DIAL_TRACK) {
   // The solver bounded both wells by the ROUND inner rail (printFrame above):
   // that is only conservative while the form track's inner rail stands

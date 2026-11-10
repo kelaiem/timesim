@@ -1055,13 +1055,13 @@ const SPEC_POINTS = [
   // been swept: the battery's tables named the alarm's units and threw, and the case was cut to the solvers' guess, through
   // the setting lever. Now the battery stands down the module's rows on the build's own word and the case is cut to its
   // generated fit (src/form-fits.js), so this point sweeps the alarm-free metal on every run. The fitted kind is the one
-  // §339 measured and the smallest of the four. It boots three filed rows: §186's form-case fit (TODO 300: the form case
-  // does not hold its movement), §261's depth cap (TODO 289 landing 8 raised the no-alarm dial for the fold's lower bushes,
-  // as stopwork-140 declares it), and §311's seconds well past the form track's inner rail (TODO 298: the fitted outline
-  // brings the rail inside the round one the well was solved against).
+  // §339 measured and the smallest of the four. It boots two filed rows: §186's form-case fit (TODO 300: the form case
+  // does not hold its movement) and §261's depth cap (TODO 289 landing 8 raised the no-alarm dial for the fold's lower
+  // bushes, as stopwork-140 declares it). §311's seconds well, the third on arrival, is gone since TODO 298 bounds the well
+  // by the form rail it prints under.
   { name: 'alarm-free-fitted', q: 'alarm=0&case=fitted', expect: 'declared', sweep: true,
-    expectWarns: ['§186: the rim-to-bore fit', '§261: cased assembly', '§311: the seconds well'],
-    why: 'TODO 298 landing 3 — the movement without the alarm on the fitted form case at its own generated fit; boots exactly the three filed rows, swept' },
+    expectWarns: ['§186: the rim-to-bore fit', '§261: cased assembly'],
+    why: 'TODO 298 landing 3 — the movement without the alarm on the fitted form case at its own generated fit; boots exactly the two filed rows, swept' },
   // §329 — THE STOP IRON ON THE DEFAULT BUILD. Since the flip the Geneva stop-work is the default arrest (swept as the default
   // itself), and §47's stop iron is the supported alternative, `?arrest=stop-iron`: swept here so it stays buildable.
   { name: 'stop-iron', q: 'arrest=stop-iron', expect: 'silent', sweep: true,
