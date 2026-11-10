@@ -31,13 +31,31 @@
 // FREESTANDING: no libc, no standard library (zig's wasm32-freestanding gives none
 // under -nostdlib, so the few things std would supply are written here), no
 // exceptions, no allocation but the bump arena below.
+//
+// §338 landing 12 — ONE SOURCE, TWO TARGETS. The same file is compiled natively into
+// the sweep engine (tools/native-sweep/). Only the arena's addressing differs: in wasm
+// an address is a linear-memory address; natively it is an offset into a block the
+// host hands over (`kernel_bind`), and growing memory is a capacity check. The
+// geometry, the trees and the queries are the same code and the same arithmetic, so
+// the native engine answers what the wasm module answers, which its probe holds.
 
 using u32 = unsigned int;
 using u8 = unsigned char;
 
+#if defined(__wasm__)
+#define KEXPORT(name) __attribute__((export_name(name)))
+#else
+#define KEXPORT(name)
+#endif
+
 // ---------------------------------------------------------------------------
 // The arena.
+#if defined(__wasm__)
 extern "C" unsigned char __heap_base;
+#else
+static u8* native_mem = nullptr;   // the host's block; an address is an offset into it
+static u32 native_cap = 0;
+#endif
 
 static u32 heap_top = 0;
 static u32 heap_start = 0;
@@ -45,6 +63,7 @@ static u32 scratch_cap = 0, scratch_ptr = 0;   // the query's reusable scratch (
 
 static constexpr u32 align8(u32 x) { return (x + 7u) & ~7u; }
 
+#if defined(__wasm__)
 // A linear-memory address as a typed pointer, and back: wasm32's address space.
 template <class T> static T* at(u32 p) { return reinterpret_cast<T*>(static_cast<unsigned long>(p)); }
 template <class T> static u32 addr(const T* p) { return static_cast<u32>(reinterpret_cast<unsigned long>(p)); }
@@ -56,16 +75,23 @@ template <class T> static u32 addr(const T* p) { return static_cast<u32>(reinter
   const u32 pages = (end - have + 65535u) / 65536u;
   return __builtin_wasm_memory_grow(0, pages) != static_cast<unsigned long>(-1);
 }
+static u32 heap_base_addr() { return addr(&__heap_base); }
+#else
+template <class T> static T* at(u32 p) { return reinterpret_cast<T*>(native_mem + p); }
+template <class T> static u32 addr(const T* p) { return static_cast<u32>(reinterpret_cast<const u8*>(p) - native_mem); }
+[[nodiscard]] static bool ensure_memory(u32 end) { return end <= native_cap; }
+static u32 heap_base_addr() { return 8; }   // never 0: a 0 handle means "out of memory"
+#endif
 
 extern "C" {
 
-__attribute__((export_name("reset"))) void reset() {
-  if (!heap_start) heap_start = align8(addr(&__heap_base));
+KEXPORT("reset") void reset() {
+  if (!heap_start) heap_start = align8(heap_base_addr());
   heap_top = heap_start;
   scratch_cap = 0; scratch_ptr = 0;   // the scratch lived in the arena: it is gone with it
 }
 
-__attribute__((export_name("alloc"))) u32 alloc(u32 bytes) {
+KEXPORT("alloc") u32 alloc(u32 bytes) {
   if (!heap_start) reset();
   const u32 p = align8(heap_top);
   const u32 end = p + align8(bytes);
@@ -74,7 +100,12 @@ __attribute__((export_name("alloc"))) u32 alloc(u32 bytes) {
   return p;
 }
 
-__attribute__((export_name("heap_used"))) u32 heap_used() { return heap_top - heap_start; }
+KEXPORT("heap_used") u32 heap_used() { return heap_top - heap_start; }
+
+#if !defined(__wasm__)
+// The native host's block: every handle and pointer the kernel returns is an offset into it.
+void kernel_bind(u8* mem, u32 cap) { native_mem = mem; native_cap = cap; heap_start = 0; }
+#endif
 
 }  // extern "C"
 
@@ -422,7 +453,7 @@ extern "C" {
 // Build a geometry from three.js' buffers: `pos` f32 × 3 per vertex, `idx` u32 × 3
 // per triangle (an unindexed geometry is passed with an identity index). Returns a
 // handle (a pointer into linear memory) or 0 when memory ran out.
-__attribute__((export_name("geom_create"))) u32 geom_create(u32 posPtr, u32 nvert, u32 idxPtr, u32 ntri) {
+KEXPORT("geom_create") u32 geom_create(u32 posPtr, u32 nvert, u32 idxPtr, u32 ntri) {
   const float* pos = at<const float>(posPtr);
   const u32* idx = at<const u32>(idxPtr);
   (void)nvert;
@@ -678,7 +709,7 @@ extern "C" {
 // The closest distance between A (its own frame) and B placed by the matrix at
 // `matPtr` (B's frame → A's, column-major), +Infinity when no pair is closer than
 // `upper`, or -1 when the scratch did not fit.
-__attribute__((export_name("distance"))) double distance(u32 hA, u32 hB, u32 matPtr, double upper) {
+KEXPORT("distance") double distance(u32 hA, u32 hB, u32 matPtr, double upper) {
   const Geom* A = at<const Geom>(hA);
   const Geom* B = at<const Geom>(hB);
   last_pairs = 0;
@@ -695,7 +726,7 @@ __attribute__((export_name("distance"))) double distance(u32 hA, u32 hB, u32 mat
 
 // 1 when some triangle of A meets some triangle of B under M, 0 when none does, -1
 // when the scratch did not fit.
-__attribute__((export_name("intersects"))) int intersects(u32 hA, u32 hB, u32 matPtr) {
+KEXPORT("intersects") int intersects(u32 hA, u32 hB, u32 matPtr) {
   const Geom* A = at<const Geom>(hA);
   const Geom* B = at<const Geom>(hB);
   last_pairs = 0;
@@ -708,7 +739,7 @@ __attribute__((export_name("intersects"))) int intersects(u32 hA, u32 hB, u32 ma
   return Q.done ? 1 : 0;
 }
 
-__attribute__((export_name("last_pairs"))) u32 last_pairs_get() { return last_pairs; }
-__attribute__((export_name("geom_ntri"))) u32 geom_ntri(u32 h) { return static_cast<u32>(at<const Geom>(h)->ntri); }
+KEXPORT("last_pairs") u32 last_pairs_get() { return last_pairs; }
+KEXPORT("geom_ntri") u32 geom_ntri(u32 h) { return static_cast<u32>(at<const Geom>(h)->ntri); }
 
 }  // extern "C"
