@@ -25,12 +25,13 @@ import { bootMany } from './boot-pool.mjs';
 
 const args = process.argv.slice(2);
 const take = (f) => { const i = args.indexOf(f); if (i < 0) return null; const v = args[i + 1]; args.splice(i, 2); return v; };
-const DEPTH = Number(take('--depth') ?? 3);   // movement units: the widest ledge worth asking about (~1.1 mm)
+const OUTSIDE = args.includes('--outside'); if (OUTSIDE) args.splice(args.indexOf('--outside'), 1);
+const DEPTH = Number(take('--depth') ?? (OUTSIDE ? 2.64 : 3));   // movement units: the widest ledge worth asking about (~1.1 mm)
 const QUERIES = args.length ? args : ['case=fitted', 'alarm=0&case=fitted', 'case=rect', 'alarm=0&case=rect'];
 const NB = 120;
 const EXPR = `(async () => {
   const I = await import('./src/inspect.js'), THREE = await import('three'), clock = window.__clock;
-  const DEPTH = ${DEPTH}, NB = ${NB};
+  const DEPTH = ${DEPTH}, NB = ${NB}, OUTSIDE = ${OUTSIDE};
   let plate = null, dial = null; clock.scene.traverse((o) => { if (o.isMesh && o.name === 'backPlate' && !plate) plate = o; });
   const dialUnit = clock.labelEntries.find((e) => e.name === 'Dial')?.obj;
   plate.updateWorldMatrix(true, true);
@@ -42,7 +43,7 @@ const EXPR = `(async () => {
   // the plate's dial face: the lowest z of its metal (the dial side is -z, probe-ledge-occupancy's zFront)
   let zFace = Infinity; { const p = plate.geometry.attributes.position; for (let i = 0; i < p.count; i++) { plate.localToWorld(v.fromBufferAttribute(p, i)); zFace = Math.min(zFace, v.z); } }
   let zDial = Infinity; if (dialUnit) dialUnit.traverse((o) => { if (!o.isMesh) return; o.updateWorldMatrix(true, false); const p = o.geometry.attributes.position; for (let i = 0; i < p.count; i++) { o.localToWorld(v.fromBufferAttribute(p, i)); zDial = Math.min(zDial, v.z); } });
-  const z0 = zDial, z1 = zFace;
+  const z0 = OUTSIDE ? -Infinity : zDial, z1 = OUTSIDE ? Infinity : zFace;
   // arc-length stations of the ring
   const segs = [], cum = [0];
   for (let i = 0; i < ring.length; i++) { const a = ring[i], b = ring[(i + 1) % ring.length]; segs.push([a, b]); cum.push(cum[i] + Math.hypot(b[0] - a[0], b[1] - a[1])); }
@@ -51,7 +52,7 @@ const EXPR = `(async () => {
   const nearest = (x, y) => { let best = Infinity, s = 0; for (let i = 0; i < segs.length; i++) { const [a, b] = segs[i], dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy; const t = L2 ? Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / L2)) : 0; const d = Math.hypot(x - a[0] - t * dx, y - a[1] - t * dy); if (d < best) { best = d; s = cum[i] + t * Math.sqrt(L2); } } return { d: best, s }; };
   const occ = new Map();   // unit -> { bins: Map(bin -> minDepth), zMin, zMax }
   const takeP = (x, y, z, name) => {
-    if (z < z0 - 1e-9 || z > z1 + 1e-9 || !inside(x, y)) return;
+    if (z < z0 - 1e-9 || z > z1 + 1e-9 || inside(x, y) === OUTSIDE) return;
     const { d, s } = nearest(x, y); if (d > DEPTH) return;
     const bin = Math.min(NB - 1, Math.floor((s / per) * NB));
     const u = occ.get(name) || { bins: new Map(), zMin: Infinity, zMax: -Infinity };
@@ -90,6 +91,7 @@ for (const r of rs) {
   const { per, z0, z1, poses, units } = r.extra;
   console.log(`   outline ${f(per, 1)} u round; band ${DEPTH} u deep, z ${f(z0)}..${f(z1)} (dial front to plate's dial face); ${poses} poses`);
   const dial = units.find((u) => u.name === 'Dial');
+  if (OUTSIDE) { for (const u of units) console.log(`   ${u.name.padEnd(28)} ${String(u.stations).padStart(3)} stations, from ${f(u.minDepth)} u outside the outline, z ${f(u.zMin)}..${f(u.zMax)}, bins ${u.bins.map(([b]) => b).join(',')}`); continue; }
   console.log(`   CONTROL: the Dial occupies ${dial ? dial.stations : 0} of ${NB} stations ${dial && dial.stations === NB ? '(PASS)' : '(FAIL: the scan is not reading the dial cut to this outline)'}`);
   if (!dial || dial.stations !== NB) controlOk = false;
   // what a ledge competes with: everything but the dial (which a ledge in front of the plate meets by construction

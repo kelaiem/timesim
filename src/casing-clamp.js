@@ -17,17 +17,27 @@
 //   NOTCHES — a stem crossing the outline crosses the ledge between the plate's dial face and the dial (TODO 300 step 3:
 //     the only occupants of the band), so the ledge is notched there by §186's own half-width (the tube's aperture, the
 //     margin, and the bevel the plate's swell carries into a concave cut).
-//   DOGS — casing screws tapped into the band's back face, parallel to the movement's axis, each turning a DOG (a flat
-//     lever under its head) over the bore onto the plate's back face. The thread keeps one pitch (Ø/4, §186's thread
-//     wall) of band metal each side, so the band must be 1.5 Ø wide; the dog reaches from the screw's axis over the
-//     bore's fit and bevel to bear one land on the plate's flat back face, which leaves it far outboard of any counted
-//     metal (the form fit keeps that PLATE_RIM_MARGIN inside the edge). Three dogs (§186's tripod: the fewest that seat
-//     a plane), spread along the outline as far from the stem notches as the period allows, and their triangle must
-//     contain the plate's centroid or the plate rocks on two.
+//   CLAMPS — a DOG on the plate, its tongue in a GROOVE in the bore wall (step 4b; step 4's first reading tapped the
+//     screws into the band, and a Ø0.6 mm screw's head or dog cannot sit in a 2.64 u band: centred a pitch and a half
+//     off the bore so the thread keeps its wall, a 1.8:1 head's counterbore breaks the band's outer wall by 0.38 u,
+//     and the room the round case finds for its heads is the annulus outside the plate this hold closes). So the
+//     screw threads into the PLATE's edge (the outer PLATE_RIM_MARGIN of its back face carries no counted metal), its
+//     axis one pitch of wall plus a half-diameter inside the outline, blind, §3's 0.7 mm engagement leaving a land of
+//     floor under it. A flat dog under its head reaches OUT over the bore's fit into a groove cut in the band's bore
+//     wall, one land deep plus SEAT_FIT at its tip, and as wide as the dog plus SEAT_FIT. The plate is then held
+//     axially between the ledge (on its dial face) and the groove's back wall (over the tongue), with SEAT_FIT of play.
+//     The movement goes in with each dog turned inward (its tongue then stands over the plate's own margin), and the
+//     dogs are turned out into the groove. Three dogs (§186's tripod: the fewest bearings that seat a plane), spread
+//     along the outline as far from the stem notches as the period allows; their triangle must hold the plate's
+//     centroid or the plate rocks on two. The dog's thickness is the land floor (§325 landing 15's reasoning: no shock
+//     spec exists to size it by, so it is held to the floor every land here is).
+//   THE GRID — every offset is rounded on the 0.01 grid AWAY from the metal it clears (§325 landing 10's rule), so the
+//     fits and margins hold past float noise and the case library's own offset error (the cushion's polyline, 1.8e-5 u);
+//     the locating fit then reads 0.0879, inside §186's tenth of SEAT_FIT.
 //
 // This is MODELLED, never simulated: no preload or shock is priced (no load spec exists for either), and the dogs'
 // turning is a fitting operation, not a mechanism any axis poses.
-import { UNIT_MM, CASE_CLEAR, CASE_BAND_T, STOCK_MIN_U, CLEAR_MARGIN, PLATE_RIM_MARGIN, CASE_SCREW_HEAD_D, CASE_SCREW_SHAFT_D, CASE_TUBE_D } from './layout.js';
+import { UNIT_MM, CASE_CLEAR, CASE_BAND_T, STOCK_MIN_U, CLEAR_MARGIN, PLATE_RIM_MARGIN, CASE_SCREW_HEAD_D, CASE_SCREW_SHAFT_D, CASE_TUBE_D, BACK_PLATE_T } from './layout.js';
 
 // geometry.js' constants, restated by VALUE here because geometry.js imports three.js and a line spec is pure. The
 // probe imports geometry.js under the native loader and holds each equal to its source (S0), so the two cannot part.
@@ -36,35 +46,44 @@ export const GEOMETRY_RULES = Object.freeze({ PLATE_BEVEL_F: 0.008, SEAT_FIT: 0.
 // ---- INPUTS: each a choice with its reason. A fork overrides these and only these. ----
 export const CLAMP_INPUTS = Object.freeze({
   plateR_u: { v: 41.51616090422663, why: 'the radius the plate extrude\'s bevel rule reads (main.js plateR, measured on alarm=0&case=fitted; the fold passes the build\'s own)' },
-  clampD_u: { v: 0.6 / UNIT_MM, why: 'the round build\'s smallest clamp stock (main.js CASE_CLAMP_SHAFT_D without the alarm, §325 landing 14): the next catalogue size up, Ø0.8 mm, needs a 3.17 u band' },
+  clampD_u: { v: 0.6 / UNIT_MM, why: 'the round build\'s smallest clamp stock (main.js CASE_CLAMP_SHAFT_D without the alarm, §325 landing 14)' },
   dogs: { v: 3, why: '§186\'s tripod (CASE_CLAMP_N): the fewest bearings that seat a plane' },
 });
 const IN = (k, over) => (over && k in over ? over[k] : CLAMP_INPUTS[k].v);
 
 // ---- the rows ----
+const GRID = 0.01;
+const up = (x) => Math.ceil(x / GRID - 1e-9) * GRID;   // rounded away from zero on the grid
 export function solveClamp(over) {
   const { PLATE_BEVEL_F, SEAT_FIT, TUBE_WALL } = GEOMETRY_RULES;
   const plateR = IN('plateR_u', over), D = IN('clampD_u', over), N = IN('dogs', over);
   const bevel = plateR * PLATE_BEVEL_F;            // the plate's swell past its authored outline (makeBackPlate)
-  const land = STOCK_MIN_U;                        // §62's land floor
-  const boreBack = bevel + SEAT_FIT;               // locating: SEAT_FIT off the real reach
+  const land = up(STOCK_MIN_U);                    // §62's land floor, on the grid
+  const boreBack = up(bevel + SEAT_FIT);           // locating: SEAT_FIT off the real reach
   const boreFront = -land;                         // the ledge's lip: one land onto the flat dial face
   const ledgeW = boreBack - boreFront;             // the ledge's radial width, bore wall to lip
-  const dial = boreFront - CLEAR_MARGIN;           // the dial passes inside the lip
+  const dial = boreFront - CLEAR_MARGIN - GRID;    // the dial passes inside the lip, a grid step past the margin
   const caseIn = CASE_CLEAR - boreBack;            // how far the band comes in against today's single bore
   const notchHalfW = CASE_TUBE_D / 2 + TUBE_WALL + CLEAR_MARGIN + bevel;   // §186 CASE_NOTCH_HALFW, carried whole
   const pitch = D / 4, headD = D * (CASE_SCREW_HEAD_D / CASE_SCREW_SHAFT_D);   // §186's thread wall, the 1.8:1 head
-  const screw = boreBack + pitch + D / 2;          // the screw's axis, offset from the authored outline
-  const bandNeed = 2 * pitch + D;                  // a thread wall each side
-  const wallOut = boreBack + CASE_BAND_T - (screw + D / 2);   // band metal outboard of the tapped hole
-  const dogTip = -land;                            // the dog bears one land on the flat back face
-  const dogReach = screw - dogTip;                 // screw axis to the dog's tip
-  const dogClear = PLATE_RIM_MARGIN + dogTip;      // the dog's tip to the counted metal, at the form fit's margin
+  const headT = 0.4 / UNIT_MM;                     // §186's clamp head height (geometry.js makeCase headT)
+  const eng = 0.7 / UNIT_MM;                       // §3's engagement (main.js CASE_CLAMP_ENG)
+  const screw = -up(D / 2 + pitch);                // the axis, inside the outline: a pitch of plate wall to its edge
+  const holeFloor = BACK_PLATE_T - eng;            // plate metal left under the blind hole
+  const headIn = -screw + headD / 2;               // the head's inboard edge, depth inside the outline
+  const dogT = land;                               // the dog, at the land floor
+  const grooveD = land + SEAT_FIT;                 // the groove's depth past the bore wall: a land of bearing, a fit at the tip
+  const grooveW = dogT + SEAT_FIT;                 // its width along the axis
+  const dogTip = boreBack + land;                  // the tongue's tip, out past the bore wall by its bearing
+  const dogReach = dogTip - screw;                 // axis to tip
+  const dogStow = screw - dogReach;                // the tip turned inward for casing, inside the outline
   const dogHalfW = headD / 2;                      // the dog is as wide as the head that holds it
-  const dogSpacing = notchHalfW + dogHalfW + CLEAR_MARGIN;   // §186's rule: a dog off a notch by notch + head + margin
-  return { bevel, land, boreBack, boreFront, ledgeW, dial, caseIn, notchHalfW, D, pitch, headD, screw, bandNeed, wallOut,
-    dogTip, dogReach, dogClear, dogHalfW, dogSpacing, N, eng: 0.7 / UNIT_MM,   // §3's engagement, as the round clamps (CASE_CLAMP_ENG)
-    fit: (boreOff) => boreOff - bevel };   // the locating fit a bore at boreOff gives: §186's own measure, wall to real reach
+  const dogSpacing = notchHalfW + dogHalfW + CLEAR_MARGIN;   // §186's rule: a clamp off a notch by notch + head + margin
+  return { GRID, bevel, land, boreBack, boreFront, ledgeW, dial, caseIn, notchHalfW, D, pitch, headD, headT, eng, screw,
+    holeFloor, headIn, dogT, grooveD, grooveW, dogTip, dogReach, dogStow, dogHalfW, dogSpacing, N,
+    bandLeft: CASE_BAND_T - grooveD,               // band wall behind the groove
+    marginClear: (depth) => PLATE_RIM_MARGIN - depth,   // a depth inside the outline to the counted metal
+    fit: (boreOff) => boreOff - bevel };           // the locating fit a bore at boreOff gives: §186's measure, wall to reach
 }
 
 // ---- along an outline: arc length, a station's point, and the dogs' stations ----

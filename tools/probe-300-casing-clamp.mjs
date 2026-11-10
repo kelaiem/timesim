@@ -33,28 +33,31 @@ const STEM_AZ = 159.88686979418557 * Math.PI / 180;
 
 ok('S0 the restated geometry rules are geometry.js\' own', GEOMETRY_RULES.PLATE_BEVEL_F === G.PLATE_BEVEL_F && GEOMETRY_RULES.SEAT_FIT === G.SEAT_FIT && GEOMETRY_RULES.TUBE_WALL === G.TUBE_WALL);
 
-ok('S1 the back bore locates the plate at SEAT_FIT (wall to real reach)', Math.abs(C.fit(C.boreBack) - G.SEAT_FIT) < 1e-12,
-  `bore at outline + ${f(C.boreBack)} u (bevel ${f(C.bevel)} + fit), against today's ${f(CASE_CLEAR)}: the band comes in ${f(C.caseIn)} u (${mm(C.caseIn)}) a side`);
+ok('S1 the back bore locates the plate at SEAT_FIT within its tenth (wall to real reach, on the 0.01 grid)', C.fit(C.boreBack) >= G.SEAT_FIT && C.fit(C.boreBack) - G.SEAT_FIT <= G.SEAT_FIT / 10,
+  `bore at outline + ${f(C.boreBack)} u (bevel ${f(C.bevel)}), fit ${f(C.fit(C.boreBack))}, against today's ${f(CASE_CLEAR)}: the band comes in ${f(C.caseIn)} u (${mm(C.caseIn)}) a side`);
 const today = C.fit(CASE_CLEAR);
-ok('S1 control: today\'s bore reads §186\'s boot warning (2.3061 measured off the metal)', Math.abs(today - 2.3061) < 2e-3 && today > G.SEAT_FIT + 0.1, `fit ${f(today)} u`);
+ok('S1 control: today\'s bore reads §186\'s boot warning (2.3061 measured off the metal)', Math.abs(today - 2.3061) < 2e-3 && today > G.SEAT_FIT * 1.1, `fit ${f(today)} u`);
 
 const bears = (lip) => -lip;   // the flat dial face runs to the authored outline; a lip at offset `lip` overlaps it by −lip
-ok('S2 the ledge bears one land on the plate\'s flat dial face', Math.abs(bears(C.boreFront) - STOCK_MIN_U) < 1e-12,
+ok('S2 the ledge bears at least one land on the plate\'s flat dial face', bears(C.boreFront) >= STOCK_MIN_U,
   `lip at outline − ${f(-C.boreFront)}, ledge ${f(C.ledgeW)} u (${mm(C.ledgeW)}) wide`);
 ok('S2 control: a lip at the outline bears nothing', !(bears(0) >= STOCK_MIN_U));
 
-ok('S3 the dial passes inside the lip by CLEAR_MARGIN', Math.abs(C.boreFront - C.dial - CLEAR_MARGIN) < 1e-12, `dial at outline − ${f(-C.dial)} u (${mm(-C.dial)})`);
-ok('S3 control: the dial cut to the plate\'s outline stands in the ledge', !(C.boreFront - 0 >= CLEAR_MARGIN), `${f(-C.boreFront)} u into it`);
+ok('S3 the dial passes inside the lip by more than CLEAR_MARGIN', C.boreFront - C.dial > CLEAR_MARGIN, `dial at outline − ${f(-C.dial)} u (${mm(-C.dial)}), ${f(C.boreFront - C.dial)} inside the lip`);
+ok('S3 control: the dial cut to the plate\'s outline stands in the ledge', !(C.boreFront - 0 > CLEAR_MARGIN), `${f(-C.boreFront)} u into it`);
 
-ok('S4 the band holds the thread, a pitch of wall each side', C.bandNeed <= CASE_BAND_T + 1e-12 && C.wallOut >= C.pitch - 1e-12,
-  `Ø${mm(C.D)}: needs ${f(C.bandNeed)} of the band's ${f(CASE_BAND_T)}, ${f(C.wallOut)} outboard against the pitch ${f(C.pitch)}`);
-for (const d of [0.8, 1.0]) { const X = solveClamp({ clampD_u: d / UNIT_MM });
-  ok(`S4 control: Ø${d} mm does not fit the band`, !(X.bandNeed <= CASE_BAND_T && X.wallOut >= X.pitch), `needs ${f(X.bandNeed)}`); }
+ok('S4 the screw\'s hole keeps a pitch of plate wall to the outline', -C.screw - C.D / 2 >= C.pitch - 1e-12, `axis ${f(-C.screw)} u inside, wall ${f(-C.screw - C.D / 2)} against ${f(C.pitch)}`);
+ok('S4 the blind hole leaves a land of plate under it', C.holeFloor >= STOCK_MIN_U, `${f(C.holeFloor)} u under a ${f(C.eng)} u engagement`);
+ok('S4 the head clears the counted metal (PLATE_RIM_MARGIN inside the edge)', C.marginClear(C.headIn) >= CLEAR_MARGIN, `head edge ${f(C.headIn)} u inside, ${f(C.marginClear(C.headIn))} clear`);
+{ const axis = C.boreBack + C.pitch + C.D / 2, cb = axis + C.headD / 2 + G.SEAT_FIT;
+  ok('S4 control: a screw tapped into the band (step 4\'s first reading) breaks its outer wall with the head\'s counterbore', cb > C.boreBack + CASE_BAND_T,
+    `counterbore to outline + ${f(cb)} against the wall at ${f(C.boreBack + CASE_BAND_T)}`); }
 
-ok('S5 each dog bears one land on the flat back face', Math.abs(-C.dogTip - STOCK_MIN_U) < 1e-12, `reach ${f(C.dogReach)} u (${mm(C.dogReach)}) from the screw's axis`);
-ok('S5 the dog clears the counted metal (PLATE_RIM_MARGIN inside the edge) by CLEAR_MARGIN', C.dogClear >= CLEAR_MARGIN, `${f(C.dogClear)} u`);
-const headTip = C.screw - C.headD / 2;
-ok('S5 control: the screw\'s head alone clamps air (its edge stands outside the outline)', !(headTip <= -STOCK_MIN_U), `head edge at outline + ${f(headTip)}`);
+ok('S5 the dog\'s tongue bears one land past the bore wall, its tip a fit off the groove\'s floor', C.dogTip - C.boreBack >= STOCK_MIN_U && Math.abs(C.boreBack + C.grooveD - C.dogTip - G.SEAT_FIT) < 1e-12,
+  `reach ${f(C.dogReach)} u (${mm(C.dogReach)}) from the axis; groove ${f(C.grooveD)} deep, ${f(C.grooveW)} wide, ${f(C.bandLeft)} u of band behind it`);
+ok('S5 the dog stowed for casing (turned inward) clears the counted metal', C.marginClear(-C.dogStow) >= CLEAR_MARGIN, `tip ${f(-C.dogStow)} u inside, ${f(C.marginClear(-C.dogStow))} clear`);
+{ const tip = CASE_CLEAR + C.land, stow = -(C.screw - (tip - C.screw));
+  ok('S5 control: a dog reaching today\'s bore (CASE_CLEAR) cannot be stowed clear of the counted metal', !(C.marginClear(stow) >= CLEAR_MARGIN), `stowed tip ${f(stow)} u inside against the ${f(PLATE_RIM_MARGIN)} margin`); }
 
 // S6, S7 on the four alarm-free box kinds at their committed fits
 const rows = Object.entries(FORM_FITS).map(([k, row]) => ({ kind: JSON.parse(k.slice(5)).spec.caseShape, row }));
@@ -87,8 +90,8 @@ for (const { kind, row } of rows) {
 console.warn = cw;
 
 const F = solveClamp({ plateR_u: 50 });
-ok('S8 a fork of the plate\'s radius re-derives every row from the same rules', Math.abs(F.boreBack - (50 * G.PLATE_BEVEL_F + G.SEAT_FIT)) < 1e-12
-  && Math.abs(F.ledgeW - (F.boreBack + STOCK_MIN_U)) < 1e-12 && Math.abs(F.caseIn - (CASE_CLEAR - F.boreBack)) < 1e-12 && F.boreBack > C.boreBack,
+ok('S8 a fork of the plate\'s radius re-derives every row from the same rules', Math.abs(F.boreBack - Math.ceil((50 * G.PLATE_BEVEL_F + G.SEAT_FIT) / 0.01 - 1e-9) * 0.01) < 1e-12
+  && Math.abs(F.ledgeW - (F.boreBack + F.land)) < 1e-12 && Math.abs(F.caseIn - (CASE_CLEAR - F.boreBack)) < 1e-12 && F.boreBack > C.boreBack,
   `bore ${f(F.boreBack)}, ledge ${f(F.ledgeW)}, in ${f(F.caseIn)}`);
 console.log(`\ninputs: ${Object.entries(CLAMP_INPUTS).map(([k, r]) => `${k} ${f(r.v)}`).join(', ')}`);
 console.log(fails.length ? `\n${fails.length} FAILED: ${fails.join('; ')}` : '\nall PASS');
