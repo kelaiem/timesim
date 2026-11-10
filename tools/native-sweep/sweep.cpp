@@ -36,6 +36,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <map>
+#include <memory>
 #include <unordered_map>
 #include <unordered_set>
 #include <string>
@@ -157,7 +158,13 @@ struct Geometry { std::vector<float> pos; std::vector<std::uint32_t> idx; std::u
 
 class Engine {
  public:
-  explicit Engine(std::size_t arena) : mem_(arena) { kernel_bind(mem_.data(), static_cast<u32>(arena)); reset(); mat_ = alloc(128); }
+  // The arena is calloc'd, not a std::vector: a vector zero-fills every page up front
+  // (1.5 GB resident per engine before any work, and the battery runs one per worker),
+  // where calloc hands out zero pages the system commits only as the arena reaches them.
+  explicit Engine(std::size_t arena) : mem_(static_cast<u8*>(std::calloc(arena, 1))) {
+    if (!mem_) { std::fputs("sweep: no memory for the arena\n", stderr); std::exit(2); }
+    kernel_bind(mem_.get(), static_cast<u32>(arena)); reset(); mat_ = alloc(128);
+  }
 
   double touch = 1e-4;
   Census census;
@@ -181,7 +188,8 @@ class Engine {
   }
 
  private:
-  std::vector<u8> mem_;
+  struct Free { void operator()(u8* p) const { std::free(p); } };
+  std::unique_ptr<u8, Free> mem_;
   u32 gen_ = 1, mat_ = 0;
   std::vector<Geometry> geoms_;
   static constexpr u32 BUDGET = 512u * 1024u * 1024u;   // src/kernel.js' ARENA_BUDGET: a reset rebuilds on demand
