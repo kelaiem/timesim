@@ -163,7 +163,7 @@ export const MECH_GRAPH = {
                                              // comes off with the escapement, and the
                                              // three-quarter plate lifts independently
     ['Balance', 'Balance cock'],             // staff's upper pivot in the cock jewel
-    ['Balance', 'plate'],                    // staff's LOWER pivot: rubbed-in jewel in the base plate
+    ['Balance', 'plate'],                    // staff's LOWER pivot: rubbed-in jewel in the base plate, capped by its endstone (TODO 254)
     ['Hairspring', 'Balance'],               // collet on the staff (inner end)
     ['Hairspring', 'Balance cock'],          // outer terminal clamped in the stud hanging from the cock
                                              // (free-sprung: the stud carrier is the spring's ONLY fixture)

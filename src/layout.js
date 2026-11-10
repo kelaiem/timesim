@@ -1331,6 +1331,17 @@ export const HANDOFF_TRACK_TOL = 0.03;
 // makeGear/makePinion bore against it too, spending at most HALF of it on
 // chord sag (`borePath`), so the fit and the tessellation cannot drift apart.
 export const PIVOT_BORE_CLEAR = 0.05;
+// §120 / TODO 254 — ENDSHAKE, the axial half of the same fit. DERIVED, not
+// chosen: the bench sets a wheel's endshake at about its SIDE-SHAKE, and
+// side-shake is measured across the bore, the diametral play, twice the radial
+// fit the bore is cut to. So the endshake IS 2·PIVOT_BORE_CLEAR, 0.1 u =
+// 0.038 mm, inside the 0.02–0.04 mm band a train wheel is set to. One fit, read
+// the two ways a bench reads it. §120 cut it between the alarm governor's
+// collars (main.js, ALARM_GOV_END_SHAKE); TODO 254 cuts it between the balance
+// staff's two ENDSTONES. It is a running play, like the fit it is read from,
+// not a second clearance margin: what keeps unrelated metal apart is still
+// CLEAR_MARGIN alone.
+export const END_SHAKE = 2 * PIVOT_BORE_CLEAR;
 
 // §77 — the zero-area floor, DERIVED (rule 1): tools/probe-77-threshold.mjs
 // histograms every inspected triangle's geometry-local area; the defective
@@ -1775,45 +1786,45 @@ export const FRICTION = Object.freeze({
     why: 'contact radius of a rounded pivot end on its endstone' }),
 });
 
-// TODO 299 â THE SERVICE SCHEDULE, and it is what makes a wear number mean
+// TODO 299 — THE SERVICE SCHEDULE, and it is what makes a wear number mean
 // anything. No watch survives a century untouched; it survives twenty
 // overhauls, and the owner's target is the ordinary one: service every five
-// years â expendable parts replaced, regreased and relubricated, and the
-// ground-up metal and old grease CLEANED OUT â with the escape wheel lasting a
+// years — expendable parts replaced, regreased and relubricated, and the
+// ground-up metal and old grease CLEANED OUT — with the escape wheel lasting a
 // hundred years of it. Each clause does specific work below:
 //
-//  Â· relubrication is what entitles the wear law to a BOUNDARY-LUBRICATED
+//  · relubrication is what entitles the wear law to a BOUNDARY-LUBRICATED
 //    coefficient rather than a dry or starved one;
-//  Â· cleaning the debris out is what entitles it to a CONSTANT one rather than
-//    a runaway â no abrasive third body accumulates, so wear does not compound
+//  · cleaning the debris out is what entitles it to a CONSTANT one rather than
+//    a runaway — no abrasive third body accumulates, so wear does not compound
 //    from one interval to the next;
-//  Â· replacing expendables splits every member into one that must last the
+//  · replacing expendables splits every member into one that must last the
 //    INTERVAL and one that must last the LIFE. The escape wheel is not an
 //    expendable part, which is what puts it on the hundred-year criterion.
 //
 // The full expendable/lifetime roster is TODO 299's own next landing (it is a
 // triage over every member, LUBRICATION's arrival shape); these two numbers are
 // what the escape wheel's price needs.
-export const SERVICE_INTERVAL_YEARS = 5;      // the owner's, inside the trade's 3â7
+export const SERVICE_INTERVAL_YEARS = 5;      // the owner's, inside the trade's 3–7
 export const DESIGN_LIFE_YEARS = 100;         // the escape wheel's target
 export const SERVICES_IN_LIFE = DESIGN_LIFE_YEARS / SERVICE_INTERVAL_YEARS;
 // A Julian year, so a century of seconds is one definition and not a rounding:
 // 365.25 d, which is what "100 years" means for a count of beats.
 export const JULIAN_YEAR_S = 365.25 * 86400;
-// TODO 299 â AND THE WEAR LAW. Archard: the volume removed is KÂ·FÂ·s/H, K
+// TODO 299 — AND THE WEAR LAW. Archard: the volume removed is K·F·s/H, K
 // dimensionless, H the SOFTER body's indentation hardness. The movement's
 // working contacts are polished steel against sapphire under a boundary film,
-// which is the MILD regime â and it is mild because the service keeps it so
+// which is the MILD regime — and it is mild because the service keeps it so
 // (above). A BAND, FRICTION's rule, with every gate reading the ADVERSE end,
 // because the model cannot say how good the polish and the epilame are and that
 // is exactly what K measures. The band is wide on purpose: two decades is what
 // the handbooks' own spread for lubricated mild wear covers (Rabinowicz,
-// Friction and Wear of Materials (1995), Table 6.2 â lubricated like-on-like
-// metals 1e-7â1e-6, hard non-metal on metal lower), and TODO 299's record says
+// Friction and Wear of Materials (1995), Table 6.2 — lubricated like-on-like
+// metals 1e-7–1e-6, hard non-metal on metal lower), and TODO 299's record says
 // plainly that the escape wheel's century turns on which end is true.
 export const WEAR_K_BAND = Object.freeze({
   favourable: 1e-8, nominal: 1e-7, adverse: 1e-6,
-  why: 'Archard K for a polished steel surface against sapphire under a boundary film, cleaned and relubricated each service: Rabinowicz, Friction and Wear of Materials (1995) Table 6.2 gives 1e-7â1e-6 for lubricated metal pairs and less for a hard non-metal counterface; the favourable corner is a mirror polish holding its epilame',
+  why: 'Archard K for a polished steel surface against sapphire under a boundary film, cleaned and relubricated each service: Rabinowicz, Friction and Wear of Materials (1995) Table 6.2 gives 1e-7–1e-6 for lubricated metal pairs and less for a hard non-metal counterface; the favourable corner is a mirror polish holding its epilame',
 });
 export const WEAR_K_PA = WEAR_K_BAND.adverse;   // the loaded reading
 // RESTRIDDEN STACK — solved BOTTOM-UP from the low-escapement layout: the
