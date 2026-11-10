@@ -4,7 +4,7 @@
 
 # The instruments
 
-429 scripts. **301 are ACCEPTANCE tests** — they decide and exit non-zero.
+430 scripts. **302 are ACCEPTANCE tests** — they decide and exit non-zero.
 **128 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -229,6 +229,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-251-pinion-mesh.mjs` | §251 | acceptance | TODO 251 — THE 7-LEAF CENTRE PINION, PRICED FROM ITS OWN CONTACT PATH. |
 | `probe-253-arch-modes.mjs` | §253 | acceptance | §253 — IS THE GONG'S ARCH SOLVE RIGHT, AND DOES IT KNOW WHEN IT IS A STRAIGHT BAR? |
 | `probe-254-chain-twist.mjs` | §254 | acceptance | §254 — DOES THE CHAIN BEND ONLY ABOUT ITS PINS? Acceptance. |
+| `probe-254-endstones.mjs` | §254 | acceptance | TODO 254 — IS EACH END OF THE BALANCE STAFF A BEARING END? An endstone bears only if the pivot's TIP reaches it before the staff's SHOULDER reaches the hole jewel's face. Until TODO 254 neither end was: §120 hung the upper endstone 0.17 over the tip against a shoulder 0.15 under the cock's stone (so the shoulder bore first, by 0.02), and the lower end had no endstone at all. |
 | `probe-257-hack-contact.mjs` | §257 | acceptance | TODO 257 — THE HACK PAD BRAKES WHEN IT TOUCHES THE RIM, NOT WHEN THE CROWN MOVES. |
 | `probe-261-dial-band.mjs` | §261 | acceptance | THE DIAL-SIDE BAND'S FREE VOLUME, OVER THE POSE NET — where, between the base plate's dial face and the dial's back, a folded action group could stand. |
 | `probe-261-dial-visibility.mjs` | §261 | acceptance | WOULD THE SWITCH BE SEEN UNDER THE DIAL? — the free annulus seen from the FRONT through the smoked sapphire, against the switch as it is seen today from the BACK through the exhibition crystal, both over the pose net. |
