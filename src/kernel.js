@@ -45,7 +45,7 @@ export function shadowTallyExact(kind, ref, k, refMs, wasmMs) {
 }
 export function kernelStats() { return { mode, exact: { ...exactStats, samples: [...exactStats.samples] }, trees: { ...treeStats } }; }
 // The compiled kernel's trees (§338 landing 11): built fresh, or refitted from a family.
-const treeStats = { builds: 0, refits: 0 };
+const treeStats = { builds: 0, refits: 0, resets: 0 };
 
 export async function useKernel(name) {
   if (!['js', 'wasm', 'shadow'].includes(name)) throw new Error(`useKernel: unknown kernel '${name}' (js, wasm or shadow)`);
@@ -59,12 +59,13 @@ export async function useKernel(name) {
   }
   mode = name;
   for (const k of Object.keys(exactStats)) exactStats[k] = k === 'samples' ? [] : 0;
-  treeStats.builds = treeStats.refits = 0;
+  treeStats.builds = treeStats.refits = treeStats.resets = 0;
   return mode;
 }
 
 function resetArena() {
   W.reset();
+  treeStats.resets++;
   gen++;
   matPtr = W.alloc(16 * 8);
 }
