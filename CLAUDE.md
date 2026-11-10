@@ -1128,14 +1128,17 @@ broken primitive fails the BUILD (`kernel-build.mjs` compiles a mutant with the
 pierce test cut out and requires it refused). A Vec3 operator is the scalar
 expression the port writes per component: never reassociate one, or the port
 and the kernel part by an ulp and G3 names it.
-**Since landing 12 a NATIVE SWEEP ENGINE runs `inspection`** (`tools/native-sweep/`,
-C++23 with the standard library): JS poses and streams the state the sweep reads
-(`exportInspectionState`, beside `runInspection`, sharing its loop), the engine runs
-the pair loop with `kernel.cpp` itself compiled for the host, and the payload
-assembles through the same `inspectionPayload`. `probe.mjs` holds it leaf for leaf
-to the JS sweep, on x64 and arm64 in `native-host.yml`. Change `runInspection`'s
-loop and the engine owes the same change, or the probe names the leaves it moved;
-the kernel stays ONE source for both targets (its portability layer, never a copy).
+**Since landing 12 a NATIVE SWEEP ENGINE runs `inspection` and `clearances`**
+(`tools/native-sweep/`, C++23 with the standard library): JS poses through
+`sweepPoser` and sends the state a sweep reads; the engine runs the check's loops
+with `kernel.cpp` itself compiled for the host, and DRIVES where the pose set
+depends on its answers (`clearances` asks JS for each pose in the JS sweep's order,
+and asks JS `sampledVerdict`, the one query left in JS); the payloads assemble
+through the same `inspectionPayload` / `clearancesPayload`. `probe.mjs` holds both
+leaf for leaf to the JS sweeps, on x64 and arm64 in `native-host.yml`. Change a
+ported sweep's loop and the engine owes the same change, or the probe names the
+leaves it moved; the kernel stays ONE source for both targets (its portability
+layer, never a copy).
 
 State (camera pose, wind, τ) persists via the dev server's `/__state` temp
 file, falling back to `localStorage`. **Back it up before clearing it** —

@@ -5446,7 +5446,10 @@ export function checkSupportGeometry(clock, { tol = SUPPORT_TOL, edges = MECH_GR
   return { failures, rows, ...(standDown.length ? { standDown } : {}) };
 }
 
-export async function checkClearances(clock, { budgets = CLEARANCE_BUDGETS, axes = AXES, coarse = 4, refineBand = 0.4, yieldEvery = 16, pairsTouching } = {}) {
+// `checkClearances`' two ends, shared by the JS sweep and §338 landing 12's native
+// engine: the budgets it sweeps (the §152 restriction, TODO 298's stand-downs, the
+// resolved unit pairs) and the payload it builds from the sweep's per-pair state.
+export function clearancesSetup(clock, { budgets = CLEARANCE_BUDGETS, axes = AXES, pairsTouching } = {}) {
   // §152 — the declared table filters, keeping the surviving rows' INDICES in
   // the full table so the harness can rebuild that order against a baseline.
   const touching = resolvePairsTouching(clock, pairsTouching);
@@ -5468,7 +5471,6 @@ export async function checkClearances(clock, { budgets = CLEARANCE_BUDGETS, axes
     axes: bud.axes,
     refineFloor: bud.min, // exact minima only needed near the budget line
   }));
-  censusStart();   // §108's experiment — report-only, see the census block
   // §152 — resolveAxes here too, so every check takes an axis list the same
   // way. These two took `axes` RAW and passed it to the sweep engine, which
   // reads `axis.n` and `axis.pose`: a list of axis NAMES therefore swept zero
@@ -5478,8 +5480,10 @@ export async function checkClearances(clock, { budgets = CLEARANCE_BUDGETS, axes
   // two by axis, which is what an acceptance probe is for. resolveAxes over
   // the default AXES returns the same objects in the same order, so a full
   // run measures exactly what it measured before.
-  const { state: liveState } = await sweepClearances(clock, pairs, { axes: resolveAxes(axes), coarse, refineBand, yieldEvery });
-  const census = censusStop();
+  return { budgets, touching, keptIndices, goneC, live, pairs, axes: resolveAxes(axes) };
+}
+export function clearancesPayload(setup, liveState, census, { refineBand = 0.4 } = {}) {
+  const { budgets, touching, keptIndices, goneC, live, axes } = setup;
   const state = budgets.map(() => null);
   live.forEach((i, j) => { state[i] = liveState[j]; });
   const results = budgets.map((bud, i) => {
@@ -5498,7 +5502,6 @@ export async function checkClearances(clock, { budgets = CLEARANCE_BUDGETS, axes
       ok: capped || state[i].min >= bud.min - FLOOR_TIE_EPS,   // TODO 144: a derived margin is an exact tie
     };
   });
-  console.table(results);
   // §127 tier 2a — a SLICE carries its raw minima beside the formatted rows.
   // The row's `min` is rounded to four decimals for the report, and the whole
   // run's own winner is decided on RAW floats (strict `<` at record time), so
@@ -5510,10 +5513,22 @@ export async function checkClearances(clock, { budgets = CLEARANCE_BUDGETS, axes
   // was; the merge REQUIRES it and deletes it from the merged payload.
   // Infinity does not survive JSON (page.evaluate serialises it to null), so
   // capped rows are carried as null and the merge reads null as Infinity.
-  const sliced = resolveAxes(axes).length < AXES.length;
+  const sliced = axes.length < AXES.length;
   return { violations: results.filter((r) => !r.ok), results, census,
     ...(sliced ? { rawMins: state.map((st) => (st && isFinite(st.min) ? st.min : null)) } : {}),
     ...(touching ? { restriction: restrictionRecord(touching, keptIndices) } : {}) };
+}
+// A mesh's label in a clearance row (meshLabel, exported for the native engine's driver).
+export function clearanceMeshLabel(unit, mesh) { return meshLabel(unit, mesh); }
+
+export async function checkClearances(clock, { budgets = CLEARANCE_BUDGETS, axes = AXES, coarse = 4, refineBand = 0.4, yieldEvery = 16, pairsTouching } = {}) {
+  const setup = clearancesSetup(clock, { budgets, axes, pairsTouching });
+  censusStart();   // §108's experiment — report-only, see the census block
+  const { state: liveState } = await sweepClearances(clock, setup.pairs, { axes: setup.axes, coarse, refineBand, yieldEvery });
+  const census = censusStop();
+  const out = clearancesPayload(setup, liveState, census, { refineBand });
+  console.table(out.results);
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -7563,14 +7578,19 @@ export function inspectionPayload(findings, units, axes, census) {
   return { units: units.map((u) => u.name), report, axes: axes.map((a) => a.name), census };
 }
 
-// §338 landing 12 — THE POSED STATE `runInspection` reads, handed to a native engine.
-// The same units, pair tables, canonical axis entry and pose loop, so the engine sees
-// exactly the metal the JS sweep would. Per pose the sink gets the unit boxes (three.js'
-// setFromObject, as the broad phase computes them) and every mesh's state as the narrow
-// phase reads it: its own geometry and world matrix (the meet's), its rigidFrame view
-// geometry and frame (the running fit's), whether that frame is rigid, and its world
-// box (poseBox's setFromObject). The engine does the queries; nothing here decides one.
-export async function exportInspectionState(clock, sink, { axes: axisArg = AXES, includeExcluded = false } = {}) {
+// §338 landing 12 — THE POSED STATE a sweep reads, handed to a native engine. One
+// POSER for every check the engine runs: the same units (collectUnits), canonical axis
+// entry (enterAxis) and pose law (axis.pose) as the JS sweeps. `pose(ax, i)` sets the
+// pose and returns the unit boxes (three.js' setFromObject, as inspection's broad phase
+// computes them) and every CHANGED mesh's state as a narrow phase reads it: its own
+// geometry and world matrix (the meet's), its rigidFrame view geometry and frame (the
+// running fit's), whether that frame is rigid, and its world box (poseBox's
+// setFromObject). A mesh is unchanged when its geometry (identity and both attribute
+// versions) and world matrix (Object.is, element for element) are what they were when
+// last reported; a mesh with descendants always reports, because setFromObject's box
+// takes in its children, which can move under a still parent. The engine does the
+// queries; nothing here decides one.
+export function sweepPoser(clock, { axes: axisArg = AXES, includeExcluded = false } = {}) {
   const axes = resolveAxes(axisArg);
   const units = collectUnits(clock, { includeExcluded });
   const meshes = [], meshIndex = new Map();
@@ -7578,28 +7598,14 @@ export async function exportInspectionState(clock, sink, { axes: axisArg = AXES,
     if (!meshIndex.has(m)) { meshIndex.set(m, meshes.length); meshes.push(m); }
     return meshIndex.get(m);
   }));
-  const pairs = [];
-  for (let ai = 0; ai < units.length; ai++)
-    for (let bi = ai + 1; bi < units.length; bi++) {
-      const A = units[ai], B = units[bi];
-      if (inList(IGNORED_PAIRS, A.name, B.name)) continue;
-      pairs.push({ ai, bi, key: pairKey(A.name, B.name), expected: inList(EXPECTED_PAIRS, A.name, B.name) });
-    }
-  await sink.begin({ units: units.map((u, i) => ({ name: u.name, meshes: unitMeshes[i] })), meshCount: meshes.length,
-    pairs, axes: axes.map((a) => ({ name: a.name, n: a.n })), CONTACT_TOUCH });
-  // Only CHANGED meshes are handed over: a mesh whose geometry (identity and both
-  // attribute versions) and world matrix (Object.is, element for element) are what
-  // they were at the last pose has the same box and the same rigid view, so its state
-  // is not recomputed. A mesh with descendants always is, because setFromObject's box
-  // takes in its children, which can move under a still parent.
   const box = new THREE.Box3();
   const seen = meshes.map(() => null);
   const nested = meshes.map((m) => m.children.length > 0);
-  for (let ax = 0; ax < axes.length; ax++) {
-    const axis = axes[ax];
-    enterAxis(clock);
-    for (let i = 0; i <= axis.n; i++) {
-      const f = i / axis.n;
+  return {
+    axes, units, meshes, unitMeshes,
+    enter() { enterAxis(clock); },
+    pose(ax, i) {
+      const axis = axes[ax], f = i / axis.n;
       clock.setPose(axis.pose(f, clock));
       const unitBoxes = units.map((u) => new THREE.Box3().setFromObject(u.obj));
       const changed = [];
@@ -7618,10 +7624,28 @@ export async function exportInspectionState(clock, sink, { axes: axisArg = AXES,
         changed.push({ mesh: k, own: g, view: v.geometry, rigid: v.rigid, world: e, frame: v.frame.elements,
           box: [box.min.x, box.min.y, box.min.z, box.max.x, box.max.y, box.max.z] });
       }
-      await sink.pose({ axis: ax, i, f: +f.toFixed(4), unitBoxes, changed });
+      return { f: +f.toFixed(4), unitBoxes, changed };
+    },
+  };
+}
+
+// `runInspection`'s pose loop over the poser, every pose in order, into a sink.
+export async function exportInspectionState(clock, sink, { axes, includeExcluded = false } = {}) {
+  const P = sweepPoser(clock, { axes, includeExcluded });
+  const pairs = [];
+  for (let ai = 0; ai < P.units.length; ai++)
+    for (let bi = ai + 1; bi < P.units.length; bi++) {
+      const A = P.units[ai], B = P.units[bi];
+      if (inList(IGNORED_PAIRS, A.name, B.name)) continue;
+      pairs.push({ ai, bi, key: pairKey(A.name, B.name), expected: inList(EXPECTED_PAIRS, A.name, B.name) });
     }
+  await sink.begin({ check: 'inspection', units: P.units.map((u, i) => ({ name: u.name, meshes: P.unitMeshes[i] })), meshCount: P.meshes.length,
+    pairs, axes: P.axes.map((a) => ({ name: a.name, n: a.n })), CONTACT_TOUCH });
+  for (let ax = 0; ax < P.axes.length; ax++) {
+    P.enter();
+    for (let i = 0; i <= P.axes[ax].n; i++) await sink.pose({ axis: ax, i, ...P.pose(ax, i) });
   }
-  return { units, axes };
+  return { units: P.units, axes: P.axes };
 }
 
 export async function runInspection(clock, { axes: axisArg = AXES, yieldEvery = 8, includeExcluded = false, pairsTouching } = {}) {

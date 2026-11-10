@@ -163,6 +163,12 @@ class Engine {
 
   void add_geometry(std::uint32_t id, Geometry g) { if (geoms_.size() <= id) geoms_.resize(id + 1); geoms_[id] = std::move(g); }
 
+  // inspect.js' _meshClearanceInner's kernel query: the distance between the two
+  // rigid views, B's frame mapped into A's, bounded by `upper`.
+  double view_distance(const MeshState& a, const MeshState& b, double upper) {
+    return kdistance(a.view, b.view, multiply(invert(a.frame), b.frame), upper);
+  }
+
   // inspect.js' _meshesIntersectInner: the running fit between rigid frames, then
   // (unless both are rigid) the meet under the world map.
   bool meshes_intersect(const MeshState& a, const MeshState& b) {
@@ -288,6 +294,201 @@ class Reader {
 
 }  // namespace sweep
 
+namespace sweep {
+
+// A 'G' record (its tag already read): a geometry, kept by id.
+static void read_geometry(Reader& in, Engine& eng) {
+  Geometry g; const std::uint32_t id = in.get<std::uint32_t>();
+  g.nvert = in.get<std::uint32_t>(); g.ntri = in.get<std::uint32_t>();
+  g.pos.resize(g.nvert * 3); g.idx.resize(g.ntri * 3);
+  in.read(g.pos.data(), g.pos.size() * 4); in.read(g.idx.data(), g.idx.size() * 4);
+  eng.add_geometry(id, std::move(g));
+}
+
+// A 'P' record (its tag already read): the pose's unit boxes and changed mesh states.
+// A mesh's version moves only when its state really differs, bit for bit (the poser
+// re-sends a mesh with children every pose): the memo's rule is the inputs, not
+// whether they were sent. Returns the pose's f, as JS rounded it.
+static double read_pose(Reader& in, std::vector<MeshState>& state, std::vector<Box6>& unitBox, std::uint32_t& axis) {
+  axis = in.get<std::uint32_t>(); in.get<std::uint32_t>();
+  const double f = in.get<double>();
+  for (auto& b : unitBox) in.read(&b, sizeof b);
+  const std::uint32_t nch = in.get<std::uint32_t>();
+  for (std::uint32_t k = 0; k < nch; k++) {
+    MeshState& s = state.at(in.get<std::uint32_t>());
+    MeshState n;
+    n.own = in.get<std::uint32_t>(); n.view = in.get<std::uint32_t>(); n.rigid = in.get<std::uint32_t>() != 0;
+    in.read(n.world.data(), 128); in.read(n.frame.data(), 128); in.read(&n.box, sizeof n.box);
+    n.ver = s.ver;
+    if (s.ver == 0 || n.own != s.own || n.view != s.view || n.rigid != s.rigid || std::memcmp(n.world.data(), s.world.data(), 128) ||
+        std::memcmp(n.frame.data(), s.frame.data(), 128) || std::memcmp(&n.box, &s.box, sizeof n.box)) n.ver = s.ver + 1;
+    s = n;
+  }
+  return f;
+}
+
+// `boxDistance(a, b) >= best`, with the same exact shortcut as boxes_can_touch: det-math's
+// hypot is never below its largest argument, so one gap at or past `best` decides it.
+static bool box_at_least(const Box6& a, const Box6& b, double best) {
+  if (a.mnx - b.mxx >= best || b.mnx - a.mxx >= best || a.mny - b.mxy >= best || b.mny - a.mxy >= best || a.mnz - b.mxz >= best || b.mnz - a.mxz >= best) return true;
+  return box_distance(a, b) >= best;
+}
+
+// ---------------------------------------------------------------------------
+// `clearances` — the ENGINE DRIVES. sweepClearances' algorithm (inspect.js), ported
+// step for step: per axis a coarse pass every `coarse` poses (both endpoints), then a
+// refinement of the skipped poses beside any coarse sample within `refineBand` of the
+// pair's own per-axis minimum, the poses in ascending order; per pose every budget
+// pair's unitClearance under its bound. Which poses it visits depends on its answers,
+// so it asks JS for each one ('S'), in exactly the order the JS sweep sets them, and
+// JS answers with the pose's changed states. And it asks JS the one question JS keeps:
+// meshClearance's containment witness, sampledVerdict, wherever 0 < d < 0.05 ('V').
+// Commands out (stdout, flushed): 'A' u32 axis (enter it), 'S' u32 axis u32 i,
+// 'V' u32 a u32 b f64 upper, and at the end 'R' u32 len + JSON.
+struct ClearanceCensus { std::uint64_t aabbTests = 0, aabbPass = 0, exactCalls = 0, verdictCalls = 0, pruned = 0, far = 0, mid = 0, near = 0, contact = 0; };
+
+static void put(const void* p, std::size_t n) { std::fwrite(p, 1, n, stdout); }
+template <class T> static void put(T v) { put(&v, sizeof v); }
+
+static int run_clearances(Reader& in, Engine& eng, const Json& h) {
+  struct Unit { std::vector<std::uint32_t> meshes; };
+  struct Pair { std::uint32_t A, B; std::vector<std::uint32_t> axes; bool anyAxis; bool hasFloor; double floor; };
+  std::vector<Unit> units; std::vector<Pair> pairs; std::vector<std::uint32_t> axisN;
+  for (auto& u : h["units"].a) { Unit x; for (auto& m : u["meshes"].a) x.meshes.push_back(static_cast<std::uint32_t>(m.n)); units.push_back(std::move(x)); }
+  for (auto& a : h["axes"].a) axisN.push_back(static_cast<std::uint32_t>(a["n"].n));
+  for (auto& p : h["pairs"].a) {
+    Pair x{ static_cast<std::uint32_t>(p["A"].n), static_cast<std::uint32_t>(p["B"].n), {}, p["axes"].kind != Json::Arr, p["refineFloor"].kind == Json::Num, p["refineFloor"].n };
+    for (auto& a : p["axes"].a) x.axes.push_back(static_cast<std::uint32_t>(a.n));
+    pairs.push_back(std::move(x));
+  }
+  const std::uint32_t coarse = static_cast<std::uint32_t>(h["coarse"].n);
+  const double band = h["refineBand"].n;
+  std::vector<MeshState> state(static_cast<std::size_t>(h["meshCount"].n));
+  std::vector<Box6> unitBox(units.size());
+  ClearanceCensus c;
+  auto onAxis = [&](const Pair& p, std::uint32_t ax) { if (p.anyAxis) return true; for (auto a : p.axes) if (a == ax) return true; return false; };
+
+  // the per-pair state sweepClearances keeps
+  struct St { double min = INF; bool at = false; std::uint32_t atAxis = 0; double atF = 0; bool hasMeshes = false; std::uint32_t ma = 0, mb = 0; };
+  std::vector<St> st(pairs.size());
+  // the static-pair memo (exact replay): per mesh pair, the two states' versions and,
+  // per bound (bit for bit, as Object.is keys it), the answer and the census it added
+  struct Hit { double param, d; bool verdict; int bucket; };
+  struct Slot { std::uint32_t va = 0, vb = 0; std::vector<Hit> hits; };
+  std::unordered_map<std::uint64_t, Slot> memo;
+
+  // inspect.js' meshClearance: the kernel's distance, and where 0 < d < 0.05 the
+  // containment witness, asked of JS; its outcome counted in the census.
+  auto mesh_clearance = [&](std::uint32_t a, std::uint32_t b, double upper, bool& verdict, int& bucket) {
+    double d = eng.view_distance(state[a], state[b], upper);
+    verdict = false;
+    if (d > 0 && d < 0.05) {
+      verdict = true;
+      put('V'); put(a); put(b); put(upper); std::fflush(stdout);
+      const char tag = in.get<char>();
+      if (tag != 'v') { std::fprintf(stderr, "sweep: expected a verdict, read '%c'\n", tag); std::exit(2); }
+      if (in.get<std::uint8_t>()) d = 0;
+    }
+    bucket = (d == INF || d >= upper) ? 0 : d <= 0 ? 4 : d < 0.05 ? 3 : d < 0.4 ? 2 : 1;
+    return d;
+  };
+  auto count = [&](bool verdict, int bucket) {
+    c.exactCalls++; if (verdict) c.verdictCalls++;
+    (bucket == 0 ? c.pruned : bucket == 1 ? c.far : bucket == 2 ? c.mid : bucket == 3 ? c.near : c.contact)++;
+  };
+  // inspect.js' unitClearance: the nearest mesh pair under `upper`, the AABB gate first.
+  auto unit_clearance = [&](const Pair& p, double upper, std::uint32_t& pa, std::uint32_t& pb, bool& found) {
+    double best = upper; found = false;
+    for (std::uint32_t a : units[p.A].meshes) {
+      for (std::uint32_t b : units[p.B].meshes) {
+        c.aabbTests++;
+        if (box_at_least(state[a].box, state[b].box, best)) continue;
+        c.aabbPass++;
+        Slot& sl = memo[(static_cast<std::uint64_t>(a) << 32) | b];
+        if (sl.va != state[a].ver || sl.vb != state[b].ver) { sl = { state[a].ver, state[b].ver, {} }; }
+        double d; const Hit* hit = nullptr;
+        for (const Hit& x : sl.hits) if (std::memcmp(&x.param, &best, 8) == 0) { hit = &x; break; }
+        if (hit) { d = hit->d; count(hit->verdict, hit->bucket); }
+        else { bool v; int bk; d = mesh_clearance(a, b, best, v, bk); count(v, bk); sl.hits.push_back({ best, d, v, bk }); }
+        if (d < best) { best = d; pa = a; pb = b; found = true; }
+      }
+    }
+    return best;
+  };
+
+  std::vector<std::vector<double>> samples(pairs.size());   // per pair, this axis's d per pose index (NaN: not sampled)
+  std::vector<double> axisMin(pairs.size());
+  auto eval_pose = [&](std::uint32_t ax, std::uint32_t i, bool refined) {
+    put('S'); put(ax); put(i); std::fflush(stdout);
+    double f = 0;
+    for (;;) {
+      const char tag = in.get<char>();
+      if (tag == 'G') { read_geometry(in, eng); continue; }
+      if (tag == 'P') { std::uint32_t axr; f = read_pose(in, state, unitBox, axr); break; }
+      std::fprintf(stderr, "sweep: expected a pose, read '%c'\n", tag); std::exit(2);
+    }
+    for (std::size_t p = 0; p < pairs.size(); p++) {
+      const Pair& pr = pairs[p];
+      if (!onAxis(pr, ax)) continue;
+      St& s = st[p];
+      const double cap = pr.hasFloor ? pr.floor + band : INF;
+      const double want = refined ? s.min : s.min + band;
+      const double bound = want < cap ? want : cap;   // Math.min of two non-NaN numbers
+      std::uint32_t ma = 0, mb = 0; bool found;
+      const double d = unit_clearance(pr, bound, ma, mb, found);
+      if (d < axisMin[p]) axisMin[p] = d;
+      if (d < s.min) { s.min = d; s.at = true; s.atAxis = ax; s.atF = f; s.hasMeshes = found; s.ma = ma; s.mb = mb; }
+      samples[p][i] = d;
+    }
+  };
+
+  for (std::uint32_t ax = 0; ax < axisN.size(); ax++) {
+    bool live = false;
+    for (auto& pr : pairs) if (onAxis(pr, ax)) { live = true; break; }
+    if (!live) continue;
+    put('A'); put(ax); std::fflush(stdout);
+    const std::uint32_t n = axisN[ax];
+    for (std::size_t p = 0; p < pairs.size(); p++) { samples[p].assign(n + 1, __builtin_nan("")); axisMin[p] = INF; }
+    memo.clear();
+    std::vector<std::uint32_t> coarseIdx;
+    for (std::uint32_t i = 0; i <= n; i += coarse) coarseIdx.push_back(i);
+    if (coarseIdx.back() != n) coarseIdx.push_back(n);
+    for (std::uint32_t i : coarseIdx) eval_pose(ax, i, false);
+    if (coarse > 1) {
+      std::vector<bool> fine(n + 1, false);
+      for (std::size_t p = 0; p < pairs.size(); p++) {
+        const Pair& pr = pairs[p];
+        if (!onAxis(pr, ax)) continue;
+        if (pr.hasFloor && axisMin[p] > pr.floor + band) continue;
+        for (std::uint32_t i : coarseIdx) {
+          const double d = samples[p][i];
+          if (d != d || d > axisMin[p] + band) continue;   // undefined, or not within the band
+          const std::uint32_t lo = i + 1 > coarse ? i - coarse + 1 : 0, hi = i + coarse < n ? i + coarse : n;
+          for (std::uint32_t j = lo; j < hi; j++) if (samples[p][j] != samples[p][j]) fine[j] = true;
+        }
+      }
+      for (std::uint32_t j = 0; j <= n; j++) if (fine[j]) eval_pose(ax, j, true);
+    }
+  }
+
+  std::string out = "{\"state\":[";
+  for (std::size_t p = 0; p < st.size(); p++) {
+    const St& s = st[p];
+    if (p) out += ',';
+    out += "{\"min\":" + (s.min == INF ? std::string("null") : num(s.min));
+    out += s.at ? ",\"at\":[" + std::to_string(s.atAxis) + "," + num(s.atF) + "]" : std::string(",\"at\":null");
+    out += s.hasMeshes ? ",\"meshes\":[" + std::to_string(s.ma) + "," + std::to_string(s.mb) + "]}" : std::string(",\"meshes\":null}");
+  }
+  out += "],\"census\":{\"aabbTests\":" + std::to_string(c.aabbTests) + ",\"aabbPass\":" + std::to_string(c.aabbPass) +
+    ",\"exactCalls\":" + std::to_string(c.exactCalls) + ",\"verdictCalls\":" + std::to_string(c.verdictCalls) +
+    ",\"out\":{\"pruned\":" + std::to_string(c.pruned) + ",\"far\":" + std::to_string(c.far) + ",\"mid\":" + std::to_string(c.mid) +
+    ",\"near\":" + std::to_string(c.near) + ",\"contact\":" + std::to_string(c.contact) + "}}}";
+  put('R'); put(static_cast<std::uint32_t>(out.size())); put(out.data(), out.size()); std::fflush(stdout);
+  return 0;
+}
+
+}  // namespace sweep
+
 int main() {
   using namespace sweep;
   std::setvbuf(stdin, nullptr, _IOFBF, 1 << 22);
@@ -311,6 +512,7 @@ int main() {
       const std::uint32_t len = in.get<std::uint32_t>();
       std::string text(len, '\0'); in.read(text.data(), len);
       std::size_t i = 0; const Json h = parse(text, i);
+      if (h["check"].s == "clearances") return run_clearances(in, eng, h);
       for (auto& u : h["units"].a) { Unit x; x.name = u["name"].s; for (auto& m : u["meshes"].a) x.meshes.push_back(static_cast<std::uint32_t>(m.n)); units.push_back(std::move(x)); }
       for (auto& p : h["pairs"].a) pairs.push_back({ static_cast<std::uint32_t>(p["ai"].n), static_cast<std::uint32_t>(p["bi"].n), p["key"].s, p["expected"].b });
       for (auto& a : h["axes"].a) axisNames.push_back(a["name"].s);
@@ -318,29 +520,10 @@ int main() {
       unitBox.resize(units.size());
       eng.touch = h["CONTACT_TOUCH"].n;
     } else if (tag == 'G') {
-      Geometry g; const std::uint32_t id = in.get<std::uint32_t>();
-      g.nvert = in.get<std::uint32_t>(); g.ntri = in.get<std::uint32_t>();
-      g.pos.resize(g.nvert * 3); g.idx.resize(g.ntri * 3);
-      in.read(g.pos.data(), g.pos.size() * 4); in.read(g.idx.data(), g.idx.size() * 4);
-      eng.add_geometry(id, std::move(g));
+      read_geometry(in, eng);
     } else if (tag == 'P') {
-      const std::uint32_t axis = in.get<std::uint32_t>(); in.get<std::uint32_t>();
-      const double f = in.get<double>();
-      for (auto& b : unitBox) in.read(&b, sizeof b);
-      const std::uint32_t nch = in.get<std::uint32_t>();
-      for (std::uint32_t k = 0; k < nch; k++) {
-        MeshState& s = state.at(in.get<std::uint32_t>());
-        MeshState n;
-        n.own = in.get<std::uint32_t>(); n.view = in.get<std::uint32_t>(); n.rigid = in.get<std::uint32_t>() != 0;
-        in.read(n.world.data(), 128); in.read(n.frame.data(), 128); in.read(&n.box, sizeof n.box);
-        // A new version only when the state really differs, bit for bit (the exporter
-        // re-sends a mesh with children every pose): the memo's rule is the inputs, not
-        // whether they were sent.
-        n.ver = s.ver;
-        if (s.ver == 0 || n.own != s.own || n.view != s.view || n.rigid != s.rigid || std::memcmp(n.world.data(), s.world.data(), 128) ||
-            std::memcmp(n.frame.data(), s.frame.data(), 128) || std::memcmp(&n.box, &s.box, sizeof n.box)) n.ver = s.ver + 1;
-        s = n;
-      }
+      std::uint32_t axis;
+      const double f = read_pose(in, state, unitBox, axis);
       // runInspection's pair loop: the unit broad phase, then unitsIntersect, which
       // returns at the first mesh pair in contact.
       for (const Pair& p : pairs) {

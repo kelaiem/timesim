@@ -279,18 +279,19 @@ jobs:
       - name: The wasm kernel reaches the js kernel's verdicts and reads no gap larger (G3)
         run: node tools/probe-338-kernel-parity.mjs --reports battery-native-X64-js.json battery-native-X64-wasm.json
 
-  # §338 landing 12 — the native sweep engine (tools/native-sweep/): `inspection`'s pair
-  # sweep run as C++23 over the state the JS build poses, held leaf for leaf to the JS
-  # sweep on every axis in one process, on both architectures, and then the two
-  # architectures' native payloads to each other.
+  # §338 landing 12 — the native sweep engine (tools/native-sweep/): `inspection` and
+  # `clearances` run as C++23 over the state the JS build poses, each held leaf for leaf
+  # to its JS sweep on every axis in one process, on both architectures, and then the
+  # two architectures' native payloads to each other.
   native-sweep:
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, ubuntu-24.04-arm]
     runs-on: ${{ matrix.os }}
-    # A local 4-vCPU run walls ~3.5 min (the JS sweep 117 s, the native 20 s, the
-    # boot and the control); the cap is that times the 1.66x spread, rounded up.
+    # A local 4-vCPU run walls ~4.5 min (inspection: JS 117 s, native 20 s; clearances:
+    # JS 23 s, native 20 s; the boot and both controls); the cap is that times the 1.66x
+    # spread, rounded up with room for a slower runner.
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
