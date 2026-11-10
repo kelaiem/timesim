@@ -12,6 +12,14 @@
 // fast-math, so the two compute the same bits, and
 // tools/probe-338-kernel-parity.mjs holds them to Object.is on every answer.
 //
+// Reading the two side by side (§338 landing 10): kernel.cpp is C++23, its vectors
+// VALUES whose operators are the scalar expressions this file writes out per
+// component (`a + ab * v` there is `a.x + ab.x * v` here, axis by axis, never
+// reassociated), and its triangle arrays read `tri[t, c, a]` for this file's
+// `9 * t + 3 * c + a`. Its triangle primitives are constexpr and the parity probe's
+// analytic pairs are static_asserts on them, so a C++ edit that breaks the geometry
+// fails the build before the probe reaches it.
+//
 // It exists because an EXACT question needs an exact reference in every host: the
 // browser battery runs the js kernel, and three-mesh-bvh's boolean has a measured
 // false-positive mode (inspect.js' meshesIntersect records it), so the contact
