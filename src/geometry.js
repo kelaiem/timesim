@@ -1979,15 +1979,32 @@ export function makeEscapeWheel({ teeth = 15, radius, thickness, rakeDeg = 0, un
   // circle downstream. Float slack only — these are authored vertices, and
   // the attribute is float32 (0.4 reads back as 0.4000000059), so the band
   // and the reach are held to 1e-5, four orders under the 0.09 this catches.
+  //
+  // TODO 299 landing 3 — AND THE CAPS ARE NO LONGER EXEMPT. The band clause
+  // above says the caps "sit beyond it", which is true of their Z and says
+  // nothing about their RADIUS: the chamfer insets them in XY, so they should
+  // reach LESS than `radius`, and nothing checked that they do. Landing 3
+  // found out why it matters by trying to cut the tip's derived finish (a
+  // 0.000425 u arc) into this outline: `ExtrudeGeometry` offsets every contour
+  // point along its own normal, and a convex feature 212x smaller than the
+  // 0.09 offset splays OUTWARD instead of insetting — the caps went from
+  // 4.3896 to 4.5292 on a 4.5 wheel, 11 um outside the circle the pallet
+  // stones are seated on, which is TODO 131's own defect in the one place
+  // TODO 131 could not see. So the cap reach is held too, and the rule the
+  // attempt established is in TODO 299: this outline cannot carry a feature
+  // smaller than the part's own chamfer.
   {
     const pos = geo.attributes.position;
-    let reach = 0;
+    let reach = 0, capReach = 0;
     for (let i = 0; i < pos.count; i++) {
-      if (Math.abs(pos.getZ(i)) > thickness / 2 + 1e-5) continue;
-      reach = Math.max(reach, Math.hypot(pos.getX(i), pos.getY(i)));
+      const rr = Math.hypot(pos.getX(i), pos.getY(i));
+      if (Math.abs(pos.getZ(i)) > thickness / 2 + 1e-5) capReach = Math.max(capReach, rr);
+      else reach = Math.max(reach, rr);
     }
     if (!(Math.abs(reach - radius) <= 1e-5))
       console.warn(`TODO 131 escape wheel: the cut metal reaches ${reach.toFixed(4)} in the body band, the authored tooth circle is ${radius} — the stones are seated on a circle the wheel does not have`);
+    if (!(capReach <= radius + 1e-5))
+      console.warn(`TODO 299 landing 3 escape wheel: the CHAMFER reaches ${capReach.toFixed(4)} against a tooth circle of ${radius} — the bevel has splayed outward instead of insetting, so the wheel is wider at its faces than where the stones work`);
   }
   g.add(new THREE.Mesh(geo, mat));
   g.add(new THREE.Mesh(ringExtrude(hubR, boreR, thickness * 1.3, 20), mat));
