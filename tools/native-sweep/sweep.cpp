@@ -37,6 +37,7 @@
 #include <cstring>
 #include <map>
 #include <unordered_map>
+#include <unordered_set>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -151,7 +152,7 @@ static double box_distance(const Box6& a, const Box6& b) {
 
 struct Census { std::uint64_t aabbTests = 0, aabbPass = 0, exactCalls = 0, boolTrue = 0, boolFalse = 0, unitPairTests = 0, unitPairPass = 0; };
 
-struct MeshState { std::uint32_t own = 0, view = 0; bool rigid = true; Mat world{}, frame{}; Box6 box{}; std::uint32_t ver = 0; };
+struct MeshState { std::uint32_t own = 0, view = 0; bool rigid = true; Mat world{}, frame{}; Box6 box{}, box2{}; std::uint32_t gid = 0, pv = 0; std::uint32_t ver = 0, uver = 0; };
 struct Geometry { std::vector<float> pos; std::vector<std::uint32_t> idx; std::uint32_t nvert = 0, ntri = 0; u32 handle = 0; u32 gen = 0; };
 
 class Engine {
@@ -318,7 +319,14 @@ static double read_pose(Reader& in, std::vector<MeshState>& state, std::vector<B
     MeshState& s = state.at(in.get<std::uint32_t>());
     MeshState n;
     n.own = in.get<std::uint32_t>(); n.view = in.get<std::uint32_t>(); n.rigid = in.get<std::uint32_t>() != 0;
-    in.read(n.world.data(), 128); in.read(n.frame.data(), 128); in.read(&n.box, sizeof n.box);
+    in.read(n.world.data(), 128); in.read(n.frame.data(), 128); in.read(&n.box, sizeof n.box); in.read(&n.box2, sizeof n.box2);
+    n.gid = in.get<std::uint32_t>(); n.pv = in.get<std::uint32_t>();
+    // undeclaredClearance's own memo version: its snapshot is the geometry's JS id, its
+    // position version and the world matrix compared with !== (so −0 and 0 are one)
+    n.uver = s.uver;
+    bool same = s.uver != 0 && n.gid == s.gid && n.pv == s.pv;
+    for (int q = 0; same && q < 16; q++) if (n.world[q] != s.world[q]) same = false;
+    if (!same) n.uver = s.uver + 1;
     n.ver = s.ver;
     if (s.ver == 0 || n.own != s.own || n.view != s.view || n.rigid != s.rigid || std::memcmp(n.world.data(), s.world.data(), 128) ||
         std::memcmp(n.frame.data(), s.frame.data(), 128) || std::memcmp(&n.box, &s.box, sizeof n.box)) n.ver = s.ver + 1;
@@ -351,20 +359,25 @@ static void put(const void* p, std::size_t n) { std::fwrite(p, 1, n, stdout); }
 template <class T> static void put(T v) { put(&v, sizeof v); }
 
 static int run_clearances(Reader& in, Engine& eng, const Json& h) {
-  struct Unit { std::vector<std::uint32_t> meshes; };
-  struct Pair { std::uint32_t A, B; std::vector<std::uint32_t> axes; bool anyAxis; bool hasFloor; double floor; };
-  std::vector<Unit> units; std::vector<Pair> pairs; std::vector<std::uint32_t> axisN;
-  for (auto& u : h["units"].a) { Unit x; for (auto& m : u["meshes"].a) x.meshes.push_back(static_cast<std::uint32_t>(m.n)); units.push_back(std::move(x)); }
+  // A pair is its two MESH LISTS (a unit's meshes, or expectedContacts' own-metal
+  // subset) and the mesh pairs its exclusion rule skips (expectedContacts' declared
+  // contacts, `only:` siblings and nested shared meshes), resolved by JS at setup.
+  struct Pair { std::vector<std::uint32_t> Am, Bm; std::unordered_set<std::uint64_t> ex; std::vector<std::uint32_t> axes; bool anyAxis; bool hasFloor; double floor; };
+  std::vector<Pair> pairs; std::vector<std::uint32_t> axisN;
   for (auto& a : h["axes"].a) axisN.push_back(static_cast<std::uint32_t>(a["n"].n));
   for (auto& p : h["pairs"].a) {
-    Pair x{ static_cast<std::uint32_t>(p["A"].n), static_cast<std::uint32_t>(p["B"].n), {}, p["axes"].kind != Json::Arr, p["refineFloor"].kind == Json::Num, p["refineFloor"].n };
+    Pair x{ {}, {}, {}, {}, p["axes"].kind != Json::Arr, p["refineFloor"].kind == Json::Num, p["refineFloor"].n };
+    for (auto& m : p["Am"].a) x.Am.push_back(static_cast<std::uint32_t>(m.n));
+    for (auto& m : p["Bm"].a) x.Bm.push_back(static_cast<std::uint32_t>(m.n));
+    for (std::size_t k = 0; k + 1 < p["ex"].a.size(); k += 2)
+      x.ex.insert((static_cast<std::uint64_t>(p["ex"].a[k].n) << 32) | static_cast<std::uint64_t>(p["ex"].a[k + 1].n));
     for (auto& a : p["axes"].a) x.axes.push_back(static_cast<std::uint32_t>(a.n));
     pairs.push_back(std::move(x));
   }
   const std::uint32_t coarse = static_cast<std::uint32_t>(h["coarse"].n);
   const double band = h["refineBand"].n;
   std::vector<MeshState> state(static_cast<std::size_t>(h["meshCount"].n));
-  std::vector<Box6> unitBox(units.size());
+  std::vector<Box6> unitBox(static_cast<std::size_t>(h["unitCount"].n));
   ClearanceCensus c;
   auto onAxis = [&](const Pair& p, std::uint32_t ax) { if (p.anyAxis) return true; for (auto a : p.axes) if (a == ax) return true; return false; };
 
@@ -396,11 +409,13 @@ static int run_clearances(Reader& in, Engine& eng, const Json& h) {
     c.exactCalls++; if (verdict) c.verdictCalls++;
     (bucket == 0 ? c.pruned : bucket == 1 ? c.far : bucket == 2 ? c.mid : bucket == 3 ? c.near : c.contact)++;
   };
-  // inspect.js' unitClearance: the nearest mesh pair under `upper`, the AABB gate first.
+  // inspect.js' unitClearance: the nearest mesh pair under `upper`; an excluded pair is
+  // skipped before anything is counted, then the AABB gate.
   auto unit_clearance = [&](const Pair& p, double upper, std::uint32_t& pa, std::uint32_t& pb, bool& found) {
     double best = upper; found = false;
-    for (std::uint32_t a : units[p.A].meshes) {
-      for (std::uint32_t b : units[p.B].meshes) {
+    for (std::uint32_t a : p.Am) {
+      for (std::uint32_t b : p.Bm) {
+        if (!p.ex.empty() && p.ex.count((static_cast<std::uint64_t>(a) << 32) | b)) continue;
         c.aabbTests++;
         if (box_at_least(state[a].box, state[b].box, best)) continue;
         c.aabbPass++;
@@ -487,6 +502,130 @@ static int run_clearances(Reader& in, Engine& eng, const Json& h) {
   return 0;
 }
 
+// ---------------------------------------------------------------------------
+// `undeclaredClearance` — checkUndeclaredClearance's loop (inspect.js), ported line for
+// line: every pose of every axis in order; per pose the unit-group boxes (the union of
+// each group's mesh boxes, three.js' Box3.union, Math.min/Math.max as ECMA-262 has them),
+// then per pair the group gate, the mesh gate, the memo (its own: the geometry's JS id,
+// position version and !== matrix, reset per axis, its hits COUNTED), and on a miss the
+// box prune or the exact distance. The prune is three-mesh-bvh's intersectsBox, so it is
+// asked of JS, and asked in one batch per pose ('Q'): which mesh pairs reach it is fixed
+// before any distance (the gates read a fixed bound, the memo reads versions), so a first
+// pass finds them, in the JS loop's order, and a second runs the loop with the answers.
+// Commands out: 'A' u32 axis, 'S' u32 axis u32 i, 'Q' u32 n then n × (u32 a, u32 b,
+// f64 bound) answered by n bytes, 'V' as clearances', and 'R' u32 len + JSON.
+static double jsmin(double a, double b) { if (a != a || b != b) return __builtin_nan(""); if (a == 0 && b == 0) return std::signbit(a) ? a : b; return a < b ? a : b; }
+static double jsmax(double a, double b) { if (a != a || b != b) return __builtin_nan(""); if (a == 0 && b == 0) return std::signbit(a) ? b : a; return a > b ? a : b; }
+
+static int run_undeclared(Reader& in, Engine& eng, const Json& h) {
+  struct Pair { std::uint32_t ga, gb; std::vector<std::uint32_t> Am, Bm; double bound; double min = INF; bool at = false; std::uint32_t atAxis = 0; double atF = 0; bool hasMeshes = false; std::uint32_t ma = 0, mb = 0; };
+  std::vector<std::vector<std::uint32_t>> groups; std::vector<Pair> pairs; std::vector<std::uint32_t> axisN;
+  for (auto& g : h["groups"].a) { std::vector<std::uint32_t> x; for (auto& m : g.a) x.push_back(static_cast<std::uint32_t>(m.n)); groups.push_back(std::move(x)); }
+  for (auto& a : h["axes"].a) axisN.push_back(static_cast<std::uint32_t>(a["n"].n));
+  for (auto& p : h["pairs"].a) {
+    Pair x; x.ga = static_cast<std::uint32_t>(p["ga"].n); x.gb = static_cast<std::uint32_t>(p["gb"].n); x.bound = p["bound"].n;
+    for (auto& m : p["Am"].a) x.Am.push_back(static_cast<std::uint32_t>(m.n));
+    for (auto& m : p["Bm"].a) x.Bm.push_back(static_cast<std::uint32_t>(m.n));
+    pairs.push_back(std::move(x));
+  }
+  std::vector<MeshState> state(static_cast<std::size_t>(h["meshCount"].n));
+  std::vector<Box6> unitBox(static_cast<std::size_t>(h["unitCount"].n)), ub(groups.size());
+  std::uint64_t unitPairTests = 0, unitPairPass = 0, exactCalls = 0, memoHits = 0, boxPruned = 0, poses = 0;
+  struct Key { std::uint32_t a, b; std::uint64_t bound; bool operator==(const Key&) const = default; };
+  struct KeyHash { std::size_t operator()(const Key& k) const { return std::hash<std::uint64_t>()((static_cast<std::uint64_t>(k.a) << 32 | k.b) ^ (k.bound * 0x9E3779B97F4A7C15ull)); } };
+  struct Entry { std::uint32_t va, vb; double d; };
+  std::unordered_map<Key, Entry, KeyHash> memo;
+  auto bits = [](double x) { std::uint64_t u; std::memcpy(&u, &x, 8); return u; };
+
+  for (std::uint32_t ax = 0; ax < axisN.size(); ax++) {
+    put('A'); put(ax); std::fflush(stdout);
+    memo.clear();
+    for (std::uint32_t i = 0; i <= axisN[ax]; i++) {
+      put('S'); put(ax); put(i); std::fflush(stdout);
+      double f = 0;
+      for (;;) {
+        const char tag = in.get<char>();
+        if (tag == 'G') { read_geometry(in, eng); continue; }
+        if (tag == 'P') { std::uint32_t axr; f = read_pose(in, state, unitBox, axr); break; }
+        std::fprintf(stderr, "sweep: expected a pose, read '%c'\n", tag); std::exit(2);
+      }
+      poses++;
+      for (std::size_t g = 0; g < groups.size(); g++) {
+        Box6 u{ INF, INF, INF, -INF, -INF, -INF };
+        for (std::uint32_t m : groups[g]) {
+          const Box6& b = state[m].box2;
+          u = { jsmin(u.mnx, b.mnx), jsmin(u.mny, b.mny), jsmin(u.mnz, b.mnz), jsmax(u.mxx, b.mxx), jsmax(u.mxy, b.mxy), jsmax(u.mxz, b.mxz) };
+        }
+        ub[g] = u;
+      }
+      // pass 1: the misses, in the loop's order, each once (a second sight is a hit)
+      std::vector<Key> ask;
+      std::unordered_map<Key, std::size_t, KeyHash> askAt;
+      for (const Pair& p : pairs) {
+        if (box_at_least(ub[p.ga], ub[p.gb], p.bound)) continue;
+        for (std::uint32_t a : p.Am) for (std::uint32_t b : p.Bm) {
+          if (box_at_least(state[a].box2, state[b].box2, p.bound)) continue;
+          const Key k{ a, b, bits(p.bound) };
+          auto it = memo.find(k);
+          if (it != memo.end() && it->second.va == state[a].uver && it->second.vb == state[b].uver) continue;
+          if (askAt.count(k)) continue;
+          askAt.emplace(k, ask.size()); ask.push_back(k);
+        }
+      }
+      std::vector<std::uint8_t> pruned(ask.size(), 0);
+      if (!ask.empty()) {
+        put('Q'); put(static_cast<std::uint32_t>(ask.size()));
+        for (const Key& k : ask) { double bd; std::memcpy(&bd, &k.bound, 8); put(k.a); put(k.b); put(bd); }
+        std::fflush(stdout);
+        if (!in.read(pruned.data(), pruned.size())) { std::fputs("sweep: truncated prune answers\n", stderr); std::exit(2); }
+      }
+      // pass 2: the loop itself
+      for (Pair& p : pairs) {
+        unitPairTests++;
+        if (box_at_least(ub[p.ga], ub[p.gb], p.bound)) continue;
+        unitPairPass++;
+        double poseBest = INF; bool have = false; std::uint32_t pa = 0, pb = 0;
+        for (std::uint32_t a : p.Am) for (std::uint32_t b : p.Bm) {
+          if (box_at_least(state[a].box2, state[b].box2, p.bound)) continue;
+          const Key k{ a, b, bits(p.bound) };
+          const std::uint32_t va = state[a].uver, vb = state[b].uver;
+          double d;
+          auto it = memo.find(k);
+          if (it != memo.end() && it->second.va == va && it->second.vb == vb) { d = it->second.d; memoHits++; }
+          else {
+            if (pruned[askAt.at(k)]) { d = INF; boxPruned++; }
+            else {
+              d = eng.view_distance(state[a], state[b], p.bound);   // meshClearance, its witness asked of JS
+              if (d > 0 && d < 0.05) {
+                put('V'); put(a); put(b); put(p.bound); std::fflush(stdout);
+                if (in.get<char>() != 'v') { std::fputs("sweep: expected a verdict\n", stderr); std::exit(2); }
+                if (in.get<std::uint8_t>()) d = 0;
+              }
+              exactCalls++;
+            }
+            memo[k] = { va, vb, d };
+          }
+          if (d < poseBest) { poseBest = d; have = true; pa = a; pb = b; }
+        }
+        if (poseBest < p.min) { p.min = poseBest; p.at = true; p.atAxis = ax; p.atF = f; p.hasMeshes = have; p.ma = pa; p.mb = pb; }
+      }
+    }
+  }
+  std::string out = "{\"state\":[";
+  for (std::size_t k = 0; k < pairs.size(); k++) {
+    const Pair& s = pairs[k];
+    if (k) out += ',';
+    out += "{\"min\":" + (s.min == INF ? std::string("null") : num(s.min));
+    out += s.at ? ",\"at\":[" + std::to_string(s.atAxis) + "," + num(s.atF) + "]" : std::string(",\"at\":null");
+    out += s.hasMeshes ? ",\"meshes\":[" + std::to_string(s.ma) + "," + std::to_string(s.mb) + "]}" : std::string(",\"meshes\":null}");
+  }
+  out += "],\"census\":{\"unitPairTests\":" + std::to_string(unitPairTests) + ",\"unitPairPass\":" + std::to_string(unitPairPass) +
+    ",\"exactCalls\":" + std::to_string(exactCalls) + ",\"memoHits\":" + std::to_string(memoHits) + ",\"boxPruned\":" + std::to_string(boxPruned) +
+    "},\"poses\":" + std::to_string(poses) + "}";
+  put('R'); put(static_cast<std::uint32_t>(out.size())); put(out.data(), out.size()); std::fflush(stdout);
+  return 0;
+}
+
 }  // namespace sweep
 
 int main() {
@@ -513,6 +652,7 @@ int main() {
       std::string text(len, '\0'); in.read(text.data(), len);
       std::size_t i = 0; const Json h = parse(text, i);
       if (h["check"].s == "clearances") return run_clearances(in, eng, h);
+      if (h["check"].s == "undeclared") return run_undeclared(in, eng, h);
       for (auto& u : h["units"].a) { Unit x; x.name = u["name"].s; for (auto& m : u["meshes"].a) x.meshes.push_back(static_cast<std::uint32_t>(m.n)); units.push_back(std::move(x)); }
       for (auto& p : h["pairs"].a) pairs.push_back({ static_cast<std::uint32_t>(p["ai"].n), static_cast<std::uint32_t>(p["bi"].n), p["key"].s, p["expected"].b });
       for (auto& a : h["axes"].a) axisNames.push_back(a["name"].s);

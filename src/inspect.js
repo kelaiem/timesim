@@ -3219,7 +3219,10 @@ if (GEARED_BUILT) EXPECTED_CONTACT_FLOORS.push(
 // TODO 6's check: sweep each row's unit pair with its declared contacts
 // EXCLUDED, and hold the remainder to the row's floor. REPORT-first (§50's
 // arc: report, triage, then gate) — `ok` is per-row and the caller decides.
-export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLOORS, axes = AXES, coarse = 4, refineBand = 0.4, yieldEvery = 16, pairsTouching } = {}) {
+// `checkExpectedContacts`' two ends, shared by the JS sweep and §338 landing 12's native
+// engine (checkClearances' split, next door): the rows it sweeps, each resolved to its
+// two mesh lists and its exclusion rule, and the payload built from the sweep's state.
+export function expectedContactsSetup(clock, { rows = EXPECTED_CONTACT_FLOORS, axes = AXES, pairsTouching } = {}) {
   // §152 — same shape as checkClearances next door: filter the declared rows,
   // keep their indices in the FULL table for the harness's union.
   const touching = resolvePairsTouching(clock, pairsTouching);
@@ -3290,9 +3293,11 @@ export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLO
       else unmatched.push({ pair: `${row.a} ⇄ ${row.b}`, name: n });
     }
   });
-  censusStart();   // §108's experiment — report-only, see the census block
-  const { state: liveState } = await sweepClearances(clock, livePairs, { axes: resolveAxes(axes), coarse, refineBand, yieldEvery });  // §152 — see checkClearances
-  const census = censusStop();
+  return { rows, touching, keptIndices, goneE, liveE, livePairs, unmatched, standDown, axes: resolveAxes(axes) };
+}
+
+export function expectedContactsPayload(setup, liveState, census, { refineBand = 0.4 } = {}) {
+  const { rows, touching, keptIndices, goneE, liveE, unmatched, standDown, axes } = setup;
   const state = rows.map(() => null);
   liveE.forEach((i, j) => { state[i] = liveState[j]; });
   const results = rows.map((row, i) => {
@@ -3316,15 +3321,24 @@ export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLO
       only: row.only ? row.only.map((p) => p.join(' ⇄ ')) : undefined,
     };
   });
-  console.table(results);
   return {
     violations: results.filter((r) => !r.ok && !r.waived),
     waivedCount: results.filter((r) => !r.ok && r.waived).length,
     unmatched, results, census, ...(standDown.length ? { standDown } : {}),
     // §127 tier 2a — raw minima on a narrowed run only; see checkClearances.
-    ...(resolveAxes(axes).length < AXES.length ? { rawMins: state.map((st) => (st && isFinite(st.min) ? st.min : null)) } : {}),
+    ...(axes.length < AXES.length ? { rawMins: state.map((st) => (st && isFinite(st.min) ? st.min : null)) } : {}),
     ...(touching ? { restriction: restrictionRecord(touching, keptIndices) } : {}),
   };
+}
+
+export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLOORS, axes = AXES, coarse = 4, refineBand = 0.4, yieldEvery = 16, pairsTouching } = {}) {
+  const setup = expectedContactsSetup(clock, { rows, axes, pairsTouching });
+  censusStart();   // §108's experiment — report-only, see the census block
+  const { state: liveState } = await sweepClearances(clock, setup.livePairs, { axes: setup.axes, coarse, refineBand, yieldEvery });  // §152 — see checkClearances
+  const census = censusStop();
+  const out = expectedContactsPayload(setup, liveState, census, { refineBand });
+  console.table(out.results);
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -3420,11 +3434,11 @@ function judgeUndeclared(rows, debtTable) {
   return { violations, regressed, staleDebt };
 }
 
-export async function checkUndeclaredClearance(clock, {
-  axes = AXES, yieldEvery = 16, pairsTouching, lift = [],
-  memo: memoOn = true, boxPrune: boxPruneOn = true,
-  debtTable = UNDECLARED_CLEARANCE_DEBT,
-} = {}) {
+// `checkUndeclaredClearance`' three shared pieces (§338 landing 12): its setup (the
+// complement of the declared pairs, the §152 restriction, the two controls), a mesh's
+// world box as the sweep reads it, and the box-prune decision, so the JS sweep and the
+// native engine read one law each; and the payload, built from the per-pair minima.
+export function undeclaredSetup(clock, { axes = AXES, pairsTouching, lift = [], debtTable = UNDECLARED_CLEARANCE_DEBT } = {}) {
   const bound = CLEAR_MARGIN;
   const units = nearestUnitMeshes(clock);
   const names = [...units.keys()];
@@ -3471,78 +3485,30 @@ export async function checkUndeclaredClearance(clock, {
   const selectorEmpty = !tie.A.length || !tie.B.length || !hit.A.length || !hit.B.length;
   const pairs = [...restrictedLive, ...controlsList];
   for (const p of pairs) { p.min = Infinity; p.at = null; p.meshes = null; }
+  return { bound, units, live, restrictedLive, controlsList, tie, hit, selectorEmpty, pairs, population, malformedDebt, touching, debtTable, resolved: resolveAxes(axes) };
+}
 
-  const resolved = resolveAxes(axes);
-  const _box = new THREE.Box3();
-  const _inv = new THREE.Matrix4();
-  const triCount = (m) => (m.geometry.index ? m.geometry.index.count : m.geometry.attributes.position.count) / 3;
-  const mb = new Map(), ub = new Map(), mver = new Map(), msnap = new Map();
-  let exactCalls = 0, memoHits = 0, boxPruned = 0, unitPairTests = 0, unitPairPass = 0, poses = 0;
-  let sinceYield = 0;
+// A mesh's world box as this sweep reads it: its geometry's cached boundingBox (computed
+// once, on first need, as three.js caches it) under the mesh's world matrix.
+export function meshWorldBox(m, out) {
+  const g = m.geometry;
+  if (!g.boundingBox) g.computeBoundingBox();
+  return out.copy(g.boundingBox).applyMatrix4(m.matrixWorld);
+}
+const _upBox = new THREE.Box3(), _upInv = new THREE.Matrix4(), _upMb = new THREE.Box3();
+const _upTris = (m) => (m.geometry.index ? m.geometry.index.count : m.geometry.attributes.position.count) / 3;
+// The box prune: does the larger mesh's tree reach the smaller one's world box grown by
+// the bound? No means no surface of it is within the bound, so the exact query is skipped.
+export function undeclaredPrune(a, b, bound) {
+  const [big, small] = _upTris(a) >= _upTris(b) ? [a, b] : [b, a];
+  const tree = bvhFor(big);
+  _upBox.copy(meshWorldBox(small, _upMb)).expandByScalar(bound);
+  _upInv.copy(big.matrixWorld).invert();
+  return !tree.intersectsBox(_upBox, _upInv);
+}
 
-  for (const axis of resolved) {
-    enterAxis(clock);   // TODO 54 — a slice must reproduce a whole run's poses
-    const memo = new Map();   // mesh-pair memo, reset per axis (§127 slicing)
-    for (let i = 0; i <= axis.n; i++) {
-      const f = i / axis.n;
-      clock.setPose(axis.pose(f, clock));
-      poses++;
-      for (const [name, meshes] of units) {
-        const u = ub.get(name) ?? new THREE.Box3();
-        u.makeEmpty();
-        for (const m of meshes) {
-          const g = m.geometry;
-          if (!g.boundingBox) g.computeBoundingBox();
-          const b = mb.get(m) ?? new THREE.Box3();
-          b.copy(g.boundingBox).applyMatrix4(m.matrixWorld);
-          mb.set(m, b);
-          u.union(b);
-          const e = m.matrixWorld.elements, snap = msnap.get(m), pv = g.attributes.position.version;
-          if (!snap || snap.g !== g.id || snap.v !== pv || snap.e.some((x, k) => x !== e[k])) {
-            msnap.set(m, { g: g.id, v: pv, e: e.slice() });
-            mver.set(m, (mver.get(m) ?? 0) + 1);
-          }
-        }
-        ub.set(name, u);
-      }
-      for (const p of pairs) {
-        unitPairTests++;
-        if (boxDistance(ub.get(p.a), ub.get(p.b)) >= p.bound) continue;
-        unitPairPass++;
-        let poseBest = Infinity, posePair = null;
-        for (const a of p.A) {
-          const ba = mb.get(a);
-          for (const b of p.B) {
-            if (boxDistance(ba, mb.get(b)) >= p.bound) continue;
-            let d;
-            const va = mver.get(a), vb = mver.get(b);
-            const key = memoOn ? `${a.id}:${b.id}:${p.bound}` : null;
-            const cached = memoOn ? memo.get(key) : null;
-            if (cached && cached.va === va && cached.vb === vb) { d = cached.d; memoHits++; }
-            else {
-              if (boxPruneOn) {
-                const [big, small] = triCount(a) >= triCount(b) ? [a, b] : [b, a];
-                const tree = bvhFor(big);
-                _box.copy(mb.get(small)).expandByScalar(p.bound);
-                _inv.copy(big.matrixWorld).invert();
-                if (!tree.intersectsBox(_box, _inv)) { d = Infinity; boxPruned++; }
-                else { d = meshClearance(a, b, p.bound); exactCalls++; }
-              } else { d = meshClearance(a, b, p.bound); exactCalls++; }
-              if (memoOn) memo.set(key, { va, vb, d });
-            }
-            if (d < poseBest) { poseBest = d; posePair = [a, b]; }
-          }
-        }
-        if (poseBest < p.min) {
-          p.min = poseBest;
-          p.at = { axis: axis.name, f: +f.toFixed(4) };
-          p.meshes = posePair ? posePair.map((m) => m.name || m.geometry.type) : null;
-        }
-      }
-      if (++sinceYield >= yieldEvery) { sinceYield = 0; await new Promise((r) => setTimeout(r, 0)); }
-    }
-  }
-
+export function undeclaredPayload(setup, census, poses) {
+  const { bound, restrictedLive, controlsList, tie, hit, selectorEmpty, population, malformedDebt, touching, debtTable, resolved } = setup;
   const rows = restrictedLive
     .filter((p) => p.min < bound)
     .map((p) => ({
@@ -3568,12 +3534,11 @@ export async function checkUndeclaredClearance(clock, {
     : controls.every((c) => c.ok) ? 'PASS' : `FAIL — ${controls.filter((c) => !c.ok).map((c) => c.control).join(', ')}`;
 
   const { violations, regressed, staleDebt } = judgeUndeclared(rows, debtTable);
-  console.table(rows);
   const sliced = resolved.length < AXES.length;
   return {
     population, poses, rows, violations, regressed, staleDebt, malformedDebt,
     debtTable, controls, control,
-    census: { unitPairTests, unitPairPass, exactCalls, memoHits, boxPruned },
+    census,
     // §127 tier 2a — a SLICE carries its raw (unrounded) minima keyed by pair,
     // not positionally: unlike `clearances`/`expectedContacts`, a row here
     // only EXISTS when a pair is under the bound, so the merge cannot align
@@ -3586,6 +3551,77 @@ export async function checkUndeclaredClearance(clock, {
     } : {}),
     ...(touching ? { restriction: restrictionRecord(touching, null) } : {}),
   };
+}
+
+export async function checkUndeclaredClearance(clock, {
+  axes = AXES, yieldEvery = 16, pairsTouching, lift = [],
+  memo: memoOn = true, boxPrune: boxPruneOn = true,
+  debtTable = UNDECLARED_CLEARANCE_DEBT,
+} = {}) {
+  const setup = undeclaredSetup(clock, { axes, pairsTouching, lift, debtTable });
+  const { units, pairs, resolved } = setup;
+  const mb = new Map(), ub = new Map(), mver = new Map(), msnap = new Map();
+  let exactCalls = 0, memoHits = 0, boxPruned = 0, unitPairTests = 0, unitPairPass = 0, poses = 0;
+  let sinceYield = 0;
+
+  for (const axis of resolved) {
+    enterAxis(clock);   // TODO 54 — a slice must reproduce a whole run's poses
+    const memo = new Map();   // mesh-pair memo, reset per axis (§127 slicing)
+    for (let i = 0; i <= axis.n; i++) {
+      const f = i / axis.n;
+      clock.setPose(axis.pose(f, clock));
+      poses++;
+      for (const [name, meshes] of units) {
+        const u = ub.get(name) ?? new THREE.Box3();
+        u.makeEmpty();
+        for (const m of meshes) {
+          const g = m.geometry;
+          const b = meshWorldBox(m, mb.get(m) ?? new THREE.Box3());
+          mb.set(m, b);
+          u.union(b);
+          const e = m.matrixWorld.elements, snap = msnap.get(m), pv = g.attributes.position.version;
+          if (!snap || snap.g !== g.id || snap.v !== pv || snap.e.some((x, k) => x !== e[k])) {
+            msnap.set(m, { g: g.id, v: pv, e: e.slice() });
+            mver.set(m, (mver.get(m) ?? 0) + 1);
+          }
+        }
+        ub.set(name, u);
+      }
+      for (const p of pairs) {
+        unitPairTests++;
+        if (boxDistance(ub.get(p.a), ub.get(p.b)) >= p.bound) continue;
+        unitPairPass++;
+        let poseBest = Infinity, posePair = null;
+        for (const a of p.A) {
+          const ba = mb.get(a);
+          for (const b of p.B) {
+            if (boxDistance(ba, mb.get(b)) >= p.bound) continue;
+            let d;
+            const va = mver.get(a), vb = mver.get(b);
+            const key = memoOn ? `${a.id}:${b.id}:${p.bound}` : null;
+            const cached = memoOn ? memo.get(key) : null;
+            if (cached && cached.va === va && cached.vb === vb) { d = cached.d; memoHits++; }
+            else {
+              if (boxPruneOn && undeclaredPrune(a, b, p.bound)) { d = Infinity; boxPruned++; }
+              else { d = meshClearance(a, b, p.bound); exactCalls++; }
+              if (memoOn) memo.set(key, { va, vb, d });
+            }
+            if (d < poseBest) { poseBest = d; posePair = [a, b]; }
+          }
+        }
+        if (poseBest < p.min) {
+          p.min = poseBest;
+          p.at = { axis: axis.name, f: +f.toFixed(4) };
+          p.meshes = posePair ? posePair.map((m) => m.name || m.geometry.type) : null;
+        }
+      }
+      if (++sinceYield >= yieldEvery) { sinceYield = 0; await new Promise((r) => setTimeout(r, 0)); }
+    }
+  }
+
+  const out = undeclaredPayload(setup, { unitPairTests, unitPairPass, exactCalls, memoHits, boxPruned }, poses);
+  console.table(out.rows);
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -7598,7 +7634,7 @@ export function sweepPoser(clock, { axes: axisArg = AXES, includeExcluded = fals
     if (!meshIndex.has(m)) { meshIndex.set(m, meshes.length); meshes.push(m); }
     return meshIndex.get(m);
   }));
-  const box = new THREE.Box3();
+  const box = new THREE.Box3(), box2 = new THREE.Box3();
   const seen = meshes.map(() => null);
   const nested = meshes.map((m) => m.children.length > 0);
   return {
@@ -7621,8 +7657,10 @@ export function sweepPoser(clock, { axes: axisArg = AXES, includeExcluded = fals
         seen[k] = { g, pv, iv, e: e.slice() };
         box.setFromObject(m);
         const v = rigidFrame(m);
+        meshWorldBox(m, box2);   // undeclaredClearance's own box (the mesh alone, its cached boundingBox)
         changed.push({ mesh: k, own: g, view: v.geometry, rigid: v.rigid, world: e, frame: v.frame.elements,
-          box: [box.min.x, box.min.y, box.min.z, box.max.x, box.max.y, box.max.z] });
+          box: [box.min.x, box.min.y, box.min.z, box.max.x, box.max.y, box.max.z],
+          box2: [box2.min.x, box2.min.y, box2.min.z, box2.max.x, box2.max.y, box2.max.z], gid: g.id, pv });
       }
       return { f: +f.toFixed(4), unitBoxes, changed };
     },

@@ -58,16 +58,18 @@ function encodePose(axis, i, { f, unitBoxes, changed }, geomId, stats) {
   const head = Buffer.alloc(1 + 4 + 4 + 8 + unitBoxes.length * 48);
   head.write('P', 0); head.writeUInt32LE(axis, 1); head.writeUInt32LE(i, 5); head.writeDoubleLE(f, 9);
   unitBoxes.forEach((b, k) => { const o = 17 + k * 48; [b.min.x, b.min.y, b.min.z, b.max.x, b.max.y, b.max.z].forEach((v, q) => head.writeDoubleLE(v, o + 8 * q)); });
-  const body = Buffer.alloc(changed.length * (16 + 8 * 38));
+  const REC = 16 + 8 * 38 + 8 * 6 + 8;   // the ids, two matrices, two boxes, the geometry's JS id and position version
+  const body = Buffer.alloc(changed.length * REC);
   const dv = new DataView(body.buffer, body.byteOffset, body.length);
   changed.forEach((s, j) => {
     const [own, gOwn] = geomId(s.own), [view, gView] = geomId(s.view);
     if (gOwn) parts.push(gOwn);
     if (gView) parts.push(gView);
-    const o = j * (16 + 8 * 38);
+    const o = j * REC;
     dv.setUint32(o, s.mesh, true); dv.setUint32(o + 4, own, true); dv.setUint32(o + 8, view, true); dv.setUint32(o + 12, s.rigid ? 1 : 0, true);
     for (let k = 0; k < 16; k++) { dv.setFloat64(o + 16 + 8 * k, s.world[k], true); dv.setFloat64(o + 144 + 8 * k, s.frame[k], true); }
-    for (let k = 0; k < 6; k++) dv.setFloat64(o + 272 + 8 * k, s.box[k], true);
+    for (let k = 0; k < 6; k++) { dv.setFloat64(o + 272 + 8 * k, s.box[k], true); dv.setFloat64(o + 320 + 8 * k, s.box2[k], true); }
+    dv.setUint32(o + 368, s.gid, true); dv.setUint32(o + 372, s.pv, true);
   });
   stats.poses++; stats.sent += changed.length;
   parts.push(head, u32b(changed.length), body);
@@ -115,31 +117,34 @@ export async function runNativeInspection(clock, I, { axes, includeExcluded = tr
 // meshClearance's containment witness where it needs one ('V', inspect.js'
 // sampledVerdict, asked here at the very pose the engine is measuring). JS poses,
 // answers and assembles the payload with checkClearances' own clearancesPayload.
-// `budgets`, for the probe's verdict control only, replaces CLEARANCE_BUDGETS.
-export async function runNativeClearances(clock, I, { axes, coarse = 4, refineBand = 0.4, budgets } = {}) {
+// The engine's extrema sweep (sweepClearances' algorithm) over any list of
+// sweepClearances pairs ({ A, B, axes, refineFloor, exclude? }), the engine DRIVING:
+// it asks for each pose it visits ('S', in the JS sweep's own order) and for
+// meshClearance's containment witness where it needs one ('V', inspect.js'
+// sampledVerdict, asked here at the very pose the engine is measuring). Each pair is
+// handed over as its two mesh lists and the mesh pairs its `exclude` rule skips,
+// evaluated once here (the rule reads names and identities, never a pose). Returns
+// sweepClearances' per-pair state and the census, for the check's own payload.
+// A driven engine run: spawn, send the header, and serve its commands until it answers
+// — 'A' enter an axis, 'S' set a pose and send its states, 'V' meshClearance's
+// containment witness (sampledVerdict, at the very pose being measured), 'Q' a batch of
+// undeclaredClearance box prunes (undeclaredPrune, the check's own law), 'R' the result.
+async function serveEngine(I, P, header) {
   if (!existsSync(BIN)) throw new Error(`no engine at ${BIN}: run tools/native-sweep/build.mjs`);
-  const setup = I.clearancesSetup(clock, { axes, ...(budgets ? { budgets } : {}) });
-  const P = I.sweepPoser(clock, { axes: setup.axes, includeExcluded: true });
-  const unitAt = new Map(P.units.map((u, i) => [u.name, i]));
   const child = spawn(BIN, [], { stdio: ['pipe', 'pipe', 'inherit'] });
   const exited = new Promise((res, rej) => child.on('close', (code) => (code === 0 ? res() : rej(new Error(`sweep exited ${code}`)))));
-  // the engine's commands, read as they arrive
   let buf = Buffer.alloc(0), wake = null;
   child.stdout.on('data', (d) => { buf = Buffer.concat([buf, d]); if (wake) { const w = wake; wake = null; w(); } });
   const need = async (n) => { while (buf.length < n) await new Promise((r) => { wake = r; }); const out = buf.subarray(0, n); buf = buf.subarray(n); return out; };
   const write = (b) => (child.stdin.write(b) ? null : new Promise((r) => child.stdin.once('drain', r)));
-  const u32 = (v) => { const b = Buffer.alloc(4); b.writeUInt32LE(v); return b; };
   const { geomId, stats } = geometryRegistry();
-  const h = { check: 'clearances', units: P.units.map((u, i) => ({ name: u.name, meshes: P.unitMeshes[i] })), meshCount: P.meshes.length,
-    axes: P.axes.map((a) => ({ name: a.name, n: a.n })), coarse, refineBand,
-    pairs: setup.pairs.map((pr) => ({ A: unitAt.get(pr.A.name), B: unitAt.get(pr.B.name),
-      axes: pr.axes ? pr.axes.map((n) => P.axes.findIndex((a) => a.name === n)).filter((k) => k >= 0) : null, refineFloor: pr.refineFloor })) };
-  const hj = Buffer.from(JSON.stringify(h));
-  await write(Buffer.concat([Buffer.from('H'), u32(hj.length), hj]));
-  let result = null, verdicts = 0;
+  stats.verdicts = 0; stats.prunes = 0;
+  const hj = Buffer.from(JSON.stringify({ ...header, unitCount: P.units.length, meshCount: P.meshes.length, axes: P.axes.map((a) => ({ name: a.name, n: a.n })) }));
+  await write(Buffer.concat([Buffer.from('H'), u32b(hj.length), hj]));
+  let result = null;
   for (;;) {
     const tag = String.fromCharCode((await need(1))[0]);
-    if (tag === 'A') { const ax = (await need(4)).readUInt32LE(0); void ax; P.enter(); continue; }
+    if (tag === 'A') { await need(4); P.enter(); continue; }
     if (tag === 'S') {
       const b = await need(8), ax = b.readUInt32LE(0), i = b.readUInt32LE(4);
       await write(encodePose(ax, i, P.pose(ax, i), geomId, stats));
@@ -147,9 +152,16 @@ export async function runNativeClearances(clock, I, { axes, coarse = 4, refineBa
     }
     if (tag === 'V') {
       const b = await need(16), a = b.readUInt32LE(0), m = b.readUInt32LE(4), upper = b.readDoubleLE(8);
-      verdicts++;
+      stats.verdicts++;
       const inside = I.sampledVerdict(P.meshes[a], P.meshes[m], upper).inside;
       await write(Buffer.from([0x76, inside ? 1 : 0]));   // 'v'
+      continue;
+    }
+    if (tag === 'Q') {
+      const n = (await need(4)).readUInt32LE(0), b = await need(16 * n), out = Buffer.alloc(n);
+      for (let k = 0; k < n; k++) out[k] = I.undeclaredPrune(P.meshes[b.readUInt32LE(16 * k)], P.meshes[b.readUInt32LE(16 * k + 4)], b.readDoubleLE(16 * k + 8)) ? 1 : 0;
+      stats.prunes += n;
+      await write(out);
       continue;
     }
     if (tag === 'R') { const n = (await need(4)).readUInt32LE(0); result = JSON.parse((await need(n)).toString('utf8')); break; }
@@ -157,16 +169,70 @@ export async function runNativeClearances(clock, I, { axes, coarse = 4, refineBa
   }
   child.stdin.end();
   await exited;
+  return { result, stats };
+}
+const meshIndexOf = (P) => {
+  const at = new Map(P.meshes.map((m, i) => [m, i]));
+  return (m) => { const i = at.get(m); if (i === undefined) throw new Error(`native sweep: a pair names a mesh no unit carries (${m.name || m.uuid})`); return i; };
+};
+
+async function driveExtrema(clock, I, axes, pairs, { coarse, refineBand }) {
+  const P = I.sweepPoser(clock, { axes, includeExcluded: true });
+  const idx = meshIndexOf(P);
+  const { result, stats } = await serveEngine(I, P, { check: 'clearances', coarse, refineBand,
+    pairs: pairs.map((pr) => {
+      const ex = [];
+      if (pr.exclude) for (const ma of pr.A.meshes) for (const mb of pr.B.meshes) if (pr.exclude(ma, mb)) ex.push(idx(ma), idx(mb));
+      return { Am: pr.A.meshes.map(idx), Bm: pr.B.meshes.map(idx), ex,
+        axes: pr.axes ? pr.axes.map((n) => P.axes.findIndex((a) => a.name === n)).filter((k) => k >= 0) : null, refineFloor: pr.refineFloor };
+    }) });
   // the per-pair state sweepClearances returns, its surfaces named as meshLabel names them
   const liveState = result.state.map((s, j) => {
-    const pr = setup.pairs[j];
+    const pr = pairs[j];
     return { min: s.min === null ? Infinity : s.min, at: s.at ? { axis: P.axes[s.at[0]].name, f: s.at[1] } : null,
       ...(s.at ? { meshes: s.meshes ? [I.clearanceMeshLabel(pr.A, P.meshes[s.meshes[0]]), I.clearanceMeshLabel(pr.B, P.meshes[s.meshes[1]])] : null } : {}) };
   });
   const c = result.census;
   const census = { aabbTests: c.aabbTests, aabbPass: c.aabbPass, exactCalls: c.exactCalls, exactMs: 0, verdictCalls: c.verdictCalls, verdictMs: 0,
     out: c.out, boolTrue: 0, boolFalse: 0 };
-  return { payload: I.clearancesPayload(setup, liveState, census, { refineBand }), stats: { ...stats, verdicts } };
+  return { liveState, census, stats };
+}
+
+// §338 landing 12 — `clearances` on the engine. `budgets`, for the probe's witness
+// control only, replaces CLEARANCE_BUDGETS.
+export async function runNativeClearances(clock, I, { axes, coarse = 4, refineBand = 0.4, budgets } = {}) {
+  const setup = I.clearancesSetup(clock, { axes, ...(budgets ? { budgets } : {}) });
+  const { liveState, census, stats } = await driveExtrema(clock, I, setup.axes, setup.pairs, { coarse, refineBand });
+  return { payload: I.clearancesPayload(setup, liveState, census, { refineBand }), stats };
+}
+
+// §338 landing 12 — `expectedContacts` on the engine: the same sweep, its pairs each a
+// row's two mesh lists (own metal where the row says) and its exclusion rule.
+export async function runNativeExpectedContacts(clock, I, { axes, coarse = 4, refineBand = 0.4 } = {}) {
+  const setup = I.expectedContactsSetup(clock, { axes });
+  const { liveState, census, stats } = await driveExtrema(clock, I, setup.axes, setup.livePairs, { coarse, refineBand });
+  return { payload: I.expectedContactsPayload(setup, liveState, census, { refineBand }), stats };
+}
+
+// §338 landing 12 — `undeclaredClearance` on the engine: every pose of every axis, the
+// pairs the complement of the declared ones plus the two controls, resolved by the
+// check's own undeclaredSetup; the minima written back into its pair records, which
+// undeclaredPayload reads.
+export async function runNativeUndeclared(clock, I, { axes } = {}) {
+  const setup = I.undeclaredSetup(clock, { axes });
+  const P = I.sweepPoser(clock, { axes: setup.resolved, includeExcluded: true });
+  const idx = meshIndexOf(P);
+  const names = [...setup.units.keys()];
+  const { result, stats } = await serveEngine(I, P, { check: 'undeclared',
+    groups: names.map((n) => setup.units.get(n).map(idx)),
+    pairs: setup.pairs.map((p) => ({ ga: names.indexOf(p.a), gb: names.indexOf(p.b), Am: p.A.map(idx), Bm: p.B.map(idx), bound: p.bound })) });
+  result.state.forEach((s, j) => {
+    const p = setup.pairs[j];
+    p.min = s.min === null ? Infinity : s.min;
+    p.at = s.at ? { axis: P.axes[s.at[0]].name, f: s.at[1] } : null;
+    p.meshes = s.meshes ? s.meshes.map((k) => P.meshes[k].name || P.meshes[k].geometry.type) : null;
+  });
+  return { payload: I.undeclaredPayload(setup, result.census, result.poses), stats };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
@@ -177,15 +243,19 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const axes = opt('--axes') ? opt('--axes').split(',') : undefined;
   const t0 = performance.now();
   const check = opt('--check') || 'inspection';
-  const { payload, stats } = check === 'clearances' ? await runNativeClearances(clock, I, { axes }) : await runNativeInspection(clock, I, { axes });
+  const RUN = { inspection: runNativeInspection, clearances: runNativeClearances, expectedContacts: runNativeExpectedContacts, undeclaredClearance: runNativeUndeclared };
+  const JS = { inspection: (o) => I.runInspection(clock, { ...o, includeExcluded: true }), clearances: (o) => I.checkClearances(clock, o), expectedContacts: (o) => I.checkExpectedContacts(clock, o), undeclaredClearance: (o) => I.checkUndeclaredClearance(clock, o) };
+  if (!RUN[check]) throw new Error(`run.mjs: no native ${check}`);
+  const { payload, stats } = await RUN[check](clock, I, { axes });
   const nativeMs = performance.now() - t0;
-  const what = check === 'clearances' ? `${payload.results.length} budgets, ${payload.violations.length} violations, ${stats.verdicts} verdicts asked`
+  const what = check === 'undeclaredClearance' ? `${payload.rows.length} rows under the margin, control ${payload.control}, ${stats.prunes} prunes and ${stats.verdicts} witnesses asked`
+    : check !== 'inspection' ? `${payload.results.length} rows, ${payload.violations.length} violations, ${stats.verdicts} verdicts asked`
     : `${payload.report.length} contacting pairs (${payload.report.filter((r) => r.class === 'FORBIDDEN').length} FORBIDDEN)`;
   console.error(`native ${check}: ${(nativeMs / 1000).toFixed(1)} s, ${what}; streamed ${stats.poses} poses, ${stats.sent} mesh states, ${stats.geometries} geometries (${(stats.geomBytes / 1e6).toFixed(0)} MB)`);
   if (opt('--out')) writeFileSync(opt('--out'), JSON.stringify({ checks: { [check]: { result: payload } } }));
   if (opt('--js')) {
     const t1 = performance.now();
-    const js = check === 'clearances' ? await I.checkClearances(clock, { axes }) : await I.runInspection(clock, { axes, includeExcluded: true });
+    const js = await JS[check]({ axes });
     console.error(`js ${check}: ${((performance.now() - t1) / 1000).toFixed(1)} s`);
     writeFileSync(opt('--js'), JSON.stringify({ checks: { [check]: { result: js } } }));
   }

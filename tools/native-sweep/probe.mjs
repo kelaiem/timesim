@@ -5,8 +5,9 @@
 //
 // Runs each check the engine answers both ways in one process, on the same boot, over
 // the same axes: the native engine (tools/native-sweep/run.mjs, built by build.mjs)
-// and inspect.js' own sweep — `inspection` (runInspection) and `clearances`
-// (checkClearances). Each pair of payloads must be leaf-identical under
+// and inspect.js' own sweep — `inspection` (runInspection), `clearances`
+// (checkClearances), `expectedContacts` (checkExpectedContacts) and
+// `undeclaredClearance` (checkUndeclaredClearance). Each pair of payloads must be leaf-identical under
 // tools/report-diff.mjs (every finding, row, pose, surface, the summaries and the
 // census; only timing leaves are excluded, by name). `--out` keeps the native
 // payloads, for the cross-architecture comparison in .github/workflows/native-host.yml.
@@ -27,7 +28,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const opt = (k) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : null; };
 const { bootNative } = await import(join(ROOT, 'tools/native/host.mjs'));
-const { runNativeInspection, runNativeClearances } = await import(join(ROOT, 'tools/native-sweep/run.mjs'));
+const { runNativeInspection, runNativeClearances, runNativeExpectedContacts, runNativeUndeclared } = await import(join(ROOT, 'tools/native-sweep/run.mjs'));
 const { clock } = await bootNative({ query: '' });
 const I = await import(join(ROOT, 'src/inspect.js'));
 clock.beginSweepHold();
@@ -79,6 +80,25 @@ writeFileSync(fn, wrap(vn.payload, 'clearances')); writeFileSync(fj, wrap(vj, 'c
 const dv = diff(fj, fn);
 line(dv.same && vn.stats.verdicts > 0, `control: ${budgets.length} EXPECTED contact pairs as budgets on '${cAxis[0]}' ask the witness ${vn.stats.verdicts} time(s) (${vn.payload.census.verdictCalls} logical, JS ${vj.census.verdictCalls}) and agree leaf for leaf: ${(dv.out.match(/^(PASS|FAIL) — .*$/m) || [''])[0]}`);
 
-if (opt('--out')) writeFileSync(opt('--out'), JSON.stringify({ checks: { inspection: { result: outInspection }, clearances: { result: nc.payload } } }));
-console.log(`\n${fails.length ? `FAIL — ${fails.length} gate(s)` : 'PASS — the native sweep engine answers inspection and clearances exactly as the JS sweeps do'}`);
+// expectedContacts and undeclaredClearance, both ways
+const kept = { inspection: outInspection, clearances: nc.payload };
+for (const [check, nat, js] of [
+  ['expectedContacts', () => runNativeExpectedContacts(clock, I, { axes }), () => I.checkExpectedContacts(clock, { axes })],
+  ['undeclaredClearance', () => runNativeUndeclared(clock, I, { axes }), () => I.checkUndeclaredClearance(clock, { axes })],
+]) {
+  t = performance.now();
+  const n = await nat();
+  const nS = (performance.now() - t) / 1000;
+  t = performance.now();
+  const j = await js();
+  const jS = (performance.now() - t) / 1000;
+  writeFileSync(fn, wrap(n.payload, check)); writeFileSync(fj, wrap(j, check));
+  const dd = diff(fj, fn);
+  const what = check === 'undeclaredClearance' ? `${n.payload.population} pairs, ${n.payload.rows.length} under the margin, control ${n.payload.control}` : `${n.payload.results.length} rows, ${n.payload.violations.length} violations`;
+  line(dd.same, `${check}, native and JS, leaf for leaf (${what}): ${(dd.out.match(/^(PASS|FAIL) — .*$/m) || [''])[0]}`);
+  console.log(`  REPORT native ${nS.toFixed(1)} s (${n.stats.verdicts} witnesses${check === 'undeclaredClearance' ? `, ${n.stats.prunes} box prunes` : ''} asked of JS), JS ${jS.toFixed(1)} s`);
+  kept[check] = n.payload;
+}
+if (opt('--out')) writeFileSync(opt('--out'), JSON.stringify({ checks: Object.fromEntries(Object.entries(kept).map(([k, v]) => [k, { result: v }])) }));
+console.log(`\n${fails.length ? `FAIL — ${fails.length} gate(s)` : 'PASS — the native sweep engine answers inspection, clearances, expectedContacts and undeclaredClearance exactly as the JS sweeps do'}`);
 process.exit(fails.length ? 1 : 0);
