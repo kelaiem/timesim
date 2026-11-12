@@ -4,7 +4,7 @@
 
 # The instruments
 
-430 scripts. **302 are ACCEPTANCE tests** — they decide and exit non-zero.
+431 scripts. **303 are ACCEPTANCE tests** — they decide and exit non-zero.
 **128 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -285,6 +285,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-338-native-boot.mjs` | §338 | acceptance | §338 landing 1 — DOES THE NATIVE HOST BUILD THE SAME MOVEMENT AS THE BROWSER? |
 | `probe-338-pose-conditioning.mjs` | §338 | acceptance | §338 — THE POSE-CONDITIONING GUARD: does any pose of §152's net turn a last-ulp difference in the maths into a difference in the metal? |
 | `probe-339-arrangement-builds.mjs` | §339 | acceptance | WHAT DOES A BARREL STEP DO TO EVERY BUILD THE ARRANGEMENT REACHES? A REPORT (BACKLOG §339 2b′: it judges nothing). |
+| `probe-343-chronometer.mjs` | §343 | acceptance | §343 — IS THE 14,400 ROW'S BALANCE THE LARGEST THE CASE ADMITS, and is it the case (not the spring) that stops it? Acceptance. Boots the row as declared (r 11.5, rim 0.345) and the same row one BAL_R_STEP larger (r 11.75 on rim 0.33, the heaviest that still reaches the target there), each in its own native process, and holds: 1. the declared build: no case-cap warning, the amplitude target met and the rim tight (equalisation's own record), 2 Hz, the hairspring in stock; 2. one step larger: the case-cap warning fires (the wall), and the target is still met and started (so the spring was not what stopped it); 3. the control: the patch must take (the larger build reports r 11.75), or 2 would be a reading of the declared build. The shipped 18,000 build is booted too, for the inertia ratio the record quotes (reported, not gated). node tools/probe-343-chronometer.mjs (exit 1 on any claim) |
 | `probe-36-apply.mjs` | §36 | acceptance | §36 Apply — the acceptance, and the only place the APPLIED tree is judged. |
 | `probe-50-clutch.mjs` | §50 | report | TODO 50 — the stem clutch, measured in the movement. |
 | `probe-50-coupling.mjs` | §50 | report | Boot test-geometry.html headless and report the build log + a lift-law sanity table. |
