@@ -654,6 +654,13 @@ export const AMPLITUDE_CLAIM_DEG = rateBalanceRow(SPEC.vph).claimDeg;
 // stations out from it (the pin circle, the fork's length), so it is the one
 // size the escapement's whole solve follows.
 export const BALANCE_R_SPEC = rateBalanceRow(SPEC.vph).balanceR;
+// §343 — A RATE VARIANT: a build at a rate other than DEFAULT_VPH. The shipped literals that say "as large as the plate
+// allows" or "the station where two bounds meet" (DRUM_R_ACTUAL, D4, the gong's authored arc) were each solved ONCE, at
+// the default rate's plate. A variant re-gears the escape mesh and carries its own balance, so its plate moves and those
+// maximality claims are not its claims: a variant keeps the shipped drum (every rate runs the SAME spring, which is the
+// premise RATE_TABLE's balances are solved on) and the shipped D4, holding only that each FITS, and rings its gong at its
+// own derivation, as a form case does (§325 landing 12). §75's rule for a moved drum, applied per rate.
+export const RATE_VARIANT = SPEC.vph !== DEFAULT_VPH;
 // §343 — true when the CASE, not the spring, sets this rate's balance radius (RATE_TABLE's `caseBound`).
 export const BALANCE_R_CASE_BOUND = rateBalanceRow(SPEC.vph).caseBound === true;
 export const AMPLITUDE_PEAK_DEG = rateBalanceRow(SPEC.vph).peakDeg;

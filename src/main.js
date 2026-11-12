@@ -22,7 +22,7 @@ import { UI_LANG, setUiLang, LOCALES, fillLanguagePicker, t, fmtNum, fmtInt, fmt
 // consumed unchanged below; the geometry fingerprint proves the move changed
 // no part's position.
 import {
-  SPEC, SPEC_RATES, DEFAULT_VPH, ALARM_BUILT, PULLEY_BARREL, DRUM_AZ_DEG,
+  SPEC, SPEC_RATES, DEFAULT_VPH, RATE_VARIANT, ALARM_BUILT, PULLEY_BARREL, DRUM_AZ_DEG,
   F_BALANCE, BEAT_DEG, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_STEP, BALANCE_R_REF, BAL_R_STEP, balanceWheelDims, BALANCE_R_SPEC, AMPLITUDE_POSED_DEG, LIFT_DEG, IMPULSE_WIDTH,
   CLEAR_MARGIN, HANDOFF_TRACK_TOL, ZERO_AREA_MAX, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK, FORK_HALF_Z,
   BAL_T, BAL_RIM_F, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T, NICKEL_SILVER_SIGMA_Y_PA,
@@ -8608,6 +8608,7 @@ const ALARM_PINB_SEAT_FIXED = Object.freeze({
   'cfg1:{"spec":{"reserveHours":30,"vph":18000},"route":null,"tuned":[]}': 5.2780,   // §278 landing 6: re-quoted to its fixed point — the reclaim moved the dial-hung column against the held arming blade's corner, and hanger 3's jog, moved beside the blade, lengthened the ground's developed path and with it the section and the room (was 5.2650). TODO 240: re-quoted to its fixed point — the re-aimed lever reflects the blade to the nose by its new ratio, and the pin's journal is charged on the same-side reaction (was 5.4263). mN at the pin — the shared equal margin, re-derived and asserted at the link's arming solve (rounded to 0.1 µN). §261 2c: re-quoted to its fixed point — the folded same-side beak reflects the arming blade to the nose by its own lever (was 5.2502)
   'cfg1:{"spec":{"alarmModAzDeg":60,"barrelStepDeg":0,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":6,"vph":18000},"route":null,"tuned":[]}': 5.1837,   // §313: the swung barrel, the reserve at 12 on six idlers, the module at 60°
   'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-20,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":18000},"route":null,"tuned":[]}': 5.2248,   // §314: the barrel at −20°, the reserve at 12 on two idlers, the module at 50°
+  'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-20,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":14400},"route":null,"tuned":[]}': 5.2249,   // §343: the same arrangement at the chronometer's beat (its grown plate moves the link's guide triangle); iterated 5.2223 → 5.2249, which re-derives itself
 });
 const ALARM_PINB_SEAT_MN = ALARM_PINB_SEAT_FIXED[ALARM_ARR_KEY] ?? 5.2780;   // mN at the pin; a spec with no row takes the designed value
 const ALARM_PINB_BLADE = (() => {
@@ -13090,7 +13091,8 @@ const drumPos = {
   for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (reach(m) <= plateR) lo = m; else hi = m; }
   // §75 step 1 — the drum's SIZE was solved along the default direction. A moved drum (?drumaz=) keeps that size, so there
   // only the fit is held (its chain coil one CLEAR_MARGIN inside the plate); "as large as the plate allows" is the default's claim.
-  if (DRUM_AZ_DEG !== null ? !(DRUM_R_ACTUAL <= lo + 1e-9) : !(DRUM_R_ACTUAL <= lo + 1e-9 && lo - DRUM_R_ACTUAL < 0.01))
+  // §343: so does a RATE VARIANT, which runs the shipped spring by RATE_TABLE's premise (layout.js, RATE_VARIANT).
+  if (DRUM_AZ_DEG !== null || RATE_VARIANT ? !(DRUM_R_ACTUAL <= lo + 1e-9) : !(DRUM_R_ACTUAL <= lo + 1e-9 && lo - DRUM_R_ACTUAL < 0.01))
     console.warn(`TODO 207: DRUM_R_ACTUAL ${DRUM_R_ACTUAL} is not the plate's bound rounded down — the drum's chain coil may reach ${lo.toFixed(4)} (one CLEAR_MARGIN inside plateR ${plateR.toFixed(3)})`);
 }
 // Drum seat: LIFTED above the great wheel's plane. At the compact 2.5-unit
@@ -22910,7 +22912,9 @@ for (const [nm, cy, wr] of [['reserve', reserveStationR, reserveWellR], ['second
   const outboard = dialRadius * (2 * G.DIAL_CANVAS_FILL_F) * G.DIAL_RAIL_IN_F
     - DIAL_WALL_HALF - CLEAR_MARGIN - -SECONDS_LOCAL.y;
   // a print scaled to the case (printScale < 1) moved the outboard bound in on purpose: D4 is the ROUND print's maximum
-  if (SPEC.d4 === null && printScale === 1 && Math.abs(inboard - outboard) > 0.02)
+  // §343: a RATE VARIANT keeps the shipped D4 (its plate moved; D4 is the default plate's maximum), held only to FIT:
+  // the inboard bound may not pass the outboard.
+  if (RATE_VARIANT ? inboard > outboard + 1e-9 : SPEC.d4 === null && printScale === 1 && Math.abs(inboard - outboard) > 0.02)
     console.warn(`§125: D4 no longer maximizes the seconds well — inboard bound ${inboard.toFixed(4)} vs `
       + `outboard ${outboard.toFixed(4)} (need equal within 0.02); re-derive D4 from its comment's closed form`);
 }
@@ -32109,8 +32113,10 @@ const GONG_ARC_DESIGN = GONG_DESIGN_LEN_M / (GONG_R * OSC_U);       // rad — t
 // comparison mode is there to compare §198's arc, which is the arc that rings the note in the annulus it stands in, so
 // it rings its OWN derivation (gongArcDeg). The editable aesthetic is the round build's, and only the round build is
 // held to it. (Read as the round build's, arrangement-308's arc rang 1894 Hz.)
-const gongArcDeg = () => (FORM ? GONG_ARC_DESIGN / DEG2RAD : aesthetics.gong.arcDeg);
-if (!FORM && Math.abs(aesthetics.gong.arcDeg - GONG_ARC_DESIGN / DEG2RAD) > 0.05)
+// §343: a RATE VARIANT stands in a plate the authored arc was not derived for, so it rings its own derivation too.
+const GONG_OWN_ARC = FORM || RATE_VARIANT;
+const gongArcDeg = () => (GONG_OWN_ARC ? GONG_ARC_DESIGN / DEG2RAD : aesthetics.gong.arcDeg);
+if (!GONG_OWN_ARC && Math.abs(aesthetics.gong.arcDeg - GONG_ARC_DESIGN / DEG2RAD) > 0.05)
   console.warn(`§198: aesthetics.gong.arcDeg ${aesthetics.gong.arcDeg} is not the ${(GONG_ARC_DESIGN / DEG2RAD).toFixed(2)}° that rings `
     + `${GONG_NOTE_NAME} (${GONG_F1_TARGET_HZ.toFixed(3)} Hz) on a ${GONG_STOCK_MM[1]} mm wire at r ${GONG_R.toFixed(2)} — the shipped default must BE the derivation`);
 // THE BLOW IS RADIAL, and the head is INBOARD of the wire. Between the
