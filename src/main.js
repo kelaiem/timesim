@@ -22,7 +22,7 @@ import { UI_LANG, setUiLang, LOCALES, fillLanguagePicker, t, fmtNum, fmtInt, fmt
 // consumed unchanged below; the geometry fingerprint proves the move changed
 // no part's position.
 import {
-  SPEC, SPEC_RATES, ALARM_BUILT, PULLEY_BARREL, DRUM_AZ_DEG,
+  SPEC, SPEC_RATES, DEFAULT_VPH, ALARM_BUILT, PULLEY_BARREL, DRUM_AZ_DEG,
   F_BALANCE, BEAT_DEG, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_STEP, BALANCE_R_REF, BAL_R_STEP, balanceWheelDims, BALANCE_R_SPEC, AMPLITUDE_POSED_DEG, LIFT_DEG, IMPULSE_WIDTH,
   CLEAR_MARGIN, HANDOFF_TRACK_TOL, ZERO_AREA_MAX, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK, FORK_HALF_Z,
   BAL_T, BAL_RIM_F, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T, NICKEL_SILVER_SIGMA_Y_PA,
@@ -51771,7 +51771,7 @@ updateCrownUI();
   const reloadWithSpec = () => {
     const p = new URLSearchParams(location.search);
     const setOrClear = (k, v, dflt) => { if (v === dflt) p.delete(k); else p.set(k, String(v)); };
-    setOrClear('vph', Number(vphSel.value), 18000);
+    setOrClear('vph', Number(vphSel.value), DEFAULT_VPH);
     setOrClear('reserveh', Number(rsvSel.value), 30);
     // The default option carries the window's quantised inboard end VERBATIM,
     // so picking it clears the param rather than pinning a copy of it.

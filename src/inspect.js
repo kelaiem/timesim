@@ -38,7 +38,7 @@ import { ZERO_AREA_MAX, CLEAR_MARGIN, HANDOFF_TRACK_TOL, UNIT_MM, Z_DIAL, SLENDE
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME, SPEC,                                    // §36 Apply: the same predicate that builds the unit, and the same name
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, rigidSplit,
-  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, ESCAPE_STEEL_SIGMA_Y_PA, ESCAPE_STEEL_SIGMA_Y_BAND, ESCAPE_TIP_R_M, ESCAPE_TIP_R_BAND, LINE_CONTACT_SHAKEDOWN_P0_PER_Y, ESCAPE_STEEL_HARDNESS_BAND, TABOR_H_OVER_SIGMA_Y, TABOR_TOLERANCE, CUT_TOOL_R_M, CUT_CONCAVE_MIN_DEG, SERVICE_INTERVAL_YEARS, DESIGN_LIFE_YEARS, JULIAN_YEAR_S, WEAR_K_BAND, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, MAINSPRING_ALPHA_MIN, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R_SPEC, BALANCE_R_REF, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG, STOPWORK_BUILT, GEARED_BUILT } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
+  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, ESCAPE_STEEL_SIGMA_Y_PA, ESCAPE_STEEL_SIGMA_Y_BAND, ESCAPE_TIP_R_M, ESCAPE_TIP_R_BAND, LINE_CONTACT_SHAKEDOWN_P0_PER_Y, ESCAPE_STEEL_HARDNESS_BAND, TABOR_H_OVER_SIGMA_Y, TABOR_TOLERANCE, CUT_TOOL_R_M, CUT_CONCAVE_MIN_DEG, SERVICE_INTERVAL_YEARS, DESIGN_LIFE_YEARS, JULIAN_YEAR_S, WEAR_K_BAND, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, MAINSPRING_ALPHA_MIN, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R_SPEC, BALANCE_R_REF, BALANCE_R_CASE_BOUND, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG, STOPWORK_BUILT, GEARED_BUILT } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 import { auditLubrication, LUBRICATION, LUBRICATION_DEBT, LUBRICATION_WAIVERS } from './lubrication.js';   // §247 tier one
 import { LOCK_DEG, RUN_DEG } from './escapement.js';   // TODO 299 row 22: the lock is declared against shock and the run is not, so the run is the wear budget's spendable share
 // §161 — the override merge, for the fixture check at the foot of this file.
@@ -11508,7 +11508,11 @@ export function checkEqualisation(clock) {
         const steps = (BALANCE_R_REF - BALANCE_R_SPEC) / BAL_R_STEP;
         if (T.radius !== BALANCE_R_SPEC || T.radiusRef !== BALANCE_R_REF || T.radiusStep !== BAL_R_STEP)
           failures.push({ what: 'amplitude target block weighs a different radius from BALANCE_R_SPEC', record: { radius: T.radius, radiusRef: T.radiusRef, radiusStep: T.radiusStep }, radius: BALANCE_R_SPEC, ref: BALANCE_R_REF, step: BAL_R_STEP });
-        else if (steps < 0)
+        // §343 — except a row whose radius the CASE sets (RATE_TABLE's
+        // `caseBound`): the spring could carry more, the 40 mm case cannot, and
+        // probe-343-chronometer.mjs holds that cap on both sides on booted builds.
+        // It must still sit on the grid, and carries no larger-wheel test here.
+        else if (steps < 0 && !BALANCE_R_CASE_BOUND)
           failures.push({ what: 'balance larger than the shipped movement\'s (BALANCE_R_REF)', radius: BALANCE_R_SPEC, ref: BALANCE_R_REF });
         else if (Math.abs(steps - Math.round(steps)) > 1e-9)
           failures.push({ what: 'balance radius off the BAL_R_STEP grid below BALANCE_R_REF', radius: BALANCE_R_SPEC, ref: BALANCE_R_REF, step: BAL_R_STEP });
