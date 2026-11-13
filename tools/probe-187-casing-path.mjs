@@ -103,7 +103,8 @@ const res = await page.evaluate(async () => {
   if (!caseGrp) throw new Error('no case group in the scene');
   const middle = caseGrp.userData.assemblies.middle;
   const EXCLUDE = ['caseClampScrew', 'caseLug', 'caseSpringBar',
-    'caseCrownTubeCollar', 'caseAlarmTubeCollar'];
+    'caseCrownTubeCollar', 'caseAlarmTubeCollar',
+    ...(caseGrp.userData.form ? ['caseClampDog'] : [])];   // TODO 300: a form case's casing-clamp dogs, fitted after casing
   const seen = new Set();
   const meshes = [];
   middle.updateWorldMatrix(true, true);

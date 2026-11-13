@@ -10251,7 +10251,7 @@ function plateWall(cx, cy, A, zA, B, zB, outward) {
 // (and on a form face, §307's round track on the rectangular ground).
 export function makeDial({
   radius, subdials = [], subdialRecess = 0.5, centerBoreR = 0, thickness = 0,
-  edgeBreak = 0, subdialBoreR = 1.0, outline = null, track = null, fitMarkers = false,
+  edgeBreak = 0, subdialBoreR = 1.0, outline = null, track = null, fitMarkers = false, outlineGrow = 0,
 }) {
   const g = new THREE.Group();
   let mat = null;
@@ -10365,10 +10365,13 @@ export function makeDial({
     // The track was derived from the SAME shape the outline is cut to: every
     // outline vertex lies on the track's base shape (within the cushion's
     // polyline accuracy). Holds the caller's two frames — the loop it cut
-    // and the shape it offset — to one outline.
+    // and the shape it offset — to one outline. TODO 300: the outline may be that
+    // shape GROWN by `outlineGrow` (a form dial cut inside its case's ledge, while
+    // its track keeps printing under the case's opening), so every vertex lies
+    // that offset from the shape: inset = −outlineGrow.
     let off = 0;
     const base = track.form;   // the shape the rails were offset from, carried rather than rebuilt from a rail
-    for (const [x, y] of outline) off = Math.max(off, Math.abs(base.inset(x, y)));
+    for (const [x, y] of outline) off = Math.max(off, Math.abs(base.inset(x, y) + outlineGrow));
     if (off > base.accuracy + 1e-6)
       console.warn(`§311: the dial's outline and its track's shape disagree — an outline vertex stands ${off.toExponential(2)} off the shape (need ≤ ${(base.accuracy + 1e-6).toExponential(2)})`);
   }

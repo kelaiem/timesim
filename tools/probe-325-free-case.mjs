@@ -44,6 +44,8 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as L from '../src/layout.js';
+import { solveClamp } from '../src/casing-clamp.js';   // TODO 300: the form bore is the casing-clamp hold's fitted grow, not CASE_CLEAR
+const FORM_BORE = solveClamp().boreBack;
 import { FREE_OUTLINES } from '../src/free-outlines.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -129,7 +131,7 @@ if (ROW) {
   ok('F7 it encloses less than the fitted tonneau', A < L.shapeArea(fitted), `free ${(A * mm2).toFixed(1)} mm², fitted tonneau ${(L.shapeArea(fitted) * mm2).toFixed(1)} mm² (${((A / L.shapeArea(fitted) - 1) * 100).toFixed(1)}%)`);
 
   // ── R: the rings ───────────────────────────────────────────────────────────────────────────────────────────
-  const G = L.CASE_CLEAR + L.CASE_BAND_T, tOpen = G + 1 / L.UNIT_MM, lo = G - (G + 1.5 / L.UNIT_MM), hi = G;
+  const G = FORM_BORE + L.CASE_BAND_T, tOpen = G + 1 / L.UNIT_MM, lo = G - (G + 1.5 / L.UNIT_MM), hi = G;
   const outer = sh.levelLoop(G, { lo, hi });
   const judge = (ring) => { const n = ring.length, kept = []; let rev = 0;
     for (let i = 0; i < n; i++) { const j = (i + 1) % n, ex = ring[j][0] - ring[i][0], ey = ring[j][1] - ring[i][1];

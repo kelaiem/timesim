@@ -15,7 +15,8 @@
 // region model and the plates' tenants, the hammer and the pillars left out: the hammer is the seat's own,
 // and since TODO 272 the gong sets the pillars), the same cell (RES) and the same law (GS.bandMap: a
 // centreline may stand where no part is within the wire's need). One difference, the page's option: the
-// map runs out to the case BORE (the plate's outline grown CASE_CLEAR), so a wire may be laid in the gap past
+// map runs out to the case BORE (the plate's outline grown the build's own bore grow, TODO 300's fitted bore read off
+// __clock.formHold), so a wire may be laid in the gap past
 // the plate's edge, where the round build's own ring overhangs; the page's default view cuts it back to the
 // plate's outline by the need, which is the seat generator's map.
 //
@@ -28,7 +29,7 @@ import { readFileSync } from 'node:fs';
 import { join, extname, normalize, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as GS from '../src/gong-solve.js';
-import { formShapeOf, CASE_CLEAR, UNIT_MM, FORM_KINDS } from '../src/layout.js';
+import { formShapeOf, UNIT_MM, FORM_KINDS } from '../src/layout.js';
 import { GONG_SEATS } from '../src/gong-seats.js';
 import { defaultSeatMode } from '../src/case-shape.js';
 
@@ -75,7 +76,7 @@ for (const kind of KINDS) for (const mode of ['bar', 'spiral']) {
       for (let i = 0; i < pa.count; i++) { v.fromBufferAttribute(pa, i).applyMatrix4(o.matrixWorld); capR = Math.max(capR, Math.hypot(v.x - w.x, v.y - w.y)); }
       pillars.push({ x: w.x, y: w.y, capR }); });
     return { regions: JSON.parse(JSON.stringify(c.regions)), tenants: JSON.parse(JSON.stringify(g.tenants)), lever: g.lever, wireR: g.wireR, wireD_m: g.wireD_m,
-      zGong: g.zGong, footR: Math.max(...[10, 20, 30, 40, 50, 60, 70, 80].map((L) => g.postRFor(L))), pillars };
+      boreGrow: c.formHold?.boreGrow ?? null, zGong: g.zGong, footR: Math.max(...[10, 20, 30, 40, 50, 60, 70, 80].map((L) => g.postRFor(L))), pillars };
   });
   await ctx.close();
   if (S.bootError) { console.error(`${kind}: boot failed: ${S.bootError}`); process.exit(1); }
@@ -83,10 +84,11 @@ for (const kind of KINDS) for (const mode of ['bar', 'spiral']) {
   const need = S.wireR + S.lever.margin;
   const z0 = S.zGong - S.wireR, z1 = S.zGong + S.wireR;
   const parts = [...GS.bandParts(S.regions, z0, z1, S.lever.margin, new Set(['Alarm hammer', 'pillars'])), ...GS.bandParts(S.tenants, z0, z1, S.lever.margin)];
-  // the grid covers the case bore (the plate grown CASE_CLEAR), one cell either side
-  const B = shape.grown(CASE_CLEAR).bounds;
+  // the grid covers the case bore (the plate grown the build's bore grow), one cell either side
+  if (!(S.boreGrow > 0)) { console.error(`${kind}: the build published no form bore (__clock.formHold)`); process.exit(1); }
+  const B = shape.grown(S.boreGrow).bounds;
   const x0 = B.xMin - RES, y0 = B.yMin - RES, W = Math.ceil((B.xMax - B.xMin) / RES) + 2, H = Math.ceil((B.yMax - B.yMin) / RES) + 2;
-  const map = GS.bandMap(parts, { x0, y0, W, H, RES, need, inset: (x, y) => shape.inset(x, y) + CASE_CLEAR });
+  const map = GS.bandMap(parts, { x0, y0, W, H, RES, need, inset: (x, y) => shape.inset(x, y) + S.boreGrow });
   // the strike group's plan: the hammer's and lifting lever's own parts in the band, rasterised
   const sp = GS.bandParts(S.regions, z0, z1, S.lever.margin).filter((q) => q.unit === 'Alarm hammer' || q.unit === 'Alarm lifting lever');
   const strike = new Uint8Array(W * H);

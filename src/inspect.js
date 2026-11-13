@@ -5318,8 +5318,11 @@ export const PLATE_SEATS = [
   // bore wall, a running fit (0.0497, 0.0998), not a part that should clear it.
   { unit: "Keyless works", mesh: "transferArbor", kind: "pivot", why: "the transfer arbor, running through its plate bore from the crown wheel below to the transfer wheel above" },
   { unit: "Alarm winding train", mesh: "CylinderGeometry#0", kind: "pivot", why: "the climb arbor's rod, running through its plate bore (contrate below, pinion above)" },
-  { unit: "Case", mesh: "caseMiddle", kind: "housed", why: "the case middle's ledge, which the plate's rim sits on" },
-  { unit: "Case", mesh: "caseClampScrew", kind: "fastened", why: "the clamp screws, through the rim's bores (§186)" },
+  { unit: "Case", mesh: "caseMiddle", kind: "housed", why: SPEC.caseShape ? "TODO 300: the form case middle's fitted bore (SEAT_FIT off the plate's reach) and its ledge, which the plate's dial face bears on" : "the case middle's ledge, which the plate's rim sits on" },
+  { unit: "Case", mesh: "caseClampScrew", kind: "fastened", why: SPEC.caseShape ? "TODO 300: the casing-clamp screws, threaded blind into the plate's edge" : "the clamp screws, through the rim's bores (§186)" },
+  // TODO 300 — a form case holds its movement by casing-clamp DOGS on the plate's back face, each under its screw's head
+  // with its tongue in the band's groove (src/casing-clamp.js). The round case has none.
+  ...(SPEC.caseShape ? [{ unit: "Case", mesh: "caseClampDog", kind: "fastened", why: "TODO 300: the casing-clamp dogs, screwed down on the plate's back face, their tongues in the band's groove" }] : []),
 ];
 // §325 landing 6 — no pillars, no row for them (a row naming a unit that is not built is a stale selector, and fails)
 if (FRAME_LANDS) for (let i = PLATE_SEATS.length - 1; i >= 0; i--) if (PLATE_SEATS[i].unit === 'pillars') PLATE_SEATS.splice(i, 1);
