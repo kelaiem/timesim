@@ -22,7 +22,7 @@ import { UI_LANG, setUiLang, LOCALES, fillLanguagePicker, t, fmtNum, fmtInt, fmt
 // consumed unchanged below; the geometry fingerprint proves the move changed
 // no part's position.
 import {
-  SPEC, SPEC_RATES, ALARM_BUILT, PULLEY_BARREL, DRUM_AZ_DEG,
+  SPEC, SPEC_RATES, DEFAULT_VPH, ALARM_BUILT, PULLEY_BARREL, DRUM_AZ_DEG,
   F_BALANCE, BEAT_DEG, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_STEP, BALANCE_R_REF, BAL_R_STEP, balanceWheelDims, BALANCE_R_SPEC, AMPLITUDE_POSED_DEG, LIFT_DEG, IMPULSE_WIDTH,
   CLEAR_MARGIN, HANDOFF_TRACK_TOL, ZERO_AREA_MAX, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK, FORK_HALF_Z,
   BAL_T, BAL_RIM_F, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T, NICKEL_SILVER_SIGMA_Y_PA,
@@ -66,6 +66,7 @@ import {
   LINK_T_U, LINK_BODY_W_U, linkEyeDiaForPin, // §234 step 5: the stamped hack and reset links' sheet, body width and eye rule
   SPRING_INDEX_MIN, SPRING_INDEX_MAX, SPRING_INDEX_TARGET,   // §234: the coiling envelope the return coil's wire is solved in
   PIVOT_BORE_CLEAR,                           // TODO 168: the one running fit — in layout.js so geometry.js's bores read it too
+  END_SHAKE,                                  // §120 / TODO 254: the axial half of that fit, 2·PIVOT_BORE_CLEAR, the governor's and the balance staff's
   PIVOT_MIN_U, STOCK_MIN_R10, flatsR,         // §50: the pivot floor, and a round bar's radius across its FLATS
   KW_WIND_IDLER_TEETH,
   STEM_R, KW_BEVEL, WIND_PINION_BOSS, STEM_BUSH_FOOT_HALF, STEM_SAW_SPEC, SAW_BASE_T, SAW_FIT, STEM_CLUTCH_OFF, CLUTCH_TRAVEL,
@@ -1751,6 +1752,18 @@ const COCK_W = 6;   // the balance cock's width — see its build, where the rea
 // cock face, 0.17 under the endstone, exactly as §120 solved it.
 const BALANCE_SHOULDER_TOP_Z = COCK_MID_Z + G.cockJewelStone({ width: COCK_W, thickness: COCK_T }).bottom - CLEAR_MARGIN;
 const BALANCE_PIVOT_TIP_Z = COCK_SLAB_TOP + 0.5;
+// TODO 254 — and each end of the staff is a BEARING END, which it was not at
+// either end until this: an endstone bears only if the pivot's TIP reaches it
+// before the staff's SHOULDER reaches the hole jewel's face. Both shoulders
+// stand CLEAR_MARGIN (0.15) off their stones, and §120 hung the upper endstone
+// 0.17 over the tip, so the staff, lifted, met the cock's hole jewel with its
+// shoulder 0.02 before its tip found the stone; below, there was no endstone at
+// all and the shoulder was the only thing that could stop it. So the staff's
+// ENDSHAKE is the bench's (END_SHAKE, 0.038 mm) and it is split between the two
+// endstones, the staff centred in the build, which leaves each tip gap a third
+// of its shoulder's. The guard after the cock's build reads all four gaps off
+// the cut metal.
+const BALANCE_TIP_GAP = END_SHAKE / 2;   // 0.05 u per end, against a 0.15 shoulder clearance
 // TODO 226 step 1 — the balance is BUILT further down, after the escapement's
 // seat is solved (the roller is cut to the guard pin the fork's notch places);
 // its radius is fixed here because the stations below are laid out from it.
@@ -6813,6 +6826,22 @@ addLowerPivot(forkGroup, { staffR: 0.35, jewelR: 1.0 });
 // into a rubbed-in jewel in the plate's top face. Nothing else occupies
 // the axis below (the stop crank works at radius ≈ 8.5+).
 addLowerPivot(balanceGroup, { staffR: BALANCE_STAFF_R, pivotR: BALANCE_PIVOT_R, jewelR: 1.0, name: 'balancePivot' });
+// TODO 254 — ...and its LOWER ENDSTONE, which it never had: a cap jewel at the
+// upper one's size and floor stock, BALANCE_TIP_GAP under the tip (which ends
+// flush with the hole jewel's underside), set in the same setting. Like the
+// hole jewel above it, it sits in the plate's IMPLIED bore (the setting's hosts
+// carry no real bore here; see makeJewelSetting), and it is what lets the lower
+// pivot keep oil: a hole jewel with a cap over its end is a reservoir, and one
+// without is a hole the oil runs out of.
+{
+  const pl = balanceGroup.userData.pivotLower;
+  const endstone = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, STOCK_MIN_U, 24), MATS.ruby);
+  endstone.name = 'balanceLowerEndstone';
+  endstone.rotation.x = Math.PI / 2;
+  endstone.position.z = pl.jewel.userData.stone.bottom - BALANCE_TIP_GAP - STOCK_MIN_U / 2;   // setting-local: the tip sits at stone.bottom
+  pl.jewel.add(endstone);
+  pl.endstone = endstone;
+}
 // ...and its UPPER pivot, from the staff's shoulder through the cock's stone
 // (turned for it — see the cock build) to the tip under the endstone.
 {
@@ -13315,6 +13344,11 @@ const GOING_POWER = (() => {
     const delivered_J = etaTotal * perBeat_J;
     const tfVertical_Nm = A.muJewel * mB * g * BALANCE_PIVOT_R * OSC_U;
     const tfFlat_Nm = A.muJewel * mB * g * (2 / 3) * (A.endContactMm / 1000);
+    // TODO 254 — dial-flat, that end is a TIP on a real endstone at both ends
+    // now, and its contact radius is FRICTION's band for a ROUNDED end, which
+    // the cut does not draw: the pivot ends flat, at its own radius. A contact
+    // cannot be wider than the end it sits on, so every corner stays under it.
+    if (!(A.endContactMm / 1000 <= BALANCE_PIVOT_R * OSC_U)) console.warn(`TODO 254: FRICTION.endContactMm's ${cname} corner (${A.endContactMm} mm) is wider than the balance pivot's end as cut (${(BALANCE_PIVOT_R * UNIT_MM).toFixed(4)} mm)`);
     // loss(θ) = (π k_B / 2Q) θ² + 2 T_f θ = delivered  ⇒  the positive root.
     const sustained = (tf) => { const a = Math.PI * kB / (2 * A.qOther), b = 2 * tf; return (-b + Math.sqrt(b * b + 4 * a * delivered_J)) / (2 * a); };
     const needAtClaim_J = Math.PI * kB / (2 * A.qOther) * Math.pow(thetaClaim, 2) + 2 * thetaClaim * tfVertical_Nm;
@@ -17551,16 +17585,21 @@ const balanceCock = G.makeCock({
     boss.position.z = 0.12;
     shock.add(boss);
     // TODO 12: endstone at real cap-jewel stock (was 0.18 u = 0.0675 mm; real
-    // cap jewels run 0.3+ mm). Grows UPWARD — centre rises by half the gain so
-    // the underside, and the 0.17 endshake under it, stay exactly where the
-    // comment below solved them.
+    // cap jewels run 0.3+ mm), growing UPWARD from its underside.
+    // TODO 254 — and the underside is BALANCE_TIP_GAP over the tip, where §120
+    // had it 0.17 over: more than the shoulder's 0.15 under the hole jewel, so
+    // the stone was never reached. It drops into the boss's bore (0.6 inside
+    // 0.85) the way a real shock setting's endstone sits inside its bushing.
+    // The setting's origin is the cock's top face (COCK_T / 2 over its mid).
+    const capUnder = (BALANCE_PIVOT_TIP_Z - COCK_SLAB_TOP) + BALANCE_TIP_GAP;
     const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, STOCK_MIN_U, 24), MATS.ruby);
+    cap.name = 'balanceUpperEndstone';
     cap.rotation.x = Math.PI / 2;
-    cap.position.z = 0.12 + 0.55 + 0.09 + (STOCK_MIN_U - 0.18) / 2; // staff tip at 0.5 → 0.17 endshake under the stone
+    cap.position.z = capUnder + STOCK_MIN_U / 2;
     shock.add(cap);
     const lyre = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.07, 8, 28, 4.6), MATS.gold);
     lyre.name = 'shockLyreSpring'; // TODO 12 triage: SPRING stock (0.14 u ⌀ = 0.0525 mm; real shock springs 0.05–0.10) — declared, not thickened
-    lyre.position.z = 0.12 + 0.55 + 0.2 + (STOCK_MIN_U - 0.18); // rides the thickened endstone
+    lyre.position.z = capUnder + STOCK_MIN_U + 0.02; // rides the endstone: its centre 0.02 over the stone's top face, as §120 hung it
     lyre.rotation.z = -Math.PI / 2 - 2.3; // gap centred toward the tail
     shock.add(lyre);
     balanceCock.add(shock);
@@ -17619,6 +17658,50 @@ movement.add(balanceCock);
 // re-cut, run after the pillars add their tenon holes — see recutBackPlate)
 registerExplode(balanceCock, COCK_MID_Z, 9);
 registerLabel('Balance cock', balanceCock);
+// TODO 254 — THE GUARD, read off the cut rather than off the constants that
+// placed it: at each end of the balance staff, the pivot TIP must reach its
+// endstone before the SHOULDER reaches the hole jewel's face, or the endstone
+// is a picture of a bearing end and the shoulder is the real one (which is what
+// §120's upper end was, by 0.02, and what the lower end was by having no stone).
+// And the two tip gaps together are the staff's endshake, END_SHAKE. Axial
+// extents only, so the balance's swing cannot move them; every object's world
+// matrix is walked UP first (TODO 139: updateMatrixWorld does not).
+{
+  const zBox = (o) => { o.updateWorldMatrix(true, true); return new THREE.Box3().setFromObject(o); };
+  const named = (root, name) => { const out = []; root.traverse((o) => { if (o.isMesh && o.name === name) out.push(o); }); return out; };
+  const pivots = balanceGroup.children.filter((o) => o.isMesh && o.name === 'balancePivot').map(zBox).sort((a, b) => a.min.z - b.min.z);
+  const pl = balanceGroup.userData.pivotLower;
+  const cockStones = named(balanceCock, 'chatonStone');
+  const upperCaps = named(balanceCock, 'balanceUpperEndstone'), lowerCaps = pl ? named(pl.jewel, 'balanceLowerEndstone') : [];
+  const lowerStones = pl ? named(pl.jewel, 'chatonStone') : [];
+  const missing = [
+    pivots.length !== 2 && `${pivots.length} balancePivot meshes (want 2)`,
+    cockStones.length !== 1 && `${cockStones.length} hole jewels in the cock (want 1)`,
+    lowerStones.length !== 1 && `${lowerStones.length} lower hole jewels (want 1)`,
+    upperCaps.length !== 1 && `${upperCaps.length} upper endstones (want 1)`,
+    lowerCaps.length !== 1 && `${lowerCaps.length} lower endstones (want 1)`,
+  ].filter(Boolean);
+  if (missing.length) {
+    console.warn(`TODO 254: the balance staff's bearing ends cannot be read — ${missing.join('; ')}`);
+  } else {
+    const [lo, up] = pivots;
+    // The meshes' vertices are float32: at the cock's z (~10) one ulp is 9.5e-7,
+    // so a gap read off two of them is good to a few of those. Ten is the
+    // tolerance a cut gap is held to, never a play the metal is allowed.
+    const FLOAT_Z = 1e-5;
+    const ends = {
+      upper: { tipGap: zBox(upperCaps[0]).min.z - up.max.z, shoulderGap: zBox(cockStones[0]).min.z - up.min.z },
+      lower: { tipGap: lo.min.z - zBox(lowerCaps[0]).max.z, shoulderGap: lo.max.z - zBox(lowerStones[0]).max.z },
+    };
+    for (const [end, q] of Object.entries(ends)) {
+      if (!(q.tipGap > FLOAT_Z)) console.warn(`TODO 254: the ${end} pivot's tip stands ${q.tipGap.toFixed(4)} from its endstone — it must be free of it (> 0)`);
+      else if (!(q.tipGap < q.shoulderGap)) console.warn(`TODO 254: the ${end} pivot's tip stands ${q.tipGap.toFixed(4)} from its endstone and its shoulder ${q.shoulderGap.toFixed(4)} from the hole jewel — the shoulder bears first, so the endstone is no bearing end`);
+    }
+    const shake = ends.upper.tipGap + ends.lower.tipGap;
+    if (Math.abs(shake - END_SHAKE) > FLOAT_Z) console.warn(`TODO 254: the balance staff's endshake reads ${shake.toFixed(6)} off the cut, not END_SHAKE ${END_SHAKE}`);
+    balanceGroup.userData.bearingEnds = { ...ends, endshake: shake };
+  }
+}
 
 // --- REVEAL THE BRIDGE: second pass over the plate cut. TQ_CUT was solved
 // before the cock existed, so the cock never voted — its slab was fitted
@@ -35499,7 +35582,9 @@ const ALARM_GOV_ANCHOR_TOP = ALARM_GOV_SAW_TOP;
 // play, twice the radial fit the bore is cut to. So the endshake IS
 // 2·PIVOT_BORE_CLEAR, 0.1 u = 0.038 mm, which lands inside the 0.02–0.04 mm
 // band a train wheel is set to. One fit, read the two ways a bench reads it.
-const ALARM_GOV_END_SHAKE = 2 * PIVOT_BORE_CLEAR;   // 0.1 u = 0.038 mm
+// Since TODO 254 the rule is written ONCE, in layout.js beside the fit it reads
+// (END_SHAKE), because the balance staff is cut to it too.
+const ALARM_GOV_END_SHAKE = END_SHAKE;   // 0.1 u = 0.038 mm
 // Both collars overhang the arbor's BORE by the arbor's own wall — the same
 // PIVOT_MIN_U §111 derived the wall from — so a collar's bearing land and
 // the annulus of arbor that lands on it are the same width, and the collar
@@ -51686,7 +51771,7 @@ updateCrownUI();
   const reloadWithSpec = () => {
     const p = new URLSearchParams(location.search);
     const setOrClear = (k, v, dflt) => { if (v === dflt) p.delete(k); else p.set(k, String(v)); };
-    setOrClear('vph', Number(vphSel.value), 18000);
+    setOrClear('vph', Number(vphSel.value), DEFAULT_VPH);
     setOrClear('reserveh', Number(rsvSel.value), 30);
     // The default option carries the window's quantised inboard end VERBATIM,
     // so picking it clears the param rather than pinning a copy of it.

@@ -94,14 +94,48 @@
 // at the lightest grid rim), and a smaller balance re-solves the escapement it
 // drives — the roller, the escape-to-balance distance and so the notch, bank and
 // knock all scale off BALANCE_R; the escape wheel and the angles do not.
+// §343 — THE CHRONOMETER'S BEAT, and the largest balance any rate carries
+// (BACKLOG §76's question, answered on the post-TODO-291 spring). The spring and
+// the fusee deliver one POWER whatever the rate: the train is the same up to the
+// fourth wheel, which turns once a minute at every row, so the escape torque
+// rises exactly as the escape mesh's ratio falls. A balance of inertia I at swing
+// θ spends in proportion to I·f³, so a slower beat buys inertia, which is why
+// marine and pocket chronometers ran large balances at 14,400. Measured (the
+// record's own `atBalance` law, nominal corner, hanging, 200° and self-starting),
+// the largest wheel each rate's spring drives is r 11 at 18,000 and r 13.5 at
+// 14,400; slower rows drive r 18 and more. What stops the 14,400 row first is
+// the CASE, not the spring: the balance stands clear of the train in plan
+// (solveLayout's swept keep-outs), so its station moves outward with its radius
+// and the plate's rim with it. r 11.5 puts plateR at 44.03, inside the 40 mm owner
+// cap; r 11.75 puts it at 44.62 and the case body at 40.22 mm. Re-siting does not
+// help: over every escape and balance step angle on a 2° × 3° grid (the layout's
+// own solve), no station lets a larger wheel stand nearer the centre, because at
+// r 11 and up the shipped station is already the nearest the keep-outs allow.
+// Slower rows are not offered: their springs leave real hairspring stock (at r 9,
+// 0.0170 mm at 10,800 and 0.0130 mm at 7,200, under the 0.02 floor), and the case
+// would stop them at the same r 11.5. On this row the wheel is 2.08× the 18,000
+// balance's inertia (3.49e-10 against 1.68e-10 kg·m², each read off its oscillator
+// record), and its hairspring solves to 0.0282 mm, inside stock. rimF 0.345 is the
+// heaviest rim that reaches the target (TODO 242's rule; 0.35 sustains 197.84°).
+// `caseBound` declares that the CASE, not the spring, sets this row's radius, which
+// is why it may exceed BALANCE_R_REF; tools/probe-343-chronometer.mjs holds both
+// sides (r 11.5 inside the cap, r 11.75 over it, on booted builds).
+// The mesh 8/64 keeps fourth = 1 rev/min (1800/14,400). It is cut at
+// 0.2625 = 0.21 · 80/64 so the 64-tooth wheel keeps the 80-tooth wheel's pitch
+// radius (8.4) and the escape arbor stands where it stood (§204's rule for the
+// 36,000 row). At the mesh's 0.21 it shrinks to 6.72, and measured, the low
+// corridor's reset rod elbow fouls (−0.87) and the maintaining spring's tip
+// leaves its contact.
 const RATE_TABLE = {
+  14400: { fourthTeeth: 64, escPinion: 8, module: 0.2625, balanceR: 11.5, rimF: 0.345, claimDeg: 126, peakDeg: 328, caseBound: true }, // 8/64 = 1/8 — §343, the chronometer's beat
   18000: { fourthTeeth: 80, escPinion: 8, balanceR: 9, rimF: 0.36, claimDeg: 126, peakDeg: 311 }, // 8/80 = 1/10 — the shipped movement
   21600: { fourthTeeth: 96, escPinion: 8, balanceR: 9, rimF: 0.26, claimDeg: 128, peakDeg: 311 }, // 8/96 = 1/12
   28800: { fourthTeeth: 96, escPinion: 6, undriven: 'TODO 292 — no balance the honest mainspring (TODO 291) drives to AMPLITUDE_TARGET_DEG and starts at this rate' }, // 6/96 = 1/16
   36000: { fourthTeeth: 120, escPinion: 6, module: 0.168, undriven: 'TODO 292 — no balance the honest mainspring (TODO 291) drives to AMPLITUDE_TARGET_DEG and starts at this rate' }, // 6/120 = 1/20 — §204: at 0.168 the wheel keeps the 96-tooth rows' pitch radius
 };
+export const DEFAULT_VPH = 18000;
 // The row a rate's balance reads: its own, or the shipped movement's.
-const rateBalanceRow = (vph) => (RATE_TABLE[vph].rimF !== undefined ? RATE_TABLE[vph] : RATE_TABLE[18000]);
+const rateBalanceRow = (vph) => (RATE_TABLE[vph].rimF !== undefined ? RATE_TABLE[vph] : RATE_TABLE[DEFAULT_VPH]);
 export const FOURTH_MODULE_DEFAULT = 0.21; // the fourth⇄escape mesh's cut, the rows above's module when they carry none
 // §308/§317 — the kinds of the shape library a CASE may take (the circle is
 // the round build, never named): one list, read by SPEC and by every tool that
@@ -163,10 +197,10 @@ export const SPEC = (() => {
   const raw = !designed && !Object.keys(ARRANGEMENT).some((k) => given(raw0[k])) ? { ...raw0, ...ARRANGEMENT } : raw0;
   // TODO 292 — a rate whose row carries no balance the spring can drive is REFUSED, loudly: the build is the 18,000
   // watch, never a stale balance quietly claiming the target at the asked rate.
-  const vphAsked = RATE_TABLE[raw.vph] ? Number(raw.vph) : 18000;
+  const vphAsked = RATE_TABLE[raw.vph] ? Number(raw.vph) : DEFAULT_VPH;
   if (RATE_TABLE[vphAsked].undriven)
-    console.warn(`TODO 292: ?vph=${vphAsked} is refused — ${RATE_TABLE[vphAsked].undriven}; this build is the 18000 A/h watch`);
-  const vph = RATE_TABLE[vphAsked].undriven ? 18000 : vphAsked;
+    console.warn(`TODO 292: ?vph=${vphAsked} is refused — ${RATE_TABLE[vphAsked].undriven}; this build is the ${DEFAULT_VPH} A/h watch`);
+  const vph = RATE_TABLE[vphAsked].undriven ? DEFAULT_VPH : vphAsked;
   // Reserve clamped to what the STRUCTURE accepts: below ~12 h the fusee
   // loses its reason to exist; above 48 h the cone's groove stack (0.7 u per
   // turn, one turn per 8 h) grows past what the plate floor can absorb —
@@ -620,6 +654,8 @@ export const AMPLITUDE_CLAIM_DEG = rateBalanceRow(SPEC.vph).claimDeg;
 // stations out from it (the pin circle, the fork's length), so it is the one
 // size the escapement's whole solve follows.
 export const BALANCE_R_SPEC = rateBalanceRow(SPEC.vph).balanceR;
+// §343 — true when the CASE, not the spring, sets this rate's balance radius (RATE_TABLE's `caseBound`).
+export const BALANCE_R_CASE_BOUND = rateBalanceRow(SPEC.vph).caseBound === true;
 export const AMPLITUDE_PEAK_DEG = rateBalanceRow(SPEC.vph).peakDeg;
 // TODO 207 — and the swing the movement is DESIGNED to: a serviced Swiss lever
 // watch holds 200° or more in the vertical positions, and a watchmaker reads
@@ -643,7 +679,7 @@ export const BAL_RIM_STEP = 0.005;
 // way: the record weighs the balance one step larger at that rim, by the same
 // laws, and requires it to fail. A quarter unit (0.095 mm) is the grid 36,000's
 // radius was searched on (7.75 reaches 199.21°, 7.5 carries the row).
-export const BALANCE_R_REF = RATE_TABLE[18000].balanceR;
+export const BALANCE_R_REF = RATE_TABLE[DEFAULT_VPH].balanceR;
 export const BAL_R_STEP = 0.25;
 // §221 — THE SWING THE MESH PERFORMS IS THE SWING THE MOVEMENT IS DESIGNED TO.
 // `AMPLITUDE_VISUAL_DEG = 45`, a readability number a sixth of a real swing, is
@@ -1331,6 +1367,17 @@ export const HANDOFF_TRACK_TOL = 0.03;
 // makeGear/makePinion bore against it too, spending at most HALF of it on
 // chord sag (`borePath`), so the fit and the tessellation cannot drift apart.
 export const PIVOT_BORE_CLEAR = 0.05;
+// §120 / TODO 254 — ENDSHAKE, the axial half of the same fit. DERIVED, not
+// chosen: the bench sets a wheel's endshake at about its SIDE-SHAKE, and
+// side-shake is measured across the bore, the diametral play, twice the radial
+// fit the bore is cut to. So the endshake IS 2·PIVOT_BORE_CLEAR, 0.1 u =
+// 0.038 mm, inside the 0.02–0.04 mm band a train wheel is set to. One fit, read
+// the two ways a bench reads it. §120 cut it between the alarm governor's
+// collars (main.js, ALARM_GOV_END_SHAKE); TODO 254 cuts it between the balance
+// staff's two ENDSTONES. It is a running play, like the fit it is read from,
+// not a second clearance margin: what keeps unrelated metal apart is still
+// CLEAR_MARGIN alone.
+export const END_SHAKE = 2 * PIVOT_BORE_CLEAR;
 
 // §77 — the zero-area floor, DERIVED (rule 1): tools/probe-77-threshold.mjs
 // histograms every inspected triangle's geometry-local area; the defective
@@ -1775,45 +1822,45 @@ export const FRICTION = Object.freeze({
     why: 'contact radius of a rounded pivot end on its endstone' }),
 });
 
-// TODO 299 â THE SERVICE SCHEDULE, and it is what makes a wear number mean
+// TODO 299 — THE SERVICE SCHEDULE, and it is what makes a wear number mean
 // anything. No watch survives a century untouched; it survives twenty
 // overhauls, and the owner's target is the ordinary one: service every five
-// years â expendable parts replaced, regreased and relubricated, and the
-// ground-up metal and old grease CLEANED OUT â with the escape wheel lasting a
+// years — expendable parts replaced, regreased and relubricated, and the
+// ground-up metal and old grease CLEANED OUT — with the escape wheel lasting a
 // hundred years of it. Each clause does specific work below:
 //
-//  Â· relubrication is what entitles the wear law to a BOUNDARY-LUBRICATED
+//  · relubrication is what entitles the wear law to a BOUNDARY-LUBRICATED
 //    coefficient rather than a dry or starved one;
-//  Â· cleaning the debris out is what entitles it to a CONSTANT one rather than
-//    a runaway â no abrasive third body accumulates, so wear does not compound
+//  · cleaning the debris out is what entitles it to a CONSTANT one rather than
+//    a runaway — no abrasive third body accumulates, so wear does not compound
 //    from one interval to the next;
-//  Â· replacing expendables splits every member into one that must last the
+//  · replacing expendables splits every member into one that must last the
 //    INTERVAL and one that must last the LIFE. The escape wheel is not an
 //    expendable part, which is what puts it on the hundred-year criterion.
 //
 // The full expendable/lifetime roster is TODO 299's own next landing (it is a
 // triage over every member, LUBRICATION's arrival shape); these two numbers are
 // what the escape wheel's price needs.
-export const SERVICE_INTERVAL_YEARS = 5;      // the owner's, inside the trade's 3â7
+export const SERVICE_INTERVAL_YEARS = 5;      // the owner's, inside the trade's 3–7
 export const DESIGN_LIFE_YEARS = 100;         // the escape wheel's target
 export const SERVICES_IN_LIFE = DESIGN_LIFE_YEARS / SERVICE_INTERVAL_YEARS;
 // A Julian year, so a century of seconds is one definition and not a rounding:
 // 365.25 d, which is what "100 years" means for a count of beats.
 export const JULIAN_YEAR_S = 365.25 * 86400;
-// TODO 299 â AND THE WEAR LAW. Archard: the volume removed is KÂ·FÂ·s/H, K
+// TODO 299 — AND THE WEAR LAW. Archard: the volume removed is K·F·s/H, K
 // dimensionless, H the SOFTER body's indentation hardness. The movement's
 // working contacts are polished steel against sapphire under a boundary film,
-// which is the MILD regime â and it is mild because the service keeps it so
+// which is the MILD regime — and it is mild because the service keeps it so
 // (above). A BAND, FRICTION's rule, with every gate reading the ADVERSE end,
 // because the model cannot say how good the polish and the epilame are and that
 // is exactly what K measures. The band is wide on purpose: two decades is what
 // the handbooks' own spread for lubricated mild wear covers (Rabinowicz,
-// Friction and Wear of Materials (1995), Table 6.2 â lubricated like-on-like
-// metals 1e-7â1e-6, hard non-metal on metal lower), and TODO 299's record says
+// Friction and Wear of Materials (1995), Table 6.2 — lubricated like-on-like
+// metals 1e-7–1e-6, hard non-metal on metal lower), and TODO 299's record says
 // plainly that the escape wheel's century turns on which end is true.
 export const WEAR_K_BAND = Object.freeze({
   favourable: 1e-8, nominal: 1e-7, adverse: 1e-6,
-  why: 'Archard K for a polished steel surface against sapphire under a boundary film, cleaned and relubricated each service: Rabinowicz, Friction and Wear of Materials (1995) Table 6.2 gives 1e-7â1e-6 for lubricated metal pairs and less for a hard non-metal counterface; the favourable corner is a mirror polish holding its epilame',
+  why: 'Archard K for a polished steel surface against sapphire under a boundary film, cleaned and relubricated each service: Rabinowicz, Friction and Wear of Materials (1995) Table 6.2 gives 1e-7–1e-6 for lubricated metal pairs and less for a hard non-metal counterface; the favourable corner is a mirror polish holding its epilame',
 });
 export const WEAR_K_PA = WEAR_K_BAND.adverse;   // the loaded reading
 // RESTRIDDEN STACK — solved BOTTOM-UP from the low-escapement layout: the

@@ -1121,6 +1121,28 @@ the same vertex count and the same set of vertex triples (in any index order —
 three-mesh-bvh reorders an index in place) takes its family's tree shape and only
 its boxes are recomputed, which cannot move an answer (only exact boxes and
 `PRUNE_PAD` decide one). `meshesIntersect` builds no three-mesh-bvh tree.
+**Since landing 10 the kernel is C++23** (clang 18's, freestanding, no std):
+vectors are values with constexpr operators, every triangle primitive is
+constexpr, and the parity probe's analytic pairs are `static_assert`s, so a
+broken primitive fails the BUILD (`kernel-build.mjs` compiles a mutant with the
+pierce test cut out and requires it refused). A Vec3 operator is the scalar
+expression the port writes per component: never reassociate one, or the port
+and the kernel part by an ulp and G3 names it.
+**Since landing 12 a NATIVE SWEEP ENGINE runs `inspection`, `clearances`,
+`expectedContacts` and `undeclaredClearance`** (`tools/native-sweep/`, C++23 with
+the standard library): JS poses through `sweepPoser` and sends the state a sweep
+reads; the engine runs the check's loops with `kernel.cpp` itself compiled for the
+host, DRIVES where the pose set depends on its answers (asking JS for each pose in
+the JS sweep's order), and ASKS JS the three-mesh-bvh questions it does not port
+(`sampledVerdict`, and `undeclaredPrune` in one batch per pose); each check is split
+into a setup and a payload (`clearancesSetup`/`clearancesPayload` and their
+siblings) that both sweeps call. `probe.mjs` holds each
+leaf for leaf to its JS sweep, and since landing 13 `battery-native-sweep` holds the
+whole `--sweep native` battery leaf for leaf to `--sweep js`, both on x64 and arm64 in
+`native-host.yml`. Change a
+ported sweep's loop and the engine owes the same change, or the probe names the
+leaves it moved; the kernel stays ONE source for both targets (its portability
+layer, never a copy).
 
 State (camera pose, wind, τ) persists via the dev server's `/__state` temp
 file, falling back to `localStorage`. **Back it up before clearing it** —

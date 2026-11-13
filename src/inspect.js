@@ -38,7 +38,7 @@ import { ZERO_AREA_MAX, CLEAR_MARGIN, HANDOFF_TRACK_TOL, UNIT_MM, Z_DIAL, SLENDE
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME, SPEC,                                    // §36 Apply: the same predicate that builds the unit, and the same name
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, rigidSplit,
-  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, ESCAPE_STEEL_SIGMA_Y_PA, ESCAPE_STEEL_SIGMA_Y_BAND, ESCAPE_TIP_R_M, ESCAPE_TIP_R_BAND, LINE_CONTACT_SHAKEDOWN_P0_PER_Y, ESCAPE_STEEL_HARDNESS_BAND, TABOR_H_OVER_SIGMA_Y, TABOR_TOLERANCE, CUT_TOOL_R_M, CUT_CONCAVE_MIN_DEG, SERVICE_INTERVAL_YEARS, DESIGN_LIFE_YEARS, JULIAN_YEAR_S, WEAR_K_BAND, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, MAINSPRING_ALPHA_MIN, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R_SPEC, BALANCE_R_REF, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG, STOPWORK_BUILT, GEARED_BUILT } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
+  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, ESCAPE_STEEL_SIGMA_Y_PA, ESCAPE_STEEL_SIGMA_Y_BAND, ESCAPE_TIP_R_M, ESCAPE_TIP_R_BAND, LINE_CONTACT_SHAKEDOWN_P0_PER_Y, ESCAPE_STEEL_HARDNESS_BAND, TABOR_H_OVER_SIGMA_Y, TABOR_TOLERANCE, CUT_TOOL_R_M, CUT_CONCAVE_MIN_DEG, SERVICE_INTERVAL_YEARS, DESIGN_LIFE_YEARS, JULIAN_YEAR_S, WEAR_K_BAND, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, MAINSPRING_ALPHA_MIN, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R_SPEC, BALANCE_R_REF, BALANCE_R_CASE_BOUND, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG, STOPWORK_BUILT, GEARED_BUILT } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 import { auditLubrication, LUBRICATION, LUBRICATION_DEBT, LUBRICATION_WAIVERS } from './lubrication.js';   // §247 tier one
 import { LOCK_DEG, RUN_DEG } from './escapement.js';   // TODO 299 row 22: the lock is declared against shock and the run is not, so the run is the wear budget's spendable share
 // §161 — the override merge, for the fixture check at the foot of this file.
@@ -163,7 +163,7 @@ export const MECH_GRAPH = {
                                              // comes off with the escapement, and the
                                              // three-quarter plate lifts independently
     ['Balance', 'Balance cock'],             // staff's upper pivot in the cock jewel
-    ['Balance', 'plate'],                    // staff's LOWER pivot: rubbed-in jewel in the base plate
+    ['Balance', 'plate'],                    // staff's LOWER pivot: rubbed-in jewel in the base plate, capped by its endstone (TODO 254)
     ['Hairspring', 'Balance'],               // collet on the staff (inner end)
     ['Hairspring', 'Balance cock'],          // outer terminal clamped in the stud hanging from the cock
                                              // (free-sprung: the stud carrier is the spring's ONLY fixture)
@@ -3219,7 +3219,10 @@ if (GEARED_BUILT) EXPECTED_CONTACT_FLOORS.push(
 // TODO 6's check: sweep each row's unit pair with its declared contacts
 // EXCLUDED, and hold the remainder to the row's floor. REPORT-first (§50's
 // arc: report, triage, then gate) — `ok` is per-row and the caller decides.
-export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLOORS, axes = AXES, coarse = 4, refineBand = 0.4, yieldEvery = 16, pairsTouching } = {}) {
+// `checkExpectedContacts`' two ends, shared by the JS sweep and §338 landing 12's native
+// engine (checkClearances' split, next door): the rows it sweeps, each resolved to its
+// two mesh lists and its exclusion rule, and the payload built from the sweep's state.
+export function expectedContactsSetup(clock, { rows = EXPECTED_CONTACT_FLOORS, axes = AXES, pairsTouching } = {}) {
   // §152 — same shape as checkClearances next door: filter the declared rows,
   // keep their indices in the FULL table for the harness's union.
   const touching = resolvePairsTouching(clock, pairsTouching);
@@ -3290,9 +3293,11 @@ export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLO
       else unmatched.push({ pair: `${row.a} ⇄ ${row.b}`, name: n });
     }
   });
-  censusStart();   // §108's experiment — report-only, see the census block
-  const { state: liveState } = await sweepClearances(clock, livePairs, { axes: resolveAxes(axes), coarse, refineBand, yieldEvery });  // §152 — see checkClearances
-  const census = censusStop();
+  return { rows, touching, keptIndices, goneE, liveE, livePairs, unmatched, standDown, axes: resolveAxes(axes) };
+}
+
+export function expectedContactsPayload(setup, liveState, census, { refineBand = 0.4 } = {}) {
+  const { rows, touching, keptIndices, goneE, liveE, unmatched, standDown, axes } = setup;
   const state = rows.map(() => null);
   liveE.forEach((i, j) => { state[i] = liveState[j]; });
   const results = rows.map((row, i) => {
@@ -3316,15 +3321,24 @@ export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLO
       only: row.only ? row.only.map((p) => p.join(' ⇄ ')) : undefined,
     };
   });
-  console.table(results);
   return {
     violations: results.filter((r) => !r.ok && !r.waived),
     waivedCount: results.filter((r) => !r.ok && r.waived).length,
     unmatched, results, census, ...(standDown.length ? { standDown } : {}),
     // §127 tier 2a — raw minima on a narrowed run only; see checkClearances.
-    ...(resolveAxes(axes).length < AXES.length ? { rawMins: state.map((st) => (st && isFinite(st.min) ? st.min : null)) } : {}),
+    ...(axes.length < AXES.length ? { rawMins: state.map((st) => (st && isFinite(st.min) ? st.min : null)) } : {}),
     ...(touching ? { restriction: restrictionRecord(touching, keptIndices) } : {}),
   };
+}
+
+export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLOORS, axes = AXES, coarse = 4, refineBand = 0.4, yieldEvery = 16, pairsTouching } = {}) {
+  const setup = expectedContactsSetup(clock, { rows, axes, pairsTouching });
+  censusStart();   // §108's experiment — report-only, see the census block
+  const { state: liveState } = await sweepClearances(clock, setup.livePairs, { axes: setup.axes, coarse, refineBand, yieldEvery });  // §152 — see checkClearances
+  const census = censusStop();
+  const out = expectedContactsPayload(setup, liveState, census, { refineBand });
+  console.table(out.results);
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -3420,11 +3434,11 @@ function judgeUndeclared(rows, debtTable) {
   return { violations, regressed, staleDebt };
 }
 
-export async function checkUndeclaredClearance(clock, {
-  axes = AXES, yieldEvery = 16, pairsTouching, lift = [],
-  memo: memoOn = true, boxPrune: boxPruneOn = true,
-  debtTable = UNDECLARED_CLEARANCE_DEBT,
-} = {}) {
+// `checkUndeclaredClearance`' three shared pieces (§338 landing 12): its setup (the
+// complement of the declared pairs, the §152 restriction, the two controls), a mesh's
+// world box as the sweep reads it, and the box-prune decision, so the JS sweep and the
+// native engine read one law each; and the payload, built from the per-pair minima.
+export function undeclaredSetup(clock, { axes = AXES, pairsTouching, lift = [], debtTable = UNDECLARED_CLEARANCE_DEBT } = {}) {
   const bound = CLEAR_MARGIN;
   const units = nearestUnitMeshes(clock);
   const names = [...units.keys()];
@@ -3471,78 +3485,30 @@ export async function checkUndeclaredClearance(clock, {
   const selectorEmpty = !tie.A.length || !tie.B.length || !hit.A.length || !hit.B.length;
   const pairs = [...restrictedLive, ...controlsList];
   for (const p of pairs) { p.min = Infinity; p.at = null; p.meshes = null; }
+  return { bound, units, live, restrictedLive, controlsList, tie, hit, selectorEmpty, pairs, population, malformedDebt, touching, debtTable, resolved: resolveAxes(axes) };
+}
 
-  const resolved = resolveAxes(axes);
-  const _box = new THREE.Box3();
-  const _inv = new THREE.Matrix4();
-  const triCount = (m) => (m.geometry.index ? m.geometry.index.count : m.geometry.attributes.position.count) / 3;
-  const mb = new Map(), ub = new Map(), mver = new Map(), msnap = new Map();
-  let exactCalls = 0, memoHits = 0, boxPruned = 0, unitPairTests = 0, unitPairPass = 0, poses = 0;
-  let sinceYield = 0;
+// A mesh's world box as this sweep reads it: its geometry's cached boundingBox (computed
+// once, on first need, as three.js caches it) under the mesh's world matrix.
+export function meshWorldBox(m, out) {
+  const g = m.geometry;
+  if (!g.boundingBox) g.computeBoundingBox();
+  return out.copy(g.boundingBox).applyMatrix4(m.matrixWorld);
+}
+const _upBox = new THREE.Box3(), _upInv = new THREE.Matrix4(), _upMb = new THREE.Box3();
+const _upTris = (m) => (m.geometry.index ? m.geometry.index.count : m.geometry.attributes.position.count) / 3;
+// The box prune: does the larger mesh's tree reach the smaller one's world box grown by
+// the bound? No means no surface of it is within the bound, so the exact query is skipped.
+export function undeclaredPrune(a, b, bound) {
+  const [big, small] = _upTris(a) >= _upTris(b) ? [a, b] : [b, a];
+  const tree = bvhFor(big);
+  _upBox.copy(meshWorldBox(small, _upMb)).expandByScalar(bound);
+  _upInv.copy(big.matrixWorld).invert();
+  return !tree.intersectsBox(_upBox, _upInv);
+}
 
-  for (const axis of resolved) {
-    enterAxis(clock);   // TODO 54 — a slice must reproduce a whole run's poses
-    const memo = new Map();   // mesh-pair memo, reset per axis (§127 slicing)
-    for (let i = 0; i <= axis.n; i++) {
-      const f = i / axis.n;
-      clock.setPose(axis.pose(f, clock));
-      poses++;
-      for (const [name, meshes] of units) {
-        const u = ub.get(name) ?? new THREE.Box3();
-        u.makeEmpty();
-        for (const m of meshes) {
-          const g = m.geometry;
-          if (!g.boundingBox) g.computeBoundingBox();
-          const b = mb.get(m) ?? new THREE.Box3();
-          b.copy(g.boundingBox).applyMatrix4(m.matrixWorld);
-          mb.set(m, b);
-          u.union(b);
-          const e = m.matrixWorld.elements, snap = msnap.get(m), pv = g.attributes.position.version;
-          if (!snap || snap.g !== g.id || snap.v !== pv || snap.e.some((x, k) => x !== e[k])) {
-            msnap.set(m, { g: g.id, v: pv, e: e.slice() });
-            mver.set(m, (mver.get(m) ?? 0) + 1);
-          }
-        }
-        ub.set(name, u);
-      }
-      for (const p of pairs) {
-        unitPairTests++;
-        if (boxDistance(ub.get(p.a), ub.get(p.b)) >= p.bound) continue;
-        unitPairPass++;
-        let poseBest = Infinity, posePair = null;
-        for (const a of p.A) {
-          const ba = mb.get(a);
-          for (const b of p.B) {
-            if (boxDistance(ba, mb.get(b)) >= p.bound) continue;
-            let d;
-            const va = mver.get(a), vb = mver.get(b);
-            const key = memoOn ? `${a.id}:${b.id}:${p.bound}` : null;
-            const cached = memoOn ? memo.get(key) : null;
-            if (cached && cached.va === va && cached.vb === vb) { d = cached.d; memoHits++; }
-            else {
-              if (boxPruneOn) {
-                const [big, small] = triCount(a) >= triCount(b) ? [a, b] : [b, a];
-                const tree = bvhFor(big);
-                _box.copy(mb.get(small)).expandByScalar(p.bound);
-                _inv.copy(big.matrixWorld).invert();
-                if (!tree.intersectsBox(_box, _inv)) { d = Infinity; boxPruned++; }
-                else { d = meshClearance(a, b, p.bound); exactCalls++; }
-              } else { d = meshClearance(a, b, p.bound); exactCalls++; }
-              if (memoOn) memo.set(key, { va, vb, d });
-            }
-            if (d < poseBest) { poseBest = d; posePair = [a, b]; }
-          }
-        }
-        if (poseBest < p.min) {
-          p.min = poseBest;
-          p.at = { axis: axis.name, f: +f.toFixed(4) };
-          p.meshes = posePair ? posePair.map((m) => m.name || m.geometry.type) : null;
-        }
-      }
-      if (++sinceYield >= yieldEvery) { sinceYield = 0; await new Promise((r) => setTimeout(r, 0)); }
-    }
-  }
-
+export function undeclaredPayload(setup, census, poses) {
+  const { bound, restrictedLive, controlsList, tie, hit, selectorEmpty, population, malformedDebt, touching, debtTable, resolved } = setup;
   const rows = restrictedLive
     .filter((p) => p.min < bound)
     .map((p) => ({
@@ -3568,12 +3534,11 @@ export async function checkUndeclaredClearance(clock, {
     : controls.every((c) => c.ok) ? 'PASS' : `FAIL — ${controls.filter((c) => !c.ok).map((c) => c.control).join(', ')}`;
 
   const { violations, regressed, staleDebt } = judgeUndeclared(rows, debtTable);
-  console.table(rows);
   const sliced = resolved.length < AXES.length;
   return {
     population, poses, rows, violations, regressed, staleDebt, malformedDebt,
     debtTable, controls, control,
-    census: { unitPairTests, unitPairPass, exactCalls, memoHits, boxPruned },
+    census,
     // §127 tier 2a — a SLICE carries its raw (unrounded) minima keyed by pair,
     // not positionally: unlike `clearances`/`expectedContacts`, a row here
     // only EXISTS when a pair is under the bound, so the merge cannot align
@@ -3586,6 +3551,77 @@ export async function checkUndeclaredClearance(clock, {
     } : {}),
     ...(touching ? { restriction: restrictionRecord(touching, null) } : {}),
   };
+}
+
+export async function checkUndeclaredClearance(clock, {
+  axes = AXES, yieldEvery = 16, pairsTouching, lift = [],
+  memo: memoOn = true, boxPrune: boxPruneOn = true,
+  debtTable = UNDECLARED_CLEARANCE_DEBT,
+} = {}) {
+  const setup = undeclaredSetup(clock, { axes, pairsTouching, lift, debtTable });
+  const { units, pairs, resolved } = setup;
+  const mb = new Map(), ub = new Map(), mver = new Map(), msnap = new Map();
+  let exactCalls = 0, memoHits = 0, boxPruned = 0, unitPairTests = 0, unitPairPass = 0, poses = 0;
+  let sinceYield = 0;
+
+  for (const axis of resolved) {
+    enterAxis(clock);   // TODO 54 — a slice must reproduce a whole run's poses
+    const memo = new Map();   // mesh-pair memo, reset per axis (§127 slicing)
+    for (let i = 0; i <= axis.n; i++) {
+      const f = i / axis.n;
+      clock.setPose(axis.pose(f, clock));
+      poses++;
+      for (const [name, meshes] of units) {
+        const u = ub.get(name) ?? new THREE.Box3();
+        u.makeEmpty();
+        for (const m of meshes) {
+          const g = m.geometry;
+          const b = meshWorldBox(m, mb.get(m) ?? new THREE.Box3());
+          mb.set(m, b);
+          u.union(b);
+          const e = m.matrixWorld.elements, snap = msnap.get(m), pv = g.attributes.position.version;
+          if (!snap || snap.g !== g.id || snap.v !== pv || snap.e.some((x, k) => x !== e[k])) {
+            msnap.set(m, { g: g.id, v: pv, e: e.slice() });
+            mver.set(m, (mver.get(m) ?? 0) + 1);
+          }
+        }
+        ub.set(name, u);
+      }
+      for (const p of pairs) {
+        unitPairTests++;
+        if (boxDistance(ub.get(p.a), ub.get(p.b)) >= p.bound) continue;
+        unitPairPass++;
+        let poseBest = Infinity, posePair = null;
+        for (const a of p.A) {
+          const ba = mb.get(a);
+          for (const b of p.B) {
+            if (boxDistance(ba, mb.get(b)) >= p.bound) continue;
+            let d;
+            const va = mver.get(a), vb = mver.get(b);
+            const key = memoOn ? `${a.id}:${b.id}:${p.bound}` : null;
+            const cached = memoOn ? memo.get(key) : null;
+            if (cached && cached.va === va && cached.vb === vb) { d = cached.d; memoHits++; }
+            else {
+              if (boxPruneOn && undeclaredPrune(a, b, p.bound)) { d = Infinity; boxPruned++; }
+              else { d = meshClearance(a, b, p.bound); exactCalls++; }
+              if (memoOn) memo.set(key, { va, vb, d });
+            }
+            if (d < poseBest) { poseBest = d; posePair = [a, b]; }
+          }
+        }
+        if (poseBest < p.min) {
+          p.min = poseBest;
+          p.at = { axis: axis.name, f: +f.toFixed(4) };
+          p.meshes = posePair ? posePair.map((m) => m.name || m.geometry.type) : null;
+        }
+      }
+      if (++sinceYield >= yieldEvery) { sinceYield = 0; await new Promise((r) => setTimeout(r, 0)); }
+    }
+  }
+
+  const out = undeclaredPayload(setup, { unitPairTests, unitPairPass, exactCalls, memoHits, boxPruned }, poses);
+  console.table(out.rows);
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -5446,7 +5482,10 @@ export function checkSupportGeometry(clock, { tol = SUPPORT_TOL, edges = MECH_GR
   return { failures, rows, ...(standDown.length ? { standDown } : {}) };
 }
 
-export async function checkClearances(clock, { budgets = CLEARANCE_BUDGETS, axes = AXES, coarse = 4, refineBand = 0.4, yieldEvery = 16, pairsTouching } = {}) {
+// `checkClearances`' two ends, shared by the JS sweep and §338 landing 12's native
+// engine: the budgets it sweeps (the §152 restriction, TODO 298's stand-downs, the
+// resolved unit pairs) and the payload it builds from the sweep's per-pair state.
+export function clearancesSetup(clock, { budgets = CLEARANCE_BUDGETS, axes = AXES, pairsTouching } = {}) {
   // §152 — the declared table filters, keeping the surviving rows' INDICES in
   // the full table so the harness can rebuild that order against a baseline.
   const touching = resolvePairsTouching(clock, pairsTouching);
@@ -5468,7 +5507,6 @@ export async function checkClearances(clock, { budgets = CLEARANCE_BUDGETS, axes
     axes: bud.axes,
     refineFloor: bud.min, // exact minima only needed near the budget line
   }));
-  censusStart();   // §108's experiment — report-only, see the census block
   // §152 — resolveAxes here too, so every check takes an axis list the same
   // way. These two took `axes` RAW and passed it to the sweep engine, which
   // reads `axis.n` and `axis.pose`: a list of axis NAMES therefore swept zero
@@ -5478,8 +5516,10 @@ export async function checkClearances(clock, { budgets = CLEARANCE_BUDGETS, axes
   // two by axis, which is what an acceptance probe is for. resolveAxes over
   // the default AXES returns the same objects in the same order, so a full
   // run measures exactly what it measured before.
-  const { state: liveState } = await sweepClearances(clock, pairs, { axes: resolveAxes(axes), coarse, refineBand, yieldEvery });
-  const census = censusStop();
+  return { budgets, touching, keptIndices, goneC, live, pairs, axes: resolveAxes(axes) };
+}
+export function clearancesPayload(setup, liveState, census, { refineBand = 0.4 } = {}) {
+  const { budgets, touching, keptIndices, goneC, live, axes } = setup;
   const state = budgets.map(() => null);
   live.forEach((i, j) => { state[i] = liveState[j]; });
   const results = budgets.map((bud, i) => {
@@ -5498,7 +5538,6 @@ export async function checkClearances(clock, { budgets = CLEARANCE_BUDGETS, axes
       ok: capped || state[i].min >= bud.min - FLOOR_TIE_EPS,   // TODO 144: a derived margin is an exact tie
     };
   });
-  console.table(results);
   // §127 tier 2a — a SLICE carries its raw minima beside the formatted rows.
   // The row's `min` is rounded to four decimals for the report, and the whole
   // run's own winner is decided on RAW floats (strict `<` at record time), so
@@ -5510,10 +5549,22 @@ export async function checkClearances(clock, { budgets = CLEARANCE_BUDGETS, axes
   // was; the merge REQUIRES it and deletes it from the merged payload.
   // Infinity does not survive JSON (page.evaluate serialises it to null), so
   // capped rows are carried as null and the merge reads null as Infinity.
-  const sliced = resolveAxes(axes).length < AXES.length;
+  const sliced = axes.length < AXES.length;
   return { violations: results.filter((r) => !r.ok), results, census,
     ...(sliced ? { rawMins: state.map((st) => (st && isFinite(st.min) ? st.min : null)) } : {}),
     ...(touching ? { restriction: restrictionRecord(touching, keptIndices) } : {}) };
+}
+// A mesh's label in a clearance row (meshLabel, exported for the native engine's driver).
+export function clearanceMeshLabel(unit, mesh) { return meshLabel(unit, mesh); }
+
+export async function checkClearances(clock, { budgets = CLEARANCE_BUDGETS, axes = AXES, coarse = 4, refineBand = 0.4, yieldEvery = 16, pairsTouching } = {}) {
+  const setup = clearancesSetup(clock, { budgets, axes, pairsTouching });
+  censusStart();   // §108's experiment — report-only, see the census block
+  const { state: liveState } = await sweepClearances(clock, setup.pairs, { axes: setup.axes, coarse, refineBand, yieldEvery });
+  const census = censusStop();
+  const out = clearancesPayload(setup, liveState, census, { refineBand });
+  console.table(out.results);
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -7539,6 +7590,102 @@ export function checkAlarmHandoffs(clock, { tol = HANDOFF_TRACK_TOL, poses = ALA
   };
 }
 
+// The inspection payload from its findings (pairKey → { pair, class, axes: {axis: [f…]} },
+// in the order they were first found): the report sorted FORBIDDEN first then by pair,
+// each row's per-axis summary, the census. One function, so the JS sweep and §338
+// landing 12's native engine (whose findings come back over a pipe) assemble the same
+// payload by the same code.
+export function inspectionPayload(findings, units, axes, census) {
+  const report = [...findings.values()].sort((x, y) =>
+    x.class === y.class ? x.pair.localeCompare(y.pair) : x.class === 'FORBIDDEN' ? -1 : 1
+  );
+  // §338 landing 7 — every pose's contact is the exact predicate, so an EXPECTED
+  // row no longer carries §122's 'raw-after-first-confirmed' coverage mark: no
+  // pose of it was trusted raw.
+  // Compact per-axis summary: hit fraction + range.
+  for (const r of report) {
+    r.summary = Object.entries(r.axes)
+      .map(([ax, fs]) => {
+        const axis = axes.find((a) => a.name === ax);
+        return `${ax}: ${fs.length}/${axis.n + 1} poses (f ${Math.min(...fs)}–${Math.max(...fs)})`;
+      })
+      .join('; ');
+  }
+  return { units: units.map((u) => u.name), report, axes: axes.map((a) => a.name), census };
+}
+
+// §338 landing 12 — THE POSED STATE a sweep reads, handed to a native engine. One
+// POSER for every check the engine runs: the same units (collectUnits), canonical axis
+// entry (enterAxis) and pose law (axis.pose) as the JS sweeps. `pose(ax, i)` sets the
+// pose and returns the unit boxes (three.js' setFromObject, as inspection's broad phase
+// computes them) and every CHANGED mesh's state as a narrow phase reads it: its own
+// geometry and world matrix (the meet's), its rigidFrame view geometry and frame (the
+// running fit's), whether that frame is rigid, and its world box (poseBox's
+// setFromObject). A mesh is unchanged when its geometry (identity and both attribute
+// versions) and world matrix (Object.is, element for element) are what they were when
+// last reported; a mesh with descendants always reports, because setFromObject's box
+// takes in its children, which can move under a still parent. The engine does the
+// queries; nothing here decides one.
+export function sweepPoser(clock, { axes: axisArg = AXES, includeExcluded = false } = {}) {
+  const axes = resolveAxes(axisArg);
+  const units = collectUnits(clock, { includeExcluded });
+  const meshes = [], meshIndex = new Map();
+  const unitMeshes = units.map((u) => u.meshes.map((m) => {
+    if (!meshIndex.has(m)) { meshIndex.set(m, meshes.length); meshes.push(m); }
+    return meshIndex.get(m);
+  }));
+  const box = new THREE.Box3(), box2 = new THREE.Box3();
+  const seen = meshes.map(() => null);
+  const nested = meshes.map((m) => m.children.length > 0);
+  return {
+    axes, units, meshes, unitMeshes,
+    enter() { enterAxis(clock); },
+    pose(ax, i) {
+      const axis = axes[ax], f = i / axis.n;
+      clock.setPose(axis.pose(f, clock));
+      const unitBoxes = units.map((u) => new THREE.Box3().setFromObject(u.obj));
+      const changed = [];
+      for (let k = 0; k < meshes.length; k++) {
+        const m = meshes[k], g = m.geometry, e = m.matrixWorld.elements;
+        const pv = g.attributes.position.version, iv = g.index ? g.index.version : -1;
+        const was = seen[k];
+        if (was && !nested[k] && was.g === g && was.pv === pv && was.iv === iv) {
+          let same = true;
+          for (let q = 0; q < 16; q++) if (!Object.is(was.e[q], e[q])) { same = false; break; }
+          if (same) continue;
+        }
+        seen[k] = { g, pv, iv, e: e.slice() };
+        box.setFromObject(m);
+        const v = rigidFrame(m);
+        meshWorldBox(m, box2);   // undeclaredClearance's own box (the mesh alone, its cached boundingBox)
+        changed.push({ mesh: k, own: g, view: v.geometry, rigid: v.rigid, world: e, frame: v.frame.elements,
+          box: [box.min.x, box.min.y, box.min.z, box.max.x, box.max.y, box.max.z],
+          box2: [box2.min.x, box2.min.y, box2.min.z, box2.max.x, box2.max.y, box2.max.z], gid: g.id, pv });
+      }
+      return { f: +f.toFixed(4), unitBoxes, changed };
+    },
+  };
+}
+
+// `runInspection`'s pose loop over the poser, every pose in order, into a sink.
+export async function exportInspectionState(clock, sink, { axes, includeExcluded = false } = {}) {
+  const P = sweepPoser(clock, { axes, includeExcluded });
+  const pairs = [];
+  for (let ai = 0; ai < P.units.length; ai++)
+    for (let bi = ai + 1; bi < P.units.length; bi++) {
+      const A = P.units[ai], B = P.units[bi];
+      if (inList(IGNORED_PAIRS, A.name, B.name)) continue;
+      pairs.push({ ai, bi, key: pairKey(A.name, B.name), expected: inList(EXPECTED_PAIRS, A.name, B.name) });
+    }
+  await sink.begin({ check: 'inspection', units: P.units.map((u, i) => ({ name: u.name, meshes: P.unitMeshes[i] })), meshCount: P.meshes.length,
+    pairs, axes: P.axes.map((a) => ({ name: a.name, n: a.n })), CONTACT_TOUCH });
+  for (let ax = 0; ax < P.axes.length; ax++) {
+    P.enter();
+    for (let i = 0; i <= P.axes[ax].n; i++) await sink.pose({ axis: ax, i, ...P.pose(ax, i) });
+  }
+  return { units: P.units, axes: P.axes };
+}
+
 export async function runInspection(clock, { axes: axisArg = AXES, yieldEvery = 8, includeExcluded = false, pairsTouching } = {}) {
   const axes = resolveAxes(axisArg);   // §127 — a slice arrives as names; see resolveAxes
   // §152 — the pair loop narrows; the UNIT LIST does not (see resolvePairsTouching).
@@ -7588,27 +7735,12 @@ export async function runInspection(clock, { axes: axisArg = AXES, yieldEvery = 
     }
   }
 
-  const report = [...findings.values()].sort((x, y) =>
-    x.class === y.class ? x.pair.localeCompare(y.pair) : x.class === 'FORBIDDEN' ? -1 : 1
-  );
-  // §338 landing 7 — every pose's contact is the exact predicate, so an EXPECTED
-  // row no longer carries §122's 'raw-after-first-confirmed' coverage mark: no
-  // pose of it was trusted raw.
-  // Compact per-axis summary: hit fraction + range.
-  for (const r of report) {
-    r.summary = Object.entries(r.axes)
-      .map(([ax, fs]) => {
-        const axis = axes.find((a) => a.name === ax);
-        return `${ax}: ${fs.length}/${axis.n + 1} poses (f ${Math.min(...fs)}–${Math.max(...fs)})`;
-      })
-      .join('; ');
-  }
-
   const census = censusStop();
   if (census) Object.assign(census, { unitPairTests, unitPairPass });
-  window.__inspectReport = { units: units.map((u) => u.name), report, axes: axes.map((a) => a.name), census };
+  window.__inspectReport = inspectionPayload(findings, units, axes, census);
   // Only when restricted, so a full run's payload is unchanged by this landing.
   if (touching) window.__inspectReport.restriction = restrictionRecord(touching, null);
+  const report = window.__inspectReport.report;
   console.table(report.map(({ pair, class: cls, summary }) => ({ pair, class: cls, summary })));
 
   // Helper for the human/agent: jump to a hit pose and frame the pair.
@@ -11376,7 +11508,11 @@ export function checkEqualisation(clock) {
         const steps = (BALANCE_R_REF - BALANCE_R_SPEC) / BAL_R_STEP;
         if (T.radius !== BALANCE_R_SPEC || T.radiusRef !== BALANCE_R_REF || T.radiusStep !== BAL_R_STEP)
           failures.push({ what: 'amplitude target block weighs a different radius from BALANCE_R_SPEC', record: { radius: T.radius, radiusRef: T.radiusRef, radiusStep: T.radiusStep }, radius: BALANCE_R_SPEC, ref: BALANCE_R_REF, step: BAL_R_STEP });
-        else if (steps < 0)
+        // §343 — except a row whose radius the CASE sets (RATE_TABLE's
+        // `caseBound`): the spring could carry more, the 40 mm case cannot, and
+        // probe-343-chronometer.mjs holds that cap on both sides on booted builds.
+        // It must still sit on the grid, and carries no larger-wheel test here.
+        else if (steps < 0 && !BALANCE_R_CASE_BOUND)
           failures.push({ what: 'balance larger than the shipped movement\'s (BALANCE_R_REF)', radius: BALANCE_R_SPEC, ref: BALANCE_R_REF });
         else if (Math.abs(steps - Math.round(steps)) > 1e-9)
           failures.push({ what: 'balance radius off the BAL_R_STEP grid below BALANCE_R_REF', radius: BALANCE_R_SPEC, ref: BALANCE_R_REF, step: BAL_R_STEP });

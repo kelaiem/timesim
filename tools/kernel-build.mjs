@@ -4,6 +4,10 @@
 //   node tools/kernel-build.mjs            write src/kernel-wasm.js
 //   node tools/kernel-build.mjs --check    rebuild and require the committed module, byte for byte
 //
+// Every run also compiles a MUTANT (the pierce test cut out) and requires the
+// source's static_asserts to refuse it (§338 landing 10), so the analytic pairs
+// stay a live gate.
+//
 // Acceptance with --check (exits non-zero when the rebuild differs, or when the
 // toolchain is not the one the module records, which it reports rather than
 // guessing past). A reproducible build is itself a portability claim (§338).
@@ -17,6 +21,8 @@
 //   KERNEL_PYTHON=~/zig/bin/python node tools/kernel-build.mjs [--check]
 //
 // The flags are the entry's determinism rules, written once here:
+//   -std=c++23            the language the kernel is written in (§338 landing 10: constexpr
+//                         primitives, if consteval, multidimensional subscripts)
 //   -target wasm32-freestanding   the reference target; wasm has no FMA in its non-relaxed
 //                         instruction set, so contraction cannot happen on any host
 //   -ffp-contract=off     and none at compile time either
@@ -44,7 +50,7 @@ const OUT = join(ROOT, 'src/kernel-wasm.js');
 const ZIG_VERSION = '0.13.0';
 const PY = process.env.KERNEL_PYTHON || 'python3';
 const CXX = [PY, '-m', 'ziglang', 'c++', '-target', 'wasm32-freestanding'];
-const FLAGS = ['-std=c++17', '-O2', '-ffreestanding', '-nostdlib', '-fno-exceptions', '-fno-rtti',
+const FLAGS = ['-std=c++23', '-O2', '-ffreestanding', '-nostdlib', '-fno-exceptions', '-fno-rtti',
   '-ffp-contract=off', '-fno-fast-math', '-mno-simd128', '-Wall', '-Wextra', '-Werror',
   '-Wl,--no-entry', '-Wl,--strip-all', '-Wl,--export-dynamic'];
 
@@ -62,6 +68,23 @@ try {
   const env = { ...process.env, ZIG_GLOBAL_CACHE_DIR: join(dir, 'zig-global'), ZIG_LOCAL_CACHE_DIR: join(dir, 'zig-local') };
   execFileSync(CXX[0], [...CXX.slice(1), ...FLAGS, '-o', join(dir, 'kernel.wasm'), SRC], { stdio: ['ignore', 'inherit', 'inherit'], env, cwd: dir });
   wasm = readFileSync(join(dir, 'kernel.wasm'));
+  // §338 landing 10's CONTROL on the static_asserts: the analytic pairs are only a gate
+  // while they can fail, so a copy of the source with the edge–face pierce test cut out
+  // (every edge then misses every face) must be REFUSED by the compiler on the piercing
+  // pairs. A source where the mutation no longer applies, or that the compiler accepts,
+  // fails the build.
+  const PIERCE = 'if (det == 0) return false;';
+  const src = source.toString('utf8');
+  if (src.split(PIERCE).length !== 2) { console.error(`FAIL — the static_assert control's mutation site \`${PIERCE}\` is not in kernel.cpp exactly once`); process.exit(1); }
+  const mutant = join(dir, 'mutant.cpp');
+  writeFileSync(mutant, src.replace(PIERCE, 'return false;'));
+  let refused = '';
+  try { execFileSync(CXX[0], [...CXX.slice(1), ...FLAGS.filter((f) => !f.startsWith('-Wl,')), '-fsyntax-only', mutant], { stdio: ['ignore', 'pipe', 'pipe'], env, cwd: dir }); }
+  catch (e) { refused = String(e.stderr || ''); }
+  if (!/static assertion failed due to requirement 'dist\(T0, SPIKE\) == 0'/.test(refused)) {
+    console.error(`FAIL — the static_asserts did not refuse a kernel whose pierce test is cut out${refused ? `:\n${refused}` : ' (it compiled)'}`);
+    process.exit(1);
+  }
 } finally { rmSync(dir, { recursive: true, force: true }); }
 
 const mod = new WebAssembly.Module(wasm);

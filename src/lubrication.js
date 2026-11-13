@@ -81,7 +81,7 @@ const LUBRICATION_ROWS = {
   'Escape wheel > Pallet fork':         L('escapement', 'the one oiled tooth contact: 216,000 impulses a stone a day (TODO 45); the surfaces are epilamed', { epilame: true, src: 'roadmap §247 seed table' }),
   'Pallet fork :: bearing':             L('oil-fine', 'jewelled, no endstone; light and fast', { sink: 'chaton', epilame: true, src: 'roadmap §247 seed table' }),
   'Pallet fork > Balance':              L('dry', 'impulse pin in the fork notch: ruby and steel, dry', { src: 'roadmap §247 seed table' }),
-  'Balance :: bearing':                 L('oil-fine', 'the upper pivot oils in the cap-jewel reservoir; the lower pivot has NO endstone, so no reservoir and the shoulder bears on the jewel face (TODO 254)', { mu: 'muJewel', sink: 'none', epilame: true, src: 'roadmap §247 seed table; failure 2' }),
+  'Balance :: bearing':                 L('oil-fine', 'both pivots run in hole jewels capped by endstones, and each oils in the reservoir between the two stones; since TODO 254 each TIP reaches its endstone before its shoulder reaches the hole jewel, so the cap is the bearing end at both ends', { mu: 'muJewel', sink: 'cap-jewel', epilame: true, src: 'roadmap §247 seed table; failure 2; TODO 254' }),
   'Balance > Hairspring':               L('dry', 'oil on a hairspring sticks the coils and the rate goes; collet and stud are dry and the neighbours are epilamed', { src: 'roadmap §247 seed table' }),
   'Hairspring :: bearing':              L('dry', 'a clamped inner end and a studded outer end: nothing slides; dry, as a spring that must not stick', { src: 'roadmap §247 seed table' }),
   // ---- the keyless works ----
@@ -139,7 +139,8 @@ export const LUBRICATION = Object.freeze(LUBRICATION_ROWS);
 // WAIVED here, citing the item that owns the missing part. The waiver goes stale
 // the moment its row has a sink — the covenant every waiver table in this repo keeps.
 export const LUBRICATION_WAIVERS = Object.freeze({
-  'Balance :: bearing': 'TODO 254',   // the lower pivot has no endstone: no cap jewel, no reservoir
+  // (empty since TODO 254 cut the balance's lower endstone: its row's sink went
+  // stale the day the stone was cut, and the gate retired the waiver)
 });
 
 // THE ARRIVAL INVENTORY — the joints this landing did not answer. CLOSED: it
