@@ -536,6 +536,7 @@ if (argv.includes('--floorplan')) {
 
 if (!INPUTS) { console.error('need --dump FILE, --search or --inputs FILE'); process.exit(2); }
 const L = await import(join(ROOT, 'src/layout.js'));
+const FORM_BORE = (await import(join(ROOT, 'src/casing-clamp.js'))).solveClamp().boreBack;   // TODO 300: the form bore is the casing-clamp hold's fitted grow
 const inputs = JSON.parse(readFileSync(INPUTS, 'utf8'));
 const { layoutInputs, keylessInputs } = inputs;
 const RAD = Math.PI / 180;
@@ -551,7 +552,7 @@ function evaluate(k) {
   const K = L.solveKeyless({ ...keylessInputs, P, stemAzRad: k.stemAz * RAD, warn });
   const f = K.formPlate;
   const hard = warns.filter((w) => !BAL_WALK.test(w));
-  const wOut = 2 * (f.hw + L.CASE_CLEAR + L.CASE_BAND_T);
+  const wOut = 2 * (f.hw + FORM_BORE + L.CASE_BAND_T);
   // A form case's long side is 12–6, the strap's line: under `area` a candidate
   // wider than it is long is refused (it is the same rectangle turned, and the
   // turn is not a knob — the dial's 12 is the movement's +y). `width` needs no
@@ -642,7 +643,7 @@ best.sort((a, b) => a.score - b.score);
 const mm = (u) => (u * L.UNIT_MM).toFixed(2);
 const rect = (f) => `${mm(2 * f.hw)} × ${mm(2 * f.hh)} mm (${(f.area * L.UNIT_MM * L.UNIT_MM).toFixed(0)} mm²), centre (${mm(f.cx)}, ${mm(f.cy)}) off the hands`;
 console.log(`form-layout: objective ${OBJECTIVE}, crown ${CROWN}${NEAR !== null ? `, within ±${NEAR}° of the design` : ''}, ${tried} candidates evaluated, ${feasibleN} of ${SAMPLES} random samples feasible, seed ${SEED}`);
-console.log(`  d4 window [${w4.min.toFixed(2)}, ${w4.max.toFixed(2)}]; width cap ${mm(2 * L.CASE_WIDTH_MAX)} mm across the band (plate rectangle + 2 × (${mm(L.CASE_CLEAR)} + ${mm(L.CASE_BAND_T)}))`);
+console.log(`  d4 window [${w4.min.toFixed(2)}, ${w4.max.toFixed(2)}]; width cap ${mm(2 * L.CASE_WIDTH_MAX)} mm across the band (plate rectangle + 2 × (${mm(FORM_BORE)} + ${mm(L.CASE_BAND_T)}))`);
 console.log(`DEFAULT (as designed): plateR ${base.plateR.toFixed(3)} u → round plate Ø ${mm(2 * base.plateR)} mm; its rectangle ${rect(base.f)}`);
 console.log(`  knobs: barrelstep ${L.BARREL_STEP_DEG}, escstep ${L.ESCAPE_STEP_DEG}, balstep target ${L.BALANCE_STEP_TARGET_DEG} (solved ${base.balSolved.toFixed(3)}), d4 ${L.D4}, stemaz ${base.stemAz.toFixed(2)}°${base.warns.length ? `; warnings: ${base.warns.join(' | ')}` : ''}`);
 if (!best.length) { console.log('NO FEASIBLE CANDIDATE FOUND — every sample drew a solver warning or broke the width cap'); process.exit(0); }

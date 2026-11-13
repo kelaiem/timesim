@@ -75,6 +75,12 @@ on:
       - 'tools/kernel-build.mjs'
       - 'tools/native-sweep/**'
       - 'tools/battery-native.mjs'
+      - 'tools/battery-local.mjs'
+      - 'tools/ci-battery.mjs'
+      - 'tools/battery-points.mjs'
+      - 'tools/battery-union.mjs'
+      - 'tools/battery-split.mjs'
+      - 'tools/battery-plan.mjs'
       - 'tools/report-diff.mjs'
       - 'tools/det-math-vendor.mjs'
       - 'tools/det-math-kat.mjs'
@@ -414,3 +420,28 @@ jobs:
 
       - name: arm64 — the battery on the native sweep engine is the JS battery, leaf for leaf
         run: node tools/report-diff.mjs battery-native-ARM64-js.json native-sweep-battery-ARM64.json
+
+  # §338 landing 14 — the LOCAL PRE-FLIGHT (tools/battery-local.mjs), kept from rotting.
+  # A developer runs it whole before a push; here it runs narrowed (`--only`: two checks,
+  # the identity spec boot, no point tier) so every stage that is not a sweep runs on every
+  # change to it: the shards and their anchors, boot B, the share boot, the spec job and
+  # ci-battery.mjs' own `assemble`, the gate loop it borrows. The point tier's job is held by
+  # the whole local run (§338's record), because a point is judged against the default's
+  # three whole sweeps, which a narrowed run does not make.
+  local-preflight:
+    runs-on: ubuntu-latest
+    # About 2 min on a 4-vCPU dev container (110 s); the cap is ten times that, for a slow runner.
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install the tools' pinned packages
+        working-directory: tools
+        run: npm ci --no-audit --no-fund
+
+      - name: The local pre-flight, narrowed
+        run: node --import ./tools/native/loader.mjs tools/battery-local.mjs --sweep js --only graph,support

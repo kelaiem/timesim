@@ -37,6 +37,8 @@ import { join, extname, normalize, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { UNIT_MM, CASE_CLEAR, CASE_BAND_T, CASE_WIDTH_MAX, ARRANGEMENT } from '../src/layout.js';
+import { solveClamp } from '../src/casing-clamp.js';   // TODO 300: the form bore is the casing-clamp hold's fitted grow, not CASE_CLEAR
+const FORM_BORE = solveClamp().boreBack;
 import { GONG_SEATS } from '../src/gong-seats.js';
 import { defaultSeatMode } from '../src/case-shape.js';
 // a kind's default seat's fit: the spiral where one closes, else the bar (§317, case-shape.js defaultSeatMode; TODO 297
@@ -135,7 +137,7 @@ async function boot(q) {
   } finally { await ctx.close().catch(() => {}); }
 }
 
-const casedMm = (rect) => 2 * (Math.max(-rect[0], rect[1]) + CASE_CLEAR + CASE_BAND_T) * UNIT_MM;
+const casedMm = (rect) => 2 * (Math.max(-rect[0], rect[1]) + FORM_BORE + CASE_BAND_T) * UNIT_MM;
 const CAP_MM = 2 * CASE_WIDTH_MAX * UNIT_MM;
 const at12 = (t) => Math.abs(t.station.x) < 1e-9 && t.station.y > 0;
 const got = {};

@@ -1155,6 +1155,16 @@ whole `--sweep native` battery leaf for leaf to `--sweep js`, both on x64 and ar
 ported sweep's loop and the engine owes the same change, or the probe names the
 leaves it moved; the kernel stays ONE source for both targets (its portability
 layer, never a copy).
+**Since landing 14 the WHOLE battery job runs locally before a push**:
+`node --import ./tools/native/loader.mjs tools/battery-local.mjs` boots the
+build natively for every measurement the browser battery makes — the table's
+shards and their anchors, boot B, the share boot, every `SPEC_POINTS` row and
+every swept point — and hands them to `ci-battery.mjs`' own `assemble`, so its
+gate list IS the `battery` job's (`ci-battery.mjs` runs its browser paths only
+when it is the program, and exports the assembly half and the spec table).
+`--sweep native` is the default when the engine's binary is fresh; `--only`
+narrows it, and `native-host.yml`'s `local-preflight` runs it narrowed. It is
+not the chrome, offline, boot-yield or the battery's probe jobs, and says so.
 
 State (camera pose, wind, τ) persists via the dev server's `/__state` temp
 file, falling back to `localStorage`. **Back it up before clearing it** —
@@ -1482,8 +1492,8 @@ list of warning PREFIXES, the rows' names, never their measured numbers): both
 the spec tier and the point judge hold the boot to exactly that set
 (`matchDeclaredWarns`), a warning beyond it reads `warns`, a declared row that
 stops firing reads stale and fails, and the point's validated-configs evidence
-names the set. It exists because every FORM build carries two filed rows (§186's
-form-case fit, §261's depth cap) that are debt about the case, not a station out
+names the set. It exists because every FORM build carries a filed row (§261's
+depth cap; §186's form-case fit beside it until TODO 300) that is debt about the case, not a station out
 of its window, and a judge that read any warning as `warns` could never let a
 form build join the set however clean its sweeps came back; the arrangement is
 the first such row. A push, dispatch or local run sweeps every point FULL —
