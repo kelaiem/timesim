@@ -971,8 +971,9 @@ const SPEC_POINTS = [
   // this arrangement by a local run alone, and a later landing could stop it
   // building with every gate green.
   //
-  // THE FIRST ROW THAT DECLARED ITS WARNINGS. It boots with three (the form
-  // plate's §186 seat fit and §261 depth, which every form build carries, and
+  // THE FIRST ROW THAT DECLARED ITS WARNINGS. It boots with two (§261's depth,
+  // which every form build carries — and, until TODO 300 cut the form case to its
+  // casing-clamp hold, the plate's §186 seat fit beside it — and
   // TODO 206's shared margin, the designed fixed point at an arrangement with
   // no row of its own), and `expectWarns` names the set by prefix: the spec
   // tier holds it EXACTLY (`expect: 'declared'`), so a fourth warning fails
@@ -988,7 +989,7 @@ const SPEC_POINTS = [
   // holds the exact set; `formrect=` is its own metal-centred fit and
   // `gong=arc` its case-path gong, both as landing 5 shipped them.
   { name: 'arrangement-308', q: 'case=rect&barrelstep=0&rsvaz=36&alarmmod=80&gong=arc&formrect=-45.96,45.72,-43.91,51.41', expect: 'declared',
-    expectWarns: ['§186: the rim-to-bore fit', '§261: cased assembly', 'TODO 206 arming spring: follower-B\'s seat sits at the nose\'s margin',
+    expectWarns: ['§261: cased assembly', 'TODO 206 arming spring: follower-B\'s seat sits at the nose\'s margin',
       // §201 landing 2 — THE STOP-WORK IS UNFRAMED IN THIS ARRANGEMENT, and that is
       // a row about this build, not about the default. The arrest window frames the
       // Geneva's engagement now and is cut in every other declared point (the
@@ -1020,8 +1021,8 @@ const SPEC_POINTS = [
   // re-solved seat that moves the fit fails there rather than leaving this
   // row on an outline nobody cuts.
   { name: 'form-rect', q: 'case=rect&formrect=-46.99,46.99,-43.93,43.93', expect: 'declared', sweep: true,
-    expectWarns: ['§186: the rim-to-bore fit', '§261: cased assembly'],
-    why: '§310 landing 4 / §313 — the rect form case at its default (ARRANGEMENT, the spiral seat since §314) and that seat\'s fit; swept, booting exactly the two rows every form build carries' },
+    expectWarns: ['§261: cased assembly'],
+    why: '§310 landing 4 / §313 — the rect form case at its default (ARRANGEMENT, the spiral seat since §314) and that seat\'s fit; swept, booting exactly the row every form build carries (§261\'s; TODO 300 retired §186\'s)' },
   // §328 step 1b — THE APPLIED PILLARS. Since step 1b the default frame is the back plate on lands the base plate raises
   // (step 1's `round-lands` point, `frame=lands`, became the identity and was retired), and the traditional frame on four
   // applied pillars riveted into the plate is kept as a supported style: `frame=pillars` is the movement every gate here
@@ -1050,19 +1051,20 @@ const SPEC_POINTS = [
     // bushes (layout.js DIAL_RECLAIM_NO_ALARM, bound on THIS build: the rise's bush at L/D 1), so the two unborne-tail rows
     // are gone; the dial stands 0.51 u further from the plate for them, which puts this free case over the round build's
     // height cap (11.464 mm against CASE_HEIGHT_MAX_MM 11.367) — debt about the case, declared as the form builds declare it
-    expectWarns: ['§186: the rim-to-bore fit', '§261: cased assembly'],
-    why: '§329 landing 4 — the stop-work on the alarm-off free case with the drum turned to 140° (−7.5% case area); boots exactly the free build\'s §186 row and §261\'s depth row, swept' },
+    // (TODO 300 retired the §186 row it carried beside that: the form case now locates and holds its movement)
+    expectWarns: ['§261: cased assembly'],
+    why: '§329 landing 4 — the stop-work on the alarm-off free case with the drum turned to 140° (−7.5% case area); boots exactly the free build\'s §261 depth row (TODO 300 retired its §186 row), swept' },
   // TODO 298 landing 3 — THE BUILD WITHOUT THE ALARM, ON A BOX FORM CASE. Until TODO 298 no alarm-free box build had ever
   // been swept: the battery's tables named the alarm's units and threw, and the case was cut to the solvers' guess, through
   // the setting lever. Now the battery stands down the module's rows on the build's own word and the case is cut to its
   // generated fit (src/form-fits.js), so this point sweeps the alarm-free metal on every run. The fitted kind is the one
-  // §339 measured and the smallest of the four. It boots two filed rows: §186's form-case fit (TODO 300: the form case
-  // does not hold its movement) and §261's depth cap (TODO 289 landing 8 raised the no-alarm dial for the fold's lower
+  // §339 measured and the smallest of the four. It boots one filed row, §261's depth cap (§186's form-case fit, the
+  // second on arrival, is gone since TODO 300 cut the form case to its casing-clamp hold) (TODO 289 landing 8 raised the no-alarm dial for the fold's lower
   // bushes, as stopwork-140 declares it). §311's seconds well, the third on arrival, is gone since TODO 298 bounds the well
   // by the form rail it prints under.
   { name: 'alarm-free-fitted', q: 'alarm=0&case=fitted', expect: 'declared', sweep: true,
-    expectWarns: ['§186: the rim-to-bore fit', '§261: cased assembly'],
-    why: 'TODO 298 landing 3 — the movement without the alarm on the fitted form case at its own generated fit; boots exactly the two filed rows, swept' },
+    expectWarns: ['§261: cased assembly'],
+    why: 'TODO 298 landing 3 — the movement without the alarm on the fitted form case at its own generated fit; boots exactly its filed row (§261\'s; TODO 300 retired §186\'s), swept' },
   // §329 — THE STOP IRON ON THE DEFAULT BUILD. Since the flip the Geneva stop-work is the default arrest (swept as the default
   // itself), and §47's stop iron is the supported alternative, `?arrest=stop-iron`: swept here so it stays buildable.
   { name: 'stop-iron', q: 'arrest=stop-iron', expect: 'silent', sweep: true,
