@@ -816,11 +816,13 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
     const lineAt = (k) => [perp[0] * (off + k), perp[1] * (off + k)];
     let inboard;
     if (flush) {
-      // TODO 300 — the sleeve's end is a plane square to its line, and the pusher's line meets the wall OBLIQUELY (it runs
-      // parallel to a radius, off it), so an end on the line's own exit stood one edge of the section into the bore:
-      // 0.31 u at the fitted bore, past the plate's swell, so the plate could not pass it into the case (§187). The end
-      // stands where the WHOLE section has entered the band (the farthest exit over its width), lining the hole from there.
-      inboard = Math.max(...[-rw, 0, rw].map((k) => rayExit(loops.bore, dir, lineAt(k)))) - SEAT_EMBED;
+      // TODO 300 — on the bore's exit, as the outboard end is on the outer's (TODO 275): the fitted bore brought the band's
+      // inner wall to the plate, and a flush end SQUARE to a line that meets the wall obliquely stood one edge of the
+      // sleeve 0.31 u into the bore, across the plate's path into the case (§187). So the inboard end is cut on the bore
+      // wall's tangent plane at its exit too (below, the outboard end's own construction), and the sleeve lies flush on
+      // both walls. (Ending it where its whole section had entered the band instead shortened it under the outboard
+      // cut's own run across its width, on arrangement-308's oblique corner, and moved the pusher's seat: TODO 241.)
+      inboard = rayExit(loops.bore, dir, lineAt(0)) - SEAT_EMBED;
     } else {
       // §325 landing 6 — the plate's metal on THIS stem's line is MEASURED off the built plate (main.js PLATE_RIM.floors, within the
       // sleeve's section, bevel and all), so the tube stands CLEAR_MARGIN off exactly the number main.js's §186 assert holds it to.
@@ -861,6 +863,13 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
       const [nx, ny] = rayExitNormal(loops.outer, dir, lineAt(0));
       endSlope = (nx * perp[0] + ny * perp[1]) / (nx * dir[0] + ny * dir[1]);
       cutEndOnPlane(sleeve.geometry, 'y', Math.max(len, 1e-6) / 2, 'x', endSlope);
+      // TODO 300 — and the inboard end on the bore wall's own plane where the line enters it (the bore is the outer's
+      // parallel offset, so its normal there is the same wall's), so no edge of the sleeve stands into the bore
+      const [bx, by] = rayExitNormal(loops.bore, dir, lineAt(0));
+      const inSlope = (bx * perp[0] + by * perp[1]) / (bx * dir[0] + by * dir[1]);
+      if (!(Math.abs(inSlope - endSlope) * rw < len))
+        console.warn(`makeFormCase TODO 300: ${name}'s two end planes cross inside the sleeve (slopes ${endSlope.toFixed(3)} / ${inSlope.toFixed(3)} over ±${rw.toFixed(3)}, length ${len.toFixed(3)})`);
+      cutEndOnPlane(sleeve.geometry, 'y', -Math.max(len, 1e-6) / 2, 'x', inSlope);
     }
     sleeve.position.y = inboard + len / 2;
     sleeve.name = `${name}Sleeve`;
