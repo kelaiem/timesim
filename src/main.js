@@ -48,7 +48,7 @@ import {
   segCircleClear, solveElbow, solveStopWork, ELBOW_E_MAX,   // §85 step A: the stop work solves like the layout does
   // Backlog (watch case): the schematic-tier case's dimensions — caps and
   // real hardware sizes, all derived in layout.js at the §39 pin.
-  CASE_WIDTH_MAX, CASE_LUG_SPAN_MAX, STRAP_MM_DEFAULT, STRAP_PICK_MIN_MM, fittedFlatMin, CASE_HEIGHT_MAX_MM, CASE_HEIGHT_STEP_MM, CASE_CLEAR, CASE_BAND_T, rigidSplit,
+  CASE_WIDTH_MAX, CASE_WIDTH_MAX_MM, STRAP_MM, CASE_LUG_SPAN_MAX, STRAP_MM_DEFAULT, STRAP_PICK_MIN_MM, fittedFlatMin, CASE_HEIGHT_MAX_MM, CASE_HEIGHT_STEP_MM, CASE_CLEAR, CASE_BAND_T, rigidSplit,
   CASE_SCREW_SHAFT_D, CASE_SCREW_HEAD_D, CASE_GASKET_D, CASE_GASKET_SEAT, CASE_CRYSTAL_T, CASE_CRYSTAL_CLEAR,
   CASE_TUBE_D, CASE_PUSHER_D,
   CASE_LUG_T, caseLugPlan,                                  // §190/§280: the lug/bar stock and the lug's one outline law — the schematic tier draws the same metal makeCase cuts
@@ -3247,7 +3247,7 @@ if (FORM) {
 if (FORM) {
   const wOut = 2 * (FORM.hw + FORM_HOLD_NOMINAL.boreBack + CASE_BAND_T);
   if (wOut > 2 * CASE_WIDTH_MAX + 1e-9)
-    console.warn(`§307: the form case is ${(wOut * UNIT_MM).toFixed(2)} mm across its short side — over the 40 mm owner cap`);
+    console.warn(`§307: the form case is ${(wOut * UNIT_MM).toFixed(2)} mm across its short side — over the owner cap of ${CASE_WIDTH_MAX_MM} mm (2 × the ${STRAP_MM} mm strap + 2)`);
 }
 
 // Centroid of just the wheel-train arbors (excludes balance/dial), used to
@@ -4142,7 +4142,9 @@ const CASE_R_OUT_FRONT = CASE_R_IN + CASE_BAND_T;
 // sits under the rim's 1 mm bearing, so the bearing sets the bore (Ø37.78 mm), and the annulus holds nothing else. With the
 // alarm the strike group binds first: measured at Ø0.6 the ring stood at r 45.26 and the hammer's cranked tail found no
 // riser station clear of the plate's rim. So the alarm build keeps Ø0.8 (Ø38.22).
-const CASE_CLAMP_SHAFT_D = FORM ? CASE_SCREW_SHAFT_D : 0.6 / UNIT_MM;
+// §343 landing 2: and a FORM case's too. It kept Ø1.0 because its back band was the 40 mm cap and the cap cost nothing;
+// since the cap is a ceiling and every case the smallest its metal allows, a form case's band is sized like the round's.
+const CASE_CLAMP_SHAFT_D = 0.6 / UNIT_MM;
 const CASE_CLAMP_HEAD_D = CASE_CLAMP_SHAFT_D * (CASE_SCREW_HEAD_D / CASE_SCREW_SHAFT_D);
 // §325 landing 15 — THE LEDGE'S BEARING IS A LAND, not a precedent. §186 held the rim's bearing on the ledge to "the 1 mm
 // the seat it replaces provided", a number carried from the part it replaced rather than derived. What the bearing does is
@@ -4165,7 +4167,11 @@ const CASE_R_BORE_BACK_FLOOR = Math.ceil(100 * Math.max(
 // 48.38 → 46.06; the alarm stem and pusher are cut to the wall wherever it stands). Measured on that build, the annulus
 // holds them inside the floor's bore with nothing in the band at any pose (probe-case-relief). So the cap no longer holds
 // the round case out anywhere: the alarm's room is what the clamps leave.
-const CASE_R_OUT = FORM ? CASE_WIDTH_MAX : CASE_R_BORE_BACK_FLOOR + CASE_BAND_T;
+// §343 landing 2 — AND A FORM CASE'S ROUND CHAIN IS MINIMAL TOO. It was the cap (CASE_WIDTH_MAX), spent whole, so a form
+// case could never come in under the limit and a larger movement broke its clamp thread into the bore (−0.378 at the
+// r 11.5 balance) where the round case simply grew. The owner's rule: every case is the smallest its metal allows, held
+// under the strap's limit (layout.js, CASE_WIDTH_MAX). So both builds read the same floor.
+const CASE_R_OUT = CASE_R_BORE_BACK_FLOOR + CASE_BAND_T;
 // The back band's bore: one wall inside the body outer — the same 1 mm
 // dress-watch wall the front keeps, and the gasket annulus keeps exactly
 // its old proportions inside it.
@@ -4355,7 +4361,7 @@ const CASE_CLAMP_AZ = (() => {
 // interior + one lug thickness.)
 const CASE_LUG_INNER = (SPEC.strapMm ?? STRAP_MM_DEFAULT) / UNIT_MM;
 if (CASE_R_OUT > CASE_WIDTH_MAX + 1e-9)
-  console.warn(`case: body Ø${(2 * CASE_R_OUT * UNIT_MM).toFixed(2)} mm breaks the 40 mm owner cap (body, lugs excluded) — the movement outgrew its housing budget`);
+  console.warn(`case: body Ø${(2 * CASE_R_OUT * UNIT_MM).toFixed(2)} mm breaks the owner cap of ${CASE_WIDTH_MAX_MM} mm (2 × the ${STRAP_MM} mm strap + 2; body, lugs excluded) — the movement outgrew its housing budget`);
 // The old across-the-lug-tips assert is gone for good (§190): the owner
 // re-based the 40 mm cap to the case BODY, lugs excluded, and the lugs'
 // radial chain now DERIVES in layout.js from the wrap gap (CASE_STRAP_CLEAR

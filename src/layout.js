@@ -778,10 +778,15 @@ export const UNIT_MM = CHAIN_PITCH_MM / CHAIN_PITCH;   // 0.379 mm per unit
 export const MM = (units) => units * UNIT_MM;          // for readouts and asserts
 
 // --- THE CASE (backlog: watch case, schematic tier) --------------------------
-// Owner caps, hard: case under 40 mm wide (crown excluded), lug width 20 mm
-// at most. Converted once at the §39 pin so every downstream number is in
-// units; the boot assert in main.js refuses a layout that outgrows them.
-export const CASE_WIDTH_MAX = 40 / UNIT_MM / 2;   // radius cap, 52.77 units
+// Owner caps, hard: lug width 20 mm at most, and the case body no wider than the STRAP it is worn on allows.
+// §343 landing 2 (the owner's rule, 2026-11-13): the body's limit is 2 × strap + 2 mm, a proportion read off the strap
+// the build is cut for (SPEC.strapMm, ?strap=), replacing the fixed 40 mm cap. The case itself is never sized TO the
+// limit: every case is the smallest its metal allows, and the limit is the ceiling it is held under. At the default
+// 19 mm strap it is 40 mm, the cap it replaces; a 20 mm strap (the lug cap) allows 42 mm. Converted once at the §39
+// pin so every downstream number is in units; the boot assert in main.js refuses a layout that outgrows it.
+export const STRAP_MM = SPEC.strapMm ?? STRAP_MM_DEFAULT;
+export const CASE_WIDTH_MAX_MM = 2 * STRAP_MM + 2;
+export const CASE_WIDTH_MAX = CASE_WIDTH_MAX_MM / UNIT_MM / 2;   // radius cap: 52.77 units at the default strap
 export const CASE_LUG_SPAN_MAX = 20 / UNIT_MM;    // 52.77 units across the spring bar
 // §261 step 5 — THE HEIGHT CAP, and it is a RATCHET rather than a target (the
 // owner's call, 2026-10-11). No real calibre carries this stack — the L044.1
