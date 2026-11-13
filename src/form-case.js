@@ -664,11 +664,19 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
       const c = [p[0] + nrm[0] * hold.screw, p[1] + nrm[1] * hold.screw], h = hold.dogHalfW;
       const pts = [];
       for (let j = 0; j <= 16; j++) { const f = (Math.PI * j) / 16; pts.push([c[0] + h * (Math.cos(f) * t[0] - Math.sin(f) * nrm[0]), c[1] + h * (Math.cos(f) * t[1] - Math.sin(f) * nrm[1])]); }
-      const lat = (q) => (q[0] - c[0]) * t[0] + (q[1] - c[1]) * t[1], out = (q) => (q[0] - c[0]) * nrm[0] + (q[1] - c[1]) * nrm[1];
-      const edge = (sg) => { const b0 = [c[0] + sg * h * t[0], c[1] + sg * h * t[1]], d = rayExit(tipLoop, nrm, b0); return [b0[0] + nrm[0] * d, b0[1] + nrm[1] * d]; };
-      pts.push(edge(-1));
-      pts.push(...tipLoop.filter((q) => out(q) > 0 && Math.abs(lat(q)) < h).sort((a, b) => lat(a) - lat(b)));
-      pts.push(edge(1));
+      // the tip: rays along the outward normal across the tongue's width, each ending at its NEAREST crossing of the tip
+      // loop ahead of the screw (a concave free outline crosses a ray more than once, and rayExit's farthest crossing or
+      // the loop's vertices in the band picked up a far stretch of it, folding the ring)
+      const nearestExit = (b0) => { let best = Infinity; const m = tipLoop.length;
+        for (let i = 0; i < m; i++) { const [px, py] = tipLoop[i], [qx, qy] = tipLoop[(i + 1) % m], ex = qx - px, ey = qy - py;
+          const den = nrm[0] * ey - nrm[1] * ex; if (Math.abs(den) < 1e-12) continue;
+          const wx = px - b0[0], wy = py - b0[1], d = (wx * ey - wy * ex) / den, u = (wx * nrm[1] - wy * nrm[0]) / den;
+          if (d > 0 && u >= -1e-9 && u <= 1 + 1e-9 && d < best) best = d; }
+        return best; };
+      const TIP_N = 16;
+      for (let j = 0; j <= TIP_N; j++) { const l = -h + (2 * h * j) / TIP_N, b0 = [c[0] + l * t[0], c[1] + l * t[1]], d = nearestExit(b0);
+        if (!(d < Infinity)) { console.warn(`makeFormCase TODO 300: dog ${k}'s tongue meets no wall along its normal`); continue; }
+        pts.push([b0[0] + nrm[0] * d, b0[1] + nrm[1] * d]); }
       let area = 0; for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; area += a[0] * b[1] - b[0] * a[1]; }
       if (area < 0) pts.reverse();
       if (!loopSimple(pts)) console.warn(`makeFormCase TODO 300: dog ${k}'s outline is not a simple ring`);
