@@ -38,7 +38,7 @@ import { ZERO_AREA_MAX, CLEAR_MARGIN, HANDOFF_TRACK_TOL, UNIT_MM, Z_DIAL, SLENDE
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME, SPEC,                                    // §36 Apply: the same predicate that builds the unit, and the same name
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, rigidSplit,
-  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, ESCAPE_STEEL_SIGMA_Y_PA, ESCAPE_STEEL_SIGMA_Y_BAND, ESCAPE_TIP_R_M, ESCAPE_TIP_R_BAND, LINE_CONTACT_SHAKEDOWN_P0_PER_Y, ESCAPE_STEEL_HARDNESS_BAND, TABOR_H_OVER_SIGMA_Y, TABOR_TOLERANCE, CUT_TOOL_R_M, CUT_CONCAVE_MIN_DEG, SERVICE_INTERVAL_YEARS, DESIGN_LIFE_YEARS, JULIAN_YEAR_S, WEAR_K_BAND, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, MAINSPRING_ALPHA_MIN, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R_SPEC, BALANCE_R_REF, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG, STOPWORK_BUILT, GEARED_BUILT } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
+  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, ESCAPE_STEEL_SIGMA_Y_PA, ESCAPE_STEEL_SIGMA_Y_BAND, ESCAPE_TIP_R_M, ESCAPE_TIP_R_BAND, LINE_CONTACT_SHAKEDOWN_P0_PER_Y, ESCAPE_STEEL_HARDNESS_BAND, TABOR_H_OVER_SIGMA_Y, TABOR_TOLERANCE, CUT_TOOL_R_M, CUT_CONCAVE_MIN_DEG, SERVICE_INTERVAL_YEARS, DESIGN_LIFE_YEARS, JULIAN_YEAR_S, WEAR_K_BAND, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, MAINSPRING_ALPHA_MIN, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R_SPEC, BALANCE_R_REF, BALANCE_R_CASE_BOUND, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG, STOPWORK_BUILT, GEARED_BUILT, F_BALANCE } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 import { auditLubrication, LUBRICATION, LUBRICATION_DEBT, LUBRICATION_WAIVERS } from './lubrication.js';   // §247 tier one
 import { LOCK_DEG, RUN_DEG } from './escapement.js';   // TODO 299 row 22: the lock is declared against shock and the run is not, so the run is the wear budget's spendable share
 // §161 — the override merge, for the fixture check at the foot of this file.
@@ -1347,6 +1347,8 @@ function unitsIntersect(A, B, boxCache = null, memo = null) {
 // canonical state (enterAxis, below the array). An axis that wants a state must
 // NAME it — which is what turns an inherited accident into a decision, and what
 // lets §127 sweep two axes in two browser contexts and merge the results.
+// §343 — two beats of the balance, in seconds (the beat axis's span).
+const BEAT_PAIR_S = 1 / F_BALANCE;
 export const AXES = [
   {
     name: 'beat',
@@ -1356,7 +1358,11 @@ export const AXES = [
     // window is half that wide, so the count follows it rather than the
     // window going under-sampled by a factor of two.
     n: Math.round(96 * 0.16 / IMPULSE_WIDTH),
-    pose: (f) => ({ tau: f * 0.4, crownPullT: 0, leverEngage: 0, tension: 1 }),
+    // §343 — TWO BEATS, derived: a beat is 1/(2F) s, so two are 1/F (0.4 s at
+    // 2.5 Hz, the same double the literal was). A literal 0.4 covered 1.6 beats
+    // at 14,400's 2 Hz and missed the second unlock, whose recoil is the only
+    // reversal the escape, third and centre wheels make.
+    pose: (f) => ({ tau: f * BEAT_PAIR_S, crownPullT: 0, leverEngage: 0, tension: 1 }),
   },
   {
     name: 'crown',
@@ -1726,7 +1732,7 @@ export const AXES = [
     // largest the balance can reach): n scales with the swing it may carry.
     name: 'position',
     n: Math.round(Math.round(96 * 0.16 / IMPULSE_WIDTH) * AMPLITUDE_PEAK_DEG / AMPLITUDE_POSED_DEG),
-    pose: (f) => ({ tau: f * 0.4, crownPullT: 0, leverEngage: 0, tension: 1, position: 'DU' }),
+    pose: (f) => ({ tau: f * BEAT_PAIR_S, crownPullT: 0, leverEngage: 0, tension: 1, position: 'DU' }),   // §343: the beat axis's two beats
   },
 ];
 
@@ -5236,7 +5242,7 @@ export const PLATE_SEATS = [
   { unit: "Fusee cock", mesh: "steadyPin", kind: "planted", why: "§336 landing 4 (TODO 286): the foot's two steady pins, pressed through the plate — they key the cock against its arm's twist" },
   { unit: "Keyless works", mesh: "TorusGeometry#30", kind: "housed", why: "the crown stem's bushing, in the plate rim's notch (§186)" },
   { unit: "Keyless works", mesh: "BoxGeometry#31", kind: "housed", why: "the crown-stem sleeve, standing in the plate rim's notch" },
-  { unit: "Setting lever", mesh: "CylinderGeometry#8", kind: "pivot", why: "the lever's pivot, seated mid-plate (#7 until TODO 214's boss, lug and screw renumbered the unit)" },
+  { unit: "Setting lever", mesh: "settingLeverPivot", kind: "pivot", why: "the lever's pivot, seated mid-plate (CylinderGeometry#8 until §343 named it: the index moved with the hack rod's own stud, #7 on a build whose lever carries none)" },
   { unit: "Yoke", mesh: "CylinderGeometry#4", kind: "pivot", why: "the yoke's pivot, seated mid-plate (#3 until TODO 214's tail pin)" },
   { unit: "Keyless works", mesh: "yokeSpringPost", kind: "planted", why: "TODO 214: the yoke spring's stud, planted in the plate's dial face" },
   { unit: "Stop lever", mesh: "CylinderGeometry#6", kind: "planted", why: "the lever's arbor post, planted in the plate" },
@@ -11508,7 +11514,11 @@ export function checkEqualisation(clock) {
         const steps = (BALANCE_R_REF - BALANCE_R_SPEC) / BAL_R_STEP;
         if (T.radius !== BALANCE_R_SPEC || T.radiusRef !== BALANCE_R_REF || T.radiusStep !== BAL_R_STEP)
           failures.push({ what: 'amplitude target block weighs a different radius from BALANCE_R_SPEC', record: { radius: T.radius, radiusRef: T.radiusRef, radiusStep: T.radiusStep }, radius: BALANCE_R_SPEC, ref: BALANCE_R_REF, step: BAL_R_STEP });
-        else if (steps < 0)
+        // §343 — except a row whose radius the CASE sets (RATE_TABLE's
+        // `caseBound`): the spring could carry more, the 40 mm case cannot, and
+        // probe-343-chronometer.mjs holds that cap on both sides on booted builds.
+        // It must still sit on the grid, and carries no larger-wheel test here.
+        else if (steps < 0 && !BALANCE_R_CASE_BOUND)
           failures.push({ what: 'balance larger than the shipped movement\'s (BALANCE_R_REF)', radius: BALANCE_R_SPEC, ref: BALANCE_R_REF });
         else if (Math.abs(steps - Math.round(steps)) > 1e-9)
           failures.push({ what: 'balance radius off the BAL_R_STEP grid below BALANCE_R_REF', radius: BALANCE_R_SPEC, ref: BALANCE_R_REF, step: BAL_R_STEP });
@@ -15002,7 +15012,11 @@ export const LINE_SPEC_FORKS = [
       // §314 — the arranged movement's rod line (ALARM_LINKAGE_LINES, searched round the arrest's tower)
       // gives crank B a longer output arm and a smaller swing, so the sagitta is re-read off the metal
       // (the designed line's was 0.13470189764102053: arm 6.762, swing 0.3996 rad)
+      // §343 — and a build that carries ANOTHER line (ALARM_LINKAGE_LINES, keyed per arrangement like the
+      // build's own table) reads its sagitta off its own metal: `byLine` keys a value by that line's
+      // 'dirDeg|c', and `value` is the arranged default's line (28°, 31.34).
       straight: { value: 0.083199897954356,
+        byLine: { '28|31.33': 0.08325177843292081 },   // §343: the 14,400 row's line (probe-314-linkage-line --q vph=14400), arm 10.853
         forcedBy: '§261 2c’s fold: crank B’s pin, not the pusher’s, works the driver’s slot, on an arc of the crank’s output arm through the line’s two ends; its greatest departure from that chord is the arc’s sagitta, arm·(1 − cos(θ/2)) — on §314’s arranged line the arm 10.861 over a 0.2479 rad swing (clock.alarmLinkage), 0.0834 by the formula and 0.0832 read off the metal' },
     },
   },
@@ -16126,7 +16140,12 @@ export async function checkLineSpec(clock) {
   const evaluate = (ref, base, over) => lineSpecEvaluate(ref, base, over, laws);
   // the fork table's own structure, judged before anything is measured
   const forkFor = {};
-  for (const f of LINE_SPEC_FORKS) {
+  // §343 — a fork row's value for the linkage line THIS build carries (byLine), else its declared value
+  const lineKey = clock.alarmLinkage?.line ? `${clock.alarmLinkage.line.dirDeg}|${clock.alarmLinkage.line.c}` : null;
+  const atLine = (rows) => Object.fromEntries(Object.entries(rows || {}).map(([k, o]) =>
+    [k, o && o.byLine && lineKey in o.byLine ? { ...o, value: o.byLine[lineKey] } : o]));
+  for (const f0 of LINE_SPEC_FORKS) {
+    const f = { ...f0, rows: atLine(f0.rows) };
     const ref = LINE_SPECS.find((r) => r.name === f.ref);
     if (!ref) { malformed.push({ fork: f.name, error: `forks '${f.ref}', which is not a reference` }); continue; }
     if (forkFor[f.ref]) { malformed.push({ fork: f.name, error: `'${f.ref}' already has the fork '${forkFor[f.ref].name}' — one fork per reference` }); continue; }

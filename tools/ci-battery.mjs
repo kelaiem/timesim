@@ -894,6 +894,7 @@ export const SPEC_POINTS = [
   { name: 'reconf=1', q: 'reconf=1', expect: 'silent', why: '§93 — reconfigure mode entered at boot from its own deep link' },
   // §22's two knobs, at both ends of their clamped ranges.
   { name: 'vph=28800', q: 'arrangement=designed&vph=28800', expect: 'any', why: '§22 — the fastest rate in RATE_TABLE, a re-geared escape mesh' },
+  { name: 'vph=14400', q: 'vph=14400', expect: 'silent', why: '§343 — the slowest rate, a re-geared escape mesh carrying the largest balance the case admits; closed by landings 1b–1e, so held silent' },
   { name: 'reserveh=48', q: 'arrangement=designed&reserveh=48', expect: 'any', why: "§22 — the reserve clamp's upper end, the deepest fusee groove stack" },
   // §237 — the hairspring stud's radius, which is TODO 147's solve condition
   // exposed and the cock's carrier arm with it (`yS` reads `termEndR`, so the

@@ -22,7 +22,7 @@ import { UI_LANG, setUiLang, LOCALES, fillLanguagePicker, t, fmtNum, fmtInt, fmt
 // consumed unchanged below; the geometry fingerprint proves the move changed
 // no part's position.
 import {
-  SPEC, SPEC_RATES, ALARM_BUILT, PULLEY_BARREL, DRUM_AZ_DEG,
+  SPEC, SPEC_RATES, DEFAULT_VPH, RATE_VARIANT, ALARM_BUILT, PULLEY_BARREL, DRUM_AZ_DEG,
   F_BALANCE, BEAT_DEG, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_STEP, BALANCE_R_REF, BAL_R_STEP, balanceWheelDims, BALANCE_R_SPEC, AMPLITUDE_POSED_DEG, LIFT_DEG, IMPULSE_WIDTH,
   CLEAR_MARGIN, HANDOFF_TRACK_TOL, ZERO_AREA_MAX, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK, FORK_HALF_Z,
   BAL_T, BAL_RIM_F, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T, NICKEL_SILVER_SIGMA_Y_PA,
@@ -6311,7 +6311,7 @@ const forkCock = (() => {
   // (±100°) and the reach; take the nearest feasible seat, which keeps the
   // bridge compact. hostBossR is the host end's boss radius — it sizes the
   // connecting bar the seat commits the bridge to.
-  const legFor = (host, other, legR, hostBossR) => {
+  const legFor = (host, other, legR, hostBossR, clearSpring = true) => {
     const away = Math.atan2(host.y - other.y, host.x - other.x);
     // What must clear at the seat is the chain NODE built there (legR·1.35)
     // — the leg shaft alone under-clears by 0.4, which was latent while the
@@ -6342,7 +6342,18 @@ const forkCock = (() => {
           const L2 = vx * vx + vy * vy || 1e-9;
           const t = clamp(((P.balance.x - host.x) * vx + (P.balance.y - host.y) * vy) / L2, 0, 1);
           const dBar = Math.hypot(P.balance.x - host.x - t * vx, P.balance.y - host.y - t * vy);
-          const mBar = dBar - (BAL_OUTER_R + barHW + CLEAR_MARGIN);   // bar's edge clears the balance
+          // §343 — and, PREFERRED, the hairspring's breathing disc, which the floor
+          // discs above already carry for the node: it swings out past BAL_OUTER_R
+          // (9.56 vs 9.30 shipped, 12.44 vs 11.80 at 14,400) and the bar shares its
+          // band (bar z 7.95–8.95, spring 7.44–8.00); at 14,400 the bar stood 0.012
+          // off the spring's widest frame. The disc is a BOUND, not the spring: the
+          // stud is seated long after this scan, so the spring's orientation is not
+          // known here and every azimuth is assumed reached. Measured on the metal,
+          // the stud-radius builds' bars clear their springs by 1.3 while their
+          // seats fail the disc, so the disc is a preference: the nearest seat that
+          // clears it when one exists, else the balance's disc alone, as before
+          // (legB below), and the sweeps judge the metal either way.
+          const mBar = dBar - ((clearSpring ? Math.max(BAL_OUTER_R, HAIRSPRING_SWEPT_R) : BAL_OUTER_R) + barHW + CLEAR_MARGIN);
           // §125 Tier B — the spine corridor (COCK_SPINE above): the seat
           // node and the whole bar stay out of the balance cock's reach.
           const latRay = (px, py, rad) => {
@@ -6368,7 +6379,10 @@ const forkCock = (() => {
   // makeEscapeBridge drew the leg at 0.62 of the node (0.963) — one radius
   // written twice. The scan and the drawing now read this one.
   const legR = COCK_LEG_BORE_R + STOCK_MIN_U;
-  const legB = legFor(P.fork, P.escape, legR, bossFork);
+  const legB = (() => {   // §343: a seat clear of the spring's disc when one exists, else the balance's alone
+    const pref = legFor(P.fork, P.escape, legR, bossFork, true);
+    return pref.missed ? legFor(P.fork, P.escape, legR, bossFork, false) : pref;
+  })();
   if (legB.missed) {
     // TODO 30 wall three — this used to be a bare warn followed by a null
     // dereference on the next line, which took the boot down and with it every
@@ -6802,10 +6816,11 @@ for (const arbor of [centerArbor, thirdArbor, fourthArbor, escapeArbor]) {
 // part's plane explicitly (a box measure is wrong here: the lever's tail
 // post spans the whole movement, so its box top is nowhere near its body).
 const PLATE_BACK = BACK_PLATE_Z - BACK_PLATE_T / 2; // back plate spans [z−1, z+1]
-function addDialSidePivot(arbor, { staffR = 0.5, jewelR = 1.3, fromZ } = {}) {
+function addDialSidePivot(arbor, { staffR = 0.5, jewelR = 1.3, fromZ, name = null } = {}) {
   const len = PIVOT_SEAT_Z - fromZ;
   if (len <= 0.05) return;
   const shaft = new THREE.Mesh(new THREE.CylinderGeometry(staffR, staffR, len, 12), MATS.steel);
+  if (name) shaft.name = name;   // §343: a pivot a table names, named, so its row does not ride the unit's mesh count
   shaft.rotation.x = Math.PI / 2;
   shaft.position.z = (fromZ - arbor.position.z) + len / 2; // arbor-local
   arbor.add(shaft);
@@ -8608,6 +8623,7 @@ const ALARM_PINB_SEAT_FIXED = Object.freeze({
   'cfg1:{"spec":{"reserveHours":30,"vph":18000},"route":null,"tuned":[]}': 5.2780,   // §278 landing 6: re-quoted to its fixed point — the reclaim moved the dial-hung column against the held arming blade's corner, and hanger 3's jog, moved beside the blade, lengthened the ground's developed path and with it the section and the room (was 5.2650). TODO 240: re-quoted to its fixed point — the re-aimed lever reflects the blade to the nose by its new ratio, and the pin's journal is charged on the same-side reaction (was 5.4263). mN at the pin — the shared equal margin, re-derived and asserted at the link's arming solve (rounded to 0.1 µN). §261 2c: re-quoted to its fixed point — the folded same-side beak reflects the arming blade to the nose by its own lever (was 5.2502)
   'cfg1:{"spec":{"alarmModAzDeg":60,"barrelStepDeg":0,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":6,"vph":18000},"route":null,"tuned":[]}': 5.1837,   // §313: the swung barrel, the reserve at 12 on six idlers, the module at 60°
   'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-20,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":18000},"route":null,"tuned":[]}': 5.2248,   // §314: the barrel at −20°, the reserve at 12 on two idlers, the module at 50°
+  'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-20,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":14400},"route":null,"tuned":[]}': 5.2249,   // §343: the same arrangement at the chronometer's beat (its grown plate moves the link's guide triangle); iterated 5.2223 → 5.2249, which re-derives itself
 });
 const ALARM_PINB_SEAT_MN = ALARM_PINB_SEAT_FIXED[ALARM_ARR_KEY] ?? 5.2780;   // mN at the pin; a spec with no row takes the designed value
 const ALARM_PINB_BLADE = (() => {
@@ -11067,7 +11083,7 @@ registerLabel('Setting lever', settingLeverGroup);
 // The lever swings on a stud planted in the plate's BACK face now — the
 // dial-side mirror of the post it used to stand on (checkSupportGeometry
 // keeps its ['Setting lever','plate'] edge honest either way).
-addDialSidePivot(settingLeverGroup, { staffR: KEYLESS_STAFF_R, jewelR: 1.0, fromZ: Z_SETTING_LEVER });
+addDialSidePivot(settingLeverGroup, { staffR: KEYLESS_STAFF_R, jewelR: 1.0, fromZ: Z_SETTING_LEVER, name: 'settingLeverPivot' });
 
 // Yoke: on the LEVER's side of the stem since TODO 214 (its pivot mirrored
 // across the stem line at the same YK_C — it stood on the far side, its body and
@@ -12219,20 +12235,45 @@ const STOPWORK_AT_POST = {
 // the build it always was, float for float.
 function onHackPin(inputs, pivot) {
   const probe = solveStopWork({ ...inputs, warn: () => {} }); // the real solve reports
-  const headroom = inputs.TQ_TOP_Z - (probe.STOP_MAST_TOP - probe.Z_STOP_PIVOT) - inputs.ROD2_PLANE_Z;
+  const headroomOf = (pr) => inputs.TQ_TOP_Z - (pr.STOP_MAST_TOP - pr.Z_STOP_PIVOT) - inputs.ROD2_PLANE_Z;
+  const ceilingOf = (pr) => headroomOf(pr) * Math.sin(pr.STOP_PSI_TARGET) * Math.abs(pr.STOP_TANG_K);
   const stroke = Math.hypot(inputs.postEng.x - inputs.postRel.x, inputs.postEng.y - inputs.postRel.y);
-  const ceiling = headroom * Math.sin(probe.STOP_PSI_TARGET) * Math.abs(probe.STOP_TANG_K);
-  const k = Math.min(1, ceiling / stroke);
-  if (k === 1) return { inputs, k };
-  const at = (p) => ({ x: pivot.x + (p.x - pivot.x) * k, y: pivot.y + (p.y - pivot.y) * k });
-  return {
-    k,
-    inputs: {
+  const reduced = (k) => {
+    const at = (p) => ({ x: pivot.x + (p.x - pivot.x) * k, y: pivot.y + (p.y - pivot.y) * k });
+    return {
       ...inputs,
       postEng: at(inputs.postEng), postRel: at(inputs.postRel),
       tailPostWorldAt: (t) => at(inputs.tailPostWorldAt(t)),
-    },
+    };
   };
+  // §343 — the ceiling is only a claim about a station the probe CHOSE. When
+  // no station about the balance clears at the full post (the probe fell back
+  // to the outward ideal, which nothing checked), a fraction read off that
+  // frame is a number about no linkage: at the 14,400 row's balance it read
+  // k 0.38, and the crank swept its own bracket. Then the pin comes in only
+  // as far as a CHOSEN station needs, which is the same rule one step on: the
+  // largest k on the arm whose own probe finds a routable station AND whose
+  // mast fits that station's ceiling (stroke · k ≤ ceiling): the first on a
+  // 0.05 grid from the post inward, then refined to 0.01 below the coarse step
+  // above it (each probe is a whole solve, ~38 ms on a dev container, and a full
+  // 0.01 walk held the boot 1.7 s; measured at the 14,400 row, the full walk
+  // and this one both answer 0.56).
+  if (probe.STOP_BEARING_FOUND !== 'routable') {
+    const ok = (k) => {
+      const inp = k === 1 ? inputs : reduced(k);
+      const pr = solveStopWork({ ...inp, warn: () => {} });
+      return pr.STOP_BEARING_FOUND === 'routable' && stroke * k <= ceilingOf(pr) ? inp : null;
+    };
+    for (let c = 20; c >= 1; c--) {
+      const hit = ok(c / 20);
+      if (!hit) continue;
+      for (let f = c * 5 + 4; f > c * 5 && c < 20; f--) { const fine = ok(f / 100); if (fine) return { inputs: fine, k: f / 100 }; }
+      return { inputs: hit, k: c / 20 };
+    }
+  }
+  const k = Math.min(1, ceilingOf(probe) / stroke);
+  if (k === 1) return { inputs, k };
+  return { k, inputs: reduced(k) };
 }
 await breathe(88);
 const { inputs: STOPWORK_INPUTS, k: HACK_PIN_K } = onHackPin(STOPWORK_AT_POST, settingLeverPivot);
@@ -13090,7 +13131,8 @@ const drumPos = {
   for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (reach(m) <= plateR) lo = m; else hi = m; }
   // §75 step 1 — the drum's SIZE was solved along the default direction. A moved drum (?drumaz=) keeps that size, so there
   // only the fit is held (its chain coil one CLEAR_MARGIN inside the plate); "as large as the plate allows" is the default's claim.
-  if (DRUM_AZ_DEG !== null ? !(DRUM_R_ACTUAL <= lo + 1e-9) : !(DRUM_R_ACTUAL <= lo + 1e-9 && lo - DRUM_R_ACTUAL < 0.01))
+  // §343: so does a RATE VARIANT, which runs the shipped spring by RATE_TABLE's premise (layout.js, RATE_VARIANT).
+  if (DRUM_AZ_DEG !== null || RATE_VARIANT ? !(DRUM_R_ACTUAL <= lo + 1e-9) : !(DRUM_R_ACTUAL <= lo + 1e-9 && lo - DRUM_R_ACTUAL < 0.01))
     console.warn(`TODO 207: DRUM_R_ACTUAL ${DRUM_R_ACTUAL} is not the plate's bound rounded down — the drum's chain coil may reach ${lo.toFixed(4)} (one CLEAR_MARGIN inside plateR ${plateR.toFixed(3)})`);
 }
 // Drum seat: LIFTED above the great wheel's plane. At the compact 2.5-unit
@@ -19064,7 +19106,7 @@ const polySignedDist = (pts, x, y) => {
 let ROUND_STRIKE_KEEP_MEASURED = null;
 const ROUND_STRIKE_KEEP = !FORM && ALARM_BUILT ? (STRIKE_KEEP_ROUND?.[GONG_SPEC_KEY] ?? null) : null;   // §325 landing 16: one row per spec that must boot clean
 const PILLAR_STRIKE_KEEP = (() => {
-  if (ROUND_STRIKE_KEEP) return { hull: ROUND_STRIKE_KEEP.hull };   // TODO 290: the round build declares the drawn head alone
+  if (ROUND_STRIKE_KEEP) return { hull: ROUND_STRIKE_KEEP.hull, ...(ROUND_STRIKE_KEEP.opening ? { opening: ROUND_STRIKE_KEEP.opening } : {}) };   // TODO 290: the round build declares the drawn head, and (§343) the notch when its tail opens the plate
   const row = GONG_SEAT_LOOKUP && !GONG_SEAT_LOOKUP.refused ? GONG_SEAT_LOOKUP.row : null;
   if (!row?.keep) return null;
   const c = GS.seatCurve(row.curve), n = Math.max(8, Math.ceil(c.L / 0.25)), wire = [];
@@ -19284,9 +19326,10 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
       const K = PILLAR_STRIKE_KEEP;
       c = Math.min(c, polySignedDist(K.hull, x, y));
     }
-    if (PILLAR_STRIKE_KEEP?.opening) {   // TODO 290: a round keep is the hull alone
+    if (PILLAR_STRIKE_KEEP?.opening)   // §343: a round keep carries the notch when its tail opens the plate
+      c = Math.min(c, polySignedDist(PILLAR_STRIKE_KEEP.opening, x, y) - TQ_LAND_MIN);
+    if (PILLAR_STRIKE_KEEP?.wire) {   // TODO 290: a round keep has no seated wire or post
       const K = PILLAR_STRIKE_KEEP;
-      c = Math.min(c, polySignedDist(K.opening, x, y) - TQ_LAND_MIN);
       let dw = Infinity;
       for (let i = 1; i < K.wire.length; i++) {
         const [ax, ay] = K.wire[i - 1], [bx, by] = K.wire[i], vx = bx - ax, vy = by - ay;
@@ -22910,7 +22953,9 @@ for (const [nm, cy, wr] of [['reserve', reserveStationR, reserveWellR], ['second
   const outboard = dialRadius * (2 * G.DIAL_CANVAS_FILL_F) * G.DIAL_RAIL_IN_F
     - DIAL_WALL_HALF - CLEAR_MARGIN - -SECONDS_LOCAL.y;
   // a print scaled to the case (printScale < 1) moved the outboard bound in on purpose: D4 is the ROUND print's maximum
-  if (SPEC.d4 === null && printScale === 1 && Math.abs(inboard - outboard) > 0.02)
+  // §343: a RATE VARIANT keeps the shipped D4 (its plate moved; D4 is the default plate's maximum), held only to FIT:
+  // the inboard bound may not pass the outboard.
+  if (RATE_VARIANT ? inboard > outboard + 1e-9 : SPEC.d4 === null && printScale === 1 && Math.abs(inboard - outboard) > 0.02)
     console.warn(`§125: D4 no longer maximizes the seconds well — inboard bound ${inboard.toFixed(4)} vs `
       + `outboard ${outboard.toFixed(4)} (need equal within 0.02); re-derive D4 from its comment's closed form`);
 }
@@ -31829,10 +31874,18 @@ const STRIKE_SKIRT_BAND = Math.max(ALARM_SWITCH_SKIRT_ROW_Z, PLATE_RIM.back + 0.
 const STRIKE_SKIRT_ARM = (STRIKE_SKIRT_BAND + CLEAR_MARGIN) + CASE_CLAMP_ENG;
 const STRIKE_OUTBOARD_CEIL = STRIKE_SKIRT_ARM - CLEAR_MARGIN - CASE_GLASS_FLOAT_GUARD;
 // Metal above the ceiling must sit under the glass's raised step, whose wall
-// (rStep: the outer edge of the outermost tall bin, plus a margin) must pass
-// through the aperture one margin inside it — so it lies inside the last bin
-// edge at or under RA − 2·CLEAR_MARGIN.
-const STRIKE_R_ALLOW = Math.floor((CASE_APERTURE_R - 2 * CLEAR_MARGIN) / BACK_ENV_BIN_W) * BACK_ENV_BIN_W;
+// (rStep: the outer edge of the outermost tall bin, plus a margin, held at the
+// lathe's INSCRIBED circle, so divided by cos(π/SEG) — §278 landing 2) must
+// pass through the aperture one margin inside it — so the metal lies inside
+// the last bin edge at or under (RA − CLEAR_MARGIN)·cos(π/SEG) − CLEAR_MARGIN.
+// §343: this read RA − 2·CLEAR_MARGIN, the step's law before landing 2 added
+// the facet division; a tail placed at that allowance (the 14,400 row's, at
+// 44.98 under 45.00) put the step 0.024 past the aperture's margin, the sag.
+// The sag is the ROUND ring's: its glass is a lathe of CASE_LATHE_SEG facets. A form case's back is cut to its
+// outline, not turned, so a form build keeps the allowance it always had.
+const STRIKE_R_ALLOW = FORM
+  ? Math.floor((CASE_APERTURE_R - 2 * CLEAR_MARGIN) / BACK_ENV_BIN_W) * BACK_ENV_BIN_W
+  : Math.floor(((CASE_APERTURE_R - CLEAR_MARGIN) * Math.cos(Math.PI / G.CASE_LATHE_SEG) - CLEAR_MARGIN) / BACK_ENV_BIN_W) * BACK_ENV_BIN_W;
 // The crank: the hammer's outboard metal (its post's top, its collet's, its
 // arm's root and its tail's root) drops so the tail's top meets the ceiling.
 const ALARM_TAIL_DROP = Math.max(0, (Z_STRIKE + ALARM_TAIL_T / 2) - STRIKE_OUTBOARD_CEIL);
@@ -32109,8 +32162,10 @@ const GONG_ARC_DESIGN = GONG_DESIGN_LEN_M / (GONG_R * OSC_U);       // rad — t
 // comparison mode is there to compare §198's arc, which is the arc that rings the note in the annulus it stands in, so
 // it rings its OWN derivation (gongArcDeg). The editable aesthetic is the round build's, and only the round build is
 // held to it. (Read as the round build's, arrangement-308's arc rang 1894 Hz.)
-const gongArcDeg = () => (FORM ? GONG_ARC_DESIGN / DEG2RAD : aesthetics.gong.arcDeg);
-if (!FORM && Math.abs(aesthetics.gong.arcDeg - GONG_ARC_DESIGN / DEG2RAD) > 0.05)
+// §343: a RATE VARIANT stands in a plate the authored arc was not derived for, so it rings its own derivation too.
+const GONG_OWN_ARC = FORM || RATE_VARIANT;
+const gongArcDeg = () => (GONG_OWN_ARC ? GONG_ARC_DESIGN / DEG2RAD : aesthetics.gong.arcDeg);
+if (!GONG_OWN_ARC && Math.abs(aesthetics.gong.arcDeg - GONG_ARC_DESIGN / DEG2RAD) > 0.05)
   console.warn(`§198: aesthetics.gong.arcDeg ${aesthetics.gong.arcDeg} is not the ${(GONG_ARC_DESIGN / DEG2RAD).toFixed(2)}° that rings `
     + `${GONG_NOTE_NAME} (${GONG_F1_TARGET_HZ.toFixed(3)} Hz) on a ${GONG_STOCK_MM[1]} mm wire at r ${GONG_R.toFixed(2)} — the shipped default must BE the derivation`);
 // THE BLOW IS RADIAL, and the head is INBOARD of the wire. Between the
@@ -45842,6 +45897,7 @@ const ALARM_LINKAGE_LINES = Object.freeze({
   'cfg1:{"spec":{"reserveHours":30,"vph":18000},"route":null,"tuned":[]}': { dirDeg: 105, c: 25.34 },   // §261 2c: the fold-site search's pick at φ = 240°
   'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-20,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":18000},"route":null,"tuned":[]}': { dirDeg: 28, c: 31.34 },   // §314: probe-314-linkage-line's shortest line clear of the metal (52.51 against the designed line's 60.83, whose crank A arm runs through the arrest's leg B here); its crank A stud stands in the arrest's cross window, which yields (the owner's call)
   'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-20,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":18000},"route":null,"tuned":[]}|turn 48': { dirDeg: 96, c: 27.34 },   // §318: the form cases' pusher turned 48° — probe-314-linkage-line --turn 48, the shortest line clear (28.524, against the unturned 52.51), the same pick on the rect, cushion and tonneau
+  'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-20,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":14400},"route":null,"tuned":[]}': { dirDeg: 28, c: 31.33 },   // §343: the same arrangement at the chronometer's beat — probe-314-linkage-line --q vph=14400, the shortest line clear (52.481), its plate grown 2.52
 });
 // §318: a TURNED pusher carries its own line, re-searched at the turn (probe-314-linkage-line --turn), keyed by the
 // arrangement and the turn in whole degrees; an unturned build reads the arrangement's
@@ -51771,7 +51827,7 @@ updateCrownUI();
   const reloadWithSpec = () => {
     const p = new URLSearchParams(location.search);
     const setOrClear = (k, v, dflt) => { if (v === dflt) p.delete(k); else p.set(k, String(v)); };
-    setOrClear('vph', Number(vphSel.value), 18000);
+    setOrClear('vph', Number(vphSel.value), DEFAULT_VPH);
     setOrClear('reserveh', Number(rsvSel.value), 30);
     // The default option carries the window's quantised inboard end VERBATIM,
     // so picking it clears the param rather than pinning a copy of it.
@@ -52952,6 +53008,16 @@ const FUSEE_COCK = await (async () => {
     if (notch) ROUND_TQ_OUTLINE = notch;
     else if (pts.every(([x, y]) => Math.hypot(x, y) < plateR)) tqPolyHoles.push({ name: 'strike group (§325 landing 16)', pts });
     STRIKE_PLATE_OPENING = Object.freeze({ pts, land: worst.d, landTo: worst.what, verts: STRIKE_PLATE_VERTS, notch: !!notch });
+    // §343 — and the notch is part of the round keep: the pillars were sited ~34,000 lines above it, so a round build
+    // whose tail opens the plate declares the opening too (tools/strike-keep-round.mjs writes it), and the pillar scan
+    // keeps TQ_LAND_MIN to it as a form build's keeps to its seat's opening. Measured here, and held to the declaration.
+    if (ROUND_STRIKE_KEEP_MEASURED) {
+      const opening = pts.map(([x, y]) => [Math.round(x * 1e4) / 1e4, Math.round(y * 1e4) / 1e4]);
+      ROUND_STRIKE_KEEP_MEASURED = Object.freeze({ ...ROUND_STRIKE_KEEP_MEASURED, opening });
+      const a = ROUND_STRIKE_KEEP?.opening;   // a build with no row keeps the frame law as its tripwire (TODO 290's rule)
+      if (ROUND_STRIKE_KEEP && (!a || a.length !== opening.length || a.some(([x, y], i) => Math.abs(x - opening[i][0]) > 1e-3 || Math.abs(y - opening[i][1]) > 1e-3)))
+        console.warn('§343: the round strike keep the pillars were sited on does not declare the notch this build cuts — re-run tools/strike-keep-round.mjs --write');
+    }
   }
   if (FORM && STRIKE_PLATE_OPENING) {
     const pts = STRIKE_PLATE_OPENING.pts;
