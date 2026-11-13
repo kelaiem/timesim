@@ -122,6 +122,10 @@
 #   src/gong-bench-*   the pure gong modules, its worker and its generated data
 #                      are read by the page alone; the arrow points away from
 #                      index.html
+#   service-life.html  §344's service-life view — likewise: it imports nothing
+#   src/service-life-* at all and fetches its generated record, which a build
+#                      boot writes (tools/service-life-data.mjs) and nothing on
+#                      index.html's graph reads; native-host.yml re-derives it
 #   src/alarm-volume.js §320's volume prototype — the bench's alone: it imports
 #                      the gong modules, nothing on index.html's graph imports
 #                      it (src/gong-level.js, which main.js DOES import, is
@@ -240,6 +244,8 @@ on:
       - 'booklet.html'
       - 'gong-bench.html'
       - 'src/gong-bench-*'
+      - 'service-life.html'
+      - 'src/service-life-*'
       - 'src/alarm-volume.js'
       - 'sw.js'
       - '.githooks/**'

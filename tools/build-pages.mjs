@@ -81,9 +81,10 @@ const testMarks = marks.includes('<meta name="robots" content="noindex" />')
 // not a page a visitor should land on from a search.
 // §304 — booklet.html (the printable LEGO booklet) is adopted and noindex like the page it prints from.
 // §310 — gong-bench.html (the gong bench) is adopted and noindex like technic.html.
-const ADOPTED_DOCS = new Set(['primer.html', 'technic.html', 'booklet.html', 'gong-bench.html']);
-const NOINDEX_DOCS = new Set(['test-geometry.html', 'technic.html', 'booklet.html', 'gong-bench.html']);
-const docs = ['index.html', 'explain.html', 'primer.html', 'test-geometry.html', 'technic.html', 'booklet.html', 'gong-bench.html']
+// §344 — service-life.html (the service-life view) is adopted and noindex like the bench.
+const ADOPTED_DOCS = new Set(['primer.html', 'technic.html', 'booklet.html', 'gong-bench.html', 'service-life.html']);
+const NOINDEX_DOCS = new Set(['test-geometry.html', 'technic.html', 'booklet.html', 'gong-bench.html', 'service-life.html']);
+const docs = ['index.html', 'explain.html', 'primer.html', 'test-geometry.html', 'technic.html', 'booklet.html', 'gong-bench.html', 'service-life.html']
   .filter((doc) => !ADOPTED_DOCS.has(doc) || existsSync(join(root, doc)));
 for (const doc of docs) {
   const p = join(root, doc);

@@ -32,7 +32,7 @@
 // there with the reason each is exact).
 //
 // What this does NOT cover: pages that do not import det-math-boot.js
-// (technic.html, booklet.html, gong-bench.html, test-geometry.html, explain and
+// (technic.html, booklet.html, gong-bench.html, service-life.html, test-geometry.html, explain and
 // primer), Web Workers, and tools that import src/ builders under
 // tools/three-node-loader.mjs. None of them feeds the battery.
 import * as S from '../vendor/det-math.module.js';

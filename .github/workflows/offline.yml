@@ -50,6 +50,7 @@ on:
       - 'technic.html'
       - 'booklet.html'
       - 'gong-bench.html'
+      - 'service-life.html'
       # §96 — EVERY module and vendored file. Any of them can be precached (a static import, a dynamic import() the stamper walks,
       # a quoted ./src/ or ./vendor/ URL in a document), and this job now asserts that the cache covers every URL the offline
       # journeys request, so a change under either directory is a change to what it measures. (This replaces six narrower globs —
