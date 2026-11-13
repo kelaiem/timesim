@@ -6342,7 +6342,11 @@ const forkCock = (() => {
           const L2 = vx * vx + vy * vy || 1e-9;
           const t = clamp(((P.balance.x - host.x) * vx + (P.balance.y - host.y) * vy) / L2, 0, 1);
           const dBar = Math.hypot(P.balance.x - host.x - t * vx, P.balance.y - host.y - t * vy);
-          const mBar = dBar - (BAL_OUTER_R + barHW + CLEAR_MARGIN);   // bar's edge clears the balance
+          // §343 — and the hairspring's breathing, which the floor discs above
+          // already carry for the node: it swings out past BAL_OUTER_R (9.56 vs
+          // 9.30 shipped, 12.44 vs 11.80 at 14,400), and the bar shares its band
+          // (at 14,400 the bar stood 0.012 off the spring's widest frame).
+          const mBar = dBar - (Math.max(BAL_OUTER_R, HAIRSPRING_SWEPT_R) + barHW + CLEAR_MARGIN);   // bar's edge clears the balance and its spring
           // §125 Tier B — the spine corridor (COCK_SPINE above): the seat
           // node and the whole bar stay out of the balance cock's reach.
           const latRay = (px, py, rad) => {
@@ -6802,10 +6806,11 @@ for (const arbor of [centerArbor, thirdArbor, fourthArbor, escapeArbor]) {
 // part's plane explicitly (a box measure is wrong here: the lever's tail
 // post spans the whole movement, so its box top is nowhere near its body).
 const PLATE_BACK = BACK_PLATE_Z - BACK_PLATE_T / 2; // back plate spans [z−1, z+1]
-function addDialSidePivot(arbor, { staffR = 0.5, jewelR = 1.3, fromZ } = {}) {
+function addDialSidePivot(arbor, { staffR = 0.5, jewelR = 1.3, fromZ, name = null } = {}) {
   const len = PIVOT_SEAT_Z - fromZ;
   if (len <= 0.05) return;
   const shaft = new THREE.Mesh(new THREE.CylinderGeometry(staffR, staffR, len, 12), MATS.steel);
+  if (name) shaft.name = name;   // §343: a pivot a table names, named, so its row does not ride the unit's mesh count
   shaft.rotation.x = Math.PI / 2;
   shaft.position.z = (fromZ - arbor.position.z) + len / 2; // arbor-local
   arbor.add(shaft);
@@ -11068,7 +11073,7 @@ registerLabel('Setting lever', settingLeverGroup);
 // The lever swings on a stud planted in the plate's BACK face now — the
 // dial-side mirror of the post it used to stand on (checkSupportGeometry
 // keeps its ['Setting lever','plate'] edge honest either way).
-addDialSidePivot(settingLeverGroup, { staffR: KEYLESS_STAFF_R, jewelR: 1.0, fromZ: Z_SETTING_LEVER });
+addDialSidePivot(settingLeverGroup, { staffR: KEYLESS_STAFF_R, jewelR: 1.0, fromZ: Z_SETTING_LEVER, name: 'settingLeverPivot' });
 
 // Yoke: on the LEVER's side of the stem since TODO 214 (its pivot mirrored
 // across the stem line at the same YK_C — it stood on the far side, its body and
@@ -45873,6 +45878,7 @@ const ALARM_LINKAGE_LINES = Object.freeze({
   'cfg1:{"spec":{"reserveHours":30,"vph":18000},"route":null,"tuned":[]}': { dirDeg: 105, c: 25.34 },   // §261 2c: the fold-site search's pick at φ = 240°
   'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-20,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":18000},"route":null,"tuned":[]}': { dirDeg: 28, c: 31.34 },   // §314: probe-314-linkage-line's shortest line clear of the metal (52.51 against the designed line's 60.83, whose crank A arm runs through the arrest's leg B here); its crank A stud stands in the arrest's cross window, which yields (the owner's call)
   'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-20,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":18000},"route":null,"tuned":[]}|turn 48': { dirDeg: 96, c: 27.34 },   // §318: the form cases' pusher turned 48° — probe-314-linkage-line --turn 48, the shortest line clear (28.524, against the unturned 52.51), the same pick on the rect, cushion and tonneau
+  'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-20,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":14400},"route":null,"tuned":[]}': { dirDeg: 28, c: 31.33 },   // §343: the same arrangement at the chronometer's beat — probe-314-linkage-line --q vph=14400, the shortest line clear (52.481), its plate grown 2.52
 });
 // §318: a TURNED pusher carries its own line, re-searched at the turn (probe-314-linkage-line --turn), keyed by the
 // arrangement and the turn in whole degrees; an unturned build reads the arrangement's

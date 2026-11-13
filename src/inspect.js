@@ -5242,7 +5242,7 @@ export const PLATE_SEATS = [
   { unit: "Fusee cock", mesh: "steadyPin", kind: "planted", why: "§336 landing 4 (TODO 286): the foot's two steady pins, pressed through the plate — they key the cock against its arm's twist" },
   { unit: "Keyless works", mesh: "TorusGeometry#30", kind: "housed", why: "the crown stem's bushing, in the plate rim's notch (§186)" },
   { unit: "Keyless works", mesh: "BoxGeometry#31", kind: "housed", why: "the crown-stem sleeve, standing in the plate rim's notch" },
-  { unit: "Setting lever", mesh: "CylinderGeometry#8", kind: "pivot", why: "the lever's pivot, seated mid-plate (#7 until TODO 214's boss, lug and screw renumbered the unit)" },
+  { unit: "Setting lever", mesh: "settingLeverPivot", kind: "pivot", why: "the lever's pivot, seated mid-plate (CylinderGeometry#8 until §343 named it: the index moved with the hack rod's own stud, #7 on a build whose lever carries none)" },
   { unit: "Yoke", mesh: "CylinderGeometry#4", kind: "pivot", why: "the yoke's pivot, seated mid-plate (#3 until TODO 214's tail pin)" },
   { unit: "Keyless works", mesh: "yokeSpringPost", kind: "planted", why: "TODO 214: the yoke spring's stud, planted in the plate's dial face" },
   { unit: "Stop lever", mesh: "CylinderGeometry#6", kind: "planted", why: "the lever's arbor post, planted in the plate" },
@@ -15012,7 +15012,11 @@ export const LINE_SPEC_FORKS = [
       // §314 — the arranged movement's rod line (ALARM_LINKAGE_LINES, searched round the arrest's tower)
       // gives crank B a longer output arm and a smaller swing, so the sagitta is re-read off the metal
       // (the designed line's was 0.13470189764102053: arm 6.762, swing 0.3996 rad)
+      // §343 — and a build that carries ANOTHER line (ALARM_LINKAGE_LINES, keyed per arrangement like the
+      // build's own table) reads its sagitta off its own metal: `byLine` keys a value by that line's
+      // 'dirDeg|c', and `value` is the arranged default's line (28°, 31.34).
       straight: { value: 0.083199897954356,
+        byLine: { '28|31.33': 0.08325177843292081 },   // §343: the 14,400 row's line (probe-314-linkage-line --q vph=14400), arm 10.853
         forcedBy: '§261 2c’s fold: crank B’s pin, not the pusher’s, works the driver’s slot, on an arc of the crank’s output arm through the line’s two ends; its greatest departure from that chord is the arc’s sagitta, arm·(1 − cos(θ/2)) — on §314’s arranged line the arm 10.861 over a 0.2479 rad swing (clock.alarmLinkage), 0.0834 by the formula and 0.0832 read off the metal' },
     },
   },
@@ -16136,7 +16140,12 @@ export async function checkLineSpec(clock) {
   const evaluate = (ref, base, over) => lineSpecEvaluate(ref, base, over, laws);
   // the fork table's own structure, judged before anything is measured
   const forkFor = {};
-  for (const f of LINE_SPEC_FORKS) {
+  // §343 — a fork row's value for the linkage line THIS build carries (byLine), else its declared value
+  const lineKey = clock.alarmLinkage?.line ? `${clock.alarmLinkage.line.dirDeg}|${clock.alarmLinkage.line.c}` : null;
+  const atLine = (rows) => Object.fromEntries(Object.entries(rows || {}).map(([k, o]) =>
+    [k, o && o.byLine && lineKey in o.byLine ? { ...o, value: o.byLine[lineKey] } : o]));
+  for (const f0 of LINE_SPEC_FORKS) {
+    const f = { ...f0, rows: atLine(f0.rows) };
     const ref = LINE_SPECS.find((r) => r.name === f.ref);
     if (!ref) { malformed.push({ fork: f.name, error: `forks '${f.ref}', which is not a reference` }); continue; }
     if (forkFor[f.ref]) { malformed.push({ fork: f.name, error: `'${f.ref}' already has the fork '${forkFor[f.ref].name}' — one fork per reference` }); continue; }
