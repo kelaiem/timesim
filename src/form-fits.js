@@ -5,8 +5,8 @@
 // fitted kind, its side curvature k and apex height tau. Each is its own fixed point: booted at it, the build fits the
 // counted metal to the same numbers.
 export const FORM_FITS = Object.freeze({
- "cfg1:{\"spec\":{\"alarm\":false,\"alarmModAzDeg\":50,\"barrelStepDeg\":-20,\"caseShape\":\"cushion\",\"reserveHours\":30,\"rsvAzDeg\":0,\"rsvIdlers\":2,\"vph\":18000},\"route\":null,\"tuned\":[]}": Object.freeze([-45.04,45.04,-41.32,41.32]),
- "cfg1:{\"spec\":{\"alarm\":false,\"alarmModAzDeg\":50,\"barrelStepDeg\":-20,\"caseShape\":\"fitted\",\"reserveHours\":30,\"rsvAzDeg\":0,\"rsvIdlers\":2,\"vph\":18000},\"route\":null,\"tuned\":[]}": Object.freeze([-45.28,45.28,-40.27,41.03,0.731933,0.00004]),
- "cfg1:{\"spec\":{\"alarm\":false,\"alarmModAzDeg\":50,\"barrelStepDeg\":-20,\"caseShape\":\"rect\",\"reserveHours\":30,\"rsvAzDeg\":0,\"rsvIdlers\":2,\"vph\":18000},\"route\":null,\"tuned\":[]}": Object.freeze([-44.72,44.72,-41.03,41.03]),
- "cfg1:{\"spec\":{\"alarm\":false,\"alarmModAzDeg\":50,\"barrelStepDeg\":-20,\"caseShape\":\"tonneau\",\"reserveHours\":30,\"rsvAzDeg\":0,\"rsvIdlers\":2,\"vph\":18000},\"route\":null,\"tuned\":[]}": Object.freeze([-44.73,44.73,-41.04,41.04]),
+ "cfg1:{\"spec\":{\"alarm\":false,\"alarmModAzDeg\":50,\"barrelStepDeg\":-20,\"caseShape\":\"cushion\",\"reserveHours\":30,\"rsvAzDeg\":0,\"rsvIdlers\":2,\"vph\":18000},\"route\":null,\"tuned\":[]}": Object.freeze([-45.13,45.13,-41.32,41.32]),
+ "cfg1:{\"spec\":{\"alarm\":false,\"alarmModAzDeg\":50,\"barrelStepDeg\":-20,\"caseShape\":\"fitted\",\"reserveHours\":30,\"rsvAzDeg\":0,\"rsvIdlers\":2,\"vph\":18000},\"route\":null,\"tuned\":[]}": Object.freeze([-45.25,45.25,-40,41.03,0.735178,0.000005]),
+ "cfg1:{\"spec\":{\"alarm\":false,\"alarmModAzDeg\":50,\"barrelStepDeg\":-20,\"caseShape\":\"rect\",\"reserveHours\":30,\"rsvAzDeg\":0,\"rsvIdlers\":2,\"vph\":18000},\"route\":null,\"tuned\":[]}": Object.freeze([-44.81,44.81,-41.03,41.03]),
+ "cfg1:{\"spec\":{\"alarm\":false,\"alarmModAzDeg\":50,\"barrelStepDeg\":-20,\"caseShape\":\"tonneau\",\"reserveHours\":30,\"rsvAzDeg\":0,\"rsvIdlers\":2,\"vph\":18000},\"route\":null,\"tuned\":[]}": Object.freeze([-44.83,44.83,-41.04,41.04]),
 });
