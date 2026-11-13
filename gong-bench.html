@@ -287,7 +287,10 @@ const Wire = { modes: (segs, S, nMax = 4, gMax = 20, fam = 'in', step = 0.004) =
   hz: (g, L, d) => GS.hz(g, L, d), shape: (segs, S, g, nSamp = 200, fam = 'in') => GS.shape(segs, S, g, { nSamp, fam }), at: GS.shapeAt };
 
   // the wire's section and the margin are the build's (read off the booted build into the data); the unit is layout.js'
-  const U_MM = UNIT_MM, D_M = DATA.kinds.rect.spiral.wireD_m, WIRE_R = DATA.kinds.rect.spiral.wireR, MARGIN = CLEAR_MARGIN;
+  // the movement's one gong wire, read off the first seat the generated space carries: every seat is cut from the same
+  // wire, and a typed kind and mode went stale when TODO 294's re-solve left the rect no spiral seat (it takes its bar)
+  const SEAT0 = Object.values(DATA.kinds).flatMap((k) => Object.values(k))[0];
+  const U_MM = UNIT_MM, D_M = SEAT0.wireD_m, WIRE_R = SEAT0.wireR, MARGIN = CLEAR_MARGIN;
   const $ = (id) => document.getElementById(id);
   const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   const st = { kind: 'rect', fit: 'spiral', shape: 'arc', fx: 48.195 * Math.cos(24.5 * Math.PI / 180), fy: 48.195 * Math.sin(24.5 * Math.PI / 180) };
