@@ -7984,6 +7984,10 @@ export function makeCock({ length, width, thickness = width * 0.5, studHole = nu
 // from its joint: head radius, and the length it runs PAST the leg's foot into
 // the plate it threads (0 = it stops at the slab's underside, the old
 // behaviour, which held nothing). A foot node may carry its own `legR`.
+// The foot node's spread PAD, where the leg lands on the base plate: one and a half legs. ONE rule, read by the builder
+// and by any seat scan that holds a part clear of the pad (TODO 304: the balance cock's scan stood its foot off the fork
+// cock's NODE radius, 1.35 legs, and the pad it cut stood 0.174 nearer).
+export const bridgeFootPadR = (n) => (n.legR ?? n.r * 0.62) * 1.5;
 export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [], foot = null }) {
   const g = new THREE.Group();
   // The foot screw's head, needed twice: once by the boss that has to be
@@ -8098,7 +8102,8 @@ export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [], foot
     // seated on the top face (the old version sank the whole screw inside
     // the slab, leaving the bridge visually unfastened — the same pattern
     // as the balance cock's T-foot screws).
-    const pad = new THREE.Mesh(boredLegGeometry(legR * 1.5, legR * 1.5, bore, thickness * 0.5, 20), slabMat);
+    const padR = bridgeFootPadR(n);
+    const pad = new THREE.Mesh(boredLegGeometry(padR, padR, bore, thickness * 0.5, 20), slabMat);
     pad.name = 'bridgeFoot';
     pad.geometry.rotateX(Math.PI / 2);
     pad.position.set(n.x, n.y, -thickness / 2 - footDrop + thickness * 0.25);

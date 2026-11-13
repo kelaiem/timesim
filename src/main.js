@@ -17241,7 +17241,9 @@ const BALANCE_COCK = (() => {
   // half-width = min(r_a, r_b)·0.8). The bar was missing from this list,
   // and the leg scan promptly stood a leg across it (inspection finding:
   // Balance cock ⇄ Fork cock, leg through the bridge bar's slab band).
-  for (const n of forkCock.chain) obstacles.push({ x: n.x, y: n.y, r: n.r });
+  // A foot node is held off its PAD (TODO 304), which is wider than the node: the cock's leg pads stand on the plate
+  // face beside it, and on stopwork-140 the node's radius left one 0.1284 off the pad, under CLEAR_MARGIN.
+  for (const n of forkCock.chain) obstacles.push({ x: n.x, y: n.y, r: n.foot ? Math.max(n.r, G.bridgeFootPadR(n)) : n.r });
   for (let i = 0; i + 1 < forkCock.chain.length; i++) {
     const a = forkCock.chain[i], b = forkCock.chain[i + 1];
     obstacles.push({ ax: a.x, ay: a.y, bx: b.x, by: b.y, r: Math.min(a.r, b.r) * 0.8 });
