@@ -6311,7 +6311,7 @@ const forkCock = (() => {
   // (±100°) and the reach; take the nearest feasible seat, which keeps the
   // bridge compact. hostBossR is the host end's boss radius — it sizes the
   // connecting bar the seat commits the bridge to.
-  const legFor = (host, other, legR, hostBossR) => {
+  const legFor = (host, other, legR, hostBossR, clearSpring = true) => {
     const away = Math.atan2(host.y - other.y, host.x - other.x);
     // What must clear at the seat is the chain NODE built there (legR·1.35)
     // — the leg shaft alone under-clears by 0.4, which was latent while the
@@ -6342,11 +6342,18 @@ const forkCock = (() => {
           const L2 = vx * vx + vy * vy || 1e-9;
           const t = clamp(((P.balance.x - host.x) * vx + (P.balance.y - host.y) * vy) / L2, 0, 1);
           const dBar = Math.hypot(P.balance.x - host.x - t * vx, P.balance.y - host.y - t * vy);
-          // §343 — and the hairspring's breathing, which the floor discs above
-          // already carry for the node: it swings out past BAL_OUTER_R (9.56 vs
-          // 9.30 shipped, 12.44 vs 11.80 at 14,400), and the bar shares its band
-          // (at 14,400 the bar stood 0.012 off the spring's widest frame).
-          const mBar = dBar - (Math.max(BAL_OUTER_R, HAIRSPRING_SWEPT_R) + barHW + CLEAR_MARGIN);   // bar's edge clears the balance and its spring
+          // §343 — and, PREFERRED, the hairspring's breathing disc, which the floor
+          // discs above already carry for the node: it swings out past BAL_OUTER_R
+          // (9.56 vs 9.30 shipped, 12.44 vs 11.80 at 14,400) and the bar shares its
+          // band (bar z 7.95–8.95, spring 7.44–8.00); at 14,400 the bar stood 0.012
+          // off the spring's widest frame. The disc is a BOUND, not the spring: the
+          // stud is seated long after this scan, so the spring's orientation is not
+          // known here and every azimuth is assumed reached. Measured on the metal,
+          // the stud-radius builds' bars clear their springs by 1.3 while their
+          // seats fail the disc, so the disc is a preference: the nearest seat that
+          // clears it when one exists, else the balance's disc alone, as before
+          // (legB below), and the sweeps judge the metal either way.
+          const mBar = dBar - ((clearSpring ? Math.max(BAL_OUTER_R, HAIRSPRING_SWEPT_R) : BAL_OUTER_R) + barHW + CLEAR_MARGIN);
           // §125 Tier B — the spine corridor (COCK_SPINE above): the seat
           // node and the whole bar stay out of the balance cock's reach.
           const latRay = (px, py, rad) => {
@@ -6372,7 +6379,10 @@ const forkCock = (() => {
   // makeEscapeBridge drew the leg at 0.62 of the node (0.963) — one radius
   // written twice. The scan and the drawing now read this one.
   const legR = COCK_LEG_BORE_R + STOCK_MIN_U;
-  const legB = legFor(P.fork, P.escape, legR, bossFork);
+  const legB = (() => {   // §343: a seat clear of the spring's disc when one exists, else the balance's alone
+    const pref = legFor(P.fork, P.escape, legR, bossFork, true);
+    return pref.missed ? legFor(P.fork, P.escape, legR, bossFork, false) : pref;
+  })();
   if (legB.missed) {
     // TODO 30 wall three — this used to be a bare warn followed by a null
     // dereference on the next line, which took the boot down and with it every
@@ -19096,7 +19106,7 @@ const polySignedDist = (pts, x, y) => {
 let ROUND_STRIKE_KEEP_MEASURED = null;
 const ROUND_STRIKE_KEEP = !FORM && ALARM_BUILT ? (STRIKE_KEEP_ROUND?.[GONG_SPEC_KEY] ?? null) : null;   // §325 landing 16: one row per spec that must boot clean
 const PILLAR_STRIKE_KEEP = (() => {
-  if (ROUND_STRIKE_KEEP) return { hull: ROUND_STRIKE_KEEP.hull };   // TODO 290: the round build declares the drawn head alone
+  if (ROUND_STRIKE_KEEP) return { hull: ROUND_STRIKE_KEEP.hull, ...(ROUND_STRIKE_KEEP.opening ? { opening: ROUND_STRIKE_KEEP.opening } : {}) };   // TODO 290: the round build declares the drawn head, and (§343) the notch when its tail opens the plate
   const row = GONG_SEAT_LOOKUP && !GONG_SEAT_LOOKUP.refused ? GONG_SEAT_LOOKUP.row : null;
   if (!row?.keep) return null;
   const c = GS.seatCurve(row.curve), n = Math.max(8, Math.ceil(c.L / 0.25)), wire = [];
@@ -19316,9 +19326,10 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
       const K = PILLAR_STRIKE_KEEP;
       c = Math.min(c, polySignedDist(K.hull, x, y));
     }
-    if (PILLAR_STRIKE_KEEP?.opening) {   // TODO 290: a round keep is the hull alone
+    if (PILLAR_STRIKE_KEEP?.opening)   // §343: a round keep carries the notch when its tail opens the plate
+      c = Math.min(c, polySignedDist(PILLAR_STRIKE_KEEP.opening, x, y) - TQ_LAND_MIN);
+    if (PILLAR_STRIKE_KEEP?.wire) {   // TODO 290: a round keep has no seated wire or post
       const K = PILLAR_STRIKE_KEEP;
-      c = Math.min(c, polySignedDist(K.opening, x, y) - TQ_LAND_MIN);
       let dw = Infinity;
       for (let i = 1; i < K.wire.length; i++) {
         const [ax, ay] = K.wire[i - 1], [bx, by] = K.wire[i], vx = bx - ax, vy = by - ay;
@@ -31863,10 +31874,18 @@ const STRIKE_SKIRT_BAND = Math.max(ALARM_SWITCH_SKIRT_ROW_Z, PLATE_RIM.back + 0.
 const STRIKE_SKIRT_ARM = (STRIKE_SKIRT_BAND + CLEAR_MARGIN) + CASE_CLAMP_ENG;
 const STRIKE_OUTBOARD_CEIL = STRIKE_SKIRT_ARM - CLEAR_MARGIN - CASE_GLASS_FLOAT_GUARD;
 // Metal above the ceiling must sit under the glass's raised step, whose wall
-// (rStep: the outer edge of the outermost tall bin, plus a margin) must pass
-// through the aperture one margin inside it — so it lies inside the last bin
-// edge at or under RA − 2·CLEAR_MARGIN.
-const STRIKE_R_ALLOW = Math.floor((CASE_APERTURE_R - 2 * CLEAR_MARGIN) / BACK_ENV_BIN_W) * BACK_ENV_BIN_W;
+// (rStep: the outer edge of the outermost tall bin, plus a margin, held at the
+// lathe's INSCRIBED circle, so divided by cos(π/SEG) — §278 landing 2) must
+// pass through the aperture one margin inside it — so the metal lies inside
+// the last bin edge at or under (RA − CLEAR_MARGIN)·cos(π/SEG) − CLEAR_MARGIN.
+// §343: this read RA − 2·CLEAR_MARGIN, the step's law before landing 2 added
+// the facet division; a tail placed at that allowance (the 14,400 row's, at
+// 44.98 under 45.00) put the step 0.024 past the aperture's margin, the sag.
+// The sag is the ROUND ring's: its glass is a lathe of CASE_LATHE_SEG facets. A form case's back is cut to its
+// outline, not turned, so a form build keeps the allowance it always had.
+const STRIKE_R_ALLOW = FORM
+  ? Math.floor((CASE_APERTURE_R - 2 * CLEAR_MARGIN) / BACK_ENV_BIN_W) * BACK_ENV_BIN_W
+  : Math.floor(((CASE_APERTURE_R - CLEAR_MARGIN) * Math.cos(Math.PI / G.CASE_LATHE_SEG) - CLEAR_MARGIN) / BACK_ENV_BIN_W) * BACK_ENV_BIN_W;
 // The crank: the hammer's outboard metal (its post's top, its collet's, its
 // arm's root and its tail's root) drops so the tail's top meets the ceiling.
 const ALARM_TAIL_DROP = Math.max(0, (Z_STRIKE + ALARM_TAIL_T / 2) - STRIKE_OUTBOARD_CEIL);
@@ -52989,6 +53008,16 @@ const FUSEE_COCK = await (async () => {
     if (notch) ROUND_TQ_OUTLINE = notch;
     else if (pts.every(([x, y]) => Math.hypot(x, y) < plateR)) tqPolyHoles.push({ name: 'strike group (§325 landing 16)', pts });
     STRIKE_PLATE_OPENING = Object.freeze({ pts, land: worst.d, landTo: worst.what, verts: STRIKE_PLATE_VERTS, notch: !!notch });
+    // §343 — and the notch is part of the round keep: the pillars were sited ~34,000 lines above it, so a round build
+    // whose tail opens the plate declares the opening too (tools/strike-keep-round.mjs writes it), and the pillar scan
+    // keeps TQ_LAND_MIN to it as a form build's keeps to its seat's opening. Measured here, and held to the declaration.
+    if (ROUND_STRIKE_KEEP_MEASURED) {
+      const opening = pts.map(([x, y]) => [Math.round(x * 1e4) / 1e4, Math.round(y * 1e4) / 1e4]);
+      ROUND_STRIKE_KEEP_MEASURED = Object.freeze({ ...ROUND_STRIKE_KEEP_MEASURED, opening });
+      const a = ROUND_STRIKE_KEEP?.opening;   // a build with no row keeps the frame law as its tripwire (TODO 290's rule)
+      if (ROUND_STRIKE_KEEP && (!a || a.length !== opening.length || a.some(([x, y], i) => Math.abs(x - opening[i][0]) > 1e-3 || Math.abs(y - opening[i][1]) > 1e-3)))
+        console.warn('§343: the round strike keep the pillars were sited on does not declare the notch this build cuts — re-run tools/strike-keep-round.mjs --write');
+    }
   }
   if (FORM && STRIKE_PLATE_OPENING) {
     const pts = STRIKE_PLATE_OPENING.pts;

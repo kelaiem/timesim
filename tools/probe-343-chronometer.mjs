@@ -4,8 +4,9 @@
 // (r 11.5, rim 0.345) and the same row one BAL_R_STEP larger (r 11.75 on rim
 // 0.33, the heaviest that still reaches the target there), each in its own
 // native process, and holds:
-//   1. the declared build: no case-cap warning, the amplitude target met and
-//      the rim tight (equalisation's own record), 2 Hz, the hairspring in stock;
+//   1. the declared build: no case-cap warning and (since §343 landing 1e) no
+//      warning at all, the amplitude target met and the rim tight
+//      (equalisation's own record), 2 Hz, the hairspring in stock;
 //   2. one step larger: the case-cap warning fires (the wall), and the target is
 //      still met and started (so the spring was not what stopped it);
 //   3. the control: the patch must take (the larger build reports r 11.75), or
@@ -51,6 +52,7 @@ console.log(`declared  r ${declared.radius} rim ${declared.rimF}: plateR ${decla
 console.log(`larger    r ${larger.radius} rim ${larger.rimF}: plateR ${larger.plateR.toFixed(2)}, ${larger.deg.toFixed(2)}°, ${cap(larger)[0] ?? 'no case warning'}`);
 console.log(`shipped   r ${shipped.radius} at 18,000: I ${shipped.I.toExponential(3)} — the 14,400 wheel is ${(declared.I / shipped.I).toFixed(2)}× its inertia`);
 say(cap(declared).length === 0, 'the declared balance fits the 40 mm case');
+say(declared.warns.length === 0, `the declared build boots silent (§343 landings 1b–1e close it)${declared.warns.length ? `: ${declared.warns[0].slice(0, 120)}` : ''}`);
 say(declared.met && declared.tight, 'the declared rim is the heaviest that reaches the target and starts');
 say(Math.abs(declared.hz - 2) < 1e-6 && declared.inStock, 'the hairspring beats 2 Hz inside real stock');
 say(larger.radius === 11.75, 'control: the patch took (the larger build is r 11.75)');
