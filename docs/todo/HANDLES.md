@@ -42,6 +42,8 @@ heading, and [the index](../../TODO.md) is where it is shown.
 
 | item | handle |
 |---|---|
+| 302 | free dial ring folds |
+| 301 | tonneau sagitta unlisted |
 | 300 | form case unheld |
 | 298 | alarm-free unswept |
 | 299 | wear life unpriced |
