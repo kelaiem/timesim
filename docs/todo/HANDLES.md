@@ -42,6 +42,8 @@ heading, and [the index](../../TODO.md) is where it is shown.
 
 | item | handle |
 |---|---|
+| 304 | cock feet too close |
+| 303 | cushion lugs proud |
 | 302 | free dial ring folds |
 | 301 | tonneau sagitta unlisted |
 | 300 | form case unheld |
