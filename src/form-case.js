@@ -340,7 +340,18 @@ function ringExtrude(outerR, innerR, thickness, seg = 32) {
 // holes: each a loop wound the other way (CW), or a round hole { r } about the
 // origin. Extruded between two z planes, whichever order they come in.
 const toVec2 = (loop) => loop.map(([x, y]) => new THREE.Vector2(x, y));
+// TODO 302 — a ring projected onto the outer loop's vertices (the free outline's, formCaseLoops) repeats a point where
+// several vertices land on one corner, and a Shape cut from it carries zero-length curves (the crystal's 128 on case=free,
+// TODO 273's seam rule). A solid's outline drops each repeat; the ring itself stays index-aligned for boredBand.
+const dropRepeats = (pts) => {
+  const out = [];
+  for (const q of pts) { const p = out[out.length - 1]; if (!p || Math.hypot(q[0] - p[0], q[1] - p[1]) > 1e-9) out.push(q); }
+  while (out.length > 1 && Math.hypot(out[0][0] - out[out.length - 1][0], out[0][1] - out[out.length - 1][1]) <= 1e-9) out.pop();
+  return out;
+};
 function prism(outer, holes, zA, zB, { seg = ROUND_SEG, stitch = false } = {}) {
+  outer = dropRepeats(outer);
+  holes = holes.map((h) => (Array.isArray(h) ? dropRepeats(h) : h));
   if (stitch && holes.length === 1) return annulusPrism(outer, holes[0], zA, zB);
   const shape = new THREE.Shape(toVec2(outer));
   for (const h of holes) {
