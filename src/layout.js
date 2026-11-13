@@ -121,19 +121,23 @@
 // is why it may exceed BALANCE_R_REF; tools/probe-343-chronometer.mjs holds both
 // sides (r 11.5 inside the cap, r 11.75 over it, on booted builds).
 // The mesh 8/64 keeps fourth = 1 rev/min (1800/14,400). It is cut at
+// §343 landing 2 — each row's `d4` is ITS seconds station (layout.js, D4): the
+// closed form s = (K + SUBDIAL_INBOARD_CLEAR)/2 at its own plate, iterated to the
+// plate's fixed point (18,000 exact in two steps; 21,600, whose plate moves with
+// the station, within 1e-5 of its limit after four, against §125's 0.02).
 // 0.2625 = 0.21 · 80/64 so the 64-tooth wheel keeps the 80-tooth wheel's pitch
 // radius (8.4) and the escape arbor stands where it stood (§204's rule for the
 // 36,000 row). At the mesh's 0.21 it shrinks to 6.72, and measured, the low
 // corridor's reset rod elbow fouls (−0.87) and the maintaining spring's tip
 // leaves its contact.
 const RATE_TABLE = {
-  14400: { fourthTeeth: 64, escPinion: 8, module: 0.2625, balanceR: 11.5, rimF: 0.345, claimDeg: 126, peakDeg: 328, caseBound: true }, // 8/64 = 1/8 — §343, the chronometer's beat
-  18000: { fourthTeeth: 80, escPinion: 8, balanceR: 9, rimF: 0.36, claimDeg: 126, peakDeg: 311 }, // 8/80 = 1/10 — the shipped movement
-  21600: { fourthTeeth: 96, escPinion: 8, balanceR: 9, rimF: 0.26, claimDeg: 128, peakDeg: 311 }, // 8/96 = 1/12
+  14400: { fourthTeeth: 64, escPinion: 8, module: 0.2625, d4: 19.222357121153717, balanceR: 11.5, rimF: 0.345, claimDeg: 126, peakDeg: 328, caseBound: true }, // 8/64 = 1/8 — §343, the chronometer's beat
+  18000: { fourthTeeth: 80, escPinion: 8, d4: 18.7520672519568, balanceR: 11, rimF: 0.245, claimDeg: 129, peakDeg: 325 }, // 8/80 = 1/10 — the shipped movement until §343 landing 2
+  21600: { fourthTeeth: 96, escPinion: 8, d4: 19.22106386092866, balanceR: 9.25, rimF: 0.245, claimDeg: 129, peakDeg: 313 }, // 8/96 = 1/12
   28800: { fourthTeeth: 96, escPinion: 6, undriven: 'TODO 292 — no balance the honest mainspring (TODO 291) drives to AMPLITUDE_TARGET_DEG and starts at this rate' }, // 6/96 = 1/16
   36000: { fourthTeeth: 120, escPinion: 6, module: 0.168, undriven: 'TODO 292 — no balance the honest mainspring (TODO 291) drives to AMPLITUDE_TARGET_DEG and starts at this rate' }, // 6/120 = 1/20 — §204: at 0.168 the wheel keeps the 96-tooth rows' pitch radius
 };
-export const DEFAULT_VPH = 18000;
+export const DEFAULT_VPH = 14400;   // §343 landing 2 — the chronometer's beat is the shipped watch (the owner's call)
 // The row a rate's balance reads: its own, or the shipped movement's.
 const rateBalanceRow = (vph) => (RATE_TABLE[vph].rimF !== undefined ? RATE_TABLE[vph] : RATE_TABLE[DEFAULT_VPH]);
 export const FOURTH_MODULE_DEFAULT = 0.21; // the fourth⇄escape mesh's cut, the rows above's module when they carry none
@@ -2379,7 +2383,21 @@ export const BARREL_STEP_DEG = -35;        // center sits down-right of barrel �
 // The well is 0.144 BIGGER than it was — the fatter winding stem asks more
 // of the crown-wheel/setting-wheel pair's blanks than the arbor-stock pair
 // gave back, and the plate carries that difference outward.
-export const D4 = 18.214767593871496;
+//
+// §343 landing 2 RE-DERIVED IT A FOURTH TIME, for the shipped watch's new beat:
+// at 14,400 A/h the r 11.5 balance stands further out and the plate grows,
+// dialRadius 41.51616090422663 → 44.033875864951824 (the fixed point: the move
+// leaves the plate where it was, since the balance, not the seconds station,
+// binds it), so the bounds stood 14.6648 against 16.6799. The closed form
+// is s = (K + SUBDIAL_INBOARD_CLEAR) / 2 with K = outboard + s, and re-derived
+// they meet at 15.6724 to float noise. And since a rate's balance sets its
+// plate, D4 is a RATE ROW'S (RATE_TABLE's `d4`, each derived the same way at
+// its own plate): landing 1b had a variant keep the shipped D4 and hold it to
+// fit, and at 18,000's smaller plate this one does not fit at all (inboard
+// 15.6724 against outboard 14.8686, and §34's selector post meets the well).
+// This is the shipped row's.
+export const D4_SHIPPED = 19.222357121153717;
+export const D4 = RATE_TABLE[SPEC.vph].d4 ?? D4_SHIPPED;
 // §125 Tier B — THE RESERVE STATION'S OWN ANCHOR. Tier A had the reserve
 // MIRROR the seconds station (the wells were one radius, so symmetry was the
 // law); the mirror died the day the wells split. The owner's constraint is
