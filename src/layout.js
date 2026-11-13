@@ -6320,6 +6320,7 @@ export function solveStopWork({
     return solveElbow(len, poses, obstaclesFor(linkHalfW), linkHalfT,
       coarse ? { ...opts, fStep: 0.25, eStep: 1 } : opts);
   };
+  let STOP_BEARING_FOUND = null;
   const STOP_BEARING = (() => {
     const ideal = Math.atan2(P.balance.y, P.balance.x);
     const obstacles = bearingObstaclesAt(P);
@@ -6372,6 +6373,9 @@ export function solveStopWork({
     // corridor is the thing that failed. That is a LAYOUT finding, not a
     // reason to accept a station nothing was checked against; C4 turns it
     // into a refusal, and C1's elbow warning names the body in the way.
+    // §343 — and REPORT which step was taken, so a caller that probes this
+    // solve (onHackPin's arm fraction) can tell a chosen station from a fallback.
+    STOP_BEARING_FOUND = best ? 'routable' : bestAny ? 'unroutable' : 'none';
     if (!best && bestAny) {
       warn('stop work: no station about the balance can route the hack rod through the low corridor — keeping the best-coupled one');
       best = bestAny;
@@ -6483,7 +6487,7 @@ export function solveStopWork({
     STOP_ARM_ROOT_X, STOP_HUB_HALF_X, STOP_LEAN_ALLOW, STOP_PSI_TARGET,
     // the station and the lever it sizes
     STOP_PIVOT_R, POST_STROKE, Z_STOP_PIVOT_LOW,
-    STOP_BEARING, STOP_R_HAT, STOP_T_HAT, STOP_PIVOT, STOP_TANG_K,
+    STOP_BEARING, STOP_BEARING_FOUND, STOP_R_HAT, STOP_T_HAT, STOP_PIVOT, STOP_TANG_K,
     Z_STOP_PIVOT, STOP_TAIL_H, STOP_MAST_TOP, PAD_ARM_LOCAL_Z,
     // §86 A — which of these were decided by a fence rather than a field
     corners,

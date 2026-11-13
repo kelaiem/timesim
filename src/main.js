@@ -12220,20 +12220,45 @@ const STOPWORK_AT_POST = {
 // the build it always was, float for float.
 function onHackPin(inputs, pivot) {
   const probe = solveStopWork({ ...inputs, warn: () => {} }); // the real solve reports
-  const headroom = inputs.TQ_TOP_Z - (probe.STOP_MAST_TOP - probe.Z_STOP_PIVOT) - inputs.ROD2_PLANE_Z;
+  const headroomOf = (pr) => inputs.TQ_TOP_Z - (pr.STOP_MAST_TOP - pr.Z_STOP_PIVOT) - inputs.ROD2_PLANE_Z;
+  const ceilingOf = (pr) => headroomOf(pr) * Math.sin(pr.STOP_PSI_TARGET) * Math.abs(pr.STOP_TANG_K);
   const stroke = Math.hypot(inputs.postEng.x - inputs.postRel.x, inputs.postEng.y - inputs.postRel.y);
-  const ceiling = headroom * Math.sin(probe.STOP_PSI_TARGET) * Math.abs(probe.STOP_TANG_K);
-  const k = Math.min(1, ceiling / stroke);
-  if (k === 1) return { inputs, k };
-  const at = (p) => ({ x: pivot.x + (p.x - pivot.x) * k, y: pivot.y + (p.y - pivot.y) * k });
-  return {
-    k,
-    inputs: {
+  const reduced = (k) => {
+    const at = (p) => ({ x: pivot.x + (p.x - pivot.x) * k, y: pivot.y + (p.y - pivot.y) * k });
+    return {
       ...inputs,
       postEng: at(inputs.postEng), postRel: at(inputs.postRel),
       tailPostWorldAt: (t) => at(inputs.tailPostWorldAt(t)),
-    },
+    };
   };
+  // §343 — the ceiling is only a claim about a station the probe CHOSE. When
+  // no station about the balance clears at the full post (the probe fell back
+  // to the outward ideal, which nothing checked), a fraction read off that
+  // frame is a number about no linkage: at the 14,400 row's balance it read
+  // k 0.38, and the crank swept its own bracket. Then the pin comes in only
+  // as far as a CHOSEN station needs, which is the same rule one step on: the
+  // largest k on the arm whose own probe finds a routable station AND whose
+  // mast fits that station's ceiling (stroke · k ≤ ceiling): the first on a
+  // 0.05 grid from the post inward, then refined to 0.01 below the coarse step
+  // above it (each probe is a whole solve, ~38 ms on a dev container, and a full
+  // 0.01 walk held the boot 1.7 s; measured at the 14,400 row, the full walk
+  // and this one both answer 0.56).
+  if (probe.STOP_BEARING_FOUND !== 'routable') {
+    const ok = (k) => {
+      const inp = k === 1 ? inputs : reduced(k);
+      const pr = solveStopWork({ ...inp, warn: () => {} });
+      return pr.STOP_BEARING_FOUND === 'routable' && stroke * k <= ceilingOf(pr) ? inp : null;
+    };
+    for (let c = 20; c >= 1; c--) {
+      const hit = ok(c / 20);
+      if (!hit) continue;
+      for (let f = c * 5 + 4; f > c * 5 && c < 20; f--) { const fine = ok(f / 100); if (fine) return { inputs: fine, k: f / 100 }; }
+      return { inputs: hit, k: c / 20 };
+    }
+  }
+  const k = Math.min(1, ceilingOf(probe) / stroke);
+  if (k === 1) return { inputs, k };
+  return { k, inputs: reduced(k) };
 }
 await breathe(88);
 const { inputs: STOPWORK_INPUTS, k: HACK_PIN_K } = onHackPin(STOPWORK_AT_POST, settingLeverPivot);
