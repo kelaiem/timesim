@@ -48,42 +48,7 @@ import { BATTERY } from './battery-checks.mjs';
 import { buildTasks } from './battery-split.mjs';
 import { COSTS, partition } from './battery-plan.mjs';
 
-// One shard's work, in whatever thread it runs: boot, hold, run each task.
-async function runShard({ query, tasks, kernel = 'js', sweep = 'js' }) {
-  const { bootNative } = await import('./native/host.mjs');
-  const { clock, ms: bootMs, warns } = await bootNative({ query });
-  const I = await import('../src/inspect.js');
-  await I.useKernel(kernel);
-  clock.beginSweepHold();   // battery-checks.mjs prepPage's rule: the whole run, geometry frozen
-  // §338 landing 12 — `--sweep native`: the four checks the native sweep engine answers
-  // run on it (tools/native-sweep/run.mjs), with the task's own options (a slice's axes
-  // among them) after the canonical reset start() performs; every other row is unchanged.
-  const N = sweep === 'native' ? await import('./native-sweep/run.mjs') : null;
-  const NATIVE = N ? { inspection: N.runNativeInspection, clearances: N.runNativeClearances,
-    expectedContacts: N.runNativeExpectedContacts, undeclaredClearance: N.runNativeUndeclared } : {};
-  const out = [];
-  for (const t of tasks) {
-    const s0 = Date.now();
-    if (NATIVE[t.name]) {
-      if (t.opts.pairsTouching) throw new Error(`--sweep native: ${t.name} has no restricted (pairsTouching) route`);
-      try {
-        clock.resetInputs();
-        const { payload } = await NATIVE[t.name](clock, I, { axes: t.opts.axes, ...(t.name === 'inspection' ? { includeExcluded: !!t.opts.includeExcluded } : {}) });
-        out.push({ key: t.key, result: payload, ms: Date.now() - s0 });
-      } catch (err) { out.push({ key: t.key, error: String(err && err.stack || err) }); }
-      continue;
-    }
-    I.start(clock, t.name, t.opts);
-    for (;;) {
-      await new Promise((r) => setTimeout(r, 25));
-      const st = I.status(t.name);
-      if (st.state === 'done') { out.push({ key: t.key, result: st.result, ms: Date.now() - s0 }); break; }
-      if (st.state === 'error') { out.push({ key: t.key, error: String(st.error) }); break; }
-    }
-  }
-  const X = await import('../src/exact-mesh.js');   // §338 landing 9 — the js trees: built fresh, or refitted from a family
-  return { bootMs, warns, axes: I.AXES.map((a) => ({ name: a.name, n: a.n })), out, kernel: I.kernelStats(), trees: { ...X.exactStats } };
-}
+import { runShard } from './native/shard.mjs';
 
 if (!isMainThread) {
   // Silence the checks' own console tables inside a worker; the parent prints the verdicts.
