@@ -24941,6 +24941,28 @@ const PLATE_RIM = (() => {
         if (along > 0 && perp < halfW - bevelSize - 0.02 && r > floors[n]) floors[n] = r;
       }
     }
+    // TODO 300 — under FORM a floor is the widest metal along the stem's line INSIDE the sleeve's strip, and the strip
+    // also holds the points where a plate edge CROSSES its two boundaries: an edge with both ends outside the strip
+    // contributes metal no vertex reports, and the vertex walk alone read the alarm-free fitted case's crown floor short,
+    // standing its sleeve 0.1443 off the plate against CLEAR_MARGIN (plateSeats). Every triangle edge is walked for its
+    // crossings of perp = ±CASE_TUBE_AP, ahead of the centre, and the along-line reach there joins the floor.
+    if (FORM) {
+      const idx = o.geometry.index, nI = idx ? idx.count : p.count, a = new THREE.Vector3(), b = new THREE.Vector3();
+      for (let t = 0; t < nI; t += 3) for (let k = 0; k < 3; k++) {
+        a.fromBufferAttribute(p, idx ? idx.getX(t + k) : t + k).applyMatrix4(_mw);
+        b.fromBufferAttribute(p, idx ? idx.getX(t + (k + 1) % 3) : t + (k + 1) % 3).applyMatrix4(_mw);
+        for (let n = 0; n < CASE_NOTCHES.length; n++) {
+          const { az } = CASE_NOTCHES[n], c = Math.cos(az), s_ = Math.sin(az);
+          const pa = -a.x * s_ + a.y * c, pb = -b.x * s_ + b.y * c;
+          for (const bound of [CASE_TUBE_AP, -CASE_TUBE_AP]) {
+            if ((pa - bound) * (pb - bound) >= 0) continue;
+            const f = (bound - pa) / (pb - pa), x = a.x + (b.x - a.x) * f, y = a.y + (b.y - a.y) * f;
+            const along = x * c + y * s_;
+            if (along > floors[n]) floors[n] = along;
+          }
+        }
+      }
+    }
   });
   if (!(front < Infinity) || !(reach > plateR - 1e-9))
     console.warn(`case: the plate's rim measured front ${front} / reach ${reach.toFixed(4)} against an `
