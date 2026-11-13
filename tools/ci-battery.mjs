@@ -206,7 +206,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 // CHECK, which no partition subdivides. Sharding moved the wall 2.2x and moved
 // neither timeout.
 const CHECK_TIMEOUT_MS = 35 * 60 * 1000;
-const BOOT_TIMEOUT_MS = 120 * 1000;
+export const BOOT_TIMEOUT_MS = 120 * 1000;
 // A SPEC POINT'S OWN BOOT, MEASURED. BOOT_TIMEOUT_MS means "one roughly uncontended boot must build" (the spec tier's pool
 // keeps it so), and that is a statement about the DEFAULT boot. Some points are heavier by construction, and their
 // timeout scales by how much: the ratio of the point's solo boot to the default's, each a headless boot through
@@ -237,7 +237,7 @@ const SPEC_BOOT_RATIO = Object.freeze({
   'geared-36': 3.1,      // 40.9 / 41.4 s
   'geared-24': 2.3,      // 31.2 / 31.1 s
 });
-const specBootTimeoutMs = (name) => Math.round(BOOT_TIMEOUT_MS * Math.max(1, SPEC_BOOT_RATIO[name] ?? 1));
+export const specBootTimeoutMs = (name) => Math.round(BOOT_TIMEOUT_MS * Math.max(1, SPEC_BOOT_RATIO[name] ?? 1));
 // The measured cost column (COSTS) and the partition live in tools/battery-plan.mjs since
 // §338 landing 3, shared with the native harness; their arguments moved with them.
 
@@ -773,7 +773,7 @@ async function waitForServer(url, deadlineMs) {
 // a visible change in the report rather than a silent one.
 // (TODO 289 landing 3 declared leg 2's K-block refusal on the designed train's points and arrangement-308; landing 5
 // cut the fold corner's opening to its blanks' footprint, the block stands by K on every point, and the row is retired.)
-const SPEC_POINTS = [
+export const SPEC_POINTS = [
   // The identity, as a control: if this ever warns, the trial harness itself
   // is lying, because the default spec is what every gate above boots.
   { name: 'identity', q: '', expect: 'silent', why: 'the control — the same spec every other gate boots' },
@@ -1128,7 +1128,7 @@ for (const name of Object.keys(SPEC_BOOT_RATIO))
 // DECLARES its warning set (`expect: 'declared'`, `expectWarns`) and boots
 // exactly it; the first is the arrangement, the first form build swept.
 // battery-points.mjs holds the why of the rest.
-const SWEEP_POINTS = SPEC_POINTS.filter((p) => p.sweep);
+export const SWEEP_POINTS = SPEC_POINTS.filter((p) => p.sweep);
 // The tier's cost column, for ordering its lanes — the COSTS rule exactly: a
 // wrong number costs wall clock, never a verdict, and `--report`'s
 // `points[name].ms` refreshes it. Only the ratios between these rows mean
@@ -1265,7 +1265,7 @@ function pointOwners(n) {
 // VERTEX (it was cut from NaN) — over every mesh in the scene, schematic tier
 // included, since a NaN proxy is a NaN claim. Runs in the page; a function
 // source, so it has no closure over this file.
-const NON_FINITE_WALK = () => {
+export const NON_FINITE_WALK = () => {
   const scene = window.__clock.scene;
   scene.updateMatrixWorld(true);
   const bad = [];
@@ -1333,7 +1333,7 @@ async function specBoot(browser, base, q, timeoutMs = BOOT_TIMEOUT_MS) {
 // — including its own `gates` list, which is local so that "what did this
 // assembly decide" is the return value rather than a global someone else may
 // already have written to.
-function assemble({
+export function assemble({
   battery,          // the BATTERY rows this run evaluated (--only narrows it)
   results,          // Map: task key → { result, ms }; the merge writes check names in beside them
   shardRows,        // [{ shard, warns, error? }] tagged with GLOBAL shard index, in that order
@@ -1347,6 +1347,9 @@ function assemble({
   headDigests, restriction, baseline,
   split, specOnly,
   t0,
+  // §338 landing 14 — where the report and the points file go. The browser paths
+  // pass nothing and take this file's own flags; tools/battery-local.mjs passes its own.
+  reportPath = REPORT_PATH, pointsOut = POINTS_OUT,
 }) {
   const gates = [];
   const gate = (name, failures, note) => {
@@ -1828,7 +1831,7 @@ function assemble({
   console.log(`\n${gates.length - failed.length}/${gates.length} gates pass · total ${secs(totalMs)}`
     + ` (checks ${secs(checkMs)} across ${shardCount} shard(s))`);
 
-  if (REPORT_PATH) {
+  if (reportPath) {
     // Sorted keys and 2-space JSON so two runs diff line-for-line. `ms` is
     // here to refresh the cost column and is the ONE field expected to move
     // between runs — diff with it filtered out when comparing reports.
@@ -1857,8 +1860,8 @@ function assemble({
           ? { ms: results.get(name).ms, ...(sliceMs.has(name) ? { sliceMs: sliceMs.get(name) } : {}), result: results.get(name).result }
           : { neverRan: true }])),
     };
-    writeFileSync(resolve(REPORT_PATH), `${JSON.stringify(report, null, 2)}\n`);
-    console.log(`report written to ${resolve(REPORT_PATH)}`);
+    writeFileSync(resolve(reportPath), `${JSON.stringify(report, null, 2)}\n`);
+    console.log(`report written to ${resolve(reportPath)}`);
   }
 
   // TODO 186 — THE POINTS BASELINE. Only WHOLE verdicts are written (clean or
@@ -1868,7 +1871,7 @@ function assemble({
   // Written on every run that swept points; whether it BECOMES a baseline is
   // the workflow's decision (a push, or a dispatch on the default branch),
   // exactly as for the report beside it.
-  if (POINTS_OUT && points) {
+  if (pointsOut && points) {
     const out = {
       formatVersion: POINTS_FORMAT_VERSION,
       checkCode: pointsCodeDigest(),
@@ -1883,8 +1886,8 @@ function assemble({
         digests: j.digests, result: j.merged,
       }])),
     };
-    writeFileSync(resolve(POINTS_OUT), `${JSON.stringify(out)}\n`);
-    console.log(`points written to ${resolve(POINTS_OUT)} (${pointWhole.size} whole point payload(s))`);
+    writeFileSync(resolve(pointsOut), `${JSON.stringify(out)}\n`);
+    console.log(`points written to ${resolve(pointsOut)} (${pointWhole.size} whole point payload(s))`);
   }
 
   if (failed.length) {
@@ -2002,7 +2005,10 @@ async function anchorBootB(browser, base, headDigests) {
 // The CONTROL is the load-bearing half: the boot must report every pair
 // APPLIED and none refused — a payload the merge dropped would leave the
 // fingerprint equal for the wrong reason, a green gate over no work.
-async function shareSafeBoot(browser, base) {
+// §338 landing 14 — the payload, apart from the boot that reads it, so the native
+// pre-flight (tools/battery-local.mjs) boots the SAME payload: one walk, two hosts.
+// Returns the encoded payload, how many leaves it moved, and the query a boot takes.
+export async function sharePayload() {
   const A = await import(pathToFileURL(join(ROOT, 'src/aesthetics.js')).href);
   const moved = structuredClone(A.AESTHETICS_DEFAULTS);
   let leaves = 0;
@@ -2028,8 +2034,13 @@ async function shareSafeBoot(browser, base) {
   };
   walk(moved, '');
   const aes = A.encodeShare(moved);
+  return { aes, leaves, query: `${A.SHARE_PARAM}=${encodeURIComponent(aes).replace(/%2C/g, ',')}` };
+}
+
+async function shareSafeBoot(browser, base) {
+  const { aes, leaves, query } = await sharePayload();
   console.log(`share boot (every shareable leaf moved: ${leaves} leaves, ${aes.length} chars)…`);
-  const S = await virginBoot(browser, base, BOOT_TIMEOUT_MS, `?${A.SHARE_PARAM}=${encodeURIComponent(aes).replace(/%2C/g, ',')}`);
+  const S = await virginBoot(browser, base, BOOT_TIMEOUT_MS, `?${query}`);
   const fp = await S.page.evaluate(() => window.__I.fingerprint(window.__clock));
   const link = await S.page.evaluate(async () => {
     const m = await import('./src/aesthetics.js');
@@ -2208,6 +2219,13 @@ async function tiersFrom(files, waitS) {
 // against it. Everything that could make the assembled run smaller than the
 // declared one throws or gates by name; nothing about it is resolved by
 // taking the collector's word or a worker's word alone.
+//
+// §338 landing 14 — both paths below run only when this file IS the program.
+// tools/battery-local.mjs imports it for the assembly half and the spec table
+// (`assemble`, SPEC_POINTS), so there is one gate loop and one roster of spec
+// points, and importing them must start no browser.
+const IS_MAIN = !!process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (IS_MAIN) {
 if (COLLECT) {
   const t0 = Date.now();
   const files = COLLECT.map((path) => {
@@ -2672,3 +2690,4 @@ try {
 }
 
 }   // ---- end of the browser path
+}   // ---- end of IS_MAIN

@@ -4,7 +4,7 @@
 
 # The instruments
 
-433 scripts. **305 are ACCEPTANCE tests** — they decide and exit non-zero.
+434 scripts. **306 are ACCEPTANCE tests** — they decide and exit non-zero.
 **128 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -14,6 +14,7 @@ when a question was asked; the summaries are what it answered.
 | instrument | § | kind | what it answers, in its own words |
 |---|---|---|---|
 | `battery-checks.mjs` |  | report | §152 — WHAT A CHECK COMPUTES, split from the harness that schedules it. |
+| `battery-local.mjs` |  | acceptance | §338 landing 14 — THE LOCAL PRE-FLIGHT: the whole battery CI's `battery` job gates, run natively on this machine before a push. No browser, no dev server. |
 | `battery-native.mjs` |  | acceptance | §338 landing 3 — THE BATTERY, NATIVELY: the same checks, the same gates, no browser. |
 | `battery-plan.mjs` |  | report | THE BATTERY'S PLAN, shared: the measured cost column and the partition that balances it. Moved here verbatim from tools/ci-battery.mjs (§338 landing 3) so that a second harness, tools/battery-native.mjs, plans its shards from the SAME column and the SAME rule rather than a copy of either; ci-battery.mjs imports both back. Pure data and a pure function: importing this runs nothing. |
 | `battery-points.mjs` |  | report | TODO 186 B1 — THE SILENT SPEC POINTS, SWEPT, and kept swept incrementally. |
