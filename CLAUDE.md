@@ -1143,6 +1143,16 @@ whole `--sweep native` battery leaf for leaf to `--sweep js`, both on x64 and ar
 ported sweep's loop and the engine owes the same change, or the probe names the
 leaves it moved; the kernel stays ONE source for both targets (its portability
 layer, never a copy).
+**Since landing 14 the WHOLE battery job runs locally before a push**:
+`node --import ./tools/native/loader.mjs tools/battery-local.mjs` boots the
+build natively for every measurement the browser battery makes — the table's
+shards and their anchors, boot B, the share boot, every `SPEC_POINTS` row and
+every swept point — and hands them to `ci-battery.mjs`' own `assemble`, so its
+gate list IS the `battery` job's (`ci-battery.mjs` runs its browser paths only
+when it is the program, and exports the assembly half and the spec table).
+`--sweep native` is the default when the engine's binary is fresh; `--only`
+narrows it, and `native-host.yml`'s `local-preflight` runs it narrowed. It is
+not the chrome, offline, boot-yield or the battery's probe jobs, and says so.
 
 State (camera pose, wind, τ) persists via the dev server's `/__state` temp
 file, falling back to `localStorage`. **Back it up before clearing it** —
