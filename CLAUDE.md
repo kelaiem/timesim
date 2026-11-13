@@ -1480,8 +1480,8 @@ list of warning PREFIXES, the rows' names, never their measured numbers): both
 the spec tier and the point judge hold the boot to exactly that set
 (`matchDeclaredWarns`), a warning beyond it reads `warns`, a declared row that
 stops firing reads stale and fails, and the point's validated-configs evidence
-names the set. It exists because every FORM build carries two filed rows (§186's
-form-case fit, §261's depth cap) that are debt about the case, not a station out
+names the set. It exists because every FORM build carries a filed row (§261's
+depth cap; §186's form-case fit beside it until TODO 300) that is debt about the case, not a station out
 of its window, and a judge that read any warning as `warns` could never let a
 form build join the set however clean its sweeps came back; the arrangement is
 the first such row. A push, dispatch or local run sweeps every point FULL —

@@ -57,6 +57,8 @@ import { join, extname, normalize, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { UNIT_MM, CASE_CLEAR, CASE_BAND_T, CASE_WIDTH_MAX } from '../src/layout.js';
+import { solveClamp } from '../src/casing-clamp.js';   // TODO 300: the form bore is the casing-clamp hold's fitted grow, not CASE_CLEAR
+const FORM_BORE = solveClamp().boreBack;
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -182,7 +184,7 @@ async function boot(q) {
   } finally { await ctx.close().catch(() => {}); }
 }
 
-const casedMm = (rect) => 2 * (Math.max(-rect[0], rect[1]) + CASE_CLEAR + CASE_BAND_T) * UNIT_MM;   // hands at the origin: the band is symmetric about them
+const casedMm = (rect) => 2 * (Math.max(-rect[0], rect[1]) + FORM_BORE + CASE_BAND_T) * UNIT_MM;   // hands at the origin: the band is symmetric about them
 const CAP_MM = 2 * CASE_WIDTH_MAX * UNIT_MM;
 const got = {};
 for (const b of run) {

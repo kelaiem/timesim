@@ -7,8 +7,11 @@
 // the crystal and the opening are concentric by construction, and each grow is
 // the round case's radial rule restated on the loop:
 //
-//   bore     = plate + CASE_CLEAR                 (R_IN = plateR + 1 mm)
-//   outer    = plate + CASE_CLEAR + CASE_BAND_T   (R_OUT = R_IN + 1 mm)
+//   bore     = plate + clear                      (TODO 300: the casing-clamp hold's FITTED bore,
+//                                                  src/casing-clamp.js boreBack — SEAT_FIT off the
+//                                                  plate's real reach; it was CASE_CLEAR, the round
+//                                                  case's movement-ring clearance, and located nothing)
+//   outer    = plate + clear + CASE_BAND_T        (one band wall, as the round case's)
 //   opening  = plate − 1 mm                       (R_BEZEL_IN = dialR − 1 mm: the
 //                                                  bezel covers 1 mm of the dial's edge)
 //   crystal  = plate − 0.5 mm                     (R_CRYST: trapped under the lip)
@@ -141,8 +144,11 @@ export function densifyLoop(pts) {
   return out;
 }
 
-export function formCaseLoops(form) {
-  const G = CASE_CLEAR + CASE_BAND_T;
+export function formCaseLoops(form, clear) {
+  // TODO 300 — the bore's grow is the caller's (main.js FORM_HOLD.boreBack, the casing-clamp line spec read at the
+  // build's plateR); refused when missing, so a caller left reading the old CASE_CLEAR bore cannot pass in silence.
+  if (!(clear > 0)) throw new Error(`formCaseLoops: the bore's grow ${clear} is not a positive offset`);
+  const G = clear + CASE_BAND_T;
   // §325 — the FREE outline is a polyline, and a polyline grown G turns at every vertex on an arc of radius G: the
   // mitre offset of that loop folds past a depth G (the bezel's opening is G + 1 mm), whatever the curve's own
   // curvature. Its rings are its own EXACT offsets instead — one field of the outline, a contour per depth — each
@@ -200,7 +206,7 @@ export function inward(pts, t) {
 // them sharp.
 export function formBezelProfile(dims) {
   const { zBandFront, zCrystInner, zCrystOuter, zBezelOuter, bezelR, bezelLipR, bezelFlat } = dims;
-  const G = CASE_CLEAR + CASE_BAND_T, face = G + 1 / UNIT_MM;
+  const G = dims.formClear + CASE_BAND_T, face = G + 1 / UNIT_MM;   // TODO 300: the fitted bore's grow
   const tBore = CASE_BAND_T, tCryst = G + 0.5 / UNIT_MM, tOpen = face;
   const roundW = face - bezelLipR - bezelFlat;
   const quarter = (ct, cz, rt, rz, a0, a1, n) => {
@@ -535,8 +541,9 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   const glassLoop = formGlassGrow === null ? null : form.loop({ grow: formGlassGrow });
   if (U !== undefined && Math.abs(U - UNIT_MM) > 1e-12)
     console.warn(`makeFormCase: dims.UNIT_MM ${U} is not layout.js's ${UNIT_MM}`);
-  const loops = formCaseLoops(form);
-  const G = CASE_CLEAR + CASE_BAND_T;        // the outer wall's grow: clearance plus band wall
+  const loops = formCaseLoops(form, dims.formClear);
+  const G = dims.formClear + CASE_BAND_T;    // the outer wall's grow: the fitted bore plus band wall (TODO 300)
+  const hold = dims.formHold ?? null;        // TODO 300: the casing-clamp hold (src/casing-clamp.js) and its z stations
   const g = new THREE.Group();
   g.name = 'case';
 
@@ -554,7 +561,7 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   //   · the SEAT, zCrystOuter..zCrystInner, bored to the CRYSTAL loop: the
   //     crystal's own edge wall (R_CRYST on both sides in makeCase — the
   //     crystal is pressed into its seat and trapped under the lip, no floor);
-  //   · the BAND, zCrystInner..z0, bored to the BORE (plate + CASE_CLEAR): the
+  //   · the BAND, zCrystInner..z0, bored to the BORE (plate + clear, TODO 300): the
   //     0.3 mm step to zBandFront and the band behind it are one bore here.
   // The face the sweep and the band share at zBandFront is doubled inside the
   // metal, the sector caps' own precedent in makeCase. Not cut: the midcase step
@@ -588,12 +595,31 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
     ...(pusherAz !== null ? [{ az: pusherAz, off: pusherOff, ap: pusherD / 2 + TUBE_WALL, z: pusherZ }] : []),
   ];
   const zBandEnd = formApertureGrow === null ? z0 : zMidBack;   // §321: the band ends where the back's round begins
-  const band = boredBand(loops.outer, loops.bore, Math.min(zBandFront, zBandEnd), Math.max(zBandFront, zBandEnd), BAND_BORES);
+  // TODO 300 — THE HOLD (src/casing-clamp.js, its line spec). The band is cut in three z runs so the middle one is the
+  // GROOVE the dogs' tongues turn into: its bore wall stands grooveD further out, from the plate's back face for the
+  // groove's width (a dog's thickness and SEAT_FIT). The groove runs the whole outline (a dog may stand anywhere on it,
+  // and a turned ring is how a groove is cut). Each run is its own closed body, the shared planes doubled inside the
+  // metal, the sweep-and-band seam's precedent above.
+  const bandLo = Math.min(zBandFront, zBandEnd), bandHi = Math.max(zBandFront, zBandEnd);
+  const bandRuns = !hold ? [[bandLo, bandHi, loops.bore]]
+    : [[bandLo, hold.zPlateBack, loops.bore], [hold.zPlateBack, hold.zPlateBack + hold.grooveW, loops.ring(CASE_BAND_T - hold.grooveD)],
+      [hold.zPlateBack + hold.grooveW, bandHi, loops.bore]];
+  if (hold && !(bandLo < hold.zPlateBack && hold.zPlateBack + hold.grooveW < bandHi))
+    console.warn(`makeFormCase TODO 300: the groove (z ${hold.zPlateBack.toFixed(3)}..${(hold.zPlateBack + hold.grooveW).toFixed(3)}) is not inside the band (${bandLo.toFixed(3)}..${bandHi.toFixed(3)})`);
+  const band = mergeGeos(bandRuns.map(([a, b, bore]) => boredBand(loops.outer, bore, a, b, BAND_BORES)));
   for (const b of BAND_BORES)
     if (!(b.z - b.ap > Math.min(zBandFront, zBandEnd) && b.z + b.ap < Math.max(zBandFront, zBandEnd)))
       console.warn(`makeFormCase §331: a bore window (z ${(b.z - b.ap).toFixed(3)}..${(b.z + b.ap).toFixed(3)}) reaches past the band's own wall `
         + `(${Math.min(zBandFront, zBandEnd).toFixed(3)}..${Math.max(zBandFront, zBandEnd).toFixed(3)})`);
-  const middleGeo = mergeGeos([sweep, band]);   // §321: the band ends where the back's round begins
+  // TODO 300 — THE LEDGE: the step from the fitted bore in to the LIP (the plate's outline less one land), from the
+  // dial's visible face back to the plate's dial face, so the plate bears on it over the flat of its dial face and the
+  // dial passes inside the lip. Bored for every stem by §186's notch half-width (the tube's aperture, the margin, and the
+  // plate's bevel), on the band's own strips: the stems are the only metal crossing it (TODO 300 step 3).
+  const ledge = !hold ? null : boredBand(loops.bore, loops.ring(CASE_BAND_T + hold.ledgeW), hold.zLedgeFront, hold.zPlateFace,
+    BAND_BORES.map((b) => ({ ...b, ap: Math.max(b.ap, hold.notchHalfW) })));
+  if (hold && !(hold.zLedgeFront < hold.zPlateFace))
+    console.warn(`makeFormCase TODO 300: the ledge has no depth (dial face z ${hold.zLedgeFront.toFixed(3)}, plate face ${hold.zPlateFace.toFixed(3)})`);
+  const middleGeo = mergeGeos(ledge ? [sweep, band, ledge] : [sweep, band]);   // §321: the band ends where the back's round begins
   holdWound(middleGeo, 'the case middle');
   // §289 — the bezel's metal is the part in front of the seat plane
   // zBandFront, and the brush shader (materials.js, CASE_POLISH_ATTR) polishes
@@ -616,6 +642,57 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   const frontAsm = new THREE.Group();
   frontAsm.name = 'caseCrystalAssembly';
   g.add(frontAsm);
+
+  // TODO 300 — THE DOGS (src/casing-clamp.js): three casing screws threaded blind into the plate's edge, each turning a
+  // flat dog whose tongue lies in the band's groove. A dog is the screw's head circle joined to its tongue, the tongue's
+  // tip cut ON the outline grown dogTip (an offset loop, so a curved station keeps the tip one fit off the groove's
+  // floor all across the tongue's width, where a straight tip would cross it on a tight corner). Clamped pose only:
+  // the stowed position (turned inward for casing) is a row of the line spec, not an axis. The tapped holes are not
+  // cut, the same declared CSG debt as every thread in this case (makeCase's clamp screws), and the screws ride
+  // middleAsm because they clamp the movement to the middle (makeCase's rule).
+  if (hold) {
+    const plate = loops.plate, n0 = plate.length;
+    let cum = [0];
+    for (let i = 0; i < n0; i++) { const a = plate[i], b = plate[(i + 1) % n0]; cum.push(cum[i] + Math.hypot(b[0] - a[0], b[1] - a[1])); }
+    const per = cum[n0];
+    const at = (s) => { s = ((s % per) + per) % per; let i = 0; while (cum[i + 1] < s) i++;
+      const a = plate[i], b = plate[(i + 1) % n0], t = (s - cum[i]) / (cum[i + 1] - cum[i] || 1); return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]; };
+    const tipLoop = loops.ring(G - hold.dogTip);
+    hold.stations.forEach((st, k) => {
+      const p = at(st), q0 = at(st - 0.5), q1 = at(st + 0.5), tl = Math.hypot(q1[0] - q0[0], q1[1] - q0[1]);
+      const t = [(q1[0] - q0[0]) / tl, (q1[1] - q0[1]) / tl], nrm = [t[1], -t[0]];   // CCW loop: outward is right of travel
+      const c = [p[0] + nrm[0] * hold.screw, p[1] + nrm[1] * hold.screw], h = hold.dogHalfW;
+      const pts = [];
+      for (let j = 0; j <= 16; j++) { const f = (Math.PI * j) / 16; pts.push([c[0] + h * (Math.cos(f) * t[0] - Math.sin(f) * nrm[0]), c[1] + h * (Math.cos(f) * t[1] - Math.sin(f) * nrm[1])]); }
+      // the tip: rays along the outward normal across the tongue's width, each ending at its NEAREST crossing of the tip
+      // loop ahead of the screw (a concave free outline crosses a ray more than once, and rayExit's farthest crossing or
+      // the loop's vertices in the band picked up a far stretch of it, folding the ring)
+      const nearestExit = (b0) => { let best = Infinity; const m = tipLoop.length;
+        for (let i = 0; i < m; i++) { const [px, py] = tipLoop[i], [qx, qy] = tipLoop[(i + 1) % m], ex = qx - px, ey = qy - py;
+          const den = nrm[0] * ey - nrm[1] * ex; if (Math.abs(den) < 1e-12) continue;
+          const wx = px - b0[0], wy = py - b0[1], d = (wx * ey - wy * ex) / den, u = (wx * nrm[1] - wy * nrm[0]) / den;
+          if (d > 0 && u >= -1e-9 && u <= 1 + 1e-9 && d < best) best = d; }
+        return best; };
+      const TIP_N = 16;
+      for (let j = 0; j <= TIP_N; j++) { const l = -h + (2 * h * j) / TIP_N, b0 = [c[0] + l * t[0], c[1] + l * t[1]], d = nearestExit(b0);
+        if (!(d < Infinity)) { console.warn(`makeFormCase TODO 300: dog ${k}'s tongue meets no wall along its normal`); continue; }
+        pts.push([b0[0] + nrm[0] * d, b0[1] + nrm[1] * d]); }
+      let area = 0; for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; area += a[0] * b[1] - b[0] * a[1]; }
+      if (area < 0) pts.reverse();
+      if (!loopSimple(pts)) console.warn(`makeFormCase TODO 300: dog ${k}'s outline is not a simple ring`);
+      const dog = new THREE.Mesh(holdWound(prism(pts, [], hold.zPlateBack, hold.zPlateBack + hold.dogT), `dog ${k}`), material);
+      dog.name = 'caseClampDog';
+      middleAsm.add(dog);
+      const head = new THREE.Mesh(holdWound(disc(hold.headD / 2, hold.zPlateBack + hold.dogT, hold.zPlateBack + hold.dogT + hold.headT), `clamp head ${k}`), material);
+      head.position.set(c[0], c[1], 0);
+      head.name = 'caseClampScrew';
+      middleAsm.add(head);
+      const shaft = new THREE.Mesh(holdWound(disc(hold.D / 2, hold.zPlateBack - hold.eng, hold.zPlateBack + hold.dogT), `clamp shaft ${k}`), material);
+      shaft.position.set(c[0], c[1], 0);
+      shaft.name = 'caseClampScrew';
+      middleAsm.add(shaft);
+    });
+  }
 
   // THE FRONT CRYSTAL: the crystal loop, zCrystOuter..zCrystInner, its edge on
   // the seat's wall and its outer face under the lip — makeCase's crystal
@@ -739,6 +816,12 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
     const lineAt = (k) => [perp[0] * (off + k), perp[1] * (off + k)];
     let inboard;
     if (flush) {
+      // TODO 300 — on the bore's exit, as the outboard end is on the outer's (TODO 275): the fitted bore brought the band's
+      // inner wall to the plate, and a flush end SQUARE to a line that meets the wall obliquely stood one edge of the
+      // sleeve 0.31 u into the bore, across the plate's path into the case (§187). So the inboard end is cut on the bore
+      // wall's tangent plane at its exit too (below, the outboard end's own construction), and the sleeve lies flush on
+      // both walls. (Ending it where its whole section had entered the band instead shortened it under the outboard
+      // cut's own run across its width, on arrangement-308's oblique corner, and moved the pusher's seat: TODO 241.)
       inboard = rayExit(loops.bore, dir, lineAt(0)) - SEAT_EMBED;
     } else {
       // §325 landing 6 — the plate's metal on THIS stem's line is MEASURED off the built plate (main.js PLATE_RIM.floors, within the
@@ -780,6 +863,13 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
       const [nx, ny] = rayExitNormal(loops.outer, dir, lineAt(0));
       endSlope = (nx * perp[0] + ny * perp[1]) / (nx * dir[0] + ny * dir[1]);
       cutEndOnPlane(sleeve.geometry, 'y', Math.max(len, 1e-6) / 2, 'x', endSlope);
+      // TODO 300 — and the inboard end on the bore wall's own plane where the line enters it (the bore is the outer's
+      // parallel offset, so its normal there is the same wall's), so no edge of the sleeve stands into the bore
+      const [bx, by] = rayExitNormal(loops.bore, dir, lineAt(0));
+      const inSlope = (bx * perp[0] + by * perp[1]) / (bx * dir[0] + by * dir[1]);
+      if (!(Math.abs(inSlope - endSlope) * rw < len))
+        console.warn(`makeFormCase TODO 300: ${name}'s two end planes cross inside the sleeve (slopes ${endSlope.toFixed(3)} / ${inSlope.toFixed(3)} over ±${rw.toFixed(3)}, length ${len.toFixed(3)})`);
+      cutEndOnPlane(sleeve.geometry, 'y', -Math.max(len, 1e-6) / 2, 'x', inSlope);
     }
     sleeve.position.y = inboard + len / 2;
     sleeve.name = `${name}Sleeve`;

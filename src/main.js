@@ -102,6 +102,7 @@ import {
   STOPWORK_BUILT,                             // §329: the Geneva stop-work is the shipped arrest where it stands — the one derived answer
   unionLoops, filletReflexCorners, discLessConvex,            // §336 landing 2: the flush cock's opening, merged from the windows it crosses
 } from './layout.js';
+import { solveClamp, dogStations, arcTable } from './casing-clamp.js';   // TODO 300: the form case's casing-clamp hold, its line spec
 import { genevaDims as swDims, PIN_FLOOR_U as SW_PIN_FLOOR, STUD_FLOOR_U as SW_STUD_FLOOR, chooseStopwork, starAngle as swStarAngle, engagementArc as swEngagementArc, travelTurns as swTravelTurns } from './stopwork-arrest.js';   // §329 landing 4: option B, the Geneva stop-work's line
 import { solveTrailingArrest, r1For as trailR1For, psi2ForThrow as trailPsi2ForThrow, epsOf as trailEpsOf, D_MIN as TRAIL_D_MIN, R1_MIN as TRAIL_R1_MIN } from './trailing-arrest.js';   // §329: the trailing arrest's line
 import { LUBRICATION, REGIME_INFO } from './lubrication.js';
@@ -3051,6 +3052,14 @@ const {
   ...KEYLESS_INPUTS,
   warn: (m) => console.warn(m),
 });
+// TODO 300 — THE FORM CASE'S HOLD, read from its line spec (src/casing-clamp.js) at this build's own plateR (the
+// radius the plate extrude's bevel rule reads). FORM_BORE_GROW is the one grow every form-case wall is offset from: the
+// bore SEAT_FIT off the plate's real reach, where it was CASE_CLEAR, the round case's movement-ring clearance, which
+// located nothing. Computed on every build (it is three lines of arithmetic); only a form build reads it.
+// FORM_HOLD_NOMINAL is the line spec on the exact curve: what the free outline's closure (FREE_RC) and the width check
+// read, before the case's rings exist to measure. FORM_HOLD_SPEC and FORM_BORE_GROW, the hold as CUT, follow the case
+// module's import below, where the rings' measured excess is carried in.
+const FORM_HOLD_NOMINAL = solveClamp({ plateR_u: plateR });
 // §307 — THE FORM BUILD. null on the round build, so nothing below this line
 // reads the rectangle and the default stays bit-exact; under ?case=rect the
 // base plate, the three-quarter plate, the dial and the case are cut to
@@ -3073,10 +3082,10 @@ const {
 // src/free-outlines.js by tools/free-outline.mjs, and read here by the movement's key (the spec with this case and
 // no seat — what moves the metal). A movement with no row is cut to the solvers' formPlate box as a polygon, the
 // first boot's guess, and FORM_FOOTPRINT below fits the measured metal and says to run the tool. Its re-entrant
-// turns are closed at FREE_RC: the band's outside is this outline grown CASE_CLEAR + CASE_BAND_T (form-case.js
+// turns are closed at FREE_RC: the band's outside is this outline grown FORM_BORE_GROW + CASE_BAND_T (form-case.js
 // formCaseLoops), where a re-entrant round of radius r becomes r − that grow, so the cut's round is that grow PLUS
 // one band thickness — the band's outside then turns no tighter than the band is thick, rather than to a cusp.
-const FREE_RC = CASE_CLEAR + 2 * CASE_BAND_T;
+const FREE_RC = FORM_HOLD_NOMINAL.boreBack + 2 * CASE_BAND_T;
 // §325 landing 7: `hands` moves no metal of the movement, so no movement-keyed lookup below carries it
 const FREE_KEY = SPEC.caseShape === 'free' ? configKey({ spec: { ...SPEC, hands: null, formRectSpec: null, gongSeat: null, arrest: SPEC.arrest === 'trailing' ? null : SPEC.arrest } }) : null;   // §329 landing 4: ?arrest=stopwork moves metal the outline is fitted to, so it keys its own outline; ?arrest=trailing (2a) moves none, so it reads the outline the build without it was fitted to
 const FREE_ROW = FREE_KEY ? FREE_OUTLINES[FREE_KEY] ?? null : null;
@@ -3204,8 +3213,39 @@ const formFilter = (plateRadius, { holes = [], slots = [], sectors = [], pockets
 // still boots round.
 const FORM_CASE_MOD = FORM ? await import('./form-case.js') : null;
 const makeFormCase = FORM ? FORM_CASE_MOD.makeFormCase : null;
+// TODO 300 — THE HOLD AS CUT. The case's rings are mitre offsets of its SAMPLED outer loop (form-case.js `inward`), so each
+// stands inside its true offset of the shape: by a chord's sagitta at the outer radius and a mitre's overshoot at each
+// vertex, 0.017 u on a rect's corner arcs. That ate the dial's margin (Case ⇄ Dial 0.1476 against CLEAR_MARGIN on the
+// alarm-free fitted case) and would put the locating fit outside §186's tenth. So the excess is MEASURED here, on the
+// rings the case will cut (the bore and the ledge's lip, at every vertex and three points of every edge), and carried
+// into the line spec as `ringExcess_u`, which grows the bore and insets the dial by it. Measured at the nominal grow and
+// again at the grow it gives (the excess moves with the outer loop), and the larger kept; the third reading, on the
+// rings as cut, is held to it.
+const ringExcessOf = (grow, ledgeW) => {
+  if (!FORM) return 0;
+  const L = FORM_CASE_MOD.formCaseLoops(FORM, grow);
+  let e = 0;
+  for (const [ring, want] of [[L.bore, grow], [L.ring(CASE_BAND_T + ledgeW), grow - ledgeW]])
+    for (let i = 0; i < ring.length; i++) {
+      const a = ring[i], b = ring[(i + 1) % ring.length];
+      for (const f of [0, 0.25, 0.5, 0.75]) e = Math.max(e, want + FORM.inset(a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f));
+    }
+  return e;
+};
+const FORM_RING_EXCESS = FORM ? (() => {
+  const e1 = ringExcessOf(FORM_HOLD_NOMINAL.boreBack, FORM_HOLD_NOMINAL.ledgeW);
+  const s1 = solveClamp({ plateR_u: plateR, ringExcess_u: e1 });
+  return Math.max(e1, ringExcessOf(s1.boreBack, s1.ledgeW));
+})() : 0;
+const FORM_HOLD_SPEC = solveClamp({ plateR_u: plateR, ringExcess_u: FORM_RING_EXCESS });
+const FORM_BORE_GROW = FORM_HOLD_SPEC.boreBack;
 if (FORM) {
-  const wOut = 2 * (FORM.hw + CASE_CLEAR + CASE_BAND_T);
+  const e = ringExcessOf(FORM_BORE_GROW, FORM_HOLD_SPEC.ledgeW);
+  if (e > FORM_RING_EXCESS + 1e-9)
+    console.warn(`TODO 300: the case's rings as cut stand ${e.toFixed(4)} inside their true offsets, past the ${FORM_RING_EXCESS.toFixed(4)} the hold was cut to`);
+}
+if (FORM) {
+  const wOut = 2 * (FORM.hw + FORM_HOLD_NOMINAL.boreBack + CASE_BAND_T);
   if (wOut > 2 * CASE_WIDTH_MAX + 1e-9)
     console.warn(`§307: the form case is ${(wOut * UNIT_MM).toFixed(2)} mm across its short side — over the 40 mm owner cap`);
 }
@@ -4148,7 +4188,7 @@ const R_BORE_BACK = CASE_R_OUT - CASE_BAND_T;
 // bytes do not move (the fingerprint holds that). `u` is the line's unit
 // direction, `off` the signed offset of its base to the left of it.
 const caseWallAlong = (u, off = 0) => FORM
-  ? FORM_CASE_MOD.rayExit(FORM_CASE_MOD.formCaseLoops(FORM).outer, [u.x, u.y], [-u.y * off, u.x * off])
+  ? FORM_CASE_MOD.rayExit(FORM_CASE_MOD.formCaseLoops(FORM, FORM_BORE_GROW).outer, [u.x, u.y], [-u.y * off, u.x * off])
   : off === 0 ? CASE_R_OUT : Math.sqrt(Math.max(0, CASE_R_OUT * CASE_R_OUT - off * off));
 // TODO 275 — AND WHICH WAY THAT WALL FACES, the same law's other half: the
 // wall's outward unit normal where the line leaves it. Under FORM it is the
@@ -4161,7 +4201,7 @@ const caseWallAlong = (u, off = 0) => FORM
 // obliquely only at one line, and buries its rim on the high side.
 const caseWallNormal = (u, off = 0) => {
   if (FORM) {
-    const [nx, ny] = FORM_CASE_MOD.rayExitNormal(FORM_CASE_MOD.formCaseLoops(FORM).outer, [u.x, u.y], [-u.y * off, u.x * off]);
+    const [nx, ny] = FORM_CASE_MOD.rayExitNormal(FORM_CASE_MOD.formCaseLoops(FORM, FORM_BORE_GROW).outer, [u.x, u.y], [-u.y * off, u.x * off]);
     return { x: nx, y: ny };
   }
   if (off === 0) return { x: u.x, y: u.y };
@@ -23005,8 +23045,12 @@ const dial = G.makeDial({
   // through dialFace's Y-flip — world (X, Y) ↔ dial-local (P.dial.x − X,
   // Y − P.dial.y) — which reverses the loop's orientation, so it is reversed
   // back to CCW for the Shape.
-  ...(FORM ? { outline: FORM.loop().map(([X, Y]) => [P.dial.x - X, Y - P.dial.y]).reverse() } : {}),
+  // TODO 300 — cut INSIDE the case's ledge (src/casing-clamp.js `dial`: the lip less CLEAR_MARGIN and a grid step), so
+  // the movement goes in from the back carrying it and the ledge bears on the plate where the dial is not. Only the
+  // dial's METAL moves: DIAL_TRACK prints under the case's opening, which the hold does not move, so it stays on FORM_DIAL.
+  ...(FORM ? { outline: FORM.loop({ grow: FORM_HOLD_SPEC.dial }).map(([X, Y]) => [P.dial.x - X, Y - P.dial.y]).reverse() } : {}),
   ...(DIAL_TRACK ? { track: DIAL_TRACK } : {}),   // §311 — the form face's railroad, the outline's own offsets
+  ...(FORM ? { outlineGrow: FORM_HOLD_SPEC.dial } : {}),   // TODO 300 — the outline is the track's shape grown by this
   fitMarkers: FRAME_LANDS && FORM?.kind === 'free',   // §325 landing 7: the free outline's lands preview fits its numerals to the rail; §328 made lands every kind's default, and the other faces keep their band
   subdialRecess: SUBDIAL_RECESS,
   thickness: DIAL_T,          // TODO 26 — the dial is a plate now; its BACK lands on Z_DIAL
@@ -24930,6 +24974,28 @@ const PLATE_RIM = (() => {
         if (along > 0 && perp < halfW - bevelSize - 0.02 && r > floors[n]) floors[n] = r;
       }
     }
+    // TODO 300 — under FORM a floor is the widest metal along the stem's line INSIDE the sleeve's strip, and the strip
+    // also holds the points where a plate edge CROSSES its two boundaries: an edge with both ends outside the strip
+    // contributes metal no vertex reports, and the vertex walk alone read the alarm-free fitted case's crown floor short,
+    // standing its sleeve 0.1443 off the plate against CLEAR_MARGIN (plateSeats). Every triangle edge is walked for its
+    // crossings of perp = ±CASE_TUBE_AP, ahead of the centre, and the along-line reach there joins the floor.
+    if (FORM) {
+      const idx = o.geometry.index, nI = idx ? idx.count : p.count, a = new THREE.Vector3(), b = new THREE.Vector3();
+      for (let t = 0; t < nI; t += 3) for (let k = 0; k < 3; k++) {
+        a.fromBufferAttribute(p, idx ? idx.getX(t + k) : t + k).applyMatrix4(_mw);
+        b.fromBufferAttribute(p, idx ? idx.getX(t + (k + 1) % 3) : t + (k + 1) % 3).applyMatrix4(_mw);
+        for (let n = 0; n < CASE_NOTCHES.length; n++) {
+          const { az } = CASE_NOTCHES[n], c = Math.cos(az), s_ = Math.sin(az);
+          const pa = -a.x * s_ + a.y * c, pb = -b.x * s_ + b.y * c;
+          for (const bound of [CASE_TUBE_AP, -CASE_TUBE_AP]) {
+            if ((pa - bound) * (pb - bound) >= 0) continue;
+            const f = (bound - pa) / (pb - pa), x = a.x + (b.x - a.x) * f, y = a.y + (b.y - a.y) * f;
+            const along = x * c + y * s_;
+            if (along > floors[n]) floors[n] = along;
+          }
+        }
+      }
+    }
   });
   if (!(front < Infinity) || !(reach > plateR - 1e-9))
     console.warn(`case: the plate's rim measured front ${front} / reach ${reach.toFixed(4)} against an `
@@ -24939,13 +25005,14 @@ const PLATE_RIM = (() => {
   // (BASE_RIM_R subtracts the bevel swell out, so the two should agree to
   // float noise; a tenth of the fit is the drift alarm).
   // §307 landing 2 — under FORM the fit is the FORM case's: its bore is the
-  // plate's shape grown CASE_CLEAR (form-case.js formCaseLoops), so the fit is
-  // that grow less the metal's measured swell past the outline, held to the
-  // same SEAT_FIT and the same tenth.
-  const fit = FORM ? CASE_CLEAR - formOut : R_BORE_BACK - reach;
+  // plate's shape grown FORM_BORE_GROW (form-case.js formCaseLoops; TODO 300's
+  // fitted bore, where it was CASE_CLEAR), so the fit is that grow less the
+  // metal's measured swell past the outline, held to the same SEAT_FIT and the
+  // same tenth.
+  const fit = FORM ? FORM_BORE_GROW - FORM_HOLD_SPEC.E - formOut : R_BORE_BACK - reach;   // TODO 300: at the bore ring's worst point
   if (Math.abs(fit - G.SEAT_FIT) > G.SEAT_FIT * 0.1)
     console.warn(`§186: the rim-to-bore fit measures ${fit.toFixed(4)} u against the SEAT_FIT `
-      + `${G.SEAT_FIT.toFixed(4)} it was derived to — ${FORM ? 'the form case\'s bore (plate + CASE_CLEAR) does not locate the form plate' : 'the rim no longer locates the movement'}`);
+      + `${G.SEAT_FIT.toFixed(4)} it was derived to — ${FORM ? 'the form case\'s bore (plate + FORM_BORE_GROW) does not locate the form plate' : 'the rim no longer locates the movement'}`);
   // ...and the notch floors against the standoff the tubes are cut to
   // (tubeClearR = plateR · (1 + PLATE_BEVEL_F), the floor's own swell rule):
   // a floor past that number is metal a crown tube runs into.
@@ -46312,7 +46379,7 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
     const ex = -_pushU.y * _pushOffAxis + _pushU.x * sExit, ey = _pushU.x * _pushOffAxis + _pushU.y * sExit;
     let proud = 0, at = null;
     if (FORM) {
-      for (const [vx, vy] of FORM_CASE_MOD.formCaseLoops(FORM).outer) {
+      for (const [vx, vy] of FORM_CASE_MOD.formCaseLoops(FORM, FORM_BORE_GROW).outer) {
         if (Math.hypot(vx - ex, vy - ey) > PUSHER_HEAD_R / PUSHER_SEAT_COS + CLEAR_MARGIN) continue;
         const h = (vx - ex) * _pushWallN.x + (vy - ey) * _pushWallN.y;
         if (h > proud) { proud = h; at = [vx, vy]; }
@@ -53670,7 +53737,7 @@ const CASE_SECTORS = (() => {
         // grown CASE_CLEAR (form-case.js), so a point in the round annulus is
         // in case metal only if it is also past THAT bore. A corner station
         // stands in the round annulus and well inside the rect.
-        if (FORM && FORM.inset(pt.x, pt.y) > -CASE_CLEAR) return;
+        if (FORM && FORM.inset(pt.x, pt.y) > -FORM_BORE_GROW) return;
         if (exempt(pt)) return;
         hits.push({ name: o.name || o.parent?.name || '(unnamed)', r, z: pt.z, az: Math.atan2(pt.y, pt.x) });
       };
@@ -54465,9 +54532,9 @@ const CASE_DIMS = (() => {
       });
       formApertureGrow = out + CLEAR_MARGIN;
       formGlassGrow = formApertureGrow + CASE_CRYSTAL_T;
-      if (formGlassGrow + STOCK_MIN_U > CASE_CLEAR + CASE_BAND_T)
+      if (formGlassGrow + STOCK_MIN_U > FORM_BORE_GROW + CASE_BAND_T)
         console.warn(`§307: the form back's glass edge stands ${formGlassGrow.toFixed(3)} u past the plate's outline — within §50's `
-          + `${STOCK_MIN_U.toFixed(3)} of the case's outer wall at ${(CASE_CLEAR + CASE_BAND_T).toFixed(3)}`);
+          + `${STOCK_MIN_U.toFixed(3)} of the case's outer wall at ${(FORM_BORE_GROW + CASE_BAND_T).toFixed(3)}`);
     }
   }
   // THE STEPPED GLASS, both planes and the step radius derived from the
@@ -54554,6 +54621,20 @@ const CASE_DIMS = (() => {
     skirtOD, skirtID, zSkirtBot,
     apertureR: RA, glassEdgeR: RA_EDGE,
     ...(FORM ? { formApertureGrow, formGlassGrow } : {}),   // §307 landing 2 — the form back's window, a grow of the plate's shape
+    // TODO 300 — the casing-clamp hold (src/casing-clamp.js, read at this build's plateR above): the fitted bore's grow
+    // and every row of the line spec, with the stations the movement gives it — the plate's two faces (BACK_PLATE_Z ±
+    // half its thickness), the dial's visible face (the ledge's front), and the dogs' arc stations along the plate's
+    // outline, phased away from every line that crosses it (the two stems and the pusher, each from its own base).
+    ...(FORM ? { formClear: FORM_BORE_GROW, formHold: (() => {
+      const loop = FORM.loop(), T = arcTable(loop);
+      const lines = [[stemAngle, 0], ...(ALARM_BUILT ? [[alarmStemAngle, 0], [ALARM_PUSH_AZ, _pushBase.x * _pushPerp.x + _pushBase.y * _pushPerp.y]] : [])];
+      const notchS = lines.map(([az, off]) => T.exitAt(az, -Math.sin(az) * off, Math.cos(az) * off));
+      if (notchS.some((x) => x === null)) console.warn(`TODO 300: a stem's line never leaves the plate's outline (${notchS.map(String).join(', ')})`);
+      const D = dogStations(loop, notchS.filter((x) => x !== null), FORM_HOLD_SPEC.N);
+      if (!(D.near >= FORM_HOLD_SPEC.dogSpacing))
+        console.warn(`TODO 300: the nearest casing-clamp dog stands ${D.near.toFixed(3)} of arc off a stem's crossing, under the notch + head + margin ${FORM_HOLD_SPEC.dogSpacing.toFixed(3)}`);
+      return { ...FORM_HOLD_SPEC, stations: D.stations, zPlateBack: BACK_PLATE_Z + BACK_PLATE_T / 2, zPlateFace: BACK_PLATE_Z - BACK_PLATE_T / 2, zLedgeFront: Z_DIAL - DIAL_T };
+    })() } : {}),
     ...(FORM ? { plateFloors: PLATE_RIM.floors } : {}),   // §325 landing 6 — each stem's widest plate METAL along its own line, measured off the built plate (the §186 assert below holds the tubes to these same numbers)
     rStep, zStepUnder, zStepTop,
     // The bezel opening COVERS the dial/plate join (layout.js §125: "the
@@ -55284,9 +55365,12 @@ registerExplode(caseSolid.userData.assemblies.front, 0, 2, -1);
 // own case (the §3 flange did exactly that for a day — 1.98 mm into the
 // path, invisible to every pose-based gate because assembly lives between
 // poses). Clamp screws are installed after casing and lugs/collars stand
-// outboard; the same exclusions the probe claims.
+// outboard; the same exclusions the probe claims. TODO 300: so are the form
+// case's casing-clamp DOGS — fitted with their screws once the movement is in,
+// and turned out into the groove; their stowed position is the line spec's
+// row (src/casing-clamp.js dogStow, held clear of the counted metal).
 {
-  const SKIP = ['caseClampScrew', 'caseLug', 'caseSpringBar', 'caseCrownTubeCollar', 'caseAlarmTubeCollar'];
+  const SKIP = ['caseClampScrew', 'caseClampDog', 'caseLug', 'caseSpringBar', 'caseCrownTubeCollar', 'caseAlarmTubeCollar'];
   const zPath = PLATE_RIM.back;
   let minR = Infinity, minName = null;
   const a = new THREE.Vector3(), b = new THREE.Vector3();
@@ -66163,6 +66247,11 @@ if (ALARM_BUILT) {
     -SECONDS_LOCAL.y + secondsWellR) + CLEAR_MARGIN;
   const _rv = new THREE.Vector3();
   let nearest = Infinity, nearestUnit = 'nothing';
+  // TODO 300 — under FORM the dial's edge is its cut OUTLINE (the plate's shape grown FORM_HOLD_SPEC.dial, inside the
+  // case's ledge), not the round dialRadius, so foreign metal in the slab near that edge is held to the outline: within
+  // the plate's rim margin of it (where no counted metal stands), it must stand CLEAR_MARGIN outside the dial's edge.
+  // The round reading, kept for a form case, read the ledge's lip as standing in the 41.52 rim.
+  let formWorst = -Infinity, formUnit = 'nothing';
   for (const entry of labelEntries) {
     if (entry.name === 'Dial') continue;
     // §308 L4 option B — the reserve HAND of a well outside the chapter rides
@@ -66177,12 +66266,16 @@ if (ALARM_BUILT) {
       for (let i = 0; i < pos.count; i++) {
         _rv.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
         if (_rv.z < slab.min.z || _rv.z > slab.max.z) continue;
+        if (FORM) { const ins = FORM.inset(_rv.x, _rv.y); if (ins < PLATE_RIM_MARGIN && ins > formWorst) { formWorst = ins; formUnit = entry.name; } continue; }
         const r = Math.hypot(_rv.x - P.dial.x, _rv.y - P.dial.y);
         if (r > wellsEdge && r < nearest) { nearest = r; nearestUnit = entry.name; }
       }
     });
   }
-  if (nearest < dialRadius + CLEAR_MARGIN)
+  if (FORM && formWorst > -FORM_HOLD_SPEC.dial - CLEAR_MARGIN + 1e-9)
+    console.warn(`§125 dial rim: ${formUnit} stands ${formWorst.toFixed(3)} inside the form outline in the dial's slab — the dial's edge `
+      + `is ${(-FORM_HOLD_SPEC.dial).toFixed(3)} inside it and needs ${(-FORM_HOLD_SPEC.dial - CLEAR_MARGIN).toFixed(3)} clear (TODO 300)`);
+  if (!FORM && nearest < dialRadius + CLEAR_MARGIN)
     console.warn(`§125 dial rim: ${nearestUnit} at radius ${nearest.toFixed(2)} in the dial's slab — the `
       + `${dialRadius.toFixed(2)} rim needs ${(dialRadius + CLEAR_MARGIN).toFixed(2)} clear`);
 }
@@ -66324,7 +66417,7 @@ let CASED_DEPTH_MM = NaN;
   };
   const platePlan = FORM ? { xMin: FORM.xMin, xMax: FORM.xMax, yMin: FORM.yMin, yMax: FORM.yMax }
     : { xMin: -plateR, xMax: plateR, yMin: -plateR, yMax: plateR };
-  const casePlan = FORM ? planOf(FORM_CASE_MOD.formCaseLoops(FORM).outer)
+  const casePlan = FORM ? planOf(FORM_CASE_MOD.formCaseLoops(FORM, FORM_BORE_GROW).outer)
     : { xMin: -CASE_R_OUT, xMax: CASE_R_OUT, yMin: -CASE_R_OUT, yMax: CASE_R_OUT };
   scaleReadout = {
     plateMM, movMM,
@@ -66976,6 +67069,7 @@ window.__clock = {
   // where the notch actually stands, and whether the roller moved it.
   get resetContact() { return { ...resetContactNow, seatD: HEART_FREE_D0, retractD: HEART_FREE_D1 }; },
   get bootWarns() { return __bootWarns; },
+  get formHold() { return FORM ? { ...FORM_HOLD_SPEC, boreGrow: FORM_BORE_GROW } : null; },   // TODO 300 — the form case's casing-clamp hold, as cut (src/casing-clamp.js at this build's plateR)
   get formFit() { return { key: FORM_FIT_KEY, from: SPEC.formRectSpec ? 'url' : FORM_SEAT_FIT ? 'seat' : FORM_ALARMFREE_FIT ? 'table' : SPEC.caseShape && SPEC.caseShape !== 'free' ? 'formPlate' : null }; },   // TODO 298 — where this box form case's cut came from (tools/form-fits.mjs reads it)
   get modules() { return { alarm: ALARM_BUILT }; },   // TODO 298 — which modules this build cut (§325 landing 3's ?alarm=0 builds none of the alarm), for inspect.js' module-aware tables
   get omitted() { return BUILD_OMITTED.map((o) => ({ ...o })); },   // TODO 298 — the meshes the build's own solve left uncut, each with the reason it warned
