@@ -654,6 +654,13 @@ export const AMPLITUDE_CLAIM_DEG = rateBalanceRow(SPEC.vph).claimDeg;
 // stations out from it (the pin circle, the fork's length), so it is the one
 // size the escapement's whole solve follows.
 export const BALANCE_R_SPEC = rateBalanceRow(SPEC.vph).balanceR;
+// §343 — A RATE VARIANT: a build at a rate other than DEFAULT_VPH. The shipped literals that say "as large as the plate
+// allows" or "the station where two bounds meet" (DRUM_R_ACTUAL, D4, the gong's authored arc) were each solved ONCE, at
+// the default rate's plate. A variant re-gears the escape mesh and carries its own balance, so its plate moves and those
+// maximality claims are not its claims: a variant keeps the shipped drum (every rate runs the SAME spring, which is the
+// premise RATE_TABLE's balances are solved on) and the shipped D4, holding only that each FITS, and rings its gong at its
+// own derivation, as a form case does (§325 landing 12). §75's rule for a moved drum, applied per rate.
+export const RATE_VARIANT = SPEC.vph !== DEFAULT_VPH;
 // §343 — true when the CASE, not the spring, sets this rate's balance radius (RATE_TABLE's `caseBound`).
 export const BALANCE_R_CASE_BOUND = rateBalanceRow(SPEC.vph).caseBound === true;
 export const AMPLITUDE_PEAK_DEG = rateBalanceRow(SPEC.vph).peakDeg;
@@ -6313,6 +6320,7 @@ export function solveStopWork({
     return solveElbow(len, poses, obstaclesFor(linkHalfW), linkHalfT,
       coarse ? { ...opts, fStep: 0.25, eStep: 1 } : opts);
   };
+  let STOP_BEARING_FOUND = null;
   const STOP_BEARING = (() => {
     const ideal = Math.atan2(P.balance.y, P.balance.x);
     const obstacles = bearingObstaclesAt(P);
@@ -6365,6 +6373,9 @@ export function solveStopWork({
     // corridor is the thing that failed. That is a LAYOUT finding, not a
     // reason to accept a station nothing was checked against; C4 turns it
     // into a refusal, and C1's elbow warning names the body in the way.
+    // §343 — and REPORT which step was taken, so a caller that probes this
+    // solve (onHackPin's arm fraction) can tell a chosen station from a fallback.
+    STOP_BEARING_FOUND = best ? 'routable' : bestAny ? 'unroutable' : 'none';
     if (!best && bestAny) {
       warn('stop work: no station about the balance can route the hack rod through the low corridor — keeping the best-coupled one');
       best = bestAny;
@@ -6476,7 +6487,7 @@ export function solveStopWork({
     STOP_ARM_ROOT_X, STOP_HUB_HALF_X, STOP_LEAN_ALLOW, STOP_PSI_TARGET,
     // the station and the lever it sizes
     STOP_PIVOT_R, POST_STROKE, Z_STOP_PIVOT_LOW,
-    STOP_BEARING, STOP_R_HAT, STOP_T_HAT, STOP_PIVOT, STOP_TANG_K,
+    STOP_BEARING, STOP_BEARING_FOUND, STOP_R_HAT, STOP_T_HAT, STOP_PIVOT, STOP_TANG_K,
     Z_STOP_PIVOT, STOP_TAIL_H, STOP_MAST_TOP, PAD_ARM_LOCAL_Z,
     // §86 A — which of these were decided by a fence rather than a field
     corners,

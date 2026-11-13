@@ -32,7 +32,7 @@ that band's swept footprint.
 
 | § | Title | Parts |
 |---|---|---|
-| [§343](built/0343.md) | The chronometer's beat: a 14,400 A/h rate carrying the largest balance the case admits — PARTIAL: landing 1 (the rate and its balance) shipped; landing 2 (making it the shipped watch) open | 1 |
+| [§343](built/0343.md) | The chronometer's beat: a 14,400 A/h rate carrying the largest balance the case admits — PARTIAL: landing 1 (the rate and its balance) shipped; landings 1b–1e close `?vph=14400` (boot silent, battery green); landing 2 (making it the shipped watch) open | 1 |
 | [§338](built/0338.md) | A native battery: one deterministic library, WebAssembly kernels, identical results on ARM and x86 — PARTIAL: landing 0's check profile, landing 1 (the native host), landing 2 (deterministic maths), landing 3 (the native battery), landing 4 (the pose-conditioning guard), landing 5 (the compiled kernel's first primitive), landing 6 (its second, the boolean intersection), landing 7 (exact contact), landing 8 (exact primitives in every mode) and landing 9 (a morphing mesh's tree refitted) shipped | 1 |
 | [§337](built/0337.md) | The geared Geneva stop-work: a finger wheel geared off the cone, so every reserve has an exact star | 1 |
 | [§336](built/0336.md) | The fusee cock: the fusee's top bush on a cranked cock standing on the base plate | 1 |
