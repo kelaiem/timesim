@@ -18,6 +18,8 @@
 //   S7  the dogs' stations clear the stem notch by notch + head + margin and their triangle holds the plate's centroid;
 //       CONTROL: three dogs bunched on one side leave the centroid outside
 //   S8  a fork of one input row re-derives the rest
+//   S9  the build's measured ring excess (mitre rings stand inside their true offsets) is carried into the bore and the
+//       dial; CONTROL: the exact-curve spec on the same rings loses the margin and the fit's tenth
 // The stem's azimuth (159.89° about the plate's origin) is MEASURED off alarm=0&case=fitted's caseCrownTube; the fold
 // reads the build's own.
 import { solveClamp, CLAMP_INPUTS, GEOMETRY_RULES, arcTable, dogStations, containsPoint, loopCentroid } from '../src/casing-clamp.js';
@@ -43,7 +45,7 @@ ok('S2 the ledge bears at least one land on the plate\'s flat dial face', bears(
   `lip at outline − ${f(-C.boreFront)}, ledge ${f(C.ledgeW)} u (${mm(C.ledgeW)}) wide`);
 ok('S2 control: a lip at the outline bears nothing', !(bears(0) >= STOCK_MIN_U));
 
-ok('S3 the dial passes inside the lip by more than CLEAR_MARGIN', C.boreFront - C.dial > CLEAR_MARGIN, `dial at outline − ${f(-C.dial)} u (${mm(-C.dial)}), ${f(C.boreFront - C.dial)} inside the lip`);
+ok('S3 the dial passes inside the lip\'s worst point by more than CLEAR_MARGIN', C.boreFront - C.E - C.dial > CLEAR_MARGIN, `dial at outline − ${f(-C.dial)} u (${mm(-C.dial)}), ${f(C.boreFront - C.dial)} inside the lip`);
 ok('S3 control: the dial cut to the plate\'s outline stands in the ledge', !(C.boreFront - 0 > CLEAR_MARGIN), `${f(-C.boreFront)} u into it`);
 
 ok('S4 the screw\'s hole keeps a pitch of plate wall to the outline', -C.screw - C.D / 2 >= C.pitch - 1e-12, `axis ${f(-C.screw)} u inside, wall ${f(-C.screw - C.D / 2)} against ${f(C.pitch)}`);
@@ -88,6 +90,16 @@ for (const { kind, row } of rows) {
   warns.length = 0;
 }
 console.warn = cw;
+
+// S9 the case's rings are mitre offsets of its sampled outer loop and stand INSIDE their true offsets; the build measures
+// that excess (0.0173 u on the rect's corner arcs at the default fit) and the spec carries it into the bore and the dial
+{ const E = 0.0173, X = solveClamp({ ringExcess_u: E });
+  ok('S9 at the rect\'s measured ring excess the fit stays inside §186\'s tenth and the dial clears the lip\'s worst point',
+    X.fit(X.boreBack) >= G.SEAT_FIT && X.fit(X.boreBack) - G.SEAT_FIT <= G.SEAT_FIT / 10 && X.boreFront - X.E - X.dial > CLEAR_MARGIN,
+    `bore + ${f(X.boreBack)}, fit ${f(X.fit(X.boreBack))}; dial − ${f(-X.dial)}, ${f(X.boreFront - X.E - X.dial)} off the lip's worst`);
+  ok('S9 control: the exact-curve spec read on the same rings loses the margin and the fit\'s tenth',
+    !(C.boreFront - E - C.dial > CLEAR_MARGIN) && !(C.boreBack - E - C.bevel >= G.SEAT_FIT - G.SEAT_FIT / 10),
+    `dial gap ${f(C.boreFront - E - C.dial)}, fit ${f(C.boreBack - E - C.bevel)}`); }
 
 const F = solveClamp({ plateR_u: 50 });
 ok('S8 a fork of the plate\'s radius re-derives every row from the same rules', Math.abs(F.boreBack - Math.ceil((50 * G.PLATE_BEVEL_F + G.SEAT_FIT) / 0.01 - 1e-9) * 0.01) < 1e-12

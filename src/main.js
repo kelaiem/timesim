@@ -3056,8 +3056,10 @@ const {
 // radius the plate extrude's bevel rule reads). FORM_BORE_GROW is the one grow every form-case wall is offset from: the
 // bore SEAT_FIT off the plate's real reach, where it was CASE_CLEAR, the round case's movement-ring clearance, which
 // located nothing. Computed on every build (it is three lines of arithmetic); only a form build reads it.
-const FORM_HOLD_SPEC = solveClamp({ plateR_u: plateR });
-const FORM_BORE_GROW = FORM_HOLD_SPEC.boreBack;
+// FORM_HOLD_NOMINAL is the line spec on the exact curve: what the free outline's closure (FREE_RC) and the width check
+// read, before the case's rings exist to measure. FORM_HOLD_SPEC and FORM_BORE_GROW, the hold as CUT, follow the case
+// module's import below, where the rings' measured excess is carried in.
+const FORM_HOLD_NOMINAL = solveClamp({ plateR_u: plateR });
 // §307 — THE FORM BUILD. null on the round build, so nothing below this line
 // reads the rectangle and the default stays bit-exact; under ?case=rect the
 // base plate, the three-quarter plate, the dial and the case are cut to
@@ -3083,7 +3085,7 @@ const FORM_BORE_GROW = FORM_HOLD_SPEC.boreBack;
 // turns are closed at FREE_RC: the band's outside is this outline grown FORM_BORE_GROW + CASE_BAND_T (form-case.js
 // formCaseLoops), where a re-entrant round of radius r becomes r − that grow, so the cut's round is that grow PLUS
 // one band thickness — the band's outside then turns no tighter than the band is thick, rather than to a cusp.
-const FREE_RC = FORM_BORE_GROW + 2 * CASE_BAND_T;
+const FREE_RC = FORM_HOLD_NOMINAL.boreBack + 2 * CASE_BAND_T;
 // §325 landing 7: `hands` moves no metal of the movement, so no movement-keyed lookup below carries it
 const FREE_KEY = SPEC.caseShape === 'free' ? configKey({ spec: { ...SPEC, hands: null, formRectSpec: null, gongSeat: null, arrest: SPEC.arrest === 'trailing' ? null : SPEC.arrest } }) : null;   // §329 landing 4: ?arrest=stopwork moves metal the outline is fitted to, so it keys its own outline; ?arrest=trailing (2a) moves none, so it reads the outline the build without it was fitted to
 const FREE_ROW = FREE_KEY ? FREE_OUTLINES[FREE_KEY] ?? null : null;
@@ -3211,8 +3213,39 @@ const formFilter = (plateRadius, { holes = [], slots = [], sectors = [], pockets
 // still boots round.
 const FORM_CASE_MOD = FORM ? await import('./form-case.js') : null;
 const makeFormCase = FORM ? FORM_CASE_MOD.makeFormCase : null;
+// TODO 300 — THE HOLD AS CUT. The case's rings are mitre offsets of its SAMPLED outer loop (form-case.js `inward`), so each
+// stands inside its true offset of the shape: by a chord's sagitta at the outer radius and a mitre's overshoot at each
+// vertex, 0.017 u on a rect's corner arcs. That ate the dial's margin (Case ⇄ Dial 0.1476 against CLEAR_MARGIN on the
+// alarm-free fitted case) and would put the locating fit outside §186's tenth. So the excess is MEASURED here, on the
+// rings the case will cut (the bore and the ledge's lip, at every vertex and three points of every edge), and carried
+// into the line spec as `ringExcess_u`, which grows the bore and insets the dial by it. Measured at the nominal grow and
+// again at the grow it gives (the excess moves with the outer loop), and the larger kept; the third reading, on the
+// rings as cut, is held to it.
+const ringExcessOf = (grow, ledgeW) => {
+  if (!FORM) return 0;
+  const L = FORM_CASE_MOD.formCaseLoops(FORM, grow);
+  let e = 0;
+  for (const [ring, want] of [[L.bore, grow], [L.ring(CASE_BAND_T + ledgeW), grow - ledgeW]])
+    for (let i = 0; i < ring.length; i++) {
+      const a = ring[i], b = ring[(i + 1) % ring.length];
+      for (const f of [0, 0.25, 0.5, 0.75]) e = Math.max(e, want + FORM.inset(a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f));
+    }
+  return e;
+};
+const FORM_RING_EXCESS = FORM ? (() => {
+  const e1 = ringExcessOf(FORM_HOLD_NOMINAL.boreBack, FORM_HOLD_NOMINAL.ledgeW);
+  const s1 = solveClamp({ plateR_u: plateR, ringExcess_u: e1 });
+  return Math.max(e1, ringExcessOf(s1.boreBack, s1.ledgeW));
+})() : 0;
+const FORM_HOLD_SPEC = solveClamp({ plateR_u: plateR, ringExcess_u: FORM_RING_EXCESS });
+const FORM_BORE_GROW = FORM_HOLD_SPEC.boreBack;
 if (FORM) {
-  const wOut = 2 * (FORM.hw + FORM_BORE_GROW + CASE_BAND_T);
+  const e = ringExcessOf(FORM_BORE_GROW, FORM_HOLD_SPEC.ledgeW);
+  if (e > FORM_RING_EXCESS + 1e-9)
+    console.warn(`TODO 300: the case's rings as cut stand ${e.toFixed(4)} inside their true offsets, past the ${FORM_RING_EXCESS.toFixed(4)} the hold was cut to`);
+}
+if (FORM) {
+  const wOut = 2 * (FORM.hw + FORM_HOLD_NOMINAL.boreBack + CASE_BAND_T);
   if (wOut > 2 * CASE_WIDTH_MAX + 1e-9)
     console.warn(`§307: the form case is ${(wOut * UNIT_MM).toFixed(2)} mm across its short side — over the 40 mm owner cap`);
 }
@@ -24976,7 +25009,7 @@ const PLATE_RIM = (() => {
   // fitted bore, where it was CASE_CLEAR), so the fit is that grow less the
   // metal's measured swell past the outline, held to the same SEAT_FIT and the
   // same tenth.
-  const fit = FORM ? FORM_BORE_GROW - formOut : R_BORE_BACK - reach;
+  const fit = FORM ? FORM_BORE_GROW - FORM_HOLD_SPEC.E - formOut : R_BORE_BACK - reach;   // TODO 300: at the bore ring's worst point
   if (Math.abs(fit - G.SEAT_FIT) > G.SEAT_FIT * 0.1)
     console.warn(`§186: the rim-to-bore fit measures ${fit.toFixed(4)} u against the SEAT_FIT `
       + `${G.SEAT_FIT.toFixed(4)} it was derived to — ${FORM ? 'the form case\'s bore (plate + FORM_BORE_GROW) does not locate the form plate' : 'the rim no longer locates the movement'}`);

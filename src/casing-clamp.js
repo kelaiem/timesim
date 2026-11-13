@@ -48,6 +48,7 @@ export const CLAMP_INPUTS = Object.freeze({
   plateR_u: { v: 41.51616090422663, why: 'the radius the plate extrude\'s bevel rule reads (main.js plateR, measured on alarm=0&case=fitted; the fold passes the build\'s own)' },
   clampD_u: { v: 0.6 / UNIT_MM, why: 'the round build\'s smallest clamp stock (main.js CASE_CLAMP_SHAFT_D without the alarm, §325 landing 14)' },
   dogs: { v: 3, why: '§186\'s tripod (CASE_CLAMP_N): the fewest bearings that seat a plane' },
+  ringExcess_u: { v: 0, why: 'MEASURED by the build: how far the case\'s rings (mitre offsets of its sampled outer loop, form-case.js) stand INSIDE their true offsets of the shape — 0.017 u on a rect\'s corner arcs; 0 is the exact-curve line' },
 });
 const IN = (k, over) => (over && k in over ? over[k] : CLAMP_INPUTS[k].v);
 
@@ -56,13 +57,13 @@ const GRID = 0.01;
 const up = (x) => Math.ceil(x / GRID - 1e-9) * GRID;   // rounded away from zero on the grid
 export function solveClamp(over) {
   const { PLATE_BEVEL_F, SEAT_FIT, TUBE_WALL } = GEOMETRY_RULES;
-  const plateR = IN('plateR_u', over), D = IN('clampD_u', over), N = IN('dogs', over);
+  const plateR = IN('plateR_u', over), D = IN('clampD_u', over), N = IN('dogs', over), E = IN('ringExcess_u', over);
   const bevel = plateR * PLATE_BEVEL_F;            // the plate's swell past its authored outline (makeBackPlate)
   const land = up(STOCK_MIN_U);                    // §62's land floor, on the grid
-  const boreBack = up(bevel + SEAT_FIT);           // locating: SEAT_FIT off the real reach
+  const boreBack = up(bevel + SEAT_FIT + E);       // locating: SEAT_FIT off the real reach, at the ring's worst (E in)
   const boreFront = -land;                         // the ledge's lip: one land onto the flat dial face
   const ledgeW = boreBack - boreFront;             // the ledge's radial width, bore wall to lip
-  const dial = boreFront - CLEAR_MARGIN - GRID;    // the dial passes inside the lip, a grid step past the margin
+  const dial = -up(land + CLEAR_MARGIN + GRID + E);   // the dial passes inside the lip's worst point, a grid step past the margin
   const caseIn = CASE_CLEAR - boreBack;            // how far the band comes in against today's single bore
   const notchHalfW = CASE_TUBE_D / 2 + TUBE_WALL + CLEAR_MARGIN + bevel;   // §186 CASE_NOTCH_HALFW, carried whole
   const pitch = D / 4, headD = D * (CASE_SCREW_HEAD_D / CASE_SCREW_SHAFT_D);   // §186's thread wall, the 1.8:1 head
@@ -83,7 +84,7 @@ export function solveClamp(over) {
     holeFloor, headIn, dogT, grooveD, grooveW, dogTip, dogReach, dogStow, dogHalfW, dogSpacing, N,
     bandLeft: CASE_BAND_T - grooveD,               // band wall behind the groove
     marginClear: (depth) => PLATE_RIM_MARGIN - depth,   // a depth inside the outline to the counted metal
-    fit: (boreOff) => boreOff - bevel };           // the locating fit a bore at boreOff gives: §186's measure, wall to reach
+    E, fit: (boreOff) => boreOff - E - bevel };   // the locating fit a bore at boreOff gives at its worst point           // the locating fit a bore at boreOff gives: §186's measure, wall to reach
 }
 
 // ---- along an outline: arc length, a station's point, and the dogs' stations ----
