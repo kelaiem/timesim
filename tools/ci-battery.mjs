@@ -230,6 +230,16 @@ const SPEC_BOOT_RATIO = Object.freeze({
   // point 122.5 s (4.28×), the same way.
   'stopwork-140': 4.3,   // 122.5 s against 28.6 s
   'alarmaz=180': 1.8,    // 21.2 s
+  // TODO 305's five arrangement points, measured 2026-11-14 the stopwork-140 way: native host, one at a time on the dev
+  // container, the default 23.99 / 24.05 s either side of them; each the point over the faster default, rounded up to a
+  // tenth. They were 2.1–2.5× on main already and unlisted. TODO 305 adds 3–7 s each: bearings the fold used to refuse
+  // at once now give folds, and each pays the cap leg's solve before it is refused. crownaz=90 then died at 120 s flat on
+  // the hosted runner (PR #980's spec tier), the d4=16 failure again.
+  'crownaz=90': 2.6,          // 61.8 s
+  'barrelstep=-20': 2.5,      // 58.4 s
+  'rsvr=20': 2.2,             // 52.7 s
+  'rsvr=30': 2.2,             // 50.8 s
+  'reserveh=48&rsvr=27': 2.3, // 53.6 s
   // §337 stage 3's two geared points, measured the same way on 2026-11-07, M2 Max, two solo passes each (the default 13.7
   // and 13.9 s on the same two passes; each ratio is the slowest point over the fastest default, rounded up to a tenth, as
   // every row above): a geared reserve re-solves the Geneva line, scans every finger and star direction at 3° for the least
@@ -1045,7 +1055,11 @@ export const SPEC_POINTS = [
   // the point joins validated-configs only once the -140° no-alarm arrangement itself sweeps clean (§325's open blocker).
   // TODO 283 (closed) bored the free band for its tubes, which removed the first (the stem stands 2.507 off the middle);
   // the setting fold's judge then took the hour wheel and the reserve input pinion as envelopes (FOLD_WHEEL_ENVELOPES in
-  // main.js), which removed the keyless fold's two. The cocks' 0.0122 remains.
+  // main.js), which removed the keyless fold's two. The cocks' 0.0122 remains (0.1284 by #973's sweep, closed by TODO 304:
+  // the balance cock's seat now holds its legs off the fork cock's foot PAD, not its node). TODO 305 closed the last finding,
+  // the setting fold's leg 1 run through the winding pinion (intraUnit, which the point tier does not sweep): the fold's
+  // judge holds the stem, places K for its legs where the barrel column does not bind, and refuses an unborne tail.
+  // The point sweeps clean, and joined validated-configs from a whole local run on main at 8af461b2.
   { name: 'stopwork-140', q: 'case=free&alarm=0&barrelstep=-140&rsvaz=0&rsvidl=2&frame=lands&drumaz=140', expect: 'declared', sweep: true,
     // TODO 289 landing 8 — the no-alarm dial's reclaim is now the largest that leaves the setting fold's tail its two lower
     // bushes (layout.js DIAL_RECLAIM_NO_ALARM, bound on THIS build: the rise's bush at L/D 1), so the two unborne-tail rows

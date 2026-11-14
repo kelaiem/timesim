@@ -22,7 +22,9 @@
 // volume goes as t and the depth as √volume), so --check is exactly "the build's
 // record has not moved". A record that moves owes a re-run, the way a seat table
 // does the gong bench's (TODO 279 is why this one is gated from its first day:
-// native-host.yml runs --check on both architectures).
+// native-host.yml runs --check on both architectures). Since §346 it also copies
+// the oil-ageing record (`going.energy.oilAgeing`): a POSED law's samples, which
+// the page draws as the balance's swing falling across each interval.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -38,6 +40,7 @@ const r = await bootNative({ query: '' });
 if (r.warns.length) { console.error(`FAIL: the build booted with ${r.warns.length} warning(s) — a record off a loud boot is not the build's: ${r.warns[0]}`); process.exit(1); }
 const et = r.clock.equalisation?.going?.energy?.escapeTooth;
 if (!et?.wear || !et?.geom || !et?.landing?.finish) { console.error('FAIL: the build carries no escapeTooth wear record (TODO 299)'); process.exit(1); }
+if (!r.clock.equalisation.going.energy.oilAgeing) { console.error('FAIL: the build carries no oil-ageing record (§346)'); process.exit(1); }
 const g = et.geom, w = et.wear, fin = et.landing.finish;
 
 // the wheel the wedge was read off: the one object carrying a club profile at the record's radius
@@ -80,6 +83,21 @@ const data = {
     holdsAt: w.holdsAt,
     beats: w.counts.beats, escapeTurns: w.counts.turns.escape,
   },
+  // §346 — the oil's ageing across each interval (a POSED law, layout.js OIL_AGEING): the
+  // rows that age, their two corners and the swing the column sustains at each sample,
+  // which the page joins by straight lines (the record derived the spacing for that).
+  oilAgeing: (() => {
+    const O = r.clock.equalisation.going.energy.oilAgeing;
+    return {
+      posed: O.posed, shape: O.shape, why: O.why, fresh: O.fresh, aged: O.aged, rows: O.rows, held: O.held,
+      coefficients: O.coefficients, intervalYears: O.intervalYears, readDeg: O.readDeg, intervals: O.intervals,
+      interpErrDeg: q(O.interpErrDeg),
+      samples: O.samples.map((s) => ({ f: s.f, years: q(s.years), etaTotal: q(s.etaTotal),
+        vertical: q(s.sustainedDeg.vertical), flat: q(s.sustainedDeg.flat) })),
+      dropDeg: { vertical: q(O.dropDeg.vertical), flat: q(O.dropDeg.flat) },
+      targetDeg: O.targetDeg, claimDeg: O.claimDeg, knockDeg: q(r.clock.equalisation.going.energy.knock.deg),
+    };
+  })(),
 };
 const text = JSON.stringify(data, null, 1) + '\n';
 if (CHECK) {

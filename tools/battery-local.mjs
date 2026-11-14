@@ -58,7 +58,7 @@
 // when it passed, so an incremental run can never be the base of the next (§152's rule
 // against chaining a key error forward). --whole forces a whole run; --baseline DIR
 // reads and writes another directory.
-import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { availableParallelism } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -100,7 +100,11 @@ const secs = (ms) => `${(ms / 1000).toFixed(1)}s`;
 // The code a stored row was produced by, beyond CI's two lists: the native code that ran
 // the baseline's sweeps and boots (held leaf for leaf to the JS sweeps by native-host.yml,
 // and digested anyway, because a stored row is inherited on this file's word alone).
-const LOCAL_FORMAT = 1;
+// 2 since landing 16: the meta carries the engine (`v8`), and a baseline from another
+// engine is not inherited (det-math makes the metal the same on every engine, and
+// native-host.yml holds Node 22's and Node 24's reports leaf for leaf, but a stored row
+// is inherited on this file's word alone, so the engine is named in its key anyway).
+const LOCAL_FORMAT = 2;
 const LOCAL_CODE_FILES = ['tools/native-sweep/sweep.cpp', 'tools/native-sweep/run.mjs', 'tools/kernel/kernel.cpp',
   'src/exact-mesh.js', 'tools/native/host.mjs', 'tools/native/shard.mjs', 'tools/native/battery-job.mjs'];
 const localCode = () => ({ ...pointsCodeDigest(),
@@ -116,6 +120,7 @@ function qualify() {
   const code = localCode();
   const moved = Object.keys(code).filter((f) => meta.code?.[f] !== code[f]);
   if (moved.length) return { why: `the code that produces inheritable rows moved since the baseline (${moved.join(', ')})` };
+  if (meta.v8 !== process.versions.v8) return { why: `the baseline was measured on V8 ${meta.v8}, this run is V8 ${process.versions.v8}` };
   const report = readJson('report.json');
   if (!report || report.formatVersion !== REPORT_FORMAT_VERSION || !report.digests?.units || report.restrictedTo) {
     return { why: 'the baseline report is missing, at another format, carries no key, or is itself restricted' };
@@ -123,6 +128,28 @@ function qualify() {
   const points = readJson('points.json');
   return { report, points, meta };
 }
+// ---- §338 landing 16: the spec tier, reused when the build cannot have changed ----
+// A spec boot's row (built, its warnings, its metal finite, its config) is a function of
+// the build's source, the spec point, the native host that boots it and the engine: the
+// build is deterministic (fingerprint and per-unit key gated across virgin boots) and
+// its maths the repository's (det-math). So when NONE of those moved since a passing
+// run that booted every point, its rows are this tree's rows. The key is deliberately
+// coarse: every file under src/ and vendor/, index.html, the native host's files, the
+// V8 version and SPEC_POINTS itself. Any byte of the build moving runs every boot.
+function specKey() {
+  const h = createHash('sha256');
+  const files = [];
+  const walk = (d) => { for (const e of readdirSync(join(ROOT, d), { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : 1))) {
+    const f = `${d}/${e.name}`; if (e.isDirectory()) walk(f); else files.push(f); } };
+  walk('src'); walk('vendor');
+  files.push('index.html', 'tools/native/host.mjs', 'tools/native/loader.mjs', 'tools/native/three-headless.mjs', 'tools/native/battery-job.mjs');
+  for (const f of files) h.update(f).update('\0').update(readFileSync(join(ROOT, f))).update('\0');
+  h.update(process.versions.v8).update('\0').update(JSON.stringify(SPEC_POINTS));
+  return h.digest('hex');
+}
+const SPEC_KEY = specKey();
+const storedSpec = argv.includes('--whole') ? null : readJson('spec.json');
+const SPEC_REUSED = !!(storedSpec && storedSpec.key === SPEC_KEY && Array.isArray(storedSpec.rows) && storedSpec.rows.length === SPEC_POINTS.length);
 const BASE = qualify();
 const INCREMENTAL = !!BASE.report;
 
@@ -161,11 +188,19 @@ async function pool(thunks, k) {
 }
 
 const t0 = Date.now();
+console.log(SPEC_REUSED && !ONLY
+  ? `spec tier: reused, ${storedSpec.rows.length} rows from a passing run at ${storedSpec.at} — no file of the build, the native host or the spec table moved since, and the engine is the same`
+  : `spec tier: booted — ${storedSpec ? 'the build, the native host, the engine or the spec table moved since the stored rows' : argv.includes('--whole') ? '--whole' : 'no stored spec rows'}`);
 console.log(INCREMENTAL
   ? `incremental against the baseline in ${BASE_DIR} (a whole run at ${BASE.meta.at}, tree ${BASE.meta.tree ?? 'unnamed'})`
   : `whole run: ${BASE.why}`);
 console.log(`local pre-flight: ${SHARDS} lane(s), sweep ${SWEEP}${SWEEP === 'js' && !engineFresh && !opt('--sweep') ? ' (no fresh engine binary)' : ''}, kernel ${KERNEL}`
   + `${ONLY ? `, --only ${[...ONLY].join(',')}` : ''}${NO_POINTS ? ', no point tier' : ''} (node ${process.version}, ${process.platform}-${process.arch})`);
+// §338 landing 16, measured on one 4-vCPU container: a native boot under Node 24 (V8 13.6)
+// is 10–12% faster than under Node 22 (V8 12.4), the default 31–33 s against 28.7 s and
+// d4=16 160 s against 140 s, with the same fingerprint (native-host.yml holds the two
+// engines' battery reports leaf for leaf). Said once, never enforced: the gates are the same.
+if (Number(process.versions.v8.split('.')[0]) < 13) console.log('  note: this is V8 ' + process.versions.v8 + '; under Node 24 (V8 13.6) each native boot measured 10–12% faster, with the same verdicts');
 
 // ---- 1. the BATTERY table, sharded, the anchors on shard 0 --------------------------
 const battery = BATTERY.filter((e) => !ONLY || ONLY.has(e.name));
@@ -216,7 +251,7 @@ const t1 = Date.now();
 const share = await sharePayload();
 const specPoints = ONLY ? SPEC_POINTS.filter((p) => p.name === 'identity') : SPEC_POINTS;
 const sweepPoints = NO_POINTS ? [] : SWEEP_POINTS;
-console.log(`boot B, the share boot, ${specPoints.length} spec boot(s)${sweepPoints.length ? ` and ${sweepPoints.length} swept point(s)` : ''} · ${SHARDS} lane(s), boot guard ×${hostScale.toFixed(2)} of the browser's`);
+console.log(`boot B, the share boot, ${SPEC_REUSED && !ONLY ? 0 : specPoints.length} spec boot(s)${sweepPoints.length ? ` and ${sweepPoints.length} swept point(s)` : ''} · ${SHARDS} lane(s), boot guard ×${hostScale.toFixed(2)} of the browser's`);
 // Boot B first (every point reads its key, and a point asks for it only once its own boot
 // and key are done, so the two overlap), then heaviest first (LPT): the swept points, then
 // the spec boots by their measured ratios, the share boot among them as one default boot.
@@ -226,7 +261,7 @@ const work = [
   { kind: 'anchor', w: Infinity },
   ...sweepPoints.map((pt) => ({ kind: 'point', pt, w: 1e9 })),
   { kind: 'share', w: BOOT_TIMEOUT_MS },
-  ...specPoints.map((pt) => ({ kind: 'spec', pt, w: specBootTimeoutMs(pt.name) })),
+  ...(SPEC_REUSED && !ONLY ? [] : specPoints.map((pt) => ({ kind: 'spec', pt, w: specBootTimeoutMs(pt.name) }))),
 ].sort((a, b) => b.w - a.w);
 const tierT0 = Date.now();
 // Each swept point by CI's own judge: incremental against its stored payload when the
@@ -265,7 +300,8 @@ const done = await pool(work.map((x) => async () => {
 const B = done.find((d) => d.kind === 'anchor').B;
 const fpShare = done.find((d) => d.kind === 'share').fpShare;
 const byName = new Map(done.filter((d) => d.kind === 'spec').map((d) => [d.pt.name, d.row]));
-const spec = { rows: specPoints.map((p) => byName.get(p.name)), ms: Date.now() - tierT0 };
+if (SPEC_REUSED && !ONLY) for (const r of storedSpec.rows) byName.set(r.name, r);
+const spec = { rows: specPoints.map((p) => byName.get(p.name)), ms: SPEC_REUSED && !ONLY ? 0 : Date.now() - tierT0 };
 const points = sweepPoints.length ? {
   got: Object.fromEntries(done.filter((d) => d.kind === 'point').map((d) => [d.pt.name, d.got])),
   entries: Object.fromEntries([...pointPlan].filter(([, p]) => p.mode === 'incremental').map(([n, p]) => [n, p.entry])),
@@ -308,12 +344,18 @@ if (candidate) {
     renameSync(tmp('report.json'), join(BASE_DIR, 'report.json'));
     renameSync(tmp('points.json'), join(BASE_DIR, 'points.json'));
     writeFileSync(join(BASE_DIR, 'meta.json'), `${JSON.stringify({ format: LOCAL_FORMAT, at: new Date().toISOString(), tree,
-      sweep: SWEEP, kernel: KERNEL, host: `${process.platform}-${process.arch} node ${process.version}`, code: localCode() }, null, 2)}\n`);
+      sweep: SWEEP, kernel: KERNEL, v8: process.versions.v8, host: `${process.platform}-${process.arch} node ${process.version}`, code: localCode() }, null, 2)}\n`);
     console.log(`baseline written to ${BASE_DIR}: the next run is incremental against this tree`);
   } else {
     for (const f of ['report.json', 'points.json']) rmSync(tmp(f), { force: true });
     console.log(`no baseline written: ${failed ? 'a gate failed' : 'the report or points file is missing'} (the one in ${BASE_DIR}, if any, is unchanged)`);
   }
+}
+if (!failed && !ONLY && !SPEC_REUSED) {
+  mkdirSync(BASE_DIR, { recursive: true });
+  writeFileSync(join(BASE_DIR, 'spec.json.tmp'), `${JSON.stringify({ key: SPEC_KEY, at: new Date().toISOString(), rows: spec.rows })}\n`);
+  renameSync(join(BASE_DIR, 'spec.json.tmp'), join(BASE_DIR, 'spec.json'));
+  console.log(`spec rows written to ${BASE_DIR}: the next run reuses them while the build stays as it is`);
 }
 console.log(`local pre-flight ${failed ? `FAILED (${failed} gate(s))` : 'PASSED'}${INCREMENTAL ? ` (incremental: ${restriction ? restriction.length : '?'} unit(s) re-swept)` : ''} — the battery job's gates on this tree, natively; `
   + 'not run here: the chrome, offline, boot-yield and battery.yml\'s probe jobs');

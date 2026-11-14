@@ -1846,6 +1846,43 @@ export const FRICTION = Object.freeze({
     why: 'contact radius of a rounded pivot end on its endstone' }),
 });
 
+// §346 — OIL AGEING BETWEEN SERVICES, and it is a POSED LAW: no source in this
+// repository gives the curve. Between overhauls a watch oil spreads, thickens,
+// oxidises and loses some of itself to evaporation, its friction rises, and the
+// balance swings less until the next service puts fresh oil in. That much is the
+// trade's ordinary experience, and it is why there is a service interval at all.
+// HOW the coefficient climbs across the interval, nobody here can cite, so this
+// declares a law and says so; a measured curve replaces `shape` and nothing else.
+//
+//  · WHICH ROWS AGE is not declared here: it is read off LUBRICATION's map
+//    (main.js, `OIL_AGEING_ROWS`), the FRICTION rows that any lubricated regime
+//    prices (REGIME_INFO's `priced`, every regime but 'dry'). Teeth run dry by
+//    design, so muTooth does not age; escEff, qOther and endContactMm are not a
+//    lubricant's rows on the map (the pallet faces' 'escapement' regime prices
+//    none), so they stay where the fresh oil leaves them. That last one is the
+//    model's gap, said plainly: the pallet oil is the real one that ages first.
+//  · THE TWO ENDS are band corners, never new numbers. FRESH is the NOMINAL
+//    corner: the serviced watch, where TODO 207's design swing is held. AGED,
+//    at the end of an interval, is the ADVERSE corner, which muJewel's row
+//    already names "a thinned or aged oil". So aged oil can never be worse than
+//    the band allows, and the claimed amplitude (the band's minimum) still
+//    bounds it.
+//  · THE SHAPE is the posed part: each ageing row moves LINEARLY from its fresh
+//    corner to its aged one in the time since the last service, f = t/T, and a
+//    service puts it back to fresh. Linear is the shape with no parameter to
+//    choose. A real oil probably holds and then fails late, which would keep the
+//    swing up for longer and drop it harder at the end.
+//
+// Records cite this as MODELLED: the swing it leaves is the energy column's own
+// closed form at the aged coefficients, posed against time and not simulated.
+export const OIL_AGEING = Object.freeze({
+  posed: true,
+  fresh: 'nominal',
+  aged: 'adverse',
+  shape: 'linear',
+  why: 'no cited degradation curve: the ends are band corners, the shape between them is posed',
+});
+
 // TODO 299 — THE SERVICE SCHEDULE, and it is what makes a wear number mean
 // anything. No watch survives a century untouched; it survives twenty
 // overhauls, and the owner's target is the ordinary one: service every five
