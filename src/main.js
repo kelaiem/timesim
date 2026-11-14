@@ -39,7 +39,7 @@ import {
   HOUR_TUBE_INNER, HOUR_TUBE_OUTER, ALARM_TUBE_INNER, ALARM_TUBE_OUTER,
   DIAL_CENTER_BORE_R, DIAL_WALL_HALF, SUBDIAL_INBOARD_CLEAR, // TODO 33: the wells' inboard ceiling and the bore it clears
   SECONDS_HUB_R, RSV_HAND_ARBOR_R, SUBDIAL_BORE_R, SUBDIAL_FLOOR, // §97: the wells' floor-side bore, one source with the radius bound
-  BARREL_STEP_DEG, D4, RESERVE_STATION_R, ESCAPE_STEP_DEG, BALANCE_STEP_TARGET_DEG,
+  BARREL_STEP_DEG, D4, D4_SHIPPED, RESERVE_STATION_R, ESCAPE_STEP_DEG, BALANCE_STEP_TARGET_DEG,
   ALARM_CORNER_R,                             // §94 tier B — the alarm corner's design radius, the third radial row's default
   TECHNIC_FORK, technicChainErrors, ratQ, ratMul, ratEq, ratStr, // §219 tier one — the reserve row's target derives from the sweep below
   solveLayout, d4Window,   // §94 tier A: the two-bar's closure window, the d4 handle's refusal
@@ -48,7 +48,7 @@ import {
   segCircleClear, solveElbow, solveStopWork, ELBOW_E_MAX,   // §85 step A: the stop work solves like the layout does
   // Backlog (watch case): the schematic-tier case's dimensions — caps and
   // real hardware sizes, all derived in layout.js at the §39 pin.
-  CASE_WIDTH_MAX, CASE_LUG_SPAN_MAX, STRAP_MM_DEFAULT, STRAP_PICK_MIN_MM, fittedFlatMin, CASE_HEIGHT_MAX_MM, CASE_HEIGHT_STEP_MM, CASE_CLEAR, CASE_BAND_T, rigidSplit,
+  CASE_WIDTH_MAX, CASE_WIDTH_MAX_MM, STRAP_MM, CASE_LUG_SPAN_MAX, STRAP_MM_DEFAULT, STRAP_PICK_MIN_MM, fittedFlatMin, CASE_HEIGHT_MAX_MM, CASE_HEIGHT_STEP_MM, CASE_CLEAR, CASE_BAND_T, rigidSplit,
   CASE_SCREW_SHAFT_D, CASE_SCREW_HEAD_D, CASE_GASKET_D, CASE_GASKET_SEAT, CASE_CRYSTAL_T, CASE_CRYSTAL_CLEAR,
   CASE_TUBE_D, CASE_PUSHER_D,
   CASE_LUG_T, caseLugPlan,                                  // §190/§280: the lug/bar stock and the lug's one outline law — the schematic tier draws the same metal makeCase cuts
@@ -2252,6 +2252,9 @@ const ESCAPE_TOOTH_GEOM = (() => {
     radius_u: radius, tip: { xy: T, r: tr, azDeg: azT / DEG2RAD },
     wedge: Object.freeze({ fullRad: 2 * halfV, halfRad: halfV, fullDeg: 2 * halfV / DEG2RAD,
       lockFlankDeg: aL / DEG2RAD, impulseFlankDeg: aI / DEG2RAD, sameSide, rakeDeg: TOOTH_RAKE_DEG,
+      // §344 — the bisector's angle off the inward radius (aL, aI are signed:
+      // their mean is the bisector's direction, as their half-difference is its half-angle)
+      bisectorRad: Math.abs(aL + aI) / 2,
       widthPerDepth: Math.abs(Math.tan(aL) - Math.tan(aI)),
       holdsTo_u: Math.min(lockF.sw[0], impF.sw[0]) }),
     band: Object.freeze({ t_u: bandT_u, zLo, zHi, thickness_u: 0.8 }),
@@ -3247,7 +3250,7 @@ if (FORM) {
 if (FORM) {
   const wOut = 2 * (FORM.hw + FORM_HOLD_NOMINAL.boreBack + CASE_BAND_T);
   if (wOut > 2 * CASE_WIDTH_MAX + 1e-9)
-    console.warn(`§307: the form case is ${(wOut * UNIT_MM).toFixed(2)} mm across its short side — over the 40 mm owner cap`);
+    console.warn(`§307: the form case is ${(wOut * UNIT_MM).toFixed(2)} mm across its short side — over the owner cap of ${CASE_WIDTH_MAX_MM} mm (2 × the ${STRAP_MM} mm strap + 2)`);
 }
 
 // Centroid of just the wheel-train arbors (excludes balance/dial), used to
@@ -4165,6 +4168,12 @@ const CASE_R_BORE_BACK_FLOOR = Math.ceil(100 * Math.max(
 // 48.38 → 46.06; the alarm stem and pusher are cut to the wall wherever it stands). Measured on that build, the annulus
 // holds them inside the floor's bore with nothing in the band at any pose (probe-case-relief). So the cap no longer holds
 // the round case out anywhere: the alarm's room is what the clamps leave.
+// §343 landing 2: the cap is now a ceiling read off the strap (layout.js, CASE_WIDTH_MAX: 2 × strap + 2 mm), and the
+// owner's rule is that every case is the smallest its metal allows. The FORM case's round chain still spends the
+// ceiling whole: measured, taking the round case's floor here (with its Ø0.6 clamps) moves the form strike group out of
+// the keep-out its seat declared (TODO 272), leaves the hammer's tail no riser station (§278/TODO 267) and hands the
+// caseback skirt's floor to the hammer (§198) on form-rect, so the minimal form chain waits on its regenerated form
+// tables (§343's record).
 const CASE_R_OUT = FORM ? CASE_WIDTH_MAX : CASE_R_BORE_BACK_FLOOR + CASE_BAND_T;
 // The back band's bore: one wall inside the body outer — the same 1 mm
 // dress-watch wall the front keeps, and the gasket annulus keeps exactly
@@ -4355,7 +4364,7 @@ const CASE_CLAMP_AZ = (() => {
 // interior + one lug thickness.)
 const CASE_LUG_INNER = (SPEC.strapMm ?? STRAP_MM_DEFAULT) / UNIT_MM;
 if (CASE_R_OUT > CASE_WIDTH_MAX + 1e-9)
-  console.warn(`case: body Ø${(2 * CASE_R_OUT * UNIT_MM).toFixed(2)} mm breaks the 40 mm owner cap (body, lugs excluded) — the movement outgrew its housing budget`);
+  console.warn(`case: body Ø${(2 * CASE_R_OUT * UNIT_MM).toFixed(2)} mm breaks the owner cap of ${CASE_WIDTH_MAX_MM} mm (2 × the ${STRAP_MM} mm strap + 2; body, lugs excluded) — the movement outgrew its housing budget`);
 // The old across-the-lug-tips assert is gone for good (§190): the owner
 // re-based the 40 mm cap to the case BODY, lugs excluded, and the lugs'
 // radial chain now DERIVES in layout.js from the wrap gap (CASE_STRAP_CLEAR
@@ -23124,9 +23133,10 @@ for (const [nm, cy, wr] of [['reserve', reserveStationR, reserveWellR], ['second
   const outboard = dialRadius * (2 * G.DIAL_CANVAS_FILL_F) * G.DIAL_RAIL_IN_F
     - DIAL_WALL_HALF - CLEAR_MARGIN - -SECONDS_LOCAL.y;
   // a print scaled to the case (printScale < 1) moved the outboard bound in on purpose: D4 is the ROUND print's maximum
-  // §343: a RATE VARIANT keeps the shipped D4 (its plate moved; D4 is the default plate's maximum), held only to FIT:
-  // the inboard bound may not pass the outboard.
-  if (RATE_VARIANT ? inboard > outboard + 1e-9 : SPEC.d4 === null && printScale === 1 && Math.abs(inboard - outboard) > 0.02)
+  // §343: a RATE VARIANT with no `d4` of its own keeps the shipped D4 (its plate moved; D4 is the default plate's
+  // maximum), held only to FIT: the inboard bound may not pass the outboard. §343 landing 2: a row that carries its own
+  // `d4` (14,400, whose plate the r 11.5 balance grows) was derived at its own plate, so it is held to the maximum.
+  if (RATE_VARIANT && D4 === D4_SHIPPED ? inboard > outboard + 1e-9 : SPEC.d4 === null && printScale === 1 && Math.abs(inboard - outboard) > 0.02)
     console.warn(`§125: D4 no longer maximizes the seconds well — inboard bound ${inboard.toFixed(4)} vs `
       + `outboard ${outboard.toFixed(4)} (need equal within 0.02); re-derive D4 from its comment's closed form`);
 }
@@ -36992,7 +37002,17 @@ const EQUALISATION = (() => {
         // what a razor finish would have cost, kept because it is the reason
         // the finish is derived rather than read off the band's sharp end
         const atSharp = impactAt(ESCAPE_TIP_R_BAND.sharp_m);
-        const cutBack_u = rho * (1 / Math.sin(a) - 1) / OSC_U;
+        // §344 — the reach the finish spends is RADIAL, because the budget it is
+        // booked against is (lockRunAt shortens the tooth CIRCLE). The arc is
+        // inscribed tangent to both flanks, its centre ρ/sin a in from the apex
+        // along the wedge's BISECTOR, and the bisector is not the radius: both
+        // flanks lean the same way off it (H.wedge.bisectorRad). So the tip's
+        // new outermost radius is |centre| + ρ, read exactly at the wheel's
+        // radius rather than as ρ(1/sin a − 1), the setback along the bisector.
+        const cutBack_u = (() => {
+          const s_u = rho / Math.sin(a) / OSC_U, R = H.tip.r, b = H.wedge.bisectorRad;
+          return R - Math.sqrt(R * R - 2 * R * s_u * Math.cos(b) + s_u * s_u) - rho / OSC_U;
+        })();
         if (!(atFinish.p0_Pa <= shakeAllow * (1 + 1e-6)))
           console.warn(`TODO 299 landing 2: the club tip finished at ${(rho * 1e6).toFixed(4)} µm still takes the drop at `
             + `${(atFinish.p0_Pa / 1e9).toFixed(3)} GPa, over the ${(shakeAllow / 1e9).toFixed(3)} GPa shakedown limit — the finish is not the fixed point`);
@@ -37027,10 +37047,10 @@ const EQUALISATION = (() => {
       // spends it all in one place.
       //
       // WHAT THIS DOES NOT SETTLE, and the record says it in the same breath:
-      // at the adverse corner the recession is 1.28× the budget and at the
-      // nominal it is a third of it, so the conclusion FLIPS between corners
+      // at the adverse corner the recession is 1.32× the budget and at the
+      // nominal 0.42 of it (§344's radial reading), so the conclusion FLIPS between corners
       // and by FRICTION's own rule that is not a conclusion. TODO 299's record
-      // carries the ceiling — holding at the adverse corner needs 1229 HV,
+      // carries the ceiling — holding at the adverse corner needs 1134 HV,
       // which is no steel — and why the wheel stops at steel anyway: past it
       // the plastic run-in that answers the drop's impact (landing 2)
       // disappears and the impact becomes a fracture question nothing prices.
@@ -37038,12 +37058,21 @@ const EQUALISATION = (() => {
         const K = SERVICE_COUNTS, sl = H.slip, H_Pa = ESCAPE_STEEL_HARDNESS_PA;
         const slip_m = sl.perEngagement_u * OSC_U;
         const total_m = slip_m * K.engagementsPerTooth;
-        const tanA = Math.tan(a);
+        // §344 — and the depth the century's area makes is RADIAL too, for the
+        // same reason: the budget is a shortened tooth circle. A cut square to
+        // the radius at depth d through two straight flanks is a triangle d wide
+        // per H.wedge.widthPerDepth, area ½·d²·wpd. Until §344 this read the
+        // depth along the wedge's bisector (√(A/tan a)), which is 29° off the
+        // radius here and 15% deeper, against a radial budget. The page that
+        // draws this (service-life.html) is what exposed it: a drawing has to
+        // put the worn surface SOMEWHERE, and the two readings put it in two places.
+        const wpd = H.wedge.widthPerDepth;
         // TODO 299 landing 2 — AND THE FINISH IS BOOKED AGAINST THE SAME BUDGET.
         // The geometry's `budget.recession_u` is the reach from the tooth's
         // MATHEMATICAL apex to where the lock runs out, because that is the only
         // thing a profile can say. A tooth finished at a radius ρ does not have
-        // that apex: its tip already stands ρ(1/sinα − 1) inside it. That is
+        // that apex: its tip already stands inside it (radially, §344: see the
+        // landing's cut-back, not ρ(1/sinα − 1), which is along the bisector). That is
         // reach spent at the bench, in the same currency the century spends, so
         // it comes off the budget — and it is the honest cost of the derivation
         // above, not a free improvement. (It is the same cost the run-in used to
@@ -37062,14 +37091,14 @@ const EQUALISATION = (() => {
         const at = (kk) => {
           const V = kk * Fmean * total_m / H_Pa;
           const area = V / tM;
-          const recess_m = Math.sqrt(area / tanA);
+          const recess_m = Math.sqrt(2 * area / wpd);
           return { K: kk, volume_m3: V, recession_m: recess_m, recession_u: recess_m / OSC_U,
             overBudget: (recess_m / OSC_U) / budget_u };
         };
         const corners = Object.fromEntries(FRICTION_CORNERS.map((c) => [c, at(WEAR_K_BAND[c])]));
         // the hardness that would hold at each corner: recession ∝ 1/√H
         const needH = Object.fromEntries(FRICTION_CORNERS.map((c) => [c,
-          WEAR_K_BAND[c] * Fmean * total_m / (Math.pow(budget_u * OSC_U, 2) * tM * tanA)]));
+          2 * WEAR_K_BAND[c] * Fmean * total_m / (Math.pow(budget_u * OSC_U, 2) * tM * wpd)]));
         const holds = FRICTION_CORNERS.filter((c) => corners[c].overBudget <= 1);
         if (!holds.length)
           console.warn(`TODO 299: the club tooth loses ${(corners.favourable.recession_m * 1e6).toFixed(2)} µm of reach over `

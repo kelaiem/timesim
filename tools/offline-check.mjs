@@ -108,7 +108,7 @@ const touchTree = (dir, when) => {
 const work = mkdtempSync(join(tmpdir(), 'timesim-offline-'));
 const build = (name, version) => {
   const dir = join(work, name);
-  for (const f of ['index.html', 'explain.html', 'primer.html', 'test-geometry.html', 'technic.html', 'booklet.html', 'gong-bench.html', 'sw.js', 'manifest.webmanifest', 'favicon.svg', 'favicon.png', 'apple-touch-icon.png', 'src', 'vendor'])
+  for (const f of ['index.html', 'explain.html', 'primer.html', 'test-geometry.html', 'technic.html', 'booklet.html', 'gong-bench.html', 'service-life.html', 'sw.js', 'manifest.webmanifest', 'favicon.svg', 'favicon.png', 'apple-touch-icon.png', 'src', 'vendor'])
     cpSync(join(ROOT, f), join(dir, f), { recursive: true });
   execFileSync('node', [join(ROOT, 'tools/stamp-release.mjs'), version], { cwd: dir, stdio: 'pipe' });
   return dir;
@@ -361,6 +361,13 @@ try {
   // the page offers one option per kind its generated space carries, so that file is the count (a typed 3 went stale at §317's fourth kind)
   const wantKinds = Object.keys(JSON.parse(readFileSync(join(ROOT, 'src/gong-bench-data.json'), 'utf8')).kinds).length;
   check('OFFLINE: gong-bench.html loads its space from cache (the mis-listed-seed assert for the bench)', benchKinds === wantKinds, `${benchKinds} of ${wantKinds} case kinds`);
+  // §344 — the service-life view, offline: its document and its generated record; it stops at the page drawing the century.
+  await page.goto(`http://127.0.0.1:${relPort}/service-life.html`, NAV);
+  await page.waitForFunction(() => window.__serviceLife?.ready, null, { timeout: 60000 });
+  const lifeTeeth = await page.evaluate(() => window.__serviceLife.teeth);
+  // the page counts what its generated record carries, so that file is the answer (never a typed 15)
+  const wantTeeth = JSON.parse(readFileSync(join(ROOT, 'src/service-life-data.json'), 'utf8')).wheel.teeth;
+  check('OFFLINE: service-life.html loads its record from cache (the mis-listed-seed assert for the view)', lifeTeeth === wantTeeth, `${lifeTeeth} of ${wantTeeth} teeth`);
   // §95 tier two — a LOCALIZED boot, offline. The locale tables arrive by
   // dynamic import, which is the one class of URL that reaches the precache
   // through the module walk rather than through a document's own markup; a

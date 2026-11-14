@@ -70,8 +70,9 @@ const SEEDS = ['index.html', 'explain.html', 'test-geometry.html',
 // exists) is what catches a mis-listed seed.
 // §304 — booklet.html joins on the same terms (a tag cut before it has no such page).
 // §310 — gong-bench.html (the gong bench) joins on the same terms.
-const ADOPTED = ['primer.html', 'technic.html', 'booklet.html', 'gong-bench.html'].filter((f) => existsSync(f));
-for (const f of ['primer.html', 'technic.html', 'booklet.html', 'gong-bench.html'])
+// §344 — service-life.html (the service-life view) joins on the same terms.
+const ADOPTED = ['primer.html', 'technic.html', 'booklet.html', 'gong-bench.html', 'service-life.html'].filter((f) => existsSync(f));
+for (const f of ['primer.html', 'technic.html', 'booklet.html', 'gong-bench.html', 'service-life.html'])
   if (!ADOPTED.includes(f)) console.log(`stamp-release: ${f} absent — a tree older than the page, stamping without it`);
 // A seed is listed by NAME, not discovered by the walk, so a typo or a file the
 // payload does not carry is invisible here and fatal at the far end: addAll is
