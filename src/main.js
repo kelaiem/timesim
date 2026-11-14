@@ -4360,7 +4360,9 @@ const CASE_CLAMP_AZ = (() => {
 // spec actually constrains; centre-to-centre derives in makeCase as
 // interior + one lug thickness.)
 const CASE_LUG_INNER = (SPEC.strapMm ?? STRAP_MM_DEFAULT) / UNIT_MM;
-if (CASE_R_OUT > CASE_WIDTH_MAX + 1e-9)
+// a FORM case's body is its outline, held to the same cap across its short side by §307 above; its round chain is the
+// clamps' and the bore's construction, minimal since §343 landing 2, and is not the body the cap is about
+if (!FORM && CASE_R_OUT > CASE_WIDTH_MAX + 1e-9)
   console.warn(`case: body Ø${(2 * CASE_R_OUT * UNIT_MM).toFixed(2)} mm breaks the owner cap of ${CASE_WIDTH_MAX_MM} mm (2 × the ${STRAP_MM} mm strap + 2; body, lugs excluded) — the movement outgrew its housing budget`);
 // The old across-the-lug-tips assert is gone for good (§190): the owner
 // re-based the 40 mm cap to the case BODY, lugs excluded, and the lugs'
