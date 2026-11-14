@@ -11,8 +11,9 @@
 //      still met and started (so the spring was not what stopped it);
 //   3. the control: the patch must take (the larger build reports r 11.75), or
 //      2 would be a reading of the declared build.
-// The shipped 18,000 build is booted too, for the inertia ratio the record
-// quotes (reported, not gated).
+// The 18,000 build (the shipped movement until §343 landing 3, which made 14,400
+// the default) is booted too, for the inertia ratio the record quotes (reported,
+// not gated).
 //   node tools/probe-343-chronometer.mjs          (exit 1 on any claim)
 import { spawnSync } from 'node:child_process';
 import { register } from 'node:module';
@@ -44,13 +45,13 @@ const cap = (b) => b.warns.filter((w) => /owner cap of/.test(w));
 
 const declared = boot('vph=14400');
 const larger = boot('vph=14400', [{ file: 'src/layout.js', from: ROW, to: 'balanceR: 11.75, rimF: 0.33' }]);
-const shipped = boot('');
+const shipped = boot('vph=18000');
 const fails = [];
 const say = (ok, what) => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${what}`); if (!ok) fails.push(what); };
 
 console.log(`declared  r ${declared.radius} rim ${declared.rimF}: plateR ${declared.plateR.toFixed(2)}, ${declared.deg.toFixed(2)}° nominal vertical, ${declared.hz} Hz, ribbon ${declared.ribbon.toFixed(4)} mm, I ${declared.I.toExponential(3)}`);
 console.log(`larger    r ${larger.radius} rim ${larger.rimF}: plateR ${larger.plateR.toFixed(2)}, ${larger.deg.toFixed(2)}°, ${cap(larger)[0] ?? 'no case warning'}`);
-console.log(`shipped   r ${shipped.radius} at 18,000: I ${shipped.I.toExponential(3)} — the 14,400 wheel is ${(declared.I / shipped.I).toFixed(2)}× its inertia`);
+console.log(`18,000    r ${shipped.radius}: I ${shipped.I.toExponential(3)} — the 14,400 wheel is ${(declared.I / shipped.I).toFixed(2)}× its inertia`);
 say(cap(declared).length === 0, 'the declared balance fits the case limit (2 × strap + 2 mm: 40 mm at the default 19 mm strap)');
 say(declared.warns.length === 0, `the declared build boots silent (§343 landings 1b–1e close it)${declared.warns.length ? `: ${declared.warns[0].slice(0, 120)}` : ''}`);
 say(declared.met && declared.tight, 'the declared rim is the heaviest that reaches the target and starts');

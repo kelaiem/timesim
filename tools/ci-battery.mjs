@@ -793,7 +793,10 @@ export const SPEC_POINTS = [
   // The designed-train VARIANTS below keep their boots (`arrangement=designed&…`, the builds they always
   // were) but no longer sweep: against the arrangement every one changes most of the movement, a near-full
   // sweep each, and their validated rows were withdrawn with the flip (tools/validated-configs.mjs --drop).
-  { name: 'designed', q: 'arrangement=designed', expect: 'silent', sweep: true, why: '§314 — the designed train (barrel 145°, reserve on two meshes, module as designed): the old identity, swept' },
+  // §343 landing 3 — NO LONGER SWEPT: at the larger balance its hack rod runs over its alarm barrel's ratchet at every
+  // pose (TODO 307, a layout conflict between the stop work and the alarm module on this train), so its sweep reads a
+  // FORBIDDEN pair and it left src/validated-configs.js. It still boots silent, which this row holds.
+  { name: 'designed', q: 'arrangement=designed', expect: 'silent', why: '§314 — the designed train (barrel 145°, reserve on two meshes, module as designed): the old identity; unswept since §343 landing 3 (TODO 307)' },
   // §33 step 1 / step 2 — the stem and crown azimuths, each a shipped handle.
   { name: 'crownaz=90', q: 'arrangement=designed&crownaz=90', expect: 'any', why: '§33 step 1 — the crown a quarter turn round' },
   { name: 'stemaz=200', q: 'arrangement=designed&stemaz=200', expect: 'any', why: '§33 step 2 — the stem decoupled from the barrel' },
@@ -904,7 +907,7 @@ export const SPEC_POINTS = [
   { name: 'reconf=1', q: 'reconf=1', expect: 'silent', why: '§93 — reconfigure mode entered at boot from its own deep link' },
   // §22's two knobs, at both ends of their clamped ranges.
   { name: 'vph=28800', q: 'arrangement=designed&vph=28800', expect: 'any', why: '§22 — the fastest rate in RATE_TABLE, a re-geared escape mesh' },
-  { name: 'vph=14400', q: 'vph=14400', expect: 'silent', why: '§343 — the slowest rate, a re-geared escape mesh carrying the largest balance the case admits; closed by landings 1b–1e, so held silent' },
+  { name: 'vph=18000', q: 'vph=18000', expect: 'silent', why: '§343 landing 3 — the movement that shipped until 14,400 became the default: its re-solved row (r 11, the heaviest rim it drives and starts), held silent' },
   { name: 'reserveh=48', q: 'arrangement=designed&reserveh=48', expect: 'any', why: "§22 — the reserve clamp's upper end, the deepest fusee groove stack" },
   // §237 — the hairspring stud's radius, which is TODO 147's solve condition
   // exposed and the cock's carrier arm with it (`yS` reads `termEndR`, so the
@@ -998,21 +1001,18 @@ export const SPEC_POINTS = [
   // sweep. The query is probe-308-barrel-swing.mjs's build A, which still
   // holds the exact set; `formrect=` is its own metal-centred fit and
   // `gong=arc` its case-path gong, both as landing 5 shipped them.
-  { name: 'arrangement-308', q: 'case=rect&barrelstep=0&rsvaz=36&alarmmod=80&gong=arc&formrect=-45.96,45.72,-43.91,51.41', expect: 'declared',
+  { name: 'arrangement-308', q: 'case=rect&barrelstep=0&rsvaz=36&alarmmod=80&gong=arc&formrect=-48.14,48.14,-51.33,51.33', expect: 'declared',
+    // §343 landing 3 — at the 14,400 movement the rect this arrangement fits to is [-48.14, 48.14, -51.33, 51.33] (the
+    // boot's own §307/§308 refit, which then holds), and the stop-work is FRAMED here too: the arrest station solve tests
+    // the cross's window at the ENGAGEMENT now (§201 landing 2's own geometry, by ARREST_ENGAGEMENT's t), where it gated
+    // the cross's centre, so it no longer stands a station whose frame pinches. §201 landing 2's NOT CUT row retired with it.
+    // And since the arrest's solve counts the pusher's linkage (§343 landing 3), no station on this arrangement clears it:
+    // the linkage takes the DESIGNED line here by fallback and stood in the arrest on main too (TODO 306), so the solve
+    // now says so instead of building through it, and its fallback station's pipe sits under its floor (TODO 212's row).
     expectWarns: ['§261: cased assembly', 'TODO 206 arming spring: follower-B\'s seat sits at the nose\'s margin',
-      // §201 landing 2 — THE STOP-WORK IS UNFRAMED IN THIS ARRANGEMENT, and that is
-      // a row about this build, not about the default. The arrest window frames the
-      // Geneva's engagement now and is cut in every other declared point (the
-      // identity, `designed` and its variants, `reconf=1`, `route=2-leg`,
-      // `form-rect` — measured, all at full reach with no bearing shut); with the
-      // alarm module swung to 80° the frame lands at (−10.405, 23.880) and meets
-      // another opening in the rect plate, pinching 47 of 360 bearings, and §115's
-      // bossless rule refuses it rather than leaving a knife-edged spur. Before
-      // this landing the row was silent here because §314 YIELDED it everywhere;
-      // the window being cuttable at all is what makes this build's refusal
-      // visible, which is the right way round.
-      "§115 window 'arrest': NOT CUT"],
-    why: '§308 landing 5 — barrel swung to 180°, reserve at 36°, alarm module at 80° on its own fit; boots exactly its four declared rows (two form rows, TODO 206, §201 landing 2\'s unframed stop-work); no longer swept (the form default moved, §313)' },
+      'alarm arrest: no station on the mesh circle holds the subtractor', 'alarm arrest: the solved station clears by',
+      'TODO 212: the finger\'s pipe runs'],
+    why: '§308 landing 5 — barrel swung to 180°, reserve at 36°, alarm module at 80° on its own fit; boots exactly its five declared rows (the form row, TODO 206, and since §343 landing 3 TODO 306\'s two arrest rows and TODO 212\'s; §201 landing 2\'s unframed stop-work retired there too); no longer swept (the form default moved, §313)' },
   // THE FORM CASES' DEFAULT, SWEPT. Since §310 landing 4 a form case builds
   // the arrangement by default, and since §313 that arrangement is
   // ARRANGEMENT (barrel at 180°, reserve at 12 on six idlers, module at
@@ -1030,7 +1030,7 @@ export const SPEC_POINTS = [
   // row is a URL; the probe holds it equal to the generated seat, so a
   // re-solved seat that moves the fit fails there rather than leaving this
   // row on an outline nobody cuts.
-  { name: 'form-rect', q: 'case=rect&formrect=-46.99,46.99,-43.93,43.93', expect: 'declared', sweep: true,
+  { name: 'form-rect', q: 'case=rect&formrect=-47.74,47.74,-43.93,43.93', expect: 'declared', sweep: true,
     expectWarns: ['§261: cased assembly'],
     why: '§310 landing 4 / §313 — the rect form case at its default (ARRANGEMENT, the spiral seat since §314) and that seat\'s fit; swept, booting exactly the row every form build carries (§261\'s; TODO 300 retired §186\'s)' },
   // §328 step 1b — THE APPLIED PILLARS. Since step 1b the default frame is the back plate on lands the base plate raises
@@ -1110,12 +1110,13 @@ export const SPEC_POINTS = [
   { name: 'geared-24', q: 'arrest=geared&reserveh=24', expect: 'declared',
     // TODO 291 moved this reserve's own debt by one row each way: the honest spring's lower torque brackets the
     // detent beak's relief solve (TODO 221's row went), and the 30 h balance it re-solved knocks at 24 h's serviced
-    // corner (TODO 216's row came: 236.50° hanging, 334.00° dial-flat, against the knock at 310.46°).
-    expectWarns: ['TODO 53: the drum\'s hook plane', 'TODO 216: the serviced (nominal) corner knocks',
+    // corner (TODO 216's row came: 236.50° hanging, 334.00° dial-flat, against the knock at 310.46°). §343 landing 3 took
+    // it away again: the 14,400 balance (r 11.5, rim 0.345) sustains 234.30° nominal vertical at 24 h, inside the knock.
+    expectWarns: ['TODO 53: the drum\'s hook plane',
       'TODO 192: AMPLITUDE_CLAIM_DEG', 'TODO 207/242: BAL_RIM_F',
       'TODO 206 arming spring: follower-B\'s seat sits at the nose\'s margin',
       '§325: the strike group\'s notch in the round three-quarter plate'],
-    why: '§337 landing 2b stage 3 — the geared Geneva at 24 h, cone : finger 25 : 20, where §47\'s arrest has no legal site; boots exactly ?reserveh=24\'s own six rows, the arrest\'s six gone' },
+    why: '§337 landing 2b stage 3 — the geared Geneva at 24 h, cone : finger 25 : 20, where §47\'s arrest has no legal site; boots exactly ?reserveh=24\'s own five rows (six until §343 landing 3), the arrest\'s six gone' },
   // 36 h is the reserve that EARNED THE RANGE SWEEP: its worst pressure angle falls at an interior −5.81° of a ±15.49°
   // range, which stage 3's two-endpoint sweep would have missed (24 h's lands on the endpoint, so one of the two would
   // have read right by luck). Its set is 24 h's plus §254's flank-slope row, which a 36 h wrap carries on its own.
@@ -1184,8 +1185,8 @@ const POINT_COSTS = {
   // the movement, the same reach §308 landing 5's arrangement measured (1174 s,
   // 59 changed); until a run writes its own `ms` back it carries that (a wrong
   // number costs wall clock, never a verdict). The six designed-train variants
-  // that sat here stopped sweeping with the flip (see their SPEC_POINTS rows).
-  designed: 1174,
+  // that sat here stopped sweeping with the flip (see their SPEC_POINTS rows), and since §343 landing 3 so has
+  // `designed` itself (TODO 307); its 1174 s is the reach the rows below still quote.
   // The form default is a FORM build: against the designed round default its
   // plate, case, train and module all changed, so its restriction reached most
   // of the movement (1344 s: 62 changed, inspection 262, clearances 222,
