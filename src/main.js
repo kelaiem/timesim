@@ -55250,6 +55250,21 @@ const FORM_FOOTPRINT = await (async () => {
     if (ALARM_BUILT && GONG_SEATED) {
       for (const [x, y] of GONG_SEAT_PTS) freePin(x, y, GONG_WIRE_R + CLEAR_MARGIN, 'the gong\'s wire');
       freePin(gongFoot.x, gongFoot.y, GONG_POST_R_BUILT, 'the gong\'s block');
+    } else if (ALARM_BUILT) {
+      // §343 landing 4 — AND THE UNSEATED ARC'S. A free case has no seat row (gongSeatFor refuses 'free'), so it builds
+      // §198's arc on the ROUND case's annulus, and the gong is out of FORM_COUNTED on the seated gong's premise that it
+      // follows the outline. The arc does not: it stands at GONG_R wherever the outline is cut. Until §343 it fell inside
+      // the free outline by luck (r 45.33); the r 11.5 balance's round case put it at r 47.90 and the 14,400 outline cut
+      // through it, the wire and its post 0.000 on caseMiddle with every boot silent. So its holds are the seated
+      // gong's, along the arc: the wire's centreline in steps of one wire radius (the pins' discs then overlap, so no
+      // span of the wire passes between two), each its radius and the margin, and the block at the foot.
+      const lo = Math.min(GONG_A0, GONG_A1), hi = Math.max(GONG_A0, GONG_A1);
+      const n = Math.max(1, Math.ceil(((hi - lo) * GONG_R) / GONG_WIRE_R));
+      for (let k = 0; k <= n; k++) {
+        const a = lo + ((hi - lo) * k) / n;
+        freePin(Math.cos(a) * GONG_R, Math.sin(a) * GONG_R, GONG_WIRE_R + CLEAR_MARGIN, 'the gong\'s wire');
+      }
+      freePin(gongFoot.x, gongFoot.y, GONG_POST_R_BUILT, 'the gong\'s block');
     }
     // §325 landing 9 — THE HANDS' SWEPT DISC IS A KEEP-IN. The minute hand is the longest thing that turns about the
     // hands' axis, and the case was fitted to the metal alone, so it stood short of the hand on 74% of bearings (worst

@@ -1068,6 +1068,15 @@ export const SPEC_POINTS = [
     // (TODO 300 retired the §186 row it carried beside that: the form case now locates and holds its movement)
     expectWarns: ['§261: cased assembly'],
     why: '§329 landing 4 — the stop-work on the alarm-off free case with the drum turned to 140° (−7.5% case area); boots exactly the free build\'s §261 depth row (TODO 300 retired its §186 row), swept' },
+  // §343 landing 4 — THE FREE CASE WITH ITS ALARM, SWEPT. No point built it: stopwork-140 is the free case without the
+  // alarm, so when the r 11.5 balance's round case moved the arc gong out to r 47.90 and the 14,400 free outline (fitted
+  // without the gong, on the seated gong's premise that it follows the outline) cut through it, the wire and its post
+  // stood 0.000 on caseMiddle and the pusher's bore sleeve with every gate green. The free fit now holds the unseated
+  // arc, and this point sweeps the build it holds. It boots the two filed rows every alarm-carrying free build carries:
+  // TODO 275's button seat and §261's depth cap.
+  { name: 'free-alarm', q: 'case=free', expect: 'declared', sweep: true,
+    expectWarns: ['TODO 275: the case wall stands', '§261: cased assembly'],
+    why: '§343 landing 4 — the free case with the alarm and its arc gong held in the fit; boots exactly TODO 275\'s and §261\'s rows, swept' },
   // TODO 298 landing 3 — THE BUILD WITHOUT THE ALARM, ON A BOX FORM CASE. Until TODO 298 no alarm-free box build had ever
   // been swept: the battery's tables named the alarm's units and threw, and the case was cut to the solvers' guess, through
   // the setting lever. Now the battery stands down the module's rows on the build's own word and the case is cut to its
@@ -1208,6 +1217,9 @@ const POINT_COSTS = {
   // and plates, the barrel at -140°, the drum turned, the stop-work in §47's place. Carried at the designed point's reach
   // (its nearest measured kin in scope) until a run writes its own `ms` back — wall clock, never a verdict.
   'stopwork-140': 1174,
+  // §343 landing 4 — the free case with the alarm: against the round default it changes the case and the plates' cut, a form
+  // build's reach; carried at stopwork-140's number until a run writes its own `ms` back (wall clock, never a verdict).
+  'free-alarm': 1174,
   // TODO 298 landing 3 — against the round alarm default this build changes most of the movement (no alarm at all, a form
   // case and plates), stopwork-140's reach; carried at its number until a run writes its own `ms` back (wall clock, never a verdict)
   'alarm-free-fitted': 1174,
