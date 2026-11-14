@@ -210,6 +210,7 @@ export const COSTS = {
   'restoring': 30,
   'transfers': 1,
   'lubrication': 1,
+  'serviceClass': 1,   // TODO 299 — one collectUnits walk and a pure judge, lubrication's class
   // TODO 298 — one collectUnits walk and a pure judge run six times: a lubrication-class cost
   'modules': 1,
   // §122 — the verdict tier's two fixes moved this column's three largest

@@ -40,6 +40,7 @@ import { ZERO_AREA_MAX, CLEAR_MARGIN, HANDOFF_TRACK_TOL, UNIT_MM, Z_DIAL, SLENDE
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, rigidSplit,
   TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, ESCAPE_STEEL_SIGMA_Y_PA, ESCAPE_STEEL_SIGMA_Y_BAND, ESCAPE_TIP_R_M, ESCAPE_TIP_R_BAND, LINE_CONTACT_SHAKEDOWN_P0_PER_Y, ESCAPE_STEEL_HARDNESS_BAND, TABOR_H_OVER_SIGMA_Y, TABOR_TOLERANCE, CUT_TOOL_R_M, CUT_CONCAVE_MIN_DEG, SERVICE_INTERVAL_YEARS, DESIGN_LIFE_YEARS, JULIAN_YEAR_S, WEAR_K_BAND, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, MAINSPRING_ALPHA_MIN, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R_SPEC, BALANCE_R_REF, BALANCE_R_CASE_BOUND, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG, STOPWORK_BUILT, GEARED_BUILT, F_BALANCE, FRICTION, OIL_AGEING } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 import { auditLubrication, LUBRICATION, LUBRICATION_DEBT, LUBRICATION_WAIVERS, REGIME_INFO } from './lubrication.js';   // §247 tier one
+import { judgeServiceClass, SERVICE_CLASS, EXPENDABLE_PARTS } from './service-class.js';   // TODO 299 step 1
 import { LOCK_DEG, RUN_DEG } from './escapement.js';   // TODO 299 row 22: the lock is declared against shock and the run is not, so the run is the wear budget's spendable share
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
@@ -13184,6 +13185,30 @@ export function checkModules(clock) {
   };
 }
 
+// TODO 299 step 1 — THE SERVICE CLASS OF EVERY MEMBER (src/service-class.js). Every unit the build labels answers EXPENDABLE
+// or LIFETIME, because the class picks a member's wear criterion; an expendable part names a mesh its unit carries (or one
+// the build says it left uncut). `lubrication`'s shape: pure data, a pure judge, controls that run it on broken copies.
+export function checkServiceClass(clock) {
+  const scene = new Map(collectUnits(clock, { includeExcluded: true }).map((u) => [u.name, new Set(u.meshes.map((m) => meshLabel(u, m)))]));
+  const omitted = clock.omitted || [];
+  const real = judgeServiceClass({ scene, omitted });
+  const controls = [];
+  const expect = (name, hit) => controls.push({ name, ok: !!hit });
+  const victim = [...scene.keys()].find((u) => u in SERVICE_CLASS);
+  { const table = { ...SERVICE_CLASS }; delete table[victim];
+    expect('a unit dropped from the roster is unanswered', judgeServiceClass({ scene, omitted, table }).unanswered.some((x) => x.unit === victim)); }
+  { const table = { ...SERVICE_CLASS, [victim]: { cls: 'forever', why: 'a control, not a class' } };
+    expect('a class that is neither is malformed', judgeServiceClass({ scene, omitted, table }).malformed.some((x) => x.unit === victim)); }
+  { const parts = [...EXPENDABLE_PARTS, { unit: victim, mesh: '__no such mesh__', why: 'a control' }];
+    expect('an expendable part naming a mesh its unit lacks is stale', judgeServiceClass({ scene, omitted, parts }).stale.some((x) => x.part === `${victim}/__no such mesh__`)); }
+  expect('a real expendable part is read as replaced', real.replaced.length > 0
+    && judgeServiceClass({ scene, omitted, parts: [] }).replaced.length === 0);
+  const failed = controls.filter((c) => !c.ok);
+  const control = failed.length ? `FAIL: ${failed.map((c) => c.name).join('; ')}` : `PASS (${controls.length} broken copies each refused)`;
+  return { ok: !real.unanswered.length && !real.malformed.length && !real.stale.length && !failed.length,
+    population: scene.size, ...real, control, controls };
+}
+
 export function checkLubrication(clock) {
   const labels = clock.labelEntries.map((e) => e.name);
   const absent = buildOmissions(clock).units;   // TODO 298 — joints of a module the build did not build stand down
@@ -16462,6 +16487,7 @@ const CHECKS = {
   // instrument was to import the module and call it by hand (TODO 29).
   restoring: (clock, opts) => auditOscillators(clock, opts),
   modules: (clock) => checkModules(clock),                               // TODO 298 — the build's word on what it left out (modules, uncut meshes), held to the scene both ways
+  serviceClass: (clock) => checkServiceClass(clock),                     // TODO 299 step 1 — every member EXPENDABLE or LIFETIME
   lubrication: (clock) => checkLubrication(clock),                       // §247 tier one — every joint answers with a regime or sits in the closed arrival inventory; the energy column's coefficients agree with the regime they price
   transfers: (clock, opts) => checkTransfers(clock, opts),               // §137 — every corner's idiom + arithmetic; declarations held honest, tiers gated
   meshPhase: (clock, opts) => checkMeshPhase(clock, opts),               // §194 — every declared mesh anti-phased at every pose, not just the build's; §135 gates the centre distance beside it
