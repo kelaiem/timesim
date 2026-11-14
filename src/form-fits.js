@@ -5,12 +5,8 @@
 // fitted kind, its side curvature k and apex height tau. Each is its own fixed point: booted at it, the build fits the
 // counted metal to the same numbers.
 export const FORM_FITS = Object.freeze({
- "cfg1:{\"spec\":{\"alarm\":false,\"alarmModAzDeg\":50,\"barrelStepDeg\":-20,\"caseShape\":\"cushion\",\"reserveHours\":30,\"rsvAzDeg\":0,\"rsvIdlers\":2,\"vph\":14400},\"route\":null,\"tuned\":[]}": Object.freeze([-46.03,46.03,-43.71,43.71]),
  "cfg1:{\"spec\":{\"alarm\":false,\"alarmModAzDeg\":50,\"barrelStepDeg\":-20,\"caseShape\":\"cushion\",\"reserveHours\":30,\"rsvAzDeg\":0,\"rsvIdlers\":2,\"vph\":18000},\"route\":null,\"tuned\":[]}": Object.freeze([-45.13,45.13,-41.32,41.32]),
- "cfg1:{\"spec\":{\"alarm\":false,\"alarmModAzDeg\":50,\"barrelStepDeg\":-20,\"caseShape\":\"fitted\",\"reserveHours\":30,\"rsvAzDeg\":0,\"rsvIdlers\":2,\"vph\":14400},\"route\":null,\"tuned\":[]}": Object.freeze([-45.99,45.99,-43.6,41.03,0.459162,0.264]),
  "cfg1:{\"spec\":{\"alarm\":false,\"alarmModAzDeg\":50,\"barrelStepDeg\":-20,\"caseShape\":\"fitted\",\"reserveHours\":30,\"rsvAzDeg\":0,\"rsvIdlers\":2,\"vph\":18000},\"route\":null,\"tuned\":[]}": Object.freeze([-45.25,45.25,-40,41.03,0.735178,0.000005]),
- "cfg1:{\"spec\":{\"alarm\":false,\"alarmModAzDeg\":50,\"barrelStepDeg\":-20,\"caseShape\":\"rect\",\"reserveHours\":30,\"rsvAzDeg\":0,\"rsvIdlers\":2,\"vph\":14400},\"route\":null,\"tuned\":[]}": Object.freeze([-45.91,45.91,-43.6,43.6]),
  "cfg1:{\"spec\":{\"alarm\":false,\"alarmModAzDeg\":50,\"barrelStepDeg\":-20,\"caseShape\":\"rect\",\"reserveHours\":30,\"rsvAzDeg\":0,\"rsvIdlers\":2,\"vph\":18000},\"route\":null,\"tuned\":[]}": Object.freeze([-44.81,44.81,-41.03,41.03]),
- "cfg1:{\"spec\":{\"alarm\":false,\"alarmModAzDeg\":50,\"barrelStepDeg\":-20,\"caseShape\":\"tonneau\",\"reserveHours\":30,\"rsvAzDeg\":0,\"rsvIdlers\":2,\"vph\":14400},\"route\":null,\"tuned\":[]}": Object.freeze([-46.46,46.46,-44.12,44.12]),
  "cfg1:{\"spec\":{\"alarm\":false,\"alarmModAzDeg\":50,\"barrelStepDeg\":-20,\"caseShape\":\"tonneau\",\"reserveHours\":30,\"rsvAzDeg\":0,\"rsvIdlers\":2,\"vph\":18000},\"route\":null,\"tuned\":[]}": Object.freeze([-44.83,44.83,-41.04,41.04]),
 });
