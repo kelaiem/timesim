@@ -1096,12 +1096,13 @@ export const SPEC_POINTS = [
   { name: 'geared-24', q: 'arrest=geared&reserveh=24', expect: 'declared',
     // TODO 291 moved this reserve's own debt by one row each way: the honest spring's lower torque brackets the
     // detent beak's relief solve (TODO 221's row went), and the 30 h balance it re-solved knocks at 24 h's serviced
-    // corner (TODO 216's row came: 236.50° hanging, 334.00° dial-flat, against the knock at 310.46°).
-    expectWarns: ['TODO 53: the drum\'s hook plane', 'TODO 216: the serviced (nominal) corner knocks',
+    // corner (TODO 216's row came: 236.50° hanging, 334.00° dial-flat, against the knock at 310.46°). §343 landing 3 took
+    // it away again: the 14,400 balance (r 11.5, rim 0.345) sustains 234.30° nominal vertical at 24 h, inside the knock.
+    expectWarns: ['TODO 53: the drum\'s hook plane',
       'TODO 192: AMPLITUDE_CLAIM_DEG', 'TODO 207/242: BAL_RIM_F',
       'TODO 206 arming spring: follower-B\'s seat sits at the nose\'s margin',
       '§325: the strike group\'s notch in the round three-quarter plate'],
-    why: '§337 landing 2b stage 3 — the geared Geneva at 24 h, cone : finger 25 : 20, where §47\'s arrest has no legal site; boots exactly ?reserveh=24\'s own six rows, the arrest\'s six gone' },
+    why: '§337 landing 2b stage 3 — the geared Geneva at 24 h, cone : finger 25 : 20, where §47\'s arrest has no legal site; boots exactly ?reserveh=24\'s own five rows (six until §343 landing 3), the arrest\'s six gone' },
   // 36 h is the reserve that EARNED THE RANGE SWEEP: its worst pressure angle falls at an interior −5.81° of a ±15.49°
   // range, which stage 3's two-endpoint sweep would have missed (24 h's lands on the endpoint, so one of the two would
   // have read right by luck). Its set is 24 h's plus §254's flank-slope row, which a 36 h wrap carries on its own.
