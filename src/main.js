@@ -2990,6 +2990,18 @@ const KEYLESS_INPUTS = {
     fourth: fourthWheelR, escape: escapeWheelR, balance: balanceR * 1.35, // + cock
     fork: 4, dial: 0,
   },
+  // The round plate's station term (layout.js solveKeyless): each station's swept radius measured off its built part,
+  // the same measurement LAYOUT_INPUTS.swept hands the balance solve. The barrel station's widest metal is the great
+  // wheel; the fork is measured before forkGroup places it, so its radius is about its own pivot. THE ROUND CASE ONLY,
+  // on §325 landing 10's precedent: a form case's plate is its fitted outline, and plateR there is the working circle its
+  // generated outlines, gong seats and fits were cut against (src/free-outlines.js, src/gong-seats.js), so it keeps the
+  // outline + PLATE_RIM_MARGIN term those were generated under. Measured with the law on every kind, the free case lost its
+  // balance cock's seat and the fitted case's metal stood 4.916 inside its outline.
+  ...(SPEC.caseShape ? {} : { reach: {
+    barrel: LAYOUT_INPUTS.swept.great, center: LAYOUT_INPUTS.swept.center, third: LAYOUT_INPUTS.swept.third,
+    fourth: LAYOUT_INPUTS.swept.fourth, escape: LAYOUT_INPUTS.swept.escape, balance: LAYOUT_INPUTS.swept.balance,
+    fork: sweptR(palletFork), dial: 0,
+  } }),
   // §327 — the drum's reach for the form rectangle: its centre distance (FUSEE_DRUM_DIST) and its outermost metal, the
   // chain coil on the wall, CHAIN_END_R_OUT past DRUM_WRAP_R (the radius TODO 207's plate bound uses). Plain numbers: tools/form-layout.mjs serialises these.
   drum: { dist: FUSEE_DRUM_DIST, r: DRUM_WRAP_R + CHAIN_END_R_OUT },
@@ -17489,7 +17501,13 @@ const BALANCE_COCK = (() => {
     // can say WHICH wall stopped it and by how much — §125 Tier B hit the
     // bare 'no clear seat' warn and had to instrument before it could fix.
     let clrTag = 'slab on plate';
-    let clr = plateR - CLEAR_MARGIN
+    // The bound is the cut's, not the bare plate's: the reveal opens the three-quarter plate to the cock's silhouette plus
+    // TQ_CUT_MARGIN and clamps that edge at plateR − 0.2 (the reveal pass below), so a slab or pad held only CLEAR_MARGIN
+    // inside plateR forced a clamped reveal once the plate-margin law brought the plate in (84 bearings over the spec
+    // points). The escape cock's foot scan reads the same rim (rimR there). A seat is accepted at clr ≥ CLEAR_MARGIN, so the
+    // plate term carries that margin back: accepted means exactly that the reveal fits inside the clamp.
+    const revealRim = plateR - 0.2 - TQ_CUT_MARGIN + CLEAR_MARGIN;
+    let clr = revealRim
       - (Math.hypot(P.balance.x + cs * dTail, P.balance.y + sn * dTail) + COCK_W / 2); // slab stays on the plate
     const cut = (v, tag) => { if (v < clr) { clr = v; clrTag = tag; } };
     // The T-foot's two LEG PADS must clear the obstacle set. Their
@@ -17503,7 +17521,7 @@ const BALANCE_COCK = (() => {
     for (const s of [-1, 1]) {
       const lx = P.balance.x + cs * dyLeg - sn * s * hspan;
       const ly = P.balance.y + sn * dyLeg + cs * s * hspan;
-      cut(plateR - CLEAR_MARGIN - (Math.hypot(lx, ly) + padR), 'leg pad on plate');
+      cut(revealRim - (Math.hypot(lx, ly) + padR), 'leg pad on plate');
       for (let oi = 0; oi < obstacles.length; oi++) {
         const o = obstacles[oi];
         cut(distTo(o, lx, ly) - padR, o.ax === undefined
@@ -19963,7 +19981,10 @@ ESCAPE_COCK = await (async () => {
         // plateR's circle alone, the foot at r 11.5 stood 4.61 inside the free outline, the fit grew to take it, the
         // foot moved in on the grown cut and the outline flipped between 972 and 976 mm² with no fixed point. The
         // widest metal the foot puts on the plate is its PAD (padR, wider than the boss), so the pad is what is held
-        const mPlate = Math.min(rimR - nodeR - Math.hypot(x, y), formInset(x, y) - padR - PLATE_RIM_MARGIN);
+        // On the round plate the same metal is judged: the PAD, not the node, is what the cut's opening must reveal, so a
+        // node held inside rimR left the pad's reveal past the rim and the cut clamped there (the plate-margin law brought
+        // the 14,400 plate in to 41.516 and four bearings, 283–286, clamped).
+        const mPlate = Math.min(rimR - padR - Math.hypot(x, y), formInset(x, y) - padR - PLATE_RIM_MARGIN);
         const col = columnClear(x, y);
         const mColumn = col.c - (padR + CLEAR_MARGIN);
         let barWho = null;
@@ -54025,9 +54046,26 @@ const CASE_SECTORS = (() => {
     const box = new THREE.Box3();
     const a = new THREE.Vector3(), b = new THREE.Vector3(), q = new THREE.Vector3();
     const hits = [];
-    movement.updateMatrixWorld(true);
+    // TODO 311 — THE MOVERS ARE POSED, not read where the build left them. This walk runs before boot's first tick(0), and
+    // the keyless works' two levers take their angle only from tick() (settingLeverAngleAt, yokeAngleAt), so the walk read
+    // both at the rotation 0 a new Group is born with, a pose the watch never takes: with the stem turned (?stemaz=135) the
+    // unposed setting-lever beak reached 40.658 against 35.406 pushed in and 33.140 pulled, and once the plate-margin law
+    // brought the bore in to 44.16 it fired on the designed train too. So the levers stand at each end of the crown's pull
+    // (the yoke at its seat and at full travel, the extremes its own pose axis sweeps): the whole movement is walked at the
+    // pushed-in end and the two levers again at the pulled end, then both go back to what the build had given them.
+    const POSED_MOVERS = [
+      { g: settingLeverGroup, at: [settingLeverAngleAt(0), settingLeverAngleAt(1)] },
+      { g: yokeGroup, at: [yokeAngleAt(YOKE_A_SEAT), yokeAngleAt(YOKE_A_FULL)] },
+    ];
+    const restore = POSED_MOVERS.map((m) => m.g.rotation.z);
+    const poseMovers = (k) => { for (const m of POSED_MOVERS) m.g.rotation.z = m.at[k]; movement.updateMatrixWorld(true); };
+    const inMover = (o) => { for (let n = o; n; n = n.parent) if (POSED_MOVERS.some((m) => m.g === n)) return true; return false; };
+    poseMovers(0);
+    for (const pass of [0, 1]) {
+    if (pass === 1) poseMovers(1);
     movement.traverse((o) => {
       if (!o.isMesh || o.userData.casePart || o.userData.schematic || onPlate(o)) return;
+      if (pass === 1 && !inMover(o)) return;   // the pulled end re-walks only what the pull moves
       if (!o.geometry?.attributes?.position) return;
       box.setFromObject(o);
       // Prune: a box whose farthest corner never reaches the inner wall
@@ -54081,6 +54119,9 @@ const CASE_SECTORS = (() => {
         }
       }
     });
+    }
+    POSED_MOVERS.forEach((m, i) => { m.g.rotation.z = restore[i]; });
+    movement.updateMatrixWorld(true);
     if (hits.length) {
       const names = [...new Set(hits.map((h) => h.name))];
       console.warn(`§186: the analytic case sectors' annulus is OCCUPIED at the build pose — ${hits.length} `
