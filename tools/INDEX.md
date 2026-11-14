@@ -4,7 +4,7 @@
 
 # The instruments
 
-439 scripts. **311 are ACCEPTANCE tests** — they decide and exit non-zero.
+440 scripts. **312 are ACCEPTANCE tests** — they decide and exit non-zero.
 **128 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -284,6 +284,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-337-geared-geneva.mjs` | §337 | acceptance | §337 landing 1 — THE GEARED GENEVA'S LINE, HELD. ACCEPTANCE (exits non-zero on a failure). |
 | `probe-337-geared-invariant.mjs` | §337 | acceptance | §337, TODO 294 — THE GEARED BUILD'S INVARIANT, AT EVERY RESERVE THE KEY CUTS METAL FOR. ACCEPTANCE (exits non-zero on a failure). |
 | `probe-337-record.mjs` | §337 | acceptance | §337 landing 2b, stage 3 — THE RECORD'S MEASURED BLOCK, HELD TO THE BUILD. ACCEPTANCE (exits non-zero on a failure). |
+| `probe-338-boot-builders.mjs` | §338 | acceptance | WHICH BUILDERS OWN THE BOOT, ACROSS EVERY SPEC POINT? — §338 landing 17, the measurement before any build change. A REPORT: it judges nothing (it exits non-zero only when a boot or a profile could not be read, which is a measurement that did not happen). |
 | `probe-338-check-profile.mjs` | §338 | acceptance | §338 landing 0 — WHERE DOES THE BATTERY'S CHECK TIME GO, BY FUNCTION? |
 | `probe-338-kernel-parity.mjs` | §338 | acceptance | §338 landing 5 — G3, KERNEL PARITY: does the compiled kernel answer what the JS reference answers, and where it does not, is it the truer of the two? |
 | `probe-338-native-boot.mjs` | §338 | acceptance | §338 landing 1 — DOES THE NATIVE HOST BUILD THE SAME MOVEMENT AS THE BROWSER? |
