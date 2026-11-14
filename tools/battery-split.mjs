@@ -71,8 +71,9 @@ export const INSPECTION_SLICES = [
   // §246 tier two — the position, posed dial-flat (the driven balance's
   // ~292° swing). poses = n 300 plus the endpoint — n is the beat axis's 193
   // scaled by AMPLITUDE_PEAK_DEG / AMPLITUDE_POSED_DEG, 311/200 since TODO 226
-  // step 3b moved the knock (294 at 305, 291 at 302).
-  { axis: 'position', poses: 301 },
+  // step 3b moved the knock (294 at 305, 291 at 302); 317 since §343 landing 3
+  // made the 14,400 row the default, its peak 328°.
+  { axis: 'position', poses: 318 },
 ];
 
 // §127 — reassemble a sliced `inspection` into the payload a whole run
@@ -334,8 +335,9 @@ export const CLEARANCE_SLICES = [
   // §246 tier two — the position, posed dial-flat (the driven balance's
   // ~292° swing). poses = n 300 plus the endpoint — n is the beat axis's 193
   // scaled by AMPLITUDE_PEAK_DEG / AMPLITUDE_POSED_DEG, 311/200 since TODO 226
-  // step 3b moved the knock (294 at 305, 291 at 302).
-  { axis: 'position', poses: 301 },
+  // step 3b moved the knock (294 at 305, 291 at 302); 317 since §343 landing 3
+  // made the 14,400 row the default, its peak 328°.
+  { axis: 'position', poses: 318 },
 ];
 
 // TODO 164 — same axis roster as CLEARANCE_SLICES above (this check walks the
@@ -365,8 +367,9 @@ export const UNDECLARED_CLEARANCE_SLICES = [
   // §246 tier two — the position, posed dial-flat (the driven balance's
   // ~292° swing). poses = n 300 plus the endpoint — n is the beat axis's 193
   // scaled by AMPLITUDE_PEAK_DEG / AMPLITUDE_POSED_DEG, 311/200 since TODO 226
-  // step 3b moved the knock (294 at 305, 291 at 302).
-  { axis: 'position', poses: 301 },
+  // step 3b moved the knock (294 at 305, 291 at 302); 317 since §343 landing 3
+  // made the 14,400 row the default, its peak 328°.
+  { axis: 'position', poses: 318 },
 ];
 
 // The gate's verdict over a payload's rows and the debt table — a TWIN of the
@@ -520,8 +523,9 @@ export const EXPECTED_CONTACT_SLICES = [
   // §246 tier two — the position, posed dial-flat (the driven balance's
   // ~292° swing). poses = n 300 plus the endpoint — n is the beat axis's 193
   // scaled by AMPLITUDE_PEAK_DEG / AMPLITUDE_POSED_DEG, 311/200 since TODO 226
-  // step 3b moved the knock (294 at 305, 291 at 302).
-  { axis: 'position', poses: 301 },
+  // step 3b moved the knock (294 at 305, 291 at 302); 317 since §343 landing 3
+  // made the 14,400 row the default, its peak 328°.
+  { axis: 'position', poses: 318 },
 ];
 
 // §152 — THE COSTS TABLE IS AN INPUT, AND IT IS CHECKED BEFORE IT IS USED.
