@@ -1083,7 +1083,7 @@ export const SPEC_POINTS = [
   // caseMiddle. It is now cut to a generated fit that holds the arc (src/form-fits.js; the wire 0.608 off caseMiddle, the
   // post 0.695), and this point sweeps it. It boots §261's depth row, TODO 266's strike-opening land (−0.522, the
   // hammer's opening against its bore; the item's fix is a re-sited hammer) and §34's selector boss at 300° against the
-  // seconds well's wall (−0.14: the larger fit grows the dial and its well; TODO 310).
+  // seconds well's wall (−0.14: the larger fit grows the dial and its well; TODO 312).
   { name: 'fitted-alarm', q: 'case=fitted', expect: 'declared', sweep: true,
     expectWarns: ['§34 selector post az300 vs seconds-well ring', 'TODO 266: the strike group\'s opening', '§261: cased assembly'],
     why: '§343 landing 5 — the fitted tonneau with the alarm, its fallback arc gong held in a generated fit; boots exactly §34\'s, TODO 266\'s and §261\'s rows, swept' },
