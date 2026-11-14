@@ -7619,6 +7619,7 @@ const MW_FOLD_LEG1_HEADING_W_DEG = MW_FOLD_LEG1_HEADING_DEG + STEM_TURN_DEG;
 // the rays never meet (measured at −60° and −120°: leg 2 −35.2°). There CAP_SOLVE walks the heading out from the held
 // one, nearest first, and the fold is built on the first heading whose cap bearing opens (CAP_SOLVE below).
 let MW_FOLD_LEG1_HEADING_USED_DEG = MW_FOLD_LEG1_HEADING_W_DEG;
+const FOLD_SEEN_WALK_DEG = 1;   // TODO 305: CAP_SOLVE's step off a held heading whose folds open none borne (measured there)
 // (§234 Landing 2 step 3a measured that no SECTION closes the straight run —
 // the ceiling wanted r 0.687 in a 1.38 u window, and moving Z_RSV, swinging
 // CAP_BEARING, shrinking the corner and necking the rod were each tried and
@@ -8439,6 +8440,17 @@ async function solveReserveSwing(pts, statics = null) {
   return pick;
 }
 const Z_UP = new THREE.Vector3(0, 0, 1);
+// TODO 305 — the least deflection a fold corner can be cut at: a 10:10 pair's tip cone grows as its shaft angle Σ opens
+// toward 180° (a face gear), and makeConicalGear holds a plane-bounded blank to 85° of it. Solved once by bisection on Σ,
+// on both members' bores as the corner cuts them (each member's tip cone is its own pitch angle plus its addendum angle).
+const FOLD_DEFLECT_MIN = (() => {
+  const tip = (sig) => Math.max(...[[MW_LEG1_R, MW_LEG2_R], [MW_LEG2_R, MW_LEG1_R]].map(([b, mb]) => G.bevelToothSpec({ module: BEVEL_MODULE,
+    teeth: BEVEL_TEETH, mateTeeth: BEVEL_TEETH, shaftAngleDeg: sig, boreR: b, mateBoreR: mb, quiet: true }).thetaTip));
+  const lim = (85 * Math.PI) / 180;
+  let lo = 90, hi = 180;   // tip(lo) under the limit (a mitre), tip(hi) over it (a face gear)
+  for (let i = 0; i < 60; i++) { const mid = (lo + hi) / 2; if (tip(mid) <= lim) lo = mid; else hi = mid; }
+  return (180 - lo) * DEG2RAD;
+})();
 function solveSettingFold(B) {
   const u = B.clone().sub(settingA).normalize();                 // A→B, the straight run's direction
   // K's side of the run is the side the measured HEADING leaves it on: leg 1
@@ -8460,22 +8472,63 @@ function solveSettingFold(B) {
   // when it stands across the run from K
   const phi = -side * Math.atan2(BA.x * toBar.y - BA.y * toBar.x, BA.dot(toBar));
   const needCol = RSV_ARB_EXT_R + MW_LEG2_R + CLEAR_MARGIN;
-  const beta2 = phi + Math.asin(Math.min(1, needCol / dB));
+  const betaCol = phi + Math.asin(Math.min(1, needCol / dB));
   const alpha = alphaDeg * DEG2RAD;
   const rot = (v, ang) => new THREE.Vector3(v.x * Math.cos(ang) - v.y * Math.sin(ang), v.x * Math.sin(ang) + v.y * Math.cos(ang), 0);
   const d1 = rot(u, side * alpha);                                // leg 1's direction from A — the measured heading, by construction
-  // BA's left normal is −n (BA = −u), so tilting leg 2 toward the barrel's
-  // side is a rotation by −side·β2 — the sign the boot guard at the build
-  // caught the first time this was written the other way (K landed behind A).
-  const d2 = rot(BA, -side * beta2);                              // leg 2's ray from B, toward the barrel's side
-  // K = the intersection of A + t·d1 and B + s·d2
-  const det = d1.x * -d2.y - d1.y * -d2.x;
-  const t = ((B.x - settingA.x) * -d2.y - (B.y - settingA.y) * -d2.x) / det;
-  const K = settingA.clone().addScaledVector(d1, t);
+  // TODO 305 — WHERE THE COLUMN DOES NOT BIND. βcol is the swing that lays leg 2 tangent to the barrel's column. It is
+  // ≤ 0 exactly when the barrel stands across the run from K and the run itself passes the column clear: any leg 2 swung
+  // toward K's side then clears it, so the column sets nothing (on stopwork-140 the run passes it 4.9 off). The fold
+  // still exists there for the reason the straight run is refused: the run is longer than one rod can be turned
+  // (TURN_LD_TARGET). So K is put where that constraint is best met: on leg 1's ray, at the point minimising the worse
+  // of the two legs' length over its own turning target (convex in t, a golden-section search to float noise). Tangent
+  // to the column, it threw K far out along the ray and refused every bearing as "legs over the turning target".
+  let K, beta2;
+  if (betaCol > 0) {
+    beta2 = betaCol;
+    // BA's left normal is −n (BA = −u), so tilting leg 2 toward the barrel's
+    // side is a rotation by −side·β2 — the sign the boot guard at the build
+    // caught the first time this was written the other way (K landed behind A).
+    const d2 = rot(BA, -side * beta2);                              // leg 2's ray from B, toward the barrel's side
+    // K = the intersection of A + t·d1 and B + s·d2
+    const det = d1.x * -d2.y - d1.y * -d2.x;
+    const t = ((B.x - settingA.x) * -d2.y - (B.y - settingA.y) * -d2.x) / det;
+    K = settingA.clone().addScaledVector(d1, t);
+  } else {
+    // …subject to the corner being CUTTABLE: K's deflection α + β2 at least FOLD_DEFLECT_MIN, below which the pair's
+    // tip cone passes the 85° a plane-bounded blank can hold (makeConicalGear's TODO 138 floor). A K nearer the run
+    // than that is a pair of face gears, not a corner.
+    const c1 = 2 * MW_LEG1_R * TURN_LD_TARGET, c2 = 2 * MW_LEG2_R * TURN_LD_TARGET;
+    const at = (t) => settingA.clone().addScaledVector(d1, t);
+    const betaAt = (t) => { const q = at(t), dx = q.x - B.x, dy = q.y - B.y;
+      return -side * Math.atan2(BA.x * dy - BA.y * dx, BA.x * dx + BA.y * dy); };
+    const ok = (t) => { const b = betaAt(t); return b > 0 && alpha + b >= FOLD_DEFLECT_MIN; };
+    const f = (t) => Math.max(t / c1, at(t).distanceTo(B) / c2);
+    const T = settingA.distanceTo(B), N = 4096;
+    let best = null;
+    for (let i = 1; i < N; i++) { const t = (T * i) / N; if (ok(t) && (best === null || f(t) < f(best))) best = t; }
+    if (best === null) best = T / 2;   // no cuttable K on this ray: solve on, and the clauses refuse the fold by its legs or its corner
+    else {
+      // refine to float noise: golden section where both neighbours are feasible, else bisect onto the feasible edge
+      const h = T / N;
+      let lo = Math.max(0, best - h), hi = Math.min(T, best + h);
+      if (ok(lo) && ok(hi)) {
+        const g = (Math.sqrt(5) - 1) / 2;
+        for (let i = 0; i < 100 && hi - lo > 1e-12; i++) { const m1 = hi - g * (hi - lo), m2 = lo + g * (hi - lo); if (f(m1) <= f(m2)) hi = m2; else lo = m1; }
+        best = (lo + hi) / 2;
+      } else {
+        let fe = best, inf = ok(lo) ? hi : lo;   // the infeasible neighbour f falls toward
+        if (f(inf) < f(fe)) for (let i = 0; i < 100 && Math.abs(inf - fe) > 1e-12; i++) { const mid = (fe + inf) / 2; if (ok(mid)) fe = mid; else inf = mid; }
+        best = fe;
+      }
+    }
+    K = at(best);
+    beta2 = betaAt(best);   // leg 2's swing off BA, signed toward K's side (the convention βcol's branch builds d2 from)
+  }
   const leg1U = K.clone().sub(settingA).normalize(), leg2U = B.clone().sub(K).normalize();
   const deflection = alpha + beta2;
   const shaftAngleDeg = 180 - deflection / DEG2RAD;
-  return { K, leg1U, leg2U, side, phi, beta2, alpha, alphaDeg, shaftAngleDeg, needCol,
+  return { K, leg1U, leg2U, side, phi, beta2, alpha, alphaDeg, shaftAngleDeg, needCol, colBinds: betaCol > 0,
     len1: settingA.distanceTo(K), len2: K.distanceTo(B) };
 }
 // TODO 185 — HOISTED from the motion works' build: the §29 centre z-chain, the
@@ -9953,6 +10006,11 @@ async function buildSettingMetal(B, parent, { candidate = false } = {}) {
   // rise's shouldered pivot passes through E and the cap arbor's extension through D, so the stub is cut clear of
   // both. A B whose tail no bearing fits is refused like one whose leg no tilt clears.
   const T = await siteTailBearings(B, F, g, cap);
+  // TODO 305 — a candidate whose tail cannot be BORNE is refused like one whose tail no bearing fits: the shipped build
+  // would run that shaft unborne and say so, and the scan would have taken the first bearing that opened rather than
+  // the first that opened with every bush (stopwork-140, once its fold opened at the held heading: the rise unborne).
+  if (candidate && !T.refused && (T.riseWhy || T.stubWhy || T.capWhy))
+    return { F, refused: `tail unborne: ${T.riseWhy || T.stubWhy || T.capWhy}`, noFold };
   if (T.refused) {
     if (candidate) return { F, refused: T.refused, noFold };
     console.warn(`TODO 289: ${T.refused} — building the tail without them; the battery judges it`);
@@ -10276,6 +10334,41 @@ const CAP_SOLVE = await (async () => {
     }
     return m;
   };
+  // TODO 305 — AND THE STEM. Every member on the stem axis turns about it (the winding pinion, its saw, the square and
+  // the clutch on it), so what it can occupy is a CAPSULE about that axis: radius KEYLESS_STACK_R, the bound TODO 211
+  // asserts every member of the stack under, from the stack's inboard end (read off the metal: the pinion group's
+  // innermost point, or the square's SQ_BOT on the spinner, at the same origin, if that lies further in; the pull only
+  // carries the spinner OUTWARD) out past the plate's edge, beyond which no setting metal stands. The held heading never
+  // reaches it, but a heading the walk below turns can (measured on stopwork-140: leg 1 straight through the pinion,
+  // three intraUnit rows). The setting metal's rods are judged as SEGMENTS — a rod's vertices sit only on its end
+  // rings, so a points read would miss one crossing the stem mid-span — and every other mesh by its points.
+  const stemStack = (() => {
+    windPinionGroup.updateWorldMatrix(true, true);
+    const inv = windPinionGroup.matrixWorld.clone().invert(), m = new THREE.Matrix4(), v = new THREE.Vector3();
+    let yIn = SQ_BOT;
+    windPinionGroup.traverse((o) => { if (!o.isMesh) return; m.multiplyMatrices(inv, o.matrixWorld);
+      const pos = o.geometry.attributes.position; for (let i = 0; i < pos.count; i++) yIn = Math.min(yIn, v.fromBufferAttribute(pos, i).applyMatrix4(m).y); });
+    const at = (sd) => new THREE.Vector3(uWind.x * sd, uWind.y * sd, Z_KEYLESS);
+    return { a: at(pinDist + yIn), b: at(plateR + CROWN_PULL_DIST), r: KEYLESS_STACK_R };
+  })();
+  const stemClear = (root, pts) => {
+    let m = Infinity;
+    const u = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+    if (root) root.updateWorldMatrix(true, true);
+    if (root) root.traverse((o) => {
+      if (!o.isMesh || o.geometry.type !== 'CylinderGeometry' || !o.name.startsWith('setting')) return;
+      const { height: h, radiusTop: r } = o.geometry.parameters;   // makeRodSegment's rod: its axis is local +Y
+      u.copy(up).applyQuaternion(o.quaternion);
+      const a = o.position.clone().addScaledVector(u, -h / 2), b = o.position.clone().addScaledVector(u, h / 2);
+      m = Math.min(m, segSegDist3(a, b, stemStack.a, stemStack.b) - r - stemStack.r - CLEAR_MARGIN);
+    });
+    const { a: A, b: B, r: R } = stemStack, dx = B.x - A.x, dy = B.y - A.y, dz = B.z - A.z, L2 = dx * dx + dy * dy + dz * dz;
+    for (const p of pts) {   // a point against the axis segment, inline: called on every vertex of every candidate
+      const t = Math.min(1, Math.max(0, ((p[0] - A.x) * dx + (p[1] - A.y) * dy + (p[2] - A.z) * dz) / L2));
+      m = Math.min(m, Math.hypot(p[0] - A.x - t * dx, p[1] - A.y - t * dy, p[2] - A.z - t * dz) - R - CLEAR_MARGIN);
+    }
+    return m;
+  };
   let foldsSeen = 0;   // candidates past the fold's own clauses (buildSettingMetal's noFold) — the walk's trigger below
   // returns the worst clause margin at the best swing (≥ 0 = open), with the clause named
   const judge = async (dl) => {
@@ -10301,6 +10394,8 @@ const CAP_SOLVE = await (async () => {
     await breathe(77);
     const arbM0 = arbClear(cand0);
     if (arbM0 < 0) { disposeTree(scratch); return { m: arbM0, clause: 'transfer arbor', s: 0 }; }
+    const stemM = stemClear(scratch, cand0);
+    if (stemM < 0) { disposeTree(scratch); return { m: stemM, clause: 'stem', s: 0 }; }
     const wh0 = foldWheelClear(cand0);
     if (wh0.m < 0) { disposeTree(scratch); return { m: wh0.m, clause: wh0.by, s: 0 }; }
     const r0 = await solveReserveSwing(cand0, rsvStatic);
@@ -10312,6 +10407,8 @@ const CAP_SOLVE = await (async () => {
     const arbM = arbClear(cand);
     await breathe(79);
     if (arbM < 0) return { m: arbM, clause: 'transfer arbor', s: 0 };
+    const stemMs = stemClear(null, cand);   // every phase the corners sweep (the rods were judged whole at phase 0)
+    if (stemMs < 0) return { m: stemMs, clause: 'stem', s: 0 };
     const wh = foldWheelClear(cand);
     if (wh.m < 0) return { m: wh.m, clause: wh.by, s: 0 };
     const r = await solveReserveSwing(cand, rsvStatic);
@@ -10370,6 +10467,24 @@ const CAP_SOLVE = await (async () => {
     return { nearest };
   };
   let found = await searchBearings();
+  // TODO 305 — folds seen but none open: first try the heading a degree either way, WITH the K block, since a leg borne
+  // at both ends outranks the held heading (whose bound is slack since TODO 214). One degree is MEASURED: stopwork-140's
+  // held heading gives 145 folds and opens none borne, and −1° opens one with every bush (bearing 29.25°). Wider is
+  // §325's walk's cost on the arrangements whose folds are refused for other reasons (93 s over 180 headings, every
+  // one shut), so the step is held to the one that was needed — and it runs only where the held heading turned a fold
+  // away for its TAIL (the clause above this landing added), which is what the step exists to recover. Elsewhere it
+  // bought nothing and cost each of ?crownaz=90, ?barrelstep=-20, ?rsvr=20, ?rsvr=30 and ?reserveh=48&rsvr=27 about
+  // 45 s of boot against the spec tier's 120 s (measured).
+  if (!found.open && foldsSeen > 0 && scan.some((r) => r.clause.startsWith('tail unborne')))
+    for (const sgn of [1, -1]) {
+      MW_FOLD_LEG1_HEADING_USED_DEG = MW_FOLD_LEG1_HEADING_W_DEG + sgn * FOLD_SEEN_WALK_DEG;
+      const heldScanK = scan.slice();
+      scan.length = 0;
+      const w = await searchBearings();
+      if (w.open) { found = w; break; }
+      scan.length = 0; scan.push(...heldScanK);
+      MW_FOLD_LEG1_HEADING_USED_DEG = MW_FOLD_LEG1_HEADING_W_DEG;
+    }
   // TODO 289 landing 3 — at the held heading, folds seen but none open: try once more without leg 2's K block (above)
   if (!found.open && foldsSeen > 0) {
     const first = found, firstScan = scan.slice();
@@ -10514,14 +10629,28 @@ const MW_FOLD_OBSTACLE_CLEAR = (() => {
       + `MW_FOLD_LEG1_HEADING_DEG ${MW_FOLD_LEG1_HEADING_DEG}${STEM_TURN_DEG ? ` (turned with the stem to ${MW_FOLD_LEG1_HEADING_W_DEG.toFixed(2)}°)` : ''} no longer lies within the fold's range of the run B gives (re-measure it)`);
   // the column bound, re-read off the result: a figure computed two ways
   const missCol = Math.abs((P.barrel.x - MW_FOLD.K.x) * -MW_FOLD.leg2U.y + (P.barrel.y - MW_FOLD.K.y) * MW_FOLD.leg2U.x);
-  if (Math.abs(missCol - MW_FOLD.needCol) > 1e-9)
-    console.warn(`§234 fold: leg 2 passes the barrel column at ${missCol.toFixed(6)}, solved for ${MW_FOLD.needCol.toFixed(6)}`);
+  // (TODO 305: where the column does not bind, K is placed for the legs, and leg 2 need only pass it no nearer)
+  if (MW_FOLD.colBinds ? Math.abs(missCol - MW_FOLD.needCol) > 1e-9 : !(missCol >= MW_FOLD.needCol - 1e-9))
+    console.warn(`§234 fold: leg 2 passes the barrel column at ${missCol.toFixed(6)}, solved for ${MW_FOLD.colBinds ? '' : 'at least '}${MW_FOLD.needCol.toFixed(6)}`);
   // each leg against the target it was sized under — a derivation, so a warn, not a pose claim
   for (const [name, L, r] of [['settingTraverse1', MW_FOLD.len1, MW_LEG1_R], ['settingTraverse2', MW_FOLD.len2, MW_LEG2_R]])
     if (L / (2 * r) > TURN_LD_TARGET)
       console.warn(`§234 fold: ${name} L/D ${(L / (2 * r)).toFixed(2)} over TURN_LD_TARGET ${TURN_LD_TARGET} (L ${L.toFixed(3)}, r ${r.toFixed(4)})`);
 }
 const settingRise = SETTING_METAL.rise;
+// TODO 305 — THE PINCH LEG 2 IS SIZED TO, as this build has it. MW_LEG2_R is cut so a leg 2 passing over reservePinion0
+// stands exactly CLEAR_MARGIN above its top (SETTING_ROD_R), and undeclaredClearance's tie control reads that exact
+// margin. Whether leg 2 passes over it is the fold's to say, not the battery's: on the default it does; re-solved for a
+// column that does not bind (stopwork-140), K stands where leg 2 never crosses the pinion. Read in plan off the shipped
+// leg's axis against the envelope the fold was judged by (FOLD_WHEEL_ENVELOPES): the two overlap when the axis comes
+// within the pinion's radius plus the leg's.
+const SETTING_PINCH = (() => {
+  const e = FOLD_WHEEL_ENVELOPES.find((q) => q.name === 'reserve input pinion');
+  const leg = SETTING_METAL.leg2, u = new THREE.Vector3(0, 1, 0).applyQuaternion(leg.quaternion), h = leg.geometry.parameters.height;
+  const a = leg.position.clone().addScaledVector(u, -h / 2), b = leg.position.clone().addScaledVector(u, h / 2);
+  a.z = b.z = 0;
+  return segSegDist3(a, b, new THREE.Vector3(e.x, e.y, 0), new THREE.Vector3(e.x, e.y, 0)) < e.r + MW_LEG2_R;
+})();
 
 // Bevel-gear corner: two small conical gears sharing an apex at `point`, one
 // keyed to each of the two meeting shafts. axisIn/axisOut point AWAY from
@@ -67102,7 +67231,8 @@ window.__clock = {
   get bootWarns() { return __bootWarns; },
   get formHold() { return FORM ? { ...FORM_HOLD_SPEC, boreGrow: FORM_BORE_GROW } : null; },   // TODO 300 — the form case's casing-clamp hold, as cut (src/casing-clamp.js at this build's plateR)
   get formFit() { return { key: FORM_FIT_KEY, from: SPEC.formRectSpec ? 'url' : FORM_SEAT_FIT ? 'seat' : FORM_ALARMFREE_FIT ? 'table' : SPEC.caseShape && SPEC.caseShape !== 'free' ? 'formPlate' : null }; },   // TODO 298 — where this box form case's cut came from (tools/form-fits.mjs reads it)
-  get modules() { return { alarm: ALARM_BUILT }; },   // TODO 298 — which modules this build cut (§325 landing 3's ?alarm=0 builds none of the alarm), for inspect.js' module-aware tables
+  get modules() { return { alarm: ALARM_BUILT }; },
+  get settingPinch() { return SETTING_PINCH; },   // TODO 305 — whether leg 2 passes over the reserve input pinion, where its radius stands it exactly CLEAR_MARGIN off (undeclaredClearance's tie control)   // TODO 298 — which modules this build cut (§325 landing 3's ?alarm=0 builds none of the alarm), for inspect.js' module-aware tables
   get omitted() { return BUILD_OMITTED.map((o) => ({ ...o })); },   // TODO 298 — the meshes the build's own solve left uncut, each with the reason it warned
   get buildWarns() { return __buildWarnEnd === null ? __bootWarns.slice() : __bootWarns.slice(0, __buildWarnEnd); },   // §338
   get runWarns() { return __buildWarnEnd === null ? [] : __bootWarns.slice(__buildWarnEnd); },
