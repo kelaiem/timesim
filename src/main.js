@@ -39,7 +39,7 @@ import {
   HOUR_TUBE_INNER, HOUR_TUBE_OUTER, ALARM_TUBE_INNER, ALARM_TUBE_OUTER,
   DIAL_CENTER_BORE_R, DIAL_WALL_HALF, SUBDIAL_INBOARD_CLEAR, // TODO 33: the wells' inboard ceiling and the bore it clears
   SECONDS_HUB_R, RSV_HAND_ARBOR_R, SUBDIAL_BORE_R, SUBDIAL_FLOOR, // §97: the wells' floor-side bore, one source with the radius bound
-  BARREL_STEP_DEG, D4, D4_SHIPPED, RESERVE_STATION_R, ESCAPE_STEP_DEG, BALANCE_STEP_TARGET_DEG,
+  BARREL_STEP_DEG, D4, RESERVE_STATION_R, ESCAPE_STEP_DEG, BALANCE_STEP_TARGET_DEG,
   ALARM_CORNER_R,                             // §94 tier B — the alarm corner's design radius, the third radial row's default
   TECHNIC_FORK, technicChainErrors, ratQ, ratMul, ratEq, ratStr, // §219 tier one — the reserve row's target derives from the sweep below
   solveLayout, d4Window,   // §94 tier A: the two-bar's closure window, the d4 handle's refusal
@@ -4142,7 +4142,9 @@ const CASE_R_OUT_FRONT = CASE_R_IN + CASE_BAND_T;
 // sits under the rim's 1 mm bearing, so the bearing sets the bore (Ø37.78 mm), and the annulus holds nothing else. With the
 // alarm the strike group binds first: measured at Ø0.6 the ring stood at r 45.26 and the hammer's cranked tail found no
 // riser station clear of the plate's rim. So the alarm build keeps Ø0.8 (Ø38.22).
-const CASE_CLAMP_SHAFT_D = FORM ? CASE_SCREW_SHAFT_D : 0.6 / UNIT_MM;
+// §343 landing 2: and a FORM case's too. It kept Ø1.0 because its back band was the 40 mm cap and the cap cost nothing;
+// since the cap is a ceiling and every case the smallest its metal allows, a form case's band is sized like the round's.
+const CASE_CLAMP_SHAFT_D = 0.6 / UNIT_MM;
 const CASE_CLAMP_HEAD_D = CASE_CLAMP_SHAFT_D * (CASE_SCREW_HEAD_D / CASE_SCREW_SHAFT_D);
 // §325 landing 15 — THE LEDGE'S BEARING IS A LAND, not a precedent. §186 held the rim's bearing on the ledge to "the 1 mm
 // the seat it replaces provided", a number carried from the part it replaced rather than derived. What the bearing does is
@@ -4165,13 +4167,11 @@ const CASE_R_BORE_BACK_FLOOR = Math.ceil(100 * Math.max(
 // 48.38 → 46.06; the alarm stem and pusher are cut to the wall wherever it stands). Measured on that build, the annulus
 // holds them inside the floor's bore with nothing in the band at any pose (probe-case-relief). So the cap no longer holds
 // the round case out anywhere: the alarm's room is what the clamps leave.
-// §343 landing 2: the cap is now a ceiling read off the strap (layout.js, CASE_WIDTH_MAX: 2 × strap + 2 mm), and the
-// owner's rule is that every case is the smallest its metal allows. The FORM case's round chain still spends the
-// ceiling whole: measured, taking the round case's floor here (with its Ø0.6 clamps) moves the form strike group out of
-// the keep-out its seat declared (TODO 272), leaves the hammer's tail no riser station (§278/TODO 267) and hands the
-// caseback skirt's floor to the hammer (§198) on form-rect, so the minimal form chain waits on its regenerated form
-// tables (§343's record).
-const CASE_R_OUT = FORM ? CASE_WIDTH_MAX : CASE_R_BORE_BACK_FLOOR + CASE_BAND_T;
+// §343 landing 2 — AND A FORM CASE'S ROUND CHAIN IS MINIMAL TOO. It was the cap (CASE_WIDTH_MAX), spent whole, so a form
+// case could never come in under the limit and a larger movement broke its clamp thread into the bore (−0.378 at the
+// r 11.5 balance) where the round case simply grew. The owner's rule: every case is the smallest its metal allows, held
+// under the strap's limit (layout.js, CASE_WIDTH_MAX). So both builds read the same floor.
+const CASE_R_OUT = CASE_R_BORE_BACK_FLOOR + CASE_BAND_T;
 // The back band's bore: one wall inside the body outer — the same 1 mm
 // dress-watch wall the front keeps, and the gasket annulus keeps exactly
 // its old proportions inside it.
@@ -8670,6 +8670,7 @@ const ALARM_PINB_SEAT_FIXED = Object.freeze({
   'cfg1:{"spec":{"alarmModAzDeg":60,"barrelStepDeg":0,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":6,"vph":18000},"route":null,"tuned":[]}': 5.1837,   // §313: the swung barrel, the reserve at 12 on six idlers, the module at 60°
   'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-20,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":18000},"route":null,"tuned":[]}': 5.2248,   // §314: the barrel at −20°, the reserve at 12 on two idlers, the module at 50°
   'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-20,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":14400},"route":null,"tuned":[]}': 5.2249,   // §343: the same arrangement at the chronometer's beat (its grown plate moves the link's guide triangle); iterated 5.2223 → 5.2249, which re-derives itself
+  'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-20,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":21600},"route":null,"tuned":[]}': 5.2249,   // §343 landing 2: the arrangement at 21,600, its plate grown with its fourth wheel; iterated 5.2223 → 5.2249, which re-derives itself
 });
 const ALARM_PINB_SEAT_MN = ALARM_PINB_SEAT_FIXED[ALARM_ARR_KEY] ?? 5.2780;   // mN at the pin; a spec with no row takes the designed value
 const ALARM_PINB_BLADE = (() => {
@@ -13158,6 +13159,7 @@ const drumPos = {
   x: P.barrel.x + drumDir.x * FUSEE_DRUM_DIST,
   y: P.barrel.y + drumDir.y * FUSEE_DRUM_DIST,
 };
+let DRUM_BOUND = null;   // §343 landing 2: this build's bound for the drum (the block below)
 // TODO 207 — the drum is as large as the PLATE that carries it allows, and
 // this holds DRUM_R_ACTUAL to that (it is declared far above, because the
 // fusee's torque law consumes the centre distance before the plate is
@@ -13177,9 +13179,14 @@ const drumPos = {
   for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (reach(m) <= plateR) lo = m; else hi = m; }
   // §75 step 1 — the drum's SIZE was solved along the default direction. A moved drum (?drumaz=) keeps that size, so there
   // only the fit is held (its chain coil one CLEAR_MARGIN inside the plate); "as large as the plate allows" is the default's claim.
-  // §343: so does a RATE VARIANT, which runs the shipped spring by RATE_TABLE's premise (layout.js, RATE_VARIANT).
-  if (DRUM_AZ_DEG !== null || RATE_VARIANT ? !(DRUM_R_ACTUAL <= lo + 1e-9) : !(DRUM_R_ACTUAL <= lo + 1e-9 && lo - DRUM_R_ACTUAL < 0.01))
-    console.warn(`TODO 207: DRUM_R_ACTUAL ${DRUM_R_ACTUAL} is not the plate's bound rounded down — the drum's chain coil may reach ${lo.toFixed(4)} (one CLEAR_MARGIN inside plateR ${plateR.toFixed(3)})`);
+  // §343 landing 2: and "as large as the plate allows" is a claim across the RATE MENU, not one build. Every rate runs
+  // the same spring (RATE_TABLE's premise), so the drum is the largest the SMALLEST driven rate's plate admits: at the
+  // shipped 14,400 the plate allows 12.06, at 18,000 10.718, and the drum is 10.71. One boot sees one plate, so the
+  // build holds the FIT here and publishes its bound (`__clock.drumBound`), and tools/probe-343-chronometer.mjs boots
+  // every driven rate and holds the drum within 0.01 under the least of them.
+  DRUM_BOUND = lo;
+  if (!(DRUM_R_ACTUAL <= lo + 1e-9))
+    console.warn(`TODO 207: DRUM_R_ACTUAL ${DRUM_R_ACTUAL} does not fit its plate — the drum's chain coil may reach only ${lo.toFixed(4)} (one CLEAR_MARGIN inside plateR ${plateR.toFixed(3)})`);
 }
 // Drum seat: LIFTED above the great wheel's plane. At the compact 2.5-unit
 // gap the drum's silhouette overlaps the great wheel's radius in XY, so
@@ -23001,10 +23008,8 @@ for (const [nm, cy, wr] of [['reserve', reserveStationR, reserveWellR], ['second
   const outboard = dialRadius * (2 * G.DIAL_CANVAS_FILL_F) * G.DIAL_RAIL_IN_F
     - DIAL_WALL_HALF - CLEAR_MARGIN - -SECONDS_LOCAL.y;
   // a print scaled to the case (printScale < 1) moved the outboard bound in on purpose: D4 is the ROUND print's maximum
-  // §343: a RATE VARIANT with no `d4` of its own keeps the shipped D4 (its plate moved; D4 is the default plate's
-  // maximum), held only to FIT: the inboard bound may not pass the outboard. §343 landing 2: a row that carries its own
-  // `d4` (14,400, whose plate the r 11.5 balance grows) was derived at its own plate, so it is held to the maximum.
-  if (RATE_VARIANT && D4 === D4_SHIPPED ? inboard > outboard + 1e-9 : SPEC.d4 === null && printScale === 1 && Math.abs(inboard - outboard) > 0.02)
+  // (§343 landing 2: every rate row carries its own D4, derived at its own plate, so the maximum holds at every rate)
+  if (SPEC.d4 === null && printScale === 1 && Math.abs(inboard - outboard) > 0.02)
     console.warn(`§125: D4 no longer maximizes the seconds well — inboard bound ${inboard.toFixed(4)} vs `
       + `outboard ${outboard.toFixed(4)} (need equal within 0.02); re-derive D4 from its comment's closed form`);
 }
@@ -38060,6 +38065,16 @@ registerExplode(alarmClickUnit, 0, 9); // rides with the back stack, like the wi
     { x: alarmWindI2.x, y: alarmWindI2.y, r: idlerStudR, what: 'idler 2 stud' },
     { x: ALARM_WIND_X, y: ALARM_WIND_Y, r: 0.45, what: 'climb rod' },
   ];
+  // §343 landing 3 — AND THE TIER IT SHARES ITS BAND WITH. The governor's saw rides the ratchet band (§112) and the
+  // anchor hangs through it, and §184 judges the click against both at the shipped triple; this solve never saw them,
+  // so while the corridor left the old lane open (the r 9 balance: the click at ~162° about the barrel) the answer was
+  // right for the wrong reason. At r 11.5 the corridor moved, the solve swung the click to ~112°, into the governor,
+  // and §184 read the foul. Each piece is now judged against the declared footprint of both (ALARM_UNDER_FOOTPRINT,
+  // the discs the position solve already reads), so the solve and the joint bound agree on what stands there.
+  const tierObst = [
+    { ...alarmUnderDisc('governor saw'), what: 'governor saw' },
+    { ...alarmUnderDisc('governor ring'), what: 'governor ring' },
+  ];
   const _lowStad = (x, y, r) => {
     let c = Infinity;
     for (const o of LOW_LINKAGE_OBSTACLES) {
@@ -38075,6 +38090,7 @@ registerExplode(alarmClickUnit, 0, 9); // rides with the back stack, like the wi
     { lx: 8.55 * Math.cos(0.38), ly: 8.55 * Math.sin(0.38), r: 0.55, col: true }, // spring post + head (the A station)
     { lx: 6.2, ly: 2.1, r: 2.9, col: false },                         // the lobe's covering disc (arm span P→Tn + spring arc)
   ];
+  const CLICK_TIER_REACH = Math.max(...PIECES.map((p) => Math.hypot(p.lx - pivotR, p.ly) + p.r));
   let bestAz = 0, bestClear = -Infinity;
   for (let k = 0; k < 180; k++) {
     const cand = (k / 180) * Math.PI * 2;
@@ -38090,6 +38106,10 @@ registerExplode(alarmClickUnit, 0, 9); // rides with the back stack, like the wi
       // actually stands there in its band.
       c = Math.min(c, Math.hypot(px - alarmSwPos.x, py - alarmSwPos.y) - (p.col ? govTipR : 0.75) - p.r);
     }
+    // The tier, by §184's own model: the click is ONE disc about its stud (the covering reach of its pieces), so the
+    // solve and the joint bound judge the same body.
+    const sx = alarmBarrelPos.x + cs * pivotR, sy = alarmBarrelPos.y + sn * pivotR;
+    for (const o of tierObst) c = Math.min(c, Math.hypot(sx - o.x, sy - o.y) - o.r - CLICK_TIER_REACH);
     if (c > bestClear) { bestClear = c; bestAz = cand; }
   }
   if (bestClear < CLEAR_MARGIN)
@@ -39260,6 +39280,9 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
     }
     return m;
   };
+  // The engagement's distance from the cross's stud along the line of centres (ARREST_ENGAGEMENT's own t, at the
+  // spec's d: every candidate stands its cross exactly d from its finger).
+  const ARREST_ENGAGE_T = (ARREST_SPEC.d * ARREST_SPEC.d + ARREST_SPEC.b * ARREST_SPEC.b - ARREST_SPEC.a * ARREST_SPEC.a) / (2 * ARREST_SPEC.d);
   const windowOpen = (x, y) => {
     const k = tqKeepClearanceIn(_winKeeps, x, y) - TQ_LAND_MIN - M;
     // (a window's own rays keep √(L² + (r·sin 0.5°)²) of land from those
@@ -39393,7 +39416,14 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
             if (cr.c < 0) { note(cr); continue; }
             const st = clear('the cross stud', PLATE_Z, z + ARREST_PLATE_T * 2, cx, cy, NEED.stud, null);
             if (st.c < 0) { note(st); continue; }
-            const win = windowOpen(cx, cy);
+            // §343 landing 3 — THE WINDOW IS TESTED WHERE IT IS CUT. Since §201 landing 2 the plate's window frames the
+            // ENGAGEMENT (ARREST_ENGAGEMENT: the pin's entry on the cross's rim, on the line of centres, t from the cross's
+            // stud), not the cross, but this gate still tested the cross's centre, 2.3 from where the window stands. While
+            // both points had room the difference was silent; at the r 11.5 balance the solve sited the cross where its
+            // centre passed and the engagement's frame pinched at 204 of 360 bearings. t is the same closed form the
+            // engagement is cut by, so the gate and the window cannot stand in two places.
+            const ex = cx + (fx - cx) / ARREST_SPEC.d * ARREST_ENGAGE_T, ey = cy + (fy - cy) / ARREST_SPEC.d * ARREST_ENGAGE_T;
+            const win = windowOpen(ex, ey);
             if (win.c < 0) { note(win); continue; }
             stage.cross++;
             // the cross against the rest of its own group. Its finger is the one
@@ -67023,6 +67053,7 @@ window.__clock = {
     radiationPath: (shape, kAc) => gongRadiationFactorsPath(Float64Array.from(shape), gongWireFrame(), kAc),
     straightRoots: GONG_MODE_BL.slice(),
   } : null,
+  drumBound: DRUM_BOUND,   // §343 landing 2 — the drum's bound on this build's plate (probe-343 holds the drum to the least over the rate menu)
   get roundStrikeKeep() { return { declared: ROUND_STRIKE_KEEP, measured: ROUND_STRIKE_KEEP_MEASURED }; },   // TODO 290 — what tools/strike-keep-round.mjs generates
   get plateRim() { return { front: PLATE_RIM.front, back: PLATE_RIM.back, reach: PLATE_RIM.reach }; },   // §328 — the rim the case and the gong seat on, as measured off the plate's metal (probe-328-round-lands holds a land out of it)
   get armingSpring() { return ALARM_LINK_ARMING_SPRING; }, // TODO 206 — the alarm link's arming spring, its solved line spec

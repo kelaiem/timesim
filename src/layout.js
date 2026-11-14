@@ -132,12 +132,12 @@
 // leaves its contact.
 const RATE_TABLE = {
   14400: { fourthTeeth: 64, escPinion: 8, module: 0.2625, d4: 19.222357121153717, balanceR: 11.5, rimF: 0.345, claimDeg: 126, peakDeg: 328, caseBound: true }, // 8/64 = 1/8 — §343, the chronometer's beat
-  18000: { fourthTeeth: 80, escPinion: 8, balanceR: 9, rimF: 0.36, claimDeg: 126, peakDeg: 311 }, // 8/80 = 1/10 — the shipped movement
-  21600: { fourthTeeth: 96, escPinion: 8, balanceR: 9, rimF: 0.26, claimDeg: 128, peakDeg: 311 }, // 8/96 = 1/12
+  18000: { fourthTeeth: 80, escPinion: 8, d4: 18.7520672519568, balanceR: 11, rimF: 0.245, claimDeg: 129, peakDeg: 325 }, // 8/80 = 1/10 — the shipped movement until §343 landing 3
+  21600: { fourthTeeth: 96, escPinion: 8, d4: 19.22106386092866, balanceR: 9.25, rimF: 0.245, claimDeg: 129, peakDeg: 313 }, // 8/96 = 1/12
   28800: { fourthTeeth: 96, escPinion: 6, undriven: 'TODO 292 — no balance the honest mainspring (TODO 291) drives to AMPLITUDE_TARGET_DEG and starts at this rate' }, // 6/96 = 1/16
   36000: { fourthTeeth: 120, escPinion: 6, module: 0.168, undriven: 'TODO 292 — no balance the honest mainspring (TODO 291) drives to AMPLITUDE_TARGET_DEG and starts at this rate' }, // 6/120 = 1/20 — §204: at 0.168 the wheel keeps the 96-tooth rows' pitch radius
 };
-export const DEFAULT_VPH = 18000;
+export const DEFAULT_VPH = 14400;   // §343 landing 3 — the chronometer's beat is the shipped watch (the owner's call)
 // The row a rate's balance reads: its own, or the shipped movement's.
 const rateBalanceRow = (vph) => (RATE_TABLE[vph].rimF !== undefined ? RATE_TABLE[vph] : RATE_TABLE[DEFAULT_VPH]);
 export const FOURTH_MODULE_DEFAULT = 0.21; // the fourth⇄escape mesh's cut, the rows above's module when they carry none
@@ -2406,8 +2406,8 @@ export const BARREL_STEP_DEG = -35;        // center sits down-right of barrel �
 // 15.6724 to float noise. Landing 1b had a variant keep the shipped D4; one D4
 // cannot serve both plates (at 18,000's, 15.6724 stands inboard 15.6724 against
 // outboard 14.8686 and §34's selector post meets the well). D4_SHIPPED is the
-// shipped row's, the value above.
-export const D4_SHIPPED = 18.214767593871496;
+// shipped row's (14,400's since landing 3), the fallback for a row with none.
+export const D4_SHIPPED = 19.222357121153717;
 export const D4 = RATE_TABLE[SPEC.vph].d4 ?? D4_SHIPPED;
 // §125 Tier B — THE RESERVE STATION'S OWN ANCHOR. Tier A had the reserve
 // MIRROR the seconds station (the wells were one radius, so symmetry was the
