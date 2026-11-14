@@ -17678,6 +17678,7 @@ const balanceCock = G.makeCock({
       MATS.nickel);
     bar.geometry.translate(0, 0, -COCK_T / 2);
     bar.position.set(0, yBar, 0);
+    bar.name = 'cockFootBar';   // TODO 295: NAMED, so the cock's joints cite the part rather than an index into the group
     balanceCock.add(bar);
   }
   const legTopWorld = COCK_MID_Z - COCK_T / 2;       // slab underside
@@ -17687,11 +17688,13 @@ const balanceCock = G.makeCock({
       G.boredLegGeometry(LEG_R, LEG_R * 1.15, COCK_LEG_BORE_R, legLen, 20), MATS.nickel);
     leg.rotation.x = Math.PI / 2;
     leg.position.set(s * BAR_HSPAN, yBar, -COCK_T / 2 - legLen / 2);
+    leg.name = 'cockLeg';   // TODO 295 (was LatheGeometry#4/#6)
     balanceCock.add(leg);
     const pad = new THREE.Mesh(
       G.boredLegGeometry(LEG_R * 1.5, LEG_R * 1.5, COCK_LEG_BORE_R, 0.4, 20), MATS.nickel);
     pad.rotation.x = Math.PI / 2;
     pad.position.set(s * BAR_HSPAN, yBar, -COCK_T / 2 - legLen + 0.2);
+    pad.name = 'cockFoot';   // TODO 295 (was LatheGeometry#5/#7)
     balanceCock.add(pad);
   }
   // §20: the T-foot screws, slotted like every screw now (were bare
@@ -17847,13 +17850,16 @@ const balanceCock = G.makeCock({
     carrier.rotation.z = STUD_OFF;
     const ring = ringMesh(2.55, 2.95, STOCK_MIN_U, MATS.steel); // outer trimmed inside the head's half-width (3.0); TODO 12: floor stock, free outward
     ring.position.z = 0.02;
+    ring.name = 'studCarrierRing';   // TODO 295: named (was ExtrudeGeometry#14)
     carrier.add(ring);
     const yS = hsUD.termEndR;                        // carrier-local stud centre
     const armC = new THREE.Mesh(new THREE.BoxGeometry(0.8, yS - HAIRSPRING_CARRIER_ROOT, STOCK_MIN_U), MATS.steel); // TODO 12: floor stock
     armC.position.set(0, (HAIRSPRING_CARRIER_ROOT + yS) / 2, 0.13);
+    armC.name = 'studCarrierArm';   // TODO 295 (was BoxGeometry#15)
     carrier.add(armC);
     const boss = ringMesh(0.42, 1.0, STOCK_MIN_U, MATS.steel); // TODO 12: floor stock
     boss.position.set(0, yS, 0.01);
+    boss.name = 'studCarrierBoss';   // TODO 295 (was ExtrudeGeometry#16)
     carrier.add(boss);
     const postBot = (studWorldZ - 0.25) - (COCK_MID_Z + COCK_T / 2); // cock-face-local
     // TODO 147: the post's side is the constraint HAIRSPRING_STUD_R's window is
@@ -53087,10 +53093,11 @@ const FUSEE_COCK = await (async () => {
   const armPts = (s0, s1) => stripPts({ x: C.x + cs * s0, y: C.y + sn * s0 }, { x: C.x + cs * s1, y: C.y + sn * s1 }, true);
   const crankSegsBuilt = crankSegs(step);
   const crankPieces = crankSegsBuilt.map(([A0, B0, past]) => stripPts(A0, B0, past));
-  const armGeoOf = (pts) => {
+  const armGeoOf = (pts, bores = []) => {
     const shape = new THREE.Shape();
     pts.forEach(([x, y], k) => (k ? shape.lineTo(x, y) : shape.moveTo(x, y)));
     shape.closePath();
+    for (const [hx, hy, hr] of bores) { const h = new THREE.Path(); h.absarc(hx, hy, hr, 0, 2 * Math.PI, true); shape.holes.push(h); }
     const g = new THREE.ExtrudeGeometry(shape, { depth: T, bevelEnabled: false });
     g.translate(0, 0, -T / 2);
     return g;
@@ -53111,7 +53118,16 @@ const FUSEE_COCK = await (async () => {
     seatMesh.position.set(seat.x, seat.y, (FUSEE_BOSS_TOP + TQ_BOT_Z) / 2);
     cock.add(seatMesh);
   }
-  const upperArm = new THREE.Mesh(armGeoOf(armPts(foot.sStep, L)), MATS.ribbedNickel);
+  // TODO 295 — the arm runs to the foot node's centre and so over the foot screw's bore, and was cut unbored there: the
+  // shank stood 0.34 inside it. Its outline is the strip UNIONED with the foot node's own disc (inside the boss the arm
+  // already welds to), so the screw's bore (the leg's own, `bore`) is a hole wholly inside it, as makeEscapeBridge's is.
+  const armLoop = (() => {
+    const disc = Array.from({ length: 48 }, (_, k) => { const q = (2 * Math.PI * k) / 48; return [foot.x + foot.nodeR * Math.cos(q), foot.y + foot.nodeR * Math.sin(q)]; });
+    const u = unionLoops([armPts(foot.sStep, L), disc]);
+    if (Array.isArray(u[0][0]) && u.length !== 1) console.warn(`TODO 295: the fusee cock's arm unioned with its foot node into ${u.length} loops`);
+    return Array.isArray(u[0][0]) ? u.reduce((m, Lp) => (Lp.length > m.length ? Lp : m)) : u;
+  })();
+  const upperArm = new THREE.Mesh(armGeoOf(armLoop, [[foot.x, foot.y, bore]]), MATS.ribbedNickel);
   upperArm.userData.armPast = true;
   upperArm.name = 'fuseeCockArm';
   upperArm.position.z = FUSEE_COCK_MID;

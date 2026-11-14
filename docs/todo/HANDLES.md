@@ -42,6 +42,7 @@ heading, and [the index](../../TODO.md) is where it is shown.
 
 | item | handle |
 |---|---|
+| 308 | stud straddles cock edge |
 | 305 | setting traverse crosses pinion |
 | 304 | cock feet too close |
 | 303 | cushion lugs proud |
