@@ -29,7 +29,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2);
 const argOf = (k, d = null) => (argv.includes(k) ? argv[argv.indexOf(k) + 1] : d);
-const Q = argOf('--q', 'case=rect&formrect=-46.99,46.99,-43.93,43.93');
+const Q = argOf('--q', 'case=rect&formrect=-47.74,47.74,-43.93,43.93');
 const FROM = +argOf('--from', -60), TO = +argOf('--to', 60), STEP = +argOf('--step', 5), STEPS = +argOf('--steps', 8);
 const STRIKE = new Set(['Alarm hammer', 'Alarm gong', 'Alarm lifting lever']);
 

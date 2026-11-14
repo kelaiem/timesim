@@ -988,21 +988,13 @@ export const SPEC_POINTS = [
   // sweep. The query is probe-308-barrel-swing.mjs's build A, which still
   // holds the exact set; `formrect=` is its own metal-centred fit and
   // `gong=arc` its case-path gong, both as landing 5 shipped them.
-  { name: 'arrangement-308', q: 'case=rect&barrelstep=0&rsvaz=36&alarmmod=80&gong=arc&formrect=-45.96,45.72,-43.91,51.41', expect: 'declared',
-    expectWarns: ['§261: cased assembly', 'TODO 206 arming spring: follower-B\'s seat sits at the nose\'s margin',
-      // §201 landing 2 — THE STOP-WORK IS UNFRAMED IN THIS ARRANGEMENT, and that is
-      // a row about this build, not about the default. The arrest window frames the
-      // Geneva's engagement now and is cut in every other declared point (the
-      // identity, `designed` and its variants, `reconf=1`, `route=2-leg`,
-      // `form-rect` — measured, all at full reach with no bearing shut); with the
-      // alarm module swung to 80° the frame lands at (−10.405, 23.880) and meets
-      // another opening in the rect plate, pinching 47 of 360 bearings, and §115's
-      // bossless rule refuses it rather than leaving a knife-edged spur. Before
-      // this landing the row was silent here because §314 YIELDED it everywhere;
-      // the window being cuttable at all is what makes this build's refusal
-      // visible, which is the right way round.
-      "§115 window 'arrest': NOT CUT"],
-    why: '§308 landing 5 — barrel swung to 180°, reserve at 36°, alarm module at 80° on its own fit; boots exactly its four declared rows (two form rows, TODO 206, §201 landing 2\'s unframed stop-work); no longer swept (the form default moved, §313)' },
+  { name: 'arrangement-308', q: 'case=rect&barrelstep=0&rsvaz=36&alarmmod=80&gong=arc&formrect=-48.14,48.14,-51.33,51.33', expect: 'declared',
+    // §343 landing 3 — at the 14,400 movement the rect this arrangement fits to is [-48.14, 48.14, -51.33, 51.33] (the
+    // boot's own §307/§308 refit, which then holds), and the stop-work is FRAMED here too: the arrest station solve tests
+    // the cross's window at the ENGAGEMENT now (§201 landing 2's own geometry, by ARREST_ENGAGEMENT's t), where it gated
+    // the cross's centre, so it no longer stands a station whose frame pinches. §201 landing 2's NOT CUT row retired with it.
+    expectWarns: ['§261: cased assembly', 'TODO 206 arming spring: follower-B\'s seat sits at the nose\'s margin'],
+    why: '§308 landing 5 — barrel swung to 180°, reserve at 36°, alarm module at 80° on its own fit; boots exactly its two declared rows (the form row and TODO 206; §201 landing 2\'s unframed stop-work retired at §343 landing 3); no longer swept (the form default moved, §313)' },
   // THE FORM CASES' DEFAULT, SWEPT. Since §310 landing 4 a form case builds
   // the arrangement by default, and since §313 that arrangement is
   // ARRANGEMENT (barrel at 180°, reserve at 12 on six idlers, module at
@@ -1020,7 +1012,7 @@ export const SPEC_POINTS = [
   // row is a URL; the probe holds it equal to the generated seat, so a
   // re-solved seat that moves the fit fails there rather than leaving this
   // row on an outline nobody cuts.
-  { name: 'form-rect', q: 'case=rect&formrect=-46.99,46.99,-43.93,43.93', expect: 'declared', sweep: true,
+  { name: 'form-rect', q: 'case=rect&formrect=-47.74,47.74,-43.93,43.93', expect: 'declared', sweep: true,
     expectWarns: ['§261: cased assembly'],
     why: '§310 landing 4 / §313 — the rect form case at its default (ARRANGEMENT, the spiral seat since §314) and that seat\'s fit; swept, booting exactly the row every form build carries (§261\'s; TODO 300 retired §186\'s)' },
   // §328 step 1b — THE APPLIED PILLARS. Since step 1b the default frame is the back plate on lands the base plate raises
