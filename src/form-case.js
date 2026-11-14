@@ -36,7 +36,7 @@
 import * as THREE from 'three';
 import {
   UNIT_MM, CLEAR_MARGIN, STOCK_MIN_U, CASE_CLEAR, CASE_BAND_T, CASE_WIDTH_MAX,
-  CASE_LUG_T, CASE_LUG_EDGE_R, CASE_SPRING_BAR_D, CASE_SPRING_BAR_TIP_D,
+  CASE_LUG_T, CASE_LUG_EDGE_R, CASE_SPRING_BAR_D, CASE_SPRING_BAR_TIP_D, CASE_BAR_REACH,
   caseLugPlan, loopSimple, projectLoop,
 } from './layout.js';
 import { makeRoundedSlab, PLATE_BEVEL_F, COLLAR_PROUD, TUBE_WALL, cutEndOnPlane } from './geometry.js';
@@ -340,7 +340,18 @@ function ringExtrude(outerR, innerR, thickness, seg = 32) {
 // holes: each a loop wound the other way (CW), or a round hole { r } about the
 // origin. Extruded between two z planes, whichever order they come in.
 const toVec2 = (loop) => loop.map(([x, y]) => new THREE.Vector2(x, y));
+// TODO 302 — a ring projected onto the outer loop's vertices (the free outline's, formCaseLoops) repeats a point where
+// several vertices land on one corner, and a Shape cut from it carries zero-length curves (the crystal's 128 on case=free,
+// TODO 273's seam rule). A solid's outline drops each repeat; the ring itself stays index-aligned for boredBand.
+const dropRepeats = (pts) => {
+  const out = [];
+  for (const q of pts) { const p = out[out.length - 1]; if (!p || Math.hypot(q[0] - p[0], q[1] - p[1]) > 1e-9) out.push(q); }
+  while (out.length > 1 && Math.hypot(out[0][0] - out[out.length - 1][0], out[0][1] - out[out.length - 1][1]) <= 1e-9) out.pop();
+  return out;
+};
 function prism(outer, holes, zA, zB, { seg = ROUND_SEG, stitch = false } = {}) {
+  outer = dropRepeats(outer);
+  holes = holes.map((h) => (Array.isArray(h) ? dropRepeats(h) : h));
   if (stitch && holes.length === 1) return annulusPrism(outer, holes[0], zA, zB);
   const shape = new THREE.Shape(toVec2(outer));
   for (const h of holes) {
@@ -913,21 +924,35 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   // to be welded to: warned with the numbers, never absorbed.
   const outerShape = form.grown(G);
   const endAt = (lugAz, x) => outerShape.exit(lugAz, lugAz > 0 ? -x : x);   // the wall's distance from y = 0 at x
-  const need = lugCtrSpan / 2 + CASE_LUG_T / 2;
+  // TODO 303 — the lugs are welded to the wall they meet: the plan takes the wall's depth at each lug's two faces
+  // (`wall`, the round case's weld on a measured end), so a curved end (the cushion's superellipse fell 1.44–1.49 u
+  // across the strap) carries its fillets where it falls, and no lug stands proud of it. What the plane still governs
+  // is the BAR, which spans the strap: it must clear the end wall everywhere between the lugs, the wall's farthest
+  // point over the gap (the centreline on a convex end), held here to CLEAR_MARGIN.
+  const need = lugCtrSpan / 2 + CASE_LUG_T / 2;   // the lugs' outboard faces, off the strap's centreline
+  const hlGap = lugSpanInner / 2;
   for (const lugAz of [Math.PI / 2, -Math.PI / 2]) {
     const rC = endAt(lugAz, form.cx);
-    const fall = rC - Math.min(endAt(lugAz, form.cx - need), endAt(lugAz, form.cx + need));
-    if (!(fall <= CLEAR_MARGIN))
-      console.warn(`makeFormCase: the ${form.kind}'s ${lugAz > 0 ? '+y' : '−y'} end wall falls ${fall.toFixed(3)} u from the lug plane `
-        + `at the lugs' outboard faces (${need.toFixed(3)} u off the centreline) — over CLEAR_MARGIN ${CLEAR_MARGIN}: the flat lugs stand proud of a curved end`);
+    let rSpan = -Infinity;
+    for (let i = 0; i <= 64; i++) rSpan = Math.max(rSpan, endAt(lugAz, form.cx - hlGap + (2 * hlGap * i) / 64));
+    const barIn = rC + CASE_BAR_REACH - CASE_SPRING_BAR_D / 2;
+    if (!(barIn - rSpan >= CLEAR_MARGIN - 1e-9))
+      console.warn(`makeFormCase TODO 303: the ${form.kind}'s ${lugAz > 0 ? '+y' : '−y'} spring bar stands ${(barIn - rSpan).toFixed(3)} off the end wall `
+        + `across the strap (the wall's farthest ${rSpan.toFixed(3)} against the centreline's ${rC.toFixed(3)}), need CLEAR_MARGIN ${CLEAR_MARGIN}`);
   }
   for (const lugAz of [Math.PI / 2, -Math.PI / 2]) {
     const u = { x: Math.cos(lugAz), y: Math.sin(lugAz) };
     const perp = { x: -u.y, y: u.x };
     const rOut = endAt(lugAz, form.cx);   // the end wall at the centreline, from the origin along u
     const rBore = rOut - CASE_BAND_T;                         // the bore wall behind it
-    const plan = caseLugPlan({ rOut, rBore, off: lugCtrSpan / 2,
-      zWallLo: zStep, zWallHi: zMidBack, zBack: z0, flat: true });
+    // TODO 303 — the lug's root stands on the wall where the wall is DEEPEST under it: its outboard face, read on both
+    // sides of the pair and the shallower taken. Inboard of that the end stands higher (a convex end falls away from the
+    // centreline), so the root there is buried in the band's metal: no gap anywhere across the lug's face, and the lug
+    // is welded on a level root as on any flat end (no fillet: the round case's sag fillet, radius the wall's fall
+    // across the lug, is a cylinder's — on the cushion's 1.48 u fall it left §280's S no room to reach the bar).
+    const wOut = Math.min(endAt(lugAz, form.cx - need), endAt(lugAz, form.cx + need));
+    const plan = caseLugPlan({ rOut, rBore: wOut - CASE_BAND_T, off: lugCtrSpan / 2,
+      zWallLo: zStep, zWallHi: zMidBack, zBack: z0, flat: true, wall: { out: wOut, in: wOut } });
     for (const w of plan.warn) console.warn(`makeFormCase §280 lug: ${w}`);
     lugPlans.push({ ...plan, az: lugAz });   // the azimuth placed it, so the drawing (formCaseLines) places the same outline
     const shape = new THREE.Shape(plan.outline.map(([pu, pz]) => new THREE.Vector2(pu, pz)));

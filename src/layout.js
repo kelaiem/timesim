@@ -1273,12 +1273,20 @@ export const caseLugSectionZ = (T, W, rc) => {
 //     no fillet) and the embedded root reads the flat wall's own depths
 //     (rOut − CASE_LUG_ROOT, floored at the bore plus one sheet floor, TODO
 //     209's rule without the chord). The default path is unchanged.
-export function caseLugPlan({ rOut, rBore, off, zWallLo, zWallHi, zBack, arcSegs = 16, flat = false }) {
+//   · `wall` (TODO 303, the form case): the end wall's MEASURED depths at the lug's two faces, { out, in } along the
+//     pair axis (the outer shape's own exit there), for an end that is not flat across the strap — the cushion's
+//     superellipse falls 1.4–1.5 u across it, and a lug welded to the plane at the centreline stood that far proud of
+//     the wall at its outboard face. `rOut` stays the centreline's, so the bar's station (uBar) is unchanged and the
+//     arm the section is solved on is the true one, surfOut to the bar. The form case passes the outboard depth for
+//     both (a level root on the deepest wall under the lug, buried where the end stands higher).
+export function caseLugPlan({ rOut, rBore, off, zWallLo, zWallHi, zBack, arcSegs = 16, flat = false, wall = null }) {
   const warn = [];
   const T = CASE_LUG_T, rc = CASE_LUG_EDGE_R, F = CASE_LUG_LOAD_N;
   const a = Math.abs(off);
-  const surfOut = flat ? rOut : Math.sqrt(rOut * rOut - Math.pow(a + T / 2, 2));
-  const surfIn = flat ? rOut : Math.sqrt(rOut * rOut - Math.pow(a - T / 2, 2));
+  const surfOut = wall ? wall.out : flat ? rOut : Math.sqrt(rOut * rOut - Math.pow(a + T / 2, 2));
+  const surfIn = wall ? wall.in : flat ? rOut : Math.sqrt(rOut * rOut - Math.pow(a - T / 2, 2));
+  if (wall && !(surfIn >= surfOut - 1e-12))
+    warn.push(`the wall stands ${(surfOut - surfIn).toFixed(4)} nearer at the lug's inboard face than its outboard one — the fillets are cut for an end that falls outward`);
   const uBar = rOut + CASE_BAR_REACH, uTip = rOut + CASE_LUG_REACH;
   const armU = uBar - surfOut;
   const sigmaAt = (W, arm) => F * arm * U_M / (caseLugSectionZ(T, W, rc) * Math.pow(U_M, 3));
@@ -1331,7 +1339,7 @@ export function caseLugPlan({ rOut, rBore, off, zWallLo, zWallHi, zBack, arcSegs
   const out = [];
   const push = (q) => { const r = out[out.length - 1]; if (!r || Math.hypot(r[0] - q[0], r[1] - q[1]) > 1e-9) out.push(q); };
   const arc = (c, r, a0, a1, segs) => { for (let i = 0; i <= segs; i++) { const th = a0 + (a1 - a0) * i / segs; push([c[0] + r * Math.cos(th), c[1] + r * Math.sin(th)]); } };
-  const rootU = flat ? Math.max(rOut - CASE_LUG_ROOT, rBore + STOCK_MIN_U) : caseLugRootR(a, rOut, rBore);
+  const rootU = flat ? Math.max(surfOut - CASE_LUG_ROOT, rBore + STOCK_MIN_U) : caseLugRootR(a, rOut, rBore);   // TODO 303: under a measured wall, its outboard face's depth (= rOut on a flat end)
   push([rootU, footBotZ]); push([rootU, footTopZ]); push([surfOut, footTopZ]);
   arc([surfOut + rf, footTopZ], rf, Math.PI, Math.PI / 2, arcSegs);            // upper weld fillet, foot to toe
   for (const q of top) push(q);                                                 // upper edge along the S
