@@ -40,7 +40,7 @@ const boot = (query, patch) => {
   if (!line) { console.error(p.stderr); throw new Error(`boot ${query} failed`); }
   return JSON.parse(line.slice(2));
 };
-const cap = (b) => b.warns.filter((w) => /40 mm owner cap/.test(w));
+const cap = (b) => b.warns.filter((w) => /owner cap of/.test(w));
 
 const declared = boot('vph=14400');
 const larger = boot('vph=14400', [{ file: 'src/layout.js', from: ROW, to: 'balanceR: 11.75, rimF: 0.33' }]);
@@ -51,11 +51,11 @@ const say = (ok, what) => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${what}`); if 
 console.log(`declared  r ${declared.radius} rim ${declared.rimF}: plateR ${declared.plateR.toFixed(2)}, ${declared.deg.toFixed(2)}° nominal vertical, ${declared.hz} Hz, ribbon ${declared.ribbon.toFixed(4)} mm, I ${declared.I.toExponential(3)}`);
 console.log(`larger    r ${larger.radius} rim ${larger.rimF}: plateR ${larger.plateR.toFixed(2)}, ${larger.deg.toFixed(2)}°, ${cap(larger)[0] ?? 'no case warning'}`);
 console.log(`shipped   r ${shipped.radius} at 18,000: I ${shipped.I.toExponential(3)} — the 14,400 wheel is ${(declared.I / shipped.I).toFixed(2)}× its inertia`);
-say(cap(declared).length === 0, 'the declared balance fits the 40 mm case');
+say(cap(declared).length === 0, 'the declared balance fits the case limit (2 × strap + 2 mm: 40 mm at the default 19 mm strap)');
 say(declared.warns.length === 0, `the declared build boots silent (§343 landings 1b–1e close it)${declared.warns.length ? `: ${declared.warns[0].slice(0, 120)}` : ''}`);
 say(declared.met && declared.tight, 'the declared rim is the heaviest that reaches the target and starts');
 say(Math.abs(declared.hz - 2) < 1e-6 && declared.inStock, 'the hairspring beats 2 Hz inside real stock');
 say(larger.radius === 11.75, 'control: the patch took (the larger build is r 11.75)');
-say(cap(larger).length === 1, 'one BAL_R_STEP larger breaks the 40 mm case (the wall)');
+say(cap(larger).length === 1, 'one BAL_R_STEP larger breaks the case limit (the wall)');
 say(larger.met && larger.starts, 'one step larger still reaches the target and starts (the spring is not the wall)');
 process.exit(fails.length ? 1 : 0);
