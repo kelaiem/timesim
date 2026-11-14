@@ -363,8 +363,9 @@ architectures, so a build whose wear record moves owes a re-run).
 draws sets the tip back by the build's own cut-back, the readouts, the √t year).
 **Since §346 it also draws the OIL AGEING**, a POSED law (`OIL_AGEING` in
 `layout.js`): the FRICTION rows a lubricated regime prices (read off
-`REGIME_INFO`, never listed) move linearly from the nominal corner to the
-adverse one across each interval and back at each service, and the energy
+`REGIME_INFO`, never listed; the pallet oil through `escEff`, an upper bound
+because that band also carries the drop and draw) move linearly from the
+nominal corner to the adverse one across each interval and back at each service, and the energy
 column's own walk (`GOING_POWER.at`, each stage naming the `row` it is priced
 with) publishes the swing at each sample (`going.energy.oilAgeing`, spaced so the
 page's straight lines read within half its 0.1° readout). The `equalisation`

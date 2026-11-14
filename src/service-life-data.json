@@ -636,11 +636,11 @@
    "muJewel",
    "muPlain",
    "muChain",
-   "springInt"
+   "springInt",
+   "escEff"
   ],
   "held": [
    "muTooth",
-   "escEff",
    "qOther",
    "endContactMm"
   ],
@@ -649,19 +649,21 @@
     "muJewel": 0.12,
     "muPlain": 0.15,
     "muChain": 0.15,
-    "springInt": 0.9
+    "springInt": 0.9,
+    "escEff": 0.35
    },
    "aged": {
     "muJewel": 0.15,
     "muPlain": 0.2,
     "muChain": 0.2,
-    "springInt": 0.85
+    "springInt": 0.85,
+    "escEff": 0.3
    }
   },
   "intervalYears": 5,
   "readDeg": 0.1,
   "intervals": 8,
-  "interpErrDeg": 0.014609134,
+  "interpErrDeg": 0.0233322466,
   "samples": [
    {
     "f": 0,
@@ -673,63 +675,63 @@
    {
     "f": 0.125,
     "years": 0.625,
-    "etaTotal": 0.218234289,
-    "vertical": 195.174317,
-    "flat": 284.128991
+    "etaTotal": 0.214337248,
+    "vertical": 192.470776,
+    "flat": 280.986409
    },
    {
     "f": 0.25,
     "years": 1.25,
-    "etaTotal": 0.21588683,
-    "vertical": 190.371189,
-    "flat": 280.240586
+    "etaTotal": 0.208176586,
+    "vertical": 185.034819,
+    "flat": 273.975046
    },
    {
     "f": 0.375,
     "years": 1.875,
-    "etaTotal": 0.213553523,
-    "vertical": 185.6821,
-    "flat": 276.377963
+    "etaTotal": 0.202113156,
+    "vertical": 177.785343,
+    "flat": 267.009852
    },
    {
     "f": 0.5,
     "years": 2.5,
-    "etaTotal": 0.211234306,
-    "vertical": 181.1051,
-    "flat": 272.541332
+    "etaTotal": 0.196146142,
+    "vertical": 170.721938,
+    "flat": 260.09184
    },
    {
     "f": 0.625,
     "years": 3.125,
-    "etaTotal": 0.208929119,
-    "vertical": 176.6382,
-    "flat": 268.730902
+    "etaTotal": 0.190274733,
+    "vertical": 163.843955,
+    "flat": 253.222057
    },
    {
     "f": 0.75,
     "years": 3.75,
-    "etaTotal": 0.206637899,
-    "vertical": 172.279376,
-    "flat": 264.94688
+    "etaTotal": 0.184498124,
+    "vertical": 157.150508,
+    "flat": 246.401583
    },
    {
     "f": 0.875,
     "years": 4.375,
-    "etaTotal": 0.204360587,
-    "vertical": 168.026572,
-    "flat": 261.189469
+    "etaTotal": 0.178815513,
+    "vertical": 150.640479,
+    "flat": 239.631538
    },
    {
     "f": 1,
     "years": 5,
-    "etaTotal": 0.20209712,
-    "vertical": 163.877713,
-    "flat": 257.458868
+    "etaTotal": 0.173226103,
+    "vertical": 144.312523,
+    "flat": 232.913075
    }
   ],
   "dropDeg": {
-   "vertical": 36.2156703,
-   "flat": 30.584096
+   "vertical": 55.7808605,
+   "flat": 55.1298887
   },
   "targetDeg": 200,
   "claimDeg": 126,
