@@ -10462,8 +10462,11 @@ const CAP_SOLVE = await (async () => {
   // at both ends outranks the held heading (whose bound is slack since TODO 214). One degree is MEASURED: stopwork-140's
   // held heading gives 145 folds and opens none borne, and −1° opens one with every bush (bearing 29.25°). Wider is
   // §325's walk's cost on the arrangements whose folds are refused for other reasons (93 s over 180 headings, every
-  // one shut), so the step is held to the one that was needed.
-  if (!found.open && foldsSeen > 0)
+  // one shut), so the step is held to the one that was needed — and it runs only where the held heading turned a fold
+  // away for its TAIL (the clause above this landing added), which is what the step exists to recover. Elsewhere it
+  // bought nothing and cost each of ?crownaz=90, ?barrelstep=-20, ?rsvr=20, ?rsvr=30 and ?reserveh=48&rsvr=27 about
+  // 45 s of boot against the spec tier's 120 s (measured).
+  if (!found.open && foldsSeen > 0 && scan.some((r) => r.clause.startsWith('tail unborne')))
     for (const sgn of [1, -1]) {
       MW_FOLD_LEG1_HEADING_USED_DEG = MW_FOLD_LEG1_HEADING_W_DEG + sgn * FOLD_SEEN_WALK_DEG;
       const heldScanK = scan.slice();
