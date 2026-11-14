@@ -5,7 +5,14 @@
 // it, so the two cannot run a check differently.
 //
 // `anchors: true` also reads what the browser battery reads on its shard 0 (see below).
-export async function runShard({ query, tasks, kernel = 'js', sweep = 'js', anchors = false }) {
+// §338 landing 15 — two more, for an INCREMENTAL run (tools/battery-local.mjs):
+// `beforeTasks(anchor)` is awaited after the boot and the anchors, and answers the §152
+// restriction (the changed units, or null for a whole run); every RESTRICTABLE task then
+// takes it as `pairsTouching`, as ci-battery.mjs' preflight sets it. `restricted` says
+// what the native sweep engine does with a restricted task, which it has no route for:
+// 'refuse' (battery-native.mjs, which never restricts) throws as before, 'js' runs the
+// task on the JS sweep, the route the browser battery restricts on.
+export async function runShard({ query, tasks, kernel = 'js', sweep = 'js', anchors = false, beforeTasks = null, restricted = 'refuse' }) {
   const { bootNative } = await import('./host.mjs');
   const { clock, ms: bootMs, warns } = await bootNative({ query });
   const I = await import('../../src/inspect.js');
@@ -23,10 +30,15 @@ export async function runShard({ query, tasks, kernel = 'js', sweep = 'js', anch
   const N = sweep === 'native' ? await import('../native-sweep/run.mjs') : null;
   const NATIVE = N ? { inspection: N.runNativeInspection, clearances: N.runNativeClearances,
     expectedContacts: N.runNativeExpectedContacts, undeclaredClearance: N.runNativeUndeclared } : {};
+  const restriction = beforeTasks ? await beforeTasks(anchor) : null;
+  if (restriction) {
+    const { RESTRICTABLE } = await import('../battery-checks.mjs');
+    tasks = tasks.map((t) => (RESTRICTABLE.has(t.name) ? { ...t, opts: { ...t.opts, pairsTouching: restriction } } : t));
+  }
   const out = [];
   for (const t of tasks) {
     const s0 = Date.now();
-    if (NATIVE[t.name]) {
+    if (NATIVE[t.name] && !(t.opts.pairsTouching && restricted === 'js')) {
       if (t.opts.pairsTouching) throw new Error(`--sweep native: ${t.name} has no restricted (pairsTouching) route`);
       try {
         clock.resetInputs();
