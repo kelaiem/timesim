@@ -2252,6 +2252,9 @@ const ESCAPE_TOOTH_GEOM = (() => {
     radius_u: radius, tip: { xy: T, r: tr, azDeg: azT / DEG2RAD },
     wedge: Object.freeze({ fullRad: 2 * halfV, halfRad: halfV, fullDeg: 2 * halfV / DEG2RAD,
       lockFlankDeg: aL / DEG2RAD, impulseFlankDeg: aI / DEG2RAD, sameSide, rakeDeg: TOOTH_RAKE_DEG,
+      // §344 — the bisector's angle off the inward radius (aL, aI are signed:
+      // their mean is the bisector's direction, as their half-difference is its half-angle)
+      bisectorRad: Math.abs(aL + aI) / 2,
       widthPerDepth: Math.abs(Math.tan(aL) - Math.tan(aI)),
       holdsTo_u: Math.min(lockF.sw[0], impF.sw[0]) }),
     band: Object.freeze({ t_u: bandT_u, zLo, zHi, thickness_u: 0.8 }),
@@ -36870,7 +36873,17 @@ const EQUALISATION = (() => {
         // what a razor finish would have cost, kept because it is the reason
         // the finish is derived rather than read off the band's sharp end
         const atSharp = impactAt(ESCAPE_TIP_R_BAND.sharp_m);
-        const cutBack_u = rho * (1 / Math.sin(a) - 1) / OSC_U;
+        // §344 — the reach the finish spends is RADIAL, because the budget it is
+        // booked against is (lockRunAt shortens the tooth CIRCLE). The arc is
+        // inscribed tangent to both flanks, its centre ρ/sin a in from the apex
+        // along the wedge's BISECTOR, and the bisector is not the radius: both
+        // flanks lean the same way off it (H.wedge.bisectorRad). So the tip's
+        // new outermost radius is |centre| + ρ, read exactly at the wheel's
+        // radius rather than as ρ(1/sin a − 1), the setback along the bisector.
+        const cutBack_u = (() => {
+          const s_u = rho / Math.sin(a) / OSC_U, R = H.tip.r, b = H.wedge.bisectorRad;
+          return R - Math.sqrt(R * R - 2 * R * s_u * Math.cos(b) + s_u * s_u) - rho / OSC_U;
+        })();
         if (!(atFinish.p0_Pa <= shakeAllow * (1 + 1e-6)))
           console.warn(`TODO 299 landing 2: the club tip finished at ${(rho * 1e6).toFixed(4)} µm still takes the drop at `
             + `${(atFinish.p0_Pa / 1e9).toFixed(3)} GPa, over the ${(shakeAllow / 1e9).toFixed(3)} GPa shakedown limit — the finish is not the fixed point`);
@@ -36905,10 +36918,10 @@ const EQUALISATION = (() => {
       // spends it all in one place.
       //
       // WHAT THIS DOES NOT SETTLE, and the record says it in the same breath:
-      // at the adverse corner the recession is 1.28× the budget and at the
-      // nominal it is a third of it, so the conclusion FLIPS between corners
+      // at the adverse corner the recession is 1.32× the budget and at the
+      // nominal 0.42 of it (§344's radial reading), so the conclusion FLIPS between corners
       // and by FRICTION's own rule that is not a conclusion. TODO 299's record
-      // carries the ceiling — holding at the adverse corner needs 1229 HV,
+      // carries the ceiling — holding at the adverse corner needs 1134 HV,
       // which is no steel — and why the wheel stops at steel anyway: past it
       // the plastic run-in that answers the drop's impact (landing 2)
       // disappears and the impact becomes a fracture question nothing prices.
@@ -36916,12 +36929,21 @@ const EQUALISATION = (() => {
         const K = SERVICE_COUNTS, sl = H.slip, H_Pa = ESCAPE_STEEL_HARDNESS_PA;
         const slip_m = sl.perEngagement_u * OSC_U;
         const total_m = slip_m * K.engagementsPerTooth;
-        const tanA = Math.tan(a);
+        // §344 — and the depth the century's area makes is RADIAL too, for the
+        // same reason: the budget is a shortened tooth circle. A cut square to
+        // the radius at depth d through two straight flanks is a triangle d wide
+        // per H.wedge.widthPerDepth, area ½·d²·wpd. Until §344 this read the
+        // depth along the wedge's bisector (√(A/tan a)), which is 29° off the
+        // radius here and 15% deeper, against a radial budget. The page that
+        // draws this (service-life.html) is what exposed it: a drawing has to
+        // put the worn surface SOMEWHERE, and the two readings put it in two places.
+        const wpd = H.wedge.widthPerDepth;
         // TODO 299 landing 2 — AND THE FINISH IS BOOKED AGAINST THE SAME BUDGET.
         // The geometry's `budget.recession_u` is the reach from the tooth's
         // MATHEMATICAL apex to where the lock runs out, because that is the only
         // thing a profile can say. A tooth finished at a radius ρ does not have
-        // that apex: its tip already stands ρ(1/sinα − 1) inside it. That is
+        // that apex: its tip already stands inside it (radially, §344: see the
+        // landing's cut-back, not ρ(1/sinα − 1), which is along the bisector). That is
         // reach spent at the bench, in the same currency the century spends, so
         // it comes off the budget — and it is the honest cost of the derivation
         // above, not a free improvement. (It is the same cost the run-in used to
@@ -36940,14 +36962,14 @@ const EQUALISATION = (() => {
         const at = (kk) => {
           const V = kk * Fmean * total_m / H_Pa;
           const area = V / tM;
-          const recess_m = Math.sqrt(area / tanA);
+          const recess_m = Math.sqrt(2 * area / wpd);
           return { K: kk, volume_m3: V, recession_m: recess_m, recession_u: recess_m / OSC_U,
             overBudget: (recess_m / OSC_U) / budget_u };
         };
         const corners = Object.fromEntries(FRICTION_CORNERS.map((c) => [c, at(WEAR_K_BAND[c])]));
         // the hardness that would hold at each corner: recession ∝ 1/√H
         const needH = Object.fromEntries(FRICTION_CORNERS.map((c) => [c,
-          WEAR_K_BAND[c] * Fmean * total_m / (Math.pow(budget_u * OSC_U, 2) * tM * tanA)]));
+          2 * WEAR_K_BAND[c] * Fmean * total_m / (Math.pow(budget_u * OSC_U, 2) * tM * wpd)]));
         const holds = FRICTION_CORNERS.filter((c) => corners[c].overBudget <= 1);
         if (!holds.length)
           console.warn(`TODO 299: the club tooth loses ${(corners.favourable.recession_m * 1e6).toFixed(2)} µm of reach over `

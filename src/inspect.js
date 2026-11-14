@@ -11587,6 +11587,12 @@ export function checkEqualisation(clock) {
         failures.push({ what: 'the club\'s width per radial depth is not its flanks\' DIFFERENCE', record: w.widthPerDepth, difference: dWpd });
       if (!(rel(w.halfRad * 2 * 180 / Math.PI, w.fullDeg) <= 1e-12))
         failures.push({ what: 'the wedge\'s half-angle is not half its full angle', halfRad: w.halfRad, fullDeg: w.fullDeg });
+      // §344 — and its BISECTOR stands off the radius by the flanks' MEAN (they
+      // lean the same way, which the clause above already holds): the angle row
+      // 22 reads the finish's radial cut-back through
+      const dBis = (Math.abs(w.lockFlankDeg) + Math.abs(w.impulseFlankDeg)) / 2 * Math.PI / 180;
+      if (!(rel(w.bisectorRad, dBis) <= 1e-12))
+        failures.push({ what: 'the club\'s bisector is not off the radius by its flanks\' mean', record: w.bisectorRad, mean: dBis });
       // AND WHICH WAY THE POWER RUNS ON EACH FACE, structurally rather than by
       // its prose: the impulse face only ever receives the wheel's drive, and
       // each stone's locking face carries exactly one of each — the tooth
@@ -11777,7 +11783,10 @@ export function checkEqualisation(clock) {
           if (!(fin.elasticRho_m > fin.rho_m))
             failures.push({ what: 'a fully elastic contact does not want a blunter tip than shakedown does', elastic: fin.elasticRho_m, finish: fin.rho_m });
           // the reach the finish SPENDS, which row 22 books against the budget
-          const cb = fin.rho_m * (1 / Math.sin(w.halfRad) - 1) / U;
+          // §344 — RADIAL: the inscribed arc's centre ρ/sin a in along the
+          // bisector, its outermost point |centre| + ρ from the wheel's axis
+          const sU = fin.rho_m / Math.sin(w.halfRad) / U, R = g.tip.r;
+          const cb = R - Math.sqrt(R * R - 2 * R * sU * Math.cos(w.bisectorRad) + sU * sU) - fin.rho_m / U;
           if (!(rel(fin.cutBack_u, cb) <= 1e-9))
             failures.push({ what: 'the finish\u2019s cut-back identity', record: fin.cutBack_u, fromRadius: cb });
           if (!(fin.cutBack_u > 0 && fin.cutBack_u < CLEAR_MARGIN))
@@ -11907,19 +11916,21 @@ export function checkEqualisation(clock) {
         if (!(wr.hardness_Pa === ESCAPE_STEEL_HARDNESS_BAND.low))
           failures.push({ what: 'the wear row is not priced at the hardness band\u2019s low end', record: wr.hardness_Pa, low: ESCAPE_STEEL_HARDNESS_BAND.low });
         // Archard, per corner, and the inverted hardness
-        const tanA = Math.tan(g2.wedge.halfRad), line = et.line_u * U2;
+        // §344 — the depth is RADIAL, as the budget is: a cut square to the
+        // radius takes ½·d²·widthPerDepth of the wedge's area
+        const wpd = g2.wedge.widthPerDepth, line = et.line_u * U2;
         for (const c of ['favourable', 'nominal', 'adverse']) {
           const q = wr.corners[c];
           if (!q) { failures.push({ what: 'the wear row is missing a corner', corner: c }); continue; }
           if (!(q.K === WEAR_K_BAND[c]))
             failures.push({ what: 'a wear corner is not its declared coefficient', corner: c, record: q.K, declared: WEAR_K_BAND[c] });
           const V = q.K * wr.load_N * wr.slip_m / wr.hardness_Pa;
-          const d = Math.sqrt((V / line) / tanA);
+          const d = Math.sqrt(2 * (V / line) / wpd);
           if (!(rel(q.volume_m3, V) <= 1e-12) || !(rel(q.recession_m, d) <= 1e-12))
             failures.push({ what: 'the Archard identity', corner: c, record: [q.volume_m3, q.recession_m], derived: [V, d] });
           if (!(rel(q.overBudget, (d / U2) / wr.budget_u) <= 1e-12))
             failures.push({ what: 'the budget ratio identity', corner: c, record: q.overBudget });
-          const needH = q.K * wr.load_N * wr.slip_m / (Math.pow(wr.budget_u * U2, 2) * line * tanA);
+          const needH = 2 * q.K * wr.load_N * wr.slip_m / (Math.pow(wr.budget_u * U2, 2) * line * wpd);
           if (!(rel(wr.needHardness_Pa[c], needH) <= 1e-9))
             failures.push({ what: 'the hardness a corner would need does not invert its own row', corner: c, record: wr.needHardness_Pa[c], derived: needH });
         }
