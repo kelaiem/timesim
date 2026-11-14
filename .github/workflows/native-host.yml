@@ -250,6 +250,61 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  # §338 landing 16 — the native battery under NODE 24 (V8 13.6), held leaf for leaf to
+  # Node 22's (V8 12.4) on the same tree and runner class. det-math makes the build's
+  # maths the repository's on every engine; this is the evidence that the whole battery's
+  # verdict is too, so the local pre-flight may run under the faster engine (10-12% per
+  # native boot, measured). The artifact is named outside `battery-native-*` so the
+  # cross-architecture job's pattern does not take it in.
+  battery-native-node24:
+    runs-on: ubuntu-latest
+    # battery-native's cap: the same battery on the same runner class.
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install the tools' pinned packages
+        working-directory: tools
+        run: npm ci --no-audit --no-fund
+
+      - name: The battery, natively, on Node 24
+        run: node --import ./tools/native/loader.mjs tools/battery-native.mjs --kernel js --report node24-battery-X64.json
+
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: node24-battery-X64
+          path: node24-battery-X64.json
+          if-no-files-found: error
+          retention-days: 14
+
+  battery-node24-identity:
+    needs: [battery-native, battery-native-node24]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: battery-native-X64-js
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: node24-battery-X64
+
+      - name: Node 22 and Node 24 reached one verdict, leaf for leaf
+        run: node tools/report-diff.mjs battery-native-X64-js.json node24-battery-X64.json
+
   battery-cross-arch:
     needs: battery-native
     runs-on: ubuntu-latest
