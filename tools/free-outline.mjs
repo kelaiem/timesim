@@ -92,8 +92,14 @@ const solveAxis = (F) => {
       return r.flat.top && r.flat.bot ? r : { area: Infinity, error: `no straight ${r.flat.top ? 'bottom' : 'top'} end through c ${c.toFixed(2)} for the lugs` };
     } catch (e) { return { area: Infinity, error: e.message }; }
   };
-  const scan = [];
+  let scan = [];
   for (let c = mid - half; c <= mid + half + 1e-9; c += SCAN_U) scan.push({ c, r: fit(c) });
+  // the middle is where the least area lies, not a bound: when no axis there gives both lug ends a straight run (§343
+  // landing 3 — stopwork-140 at 14,400, whose top run exists only for c −25.2…−2.2, the window −1.5…11), the whole span
+  if (!scan.some((s) => Number.isFinite(s.r.area))) {
+    scan = [];
+    for (let c = lo; c <= hi + 1e-9; c += SCAN_U) scan.push({ c, r: fit(c) });
+  }
   let k = 0; for (let i = 1; i < scan.length; i++) if (scan[i].r.area < scan[k].r.area) k = i;
   if (!Number.isFinite(scan[k].r.area)) throw new Error(`no strap axis admits a fit: ${scan[0].r.error}`);
   const g = (Math.sqrt(5) - 1) / 2;
@@ -116,6 +122,18 @@ for (let round = 1; round <= ROUNDS; round++) {
   // --fresh drops THIS movement's row only (§325 landing 3: with --spec the old filter dropped every free row,
   // the default movement's included) — the key is the build's own, so it is known after the first boot
   if (round === 1 && FRESH && rows[key]) { const { [key]: _gone, ...rest } = rows; rows = rest; round--; continue; }
+  // §343 landing 3 — a strap with no row starts from its movement's default-strap row, not the stand-in box: the fit is
+  // the metal's own, so a pillar the box refused its land is never counted, and the outline closes round metal with no
+  // pillar in it — a fixed point the frame lost a seat in (strap 14 at 14,400: the 225° land, rim 0.356 under its 2.719
+  // cap). Seeded, the land seats on the wider cut, is counted, and the loop shrinks the outline round it
+  if (round === 1 && !FRESH && !rows[key]) {
+    const parsed = JSON.parse(key.replace(/^cfg1:/, ''));
+    if (parsed.spec?.strapMm != null) {
+      const { strapMm: _w, ...spec } = parsed.spec;
+      const seedKey = `cfg1:${JSON.stringify({ ...parsed, spec })}`;
+      if (rows[seedKey]) { console.log(`seeded from the default strap's row`); rows = { ...rows, [key]: rows[seedKey] }; round--; continue; }
+    }
+  }
   const s = solveAxis(b.free);
   const r = s.r;
   const flat = { top: r.flat.top.map(r4), bot: r.flat.bot.map(r4), yTop: r4(r.flat.yTop), yBot: r4(r.flat.yBot), halfTop: r4(r.flat.halfTop), halfBot: r4(r.flat.halfBot) };

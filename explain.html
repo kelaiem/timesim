@@ -3633,6 +3633,11 @@
       case's plate is opened. The head runs under the plate's rim to the length its matched mass wants: 2.71 u at
       <b>45.8 mg</b>, the match exactly (the rotor's μ 1.17 against the 40 mm build's 1.19). The modelled level reads
       0.26 dB under the 40 mm case's.</p>
+      <p>§343 made the chronometer's beat the shipped watch: 14,400 A/h on an r 11.5 balance, the largest the case admits.
+      The balance grows the plate, the case follows it out to the body Ø39.77 mm (under the strap's 2 × 19 + 2 = 40 mm
+      limit, which replaced the fixed cap), and the ring re-solves to the wider annulus, the same C7 on the same 1.1 mm
+      wire, at <b>r 47.90</b>. The gentler curve wants a shorter angle, so the design arc is <b>61.53°</b> (60.81° on the
+      straight law), and the overtone returns to 11.4 kHz.</p>
       <p>§268 built the spring. TODO 128's blade was redrawn each frame from a fixed stud to a
       bearing point that moved, so it changed length by 36% of itself over the draw and no
       rate could be read off it; the hammer's fall was a chosen time with an angular frequency
@@ -3725,13 +3730,13 @@
         <div class="fig-head"><span class="fig-no">PLATE 2</span><span class="fig-title">Dimension the wire, then strike it — the pitch its dimensions imply</span></div>
         <div class="controls">
           <label>arc
-            <input type="range" id="gongArc" min="25" max="120" value="65.11" step="0.01" aria-label="Gong arc in degrees, measured back from the free end">
+            <input type="range" id="gongArc" min="25" max="120" value="61.53" step="0.01" aria-label="Gong arc in degrees, measured back from the free end">
           </label>
           <label>wire Ø
             <input type="range" id="gongDia" min="4000" max="30000" value="29028" step="1" aria-label="Gong wire diameter in ten-thousandths of a unit">
           </label>
           <button id="gongStrike" style="background: rgba(255,255,255,0.06); border: 1px solid var(--hairline-strong); color: var(--text); border-radius: 6px; padding: 5px 12px; font: 11px system-ui, sans-serif; cursor: pointer;">STRIKE</button>
-          <span class="readout" id="gongReadout">arc 65.11° · Ø 2.90 u</span>
+          <span class="readout" id="gongReadout">arc 61.53° · Ø 2.90 u</span>
           <span class="chip ride" id="gongChip">SHIPPED VOICE</span>
         </div>
         <div class="fig-body">
@@ -3744,9 +3749,9 @@
             <text class="val" x="24" y="56">— no balance opening out here (§198)</text>
             <line x1="380" y1="140" x2="400" y2="140" stroke="var(--line)" stroke-width="1"/>
             <line x1="390" y1="130" x2="390" y2="150" stroke="var(--line)" stroke-width="1"/>
-            <text class="val" x="300" y="166">movement axis · GONG_R 45.33</text>
+            <text class="val" x="300" y="166">movement axis · GONG_R 47.90</text>
             <path id="gongGhost" fill="none" stroke="var(--line)" stroke-width="1" stroke-dasharray="4 4"/>
-            <text class="val" x="560" y="128" id="gongGhostLbl">shipped arc 65.11°</text>
+            <text class="val" x="560" y="128" id="gongGhostLbl">shipped arc 61.53°</text>
             <path id="gongGlow" fill="none" stroke="var(--brass)" stroke-linecap="round" opacity="0"/>
             <path id="gongWire" fill="none" stroke="var(--steel)" stroke-linecap="round"/>
             <g id="gongFootG">
@@ -3766,7 +3771,7 @@
         <figcaption>The sound is the law run live — since §253 the arch's in-plane modes,
         <code>Ω = ρAω²R⁴/EI</code> solved for the arc's <code>S = (R/k)²</code> and angle, with
         steel's <code>E/ρ = 200 GPa / 7850</code>, <code>k = d/4</code> and
-        <code>R = GONG_R·UNIT_MM</code> (GONG_R 45.33, UNIT_MM 0.379) — <code>GONG_ARCH</code>
+        <code>R = GONG_R·UNIT_MM</code> (GONG_R 47.90, UNIT_MM 0.379) — <code>GONG_ARCH</code>
         ported verbatim, so the readout at the defaults IS the shipped voice, and the ratio
         beside f₂ is the arc's at that arc, not a constant. STRIKE plays what the sim plays on
         a hammer hit: the same two partials through <code>sndTone</code>'s envelope, each a
@@ -5872,9 +5877,10 @@
       // in the build. UNIT_MM is layout.js's pin (0.72 mm chain pitch / 1.9 u),
       // GONG_R the build's 48.1940 since §262 (R_ANNULUS_OUT − GONG_POST_R — the
       // ring sits as far out in the annulus as its own block allows, the wall
-      // being the bore's inscribed circle since §262; 48.2208 from §198 to §253). Only the two aesthetics knobs vary — same
+      // being the bore's inscribed circle since §262; 48.2208 from §198 to §253; 45.3262 after §325's case;
+      // 47.8952 since §343's, the r 11.5 balance's plate). Only the two aesthetics knobs vary — same
       // domain as the sim.
-      var GONG_R = 45.3262, UNIT_MM = 0.72 / 1.9;
+      var GONG_R = 47.8952, UNIT_MM = 0.72 / 1.9;
       var GONG_STEEL_C = Math.sqrt(200e9 / 7850);
       var BL = [1.87510407, 4.69409113, 7.85475744];
       function mul(A, B, C) {
@@ -5961,7 +5967,7 @@
         }
         return d.join(' ');
       }
-      var SHIPPED_ARC = 65.11, SHIPPED_DIA = 2.9028;   // the derived defaults (aesthetics.gong — C7's arc on §253's arch law (§262), walked 0°, on stock-ceiling wire)
+      var SHIPPED_ARC = 61.53, SHIPPED_DIA = 2.9028;   // the derived defaults (aesthetics.gong — C7's arc on §253's arch law (§262), walked 0°, on stock-ceiling wire)
       ghost.setAttribute('d', arcPath(A1 - SHIPPED_ARC, A1));
 
       function fmtHz(f) {
