@@ -1059,6 +1059,7 @@ export const SPEC_POINTS = [
   // the balance cock's seat now holds its legs off the fork cock's foot PAD, not its node). TODO 305 closed the last finding,
   // the setting fold's leg 1 run through the winding pinion (intraUnit, which the point tier does not sweep): the fold's
   // judge holds the stem, places K for its legs where the barrel column does not bind, and refuses an unborne tail.
+  // The point sweeps clean, and joined validated-configs from a whole local run on main at 8af461b2.
   { name: 'stopwork-140', q: 'case=free&alarm=0&barrelstep=-140&rsvaz=0&rsvidl=2&frame=lands&drumaz=140', expect: 'declared', sweep: true,
     // TODO 289 landing 8 — the no-alarm dial's reclaim is now the largest that leaves the setting fold's tail its two lower
     // bushes (layout.js DIAL_RECLAIM_NO_ALARM, bound on THIS build: the rise's bush at L/D 1), so the two unborne-tail rows
