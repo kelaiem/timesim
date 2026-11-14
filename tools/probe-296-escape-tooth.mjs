@@ -478,11 +478,13 @@ const mine7 = (() => {
   for (let i = 0; i < 90; i++) { const m = (lo + hi) / 2; if (lockRunAt(m) >= keep) lo = m; else hi = m; }
   const nom = et.rows.filter((q) => q.corner === 'nominal');
   const Fmean = nom.reduce((x, q) => x + q.load_N, 0) / nom.length;
-  const tanA = Math.tan(halfV);
-  const recess = (K, H, slipTotal) => Math.sqrt((K * Fmean * slipTotal / H) / tM / tanA);
+  // §344 — the depth is RADIAL, as the budget is: a cut square to the radius
+  // takes ½·d²·wpd of the wedge (wpd held to the flanks' difference by C1)
+  const wpd = et.geom.wedge.widthPerDepth;
+  const recess = (K, H, slipTotal) => Math.sqrt(2 * (K * Fmean * slipTotal / H) / tM / wpd);
   const slipTotal = slip.perEngagement_u * U * engPerTooth;
   return { slip, turns, beats, engPerTooth, budget_u: lo, lockRunFull_u: full, lockOnly_u: keep,
-    Fmean, tanA, slipTotal, recess, lockRunAt,
+    Fmean, wpd, slipTotal, recess, lockRunAt,
     control: { centrePerHour: turns.centre / (life / 3600), fourthPerMinute: turns.fourth / (life / 60) } };
 })();
 // C11 -- THE PREMISE. Finishing the tooth at the blunting radius is only a
@@ -557,7 +559,7 @@ console.log('\n8. CONTROLS ON THE DESIGN LIFE');
 // W6 -- THE CEILING, reported: the hardness that would close the adverse
 // corner, and that no steel reaches it.
 {
-  const need = L.WEAR_K_BAND.adverse * mine7.Fmean * mine7.slipTotal / (Math.pow((mine7.budget_u - lg.finish.cutBack_u) * U, 2) * tM * mine7.tanA);
+  const need = 2 * L.WEAR_K_BAND.adverse * mine7.Fmean * mine7.slipTotal / (Math.pow((mine7.budget_u - lg.finish.cutBack_u) * U, 2) * tM * mine7.wpd);
   console.log(`   W6 closing the adverse corner needs H \u2265 ${f(need / 1e9, 2)} GPa (${f(need / L.HV_TO_PA, 0)} HV) \u2014 steel's practical ceiling is about 800 HV, so this is silicon, a carbide or a coating`);
   near(need, wr.needHardness_Pa.adverse, 1e-9, 'W6: the record\'s needed hardness disagrees');
   ok(need / L.HV_TO_PA > 800, 'W6: the needed hardness is inside steel\'s range, so the ceiling this landing reports is wrong', { needHV: need / L.HV_TO_PA });

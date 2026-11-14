@@ -138,7 +138,8 @@ const SABOTAGES = [
     patch: (E) => { const t = E.going.energy.escapeTooth, lg = t.landing, k = lg.finish.band_m[1] * 3 / lg.finish.rho_m;
       lg.finish.rho_m *= k; t.rho_m = lg.finish.rho_m;
       lg.finish.elasticRho_m *= k;
-      lg.finish.cutBack_u = lg.finish.rho_m * (1 / Math.sin(t.geom.wedge.halfRad) - 1) / U;
+      { const w = t.geom.wedge, sU = lg.finish.rho_m / Math.sin(w.halfRad) / U, R = t.geom.tip.r;   // §344: radial
+        lg.finish.cutBack_u = R - Math.sqrt(R * R - 2 * R * sU * Math.cos(w.bisectorRad) + sU * sU) - lg.finish.rho_m / U; }
       // keep the fixed-point identity true so the ACHIEVABILITY clause is what
       // refuses it rather than an arithmetic one
       lg.atFinish.p0_Pa = lg.shakedownAllow_Pa; } },
@@ -168,6 +169,22 @@ const SABOTAGES = [
   { name: 'S16 a recession that is not Archard\'s',
     expect: /Archard identity/,
     patch: (E) => { E.going.energy.escapeTooth.wear.corners.nominal.recession_m *= 1.1; } },
+  // §344 — the two readings §344 corrected, restored whole: each must be
+  // refused by the identity it moved, not by a clause downstream of it
+  { name: 'S16b a recession read along the wedge\'s BISECTOR (pre-§344)',
+    expect: /Archard identity/,
+    patch: (E) => { const t = E.going.energy.escapeTooth, w = t.wear;
+      for (const c of ['favourable', 'nominal', 'adverse']) {
+        const q = w.corners[c], d = Math.sqrt((q.volume_m3 / tM) / Math.tan(t.geom.wedge.halfRad));
+        q.recession_m = d; q.recession_u = d / U; q.overBudget = (d / U) / w.budget_u;
+      } } },
+  { name: 'S16c a finish set back along the BISECTOR (pre-§344)',
+    expect: /cut-back identity/,
+    patch: (E) => { const t = E.going.energy.escapeTooth, fin = t.landing.finish;
+      fin.cutBack_u = fin.rho_m * (1 / Math.sin(t.geom.wedge.halfRad) - 1) / U; } },
+  { name: 'S16d a bisector that is not the flanks\' mean',
+    expect: /bisector is not off the radius/,
+    patch: (E) => { E.going.energy.escapeTooth.geom.wedge.bisectorRad *= 0.5; } },
   { name: 'S17 the wear priced at the hardness band\'s HIGH end',
     expect: /not priced at the hardness band/,
     patch: (E) => { const w = E.going.energy.escapeTooth.wear; w.hardness_Pa = w.hardnessBand.high; } },

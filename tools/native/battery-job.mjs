@@ -52,7 +52,18 @@ async function boot(query) {
 async function run(job) {
   if (job.kind === 'shard') {
     const { runShard } = await import('./shard.mjs');
-    return runShard(job);
+    // §338 landing 15 — an incremental run's restriction: the shard carrying the anchors
+    // computes it (inspect.js' own digestChangedUnits, its key against the baseline's), and
+    // every shard asks the parent for it before its first task.
+    const beforeTasks = job.incremental ? async (anchor) => {
+      let changed;
+      if (anchor) {
+        const I = await import('../../src/inspect.js');
+        changed = I.digestChangedUnits(job.baseDigests, anchor.digests);
+      }
+      return new Promise((res) => { parentPort.once('message', res); say({ type: 'restriction', changed }); });
+    } : null;
+    return runShard({ ...job, beforeTasks, restricted: 'js' });
   }
   const b = await boot(job.query);
   if (b.dead) return b.dead;

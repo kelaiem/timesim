@@ -84,6 +84,7 @@ on:
       - 'tools/report-diff.mjs'
       - 'tools/det-math-vendor.mjs'
       - 'tools/det-math-kat.mjs'
+      - 'tools/service-life-data.mjs'
       - 'tools/check-det-math.mjs'
       - 'tools/battery-checks.mjs'
       - 'dev_server.py'
@@ -182,6 +183,11 @@ jobs:
 
       - name: No pose of the net amplifies a one-ulp maths difference past the PLACE budget
         run: node --import ./tools/native/loader.mjs tools/probe-338-pose-conditioning.mjs
+
+      # §344 — service-life.html draws src/service-life-data.json, which a boot GENERATES: a build whose wear record
+      # moved owes a re-run, and TODO 279 is what an ungated generated file does (the gong bench's went stale unseen)
+      - name: The service-life view's record re-derives from the build, on this architecture
+        run: node --import ./tools/native/loader.mjs tools/service-life-data.mjs --check
 
       - name: Keep the digests
         if: always()

@@ -640,9 +640,9 @@ if (TIERS_FROM && (MATRIX || COLLECT || ONLY)) {
 // absent: everything left in it runs fresh. tools/probe-152-fresh.mjs is the
 // instrument for that split, and it induces both halves rather than asserting
 // them.
-const CHECK_CODE_FILES = ['src/inspect.js', 'tools/battery-checks.mjs',
+export const CHECK_CODE_FILES = ['src/inspect.js', 'tools/battery-checks.mjs',
   'tools/battery-split.mjs', 'tools/battery-union.mjs'];
-function checkCodeDigest() {
+export function checkCodeDigest() {
   const out = {};
   for (const f of CHECK_CODE_FILES) {
     out[f] = createHash('sha256').update(readFileSync(join(ROOT, f))).digest('hex');
@@ -655,7 +655,7 @@ function checkCodeDigest() {
 // its union base. It is digested for points only — it cannot reach a default
 // row, so it stays off CHECK_CODE_FILES and an edit to it voids no default
 // verdict, only every stored point's (decidePointMode sends them FULL).
-function pointsCodeDigest() {
+export function pointsCodeDigest() {
   return { ...checkCodeDigest(),
     'tools/battery-points.mjs': createHash('sha256').update(readFileSync(join(ROOT, 'tools/battery-points.mjs'))).digest('hex') };
 }
@@ -676,7 +676,7 @@ function pointsCodeDigest() {
 // 1 is the implicit unversioned format every artifact written before §152's
 // third landing carries — which is why an ABSENT field counts as a mismatch
 // rather than as a pass.
-const REPORT_FORMAT_VERSION = 2;
+export const REPORT_FORMAT_VERSION = 2;
 // §260 — the WORKER FILE's own shape, apart from the report's, because a
 // report-format bump would void every cached baseline for a change that never
 // touches one. 2 is Landing C: every worker carries its share of the spec and
