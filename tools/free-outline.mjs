@@ -92,8 +92,14 @@ const solveAxis = (F) => {
       return r.flat.top && r.flat.bot ? r : { area: Infinity, error: `no straight ${r.flat.top ? 'bottom' : 'top'} end through c ${c.toFixed(2)} for the lugs` };
     } catch (e) { return { area: Infinity, error: e.message }; }
   };
-  const scan = [];
+  let scan = [];
   for (let c = mid - half; c <= mid + half + 1e-9; c += SCAN_U) scan.push({ c, r: fit(c) });
+  // the middle is where the least area lies, not a bound: when no axis there gives both lug ends a straight run (§343
+  // landing 3 — stopwork-140 at 14,400, whose top run exists only for c −25.2…−2.2, the window −1.5…11), the whole span
+  if (!scan.some((s) => Number.isFinite(s.r.area))) {
+    scan = [];
+    for (let c = lo; c <= hi + 1e-9; c += SCAN_U) scan.push({ c, r: fit(c) });
+  }
   let k = 0; for (let i = 1; i < scan.length; i++) if (scan[i].r.area < scan[k].r.area) k = i;
   if (!Number.isFinite(scan[k].r.area)) throw new Error(`no strap axis admits a fit: ${scan[0].r.error}`);
   const g = (Math.sqrt(5) - 1) / 2;
