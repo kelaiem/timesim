@@ -19812,7 +19812,12 @@ ESCAPE_COCK = await (async () => {
       for (let reach = bossR + nodeR + CLEAR_MARGIN; reach <= rimR; reach += 0.25) {
         if (best && reach >= best.reach - 1e-9) break;   // a seat at least this far out cannot beat the one found: the nearest wins
         const x = host.x + cs * reach, y = host.y + sn * reach;
-        const mPlate = rimR - nodeR - Math.hypot(x, y);
+        // §343 landing 3 — under a FORM the plate's edge is the case shape (TODO 271's rule), and every counted metal
+        // stands PLATE_RIM_MARGIN inside it (the reserve sector's tip above, the free fit's pins): measured against
+        // plateR's circle alone, the foot at r 11.5 stood 4.61 inside the free outline, the fit grew to take it, the
+        // foot moved in on the grown cut and the outline flipped between 972 and 976 mm² with no fixed point. The
+        // widest metal the foot puts on the plate is its PAD (padR, wider than the boss), so the pad is what is held
+        const mPlate = Math.min(rimR - nodeR - Math.hypot(x, y), formInset(x, y) - padR - PLATE_RIM_MARGIN);
         const col = columnClear(x, y);
         const mColumn = col.c - (padR + CLEAR_MARGIN);
         let barWho = null;
