@@ -1045,7 +1045,10 @@ export const SPEC_POINTS = [
   // the point joins validated-configs only once the -140° no-alarm arrangement itself sweeps clean (§325's open blocker).
   // TODO 283 (closed) bored the free band for its tubes, which removed the first (the stem stands 2.507 off the middle);
   // the setting fold's judge then took the hour wheel and the reserve input pinion as envelopes (FOLD_WHEEL_ENVELOPES in
-  // main.js), which removed the keyless fold's two. The cocks' 0.0122 remains.
+  // main.js), which removed the keyless fold's two. The cocks' 0.0122 remains (0.1284 by #973's sweep, closed by TODO 304:
+  // the balance cock's seat now holds its legs off the fork cock's foot PAD, not its node). TODO 305 closed the last finding,
+  // the setting fold's leg 1 run through the winding pinion (intraUnit, which the point tier does not sweep): the fold's
+  // judge holds the stem, places K for its legs where the barrel column does not bind, and refuses an unborne tail.
   { name: 'stopwork-140', q: 'case=free&alarm=0&barrelstep=-140&rsvaz=0&rsvidl=2&frame=lands&drumaz=140', expect: 'declared', sweep: true,
     // TODO 289 landing 8 — the no-alarm dial's reclaim is now the largest that leaves the setting fold's tail its two lower
     // bushes (layout.js DIAL_RECLAIM_NO_ALARM, bound on THIS build: the rise's bush at L/D 1), so the two unborne-tail rows
