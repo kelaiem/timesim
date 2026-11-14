@@ -19531,6 +19531,13 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
       land.userData.rimLand = true;   // §328: not the rim — PLATE_RIM's walk skips it (see there)
       land.position.set(best.x, best.y, (PLATE_TOP_FACE - PLATE_BACK_FACE) / 2);   // backPlate-local: x, y the movement's, z = 0 the slab's midplane, +F its face
       land.userData.planStadium = { ax: best.x, ay: best.y, bx: best.x, by: best.y, r: PILLAR_CAP_R };
+      // §343 landing 3 — the free outline is fitted to the counted metal, and a land is plate, not counted metal (§325
+      // landing 6), so nothing held the fit round it: at the 14 mm strap the cut closed in round the 225° land (rim
+      // 0.356 under its 2.719 cap) and the frame lost a seat every round. The land is pinned at exactly what its own seat
+      // asks (cap + rim land + CLEAR_MARGIN, the scan's c ≥ CLEAR_MARGIN), the strike opening's land's precedent: at a
+      // fixed point it already stands that far in, so a settled outline is unchanged and only a cut that would close on it
+      // is held
+      freePin(best.x, best.y, PILLAR_CAP_R + PILLAR_RIM_LAND + CLEAR_MARGIN, 'a pillar land');
       backPlate.add(land);
       pillarSeats.push({ x: best.x, y: best.y });
       continue;
