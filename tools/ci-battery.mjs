@@ -993,8 +993,13 @@ export const SPEC_POINTS = [
     // boot's own §307/§308 refit, which then holds), and the stop-work is FRAMED here too: the arrest station solve tests
     // the cross's window at the ENGAGEMENT now (§201 landing 2's own geometry, by ARREST_ENGAGEMENT's t), where it gated
     // the cross's centre, so it no longer stands a station whose frame pinches. §201 landing 2's NOT CUT row retired with it.
-    expectWarns: ['§261: cased assembly', 'TODO 206 arming spring: follower-B\'s seat sits at the nose\'s margin'],
-    why: '§308 landing 5 — barrel swung to 180°, reserve at 36°, alarm module at 80° on its own fit; boots exactly its two declared rows (the form row and TODO 206; §201 landing 2\'s unframed stop-work retired at §343 landing 3); no longer swept (the form default moved, §313)' },
+    // And since the arrest's solve counts the pusher's linkage (§343 landing 3), no station on this arrangement clears it:
+    // the linkage takes the DESIGNED line here by fallback and stood in the arrest on main too (TODO 306), so the solve
+    // now says so instead of building through it, and its fallback station's pipe sits under its floor (TODO 212's row).
+    expectWarns: ['§261: cased assembly', 'TODO 206 arming spring: follower-B\'s seat sits at the nose\'s margin',
+      'alarm arrest: no station on the mesh circle holds the subtractor', 'alarm arrest: the solved station clears by',
+      'TODO 212: the finger\'s pipe runs'],
+    why: '§308 landing 5 — barrel swung to 180°, reserve at 36°, alarm module at 80° on its own fit; boots exactly its five declared rows (the form row, TODO 206, and since §343 landing 3 TODO 306\'s two arrest rows and TODO 212\'s; §201 landing 2\'s unframed stop-work retired there too); no longer swept (the form default moved, §313)' },
   // THE FORM CASES' DEFAULT, SWEPT. Since §310 landing 4 a form case builds
   // the arrangement by default, and since §313 that arrangement is
   // ARRANGEMENT (barrel at 180°, reserve at 12 on six idlers, module at
