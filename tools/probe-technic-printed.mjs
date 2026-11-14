@@ -75,6 +75,10 @@ for (const [k, m] of Object.entries(meshes)) {
   if (f) fail(`${k}: not closed and manifold — ${f}`);
   if (!capsWound(m.tris, m.h)) fail(`${k}: a cap triangle is wound backwards (a fold in the stitch)`);
   if (!near(v, want, 1e-9 * want)) fail(`${k}: volume ${v} mm³, the outline says ${want}`);
+  const xs = m.tris.flat().map((p) => p[0]), ys = m.tris.flat().map((p) => p[1]);
+  const fx = Math.max(...xs) - Math.min(...xs), fy = Math.max(...ys) - Math.min(...ys);
+  if (!(Math.max(fx, fy) <= P.PRINT_AREA + 1e-9)) fail(`${k}: footprint ${fx.toFixed(1)} × ${fy.toFixed(1)} mm is over the printable ${P.PRINT_AREA} mm`);
+  console.log(`  footprint ${fx.toFixed(1)} × ${fy.toFixed(1)} mm (printable ${P.PRINT_AREA} × ${P.PRINT_AREA} on the ${P.PRINT_SETUP.bed} mm bed)`);
   console.log(`MESH ${m.name}: ${m.tris.length} triangles, closed and manifold, ${v.toFixed(1)} mm³ (${(v * 1.24 / 1000).toFixed(2)} g at PLA's nominal 1.24 g/cm³)`);
 }
 {
@@ -89,6 +93,7 @@ for (const [k, m] of Object.entries(meshes)) {
   control('a triangle flipped (the mesh must read non-manifold)', P.manifoldFault(flipped));
   const capIdx = fit.tris.findIndex((t) => t.every((p) => near(p[2], fit.h, 1e-12)));
   const reversed = fit.tris.map((t, i) => (i === capIdx ? [t[0], t[2], t[1]] : t));
+  control('a ramp a full bed long (no skirt room) must exceed the printable area', P.RAMP.L < P.PRINT_SETUP.bed && P.couponRamp({ L: P.PRINT_SETUP.bed }).tris.flat().some((p) => p[0] > P.PRINT_AREA));
   control('a cap triangle reversed (the winding check must read the fold)', !capsWound(reversed, fit.h));
 }
 

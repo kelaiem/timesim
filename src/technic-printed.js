@@ -11,7 +11,7 @@
 //     between its locks: §345's scope measured it the only straddle that escapes at the 2–4° the LEGO drive reaches),
 //     its wall the material that layout allows behind each face. Calipers inside and out read the print's error on a
 //     concave face and on a convex one, at the radius the pallet will carry; the scale reads its density.
-//   · THE RAMP — a plate printed standing on its long edge, so its big face is layer lines like a pallet's lock face,
+//   · THE RAMP — a plate as long as the bed allows, printed standing on its long edge, so its big face is layer lines like a pallet's lock face,
 //     and a sled of the build's own parts riding on 8T tooth tips. The angle it starts to slide at is μ = tan θ for
 //     a LEGO tooth on printed PLA, the lock's rest friction.
 //
@@ -29,6 +29,7 @@ import { drawnGraham } from './technic-deadbeat.js';
 // filament, so every reading below is taken on the white spool the parts will be printed from.
 export const PRINT_SETUP = Object.freeze({
   nozzle: 0.4, material: 'PLA (glossy)', colour: 'white', source: 'owner, 2026-11-14',
+  bed: 100,                 // the build plate, 100 × 100 mm (the owner's "10x10", read as centimetres)
   infill: 1,                // 100%: the balance reads the part's mass off its solid (or off the scale)
   layer: 0.12,              // the finest common 0.4 mm-nozzle layer; the lock face is perimeters, so the layer sets the
                             // face's ridge pitch along the sliding direction, not the outline's accuracy
@@ -190,11 +191,17 @@ export function couponRing(lib, { w = RING_WALL, h = LEGO_DIM_MM.layer } = {}) {
   return { name: 'coupon-ring', tris: T, R, Ro, h, n, area: polyArea(outer) - polyArea(inner) };
 }
 
-// THE RAMP: a plate 100 × 30 × 4 mm, exported STANDING on its long edge (z up the 30), so its two big faces print as
-// perimeters, the lock face's texture, and the sled slides ALONG the layer lines as a tooth slides along a pallet.
-// These three are a jig's, chosen for handling, not derived: four sled lengths of run, a face wider than the sled,
-// and thick enough not to flex standing up.
-export const RAMP = Object.freeze({ L: 100, H: 30, T: 4 });
+// THE PRINTABLE AREA: the bed less a skirt's allowance on every side (a skirt drawn 3 mm off the part plus its line,
+// rounded up to 5 mm), so every piece must lie inside bed − 2 × 5 mm. The probe holds every coupon's footprint to it.
+export const SKIRT_ALLOW = 5;
+export const PRINT_AREA = PRINT_SETUP.bed - 2 * SKIRT_ALLOW;
+
+// THE RAMP: a plate exported STANDING on its long edge (z up its height), so its two big faces print as perimeters,
+// the lock face's texture, and the sled slides ALONG the layer lines as a tooth slides along a pallet. Its LENGTH is
+// the printable area (90 mm on the owner's bed: nearly four lengths of the 24 mm sled to run on). Its height and
+// thickness are a jig's, chosen for handling, not derived: a face wider than the sled, and thick enough not to flex
+// standing up.
+export const RAMP = Object.freeze({ L: PRINT_AREA, H: 30, T: 4 });
 export function couponRamp({ L = RAMP.L, H = RAMP.H, T: t = RAMP.T } = {}) {
   const outer = [[0, 0], [L, 0], [L, t], [0, t]], c = [L / 2, t / 2];
   // a box: its footprint is the plate's thickness × length on the bed, extruded H up
