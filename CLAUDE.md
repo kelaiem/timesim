@@ -1165,6 +1165,14 @@ when it is the program, and exports the assembly half and the spec table).
 `--sweep native` is the default when the engine's binary is fresh; `--only`
 narrows it, and `native-host.yml`'s `local-preflight` runs it narrowed. It is
 not the chrome, offline, boot-yield or the battery's probe jobs, and says so.
+**Since landing 15 it is INCREMENTAL by §152's rule**: a whole run that passes
+leaves a baseline in `.battery-local/` (gitignored), and the next run restricts
+the five restrictable sweeps to the units whose key moved against it (on the JS
+sweep: the engine has no restricted route), unions them back through `assemble`
+and sweeps each point against its stored payload. Any change to the code that
+produces inheritable rows (CI's lists plus the native sweep, kernel and host
+files) runs whole and says why; only a whole, passing run writes a baseline;
+`--whole` forces one.
 
 State (camera pose, wind, τ) persists via the dev server's `/__state` temp
 file, falling back to `localStorage`. **Back it up before clearing it** —

@@ -50,3 +50,4 @@ tools/node_modules
 
 # §338 landing 12: the native sweep engine is built per host by tools/native-sweep/build.mjs, never committed
 tools/native-sweep/build/
+.battery-local/
