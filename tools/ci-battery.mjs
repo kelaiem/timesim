@@ -1072,11 +1072,12 @@ export const SPEC_POINTS = [
   // alarm, so when the r 11.5 balance's round case moved the arc gong out to r 47.90 and the 14,400 free outline (fitted
   // without the gong, on the seated gong's premise that it follows the outline) cut through it, the wire and its post
   // stood 0.000 on caseMiddle and the pusher's bore sleeve with every gate green. The free fit now holds the unseated
-  // arc, and this point sweeps the build it holds. It boots the two filed rows every alarm-carrying free build carries:
-  // TODO 275's button seat and §261's depth cap.
+  // arc, and this point sweeps the build it holds (the outline grew 973.15 → 999.65 mm² round the ring; the wire stands
+  // 0.672 off caseMiddle and the post 0.555). It boots the one filed row every form build carries, §261's depth cap: the
+  // grown outline's wall no longer stands proud of the pusher button's seat plane, so TODO 275's row does not fire here.
   { name: 'free-alarm', q: 'case=free', expect: 'declared', sweep: true,
-    expectWarns: ['TODO 275: the case wall stands', '§261: cased assembly'],
-    why: '§343 landing 4 — the free case with the alarm and its arc gong held in the fit; boots exactly TODO 275\'s and §261\'s rows, swept' },
+    expectWarns: ['§261: cased assembly'],
+    why: '§343 landing 4 — the free case with the alarm and its arc gong held in the fit; boots exactly §261\'s row, swept' },
   // TODO 298 landing 3 — THE BUILD WITHOUT THE ALARM, ON A BOX FORM CASE. Until TODO 298 no alarm-free box build had ever
   // been swept: the battery's tables named the alarm's units and threw, and the case was cut to the solvers' guess, through
   // the setting lever. Now the battery stands down the module's rows on the build's own word and the case is cut to its
