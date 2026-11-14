@@ -23860,7 +23860,10 @@ const JMP_REACH = JMP_LEVER - (JMP_W / 2) * G.JUMPER_TIP_CONE_F;
 // stood) stands 0.1365 off the jumper's lifter bar at 233.5° and 0.1935 at
 // 234.0°, so the scan's first clear station moved half a degree. Re-verified as
 // the tripwire asks: probe-149-lifter-width.mjs re-measured the span below.
-const JMP_AZ_MEASURED_DEG = 234.0;
+// §343 landing 3 — 234.0° → 254.0°: the r 11.5 balance moved the designed train's stations and the solve re-sited
+// the jumper; the lifter's span bound beside it stays silent there, and the designed point's battery sweep holds the
+// station clear.
+const JMP_AZ_MEASURED_DEG = 254.0;
 let JMP_AZ = (() => {
   const capLocal = { x: P.dial.x - SETTING_CAP_XY.x - MW_STUD.x, y: SETTING_CAP_XY.y - P.dial.y - MW_STUD.y };
   return Math.atan2(-capLocal.y, -capLocal.x);   // stud-relative, dialFace frame: away from the cap
@@ -41157,7 +41160,12 @@ const ALARM_JUMPER_CREST_RAY_R = alarmColumnWheel.userData.sawSeatAt(0, ALARM_JU
 // length. Solved as a FIXED POINT rather than cut anywhere: iterate the whole
 // chain until the length stops moving. It converges in a handful of passes
 // because the arc's correction is ~2% of the ray's answer.
-const ALARM_JUMPER_STEPS = 5;
+// §343 LANDING 3 RE-FOLDED IT, 5 → 3 steps, the hand kept. At the r 11.5 balance the cutaway grew under 5/− (the
+// anchor at (13.92, −1.60) on 0.208 of plate, under the 0.316 its foot needs), so every step count at both hands was
+// booted on the designed train and read for the build's own refusals (seating, the alarm link's site solve, the
+// column driver's outline): 3/− is the one fold that refuses nothing. 1/+ and 5/+ seat badly, 7/− and 9/− land off the
+// plate, and 0/±, 1/−, 6/+ … 11/± move the alarm link's site off the one its constants were measured at (§308).
+const ALARM_JUMPER_STEPS = 3;
 const ALARM_JUMPER_OFF = ALARM_JUMPER_STEPS * ALARM_COL_STEP + ALARM_JUMPER_SEAT_PHI;
 const ALARM_JUMPER_AZ = ALARM_LOCK_ENGAGED + ALARM_JUMPER_OFF;
 const ALARM_JUMPER_T = SPRING_FLAT_U;   // bends radially — the movement's one spring stock, in the direction it bends
