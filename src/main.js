@@ -10626,6 +10626,19 @@ const MW_FOLD_OBSTACLE_CLEAR = (() => {
       console.warn(`§234 fold: ${name} L/D ${(L / (2 * r)).toFixed(2)} over TURN_LD_TARGET ${TURN_LD_TARGET} (L ${L.toFixed(3)}, r ${r.toFixed(4)})`);
 }
 const settingRise = SETTING_METAL.rise;
+// TODO 305 — THE PINCH LEG 2 IS SIZED TO, as this build has it. MW_LEG2_R is cut so a leg 2 passing over reservePinion0
+// stands exactly CLEAR_MARGIN above its top (SETTING_ROD_R), and undeclaredClearance's tie control reads that exact
+// margin. Whether leg 2 passes over it is the fold's to say, not the battery's: on the default it does; re-solved for a
+// column that does not bind (stopwork-140), K stands where leg 2 never crosses the pinion. Read in plan off the shipped
+// leg's axis against the envelope the fold was judged by (FOLD_WHEEL_ENVELOPES): the two overlap when the axis comes
+// within the pinion's radius plus the leg's.
+const SETTING_PINCH = (() => {
+  const e = FOLD_WHEEL_ENVELOPES.find((q) => q.name === 'reserve input pinion');
+  const leg = SETTING_METAL.leg2, u = new THREE.Vector3(0, 1, 0).applyQuaternion(leg.quaternion), h = leg.geometry.parameters.height;
+  const a = leg.position.clone().addScaledVector(u, -h / 2), b = leg.position.clone().addScaledVector(u, h / 2);
+  a.z = b.z = 0;
+  return segSegDist3(a, b, new THREE.Vector3(e.x, e.y, 0), new THREE.Vector3(e.x, e.y, 0)) < e.r + MW_LEG2_R;
+})();
 
 // Bevel-gear corner: two small conical gears sharing an apex at `point`, one
 // keyed to each of the two meeting shafts. axisIn/axisOut point AWAY from
@@ -67186,7 +67199,8 @@ window.__clock = {
   get bootWarns() { return __bootWarns; },
   get formHold() { return FORM ? { ...FORM_HOLD_SPEC, boreGrow: FORM_BORE_GROW } : null; },   // TODO 300 — the form case's casing-clamp hold, as cut (src/casing-clamp.js at this build's plateR)
   get formFit() { return { key: FORM_FIT_KEY, from: SPEC.formRectSpec ? 'url' : FORM_SEAT_FIT ? 'seat' : FORM_ALARMFREE_FIT ? 'table' : SPEC.caseShape && SPEC.caseShape !== 'free' ? 'formPlate' : null }; },   // TODO 298 — where this box form case's cut came from (tools/form-fits.mjs reads it)
-  get modules() { return { alarm: ALARM_BUILT }; },   // TODO 298 — which modules this build cut (§325 landing 3's ?alarm=0 builds none of the alarm), for inspect.js' module-aware tables
+  get modules() { return { alarm: ALARM_BUILT }; },
+  get settingPinch() { return SETTING_PINCH; },   // TODO 305 — whether leg 2 passes over the reserve input pinion, where its radius stands it exactly CLEAR_MARGIN off (undeclaredClearance's tie control)   // TODO 298 — which modules this build cut (§325 landing 3's ?alarm=0 builds none of the alarm), for inspect.js' module-aware tables
   get omitted() { return BUILD_OMITTED.map((o) => ({ ...o })); },   // TODO 298 — the meshes the build's own solve left uncut, each with the reason it warned
   get buildWarns() { return __buildWarnEnd === null ? __bootWarns.slice() : __bootWarns.slice(0, __buildWarnEnd); },   // §338
   get runWarns() { return __buildWarnEnd === null ? [] : __bootWarns.slice(__buildWarnEnd); },

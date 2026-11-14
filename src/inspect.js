@@ -3483,6 +3483,10 @@ export function undeclaredSetup(clock, { axes = AXES, pairsTouching, lift = [], 
     a: 'Center wheel', b: 'Third wheel', control: 'hit', bound,
     A: units.get('Center wheel') ?? [], B: units.get('Third wheel') ?? [],
   };
+  // TODO 305 — the tie exists only where the build's leg 2 passes over the pinion it is sized to (clock.settingPinch,
+  // the build's word; a build that publishes none is held to the tie, as before). Where it does not, the control holds
+  // the word the other way: the pair stands clear past the margin, so no tie is read where the build says there is none.
+  tie.pinch = clock.settingPinch !== false;
   const controlsList = [tie, hit];
   // A control selector matching no mesh is itself a failure — the classifier
   // would otherwise report a clean control it never actually measured. It is
@@ -3533,7 +3537,8 @@ export function undeclaredPayload(setup, census, poses) {
     min: isFinite(p.min) ? +p.min.toFixed(7) : null,
     at: p.at,
     meshes: p.meshes,
-    ok: p.control === 'tie' ? Math.abs(p.min - bound) < 1e-6 : p.min < bound,
+    ...(p.control === 'tie' ? { pinch: p.pinch } : {}),
+    ok: p.control === 'tie' ? (p.pinch ? Math.abs(p.min - bound) < 1e-6 : !(p.min < bound + 1e-6)) : p.min < bound,
   }));
   const control = selectorEmpty
     ? `FAIL — control selector matched no mesh (tie ${tie.A.length}×${tie.B.length}, hit ${hit.A.length}×${hit.B.length})`
