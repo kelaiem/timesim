@@ -31714,10 +31714,11 @@ const _pushPerp0 = { x: -_pushU0.y, y: _pushU0.x };
 // and every other unit at −18, 12, 18, 48, 54 and 60; the linkage then clears at 48, 54 and 60 only (at 12 and 18
 // crank B's stud meets the winding arrest's leg-B pinion, at −18 the rod crosses the hammer's arm). 48 is the
 // smallest turn that carries a linkage, and the cushion and tonneau read clear at it too.
+// §343 landing 3 — at the 14,400 movement only the cushion's spiral closes (gong-seats.mjs: the rect's and the tonneau's
+// spirals bury the ring or bring the hammer into the larger balance, so both build the bar), and its unturned pusher
+// meets the hammer's arm and head again (probe-318 on case=cushion&gong=spiral, CONTROL PASS); 48 is still the turn.
 const ALARM_PUSH_TURNS = Object.freeze({
-  'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-20,"caseShape":"rect","reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":18000},"route":null,"tuned":[]}|spiral': 48,
-  'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-20,"caseShape":"cushion","reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":18000},"route":null,"tuned":[]}|spiral': 48,
-  'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-20,"caseShape":"tonneau","reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":18000},"route":null,"tuned":[]}|spiral': 48,
+  'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-20,"caseShape":"cushion","reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":14400},"route":null,"tuned":[]}|spiral': 48,
 });
 const ALARM_PUSH_ROT = (FORM && GONG_SEAT_MODE !== 'arc' ? ALARM_PUSH_TURNS[`${GONG_SPEC_KEY}|${GONG_SEAT_MODE}`] ?? 0 : 0) * DEG2RAD
   + (Number.isFinite(globalThis.__PUSH_TURN_DEG) ? globalThis.__PUSH_TURN_DEG * DEG2RAD : 0);   // a probe's trial turn (tools/probe-318-pusher-turn.mjs)
