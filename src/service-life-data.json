@@ -570,17 +570,17 @@
   }
  },
  "finish": {
-  "rho_m": 1.61069141e-7,
-  "cutBack_u": 0.00349911652
+  "rho_m": 1.61837637e-7,
+  "cutBack_u": 0.00351580897
  },
  "wear": {
   "years": 100,
   "serviceYears": 5,
   "services": 20,
-  "engagementsPerTooth": 1051920000,
-  "slipPerEngagement_m": 0.000508613468,
-  "slip_m": 535020.68,
-  "load_N": 0.000127696867,
+  "engagementsPerTooth": 841536000,
+  "slipPerEngagement_m": 0.000505629492,
+  "slip_m": 425505.42,
+  "load_N": 0.000161080436,
   "hardness_Pa": 6403742450,
   "hardnessHV": 653,
   "kBand": {
@@ -589,42 +589,42 @@
    "adverse": 0.000001,
    "why": "Archard K for a polished steel surface against sapphire under a boundary film, cleaned and relubricated each service: Rabinowicz, Friction and Wear of Materials (1995) Table 6.2 gives 1e-7–1e-6 for lubricated metal pairs and less for a hard non-metal counterface; the favourable corner is a mirror polish holding its epilame"
   },
-  "fromApex_u": 0.0370677328,
-  "cutBack_u": 0.00349911652,
-  "budget_u": 0.0335686163,
-  "lockRunFull_u": 0.14864033,
-  "lockOnly_u": 0.111480248,
+  "fromApex_u": 0.0370678303,
+  "cutBack_u": 0.00351580897,
+  "budget_u": 0.0335520213,
+  "lockRunFull_u": 0.148655939,
+  "lockOnly_u": 0.111491954,
   "corners": {
    "favourable": {
     "K": 1e-8,
-    "volume_m3": 1.06688339e-16,
-    "recession_m": 0.0000016763065,
-    "overBudget": 0.131777448
+    "volume_m3": 1.07032097e-16,
+    "recession_m": 0.00000167900492,
+    "overBudget": 0.132054859
    },
    "nominal": {
     "K": 1e-7,
-    "volume_m3": 1.06688339e-15,
-    "recession_m": 0.00000530094658,
-    "overBudget": 0.41671688
+    "volume_m3": 1.07032097e-15,
+    "recession_m": 0.00000530947976,
+    "overBudget": 0.41759413
    },
    "adverse": {
     "K": 0.000001,
-    "volume_m3": 1.06688339e-14,
-    "recession_m": 0.000016763065,
-    "overBudget": 1.31777448
+    "volume_m3": 1.07032097e-14,
+    "recession_m": 0.0000167900492,
+    "overBudget": 1.32054859
    }
   },
   "needHardnessHV": {
-   "favourable": 11.3395,
-   "nominal": 113.395,
-   "adverse": 1133.95
+   "favourable": 11.3873,
+   "nominal": 113.873,
+   "adverse": 1138.73
   },
   "holdsAt": [
    "favourable",
    "nominal"
   ],
-  "beats": 15778800000,
-  "escapeTurns": 525960000
+  "beats": 12623040000,
+  "escapeTurns": 420768000
  },
  "oilAgeing": {
   "posed": true,
@@ -663,78 +663,78 @@
   "intervalYears": 5,
   "readDeg": 0.1,
   "intervals": 8,
-  "interpErrDeg": 0.0251894802,
+  "interpErrDeg": 0.0233322466,
   "samples": [
    {
     "f": 0,
     "years": 0,
-    "etaTotal": 0.220332011,
-    "vertical": 201.646381,
-    "flat": 293.984196
+    "etaTotal": 0.220595962,
+    "vertical": 200.093383,
+    "flat": 288.042964
    },
    {
     "f": 0.125,
     "years": 0.625,
-    "etaTotal": 0.214061946,
-    "vertical": 193.814049,
-    "flat": 286.648894
+    "etaTotal": 0.214337248,
+    "vertical": 192.470776,
+    "flat": 280.986409
    },
    {
     "f": 0.25,
     "years": 1.25,
-    "etaTotal": 0.207890883,
-    "vertical": 186.183005,
-    "flat": 279.363747
+    "etaTotal": 0.208176586,
+    "vertical": 185.034819,
+    "flat": 273.975046
    },
    {
     "f": 0.375,
     "years": 1.875,
-    "etaTotal": 0.201817978,
-    "vertical": 178.752624,
-    "flat": 272.12985
+    "etaTotal": 0.202113156,
+    "vertical": 177.785343,
+    "flat": 267.009852
    },
    {
     "f": 0.5,
     "years": 2.5,
-    "etaTotal": 0.195842393,
-    "vertical": 171.522018,
-    "flat": 264.948333
+    "etaTotal": 0.196146142,
+    "vertical": 170.721938,
+    "flat": 260.09184
    },
    {
     "f": 0.625,
     "years": 3.125,
-    "etaTotal": 0.189963295,
-    "vertical": 164.490035,
-    "flat": 257.820364
+    "etaTotal": 0.190274733,
+    "vertical": 163.843955,
+    "flat": 253.222057
    },
    {
     "f": 0.75,
     "years": 3.75,
-    "etaTotal": 0.184179854,
-    "vertical": 157.655267,
-    "flat": 250.747146
+    "etaTotal": 0.184498124,
+    "vertical": 157.150508,
+    "flat": 246.401583
    },
    {
     "f": 0.875,
     "years": 4.375,
-    "etaTotal": 0.178491248,
-    "vertical": 151.016062,
-    "flat": 243.72992
+    "etaTotal": 0.178815513,
+    "vertical": 150.640479,
+    "flat": 239.631538
    },
    {
     "f": 1,
     "years": 5,
-    "etaTotal": 0.172896655,
-    "vertical": 144.570526,
-    "flat": 236.769966
+    "etaTotal": 0.173226103,
+    "vertical": 144.312523,
+    "flat": 232.913075
    }
   ],
   "dropDeg": {
-   "vertical": 57.0758554,
-   "flat": 57.2142299
+   "vertical": 55.7808605,
+   "flat": 55.1298887
   },
   "targetDeg": 200,
   "claimDeg": 126,
-  "knockDeg": 310.459626
+  "knockDeg": 327.061302
  }
 }

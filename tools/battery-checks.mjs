@@ -472,6 +472,14 @@ export const BATTERY = [
     note: (r) => `${r.population} joints: ${r.answered} answered (`
       + Object.entries(r.byRegime || {}).map(([k, n]) => `${n} ${k}`).join(', ')
       + `), ${r.debt} in the arrival inventory` },
+  // TODO 299 step 1 — the service class of every member: lubrication's shape (pure data, a pure judge, controls on broken
+  // copies). Every unit the build labels answers EXPENDABLE or LIFETIME, and an expendable part names a mesh that is there
+  // or that the build says it left uncut.
+  { name: 'serviceClass', opts: {},
+    gate: '0 unanswered units, 0 malformed rows, 0 stale expendable parts, controls PASS',
+    fails: (r) => [...r.unanswered, ...r.malformed, ...r.stale, ...(String(r.control).startsWith('PASS') ? [] : [{ control: r.control }])],
+    note: (r) => `${r.population} units: ${r.lifetime} lifetime, ${r.expendableUnits} expendable; ${r.replaced.length} part(s) replaced at service (${r.replaced.join(', ')}); `
+      + `${r.notBuilt.length} classed unit(s) not in this build; ${r.control}` },
   { name: 'transfers', opts: {},
     gate: '0 malformed, 0 stale, 0 mismatched, 0 unwaived envelope misses, 0 stale waivers, control PASS',
     fails: (r) => [
