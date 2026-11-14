@@ -17646,13 +17646,18 @@ const balanceCock = G.makeCock({
       }
       return c;
     };
-    for (let d = 0; d <= 30; d++) {
+    // §343 landing 3 — THE SEARCH RUNS THE WHOLE CIRCLE, nearest the design seat first. It stopped at ±30°, a bound
+    // with no constraint behind it (the cock scan's step is 1°, its span is not 30°), and at the r 11.5 balance the
+    // designed train's nearest clear seat is +53° (0.1519 clear): the spring breathes to 12.44, past the rim's 11.80,
+    // and the stud seat is what turns its far side off the fourth wheel. Only a seat the whole circle cannot give means
+    // the spring must move in position space (stratum or station).
+    for (let d = 0; d <= 180; d++) {
       for (const s of d === 0 ? [1] : [1, -1]) {
         const off = DESIGN + s * d * DEG2RAD;
         if (clearAt(off) >= CLEAR_MARGIN) return off;
       }
     }
-    console.warn(`§246: no stud seat within ±30° of the design azimuth keeps the breathing hairspring ${CLEAR_MARGIN} off the fourth wheel's tips (${clearAt(DESIGN).toFixed(4)} at the design seat) — re-site the spring in position space`);
+    console.warn(`§246: no stud seat on the whole circle keeps the breathing hairspring ${CLEAR_MARGIN} off the fourth wheel's tips (${clearAt(DESIGN).toFixed(4)} at the design seat) — re-site the spring in position space`);
     return DESIGN;
   })();
   hairspringGroup.rotation.z = toJewel + STUD_OFF - hsUD.endAngle;
