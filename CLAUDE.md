@@ -255,6 +255,11 @@ model whose pallets are parts' SILHOUETTES (`deadbeatModel`, §287's quasi-stati
 back to the grids' resolution and lets a drawn textbook Graham escape; and `solveA1`, every candidate pair at every
 quarter-turn keying and lattice point on the 8T, finds no placement that even lets the wheel rest (2,541,000 tried,
 closest 0.55 mm). `tools/probe-technic-deadbeat.mjs` holds it; the recoil anchor stays.
+**Since §345 the hybrid route PRINTS what LEGO cannot supply** (`src/technic-printed.js`, landing 0): the
+calibration prints first — a cross-hole fit strip cut to 3705's section as the pack draws it, a ring whose bore is
+the printed Graham's lock radius, and a friction ramp — written as binary STL by `tools/printed-stl.mjs` and held by
+`tools/probe-technic-printed.mjs` (closed, manifold, every wall over two nozzle widths). `PRINT_MEASURED` is the
+owner's readings, and no printed dimension is quoted while its row is empty.
 **Since §300 each build has a PARTS LIST** (`src/technic-bom.js`) **and since
 §302 a STEP ORDER** (`src/technic-steps.js`, pure): the placements partitioned
 into steps by rules read off the placements (columns bottom-up, a part held in
