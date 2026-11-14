@@ -10267,6 +10267,41 @@ const CAP_SOLVE = await (async () => {
     }
     return m;
   };
+  // TODO 305 — AND THE STEM. Every member on the stem axis turns about it (the winding pinion, its saw, the square and
+  // the clutch on it), so what it can occupy is a CAPSULE about that axis: radius KEYLESS_STACK_R, the bound TODO 211
+  // asserts every member of the stack under, from the stack's inboard end (read off the metal: the pinion group's
+  // innermost point, or the square's SQ_BOT on the spinner, at the same origin, if that lies further in; the pull only
+  // carries the spinner OUTWARD) out past the plate's edge, beyond which no setting metal stands. The held heading never
+  // reaches it, but a heading the walk below turns can (measured on stopwork-140: leg 1 straight through the pinion,
+  // three intraUnit rows). The setting metal's rods are judged as SEGMENTS — a rod's vertices sit only on its end
+  // rings, so a points read would miss one crossing the stem mid-span — and every other mesh by its points.
+  const stemStack = (() => {
+    windPinionGroup.updateWorldMatrix(true, true);
+    const inv = windPinionGroup.matrixWorld.clone().invert(), m = new THREE.Matrix4(), v = new THREE.Vector3();
+    let yIn = SQ_BOT;
+    windPinionGroup.traverse((o) => { if (!o.isMesh) return; m.multiplyMatrices(inv, o.matrixWorld);
+      const pos = o.geometry.attributes.position; for (let i = 0; i < pos.count; i++) yIn = Math.min(yIn, v.fromBufferAttribute(pos, i).applyMatrix4(m).y); });
+    const at = (sd) => new THREE.Vector3(uWind.x * sd, uWind.y * sd, Z_KEYLESS);
+    return { a: at(pinDist + yIn), b: at(plateR + CROWN_PULL_DIST), r: KEYLESS_STACK_R };
+  })();
+  const stemClear = (root, pts) => {
+    let m = Infinity;
+    const u = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+    if (root) root.updateWorldMatrix(true, true);
+    if (root) root.traverse((o) => {
+      if (!o.isMesh || o.geometry.type !== 'CylinderGeometry' || !o.name.startsWith('setting')) return;
+      const { height: h, radiusTop: r } = o.geometry.parameters;   // makeRodSegment's rod: its axis is local +Y
+      u.copy(up).applyQuaternion(o.quaternion);
+      const a = o.position.clone().addScaledVector(u, -h / 2), b = o.position.clone().addScaledVector(u, h / 2);
+      m = Math.min(m, segSegDist3(a, b, stemStack.a, stemStack.b) - r - stemStack.r - CLEAR_MARGIN);
+    });
+    const { a: A, b: B, r: R } = stemStack, dx = B.x - A.x, dy = B.y - A.y, dz = B.z - A.z, L2 = dx * dx + dy * dy + dz * dz;
+    for (const p of pts) {   // a point against the axis segment, inline: called on every vertex of every candidate
+      const t = Math.min(1, Math.max(0, ((p[0] - A.x) * dx + (p[1] - A.y) * dy + (p[2] - A.z) * dz) / L2));
+      m = Math.min(m, Math.hypot(p[0] - A.x - t * dx, p[1] - A.y - t * dy, p[2] - A.z - t * dz) - R - CLEAR_MARGIN);
+    }
+    return m;
+  };
   let foldsSeen = 0;   // candidates past the fold's own clauses (buildSettingMetal's noFold) — the walk's trigger below
   // returns the worst clause margin at the best swing (≥ 0 = open), with the clause named
   const judge = async (dl) => {
@@ -10292,6 +10327,8 @@ const CAP_SOLVE = await (async () => {
     await breathe(77);
     const arbM0 = arbClear(cand0);
     if (arbM0 < 0) { disposeTree(scratch); return { m: arbM0, clause: 'transfer arbor', s: 0 }; }
+    const stemM = stemClear(scratch, cand0);
+    if (stemM < 0) { disposeTree(scratch); return { m: stemM, clause: 'stem', s: 0 }; }
     const wh0 = foldWheelClear(cand0);
     if (wh0.m < 0) { disposeTree(scratch); return { m: wh0.m, clause: wh0.by, s: 0 }; }
     const r0 = await solveReserveSwing(cand0, rsvStatic);
@@ -10303,6 +10340,8 @@ const CAP_SOLVE = await (async () => {
     const arbM = arbClear(cand);
     await breathe(79);
     if (arbM < 0) return { m: arbM, clause: 'transfer arbor', s: 0 };
+    const stemMs = stemClear(null, cand);   // every phase the corners sweep (the rods were judged whole at phase 0)
+    if (stemMs < 0) return { m: stemMs, clause: 'stem', s: 0 };
     const wh = foldWheelClear(cand);
     if (wh.m < 0) return { m: wh.m, clause: wh.by, s: 0 };
     const r = await solveReserveSwing(cand, rsvStatic);
