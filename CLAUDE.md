@@ -255,6 +255,11 @@ model whose pallets are parts' SILHOUETTES (`deadbeatModel`, §287's quasi-stati
 back to the grids' resolution and lets a drawn textbook Graham escape; and `solveA1`, every candidate pair at every
 quarter-turn keying and lattice point on the 8T, finds no placement that even lets the wheel rest (2,541,000 tried,
 closest 0.55 mm). `tools/probe-technic-deadbeat.mjs` holds it; the recoil anchor stays.
+**Since §345 the hybrid route PRINTS what LEGO cannot supply** (`src/technic-printed.js`, landing 0): the
+calibration prints first — a cross-hole fit strip cut to 3705's section as the pack draws it, a ring whose bore is
+the printed Graham's lock radius, and a friction ramp — written as binary STL by `tools/printed-stl.mjs` and held by
+`tools/probe-technic-printed.mjs` (closed, manifold, every wall over two nozzle widths). `PRINT_MEASURED` is the
+owner's readings, and no printed dimension is quoted while its row is empty.
 **Since §300 each build has a PARTS LIST** (`src/technic-bom.js`) **and since
 §302 a STEP ORDER** (`src/technic-steps.js`, pure): the placements partitioned
 into steps by rules read off the placements (columns bottom-up, a part held in
@@ -1165,6 +1170,14 @@ when it is the program, and exports the assembly half and the spec table).
 `--sweep native` is the default when the engine's binary is fresh; `--only`
 narrows it, and `native-host.yml`'s `local-preflight` runs it narrowed. It is
 not the chrome, offline, boot-yield or the battery's probe jobs, and says so.
+**Since landing 15 it is INCREMENTAL by §152's rule**: a whole run that passes
+leaves a baseline in `.battery-local/` (gitignored), and the next run restricts
+the five restrictable sweeps to the units whose key moved against it (on the JS
+sweep: the engine has no restricted route), unions them back through `assemble`
+and sweeps each point against its stored payload. Any change to the code that
+produces inheritable rows (CI's lists plus the native sweep, kernel and host
+files) runs whole and says why; only a whole, passing run writes a baseline;
+`--whole` forces one.
 
 State (camera pose, wind, τ) persists via the dev server's `/__state` temp
 file, falling back to `localStorage`. **Back it up before clearing it** —
