@@ -783,7 +783,10 @@ export const SPEC_POINTS = [
   // The designed-train VARIANTS below keep their boots (`arrangement=designed&…`, the builds they always
   // were) but no longer sweep: against the arrangement every one changes most of the movement, a near-full
   // sweep each, and their validated rows were withdrawn with the flip (tools/validated-configs.mjs --drop).
-  { name: 'designed', q: 'arrangement=designed', expect: 'silent', sweep: true, why: '§314 — the designed train (barrel 145°, reserve on two meshes, module as designed): the old identity, swept' },
+  // §343 landing 3 — NO LONGER SWEPT: at the larger balance its hack rod runs over its alarm barrel's ratchet at every
+  // pose (TODO 307, a layout conflict between the stop work and the alarm module on this train), so its sweep reads a
+  // FORBIDDEN pair and it left src/validated-configs.js. It still boots silent, which this row holds.
+  { name: 'designed', q: 'arrangement=designed', expect: 'silent', why: '§314 — the designed train (barrel 145°, reserve on two meshes, module as designed): the old identity; unswept since §343 landing 3 (TODO 307)' },
   // §33 step 1 / step 2 — the stem and crown azimuths, each a shipped handle.
   { name: 'crownaz=90', q: 'arrangement=designed&crownaz=90', expect: 'any', why: '§33 step 1 — the crown a quarter turn round' },
   { name: 'stemaz=200', q: 'arrangement=designed&stemaz=200', expect: 'any', why: '§33 step 2 — the stem decoupled from the barrel' },
@@ -1168,8 +1171,8 @@ const POINT_COSTS = {
   // the movement, the same reach §308 landing 5's arrangement measured (1174 s,
   // 59 changed); until a run writes its own `ms` back it carries that (a wrong
   // number costs wall clock, never a verdict). The six designed-train variants
-  // that sat here stopped sweeping with the flip (see their SPEC_POINTS rows).
-  designed: 1174,
+  // that sat here stopped sweeping with the flip (see their SPEC_POINTS rows), and since §343 landing 3 so has
+  // `designed` itself (TODO 307); its 1174 s is the reach the rows below still quote.
   // The form default is a FORM build: against the designed round default its
   // plate, case, train and module all changed, so its restriction reached most
   // of the movement (1344 s: 62 changed, inspection 262, clearances 222,
