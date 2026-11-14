@@ -361,6 +361,16 @@ own; never edit it; `--check` re-derives it in `native-host.yml` on both
 architectures, so a build whose wear record moves owes a re-run).
 `tools/smoke-service-life.mjs` holds the page to the record (the finish it
 draws sets the tip back by the build's own cut-back, the readouts, the √t year).
+**Since §346 it also draws the OIL AGEING**, a POSED law (`OIL_AGEING` in
+`layout.js`): the FRICTION rows a lubricated regime prices (read off
+`REGIME_INFO`, never listed) move linearly from the nominal corner to the
+adverse one across each interval and back at each service, and the energy
+column's own walk (`GOING_POWER.at`, each stage naming the `row` it is priced
+with) publishes the swing at each sample (`going.energy.oilAgeing`, spaced so the
+page's straight lines read within half its 0.1° readout). The `equalisation`
+gate's row 23 re-derives every sample from the two corners' stages, and
+`tools/probe-346-oil-ageing.mjs` watches it refuse nine sabotages. It moves the
+swing only: not the wear, not the rate.
 
 `explain.html` is the mechanism explainer (§65, plates for every
 mechanism as of §67), styled as the HUD. §95 made the PRIMER the HUD's

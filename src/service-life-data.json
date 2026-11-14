@@ -625,5 +625,114 @@
   ],
   "beats": 15778800000,
   "escapeTurns": 525960000
+ },
+ "oilAgeing": {
+  "posed": true,
+  "shape": "linear",
+  "why": "no cited degradation curve: the ends are band corners, the shape between them is posed",
+  "fresh": "nominal",
+  "aged": "adverse",
+  "rows": [
+   "muJewel",
+   "muPlain",
+   "muChain",
+   "springInt"
+  ],
+  "held": [
+   "muTooth",
+   "escEff",
+   "qOther",
+   "endContactMm"
+  ],
+  "coefficients": {
+   "fresh": {
+    "muJewel": 0.12,
+    "muPlain": 0.15,
+    "muChain": 0.15,
+    "springInt": 0.9
+   },
+   "aged": {
+    "muJewel": 0.15,
+    "muPlain": 0.2,
+    "muChain": 0.2,
+    "springInt": 0.85
+   }
+  },
+  "intervalYears": 5,
+  "readDeg": 0.1,
+  "intervals": 8,
+  "interpErrDeg": 0.0157905527,
+  "samples": [
+   {
+    "f": 0,
+    "years": 0,
+    "etaTotal": 0.220332011,
+    "vertical": 201.646381,
+    "flat": 293.984196
+   },
+   {
+    "f": 0.125,
+    "years": 0.625,
+    "etaTotal": 0.217953982,
+    "vertical": 196.564278,
+    "flat": 289.878886
+   },
+   {
+    "f": 0.25,
+    "years": 1.25,
+    "etaTotal": 0.215590545,
+    "vertical": 191.60738,
+    "flat": 285.802087
+   },
+   {
+    "f": 0.375,
+    "years": 1.875,
+    "etaTotal": 0.213241637,
+    "vertical": 186.773414,
+    "flat": 281.754029
+   },
+   {
+    "f": 0.5,
+    "years": 2.5,
+    "etaTotal": 0.210907193,
+    "vertical": 182.060066,
+    "flat": 277.734939
+   },
+   {
+    "f": 0.625,
+    "years": 3.125,
+    "etaTotal": 0.208587147,
+    "vertical": 177.464985,
+    "flat": 273.745038
+   },
+   {
+    "f": 0.75,
+    "years": 3.75,
+    "etaTotal": 0.206281437,
+    "vertical": 172.985787,
+    "flat": 269.784547
+   },
+   {
+    "f": 0.875,
+    "years": 4.375,
+    "etaTotal": 0.203989997,
+    "vertical": 168.620069,
+    "flat": 265.85368
+   },
+   {
+    "f": 1,
+    "years": 5,
+    "etaTotal": 0.201712765,
+    "vertical": 164.365411,
+    "flat": 261.952648
+   }
+  ],
+  "dropDeg": {
+   "vertical": 37.2809704,
+   "flat": 32.0315477
+  },
+  "targetDeg": 200,
+  "claimDeg": 126,
+  "knockDeg": 310.459626
  }
 }

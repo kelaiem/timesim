@@ -16,6 +16,11 @@
   the record's own laws applied to its own numbers, each named where it is used: Archard's volume grows with
   the slip and so with time, the depth goes as the square root of the volume, and the depth is RADIAL, the
   reading the lock's budget uses (§344). Its chrome is English, as the bench's is.
+
+  BUILT §346 adds the OIL: the balance's swing falling across each interval as the oil ages and recovering at
+  each service, drawn off the record's `oilAgeing` samples (joined by straight lines, at the spacing the build
+  derived for that). The law is POSED and the page says so: the ends are the friction band's corners, the
+  shape between them is linear because no source gives one.
 -->
 <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
 <link rel="alternate icon" href="./favicon.png" />
@@ -28,7 +33,7 @@
   --rule: rgba(255,255,255,0.08); --rule-strong: rgba(255,255,255,0.14);
   --ink: #d8dee6; --muted: #8b95a1; --head: #8fa6bf; --link: #cfe3ff; --mono-ink: #cfd6dd;
   --accent: #3a6bd8; --bad: #e05555; --good: #58b368;
-  --steel: #7d8b9a; --steel-edge: #c9d3dd; --fav: #58b368; --nom: #cfe3ff; --adv: #e0a355; --budget: #e05555;
+  --steel: #7d8b9a; --steel-edge: #c9d3dd; --fav: #58b368; --nom: #cfe3ff; --adv: #e0a355; --budget: #e05555; --vert: #c9a6ff; --flat: #8fd3d0; --target: #58b368;
   --f-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --f-num: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   color-scheme: dark;
@@ -92,6 +97,8 @@ h2 { font-size: 12px; margin: 0; letter-spacing: 0.06em; text-transform: upperca
 @media (max-width: 860px) { .lower { grid-template-columns: minmax(0, 1fr); } }
 code { font: 11px/1.4 var(--f-num); color: var(--mono-ink); background: rgba(255,255,255,0.06); padding: 0.1em 0.35em; border-radius: 4px; }
 .cap { color: var(--muted); font-size: 12px; margin: 8px 2px 0; }
+.oil p { color: var(--muted); font-size: 12px; margin: 0 4px 8px; }
+.oil p b { color: var(--ink); font-weight: 600; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
@@ -146,6 +153,14 @@ code { font: 11px/1.4 var(--f-num); color: var(--mono-ink); background: rgba(255
           <div><span class="k">Same every interval</span><span class="v">×<span id="s-n">20</span></span><span class="s">Archard: volume grows with sliding</span></div>
         </div>
       </fieldset>
+      <fieldset>
+        <legend>The oil since its last service (posed)</legend>
+        <div class="stats">
+          <div><span class="k">Oil's age</span><span class="v" id="o-age"></span><span class="s" id="o-share"></span></div>
+          <div><span class="k">Swing, upright</span><span class="v" id="o-vert"></span><span class="s" id="o-vert-s"></span></div>
+          <div><span class="k">Swing, dial up</span><span class="v" id="o-flat"></span><span class="s" id="o-flat-s"></span></div>
+        </div>
+      </fieldset>
     </div>
   </div>
 
@@ -162,12 +177,33 @@ code { font: 11px/1.4 var(--f-num); color: var(--mono-ink); background: rgba(255
     </div>
   </div>
 
+  <div class="lower">
+    <div class="panel">
+      <h2 style="margin: 4px 4px 10px">The balance's swing as the oil ages</h2>
+      <svg id="swing" viewBox="0 0 640 280" role="img" aria-label="The balance's swing against years, falling across each service interval and recovering at each service"></svg>
+      <div class="legend" id="swing-legend"></div>
+      <p class="cap" id="swing-cap"></p>
+    </div>
+    <div class="panel oil">
+      <h2 style="margin: 4px 4px 10px">The oil law, and why it is posed</h2>
+      <p>Between services a watch oil spreads, thickens and oxidises, its friction rises, and the balance swings less. No source this model uses gives a measured curve for how that happens, so the page uses a <b>posed law</b>: one stated on purpose and labelled as such, not simulated.</p>
+      <p><b>Which friction ages</b> comes from the movement's lubrication map: every friction figure that a lubricated joint is priced with. That is <span id="oil-rows"></span>. <span id="oil-held"></span></p>
+      <p><b>The two ends</b> are the ends of the movement's own friction ranges: fresh oil is the nominal figure, the serviced watch; oil at the end of an interval is the worst figure the range allows, which the jewel row already describes as thinned or aged oil.</p>
+      <p><b>The shape between them</b> is the posed part: a straight line in time since the last service. A real oil probably holds up and then fails late, which would keep the swing up for longer and drop it harder near the end.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Friction</th><th>Fresh</th><th>Aged</th></tr></thead>
+        <tbody id="t-oil"></tbody>
+      </table></div>
+    </div>
+  </div>
+
   <div class="notes">
     <h2>What this does and does not claim</h2>
     <p><b>The worn shape is the model's, not a measured one.</b> The wear takes a volume of steel off the tip. The page shows that volume removed as a flat cut across the tooth, square to the wheel's radius. That is the direction the lock's allowance is measured in: the pallet stones are set to the tooth circle, and a shorter tooth circle eats into the lock. A real tip would wear rounder. The depth is what matters for the lock, and the depth is what the model prices.</p>
     <p><b>The allowance</b> is how far the tooth can shorten before the lock is down to its safety share, the part kept in reserve for shocks. Only the extra "run" beyond that can be spent. Part of it is already spent before the watch runs: the tip is finished to a small radius, which sets it back from its sharp drawn point.</p>
-    <p><b>Not modelled here:</b> oil that ages between services (the law assumes each service restores the oil film, so the rate stays constant); worn particles that stay in the oil and speed up wear (assumed cleaned out at each service); wear on the pallet stones, which are much harder than the steel; and wear in the pivots. Time on this page is a slider, not the movement's clock.</p>
-    <p>The numbers come from the energy record of a booted build, written to <code>src/service-life-data.json</code> by <code>tools/service-life-data.mjs</code>. The derivation is TODO&nbsp;299 and §344, which made the depth radial.</p>
+    <p><b>The oil's ageing is posed, and it moves only the swing.</b> The swing chart is the movement's own energy calculation at the aged friction, but the way the friction climbs is a stated law, not a measured one. The aged oil does not feed back into the wear: the wear rate is the same all through each interval, because the wear coefficient's range is meant to cover a serviced, oiled contact. Nor does it move the rate the watch keeps: the record has no law for how the rate changes with the swing. The oil on the pallet faces, which in a real watch is the first to age, is not one of the frictions that age here, because the lubrication map prices no friction figure for it.</p>
+    <p><b>Not modelled here:</b> worn particles that stay in the oil and speed up wear (assumed cleaned out at each service); wear on the pallet stones, which are much harder than the steel; and wear in the pivots. Time on this page is a slider, not the movement's clock.</p>
+    <p>The numbers come from the energy record of a booted build, written to <code>src/service-life-data.json</code> by <code>tools/service-life-data.mjs</code>. The derivation is TODO&nbsp;299 and §344, which made the depth radial; the oil law is §346.</p>
   </div>
 </div>
 <script type="module">
@@ -286,7 +322,10 @@ $('tip-legend').innerHTML = `<span class="fill" style="--c:${css('--steel')}">th
   + `<span style="--c:${css('--budget')}">allowance used up</span>`;
 
 // ---- the chart ---------------------------------------------------------------
-const ch = $('chart'), CW = 640, CH = 280, L0 = 52, R0 = 16, T0 = 14, B0 = 34;
+// a chart's margins follow the label size it is drawn at (fontFor): on a phone the labels are larger in the
+// viewBox's units, and a fixed margin put the axis title on top of the year figures
+const chartFs = (svgEl) => fontFor(svgEl);
+const ch = $('chart'), CW = 640, CH = 280, cFs = chartFs(ch), L0 = Math.max(52, 2.2 * cFs + 24), R0 = 16, T0 = 14, B0 = Math.max(34, 2 * cFs + 14);
 const yMaxUm = Math.ceil(um(Math.max(W.corners.adverse.recession_m, budget_m)) * 1.12 / 2) * 2;
 const X = (yr) => L0 + (CW - L0 - R0) * yr / W.years, Y = (u) => CH - B0 - (CH - B0 - T0) * u / yMaxUm;
 for (let v = 0; v <= yMaxUm; v += yMaxUm > 12 ? 4 : 2) {
@@ -297,7 +336,7 @@ for (let v = 0; v <= yMaxUm; v += yMaxUm > 12 ? 4 : 2) {
 for (let s = 0; s <= W.services; s++) {
   const yr = s * W.serviceYears, big = s % 4 === 0;
   el('line', { x1: X(yr), x2: X(yr), y1: CH - B0, y2: CH - B0 + (big ? 7 : 4), stroke: css('--muted'), 'stroke-width': 1 }, ch);
-  if (big) label(ch, X(yr), CH - B0 + 20, `${yr}`, null, 'middle');
+  if (big) label(ch, X(yr), CH - B0 + 8 + cFs, `${yr}`, null, 'middle');
 }
 label(ch, CW - R0, CH - 4, 'years of service', null, 'end');
 el('line', { x1: L0, x2: CW - R0, y1: Y(um(budget_m)), y2: Y(um(budget_m)), stroke: css('--budget'), 'stroke-width': 1.5, 'stroke-dasharray': '6 4' }, ch);
@@ -308,6 +347,55 @@ for (const c of CORNERS) {
   const y = runsOut(c); if (y != null) el('circle', { cx: X(y), cy: Y(um(budget_m)), r: 4, fill: COL[c] }, ch);
 }
 const cursor = el('line', { y1: T0, y2: CH - B0, stroke: css('--ink'), 'stroke-width': 1, 'stroke-opacity': 0.6 }, ch);
+
+// ---- the oil (§346, POSED): the swing at the record's samples, joined by straight lines ----------
+const OIL = DATA.oilAgeing, OS = OIL.samples;
+const swingAt = (since) => {             // years since the last service → { vertical, flat }, the samples' line
+  const x = Math.min(1, Math.max(0, since / OIL.intervalYears)) * OIL.intervals, i = Math.min(OIL.intervals - 1, Math.floor(x)), t = x - i;
+  return { vertical: OS[i].vertical + (OS[i + 1].vertical - OS[i].vertical) * t, flat: OS[i].flat + (OS[i + 1].flat - OS[i].flat) * t };
+};
+const sinceService = (yr) => yr - Math.floor(yr / W.serviceYears + 1e-9) * W.serviceYears;
+const ROWNAME = { muJewel: 'pivots in jewels', muPlain: 'pivots in plain bushes', muChain: 'the chain\'s rivets', springInt: 'the mainspring\'s grease',
+  muTooth: 'gear teeth', escEff: 'the escapement', qOther: 'the balance\'s other losses', endContactMm: 'the pivot ends' };
+const rowName = (k) => ROWNAME[k] || k;
+const listOf = (a) => a.length < 2 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`;
+$('oil-rows').textContent = listOf(OIL.rows.map(rowName));
+$('oil-held').textContent = `The rest stay at their fresh values: ${listOf(OIL.held.map(rowName))}. Gear teeth run dry by design.`;
+$('t-oil').innerHTML = OIL.rows.map((k) => {
+  const a = OIL.coefficients.fresh[k], b = OIL.coefficients.aged[k], eff = k === 'springInt';
+  return `<tr><td class="name">${rowName(k)}</td><td>${eff ? `${f(100 * a, 0)}% kept` : `μ ${a}`}</td><td>${eff ? `${f(100 * b, 0)}% kept` : `μ ${b}`}</td></tr>`;
+}).join('');
+const sw = $('swing'), SWW = 640, SWH = 280, sFs = chartFs(sw), sL = Math.max(52, 2.2 * sFs + 14), sR = 16, sT = 14, sB = Math.max(34, 2 * sFs + 14);
+const degLo = Math.floor(Math.min(OIL.claimDeg, ...OS.map((s) => s.vertical)) / 20) * 20 - 20;
+const degHi = Math.ceil(Math.max(...OS.map((s) => s.flat)) / 20) * 20 + 20;
+const SX = (yr) => sL + (SWW - sL - sR) * yr / W.years, SY = (d) => SWH - sB - (SWH - sB - sT) * (d - degLo) / (degHi - degLo);
+for (let v = degLo; v <= degHi; v += 40) {
+  el('line', { x1: sL, x2: SWW - sR, y1: SY(v), y2: SY(v), stroke: css('--rule'), 'stroke-width': 1 }, sw);
+  label(sw, sL - 6, SY(v) + 4, `${v}°`, null, 'end');
+}
+for (let s = 0; s <= W.services; s++) {
+  const yr = s * W.serviceYears, big = s % 4 === 0;
+  el('line', { x1: SX(yr), x2: SX(yr), y1: SWH - sB, y2: SWH - sB + (big ? 7 : 4), stroke: css('--muted'), 'stroke-width': 1 }, sw);
+  if (big) label(sw, SX(yr), SWH - sB + 8 + sFs, `${yr}`, null, 'middle');
+}
+label(sw, SWW - sR, SWH - 4, 'years of service', null, 'end');
+const refLine = (d, col, text) => {
+  el('line', { x1: sL, x2: SWW - sR, y1: SY(d), y2: SY(d), stroke: col, 'stroke-width': 1.2, 'stroke-dasharray': '6 4' }, sw);
+  label(sw, SWW - sR - 4, SY(d) - 6, text, col, 'end');
+};
+refLine(OIL.targetDeg, css('--target'), `design swing ${OIL.targetDeg}°`);
+refLine(OIL.claimDeg, css('--budget'), `least the friction range allows ${OIL.claimDeg}°`);
+for (const pos of ['flat', 'vertical']) {
+  const pts = [];
+  for (let s = 0; s < W.services; s++) for (const smp of OS) pts.push([s * W.serviceYears + smp.years, smp[pos]]);
+  el('path', { d: pts.map(([yr, d], i) => `${i ? 'L' : 'M'}${SX(yr).toFixed(2)},${SY(d).toFixed(2)}`).join(''), fill: 'none', stroke: css(pos === 'vertical' ? '--vert' : '--flat'), 'stroke-width': 1.8 }, sw);
+}
+const swingCursor = el('line', { y1: sT, y2: SWH - sB, stroke: css('--ink'), 'stroke-width': 1, 'stroke-opacity': 0.6 }, sw);
+$('swing-legend').innerHTML = `<span style="--c:${css('--vert')}">held upright</span><span style="--c:${css('--flat')}">dial up</span>`
+  + `<span style="--c:${css('--target')}">the design swing</span><span style="--c:${css('--budget')}">the least the friction range allows</span>`;
+$('swing-cap').textContent = `Each service puts fresh oil in and the swing returns to ${f(OS[0].vertical, 1)}° upright. By the end of an interval it has fallen ${f(OIL.dropDeg.vertical, 1)}° to ${f(OS[OIL.intervals].vertical, 1)}° `
+  + `(dial up ${f(OS[0].flat, 1)}° to ${f(OS[OIL.intervals].flat, 1)}°). The swing is the movement's own energy calculation at the aged friction; how the friction climbs is posed. `
+  + `The line between the record's ${OIL.intervals + 1} points stays within ${f(OIL.interpErrDeg, 3)}° of the calculation.`;
 
 // ---- the whole wheel, at true scale ------------------------------------------
 { const wv = $('wheel'), S = 150 / R, c = 160;
@@ -334,6 +422,14 @@ const show = () => {
     lines[c].setAttribute('stroke-width', c === st.corner ? 3 : 1.6);
   }
   cursor.setAttribute('x1', X(yr)); cursor.setAttribute('x2', X(yr));
+  swingCursor.setAttribute('x1', SX(yr)); swingCursor.setAttribute('x2', SX(yr));
+  { const since = sinceService(yr), a = swingAt(since);
+    $('o-age').textContent = `${f(since, 2)} yr`;
+    $('o-share').textContent = since === 0 ? 'fresh from a service' : `${f(100 * since / OIL.intervalYears, 0)}% of the interval`;
+    $('o-vert').textContent = `${f(a.vertical, 1)}°`;
+    $('o-vert-s').textContent = `fresh ${f(OS[0].vertical, 1)}°, −${f(OS[0].vertical - a.vertical, 1)}°`;
+    $('o-flat').textContent = `${f(a.flat, 1)}°`;
+    $('o-flat-s').textContent = `fresh ${f(OS[0].flat, 1)}°, −${f(OS[0].flat - a.flat, 1)}°`; }
   const done = Math.floor(yr / W.serviceYears + 1e-9);
   $('s-services').textContent = `${done}`;
   $('s-next').textContent = done < W.services ? `next at year ${(done + 1) * W.serviceYears}` : 'the design life';
@@ -370,7 +466,8 @@ $('play').addEventListener('click', () => {
   raf = requestAnimationFrame(step);
 });
 show();
-window.__serviceLife = { ready: true, cutBackDrawn, cutBackRecord: DATA.finish.cutBack_u, teeth: WH.teeth, set: (yr, c) => { if (c) st.corner = c; st.year = yr; show(); } };
+window.__serviceLife = { ready: true, cutBackDrawn, cutBackRecord: DATA.finish.cutBack_u, teeth: WH.teeth, swingAt, sinceService,
+  set: (yr, c) => { if (c) st.corner = c; st.year = yr; show(); } };
 </script>
 </body>
 </html>

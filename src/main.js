@@ -90,7 +90,7 @@ import {
   CUT_TOOL_R_BAND, CUT_TOOL_R_M, CUT_CONCAVE_MIN_DEG,   // TODO 299 landing 2: what cuts the tooth ring, for the construction-cost invariants
   MAINSPRING_E_PA, MAINSPRING_SIGMA_Y_BAND, MAINSPRING_SIGMA_Y_PA, MAINSPRING_ALPHA_BAND, MAINSPRING_ALPHA_MIN,   // TODO 193: the ribbons' alloy, cited  // §137: the one steel, the one cantilever law; §164 names its other properties beside it
   MU_STEEL, ALARM_SPRING_HEADROOM,            // TODO 144: the one steel-on-steel friction coefficient, and the drag-against-hold margin — the disc's drag and its seat are priced on both
-  FRICTION, FRICTION_CORNERS,                  // TODO 192 / §247 tier two: the friction bands the power budget is priced at — three corners, never one number
+  FRICTION, FRICTION_CORNERS, OIL_AGEING,      // §346: the posed oil-ageing law between two of those corners. TODO 192 / §247 tier two: the friction bands the power budget is priced at — three corners, never one number
   SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N, // §137: the declared envelopes force rows sit inside
   eulerCriticalLoad_N,              // §231: the one Euler law, read by §137's bent link and the pusher's reach bar alike
   ROUTE_SPEC, ROUTE_UNIT_NAME, configKey,                // §36 Apply: the committed route, judged once, and the one name for its unit
@@ -13546,19 +13546,22 @@ const GOING_POWER = (() => {
   // maintaining spring, which a wind takes out of the path (the spring then
   // drives the great wheel directly). Named once, for the floor's walk.
   const UPSTREAM = ['mainspring coil friction', 'drum on its fixed arbor', 'chain articulation'];
-  const corner = (cname) => {
-    const A = Object.fromEntries(Object.keys(FRICTION).map((key) => [key, FRICTION[key][cname]]));
+  // The walk takes the COEFFICIENTS, one value per FRICTION row, so a corner is
+  // one reading of it and §346's aged oil (between two corners) is another.
+  const at = (A, cname) => {
     const stages = [];
-    const push = (name, eta, law) => stages.push({ name, eta, law });
-    push('mainspring coil friction', A.springInt, 'FRICTION.springInt');
-    push('drum on its fixed arbor', 1 - A.muPlain * rArbor / rWrap, 'μ_plain·r_arbor/R_wrap');
-    push('chain articulation', 1 - A.muChain * CHAIN_PIN_R * (1 / rFuseeMean + 1 / rWrap), 'μ_chain·r_rivet·(1/r_fusee + 1/R_wrap)');
-    push('fusee arbor pivots', 1 - A.muPlain * TRAIN_STAFF_R * (1 / rFuseeMean + 1 / rGreat), 'μ_plain·r_staff·(1/r_fusee + 1/r_great)');
+    // `row` is the FRICTION row the stage is priced with: each η is LINEAR in its own
+    // row, which is what lets §346's gate re-derive an aged walk from two corners.
+    const push = (name, eta, law, row) => stages.push({ name, eta, law, row });
+    push('mainspring coil friction', A.springInt, 'FRICTION.springInt', 'springInt');
+    push('drum on its fixed arbor', 1 - A.muPlain * rArbor / rWrap, 'μ_plain·r_arbor/R_wrap', 'muPlain');
+    push('chain articulation', 1 - A.muChain * CHAIN_PIN_R * (1 / rFuseeMean + 1 / rWrap), 'μ_chain·r_rivet·(1/r_fusee + 1/R_wrap)', 'muChain');
+    push('fusee arbor pivots', 1 - A.muPlain * TRAIN_STAFF_R * (1 / rFuseeMean + 1 / rGreat), 'μ_plain·r_staff·(1/r_fusee + 1/r_great)', 'muPlain');
     for (const m of meshes) {
-      push(`mesh ${m.name}`, 1 - Math.PI * A.muTooth * (1 / m.z1 + 1 / m.z2), 'πμ_tooth(1/z₁ + 1/z₂)');
-      push(`${m.arbor} arbor pivots`, 1 - A.muJewel * m.rPiv * (1 / m.rIn + 1 / m.rOut), 'μ_jewel·r_pivot·(1/r_pinion + 1/r_wheel)');
+      push(`mesh ${m.name}`, 1 - Math.PI * A.muTooth * (1 / m.z1 + 1 / m.z2), 'πμ_tooth(1/z₁ + 1/z₂)', 'muTooth');
+      push(`${m.arbor} arbor pivots`, 1 - A.muJewel * m.rPiv * (1 / m.rIn + 1 / m.rOut), 'μ_jewel·r_pivot·(1/r_pinion + 1/r_wheel)', 'muJewel');
     }
-    push('lever escapement', A.escEff, 'FRICTION.escEff');
+    push('lever escapement', A.escEff, 'FRICTION.escEff', 'escEff');
     const etaTrain = stages.filter((s) => s.name !== 'mainspring coil friction' && s.name !== 'lever escapement').reduce((p, s) => p * s.eta, 1);
     const etaTotal = stages.reduce((p, s) => p * s.eta, 1);
     const delivered_J = etaTotal * perBeat_J;
@@ -13580,8 +13583,10 @@ const GOING_POWER = (() => {
                springEnergyNeeded_J: needAtClaim_J / etaTotal * beats },
     };
   };
+  const coeffs = (cname) => Object.fromEntries(Object.keys(FRICTION).map((key) => [key, FRICTION[key][cname]]));
+  const corner = (cname) => at(coeffs(cname), cname);
   return { k, released_J, reserve_s, beats, meshes, trainRatio, fuseeTorque_Nm, escapeTorque_Nm, perBeat_J,
-    rArbor, rWrap, rFuseeMean, rGreat, kB, mB, g, thetaClaim, UPSTREAM, corner };
+    rArbor, rWrap, rFuseeMean, rGreat, kB, mB, g, thetaClaim, UPSTREAM, at, coeffs, corner };
 })();
 // TODO 226 step 3b — THE CROSSING OF THE SHAKE, paced from the metal. At the
 // end of the unlock the stone's corner meets the tooth's tip and the wheel
@@ -37360,6 +37365,65 @@ const EQUALISATION = (() => {
       console.warn(`TODO 242: the balance at ${SPEC.vph} A/h is r ${BALANCE_R}, but one BAL_R_STEP larger (${larger.radius}) at the lightest grid rim (${rimFloor.toFixed(3)}) sustains ${larger.nominalVertical.toFixed(2)}° and starts — the wheel is smaller than it needs to be; re-solve the RATE_TABLE row's balanceR`);
     if (!energy.amplitude.target.met || !energy.amplitude.target.tight)
       console.warn(`TODO 207/242: BAL_RIM_F ${BAL_RIM_F} at ${SPEC.vph} A/h sustains ${nominalVertical.toFixed(2)}° nominal vertical against the ${AMPLITUDE_TARGET_DEG}° target and ${starts ? 'starts' : 'does NOT start'} itself; one step heavier (${heavier.rimF.toFixed(3)}) sustains ${heavier.nominalVertical.toFixed(2)}° and ${heavier.starts ? 'starts' : 'does not start'} — ${energy.amplitude.target.met ? 'the rim is lighter than it needs to be' : 'the balance is too heavy for its spring'}; re-solve the RATE_TABLE row's rimF`);
+  }
+  // §346 — OIL AGEING BETWEEN SERVICES (layout.js, OIL_AGEING: a POSED law). The
+  // rows that age are the map's, not a list typed here: every FRICTION row a
+  // lubricated regime prices (REGIME_INFO, every regime but 'dry'). Each moves
+  // linearly from its FRESH corner to its AGED one in the fraction f of the
+  // interval since the last service; every other row holds its fresh value. The
+  // swing at each f is the column's own walk (GOING_POWER.at) at those
+  // coefficients, so it is the corners' closed form, not a second copy of it.
+  //
+  // The SAMPLES are what the service-life page draws by straight lines, so their
+  // spacing is derived from the page's reading: it quotes a swing to READ_DEG,
+  // and the spacing halves until the swing midway between every pair of samples
+  // reads within half of that of the line between them (in both positions).
+  {
+    const READ_DEG = 0.1;            // the page's readout: a swing to a tenth of a degree
+    const N_MAX = 1024;              // a guard on the halving, not a choice: hitting it warns
+    const oiled = new Set(Object.entries(REGIME_INFO).filter(([regime]) => regime !== 'dry').flatMap(([, v]) => v.priced));
+    const rows = Object.keys(FRICTION).filter((key) => oiled.has(key));
+    const fresh = GOING_POWER.coeffs(OIL_AGEING.fresh), aged = GOING_POWER.coeffs(OIL_AGEING.aged);
+    const coeffAt = (f) => Object.fromEntries(Object.keys(FRICTION).map((key) =>
+      [key, rows.includes(key) ? fresh[key] + (aged[key] - fresh[key]) * f : fresh[key]]));
+    const swingAt = (f) => {
+      const C = GOING_POWER.at(coeffAt(f), `oil aged ${(f * 100).toFixed(1)}%`);
+      return { f, years: f * SERVICE_INTERVAL_YEARS, etaTotal: C.etaTotal, delivered_J: C.delivered_J, qOther: C.qOther,
+        pivot: { ...C.pivot }, sustainedDeg: { ...C.sustainedDeg } };
+    };
+    let n = 2, samples, interpErrDeg;
+    for (;;) {
+      samples = Array.from({ length: n + 1 }, (_, i) => swingAt(i / n));
+      interpErrDeg = 0;
+      for (let i = 0; i < n; i++) {
+        const mid = swingAt((i + 0.5) / n);
+        for (const pos of ['vertical', 'flat'])
+          interpErrDeg = Math.max(interpErrDeg, Math.abs(mid.sustainedDeg[pos] - (samples[i].sustainedDeg[pos] + samples[i + 1].sustainedDeg[pos]) / 2));
+      }
+      if (interpErrDeg <= READ_DEG / 2 || n >= N_MAX) break;
+      n *= 2;
+    }
+    const first = samples[0], last = samples[n];
+    const nominal = energy.corners[OIL_AGEING.fresh].sustainedDeg;
+    const falls = samples.every((s, i) => i === 0 || (s.sustainedDeg.vertical <= samples[i - 1].sustainedDeg.vertical
+      && s.sustainedDeg.flat <= samples[i - 1].sustainedDeg.flat));
+    energy.oilAgeing = {
+      posed: OIL_AGEING.posed, shape: OIL_AGEING.shape, why: OIL_AGEING.why,
+      fresh: OIL_AGEING.fresh, aged: OIL_AGEING.aged, rows, held: Object.keys(FRICTION).filter((key) => !oiled.has(key)),
+      coefficients: { fresh: Object.fromEntries(rows.map((key) => [key, fresh[key]])), aged: Object.fromEntries(rows.map((key) => [key, aged[key]])) },
+      intervalYears: SERVICE_INTERVAL_YEARS, readDeg: READ_DEG, intervals: n, interpErrDeg, samples,
+      dropDeg: { vertical: first.sustainedDeg.vertical - last.sustainedDeg.vertical, flat: first.sustainedDeg.flat - last.sustainedDeg.flat },
+      endDeg: { ...last.sustainedDeg }, targetDeg: AMPLITUDE_TARGET_DEG, claimDeg: AMPLITUDE_CLAIM_DEG,
+      falls, claimHolds: last.sustainedDeg.vertical >= AMPLITUDE_CLAIM_DEG,
+      law: 'μ(f) = μ_fresh + (μ_aged − μ_fresh)·f on the oiled rows, f = years since service / interval; θ(f) the column\'s sustained swing at μ(f) — POSED',
+    };
+    if (!(Math.abs(first.sustainedDeg.vertical - nominal.vertical) <= 1e-9 && Math.abs(first.sustainedDeg.flat - nominal.flat) <= 1e-9))
+      console.warn(`§346: fresh oil sustains ${first.sustainedDeg.vertical.toFixed(6)}° vertical where the ${OIL_AGEING.fresh} corner reads ${nominal.vertical.toFixed(6)}° — the ageing walk and the column have parted`);
+    if (!falls) console.warn('§346: the swing does not fall monotonically as the oil ages — an ageing row moved the wrong way between its corners');
+    if (!energy.oilAgeing.claimHolds)
+      console.warn(`§346: aged oil sustains ${last.sustainedDeg.vertical.toFixed(2)}° vertical, under the ${AMPLITUDE_CLAIM_DEG}° claim the band's minimum sets`);
+    if (interpErrDeg > READ_DEG / 2)
+      console.warn(`§346: ${n} intervals still leave ${interpErrDeg.toFixed(4)}° between the samples' line and the swing, over half the page's ${READ_DEG}° reading`);
   }
   return Object.freeze({
     going: {
