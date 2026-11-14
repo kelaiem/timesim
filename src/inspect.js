@@ -38,8 +38,8 @@ import { ZERO_AREA_MAX, CLEAR_MARGIN, HANDOFF_TRACK_TOL, UNIT_MM, Z_DIAL, SLENDE
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME, SPEC,                                    // §36 Apply: the same predicate that builds the unit, and the same name
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, rigidSplit,
-  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, ESCAPE_STEEL_SIGMA_Y_PA, ESCAPE_STEEL_SIGMA_Y_BAND, ESCAPE_TIP_R_M, ESCAPE_TIP_R_BAND, LINE_CONTACT_SHAKEDOWN_P0_PER_Y, ESCAPE_STEEL_HARDNESS_BAND, TABOR_H_OVER_SIGMA_Y, TABOR_TOLERANCE, CUT_TOOL_R_M, CUT_CONCAVE_MIN_DEG, SERVICE_INTERVAL_YEARS, DESIGN_LIFE_YEARS, JULIAN_YEAR_S, WEAR_K_BAND, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, MAINSPRING_ALPHA_MIN, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R_SPEC, BALANCE_R_REF, BALANCE_R_CASE_BOUND, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG, STOPWORK_BUILT, GEARED_BUILT, F_BALANCE } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
-import { auditLubrication, LUBRICATION, LUBRICATION_DEBT, LUBRICATION_WAIVERS } from './lubrication.js';   // §247 tier one
+  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, ESCAPE_STEEL_SIGMA_Y_PA, ESCAPE_STEEL_SIGMA_Y_BAND, ESCAPE_TIP_R_M, ESCAPE_TIP_R_BAND, LINE_CONTACT_SHAKEDOWN_P0_PER_Y, ESCAPE_STEEL_HARDNESS_BAND, TABOR_H_OVER_SIGMA_Y, TABOR_TOLERANCE, CUT_TOOL_R_M, CUT_CONCAVE_MIN_DEG, SERVICE_INTERVAL_YEARS, DESIGN_LIFE_YEARS, JULIAN_YEAR_S, WEAR_K_BAND, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, MAINSPRING_ALPHA_MIN, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R_SPEC, BALANCE_R_REF, BALANCE_R_CASE_BOUND, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG, STOPWORK_BUILT, GEARED_BUILT, F_BALANCE, FRICTION, OIL_AGEING } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
+import { auditLubrication, LUBRICATION, LUBRICATION_DEBT, LUBRICATION_WAIVERS, REGIME_INFO } from './lubrication.js';   // §247 tier one
 import { LOCK_DEG, RUN_DEG } from './escapement.js';   // TODO 299 row 22: the lock is declared against shock and the run is not, so the run is the wear budget's spendable share
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
@@ -11535,6 +11535,66 @@ export function checkEqualisation(clock) {
             failures.push({ what: 'one radius step larger still reaches the target and starts (balanceR smaller than needed)', larger: L, targetDeg: AMPLITUDE_TARGET_DEG });
         } else if (T.larger !== null)
           failures.push({ what: 'a row at the reference radius carries a larger-wheel test', larger: T.larger });
+      }
+    }
+    // Row 23 (§346) — OIL AGEING, a POSED law (layout.js OIL_AGEING), held as
+    // arithmetic from the two corners it sits between. Each stage's η is linear in
+    // the one FRICTION row it names, so with the oiled rows moving linearly in f an
+    // aged stage is its fresh η plus f of the way to its aged η, and a held row's
+    // stage is its fresh η. Every sample's delivery, pivot torque and swing is
+    // re-derived that way, never read back. Held: the rows are the map's (every row
+    // a lubricated regime prices), the ends are the declared corners' values, the
+    // first sample IS the fresh corner, the swing falls, stays at or over the claim,
+    // and the samples' spacing meets the reading the record states.
+    const oa = en.oilAgeing;
+    if (!oa) failures.push({ what: 'oil ageing', note: 'going.energy.oilAgeing is missing (§346)' });
+    else if (en.corners && en.corners[OIL_AGEING.fresh] && en.corners[OIL_AGEING.aged]) {
+      const oiled = new Set(Object.entries(REGIME_INFO).filter(([regime]) => regime !== 'dry').flatMap(([, v]) => v.priced));
+      const rowsWant = Object.keys(FRICTION).filter((key) => oiled.has(key));
+      if (oa.posed !== true || oa.fresh !== OIL_AGEING.fresh || oa.aged !== OIL_AGEING.aged || oa.shape !== OIL_AGEING.shape || oa.shape !== 'linear')
+        failures.push({ what: 'oil ageing record is not the declared posed law', record: { posed: oa.posed, fresh: oa.fresh, aged: oa.aged, shape: oa.shape }, declared: OIL_AGEING });
+      if (JSON.stringify(oa.rows) !== JSON.stringify(rowsWant))
+        failures.push({ what: 'oil ageing rows are not the lubrication map\'s', record: oa.rows, fromMap: rowsWant });
+      for (const key of rowsWant)
+        if (!(oa.coefficients && oa.coefficients.fresh[key] === FRICTION[key][OIL_AGEING.fresh] && oa.coefficients.aged[key] === FRICTION[key][OIL_AGEING.aged]))
+          failures.push({ what: 'oil ageing coefficient is not its band corner', row: key, record: oa.coefficients ? [oa.coefficients.fresh[key], oa.coefficients.aged[key]] : null,
+            corners: [FRICTION[key][OIL_AGEING.fresh], FRICTION[key][OIL_AGEING.aged]] });
+      const F0 = en.corners[OIL_AGEING.fresh], F1 = en.corners[OIL_AGEING.aged];
+      const ages = new Set(oa.rows);
+      const n = oa.intervals, S = oa.samples || [];
+      if (!(Number.isInteger(n) && n >= 2 && S.length === n + 1 && oa.intervalYears === SERVICE_INTERVAL_YEARS))
+        failures.push({ what: 'oil ageing samples malformed', intervals: n, samples: S.length, intervalYears: oa.intervalYears });
+      else {
+        const kB = en.balance.k_Nm_per_rad, muJ0 = FRICTION.muJewel[OIL_AGEING.fresh], muJ1 = FRICTION.muJewel[OIL_AGEING.aged];
+        const unnamed = F0.stages.filter((st, i) => !(st.row in FRICTION) || F1.stages[i].name !== st.name);
+        if (unnamed.length) failures.push({ what: 'an energy stage names no FRICTION row, so its ageing cannot be read', stages: unnamed.map((st) => st.name) });
+        for (let i = 0; i <= n; i++) {
+          const s = S[i], f = i / n;
+          const eta = F0.stages.reduce((p, st, j) => p * (ages.has(st.row) ? st.eta + (F1.stages[j].eta - st.eta) * f : st.eta), 1);
+          const delivered = eta * en.perBeat_J;
+          const muJ = ages.has('muJewel') ? muJ0 + (muJ1 - muJ0) * f : muJ0;
+          const tfV = F0.pivot.vertical_Nm * muJ / muJ0, tfF = F0.pivot.flat_Nm * muJ / muJ0;
+          const a = Math.PI * kB / (2 * F0.qOther);
+          const root = (tf) => (-2 * tf + Math.sqrt(4 * tf * tf + 4 * a * delivered)) / (2 * a) * 180 / Math.PI;
+          const want = { vertical: root(tfV), flat: root(tfF) };
+          if (!(s.f === f && rel(s.years, f * SERVICE_INTERVAL_YEARS) <= 1e-12 && rel(s.etaTotal, eta) <= 1e-12 && rel(s.delivered_J, delivered) <= 1e-12
+                && rel(s.pivot.vertical_Nm, tfV) <= 1e-12 && rel(s.pivot.flat_Nm, tfF) <= 1e-12
+                && rel(s.sustainedDeg.vertical, want.vertical) <= 1e-9 && rel(s.sustainedDeg.flat, want.flat) <= 1e-9))
+            failures.push({ what: 'oil ageing sample is not the corners\' linear walk', f, record: { years: s.years, eta: s.etaTotal, delivered: s.delivered_J, sustainedDeg: s.sustainedDeg },
+              fromCorners: { eta, delivered, sustainedDeg: want } });
+          if (i > 0 && !(s.sustainedDeg.vertical <= S[i - 1].sustainedDeg.vertical && s.sustainedDeg.flat <= S[i - 1].sustainedDeg.flat))
+            failures.push({ what: 'oil ageing: the swing rises as the oil ages', f, sustainedDeg: s.sustainedDeg, before: S[i - 1].sustainedDeg });
+        }
+        if (!(S[0].sustainedDeg.vertical === F0.sustainedDeg.vertical && S[0].sustainedDeg.flat === F0.sustainedDeg.flat))
+          failures.push({ what: 'oil ageing: fresh oil is not the fresh corner', first: S[0].sustainedDeg, corner: F0.sustainedDeg });
+        const end = S[n].sustainedDeg;
+        if (!(end.vertical >= AMPLITUDE_CLAIM_DEG && end.vertical >= F1.sustainedDeg.vertical && end.flat >= F1.sustainedDeg.flat))
+          failures.push({ what: 'oil ageing: aged oil sustains less than the band allows', end, agedCorner: F1.sustainedDeg, claimDeg: AMPLITUDE_CLAIM_DEG });
+        if (!(oa.readDeg > 0 && oa.interpErrDeg <= oa.readDeg / 2))
+          failures.push({ what: 'oil ageing samples are coarser than the reading they serve', interpErrDeg: oa.interpErrDeg, readDeg: oa.readDeg });
+        if (!(rel(oa.dropDeg.vertical, S[0].sustainedDeg.vertical - end.vertical) <= 1e-12 && rel(oa.dropDeg.flat, S[0].sustainedDeg.flat - end.flat) <= 1e-12)
+            || oa.falls !== true || oa.claimHolds !== (end.vertical >= AMPLITUDE_CLAIM_DEG))
+          failures.push({ what: 'oil ageing summary disagrees with its samples', dropDeg: oa.dropDeg, falls: oa.falls, claimHolds: oa.claimHolds });
       }
     }
     // Row 12 (TODO 192 step 2) — the pivots were cut to §50's floor on the claim
