@@ -42,6 +42,7 @@ heading, and [the index](../../TODO.md) is where it is shown.
 
 | item | handle |
 |---|---|
+| 308 | stud straddles cock edge |
 | 307 | hack rod crosses barrel |
 | 306 | linkage through arrest |
 | 305 | setting traverse crosses pinion |

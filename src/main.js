@@ -85,7 +85,7 @@ import {
   STEEL_E_PA, STEEL_G_PA, SPRING_SIGMA_Y_PA, SPRING_TAU_Y_PA, cantileverK_N_per_m,
   CLICK_STEEL_SIGMA_Y_BAND, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, LINE_CONTACT_SHAKEDOWN_P0_PER_Y,   // TODO 221: the click steel and the line contact's first yield
   ESCAPE_STEEL_SIGMA_Y_BAND, ESCAPE_STEEL_SIGMA_Y_PA, ESCAPE_TIP_R_BAND, ESCAPE_TIP_R_M,   // TODO 296: the escape wheel's own steel, and the radius its club tip is priced on
-  ESCAPE_STEEL_HARDNESS_BAND, ESCAPE_STEEL_HARDNESS_PA, TABOR_H_OVER_SIGMA_Y, TABOR_TOLERANCE, HV_TO_PA,   // TODO 299: its indentation hardness, which a wear law needs and a yield band is not
+  ESCAPE_STEEL_HARDNESS_BAND, ESCAPE_STEEL_HARDNESS_PA, TABOR_H_OVER_SIGMA_Y, TABOR_TOLERANCE, HV_TO_PA, CORUNDUM_HARDNESS_BAND, CORUNDUM_HARDNESS_PA,   // TODO 299: its indentation hardness, which a wear law needs and a yield band is not
   SERVICE_INTERVAL_YEARS, DESIGN_LIFE_YEARS, SERVICES_IN_LIFE, JULIAN_YEAR_S, WEAR_K_BAND,   // TODO 299: the service schedule and Archard's coefficient
   CUT_TOOL_R_BAND, CUT_TOOL_R_M, CUT_CONCAVE_MIN_DEG,   // TODO 299 landing 2: what cuts the tooth ring, for the construction-cost invariants
   MAINSPRING_E_PA, MAINSPRING_SIGMA_Y_BAND, MAINSPRING_SIGMA_Y_PA, MAINSPRING_ALPHA_BAND, MAINSPRING_ALPHA_MIN,   // TODO 193: the ribbons' alloy, cited  // §137: the one steel, the one cantilever law; §164 names its other properties beside it
@@ -17687,6 +17687,7 @@ const balanceCock = G.makeCock({
       MATS.nickel);
     bar.geometry.translate(0, 0, -COCK_T / 2);
     bar.position.set(0, yBar, 0);
+    bar.name = 'cockFootBar';   // TODO 295: NAMED, so the cock's joints cite the part rather than an index into the group
     balanceCock.add(bar);
   }
   const legTopWorld = COCK_MID_Z - COCK_T / 2;       // slab underside
@@ -17696,11 +17697,13 @@ const balanceCock = G.makeCock({
       G.boredLegGeometry(LEG_R, LEG_R * 1.15, COCK_LEG_BORE_R, legLen, 20), MATS.nickel);
     leg.rotation.x = Math.PI / 2;
     leg.position.set(s * BAR_HSPAN, yBar, -COCK_T / 2 - legLen / 2);
+    leg.name = 'cockLeg';   // TODO 295 (was LatheGeometry#4/#6)
     balanceCock.add(leg);
     const pad = new THREE.Mesh(
       G.boredLegGeometry(LEG_R * 1.5, LEG_R * 1.5, COCK_LEG_BORE_R, 0.4, 20), MATS.nickel);
     pad.rotation.x = Math.PI / 2;
     pad.position.set(s * BAR_HSPAN, yBar, -COCK_T / 2 - legLen + 0.2);
+    pad.name = 'cockFoot';   // TODO 295 (was LatheGeometry#5/#7)
     balanceCock.add(pad);
   }
   // §20: the T-foot screws, slotted like every screw now (were bare
@@ -17861,13 +17864,16 @@ const balanceCock = G.makeCock({
     carrier.rotation.z = STUD_OFF;
     const ring = ringMesh(2.55, 2.95, STOCK_MIN_U, MATS.steel); // outer trimmed inside the head's half-width (3.0); TODO 12: floor stock, free outward
     ring.position.z = 0.02;
+    ring.name = 'studCarrierRing';   // TODO 295: named (was ExtrudeGeometry#14)
     carrier.add(ring);
     const yS = hsUD.termEndR;                        // carrier-local stud centre
     const armC = new THREE.Mesh(new THREE.BoxGeometry(0.8, yS - HAIRSPRING_CARRIER_ROOT, STOCK_MIN_U), MATS.steel); // TODO 12: floor stock
     armC.position.set(0, (HAIRSPRING_CARRIER_ROOT + yS) / 2, 0.13);
+    armC.name = 'studCarrierArm';   // TODO 295 (was BoxGeometry#15)
     carrier.add(armC);
     const boss = ringMesh(0.42, 1.0, STOCK_MIN_U, MATS.steel); // TODO 12: floor stock
     boss.position.set(0, yS, 0.01);
+    boss.name = 'studCarrierBoss';   // TODO 295 (was ExtrudeGeometry#16)
     carrier.add(boss);
     const postBot = (studWorldZ - 0.25) - (COCK_MID_Z + COCK_T / 2); // cock-face-local
     // TODO 147: the post's side is the constraint HAIRSPRING_STUD_R's window is
@@ -37140,7 +37146,21 @@ const EQUALISATION = (() => {
           console.warn(`TODO 299: the club tooth loses ${(corners.favourable.recession_m * 1e6).toFixed(2)} µm of reach over `
             + `${K.years} years at the FAVOURABLE wear corner, past the ${(budget_u * OSC_U * 1e6).toFixed(2)} µm `
             + 'the lock can spend — the escape wheel does not reach its design life at any corner');
-        return { years: K.years, serviceYears: K.serviceYears, services: K.services,
+        // TODO 299 step 5 — THE PALLET STONES' OWN FACES, which landing 1 named and left. The same Archard law, the same
+        // load and the same slip per engagement (the two bodies slide by one distance), read with the STONE's hardness
+        // (corundum, CORUNDUM_HARDNESS_BAND's low end). A stone takes every other beat, so it sees beats/2 engagements, a
+        // tooth beats/15. And where the tooth's century is concentrated at its tip, the stone's spreads over the face the tip
+        // runs across in one engagement (the slip, by the tooth's thickness), so its mean recession is K·F·(beats/2)/(H·t),
+        // with the slip cancelling. A REPORT: it is mild (a harder body and a larger track), measured against the same
+        // lock budget the tooth spends.
+        const stones = (() => {
+          const perStone = K.beats / 2, Hs = CORUNDUM_HARDNESS_PA;
+          const at2 = (kk) => { const V = kk * Fmean * slip_m * perStone / Hs, recess_m = V / (slip_m * tM);
+            return { K: kk, volume_m3: V, recession_m: recess_m, recession_u: recess_m / OSC_U, ofBudget: (recess_m / OSC_U) / budget_u }; };
+          return { engagementsPerStone: perStone, hardness_Pa: Hs, hardnessBand: { ...CORUNDUM_HARDNESS_BAND },
+            corners: Object.fromEntries(FRICTION_CORNERS.map((c) => [c, at2(WEAR_K_BAND[c])])) };
+        })();
+        return { years: K.years, serviceYears: K.serviceYears, services: K.services, stones,
           engagementsPerTooth: K.engagementsPerTooth, slipPerEngagement_m: slip_m, slip_m: total_m,
           load_N: Fmean, hardness_Pa: H_Pa, hardnessBand: { ...ESCAPE_STEEL_HARDNESS_BAND },
           kBand: { ...WEAR_K_BAND }, budget_u, fromApex_u: H.budget.recession_u, cutBack_u,
@@ -53173,10 +53193,11 @@ const FUSEE_COCK = await (async () => {
   const armPts = (s0, s1) => stripPts({ x: C.x + cs * s0, y: C.y + sn * s0 }, { x: C.x + cs * s1, y: C.y + sn * s1 }, true);
   const crankSegsBuilt = crankSegs(step);
   const crankPieces = crankSegsBuilt.map(([A0, B0, past]) => stripPts(A0, B0, past));
-  const armGeoOf = (pts) => {
+  const armGeoOf = (pts, bores = []) => {
     const shape = new THREE.Shape();
     pts.forEach(([x, y], k) => (k ? shape.lineTo(x, y) : shape.moveTo(x, y)));
     shape.closePath();
+    for (const [hx, hy, hr] of bores) { const h = new THREE.Path(); h.absarc(hx, hy, hr, 0, 2 * Math.PI, true); shape.holes.push(h); }
     const g = new THREE.ExtrudeGeometry(shape, { depth: T, bevelEnabled: false });
     g.translate(0, 0, -T / 2);
     return g;
@@ -53197,7 +53218,16 @@ const FUSEE_COCK = await (async () => {
     seatMesh.position.set(seat.x, seat.y, (FUSEE_BOSS_TOP + TQ_BOT_Z) / 2);
     cock.add(seatMesh);
   }
-  const upperArm = new THREE.Mesh(armGeoOf(armPts(foot.sStep, L)), MATS.ribbedNickel);
+  // TODO 295 — the arm runs to the foot node's centre and so over the foot screw's bore, and was cut unbored there: the
+  // shank stood 0.34 inside it. Its outline is the strip UNIONED with the foot node's own disc (inside the boss the arm
+  // already welds to), so the screw's bore (the leg's own, `bore`) is a hole wholly inside it, as makeEscapeBridge's is.
+  const armLoop = (() => {
+    const disc = Array.from({ length: 48 }, (_, k) => { const q = (2 * Math.PI * k) / 48; return [foot.x + foot.nodeR * Math.cos(q), foot.y + foot.nodeR * Math.sin(q)]; });
+    const u = unionLoops([armPts(foot.sStep, L), disc]);
+    if (Array.isArray(u[0][0]) && u.length !== 1) console.warn(`TODO 295: the fusee cock's arm unioned with its foot node into ${u.length} loops`);
+    return Array.isArray(u[0][0]) ? u.reduce((m, Lp) => (Lp.length > m.length ? Lp : m)) : u;
+  })();
+  const upperArm = new THREE.Mesh(armGeoOf(armLoop, [[foot.x, foot.y, bore]]), MATS.ribbedNickel);
   upperArm.userData.armPast = true;
   upperArm.name = 'fuseeCockArm';
   upperArm.position.z = FUSEE_COCK_MID;
@@ -55509,6 +55539,10 @@ registerLabel('Case', caseSolid);
 // TODO 298 — the form case presses its back glass straight under the lip (form-case.js, the press idiom), so the round
 // case's I-ring gasket (TODO 122) has no place in it: the build's word for the rows written for that ring
 if (FORM) BUILD_OMITTED.push({ unit: 'Case', mesh: 'caseBackCrystalGasket', why: `the ${FORM.kind} case presses its back glass under the lip with no gasket ring (form-case.js); the round case's I-ring (TODO 122) is not cut` });
+// TODO 299 — and its back is a plain plate with no thread and no gasket (form-case.js' THE BACK), so the case-back gasket
+// the round case seals with is not cut either. Read off the service roster: an expendable part the build carried in
+// silence, which the `serviceClass` gate found by naming it.
+if (FORM) BUILD_OMITTED.push({ unit: 'Case', mesh: 'caseGasket', why: `the ${FORM.kind} case's back is a plain plate with no thread and no gasket (form-case.js), so the round case's case-back gasket is not cut` });
 // ————— §202 — THE CASE GUIDES WHAT PASSES THROUGH IT: two liners —————
 //
 // The alarm crown's stem and the pusher's stem both cross the case band

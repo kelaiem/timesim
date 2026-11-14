@@ -1652,6 +1652,15 @@ export const ESCAPE_STEEL_HARDNESS_BAND = Object.freeze({
   why: 'the same 58–62 HRC temper as ESCAPE_STEEL_SIGMA_Y_BAND, converted to Vickers by ASTM E140 (653–746 HV)',
 });
 export const ESCAPE_STEEL_HARDNESS_PA = ESCAPE_STEEL_HARDNESS_BAND.low;
+// TODO 299 — and THE STONE'S, for the pallet stones' own faces: synthetic corundum (sapphire and ruby are one stock, §269's
+// STOCK.corundum). A BAND, because single-crystal Al2O3's indentation hardness moves with the load and the face's
+// orientation to the c-axis: the published range for the material is 2000-2300 HV (about three times the escape
+// steel's), and a wear reading takes the LOW end, the softer stone wearing faster.
+export const CORUNDUM_HARDNESS_BAND = Object.freeze({
+  low: 2000 * HV_TO_PA, high: 2300 * HV_TO_PA, lowHV: 2000, highHV: 2300,
+  why: 'single-crystal corundum (sapphire, ruby): 2000–2300 HV, the published range for Al₂O₃, which moves with the load and the face\'s orientation to the c-axis',
+});
+export const CORUNDUM_HARDNESS_PA = CORUNDUM_HARDNESS_BAND.low;
 // Tabor's ratio, named so the cross-check reads as a relation and not a fudge:
 // H/σy ≈ 3 for a fully plastic indentation (Tabor, The Hardness of Metals
 // (1951)), with ±20% covering work hardening and the elastic–plastic
