@@ -24014,7 +24014,10 @@ const JMP_REACH = JMP_LEVER - (JMP_W / 2) * G.JUMPER_TIP_CONE_F;
 // §343 landing 3 — 234.0° → 254.0°: the r 11.5 balance moved the designed train's stations and the solve re-sited
 // the jumper; the lifter's span bound beside it stays silent there, and the designed point's battery sweep holds the
 // station clear.
-const JMP_AZ_MEASURED_DEG = 254.0;
+// §343 landing 3, after merging TODO 305 — 254.0° → 47.0°: TODO 305 re-solved the motion-works fold's corner, which
+// moved the designed train's fold legs, and the solve re-sited the jumper (clearance 0.1593, 342 of 720 stations
+// tested). Re-verified as the tripwire asks: the lifter's run re-measured below.
+const JMP_AZ_MEASURED_DEG = 47.0;
 let JMP_AZ = (() => {
   const capLocal = { x: P.dial.x - SETTING_CAP_XY.x - MW_STUD.x, y: SETTING_CAP_XY.y - P.dial.y - MW_STUD.y };
   return Math.atan2(-capLocal.y, -capLocal.x);   // stud-relative, dialFace frame: away from the cap
@@ -24244,7 +24247,7 @@ const jumperStudMeshes = [];   // the two posts riveted into the base plate (the
 // `tools/probe-149-lifter-width.mjs`: if it ever falls below that, it is not
 // a bound and the frame it was taken in is wrong. Re-run the probe if the
 // jumper's station, the setting lever's stroke or the tail pin's land moves.
-const JMP_LIFTER_SPAN_MEASURED = 39.9684;   // u — probe-149-lifter-width.mjs, 17 axes x 5 samples, re-measured when TODO 236's guide plate 2 moved the jumper to 234.0° (40.0045 at 233.5°, 37.601 at 129.5°, 29.1037 at 326°, 30.0832 at 318°)
+const JMP_LIFTER_SPAN_MEASURED = 29.6106;   // u — the bar's span (scale.x) over 17 axes x 5 samples, probe-149-lifter-width.mjs's net, re-measured on the designed train at §343 landing 3's 47.0° (39.9684 at 234.0°, 40.0045 at 233.5°, 37.601 at 129.5°, 29.1037 at 326°, 30.0832 at 318°)
 // A FUNCTION OF THE STATION since TODO 151 moved the station's solve to the
 // end of the build: the provisional station's bound cuts the bar here, and
 // the late solve re-cuts it at the station it settles on (and holds the
