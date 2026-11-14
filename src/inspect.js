@@ -15030,7 +15030,11 @@ export const LINE_SPEC_FORKS = [
       // build's own table) reads its sagitta off its own metal: `byLine` keys a value by that line's
       // 'dirDeg|c', and `value` is the arranged default's line (28°, 31.34).
       straight: { value: 0.083199897954356,
-        byLine: { '28|31.33': 0.08325177843292081 },   // §343: the 14,400 row's line (probe-314-linkage-line --q vph=14400), arm 10.853
+        byLine: { '28|31.33': 0.08325177843292081,   // §343: the 14,400 row's line (probe-314-linkage-line --q vph=14400), arm 10.853
+          // TODO 301: §318's TURNED pusher line (the form cases whose pusher turns 48°, ALARM_LINKAGE_LINES' '|turn 48' row,
+          // probe-314-linkage-line --turn 48), read off its own metal on case=tonneau and case=cushion alike — the same line
+          // carries the same arc. Every other row of the drive (the carry's envelope, travel, offset, straddle) holds there.
+          '96|27.34': 0.1375419970808574 },
         forcedBy: '§261 2c’s fold: crank B’s pin, not the pusher’s, works the driver’s slot, on an arc of the crank’s output arm through the line’s two ends; its greatest departure from that chord is the arc’s sagitta, arm·(1 − cos(θ/2)) — on §314’s arranged line the arm 10.861 over a 0.2479 rad swing (clock.alarmLinkage), 0.0834 by the formula and 0.0832 read off the metal' },
     },
   },

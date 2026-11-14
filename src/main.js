@@ -39,7 +39,7 @@ import {
   HOUR_TUBE_INNER, HOUR_TUBE_OUTER, ALARM_TUBE_INNER, ALARM_TUBE_OUTER,
   DIAL_CENTER_BORE_R, DIAL_WALL_HALF, SUBDIAL_INBOARD_CLEAR, // TODO 33: the wells' inboard ceiling and the bore it clears
   SECONDS_HUB_R, RSV_HAND_ARBOR_R, SUBDIAL_BORE_R, SUBDIAL_FLOOR, // §97: the wells' floor-side bore, one source with the radius bound
-  BARREL_STEP_DEG, D4, RESERVE_STATION_R, ESCAPE_STEP_DEG, BALANCE_STEP_TARGET_DEG,
+  BARREL_STEP_DEG, D4, D4_SHIPPED, RESERVE_STATION_R, ESCAPE_STEP_DEG, BALANCE_STEP_TARGET_DEG,
   ALARM_CORNER_R,                             // §94 tier B — the alarm corner's design radius, the third radial row's default
   TECHNIC_FORK, technicChainErrors, ratQ, ratMul, ratEq, ratStr, // §219 tier one — the reserve row's target derives from the sweep below
   solveLayout, d4Window,   // §94 tier A: the two-bar's closure window, the d4 handle's refusal
@@ -48,7 +48,7 @@ import {
   segCircleClear, solveElbow, solveStopWork, ELBOW_E_MAX,   // §85 step A: the stop work solves like the layout does
   // Backlog (watch case): the schematic-tier case's dimensions — caps and
   // real hardware sizes, all derived in layout.js at the §39 pin.
-  CASE_WIDTH_MAX, CASE_LUG_SPAN_MAX, STRAP_MM_DEFAULT, STRAP_PICK_MIN_MM, fittedFlatMin, CASE_HEIGHT_MAX_MM, CASE_HEIGHT_STEP_MM, CASE_CLEAR, CASE_BAND_T, rigidSplit,
+  CASE_WIDTH_MAX, CASE_WIDTH_MAX_MM, STRAP_MM, CASE_LUG_SPAN_MAX, STRAP_MM_DEFAULT, STRAP_PICK_MIN_MM, fittedFlatMin, CASE_HEIGHT_MAX_MM, CASE_HEIGHT_STEP_MM, CASE_CLEAR, CASE_BAND_T, rigidSplit,
   CASE_SCREW_SHAFT_D, CASE_SCREW_HEAD_D, CASE_GASKET_D, CASE_GASKET_SEAT, CASE_CRYSTAL_T, CASE_CRYSTAL_CLEAR,
   CASE_TUBE_D, CASE_PUSHER_D,
   CASE_LUG_T, caseLugPlan,                                  // §190/§280: the lug/bar stock and the lug's one outline law — the schematic tier draws the same metal makeCase cuts
@@ -3250,7 +3250,7 @@ if (FORM) {
 if (FORM) {
   const wOut = 2 * (FORM.hw + FORM_HOLD_NOMINAL.boreBack + CASE_BAND_T);
   if (wOut > 2 * CASE_WIDTH_MAX + 1e-9)
-    console.warn(`§307: the form case is ${(wOut * UNIT_MM).toFixed(2)} mm across its short side — over the 40 mm owner cap`);
+    console.warn(`§307: the form case is ${(wOut * UNIT_MM).toFixed(2)} mm across its short side — over the owner cap of ${CASE_WIDTH_MAX_MM} mm (2 × the ${STRAP_MM} mm strap + 2)`);
 }
 
 // Centroid of just the wheel-train arbors (excludes balance/dial), used to
@@ -4168,6 +4168,12 @@ const CASE_R_BORE_BACK_FLOOR = Math.ceil(100 * Math.max(
 // 48.38 → 46.06; the alarm stem and pusher are cut to the wall wherever it stands). Measured on that build, the annulus
 // holds them inside the floor's bore with nothing in the band at any pose (probe-case-relief). So the cap no longer holds
 // the round case out anywhere: the alarm's room is what the clamps leave.
+// §343 landing 2: the cap is now a ceiling read off the strap (layout.js, CASE_WIDTH_MAX: 2 × strap + 2 mm), and the
+// owner's rule is that every case is the smallest its metal allows. The FORM case's round chain still spends the
+// ceiling whole: measured, taking the round case's floor here (with its Ø0.6 clamps) moves the form strike group out of
+// the keep-out its seat declared (TODO 272), leaves the hammer's tail no riser station (§278/TODO 267) and hands the
+// caseback skirt's floor to the hammer (§198) on form-rect, so the minimal form chain waits on its regenerated form
+// tables (§343's record).
 const CASE_R_OUT = FORM ? CASE_WIDTH_MAX : CASE_R_BORE_BACK_FLOOR + CASE_BAND_T;
 // The back band's bore: one wall inside the body outer — the same 1 mm
 // dress-watch wall the front keeps, and the gasket annulus keeps exactly
@@ -4358,7 +4364,7 @@ const CASE_CLAMP_AZ = (() => {
 // interior + one lug thickness.)
 const CASE_LUG_INNER = (SPEC.strapMm ?? STRAP_MM_DEFAULT) / UNIT_MM;
 if (CASE_R_OUT > CASE_WIDTH_MAX + 1e-9)
-  console.warn(`case: body Ø${(2 * CASE_R_OUT * UNIT_MM).toFixed(2)} mm breaks the 40 mm owner cap (body, lugs excluded) — the movement outgrew its housing budget`);
+  console.warn(`case: body Ø${(2 * CASE_R_OUT * UNIT_MM).toFixed(2)} mm breaks the owner cap of ${CASE_WIDTH_MAX_MM} mm (2 × the ${STRAP_MM} mm strap + 2; body, lugs excluded) — the movement outgrew its housing budget`);
 // The old across-the-lug-tips assert is gone for good (§190): the owner
 // re-based the 40 mm cap to the case BODY, lugs excluded, and the lugs'
 // radial chain now DERIVES in layout.js from the wrap gap (CASE_STRAP_CLEAR
@@ -17244,7 +17250,9 @@ const BALANCE_COCK = (() => {
   // half-width = min(r_a, r_b)·0.8). The bar was missing from this list,
   // and the leg scan promptly stood a leg across it (inspection finding:
   // Balance cock ⇄ Fork cock, leg through the bridge bar's slab band).
-  for (const n of forkCock.chain) obstacles.push({ x: n.x, y: n.y, r: n.r });
+  // A foot node is held off its PAD (TODO 304), which is wider than the node: the cock's leg pads stand on the plate
+  // face beside it, and on stopwork-140 the node's radius left one 0.1284 off the pad, under CLEAR_MARGIN.
+  for (const n of forkCock.chain) obstacles.push({ x: n.x, y: n.y, r: n.foot ? Math.max(n.r, G.bridgeFootPadR(n)) : n.r });
   for (let i = 0; i + 1 < forkCock.chain.length; i++) {
     const a = forkCock.chain[i], b = forkCock.chain[i + 1];
     obstacles.push({ ax: a.x, ay: a.y, bx: b.x, by: b.y, r: Math.min(a.r, b.r) * 0.8 });
@@ -22996,9 +23004,10 @@ for (const [nm, cy, wr] of [['reserve', reserveStationR, reserveWellR], ['second
   const outboard = dialRadius * (2 * G.DIAL_CANVAS_FILL_F) * G.DIAL_RAIL_IN_F
     - DIAL_WALL_HALF - CLEAR_MARGIN - -SECONDS_LOCAL.y;
   // a print scaled to the case (printScale < 1) moved the outboard bound in on purpose: D4 is the ROUND print's maximum
-  // §343: a RATE VARIANT keeps the shipped D4 (its plate moved; D4 is the default plate's maximum), held only to FIT:
-  // the inboard bound may not pass the outboard.
-  if (RATE_VARIANT ? inboard > outboard + 1e-9 : SPEC.d4 === null && printScale === 1 && Math.abs(inboard - outboard) > 0.02)
+  // §343: a RATE VARIANT with no `d4` of its own keeps the shipped D4 (its plate moved; D4 is the default plate's
+  // maximum), held only to FIT: the inboard bound may not pass the outboard. §343 landing 2: a row that carries its own
+  // `d4` (14,400, whose plate the r 11.5 balance grows) was derived at its own plate, so it is held to the maximum.
+  if (RATE_VARIANT && D4 === D4_SHIPPED ? inboard > outboard + 1e-9 : SPEC.d4 === null && printScale === 1 && Math.abs(inboard - outboard) > 0.02)
     console.warn(`§125: D4 no longer maximizes the seconds well — inboard bound ${inboard.toFixed(4)} vs `
       + `outboard ${outboard.toFixed(4)} (need equal within 0.02); re-derive D4 from its comment's closed form`);
 }

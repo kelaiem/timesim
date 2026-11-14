@@ -121,13 +121,17 @@
 // is why it may exceed BALANCE_R_REF; tools/probe-343-chronometer.mjs holds both
 // sides (r 11.5 inside the cap, r 11.75 over it, on booted builds).
 // The mesh 8/64 keeps fourth = 1 rev/min (1800/14,400). It is cut at
+// §343 landing 2 — each row's `d4` is ITS seconds station (layout.js, D4): the
+// closed form s = (K + SUBDIAL_INBOARD_CLEAR)/2 at its own plate, iterated to the
+// plate's fixed point (18,000 exact in two steps; 21,600, whose plate moves with
+// the station, within 1e-5 of its limit after four, against §125's 0.02).
 // 0.2625 = 0.21 · 80/64 so the 64-tooth wheel keeps the 80-tooth wheel's pitch
 // radius (8.4) and the escape arbor stands where it stood (§204's rule for the
 // 36,000 row). At the mesh's 0.21 it shrinks to 6.72, and measured, the low
 // corridor's reset rod elbow fouls (−0.87) and the maintaining spring's tip
 // leaves its contact.
 const RATE_TABLE = {
-  14400: { fourthTeeth: 64, escPinion: 8, module: 0.2625, balanceR: 11.5, rimF: 0.345, claimDeg: 126, peakDeg: 328, caseBound: true }, // 8/64 = 1/8 — §343, the chronometer's beat
+  14400: { fourthTeeth: 64, escPinion: 8, module: 0.2625, d4: 19.222357121153717, balanceR: 11.5, rimF: 0.345, claimDeg: 126, peakDeg: 328, caseBound: true }, // 8/64 = 1/8 — §343, the chronometer's beat
   18000: { fourthTeeth: 80, escPinion: 8, balanceR: 9, rimF: 0.36, claimDeg: 126, peakDeg: 311 }, // 8/80 = 1/10 — the shipped movement
   21600: { fourthTeeth: 96, escPinion: 8, balanceR: 9, rimF: 0.26, claimDeg: 128, peakDeg: 311 }, // 8/96 = 1/12
   28800: { fourthTeeth: 96, escPinion: 6, undriven: 'TODO 292 — no balance the honest mainspring (TODO 291) drives to AMPLITUDE_TARGET_DEG and starts at this rate' }, // 6/96 = 1/16
@@ -774,10 +778,15 @@ export const UNIT_MM = CHAIN_PITCH_MM / CHAIN_PITCH;   // 0.379 mm per unit
 export const MM = (units) => units * UNIT_MM;          // for readouts and asserts
 
 // --- THE CASE (backlog: watch case, schematic tier) --------------------------
-// Owner caps, hard: case under 40 mm wide (crown excluded), lug width 20 mm
-// at most. Converted once at the §39 pin so every downstream number is in
-// units; the boot assert in main.js refuses a layout that outgrows them.
-export const CASE_WIDTH_MAX = 40 / UNIT_MM / 2;   // radius cap, 52.77 units
+// Owner caps, hard: lug width 20 mm at most, and the case body no wider than the STRAP it is worn on allows.
+// §343 landing 2 (the owner's rule, 2026-11-13): the body's limit is 2 × strap + 2 mm, a proportion read off the strap
+// the build is cut for (SPEC.strapMm, ?strap=), replacing the fixed 40 mm cap. The case itself is never sized TO the
+// limit: every case is the smallest its metal allows, and the limit is the ceiling it is held under. At the default
+// 19 mm strap it is 40 mm, the cap it replaces; a 20 mm strap (the lug cap) allows 42 mm. Converted once at the §39
+// pin so every downstream number is in units; the boot assert in main.js refuses a layout that outgrows it.
+export const STRAP_MM = SPEC.strapMm ?? STRAP_MM_DEFAULT;
+export const CASE_WIDTH_MAX_MM = 2 * STRAP_MM + 2;
+export const CASE_WIDTH_MAX = CASE_WIDTH_MAX_MM / UNIT_MM / 2;   // radius cap: 52.77 units at the default strap
 export const CASE_LUG_SPAN_MAX = 20 / UNIT_MM;    // 52.77 units across the spring bar
 // §261 step 5 — THE HEIGHT CAP, and it is a RATCHET rather than a target (the
 // owner's call, 2026-10-11). No real calibre carries this stack — the L044.1
@@ -1273,12 +1282,20 @@ export const caseLugSectionZ = (T, W, rc) => {
 //     no fillet) and the embedded root reads the flat wall's own depths
 //     (rOut − CASE_LUG_ROOT, floored at the bore plus one sheet floor, TODO
 //     209's rule without the chord). The default path is unchanged.
-export function caseLugPlan({ rOut, rBore, off, zWallLo, zWallHi, zBack, arcSegs = 16, flat = false }) {
+//   · `wall` (TODO 303, the form case): the end wall's MEASURED depths at the lug's two faces, { out, in } along the
+//     pair axis (the outer shape's own exit there), for an end that is not flat across the strap — the cushion's
+//     superellipse falls 1.4–1.5 u across it, and a lug welded to the plane at the centreline stood that far proud of
+//     the wall at its outboard face. `rOut` stays the centreline's, so the bar's station (uBar) is unchanged and the
+//     arm the section is solved on is the true one, surfOut to the bar. The form case passes the outboard depth for
+//     both (a level root on the deepest wall under the lug, buried where the end stands higher).
+export function caseLugPlan({ rOut, rBore, off, zWallLo, zWallHi, zBack, arcSegs = 16, flat = false, wall = null }) {
   const warn = [];
   const T = CASE_LUG_T, rc = CASE_LUG_EDGE_R, F = CASE_LUG_LOAD_N;
   const a = Math.abs(off);
-  const surfOut = flat ? rOut : Math.sqrt(rOut * rOut - Math.pow(a + T / 2, 2));
-  const surfIn = flat ? rOut : Math.sqrt(rOut * rOut - Math.pow(a - T / 2, 2));
+  const surfOut = wall ? wall.out : flat ? rOut : Math.sqrt(rOut * rOut - Math.pow(a + T / 2, 2));
+  const surfIn = wall ? wall.in : flat ? rOut : Math.sqrt(rOut * rOut - Math.pow(a - T / 2, 2));
+  if (wall && !(surfIn >= surfOut - 1e-12))
+    warn.push(`the wall stands ${(surfOut - surfIn).toFixed(4)} nearer at the lug's inboard face than its outboard one — the fillets are cut for an end that falls outward`);
   const uBar = rOut + CASE_BAR_REACH, uTip = rOut + CASE_LUG_REACH;
   const armU = uBar - surfOut;
   const sigmaAt = (W, arm) => F * arm * U_M / (caseLugSectionZ(T, W, rc) * Math.pow(U_M, 3));
@@ -1331,7 +1348,7 @@ export function caseLugPlan({ rOut, rBore, off, zWallLo, zWallHi, zBack, arcSegs
   const out = [];
   const push = (q) => { const r = out[out.length - 1]; if (!r || Math.hypot(r[0] - q[0], r[1] - q[1]) > 1e-9) out.push(q); };
   const arc = (c, r, a0, a1, segs) => { for (let i = 0; i <= segs; i++) { const th = a0 + (a1 - a0) * i / segs; push([c[0] + r * Math.cos(th), c[1] + r * Math.sin(th)]); } };
-  const rootU = flat ? Math.max(rOut - CASE_LUG_ROOT, rBore + STOCK_MIN_U) : caseLugRootR(a, rOut, rBore);
+  const rootU = flat ? Math.max(surfOut - CASE_LUG_ROOT, rBore + STOCK_MIN_U) : caseLugRootR(a, rOut, rBore);   // TODO 303: under a measured wall, its outboard face's depth (= rOut on a flat end)
   push([rootU, footBotZ]); push([rootU, footTopZ]); push([surfOut, footTopZ]);
   arc([surfOut + rf, footTopZ], rf, Math.PI, Math.PI / 2, arcSegs);            // upper weld fillet, foot to toe
   for (const q of top) push(q);                                                 // upper edge along the S
@@ -2379,7 +2396,19 @@ export const BARREL_STEP_DEG = -35;        // center sits down-right of barrel �
 // The well is 0.144 BIGGER than it was — the fatter winding stem asks more
 // of the crown-wheel/setting-wheel pair's blanks than the arbor-stock pair
 // gave back, and the plate carries that difference outward.
-export const D4 = 18.214767593871496;
+//
+// §343 landing 2 — D4 IS A RATE ROW'S. A rate's balance sets its plate, and the
+// station is derived at the plate it stands on, so a row whose balance grows the
+// plate carries its own `d4` (RATE_TABLE), derived by the same closed form
+// s = (K + SUBDIAL_INBOARD_CLEAR) / 2, K = outboard + s. At 14,400 A/h the r 11.5
+// balance grows the plate (dialRadius 41.516 → 44.034, the balance binding it, not
+// the station), the bounds stood 14.6648 against 16.6799, and they meet again at
+// 15.6724 to float noise. Landing 1b had a variant keep the shipped D4; one D4
+// cannot serve both plates (at 18,000's, 15.6724 stands inboard 15.6724 against
+// outboard 14.8686 and §34's selector post meets the well). D4_SHIPPED is the
+// shipped row's, the value above.
+export const D4_SHIPPED = 18.214767593871496;
+export const D4 = RATE_TABLE[SPEC.vph].d4 ?? D4_SHIPPED;
 // §125 Tier B — THE RESERVE STATION'S OWN ANCHOR. Tier A had the reserve
 // MIRROR the seconds station (the wells were one radius, so symmetry was the
 // law); the mirror died the day the wells split. The owner's constraint is
