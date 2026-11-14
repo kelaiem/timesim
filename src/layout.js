@@ -1864,12 +1864,16 @@ export const FRICTION = Object.freeze({
 // declares a law and says so; a measured curve replaces `shape` and nothing else.
 //
 //  · WHICH ROWS AGE is not declared here: it is read off LUBRICATION's map
-//    (main.js, `OIL_AGEING_ROWS`), the FRICTION rows that any lubricated regime
-//    prices (REGIME_INFO's `priced`, every regime but 'dry'). Teeth run dry by
-//    design, so muTooth does not age; escEff, qOther and endContactMm are not a
-//    lubricant's rows on the map (the pallet faces' 'escapement' regime prices
-//    none), so they stay where the fresh oil leaves them. That last one is the
-//    model's gap, said plainly: the pallet oil is the real one that ages first.
+//    (main.js, the energy column's `oilAgeing`), the FRICTION rows that any
+//    lubricated regime prices (REGIME_INFO's `priced`, every regime but 'dry').
+//    Teeth run dry by design, so muTooth does not age; qOther and endContactMm
+//    are no lubricant's rows, so they stay where the fresh oil leaves them. The
+//    PALLET OIL ages through escEff, the row the 'escapement' regime prices: it
+//    is the oil that goes first in a real watch. That band is the whole
+//    escapement's efficiency, though (drop, draw, impulse sliding, unlocking),
+//    and only the sliding is the oil's, so ageing it from nominal to adverse
+//    lays the band's whole spread on the oil: the pallet's share of the fall is
+//    an UPPER bound, and the records say so.
 //  · THE TWO ENDS are band corners, never new numbers. FRESH is the NOMINAL
 //    corner: the serviced watch, where TODO 207's design swing is held. AGED,
 //    at the end of an interval, is the ADVERSE corner, which muJewel's row

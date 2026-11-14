@@ -37471,8 +37471,14 @@ const EQUALISATION = (() => {
     if (!(Math.abs(first.sustainedDeg.vertical - nominal.vertical) <= 1e-9 && Math.abs(first.sustainedDeg.flat - nominal.flat) <= 1e-9))
       console.warn(`§346: fresh oil sustains ${first.sustainedDeg.vertical.toFixed(6)}° vertical where the ${OIL_AGEING.fresh} corner reads ${nominal.vertical.toFixed(6)}° — the ageing walk and the column have parted`);
     if (!falls) console.warn('§346: the swing does not fall monotonically as the oil ages — an ageing row moved the wrong way between its corners');
-    if (!energy.oilAgeing.claimHolds)
-      console.warn(`§346: aged oil sustains ${last.sustainedDeg.vertical.toFixed(2)}° vertical, under the ${AMPLITUDE_CLAIM_DEG}° claim the band's minimum sets`);
+    // The bound the LAW guarantees is the aged corner's: every ageing row ends there and
+    // every held row stays fresh, so aged oil can only swing as far or further. Whether a
+    // build's band minimum reaches AMPLITUDE_CLAIM_DEG is TODO 192's assert, not this one
+    // (geared-36's adverse corner is under the default's claim and declares that warning);
+    // the equalisation gate's row 23 still holds the claim on the default build.
+    const agedCorner = energy.corners[OIL_AGEING.aged].sustainedDeg;
+    if (!(last.sustainedDeg.vertical >= agedCorner.vertical && last.sustainedDeg.flat >= agedCorner.flat))
+      console.warn(`§346: aged oil sustains ${last.sustainedDeg.vertical.toFixed(2)}° vertical, under the ${OIL_AGEING.aged} corner's ${agedCorner.vertical.toFixed(2)}° — it is worse than the band allows`);
     if (interpErrDeg > READ_DEG / 2)
       console.warn(`§346: ${n} intervals still leave ${interpErrDeg.toFixed(4)}° between the samples' line and the swing, over half the page's ${READ_DEG}° reading`);
   }
