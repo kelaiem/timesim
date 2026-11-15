@@ -118,8 +118,13 @@
 // record), and its hairspring solves to 0.0282 mm, inside stock. rimF 0.345 is the
 // heaviest rim that reaches the target (TODO 242's rule; 0.35 sustains 197.84°).
 // `caseBound` declares that the CASE, not the spring, sets this row's radius, which
-// is why it may exceed BALANCE_R_REF; tools/probe-343-chronometer.mjs holds both
-// sides (r 11.5 inside the cap, r 11.75 over it, on booted builds).
+// is why it may exceed BALANCE_R_REF. §347 TOOK THAT WALL AWAY: the plate's rim
+// moved with the balance only through the old station term (its radius × 1.35 + 5 u),
+// and the round plate is now sized by measured metal, which leaves this balance well
+// inside the keyless works' floor (plateR 41.516 at r 11.5 and at r 11.75 alike). So the
+// radius is held where it was and the flag kept, and tools/probe-343-chronometer.mjs
+// now holds that r 11.5 costs the plate nothing and reports the step beyond it; TODO
+// 310 sizes the row against the movement, which measured stops it at r 12.
 // The mesh 8/64 keeps fourth = 1 rev/min (1800/14,400). It is cut at
 // §343 landing 2 — each row's `d4` is ITS seconds station (layout.js, D4): the
 // closed form s = (K + SUBDIAL_INBOARD_CLEAR)/2 at its own plate, iterated to the
@@ -131,9 +136,9 @@
 // corridor's reset rod elbow fouls (−0.87) and the maintaining spring's tip
 // leaves its contact.
 const RATE_TABLE = {
-  14400: { fourthTeeth: 64, escPinion: 8, module: 0.2625, d4: 19.222357121153717, balanceR: 11.5, rimF: 0.345, claimDeg: 126, peakDeg: 328, caseBound: true }, // 8/64 = 1/8 — §343, the chronometer's beat
-  18000: { fourthTeeth: 80, escPinion: 8, d4: 18.7520672519568, balanceR: 11, rimF: 0.245, claimDeg: 129, peakDeg: 325 }, // 8/80 = 1/10 — the shipped movement until §343 landing 3
-  21600: { fourthTeeth: 96, escPinion: 8, d4: 19.22106386092866, balanceR: 9.25, rimF: 0.245, claimDeg: 129, peakDeg: 313 }, // 8/96 = 1/12
+  14400: { fourthTeeth: 64, escPinion: 8, module: 0.2625, d4: 18.214767593871496, d4Form: 19.222357121153717, balanceR: 11.5, rimF: 0.345, claimDeg: 126, peakDeg: 328, caseBound: true }, // 8/64 = 1/8 — §343, the chronometer's beat
+  18000: { fourthTeeth: 80, escPinion: 8, d4: 18.214767593871496, d4Form: 18.7520672519568, balanceR: 11, rimF: 0.245, claimDeg: 129, peakDeg: 325 }, // 8/80 = 1/10 — the shipped movement until §343 landing 3
+  21600: { fourthTeeth: 96, escPinion: 8, d4: 18.214767593871496, d4Form: 19.22106386092866, balanceR: 9.25, rimF: 0.245, claimDeg: 129, peakDeg: 313 }, // 8/96 = 1/12
   28800: { fourthTeeth: 96, escPinion: 6, undriven: 'TODO 292 — no balance the honest mainspring (TODO 291) drives to AMPLITUDE_TARGET_DEG and starts at this rate' }, // 6/96 = 1/16
   36000: { fourthTeeth: 120, escPinion: 6, module: 0.168, undriven: 'TODO 292 — no balance the honest mainspring (TODO 291) drives to AMPLITUDE_TARGET_DEG and starts at this rate' }, // 6/120 = 1/20 — §204: at 0.168 the wheel keeps the 96-tooth rows' pitch radius
 };
@@ -2461,8 +2466,15 @@ export const BARREL_STEP_DEG = -35;        // center sits down-right of barrel �
 // cannot serve both plates (at 18,000's, 15.6724 stands inboard 15.6724 against
 // outboard 14.8686 and §34's selector post meets the well). D4_SHIPPED is the
 // shipped row's (14,400's since landing 3), the fallback for a row with none.
-export const D4_SHIPPED = 19.222357121153717;
-export const D4 = RATE_TABLE[SPEC.vph].d4 ?? D4_SHIPPED;
+// The plate-margin law (solveKeyless's station term: measured swept radius + CLEAR_MARGIN, not the outline + 5 u)
+// RE-DERIVED IT, by the same closed form at each row's plate. The rows' balances no longer grow the plate: measured, every
+// driven row's balance metal stands inside the keyless floor, so all three plates are the keyless works' 41.516161 and
+// all three stations meet at 18.214767593871496, §234 step 3b's value, in one iteration (the plate does not move with the
+// station). The rows keep their own `d4`, so a row whose metal does set its plate again carries its own station.
+// A FORM case keeps the old station term (main.js KEYLESS_INPUTS says why), so its plate is still the one each row's
+// balance grows and its station is still the one landing 2 derived there: `d4Form`, the values the rows carried before.
+export const D4_SHIPPED = 18.214767593871496, D4_SHIPPED_FORM = 19.222357121153717;
+export const D4 = SPEC.caseShape ? (RATE_TABLE[SPEC.vph].d4Form ?? D4_SHIPPED_FORM) : (RATE_TABLE[SPEC.vph].d4 ?? D4_SHIPPED);
 // §125 Tier B — THE RESERVE STATION'S OWN ANCHOR. Tier A had the reserve
 // MIRROR the seconds station (the wells were one radius, so symmetry was the
 // law); the mirror died the day the wells split. The owner's constraint is
@@ -2608,6 +2620,7 @@ export function solveLayout({
   swept,          // { great, center, third, fourth, escape, balance } — measured swept radii
   clearMargin = CLEAR_MARGIN,
   warn = () => {},
+  trace = null,   // { tried: [] } — the build-replay record (main.js BUILD_LOG): every balance angle `ok` judged, in the final frame
 }) {
   const DEG2RAD = Math.PI / 180;
   const barrelPos = { x: 0, y: 0 };
@@ -2648,7 +2661,9 @@ export function solveLayout({
   ];
   const ok = (deg) => {
     const p = stepPos(escapePos, deg, escToBalance);
-    return obstacles.every((o) => Math.hypot(p.x - o.pos.x, p.y - o.pos.y) >= o.rr);
+    const clear = obstacles.every((o) => Math.hypot(p.x - o.pos.x, p.y - o.pos.y) >= o.rr);
+    if (trace) trace.tried.push({ x: p.x, y: p.y, ok: clear });   // read only: the verdict is the expression above, unchanged
+    return clear;
   };
   // TODO 196 — THE ANSWER IS THE EDGE, NOT THE SEARCH. The constraint: an
   // infeasible target walks out to the nearest clear angle, and that angle is a
@@ -2782,6 +2797,15 @@ export function solveLayout({
   // rotAppliedRad: §33 step 3's handles map pointer azimuths back into the
   // solver's (unrotated) frame — the one place the applied rotation must
   // be visible downstream.
+  // The replay trace is mapped into the final frame (the recentring shift, then the crown's rotation) the same way P was,
+  // AFTER P is built, so no float of the layout itself is touched.
+  if (trace) {
+    const c = Math.cos(rotApplied), sn = Math.sin(rotApplied);
+    const toFinal = (q) => { const r = shift(q); return { x: r.x * c - r.y * sn, y: r.x * sn + r.y * c }; };
+    trace.tried = trace.tried.map((t) => ({ ...toFinal(t), ok: t.ok }));
+    trace.centre = P.escape; trace.chosen = P.balance;
+    trace.obstacles = obstacles.map((o) => ({ ...toFinal(o.pos), r: o.rr - rBal - clearMargin }));
+  }
   return { P, BALANCE_STEP_DEG, forkBaseAngle: forkBaseOut, PIN_AIM: pinAimOut, rotAppliedRad: rotApplied };
 }
 
@@ -5412,6 +5436,7 @@ export function solveKeyless({
   dialR = null,     // §125 step 3 — the dial's radius; null = the movement's own diameter (dialRadius = plateR)
   printFrame = null, // §125 margins tweak — the printed furniture's world fractions { markerInnerF, railInnerF }, measured by the caller from geometry.js's print constants; null = no furniture bound (the wells run to their centre-bore ceilings)
   drum = null,      // §327 — { dist, r }: the mainspring drum's centre distance from the barrel and its outermost metal's radius (the chain coil on its wall); null = left out of the form rectangle, bit-exact
+  reach = null,     // { [P key]: r } — each station's MEASURED swept radius about its own arbor (the round plate's station term, below); null = the old outline + PLATE_RIM_MARGIN term
   warn = () => {},
 }) {
   const barrelDist = Math.hypot(P.barrel.x, P.barrel.y) || 1;
@@ -5633,11 +5658,27 @@ export function solveKeyless({
 
   // Plate radius: tightest circle (plus a rim margin) that contains each part's
   // own outline — arbor distance plus that part's radius, not a blanket maximum.
-  let plateR = 20;
-  for (const key in P) {
-    plateR = Math.max(plateR, Math.hypot(P[key].x, P[key].y) + (outline[key] || 0));
+  // THE STATION TERM. Each station's own metal must stand inside the plate's edge by the one margin: its arbor's distance
+  // plus the swept radius main.js measures off the built part (vertex max, so screws and bevel corners count), plus
+  // CLEAR_MARGIN. The old term was the station's OUTLINE (a pitch radius, the balance's balanceR × 1.35 "+ cock", the fork's
+  // bare 4) plus PLATE_RIM_MARGIN's 5 u, neither of them derived; measured on ?alarm=0&stemaz=135 it charged the balance
+  // 38.159 against 33.60 of metal (its cock slab). The cock does not need the term to carry it: its seat search
+  // (main.js, the balance cock's scan) holds the slab and both leg pads CLEAR_MARGIN inside plateR and warns when no
+  // bearing does, and every other plate-seated part (the drum, the pillars' rim land, the stem bushing) is held by its
+  // own bound. PLATE_RIM_MARGIN keeps its other duties (the form rectangle, the pillars' land, the case fits).
+  // Where the keyless floors below bind (every validated build), plateR is unchanged to the bit.
+  let plateR;
+  if (reach) {
+    plateR = 0;
+    for (const key in P) plateR = Math.max(plateR, Math.hypot(P[key].x, P[key].y) + (reach[key] ?? 0));
+    plateR += CLEAR_MARGIN;
+  } else {
+    plateR = 20;
+    for (const key in P) {
+      plateR = Math.max(plateR, Math.hypot(P[key].x, P[key].y) + (outline[key] || 0));
+    }
+    plateR += PLATE_RIM_MARGIN;
   }
-  plateR += PLATE_RIM_MARGIN;
   // Keyless floor: the plate must reach 1 unit past the setting wheel and
   // past the folded minute wheel (with the compact tornado train, this floor
   // — not the train extent — is what sizes the plate).
