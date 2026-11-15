@@ -11604,11 +11604,54 @@ export function checkEqualisation(clock) {
           failures.push({ what: 'a row at the reference radius carries a larger-wheel test', larger: T.larger });
       }
     }
+    // Row 24 (§346 landing 2) — THE ESCAPEMENT'S BAND, SPLIT. The faces' sliding is
+    // a law of muPallet off the escapement solve's contacts, published as its
+    // Gauss–Legendre nodes (escapement.js palletFaces), and the rest is escEff over
+    // that law at the same corner. Held, from the nodes alone: frictionless the law
+    // is the solve's own δ_E − δ_rest; its controls (the gearing against the solve's
+    // δ, one normal side and one slide direction a run) passed; at each corner the
+    // faces read the law at that corner's μ, the rest is escEff over it, the
+    // corner's two escapement stages ARE those and multiply back to escEff; the
+    // faces' η falls through the band and no corner self-locks a face.
+    const PF = en.palletFaces;
+    const facesSum = (mu) => PF.rows.reduce((p, r) => p + r.dd * (1 + mu * r.a) / (1 + mu * r.b), 0);
+    const facesEta = (mu) => facesSum(mu) / facesSum(0);
+    const ESC_FACES = 'lever escapement: the pallet faces', ESC_REST = 'lever escapement: drop, run and pin';
+    if (!PF || !Array.isArray(PF.rows) || !PF.rows.length)
+      failures.push({ what: 'pallet faces', note: 'going.energy.palletFaces is missing — the escapement band is not split (§346 landing 2)' });
+    else {
+      const zeroWant = (PF.perStone || []).reduce((p, q) => p + (q.deltaE - q.deltaRest), 0);
+      if (!(PF.rows.length === 4 * PF.nodes && PF.rows.every((r) => [r.dd, r.a, r.b].every(Number.isFinite))))
+        failures.push({ what: 'pallet faces nodes malformed', rows: PF.rows.length, nodes: PF.nodes });
+      if (!(rel(PF.zero, zeroWant) <= 1e-12 && rel(facesSum(0), PF.zero) <= 1e-9 && rel(PF.geometric, PF.zero / PF.perStone.length / PF.beat) <= 1e-12))
+        failures.push({ what: 'pallet faces: frictionless, the law is not the solve\'s δ_E − δ_rest', fromNodes: facesSum(0), zero: PF.zero, fromSolve: zeroWant });
+      if (!(PF.checks && PF.checks.vw < 1e-5 && PF.checks.normalFlips === 0 && PF.checks.slideFlips === 0))
+        failures.push({ what: 'pallet faces: the contacts fail their controls', checks: PF.checks });
+      const muMax = Math.max(...order.map((c) => FRICTION.muPallet[c]));
+      if (PF.rows.some((r) => !(1 + muMax * r.b > 0)))
+        failures.push({ what: 'pallet faces: a face self-locks inside the band', muMax });
+      let prevFaces = Infinity;
+      for (const c of order) {
+        const want = facesEta(FRICTION.muPallet[c]), rest = FRICTION.escEff[c] / want, R = PF.corners && PF.corners[c];
+        if (!(R && R.muPallet === FRICTION.muPallet[c] && R.escEff === FRICTION.escEff[c] && rel(R.faces, want) <= 1e-12 && rel(R.rest, rest) <= 1e-12))
+          failures.push({ what: 'pallet faces: a corner is not the law at its own μ', corner: c, record: R || null, fromNodes: { faces: want, rest } });
+        const S = en.corners[c].stages, sf = S.find((st) => st.name === ESC_FACES), sr = S.find((st) => st.name === ESC_REST);
+        if (!(sf && sr && sf.row === 'muPallet' && sr.row === 'escEff' && rel(sf.eta, want) <= 1e-12 && rel(sr.eta, rest) <= 1e-12
+              && rel(sf.eta * sr.eta, FRICTION.escEff[c]) <= 1e-12 && S.filter((st) => st.name.startsWith('lever escapement')).length === 2))
+          failures.push({ what: 'pallet faces: the corner\'s escapement stages are not the split of escEff', corner: c,
+            stages: S.filter((st) => st.name.startsWith('lever escapement')), want: { faces: want, rest, escEff: FRICTION.escEff[c] } });
+        if (!(want > 0 && want <= 1 && want <= prevFaces && rest > 0 && rest <= 1))
+          failures.push({ what: 'pallet faces: efficiency out of (0, 1] or rising with μ', corner: c, faces: want, rest });
+        prevFaces = want;
+      }
+    }
     // Row 23 (§346) — OIL AGEING, a POSED law (layout.js OIL_AGEING), held as
     // arithmetic from the two corners it sits between. Each stage's η is linear in
     // the one FRICTION row it names, so with the oiled rows moving linearly in f an
     // aged stage is its fresh η plus f of the way to its aged η, and a held row's
-    // stage is its fresh η. Every sample's delivery, pivot torque and swing is
+    // stage is its fresh η. The one stage that is not linear in its row is the
+    // pallet faces' (§346 landing 2), which is read through row 24's law at μ(f).
+    // Every sample's delivery, pivot torque and swing is
     // re-derived that way, never read back. Held: the rows are the map's (every row
     // a lubricated regime prices), the ends are the declared corners' values, the
     // first sample IS the fresh corner, the swing falls, stays at or over the claim,
@@ -11637,7 +11680,11 @@ export function checkEqualisation(clock) {
         if (unnamed.length) failures.push({ what: 'an energy stage names no FRICTION row, so its ageing cannot be read', stages: unnamed.map((st) => st.name) });
         for (let i = 0; i <= n; i++) {
           const s = S[i], f = i / n;
-          const eta = F0.stages.reduce((p, st, j) => p * (ages.has(st.row) ? st.eta + (F1.stages[j].eta - st.eta) * f : st.eta), 1);
+          const muP = FRICTION.muPallet[OIL_AGEING.fresh] + (FRICTION.muPallet[OIL_AGEING.aged] - FRICTION.muPallet[OIL_AGEING.fresh]) * f;
+          const stageAt = (st, j) => !ages.has(st.row) ? st.eta
+            : st.name === ESC_FACES && PF && PF.rows ? facesEta(ages.has('muPallet') ? muP : FRICTION.muPallet[OIL_AGEING.fresh])
+            : st.eta + (F1.stages[j].eta - st.eta) * f;
+          const eta = F0.stages.reduce((p, st, j) => p * stageAt(st, j), 1);
           const delivered = eta * en.perBeat_J;
           const muJ = ages.has('muJewel') ? muJ0 + (muJ1 - muJ0) * f : muJ0;
           const tfV = F0.pivot.vertical_Nm * muJ / muJ0, tfF = F0.pivot.flat_Nm * muJ / muJ0;
@@ -11662,6 +11709,20 @@ export function checkEqualisation(clock) {
         if (!(rel(oa.dropDeg.vertical, S[0].sustainedDeg.vertical - end.vertical) <= 1e-12 && rel(oa.dropDeg.flat, S[0].sustainedDeg.flat - end.flat) <= 1e-12)
             || oa.falls !== true || oa.claimHolds !== (end.vertical >= AMPLITUDE_CLAIM_DEG))
           failures.push({ what: 'oil ageing summary disagrees with its samples', dropDeg: oa.dropDeg, falls: oa.falls, claimHolds: oa.claimHolds });
+        // §346 landing 2 — the pallet oil's share: the interval's end with the faces held fresh and every other
+        // ageing row aged, re-derived the samples' way, against the recorded end
+        const ps = oa.palletShare;
+        if (ages.has('muPallet') && PF && PF.rows) {
+          const etaW = F0.stages.reduce((p, st, j) => p * (!ages.has(st.row) || st.name === ESC_FACES ? st.eta : F1.stages[j].eta), 1);
+          const tfV = F0.pivot.vertical_Nm * (ages.has('muJewel') ? muJ1 / muJ0 : 1), tfF = F0.pivot.flat_Nm * (ages.has('muJewel') ? muJ1 / muJ0 : 1);
+          const a = Math.PI * kB / (2 * F0.qOther), dW = etaW * en.perBeat_J;
+          const root = (tf) => (-2 * tf + Math.sqrt(4 * tf * tf + 4 * a * dW)) / (2 * a) * 180 / Math.PI;
+          const w = { vertical: root(tfV), flat: root(tfF) };
+          if (!(ps && rel(ps.withoutDeg.vertical, w.vertical) <= 1e-9 && rel(ps.withoutDeg.flat, w.flat) <= 1e-9
+                && rel(ps.shareDeg.vertical, ps.withoutDeg.vertical - end.vertical) <= 1e-9 && rel(ps.shareDeg.flat, ps.withoutDeg.flat - end.flat) <= 1e-9
+                && ps.shareDeg.vertical > 0 && ps.shareDeg.flat > 0))
+            failures.push({ what: 'oil ageing: the pallet oil\'s share is not the walk with its faces held fresh', record: ps || null, fromCorners: { withoutDeg: w } });
+        }
       }
     }
     // Row 12 (TODO 192 step 2) — the pivots were cut to §50's floor on the claim
@@ -11773,7 +11834,7 @@ export function checkEqualisation(clock) {
         // identity below would still hold
         const Cc = en.corners[r.corner];
         if (!Cc) { failures.push({ what: 'escape tooth row names no corner', row: r }); continue; }
-        const etaC = Cc.stages.filter((q) => q.name !== 'lever escapement').reduce((x, q) => x * q.eta, 1);
+        const etaC = Cc.stages.filter((q) => !q.name.startsWith('lever escapement')).reduce((x, q) => x * q.eta, 1);
         if (!(rel(r.etaPath, etaC) <= 1e-12))
           failures.push({ what: 'escape tooth row\u2019s \u03b7 is not its corner\u2019s', run: r.run, corner: r.corner, record: r.etaPath, fromCorner: etaC });
         const tq = r.flow === 'recoil' ? en.escapeTorque_Nm / r.etaPath : en.escapeTorque_Nm * r.etaPath;

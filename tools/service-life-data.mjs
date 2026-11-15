@@ -95,6 +95,13 @@ const data = {
       samples: O.samples.map((s) => ({ f: s.f, years: q(s.years), etaTotal: q(s.etaTotal),
         vertical: q(s.sustainedDeg.vertical), flat: q(s.sustainedDeg.flat) })),
       dropDeg: { vertical: q(O.dropDeg.vertical), flat: q(O.dropDeg.flat) },
+      // §346 landing 2 — the pallet oil's share (the end with its faces held fresh), and the faces'
+      // efficiency at the two ends with the rest of the escapement's band, which holds
+      palletShare: { vertical: q(O.palletShare.shareDeg.vertical), flat: q(O.palletShare.shareDeg.flat) },
+      palletFaces: (() => {
+        const C = r.clock.equalisation.going.energy.palletFaces.corners;
+        return { fresh: q(C[O.fresh].faces), aged: q(C[O.aged].faces), rest: q(C[O.fresh].rest) };
+      })(),
       targetDeg: O.targetDeg, claimDeg: O.claimDeg, knockDeg: q(r.clock.equalisation.going.energy.knock.deg),
     };
   })(),

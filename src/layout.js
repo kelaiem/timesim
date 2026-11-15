@@ -1821,13 +1821,16 @@ export const ALARM_SPRING_HEADROOM = 3;
 // is the worst a watch contact gets, and it is exactly what MU_STEEL was
 // sized for; the kinder corners are what oil and polish buy.
 export const FRICTION_CORNERS = Object.freeze(['favourable', 'nominal', 'adverse']);
+// Polished hardened steel on ruby under an oil, the pairing of every jewelled
+// pivot AND of the pallet faces (§346 landing 2): named once, by reference.
+const MU_RUBY_ON_STEEL_OILED = Object.freeze({ favourable: 0.10, nominal: 0.12, adverse: 0.15 });
 export const FRICTION = Object.freeze({
   // Brass wheel on hardened steel pinion, running DRY — train teeth are never
   // oiled (oil there collects abrasive).
   muTooth:  Object.freeze({ favourable: 0.12, nominal: 0.15, adverse: MU_STEEL,
     why: 'brass on hardened steel, dry; the adverse corner is MU_STEEL' }),
   // Polished steel pivot in an oiled ruby hole (a 9010-class oil).
-  muJewel:  Object.freeze({ favourable: 0.10, nominal: 0.12, adverse: 0.15,
+  muJewel:  Object.freeze({ ...MU_RUBY_ON_STEEL_OILED,
     why: 'polished steel in oiled ruby; the adverse corner is a thinned or aged oil' }),
   // Steel pivot in an oiled brass or steel bush — the fusee's plain top
   // bearing, the drum on its fixed arbor.
@@ -1842,9 +1845,20 @@ export const FRICTION = Object.freeze({
   springInt: Object.freeze({ favourable: 0.95, nominal: 0.90, adverse: 0.85,
     why: 'greased ribbon hysteresis; this one runs near coil bind' }),
   // Swiss lever escapement, escape-wheel work to balance work: drop, draw,
-  // impulse-face sliding and unlocking — the classical measured range.
+  // impulse-face sliding and unlocking — the classical measured range. Since
+  // §346 landing 2 the column SPLITS it: the faces' sliding is a law of
+  // muPallet read off the escapement solve (escapement.js palletFaces), and the
+  // REST (the drop, the run, the pin in the fork, the fork's own pivots and its
+  // momentum at the banking) is this band over that law at the same corner, so
+  // every corner's total is still this row's and no corner moves.
   escEff:   Object.freeze({ favourable: 0.40, nominal: 0.35, adverse: 0.30,
     why: 'Swiss lever, escape-wheel energy delivered to the balance' }),
+  // The tooth's tip sliding on the ruby pallet stone's locking and impulse
+  // faces, under a 9415-class oil on epilamed surfaces: the jewel pairing, so
+  // muJewel's band (an aged oil at the adverse corner). It prices only the
+  // faces' share of escEff, through the solve's own contact geometry.
+  muPallet: Object.freeze({ ...MU_RUBY_ON_STEEL_OILED,
+    why: 'the tooth tip on the ruby pallet faces under a 9415-class oil, epilamed; the jewel pairing, so muJewel\'s band by reference' }),
   // The balance's Q with PIVOT friction removed (air, hairspring hysteresis,
   // the pin and fork): the pivot term is computed from the staff, not assumed.
   qOther:   Object.freeze({ favourable: 500, nominal: 350, adverse: 250,
@@ -1868,12 +1882,12 @@ export const FRICTION = Object.freeze({
 //    lubricated regime prices (REGIME_INFO's `priced`, every regime but 'dry').
 //    Teeth run dry by design, so muTooth does not age; qOther and endContactMm
 //    are no lubricant's rows, so they stay where the fresh oil leaves them. The
-//    PALLET OIL ages through escEff, the row the 'escapement' regime prices: it
-//    is the oil that goes first in a real watch. That band is the whole
-//    escapement's efficiency, though (drop, draw, impulse sliding, unlocking),
-//    and only the sliding is the oil's, so ageing it from nominal to adverse
-//    lays the band's whole spread on the oil: the pallet's share of the fall is
-//    an UPPER bound, and the records say so.
+//    PALLET OIL ages through muPallet, the row the 'escapement' regime prices: it
+//    is the oil that goes first in a real watch. Since §346 landing 2 that row
+//    prices only the faces' sliding (escapement.js palletFaces, off the solve's
+//    contacts), and the rest of escEff (the drop, the run, the pin, the fork)
+//    holds, so the pallet oil's share of the fall is EXACT under that law. The
+//    first landing aged the whole escEff band and its share was an upper bound.
 //  · THE TWO ENDS are band corners, never new numbers. FRESH is the NOMINAL
 //    corner: the serviced watch, where TODO 207's design swing is held. AGED,
 //    at the end of an interval, is the ADVERSE corner, which muJewel's row

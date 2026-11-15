@@ -41,10 +41,10 @@ export const REGIME_INFO = Object.freeze({
   'oil-fine':   { priced: ['muJewel', 'muChain'],  what: '9010-class: fast, light pivots, and a chain\'s rivets oiled sparingly' },
   'oil-medium': { priced: ['muPlain', 'muJewel'],  what: 'HP1300/8030-class: slow, loaded pivots and plain bushes' },
   'grease':     { priced: ['springInt'],           what: '9504-class: keyless and sliding steel, and the mainspring (coil-on-coil hysteresis)' },
-  // §346: the pallet oil is priced by the escapement's efficiency band, the one FRICTION row that covers the faces'
-  // sliding (impulse and unlocking). The band also carries the drop and the draw, which no oil sets, so ageing it
-  // whole lays the band's whole spread on the oil: an overstatement, stated where the ageing law is (layout.js).
-  'escapement': { priced: ['escEff'],              what: '9415-class: the pallet faces only, the one tooth contact that is oiled' },
+  // §346 landing 2: the pallet oil is priced by muPallet, the faces' own friction (impulse and unlocking), which the
+  // energy column turns into the faces' share of the escapement's efficiency through the solve's contacts
+  // (escapement.js palletFaces). The rest of FRICTION.escEff (the drop, the run, the pin) no oil sets, and it holds.
+  'escapement': { priced: ['muPallet'],            what: '9415-class: the pallet faces only, the one tooth contact that is oiled' },
   'friction':   { priced: [],                      what: 'a slip coupling whose torque the lubricant SETS; it must cite the slip-torque derivation' },
 });
 
@@ -81,7 +81,7 @@ const LUBRICATION_ROWS = {
   'Maintaining detent :: bearing':      L('grease', 'the detent\'s pivot, with the ratchet it works on', { src: 'roadmap §247 seed table' }),
   'Winding arrest :: bearing':          L('oil-fine', 'the arrest finger\'s pivot; its beak and lug contact stay dry (impact, intermittent)', { sink: 'plain-bush', src: 'roadmap §247 seed table' }),
   // ---- the escapement and the oscillator ----
-  'Escape wheel > Pallet fork':         L('escapement', 'the one oiled tooth contact: 216,000 impulses a stone a day (TODO 45); the surfaces are epilamed', { mu: 'escEff', epilame: true, src: 'roadmap §247 seed table; §346 prices it with FRICTION.escEff' }),
+  'Escape wheel > Pallet fork':         L('escapement', 'the one oiled tooth contact: 216,000 impulses a stone a day (TODO 45); the surfaces are epilamed', { mu: 'muPallet', epilame: true, src: 'roadmap §247 seed table; §346 landing 2 prices it with FRICTION.muPallet, the faces\' sliding split out of escEff' }),
   'Pallet fork :: bearing':             L('oil-fine', 'jewelled, no endstone; light and fast', { sink: 'chaton', epilame: true, src: 'roadmap §247 seed table' }),
   'Pallet fork > Balance':              L('dry', 'impulse pin in the fork notch: ruby and steel, dry', { src: 'roadmap §247 seed table' }),
   'Balance :: bearing':                 L('oil-fine', 'both pivots run in hole jewels capped by endstones, and each oils in the reservoir between the two stones; since TODO 254 each TIP reaches its endstone before its shoulder reaches the hole jewel, so the cap is the bearing end at both ends', { mu: 'muJewel', sink: 'cap-jewel', epilame: true, src: 'roadmap §247 seed table; failure 2; TODO 254' }),
