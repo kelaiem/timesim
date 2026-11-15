@@ -1,16 +1,22 @@
 #!/usr/bin/env node
-// §343 — IS THE 14,400 ROW'S BALANCE THE LARGEST THE CASE ADMITS, and is it the
-// case (not the spring) that stops it? Acceptance. Boots the row as declared
-// (r 11.5, rim 0.345) and the same row one BAL_R_STEP larger (r 11.75 on rim
-// 0.33, the heaviest that still reaches the target there), each in its own
-// native process, and holds:
+// §343 — DOES THE 14,400 ROW'S BALANCE FIT, AND WHAT DOES IT COST THE CASE? Acceptance.
+// Boots the row as declared (r 11.5, rim 0.345) and the same row one BAL_R_STEP
+// larger (r 11.75 on rim 0.33, the heaviest that still reaches the target there),
+// each in its own native process, and holds:
 //   1. the declared build: no case-cap warning and (since §343 landing 1e) no
 //      warning at all, the amplitude target met and the rim tight
 //      (equalisation's own record), 2 Hz, the hairspring in stock;
-//   2. one step larger: the case-cap warning fires (the wall), and the target is
-//      still met and started (so the spring was not what stopped it);
-//   3. the control: the patch must take (the larger build reports r 11.75), or
-//      2 would be a reading of the declared build.
+//   2. the declared balance costs the round plate nothing: since §347 the
+//      plate's station term is each station's measured metal, so its plateR is
+//      the 18,000 build's, both the keyless works' floor;
+//   3. one step larger still reaches the target and starts (the spring is not
+//      what holds the row at r 11.5);
+//   4. the control: the patch must take (the larger build reports r 11.75), or
+//      3 would be a reading of the declared build.
+// Until §347 the case was the wall (r 11.75 broke the 40 mm cap). Under the
+// law it is not: the larger build's plate and case are REPORTED, and TODO 310
+// sizes the row against the movement, which measured stops it at r 12 (the
+// stop-work mast, the cocks' reveals at the rim).
 // The 18,000 build (the shipped movement until §343 landing 3, which made 14,400
 // the default) is booted too, for the inertia ratio the record quotes (reported,
 // not gated).
@@ -57,6 +63,7 @@ say(declared.warns.length === 0, `the declared build boots silent (§343 landing
 say(declared.met && declared.tight, 'the declared rim is the heaviest that reaches the target and starts');
 say(Math.abs(declared.hz - 2) < 1e-6 && declared.inStock, 'the hairspring beats 2 Hz inside real stock');
 say(larger.radius === 11.75, 'control: the patch took (the larger build is r 11.75)');
-say(cap(larger).length === 1, 'one BAL_R_STEP larger breaks the case limit (the wall)');
+say(declared.plateR === shipped.plateR, `the declared balance costs the plate nothing (plateR ${declared.plateR.toFixed(3)}, the 18,000 build's ${shipped.plateR.toFixed(3)}: the keyless works' floor)`);
+console.log(`REPORT one step larger: plateR ${larger.plateR.toFixed(3)}, ${cap(larger).length ? 'breaks the case limit' : 'inside the case limit'} (TODO 310)`);
 say(larger.met && larger.starts, 'one step larger still reaches the target and starts (the spring is not the wall)');
 process.exit(fails.length ? 1 : 0);
