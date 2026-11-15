@@ -7360,6 +7360,39 @@ export const MAINT_DETENT_HANDOFF_POSES = [
   ['holding', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 0.5 }],
   ['runout', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 1 }],
 ];
+// §339 landing 3e — the two running instants READ OFF THE BUILD'S LAW per build, as the table's own history did by hand
+// at every layout move (the comment above: `seated` a tenth after the ring's net angle crosses holdNet, `crest` just
+// before it reaches rCrest). A drive that re-sizes the maintaining spring (?barrels=3's doubled torque: the spring is a
+// series member of the drive, so its floor and its ring move with it) moves both instants, and a fixed τ then samples
+// another phase entirely (the seat read Infinity: no face within a pitch). So each is the law's crossing NEAREST the
+// table's τ, rounded the table's way — seated UP to the tenth after the crossing, crest DOWN to the tenth before it.
+// MEASURED on main at 1f68bf9d, the table had already gone stale: at τ 3367.3 the beak stands ON the face (onFace, not
+// the seat), and at τ 2875.4 the recoil is 0.165 against rCrest's 0.2023 (the comment's 0.12945 is an older ring's).
+// The law's crossings there are 3238.x (crest) and 3719.x (seat), which this reads; the rows held because their
+// expectations happen to hold at the wrong phases too, which is the failure a hand-read instant invites.
+export function maintDetentPosesFor(clock) {
+  const law = clock && clock.maintHoldLaw;
+  if (!law || typeof law.begin !== 'function') return MAINT_DETENT_HANDOFF_POSES;
+  const raw = (t) => { const b = law.begin(t); return b.onFace ? null : b.recoil; };   // r in [0, rCrest], or null on the face
+  const T = Object.fromEntries(MAINT_DETENT_HANDOFF_POSES.map(([n, p]) => [n, p.tau]));
+  const STEP = 1, T_MAX = 2 * Math.max(T.seated, T.crest);
+  const ups = [], downs = [];   // ups: the face turns over to r ≈ 0 (the seat); downs: r reaches rCrest and turns onto the face
+  let prev = raw(0);
+  for (let t = STEP; t <= T_MAX; t += STEP) {
+    const cur = raw(t);
+    if (prev === null && cur !== null) ups.push(t);
+    if (prev !== null && cur === null) downs.push(t);
+    prev = cur;
+  }
+  const refine = (t1, wantRecoilAfter) => { let lo = t1 - STEP, hi = t1;
+    for (let i = 0; i < 50; i++) { const m = (lo + hi) / 2; if ((raw(m) !== null) === wantRecoilAfter) hi = m; else lo = m; }
+    return hi; };
+  const nearest = (xs, ref) => xs.reduce((a, x) => (a === null || Math.abs(x - ref) < Math.abs(a - ref) ? x : a), null);
+  const up = nearest(ups, T.seated), down = nearest(downs, T.crest);
+  if (up === null || down === null) return MAINT_DETENT_HANDOFF_POSES;
+  const seated = Math.ceil(refine(up, true) * 10) / 10, crest = Math.floor(refine(down, false) * 10) / 10;
+  return MAINT_DETENT_HANDOFF_POSES.map(([n, p]) => [n, n === 'seated' ? { ...p, tau: seated } : n === 'crest' ? { ...p, tau: crest } : p]);
+}
 export const MAINT_DETENT_HANDOFFS = [
   {
     label: 'detent blade ⇄ click tail (the spring seats the beak)',
@@ -16476,7 +16509,7 @@ const CHECKS = {
   // TODO 210 — the maintaining detent's blade on the click's tail, same
   // instrument, own phase table: contact at every phase of a tooth.
   maintDetentHandoff: (clock, opts) => checkAlarmHandoffs(clock,
-    { poses: MAINT_DETENT_HANDOFF_POSES, handoffs: MAINT_DETENT_HANDOFFS, ...opts }),
+    { poses: maintDetentPosesFor(clock), handoffs: MAINT_DETENT_HANDOFFS, ...opts }),   // §339 landing 3e: the instants read off the law
   // TODO 226 step 3b — the impulse pin on the notch's walls, same instrument,
   // poses read off the clock's own law (escapementHandoffPoses says which).
   escapementHandoff: (clock, opts) => checkAlarmHandoffs(clock,
