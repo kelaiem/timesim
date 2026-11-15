@@ -11428,8 +11428,19 @@ export const HOLD_STRESS_WAIVERS = {
 };
 export function checkEqualisation(clock) {
   const E = clock.equalisation;
-  if (!E) return { ok: true, error: 'no equalisation payload on __clock (main.js TODO 32 block missing)' };
-  const failures = [];
+  // TODO 313 — an absent record FAILS. It used to return ok on an empty payload, and every alarm-free build passed
+  // here without a row measured, because the whole record was computed inside buildAlarm(). The going half is every
+  // build's; the alarm half stands down only on the build's own word (clock.modules, TODO 298's rule).
+  if (!E || !E.going)
+    return { ok: false, failures: [{ what: 'no going record', note: 'clock.equalisation.going is missing: the going train is not held to its spring law' }],
+      summary: 'NO GOING RECORD' };
+  const failures = [], standDown = [];
+  const alarmBuilt = !(clock.modules && clock.modules.alarm === false);
+  if (!E.alarm && alarmBuilt)
+    failures.push({ what: 'no alarm record', note: 'the build carries the alarm module (clock.modules) but publishes no equalisation.alarm' });
+  if (E.alarm && !alarmBuilt)
+    failures.push({ what: 'alarm record on an alarm-free build', note: 'clock.modules says the alarm was not built, yet equalisation.alarm is published' });
+  if (!E.alarm && !alarmBuilt) standDown.push({ half: 'alarm', why: 'the build did not build the alarm module (clock.modules.alarm false)' });
   if (!E.going.setup.quantised)
     failures.push({ what: 'set-up quantisation', setup: E.going.setup });
   if (!(E.going.levelMaxDev <= 1e-9))
@@ -11473,8 +11484,9 @@ export function checkEqualisation(clock) {
         build: { I_u4: sec.I_u4, devLen_u: ms.devLen } });
   };
   crossCheck('Mainspring drum', E.going);
-  crossCheck('Alarm barrel', E.alarm);
-  const g = E.going, a = E.alarm;
+  if (E.alarm) crossCheck('Alarm barrel', E.alarm);
+  const g = E.going, a = E.alarm || null;
+  const HALVES = a ? [['going', g], ['alarm', a]] : [['going', g]];   // TODO 313: the ribbons this build carries
   // Rows 9–11 — the energy column, held as arithmetic.
   const en = g.energy;
   const rel = (x, y) => Math.abs(x - y) / Math.max(Math.abs(y), 1e-300);
@@ -12332,7 +12344,7 @@ export function checkEqualisation(clock) {
   // MAINSPRING_SIGMA_Y_PA, the alloy band's low end. A ribbon over it is
   // waived by NAME in RIBBON_STRESS_WAIVERS citing its TODO, and a waiver
   // whose ribbon is under the limit is STALE and fails.
-  for (const [half, R] of [['going', g], ['alarm', a]]) {
+  for (const [half, R] of HALVES) {
     const st = R.stress;
     if (!st || !Array.isArray(st.sigma_Pa) || st.sigma_Pa.length !== 2) {
       failures.push({ what: 'ribbon stress rows', ribbon: half, note: 'equalisation.' + half + '.stress is missing — the ribbon is not held to its material' });
@@ -12360,7 +12372,7 @@ export function checkEqualisation(clock) {
   const packs = (rCollar, a) => rCollar / (2 * a) >= MAINSPRING_ALPHA_MIN - 1e-9;
   if (packs(1.5, 0.22007610004803033))
     failures.push({ what: 'ribbon packing control', note: 'the pre-TODO 291 going ribbon (α 3.41) passed the packing rule — the rule measures nothing' });
-  for (const [half, R] of [['going', g], ['alarm', a]]) {
+  for (const [half, R] of HALVES) {
     const pk = R.packing;
     if (!pk) { failures.push({ what: 'ribbon packing rows', ribbon: half, note: 'equalisation.' + half + '.packing is missing' }); continue; }
     if (!(rel(pk.thicknessU, 2 * R.section.a) <= 1e-12 && rel(pk.alpha, pk.collarR / (2 * R.section.a)) <= 1e-12))
@@ -12380,15 +12392,16 @@ export function checkEqualisation(clock) {
     if (!(rel(g.k_Nm_per_rad, kStrip) <= 1e-12))
       failures.push({ what: 'going k is not its strip', record: g.k_Nm_per_rad, fromSection: kStrip });
   }
-  // §104 rows 4–6, 8 — held from the record:
+  // §104 rows 4–6, 8 — held from the record (TODO 313: the alarm's half, on a build that carries it):
+  const c = a ? a.cadence : null;
+  const measured = { gapFull: null, gapEmpty: null, lawFullAtMid: null, lawEmptyAtMid: null };
+  if (a) {
   if (!a.setup || !a.setup.quantised)
     failures.push({ what: 'alarm set-up quantisation', setup: a.setup });
   if (!(a.totalWindTurns <= a.usableCeilingTurns + 1e-9))
     failures.push({ what: 'alarm total wind vs ribbon ceiling', totalTurns: a.totalWindTurns, usable: a.usableCeilingTurns });
   if (!(a.capacityLeft > 0))
     failures.push({ what: 'alarm ribbon capacity', capacityLeft: a.capacityLeft });
-  const c = a.cadence;
-  const measured = { gapFull: null, gapEmpty: null, lawFullAtMid: null, lawEmptyAtMid: null };
   if (!c || typeof c !== 'object' || !c.law) {
     failures.push({ what: 'alarm cadence law', cadence: c, note: 'the record no longer states a law — §104 regressed to an authored value' });
   } else {
@@ -12437,6 +12450,7 @@ export function checkEqualisation(clock) {
     if (!(Math.abs(empty.gap / lawAt(empty.midWind) - 1) * 100 <= 0.5))
       failures.push({ what: 'measured gap (near empty) vs law', measured: empty.gap, law: lawAt(empty.midWind), tolPct: 0.5 });
   }
+  }
   return {
     ok: failures.length === 0,
     going: {
@@ -12455,7 +12469,7 @@ export function checkEqualisation(clock) {
         sustainedRangeDeg: en.amplitude ? [+en.amplitude.min.deg.toFixed(2), +en.amplitude.max.deg.toFixed(2)] : null,
         knock: en.knock ? { deg: +en.knock.deg.toFixed(3), liftDeg: +en.knock.liftDeg.toFixed(3), textbookDeg: +en.knock.textbookDeg.toFixed(3),
           knocks: en.knock.knocks.map((k) => `${k.corner} ${k.position} ${k.deg.toFixed(1)}°`), nominalClears: en.knock.nominalClears } : null,
-        ribbons: Object.fromEntries([['going', g], ['alarm', a]].filter(([, R]) => R.stress).map(([h, R]) => [h, {
+        ribbons: Object.fromEntries(HALVES.filter(([, R]) => R.stress).map(([h, R]) => [h, {
           shape: R.section.shape, sigma_MPa: R.stress.sigma_Pa.map((x) => +(x / 1e6).toFixed(1)),
           limit_MPa: R.stress.limit_Pa / 1e6, waived: RIBBON_STRESS_WAIVERS[h] ? RIBBON_STRESS_WAIVERS[h].split(' — ')[0] : null,
         }])),
@@ -12547,7 +12561,7 @@ export function checkEqualisation(clock) {
         }])),
       } : null,
     },
-    alarm: {
+    alarm: a && {
       k_Nm_per_rad: a.k_Nm_per_rad,
       setupClicks: a.setup && a.setup.clicks, setupTeeth: a.setup && a.setup.teeth,
       setupTurns: a.setup && +(a.setup.sweepRad / (2 * Math.PI)).toFixed(5),
@@ -12562,13 +12576,13 @@ export function checkEqualisation(clock) {
         measured,
       } : c,
     },
-    failures,
+    failures, ...(standDown.length ? { standDown } : {}),
     summary: `going k ${g.k_Nm_per_rad.toExponential(3)} N·m/rad, set-up ${g.setup.clicks}/${g.setup.teeth} clicks, `
       + `M ${g.momentRange_Nmm[0].toFixed(2)}–${g.momentRange_Nmm[1].toFixed(2)} N·mm, level |dev| ${g.levelMaxDev.toExponential(1)}; `
-      + `alarm k ${a.k_Nm_per_rad.toExponential(3)} N·m/rad, set-up ${a.setup ? a.setup.clicks + '/' + a.setup.teeth : '—'} clicks, `
+      + (!a ? 'alarm: stands down (not built)' : `alarm k ${a.k_Nm_per_rad.toExponential(3)} N·m/rad, set-up ${a.setup ? a.setup.clicks + '/' + a.setup.teeth : '—'} clicks, `
       + (c && typeof c === 'object'
         ? `gap ${c.gapFull_s.toFixed(3)}–${c.gapEmpty_s.toFixed(3)} s over the wind (design ${c.designGap_s} s held; measured ${measured.gapFull}/${measured.gapEmpty}), ring ${c.ring.section_mm.toFixed(3)} mm in stock — TODO 32 closed`
-        : 'cadence NOT a law'),
+        : 'cadence NOT a law')),
   };
 }
 

@@ -456,16 +456,19 @@ export const SPEC = (() => {
   // landings since swept it, fixed the gates only the default runs, priced it at P1 and held its contacts. So the key's null is
   // the shipped arrest, as every other key's null is, and the default's configuration key does not move with the metal (every
   // landing changes the default's metal under one key). `stopwork` is accepted and normalised to that null. `stop-iron` builds
-  // §47's arrest at every reserve (the old default, kept buildable and swept), and folds to null where the stop-work does not
-  // stand anyway, the same build. `trailing` measures §47's trailing side and so builds §47. `stopwork-site` is a MEASUREMENT key
+  // §47's arrest at every reserve (the old default, kept buildable and swept).
+  // §337 landing 3 — AND THE GEARED GENEVA IS THE DEFAULT EVERYWHERE ELSE: the owner's flip, 2026-11-15. Where the direct star
+  // does not stand, the null builds §337's geared stop-work (a finger wheel geared off the cone, its ratio the exact one that
+  // lands the star's travel on the wind), which every geared reserve sites (docs/built/0337.md, the 2026-11-15 re-read) and where
+  // §47's stop iron has no legal site at all (its own boot warnings at those reserves). `geared` is normalised to that null, so
+  // it names the same build under the same key. Since stop-iron is no longer either default, it no longer folds. `trailing` measures §47's trailing side and so builds §47. `stopwork-site` is a MEASUREMENT key
   // (the reserves probe): the stop-work's site search at any reserve, with no fold. Whether the stop-work is BUILT is the
   // derived STOPWORK_BUILT below, which every reader asks instead of comparing this key.
   const stopworkStands = stopworkReaches(reserveHours) && STOPWORK_SITED_HOURS.includes(reserveHours);
   const arrest = raw.arrest === 'trailing' ? 'trailing'
     : raw.arrest === 'stopwork-site' ? 'stopwork-site'
-    : raw.arrest === 'stop-iron' ? (stopworkStands ? 'stop-iron' : null)
-    : raw.arrest === 'geared' ? (stopworkStands ? null : 'geared')   // §337 landing 2b: the geared Geneva (src/geared-geneva.js); folds to null at 30 h, where the direct stop-work stands
-    : null;
+    : raw.arrest === 'stop-iron' ? 'stop-iron'   // §337 landing 3: §47's stop iron at EVERY reserve now, since neither default is it
+    : null;   // §337 landing 3: `geared` (and `stopwork`) normalise to the default, which is the geared Geneva wherever the direct one does not stand
   const drumAzDeg = raw.drumAzDeg !== undefined && raw.drumAzDeg !== null && raw.drumAzDeg !== '' && Number.isFinite(Number(raw.drumAzDeg))
     ? ((Number(raw.drumAzDeg) % 360) + 360) % 360 : null;
   // §339 landing 2b — ?barrels=2: the chain pulley and one barrel (PULLEY_BARREL below). Its integers were solved at the
@@ -561,10 +564,11 @@ export function configKey({ spec = SPEC, route = null, tuned = [] } = {}) {
 }
 // §329 — is the Geneva stop-work BUILT (main.js, in §47's block), instead of §47's stop iron? The one question every reader asks
 // (main.js, inspect.js, lubrication.js, the action groups below), derived from the spec so all of them agree before the build.
-// §337 landing 2b — ?arrest=geared builds the GEARED Geneva stop-work (src/geared-geneva.js) at the reserves where the direct one
-// does not stand, behind a key until the battery vouches for it (the direct stop-work's own staging). It replaces §47's arrest
-// there, so the §47 block is left as the stop-work's no-site path leaves it.
-export const GEARED_BUILT = SPEC.arrest === 'geared';
+// §337 landing 2b — the GEARED Geneva stop-work (src/geared-geneva.js) at the reserves where the direct one does not stand. It
+// replaces §47's arrest there, so the §47 block is left as the stop-work's no-site path leaves it. Behind `?arrest=geared` until
+// landing 3 made it the default's (the null): built wherever the null does not build the direct stop-work.
+export const GEARED_BUILT = SPEC.arrest === null
+  && !(stopworkReaches(SPEC.reserveHours) && STOPWORK_SITED_HOURS.includes(SPEC.reserveHours));
 export const STOPWORK_BUILT = SPEC.arrest === 'stopwork-site'
   || (SPEC.arrest === null && stopworkReaches(SPEC.reserveHours) && STOPWORK_SITED_HOURS.includes(SPEC.reserveHours));
 // The rates the menu offers: every row with a balance the spring drives (TODO 292). The refused rows are listed beside
@@ -1558,6 +1562,16 @@ export const PULLEY_BARREL = Object.freeze({ zA: 38, zB: 104, NB: 29,
   // and the barrel's round the pulley, movement frame, degrees counter-clockwise from +x. The rule: the seat whose box is
   // smallest, ties to the widest margin, among those clear of the three fields and of both sides of the chain's span.
   pulleyAzDeg: 115.5, barrelAzDeg: 192.5 });
+// §339 landing 3b — THE PARALLEL SECOND BARREL's integers (src/twin-barrel.js' pickParallelBarrel, the rule written
+// there: the smallest barrel B whose power multiple at the same reserve reaches POWER_TARGET, ×2, TODO 292's measured
+// figure for the 36,000 row). Drum A is today's drum; B's set-up is NB clicks of its ratchet, so n = NB / A's 23 clicks
+// = zA/zB, and the multiple 4 sets the module nearest the great wheel's. tools/probe-339-parallel-barrel.mjs re-derives
+// it and holds it. THE SEAT, on the round alarm-free build (tools/second-barrel-seats.mjs, at rest): B's azimuth round
+// drum A, movement frame, degrees counter-clockwise from +x; the rule is the seat of widest margin over the drum band's
+// field, the coupling band's and both sides of the chain's span.
+// Re-read after #989's plate-margin law shrank the round plate's room: 13° (margin 1.455 before) is no seat now, and of
+// the two left (9.5°, 10°) 10° is the wider, margin 0.146 over the field's own CLEAR_MARGIN.
+export const PARALLEL_BARREL = Object.freeze({ NB: 24, zA: 96, zB: 92, barrelAzDeg: 10, seatSpec: 'alarm=0' });
 // The drum's azimuth every reader takes (main.js' drumDir and the form rectangle's reach): ?drumaz= when given, else the
 // pulley's declared seat at ?barrels=2, else null (drumDirOf's blend, the shipped watch, bit-exact).
 export const DRUM_AZ_DEG = SPEC.drumAzDeg !== null ? SPEC.drumAzDeg : SPEC.barrels === 2 ? PULLEY_BARREL.pulleyAzDeg : null;

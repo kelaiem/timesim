@@ -201,3 +201,59 @@ export function pickPulleyBarrel({ fw, k0, c, discCap }) {
   return { pick, full, tried, rMin, trainOf,
     candidates: { count: cands.length, raMin: cands[0]?.RA, raMax: cands.at(-1)?.RA } };
 }
+
+// §339 landing 3b (2026-11-15, the owner's reframing: POWER in the smallest footprint, for the 36,000 A/h row) —
+// THE PARALLEL SECOND BARREL. Drum A is today's drum, where it stands, its ribbon and set-up untouched, still carrying
+// the chain. Barrel B, a second going barrel with its own ribbon, meshes a toothed band on A below the chain: zA teeth on
+// A at the pulley's flange law (r_pA = R_A + flangeDelta, B's wall standing on that circle all the way up), zB on B's
+// wall, one module. So B turns n = zA/zB times A, and its ribbon is solved at n times A's hook angles (drumRibbon, the
+// build's law), which shows the hook (k_A + n²·k_B)·θ: linear over A's own two angles, the fusee, chain and arrest
+// unmoved. B's set-up is a whole NB clicks on its own ratchet of the same `teeth`, and A's is today's whole clicks, so
+//     n = θ_sB / θ_sA = NB / clicks_A,
+// which is what makes (NB, zA, zB) the design's integers: n is fixed by NB, (zA, zB) is n's reduced fraction times a
+// multiple, and the multiple sets only the module. The power at the same reserve goes as the released energy (the
+// fusee torque is released/(turns·2π)), so the design's figure is (E_A + E_B)/E_A.
+// POWER_TARGET: TODO 292 measured (tools/probe-292-fast-start.mjs, the 36,000 row on alarm=0) that ×1.67 of today's
+// spring at the same reserve is where any balance first starts, and ×2 where every balance r ≤ 8 both starts and reaches
+// the 200° target. So ×2 is the target, and the pick is the smallest barrel that reaches it.
+export const POWER_TARGET = 2;
+export function parallelBarrel({ NB, zA, zB, fw, c, RA, setup, sweep, clicksA = fw.setupClicks, teeth = fw.setupTeeth, ...opts }) {
+  const n = zA / zB;
+  if (Math.abs(n - NB / clicksA) > 1e-12) return { NB, zA, zB, n, feasible: false, why: 'the gear ratio is not B\'s set-up over A\'s' };
+  const rpA = RA + flangeDelta(fw), m = (2 * rpA) / zA, RB = (m * zB) / 2;
+  const A = drumRibbon({ R: RA, c, setup, sweep, ...opts });
+  const B = drumRibbon({ R: RB, c, setup: n * setup, sweep: n * sweep, ...opts });
+  const out = { NB, zA, zB, n, m, RA, rpA, RB, setupB: (NB * 2 * Math.PI) / teeth, centreDistance: rpA + RB, A, B };
+  if (!A || !B) return { ...out, feasible: false, why: !A ? 'no ribbon for A' : 'no ribbon for B' };
+  const kHook = A.k + n * n * B.k;
+  const lawDev = [0, 0.25, 0.5, 0.75, 1].reduce((mx, f) => {
+    const th = setup + f * sweep, T = A.k * th + n * (B.k * (n * th));
+    return Math.max(mx, Math.abs(T / th - kHook) / kHook);
+  }, 0);
+  return { ...out, feasible: true, kHook, lawDev, energyJ: A.energyJ + B.energyJ, mult: (A.energyJ + B.energyJ) / A.energyJ };
+}
+// THE PICK, by a stated rule (tools/probe-339-parallel-barrel.mjs holds it; layout.js' PARALLEL_BARREL declares it):
+// over every NB (B's set-up clicks, 1…4·teeth) and every multiple of n's reduced fraction whose module stands at or over
+// MODULE_MIN_U (§50's floor) with at least CENTRE_PINION_LEAVES teeth on the smaller wheel, the module nearest the great
+// wheel's (TRAIN.barrel.module, the mesh carrying the same torque class) — the SMALLEST barrel B whose multiple reaches
+// POWER_TARGET, its tips (R_B + m) inside `discCap` when one is given. Smallest because the footprint is the aim.
+export function pickParallelBarrel({ fw, c, RA, setup, sweep, discCap = Infinity, target = POWER_TARGET }) {
+  const clicksA = fw.setupClicks, teeth = fw.setupTeeth, mGW = TRAIN.barrel.module, rpA = RA + flangeDelta(fw);
+  const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+  const cands = [];
+  for (let NB = 1; NB <= 4 * teeth; NB++) {
+    const g = gcd(NB, clicksA), p = NB / g, q = clicksA / g;   // n = p/q, zA = k·p on A, zB = k·q on B
+    let best = null;
+    for (let k = Math.ceil(CENTRE_PINION_LEAVES / Math.min(p, q)); ; k++) {
+      const m = (2 * rpA) / (k * p);
+      if (m < MODULE_MIN_U) break;
+      if ((m * k * q) / 2 + m > discCap) continue;
+      if (!best || Math.abs(m - mGW) < Math.abs(best.m - mGW)) best = { k, m };
+    }
+    if (!best) continue;
+    const X = parallelBarrel({ NB, zA: best.k * p, zB: best.k * q, fw, c, RA, setup, sweep });
+    if (X.feasible && X.RB >= 3) cands.push(X);
+  }
+  const reach = cands.filter((x) => x.mult >= target).sort((a, b) => a.RB - b.RB || Math.abs(a.m - mGW) - Math.abs(b.m - mGW));
+  return { pick: reach[0] ?? null, candidates: cands, reached: reach.length };
+}
