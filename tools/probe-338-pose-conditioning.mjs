@@ -40,8 +40,9 @@
 //   2. the engine is live: it perturbed calls at boot, and the metal differs
 //      somewhere (an engine that perturbed nothing would pass every pose).
 //   3. CONTROL: the held wind posed at the τ the train's law INVERTS (the pre-fix
-//      law, `maintHoldLaw.advanceTau`, posed by τ) reads OVER the bound. A guard
-//      nobody has seen fire is a comment.
+//      law, `maintHoldLaw.advanceTau`, posed by τ) reads OVER the bound, at one or more
+//      fractions of its run (one fraction can land on an escapement step's edge, where
+//      the inverse cannot be moved). A guard nobody has seen fire is a comment.
 //   4. every digest pose reads UNDER the bound.
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 
@@ -86,7 +87,12 @@ async function measure({ seed }) {
   const held = poses.find((p) => p.maintHold === 0.5 && p.maintPickUp === undefined);
   if (!held || !law || typeof law.advanceTau !== 'function') throw new Error('the control needs the fingerprint\'s held wind (maintHold 0.5) and maintHoldLaw.advanceTau');
   const H = law.begin(held.tau);
-  const control = { tau: law.advanceTau(H.tau0, H.A0, held.maintHold * (law.run - H.recoil)), crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 0 };
+  // §343 landing 3 — at several FRACTIONS of the held run, the fingerprint's 0.5 first. barrelMeshAngle steps with
+  // the escapement, so where a target lands on a step's edge the inverse's τ is fixed by the beat's own arithmetic and
+  // no ulp can move it: at the 14,400 movement the fingerprint's half-way hold does exactly that (τ bit-identical under
+  // both seeds), so one fraction is one sample of the trap, not the trap. The control holds if ANY fraction amplifies.
+  const CONTROL_FRACTIONS = [held.maintHold, 0.1, 0.2, 0.3, 0.4, 0.6, 0.7, 0.8, 0.9];
+  const controls = CONTROL_FRACTIONS.map((f) => ({ f, pose: { tau: law.advanceTau(H.tau0, H.A0, f * (law.run - H.recoil)), crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 0 } }));
   // A mesh's name, else its labelled unit's (clock.labelEntries, the battery's own
   // vocabulary), else its first named ancestor's: 182 meshes carry no name of their own.
   const unitOf = new Map();
@@ -106,7 +112,7 @@ async function measure({ seed }) {
     return { tau: clock.tau, names: m.map(nameOf), mats: out };
   };
   const rows = poses.map(read);
-  const ctl = read(control);
+  const ctl = controls.map((c) => ({ f: c.f, ...read(c.pose) }));
   clock.resetInputs();
   return { seed, atBoot, poses, rows, control: ctl, placeQ: I.DIGEST_PLACE_Q };
 }
@@ -140,14 +146,16 @@ if (!isMainThread) {
   const line = (ok, s) => { console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${s}`); if (!ok) fails.push(s); };
   console.log(`${poses} digest poses × ${meshes} meshes; BOUND = 1 / (${A.placeQ} · ${poses} · ${meshes} · 16) = ${BOUND.toExponential(3)}`);
 
-  const same = A.rows.map((r, k) => dev(r, A2.rows[k])).filter((x) => x.d !== 0).length + (dev(A.control, A2.control).d !== 0);
+  const same = A.rows.map((r, k) => dev(r, A2.rows[k])).filter((x) => x.d !== 0).length
+    + A.control.filter((c, k) => dev(c, A2.control[k]).d !== 0).length;
   line(same === 0, `determinism: two boots on the tree's own maths agree exactly at every pose and the control (${same} differ)`);
   for (const B of Bs) {
     const per = A.rows.map((r, k) => ({ pose: A.poses[k], tau: [r.tau, B.rows[k].tau], ...dev(r, B.rows[k]) }));
     const moved = per.filter((x) => x.d > 0).length;
     line(B.atBoot > 0 && moved > 0, `seed ${B.seed}: the synthetic engine is live (${B.atBoot} results one ulp off at boot; ${moved}/${poses} poses moved at all)`);
-    const c = dev(A.control, B.control);
-    line(c.d > BOUND, `seed ${B.seed}: CONTROL — the held wind at the τ the train's law inverts reads over the bound: ${c.d.toExponential(2)} (${c.who}; τ ${A.control.tau} vs ${B.control.tau})`);
+    const cs = A.control.map((a, k) => ({ f: a.f, tau: [a.tau, B.control[k].tau], ...dev(a, B.control[k]) }));
+    const c = cs.reduce((w, x) => (x.d > w.d ? x : w));
+    line(c.d > BOUND, `seed ${B.seed}: CONTROL — the held wind at the τ the train's law inverts reads over the bound at some fraction of its run: worst ${c.d.toExponential(2)} at ${c.f} (${c.who}; τ ${c.tau[0]} vs ${c.tau[1]}); ${cs.filter((x) => x.d > BOUND).length} of ${cs.length} fractions over`);
     const steep = per.filter((x) => !(x.d < BOUND));
     per.sort((x, y) => y.d - x.d);
     line(steep.length === 0, `seed ${B.seed}: every digest pose under the bound — worst ${per[0].d.toExponential(2)} (${per[0].who}) at ${JSON.stringify(per[0].pose)}, median ${per[poses >> 1].d.toExponential(2)}`);

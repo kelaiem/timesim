@@ -32,7 +32,7 @@ import { bootMany } from './boot-pool.mjs';
 
 const DEFAULT_SPECS = [
   '',                                                        // the round default (validated 'identity')
-  'case=rect&formrect=-46.99,46.99,-43.93,43.93',            // the validated 'form-rect' point (src/validated-configs.js)
+  'case=rect&formrect=-47.74,47.74,-43.93,43.93',            // the validated 'form-rect' point (src/validated-configs.js)
   'case=cushion',
   'case=tonneau',
   'case=fitted',

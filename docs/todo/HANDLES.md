@@ -42,6 +42,11 @@ heading, and [the index](../../TODO.md) is where it is shown.
 
 | item | handle |
 |---|---|
+| 312 | well meets selector boss |
+| 309 | free gong sets width |
+| 308 | stud straddles cock edge |
+| 307 | hack rod crosses barrel |
+| 306 | linkage through arrest |
 | 305 | setting traverse crosses pinion |
 | 304 | cock feet too close |
 | 303 | cushion lugs proud |

@@ -40,6 +40,7 @@ import { ZERO_AREA_MAX, CLEAR_MARGIN, HANDOFF_TRACK_TOL, UNIT_MM, Z_DIAL, SLENDE
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, rigidSplit,
   TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, ESCAPE_STEEL_SIGMA_Y_PA, ESCAPE_STEEL_SIGMA_Y_BAND, ESCAPE_TIP_R_M, ESCAPE_TIP_R_BAND, LINE_CONTACT_SHAKEDOWN_P0_PER_Y, ESCAPE_STEEL_HARDNESS_BAND, TABOR_H_OVER_SIGMA_Y, TABOR_TOLERANCE, CUT_TOOL_R_M, CUT_CONCAVE_MIN_DEG, SERVICE_INTERVAL_YEARS, DESIGN_LIFE_YEARS, JULIAN_YEAR_S, WEAR_K_BAND, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, MAINSPRING_ALPHA_MIN, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R_SPEC, BALANCE_R_REF, BALANCE_R_CASE_BOUND, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG, STOPWORK_BUILT, GEARED_BUILT, F_BALANCE, FRICTION, OIL_AGEING } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 import { auditLubrication, LUBRICATION, LUBRICATION_DEBT, LUBRICATION_WAIVERS, REGIME_INFO } from './lubrication.js';   // §247 tier one
+import { judgeServiceClass, SERVICE_CLASS, EXPENDABLE_PARTS } from './service-class.js';   // TODO 299 step 1
 import { LOCK_DEG, RUN_DEG } from './escapement.js';   // TODO 299 row 22: the lock is declared against shock and the run is not, so the run is the wear budget's spendable share
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
@@ -3779,6 +3780,55 @@ export const INTRA_UNIT_CONTACTS = [
   // and the FF tier only GATES within INTRA_TIER_SCOPE, which the cocks are not
   // in yet. The row is the fit's record either way.
   { unit: 'Balance cock', a: 'cockSlab', b: 'chatonCollar', why: 'TODO 295: the chaton pressed in the slab\'s own bore — makeCock cuts that bore at the collar\'s OUTER radius (makeJewelSetting\'s r·1.6), so the drive fit IS the joint, the alarm barrel\'s "wheel pressed on its arbor" convention. borePath draws the bore as a polygon whose flats sit up to PIVOT_BORE_CLEAR/2 inside that radius, so what interference there is belongs to the bore\'s own faceting rather than to a gap anyone chose' },
+  // TODO 295 step 4 — THE COCKS' WELDED JOINTS, now that the four cocks are in INTRA_TIER_SCOPE. Each pair was read by
+  // the FF tier and measured before it was declared (the depth of either part's surface inside the other, 0 for every
+  // seat and weld below, the screw slot's groove 0.1): each is a joint the builder makes on purpose. What was NOT a joint
+  // was fixed in the same landing (the fusee cock's arm, cut unbored over its foot screw) or waived below (TODO 308).
+  { unit: 'Fork cock', a: 'bridgeBoss', b: 'bridgeBar', why: 'TODO 295: the bar welded to the pivot boss — makeEscapeBridge laps each bar over the node it reaches by that node\'s own radius, so slab, bar and bosses are one body' },
+  { unit: 'Fork cock', a: 'bridgeBoss', b: 'bridgeJewel', why: 'TODO 295: the jewel pressed in the boss\'s counterbore (the fork-sized seat its builder sinks), the drive fit IS the joint' },
+  { unit: 'Fork cock', a: 'bridgeFootBoss', b: 'bridgeBar', why: 'TODO 295: the bar welded to the foot boss, the same lap as at the pivot' },
+  { unit: 'Fork cock', a: 'bridgeFootBoss', b: 'bridgeLeg', why: 'TODO 295: the leg hangs from the foot boss\'s underside — the boss is bored for the leg\'s screw and the leg is the boss turned down to the plate' },
+  { unit: 'Fork cock', a: 'bridgeFootBoss', b: 'screwHeads', why: 'TODO 295: the foot screw\'s head bears on the foot boss\'s top face (TODO 27: a head seated proud, not sunk)' },
+  { unit: 'Fork cock', a: 'bridgeBar', b: 'bridgeLeg', why: 'TODO 295: the leg\'s top meets the bar where the bar laps over the foot node' },
+  { unit: 'Fork cock', a: 'bridgeBar', b: 'screwHeads', why: 'TODO 295: the foot screw\'s seat overlaps the bar\'s end over the foot node' },
+  { unit: 'Fork cock', a: 'bridgeLeg', b: 'bridgeFoot', why: 'TODO 295: the foot pad spreads at the leg\'s base — one turned body, leg and pad, on the plate face' },
+  { unit: 'Fork cock', a: 'screwHeads', b: 'screwSlots', why: 'TODO 295: the slot cut in the screw\'s head (§20: the slot body IS the head\'s groove)' },
+  { unit: 'Fork cock', a: 'screwHeads', b: 'screwShanks', why: 'TODO 295: one screw — the head on its shank' },
+  { unit: 'Escape cock', a: 'bridgeBoss', b: 'bridgeBar', why: 'TODO 295: the bar welded to the pivot boss — makeEscapeBridge laps each bar over the node it reaches by that node\'s own radius, so slab, bar and bosses are one body' },
+  { unit: 'Escape cock', a: 'bridgeBoss', b: 'bridgeJewel', why: 'TODO 295: the jewel pressed in the boss\'s counterbore (the fork-sized seat its builder sinks), the drive fit IS the joint' },
+  { unit: 'Escape cock', a: 'bridgeFootBoss', b: 'bridgeBar', why: 'TODO 295: the bar welded to the foot boss, the same lap as at the pivot' },
+  { unit: 'Escape cock', a: 'bridgeFootBoss', b: 'bridgeLeg', why: 'TODO 295: the leg hangs from the foot boss\'s underside — the boss is bored for the leg\'s screw and the leg is the boss turned down to the plate' },
+  { unit: 'Escape cock', a: 'bridgeFootBoss', b: 'screwHeads', why: 'TODO 295: the foot screw\'s head bears on the foot boss\'s top face (TODO 27: a head seated proud, not sunk)' },
+  { unit: 'Escape cock', a: 'bridgeBar', b: 'bridgeLeg', why: 'TODO 295: the leg\'s top meets the bar where the bar laps over the foot node' },
+  { unit: 'Escape cock', a: 'bridgeBar', b: 'screwHeads', why: 'TODO 295: the foot screw\'s seat overlaps the bar\'s end over the foot node' },
+  { unit: 'Escape cock', a: 'bridgeLeg', b: 'bridgeFoot', why: 'TODO 295: the foot pad spreads at the leg\'s base — one turned body, leg and pad, on the plate face' },
+  { unit: 'Escape cock', a: 'screwHeads', b: 'screwSlots', why: 'TODO 295: the slot cut in the screw\'s head (§20: the slot body IS the head\'s groove)' },
+  { unit: 'Escape cock', a: 'screwHeads', b: 'screwShanks', why: 'TODO 295: one screw — the head on its shank' },
+  { unit: 'Balance cock', a: 'cockSlab', b: 'cockFootBar', why: 'TODO 295: the T-foot\'s crossbar fans out from the slab\'s tail, flush in its band — one body with the slab' },
+  { unit: 'Balance cock', a: 'cockSlab', b: 'studCarrierArm', why: 'TODO 295: the stud carrier seated on the cock\'s face (its group stands at COCK_T/2, the slab\'s top)' },
+  { unit: 'Balance cock', a: 'cockFootBar', b: 'cockLeg', why: 'TODO 295: each leg hangs from the crossbar\'s underside over its screw' },
+  { unit: 'Balance cock', a: 'cockFootBar', b: 'screwHeads', why: 'TODO 295: the T-foot screws\' heads bear on the crossbar\'s top face (TODO 27)' },
+  { unit: 'Balance cock', a: 'cockLeg', b: 'cockFoot', why: 'TODO 295: each foot pad spreads at its leg\'s base on the plate face' },
+  { unit: 'Balance cock', a: 'screwHeads', b: 'screwSlots', why: 'TODO 295: the slot cut in each screw\'s head' },
+  { unit: 'Balance cock', a: 'screwHeads', b: 'screwShanks', why: 'TODO 295: one screw — the head on its shank' },
+  { unit: 'Balance cock', a: 'studCarrierRing', b: 'studCarrierArm', why: 'TODO 295: the carrier\'s arm rooted on its ring (HAIRSPRING_CARRIER_ROOT) — one fixture' },
+  { unit: 'Balance cock', a: 'studCarrierRing', b: 'studCarrierBoss', why: 'TODO 295: the boss at the arm\'s end laps the ring\'s outer wall — one fixture' },
+  { unit: 'Balance cock', a: 'studCarrierArm', b: 'studCarrierBoss', why: 'TODO 295: the arm runs into the stud boss at its end' },
+  { unit: 'Fusee cock', a: 'bridgeFootBoss', b: 'bridgeLeg', why: 'TODO 295: the leg hangs from the foot boss (makeEscapeBridge\'s foot node)' },
+  { unit: 'Fusee cock', a: 'bridgeFootBoss', b: 'screwHeads', why: 'TODO 295: the foot screw\'s head bears on the foot boss\'s top face' },
+  { unit: 'Fusee cock', a: 'bridgeFootBoss', b: 'fuseeCockArm', why: 'TODO 295: the arm laps the foot node (its outline the strip unioned with the node\'s disc, bored for the screw)' },
+  { unit: 'Fusee cock', a: 'bridgeLeg', b: 'bridgeFoot', why: 'TODO 295: the foot flange at the leg\'s base (§336 landing 4)' },
+  { unit: 'Fusee cock', a: 'bridgeLeg', b: 'fuseeCockArm', why: 'TODO 295: the leg\'s top meets the arm\'s underside over the foot node' },
+  { unit: 'Fusee cock', a: 'screwHeads', b: 'screwSlots', why: 'TODO 295: the slot cut in the screw\'s head' },
+  { unit: 'Fusee cock', a: 'screwHeads', b: 'screwShanks', why: 'TODO 295: one screw — the head on its shank' },
+  { unit: 'Fusee cock', a: 'screwHeads', b: 'fuseeCockArm', why: 'TODO 295: the foot screw\'s head bears on the arm\'s top face, over the arm\'s own bore' },
+  { unit: 'Fusee cock', a: 'bridgeFoot', b: 'steadyPin', why: 'TODO 295: the two steady pins pressed into the foot flange\'s own bores (§336 landing 4)' },
+  { unit: 'Fusee cock', a: 'bridgeBoss', b: 'fuseeCockCrank', why: 'TODO 295: the crank welded to the bush\'s boss, lapping it by its radius (§336 landing 3)' },
+  { unit: 'Fusee cock', a: 'fuseeCockCrank', b: 'fuseeCockCrank', why: 'TODO 295: the crank\'s dogleg legs lap each other at their knee — one bar cut as two strips' },
+  { unit: 'Fusee cock', a: 'fuseeCockCrank', b: 'fuseeCockSeat', why: 'TODO 295: the stud\'s seat is a pendant of crank metal (§336 landing 3)' },
+  { unit: 'Fusee cock', a: 'fuseeCockCrank', b: 'fuseeCockArm', why: 'TODO 295: the crank and the arm meet at the post, where the two levels join' },
+  { unit: 'Fusee cock', a: 'fuseeCockCrank', b: 'fuseeCockPost', why: 'TODO 295: the post rises from the crank\'s level to the arm\'s' },
+  { unit: 'Fusee cock', a: 'fuseeCockArm', b: 'fuseeCockPost', why: 'TODO 295: the post\'s top in the arm' },
   { unit: 'Alarm barrel', a: 'alarmArborWheel', b: 'alarmBarrelArbor', why: '§99: the winding wheel pressed on the arbor — bore cut at the arbor\'s own radius, the drive fit IS the joint (the power-reserve train\'s "wheel pressed on its arbor" convention)' },
   { unit: 'Alarm barrel', a: 'alarmArborRatchet', b: 'alarmBarrelArbor', why: '§99: the ratchet keyed on the arbor\'s filed square (across-corners = the arbor\'s diameter — the set-up ratchet\'s convention)' },
   { unit: 'Alarm winding train', a: 'alarmWindIdler', b: 'CylinderGeometry#5', why: 'idler 1 on its stud (§99 named the idler meshes for the winding pair\'s floors row; the stud keeps its index label)' },
@@ -4193,6 +4243,15 @@ if (GEARED_BUILT) INTRA_UNIT_CONTACTS.push(   // §337 landing 2b, stage 3
   { unit: 'Winding stop-work', a: 'gearedPinion', b: 'gearedFingerStud', why: '§337: the finger\'s pinion turns on its stud at the running fit' });
 // Accepted debt, §50's convention — red in the report, cited, not silenced:
 export const INTRA_UNIT_WAIVERS = [
+  // TODO 308 — the hairspring stud stands across the balance cock's edge (its centre 0.171 inside the slab's rim, the post's
+  // half-diagonal 0.46), so the slab, the carrier's ring and its arm are cut solid where the post runs through them, and
+  // the side pin stands in an unbored boss. Each needs the open notch or bore the item names; the waivers go STALE as each
+  // is cut.
+  { unit: 'Balance cock', a: 'cockSlab', b: 'hairspringStud', debt: 'TODO 308: the stud post runs through the slab, cut solid at the rim (a vertical ray at its centre meets both faces)' },
+  { unit: 'Balance cock', a: 'studCarrierRing', b: 'hairspringStud', debt: 'TODO 308: the post runs through the carrier ring\'s band, which has no bore there' },
+  { unit: 'Balance cock', a: 'studCarrierArm', b: 'hairspringStud', debt: 'TODO 308: the arm runs to the stud\'s centre and is cut solid over the post' },
+  { unit: 'Balance cock', a: 'studCarrierBoss', b: 'hairspringStud', debt: 'TODO 308: the square post\'s corners (half-diagonal 0.46) stand in the boss\'s 0.42 bore' },
+  { unit: 'Balance cock', a: 'studCarrierBoss', b: 'studPinScrew', debt: 'TODO 308: the side pin stands in the boss with no tapped hole, and its tip stops short of the post it should pin' },
   // TODO 107's row (genevaFingerDisc ⇄ alarmArrestFingerArbor) stood here and
   // is CLOSED with TODO 198 — deleted, not renewed. The bore was never a
   // triangulator failure: the disc's outline was clamped onto its own bore
@@ -4315,6 +4374,11 @@ export const INTRA_TIER_SCOPE = [
   // the report quiet. That is the trade this list exists to make: a fault
   // inside the gate and cited beats a fault outside it and counted.
   'Power-reserve train',
+  // TODO 295 step 4 — the four COCKS. Each is one rigid unit (slab, bar, boss, leg, foot, screws, its jewel setting), so
+  // the pair sweep cannot see inside one, and an UNBORED bore is exactly what an ungated FF tier cannot stop: the balance
+  // cock's slab carried no bore at all, and both escapement bridges ran an unbored arm across the one they did cut, under
+  // every gate. Every welded joint the tier reads is declared in INTRA_UNIT_CONTACTS, measured.
+  'Balance cock', 'Fork cock', 'Escape cock', 'Fusee cock',
 ];
 // The rigid-frame signature, shared by checkIntraUnit's MM tier and
 // checkAssembly (hoisted from the latter, §121 — one predicate, two
@@ -5255,10 +5319,8 @@ export const PLATE_SEATS = [
   { unit: "Set-up work", mesh: "CylinderGeometry#3", kind: "planted", why: "a stud, on the plate face" },
   { unit: "Set-up work", mesh: "CylinderGeometry#6", kind: "planted", why: "a stud, on the plate face" },
   { unit: "Set-up work", mesh: "mainspringDrumPivot", kind: "pivot", why: "the drum arbor's lower pivot" },
-  { unit: "Balance cock", mesh: "LatheGeometry#4", kind: "fastened", why: "a cock leg, bored for its screw (TODO 184)" },
-  { unit: "Balance cock", mesh: "LatheGeometry#5", kind: "fastened", why: "the leg's foot, on the plate face" },
-  { unit: "Balance cock", mesh: "LatheGeometry#6", kind: "fastened", why: "a cock leg, bored for its screw (TODO 184)" },
-  { unit: "Balance cock", mesh: "LatheGeometry#7", kind: "fastened", why: "the leg's foot, on the plate face" },
+  { unit: "Balance cock", mesh: "cockLeg", kind: "fastened", why: "the cock's two legs, each bored for its screw (TODO 184; LatheGeometry#4/#6 until TODO 295 named them)" },
+  { unit: "Balance cock", mesh: "cockFoot", kind: "fastened", why: "each leg's foot, on the plate face (LatheGeometry#5/#7 until TODO 295)" },
   { unit: "Balance cock", mesh: "screwShanks", kind: "fastened", why: "the cock screws, tapped through the plate (TODO 184)" },
   { unit: "pillars", mesh: "pillar", kind: "fastened", why: "riveted through the plate into its countersunk land (TODO 184, 200)" },
   { unit: "Dial", mesh: "CylinderGeometry#0", kind: "planted", why: "a dial foot, pinned into the plate" },
@@ -13123,6 +13185,30 @@ export function checkModules(clock) {
   };
 }
 
+// TODO 299 step 1 — THE SERVICE CLASS OF EVERY MEMBER (src/service-class.js). Every unit the build labels answers EXPENDABLE
+// or LIFETIME, because the class picks a member's wear criterion; an expendable part names a mesh its unit carries (or one
+// the build says it left uncut). `lubrication`'s shape: pure data, a pure judge, controls that run it on broken copies.
+export function checkServiceClass(clock) {
+  const scene = new Map(collectUnits(clock, { includeExcluded: true }).map((u) => [u.name, new Set(u.meshes.map((m) => meshLabel(u, m)))]));
+  const omitted = clock.omitted || [];
+  const real = judgeServiceClass({ scene, omitted });
+  const controls = [];
+  const expect = (name, hit) => controls.push({ name, ok: !!hit });
+  const victim = [...scene.keys()].find((u) => u in SERVICE_CLASS);
+  { const table = { ...SERVICE_CLASS }; delete table[victim];
+    expect('a unit dropped from the roster is unanswered', judgeServiceClass({ scene, omitted, table }).unanswered.some((x) => x.unit === victim)); }
+  { const table = { ...SERVICE_CLASS, [victim]: { cls: 'forever', why: 'a control, not a class' } };
+    expect('a class that is neither is malformed', judgeServiceClass({ scene, omitted, table }).malformed.some((x) => x.unit === victim)); }
+  { const parts = [...EXPENDABLE_PARTS, { unit: victim, mesh: '__no such mesh__', why: 'a control' }];
+    expect('an expendable part naming a mesh its unit lacks is stale', judgeServiceClass({ scene, omitted, parts }).stale.some((x) => x.part === `${victim}/__no such mesh__`)); }
+  expect('a real expendable part is read as replaced', real.replaced.length > 0
+    && judgeServiceClass({ scene, omitted, parts: [] }).replaced.length === 0);
+  const failed = controls.filter((c) => !c.ok);
+  const control = failed.length ? `FAIL: ${failed.map((c) => c.name).join('; ')}` : `PASS (${controls.length} broken copies each refused)`;
+  return { ok: !real.unanswered.length && !real.malformed.length && !real.stale.length && !failed.length,
+    population: scene.size, ...real, control, controls };
+}
+
 export function checkLubrication(clock) {
   const labels = clock.labelEntries.map((e) => e.name);
   const absent = buildOmissions(clock).units;   // TODO 298 — joints of a module the build did not build stand down
@@ -16401,6 +16487,7 @@ const CHECKS = {
   // instrument was to import the module and call it by hand (TODO 29).
   restoring: (clock, opts) => auditOscillators(clock, opts),
   modules: (clock) => checkModules(clock),                               // TODO 298 — the build's word on what it left out (modules, uncut meshes), held to the scene both ways
+  serviceClass: (clock) => checkServiceClass(clock),                     // TODO 299 step 1 — every member EXPENDABLE or LIFETIME
   lubrication: (clock) => checkLubrication(clock),                       // §247 tier one — every joint answers with a regime or sits in the closed arrival inventory; the energy column's coefficients agree with the regime they price
   transfers: (clock, opts) => checkTransfers(clock, opts),               // §137 — every corner's idiom + arithmetic; declarations held honest, tiers gated
   meshPhase: (clock, opts) => checkMeshPhase(clock, opts),               // §194 — every declared mesh anti-phased at every pose, not just the build's; §135 gates the centre distance beside it

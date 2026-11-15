@@ -132,12 +132,12 @@
 // leaves its contact.
 const RATE_TABLE = {
   14400: { fourthTeeth: 64, escPinion: 8, module: 0.2625, d4: 19.222357121153717, balanceR: 11.5, rimF: 0.345, claimDeg: 126, peakDeg: 328, caseBound: true }, // 8/64 = 1/8 — §343, the chronometer's beat
-  18000: { fourthTeeth: 80, escPinion: 8, balanceR: 9, rimF: 0.36, claimDeg: 126, peakDeg: 311 }, // 8/80 = 1/10 — the shipped movement
-  21600: { fourthTeeth: 96, escPinion: 8, balanceR: 9, rimF: 0.26, claimDeg: 128, peakDeg: 311 }, // 8/96 = 1/12
+  18000: { fourthTeeth: 80, escPinion: 8, d4: 18.7520672519568, balanceR: 11, rimF: 0.245, claimDeg: 129, peakDeg: 325 }, // 8/80 = 1/10 — the shipped movement until §343 landing 3
+  21600: { fourthTeeth: 96, escPinion: 8, d4: 19.22106386092866, balanceR: 9.25, rimF: 0.245, claimDeg: 129, peakDeg: 313 }, // 8/96 = 1/12
   28800: { fourthTeeth: 96, escPinion: 6, undriven: 'TODO 292 — no balance the honest mainspring (TODO 291) drives to AMPLITUDE_TARGET_DEG and starts at this rate' }, // 6/96 = 1/16
   36000: { fourthTeeth: 120, escPinion: 6, module: 0.168, undriven: 'TODO 292 — no balance the honest mainspring (TODO 291) drives to AMPLITUDE_TARGET_DEG and starts at this rate' }, // 6/120 = 1/20 — §204: at 0.168 the wheel keeps the 96-tooth rows' pitch radius
 };
-export const DEFAULT_VPH = 18000;
+export const DEFAULT_VPH = 14400;   // §343 landing 3 — the chronometer's beat is the shipped watch (the owner's call)
 // The row a rate's balance reads: its own, or the shipped movement's.
 const rateBalanceRow = (vph) => (RATE_TABLE[vph].rimF !== undefined ? RATE_TABLE[vph] : RATE_TABLE[DEFAULT_VPH]);
 export const FOURTH_MODULE_DEFAULT = 0.21; // the fourth⇄escape mesh's cut, the rows above's module when they carry none
@@ -1652,6 +1652,15 @@ export const ESCAPE_STEEL_HARDNESS_BAND = Object.freeze({
   why: 'the same 58–62 HRC temper as ESCAPE_STEEL_SIGMA_Y_BAND, converted to Vickers by ASTM E140 (653–746 HV)',
 });
 export const ESCAPE_STEEL_HARDNESS_PA = ESCAPE_STEEL_HARDNESS_BAND.low;
+// TODO 299 — and THE STONE'S, for the pallet stones' own faces: synthetic corundum (sapphire and ruby are one stock, §269's
+// STOCK.corundum). A BAND, because single-crystal Al2O3's indentation hardness moves with the load and the face's
+// orientation to the c-axis: the published range for the material is 2000-2300 HV (about three times the escape
+// steel's), and a wear reading takes the LOW end, the softer stone wearing faster.
+export const CORUNDUM_HARDNESS_BAND = Object.freeze({
+  low: 2000 * HV_TO_PA, high: 2300 * HV_TO_PA, lowHV: 2000, highHV: 2300,
+  why: 'single-crystal corundum (sapphire, ruby): 2000–2300 HV, the published range for Al₂O₃, which moves with the load and the face\'s orientation to the c-axis',
+});
+export const CORUNDUM_HARDNESS_PA = CORUNDUM_HARDNESS_BAND.low;
 // Tabor's ratio, named so the cross-check reads as a relation and not a fudge:
 // H/σy ≈ 3 for a fully plastic indentation (Tabor, The Hardness of Metals
 // (1951)), with ±20% covering work hardening and the elastic–plastic
@@ -1855,12 +1864,16 @@ export const FRICTION = Object.freeze({
 // declares a law and says so; a measured curve replaces `shape` and nothing else.
 //
 //  · WHICH ROWS AGE is not declared here: it is read off LUBRICATION's map
-//    (main.js, `OIL_AGEING_ROWS`), the FRICTION rows that any lubricated regime
-//    prices (REGIME_INFO's `priced`, every regime but 'dry'). Teeth run dry by
-//    design, so muTooth does not age; escEff, qOther and endContactMm are not a
-//    lubricant's rows on the map (the pallet faces' 'escapement' regime prices
-//    none), so they stay where the fresh oil leaves them. That last one is the
-//    model's gap, said plainly: the pallet oil is the real one that ages first.
+//    (main.js, the energy column's `oilAgeing`), the FRICTION rows that any
+//    lubricated regime prices (REGIME_INFO's `priced`, every regime but 'dry').
+//    Teeth run dry by design, so muTooth does not age; qOther and endContactMm
+//    are no lubricant's rows, so they stay where the fresh oil leaves them. The
+//    PALLET OIL ages through escEff, the row the 'escapement' regime prices: it
+//    is the oil that goes first in a real watch. That band is the whole
+//    escapement's efficiency, though (drop, draw, impulse sliding, unlocking),
+//    and only the sliding is the oil's, so ageing it from nominal to adverse
+//    lays the band's whole spread on the oil: the pallet's share of the fall is
+//    an UPPER bound, and the records say so.
 //  · THE TWO ENDS are band corners, never new numbers. FRESH is the NOMINAL
 //    corner: the serviced watch, where TODO 207's design swing is held. AGED,
 //    at the end of an interval, is the ADVERSE corner, which muJewel's row
@@ -2443,8 +2456,8 @@ export const BARREL_STEP_DEG = -35;        // center sits down-right of barrel �
 // 15.6724 to float noise. Landing 1b had a variant keep the shipped D4; one D4
 // cannot serve both plates (at 18,000's, 15.6724 stands inboard 15.6724 against
 // outboard 14.8686 and §34's selector post meets the well). D4_SHIPPED is the
-// shipped row's, the value above.
-export const D4_SHIPPED = 18.214767593871496;
+// shipped row's (14,400's since landing 3), the fallback for a row with none.
+export const D4_SHIPPED = 19.222357121153717;
 export const D4 = RATE_TABLE[SPEC.vph].d4 ?? D4_SHIPPED;
 // §125 Tier B — THE RESERVE STATION'S OWN ANCHOR. Tier A had the reserve
 // MIRROR the seconds station (the wells were one radius, so symmetry was the
@@ -4310,13 +4323,20 @@ export function formShapeOf(kind, spec, fallbackBox) {
 // reach either side. Without it the shape is centred on the metal's own box,
 // the smallest case, which is §308's first rule and stood the hands up to
 // 1.39 mm off the case's centre.
-export function fitCaseShape(kind, hull, metal, { margin = PLATE_RIM_MARGIN, centre = null, ...opts } = {}) {
+// `pins` [[x, y, m]…] (§343 landing 5) are points the shape must ALSO hold, each m inside, fitFittedCaseSteps' word:
+// the box grows over them too, and a scale passes only when every pin stands its own m inside.
+export function fitCaseShape(kind, hull, metal, { margin = PLATE_RIM_MARGIN, centre = null, pins = [], ...opts } = {}) {
+  if (pins.length) {
+    const xs = pins.map((q) => q[0]), ys = pins.map((q) => q[1]);
+    metal = [Math.min(metal[0], ...xs), Math.max(metal[1], ...xs), Math.min(metal[2], ...ys), Math.max(metal[3], ...ys)];
+  }
   const [x0, x1, y0, y1] = metal;
   const cx = centre ? centre[0] : (x0 + x1) / 2, cy = centre ? centre[1] : (y0 + y1) / 2;
   const A = Math.max(cx - x0, x1 - cx) + margin, B = Math.max(cy - y0, y1 - cy) + margin;
   const at = (s) => caseShapeOf(kind, { xMin: cx - s * A, xMax: cx + s * A, yMin: cy - s * B, yMax: cy + s * B }, opts);
   const worst = (sh) => { let w = Infinity; for (const [x, y] of hull) w = Math.min(w, sh.inset(x, y)); return w; };
-  const ok = (s) => worst(at(s)) >= margin - 1e-9;
+  const ok = (s) => { const sh = at(s); if (!(worst(sh) >= margin - 1e-9)) return false;
+    for (const [x, y, m] of pins) if (sh.inset(x, y) < m - 1e-9) return false; return true; };
   let lo = 0.5, hi = 1;
   while (!ok(hi)) { lo = hi; hi *= 1.25; if (hi > 8) throw new Error(`fitCaseShape: no ${kind} up to 8× the box holds the metal`); }
   while (ok(lo) && lo > 0.1) { hi = lo; lo *= 0.8; }

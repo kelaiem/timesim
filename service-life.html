@@ -188,6 +188,7 @@ code { font: 11px/1.4 var(--f-num); color: var(--mono-ink); background: rgba(255
       <h2 style="margin: 4px 4px 10px">The oil law, and why it is posed</h2>
       <p>Between services a watch oil spreads, thickens and oxidises, its friction rises, and the balance swings less. No source this model uses gives a measured curve for how that happens, so the page uses a <b>posed law</b>: one stated on purpose and labelled as such, not simulated.</p>
       <p><b>Which friction ages</b> comes from the movement's lubrication map: every friction figure that a lubricated joint is priced with. That is <span id="oil-rows"></span>. <span id="oil-held"></span></p>
+      <p><b>The pallet oil</b> ages through the escapement's efficiency, the one figure that covers the faces' sliding. That figure also carries losses no oil causes, so its share of the fall is an upper bound.</p>
       <p><b>The two ends</b> are the ends of the movement's own friction ranges: fresh oil is the nominal figure, the serviced watch; oil at the end of an interval is the worst figure the range allows, which the jewel row already describes as thinned or aged oil.</p>
       <p><b>The shape between them</b> is the posed part: a straight line in time since the last service. A real oil probably holds up and then fails late, which would keep the swing up for longer and drop it harder near the end.</p>
       <div class="tbl"><table>
@@ -201,7 +202,7 @@ code { font: 11px/1.4 var(--f-num); color: var(--mono-ink); background: rgba(255
     <h2>What this does and does not claim</h2>
     <p><b>The worn shape is the model's, not a measured one.</b> The wear takes a volume of steel off the tip. The page shows that volume removed as a flat cut across the tooth, square to the wheel's radius. That is the direction the lock's allowance is measured in: the pallet stones are set to the tooth circle, and a shorter tooth circle eats into the lock. A real tip would wear rounder. The depth is what matters for the lock, and the depth is what the model prices.</p>
     <p><b>The allowance</b> is how far the tooth can shorten before the lock is down to its safety share, the part kept in reserve for shocks. Only the extra "run" beyond that can be spent. Part of it is already spent before the watch runs: the tip is finished to a small radius, which sets it back from its sharp drawn point.</p>
-    <p><b>The oil's ageing is posed, and it moves only the swing.</b> The swing chart is the movement's own energy calculation at the aged friction, but the way the friction climbs is a stated law, not a measured one. The aged oil does not feed back into the wear: the wear rate is the same all through each interval, because the wear coefficient's range is meant to cover a serviced, oiled contact. Nor does it move the rate the watch keeps: the record has no law for how the rate changes with the swing. The oil on the pallet faces, which in a real watch is the first to age, is not one of the frictions that age here, because the lubrication map prices no friction figure for it.</p>
+    <p><b>The oil's ageing is posed, and it moves only the swing.</b> The swing chart is the movement's own energy calculation at the aged friction, but the way the friction climbs is a stated law, not a measured one. The aged oil does not feed back into the wear: the wear rate is the same all through each interval, because the wear coefficient's range is meant to cover a serviced, oiled contact. Nor does it move the rate the watch keeps: the record has no law for how the rate changes with the swing. The oil on the pallet faces ages through the escapement's efficiency, the one figure that covers their sliding. That figure also covers losses no oil causes (the drop and the draw), so the share of the fall it puts on the pallet oil is an upper bound.</p>
     <p><b>Not modelled here:</b> worn particles that stay in the oil and speed up wear (assumed cleaned out at each service); wear on the pallet stones, which are much harder than the steel; and wear in the pivots. Time on this page is a slider, not the movement's clock.</p>
     <p>The numbers come from the energy record of a booted build, written to <code>src/service-life-data.json</code> by <code>tools/service-life-data.mjs</code>. The derivation is TODO&nbsp;299 and §344, which made the depth radial; the oil law is §346.</p>
   </div>
@@ -356,13 +357,13 @@ const swingAt = (since) => {             // years since the last service → { v
 };
 const sinceService = (yr) => yr - Math.floor(yr / W.serviceYears + 1e-9) * W.serviceYears;
 const ROWNAME = { muJewel: 'pivots in jewels', muPlain: 'pivots in plain bushes', muChain: 'the chain\'s rivets', springInt: 'the mainspring\'s grease',
-  muTooth: 'gear teeth', escEff: 'the escapement', qOther: 'the balance\'s other losses', endContactMm: 'the pivot ends' };
+  muTooth: 'gear teeth', escEff: 'the pallet oil (escapement)', qOther: 'the balance\'s other losses', endContactMm: 'the pivot ends' };
 const rowName = (k) => ROWNAME[k] || k;
 const listOf = (a) => a.length < 2 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`;
 $('oil-rows').textContent = listOf(OIL.rows.map(rowName));
 $('oil-held').textContent = `The rest stay at their fresh values: ${listOf(OIL.held.map(rowName))}. Gear teeth run dry by design.`;
 $('t-oil').innerHTML = OIL.rows.map((k) => {
-  const a = OIL.coefficients.fresh[k], b = OIL.coefficients.aged[k], eff = k === 'springInt';
+  const a = OIL.coefficients.fresh[k], b = OIL.coefficients.aged[k], eff = k === 'springInt' || k === 'escEff';   // efficiencies, not coefficients
   return `<tr><td class="name">${rowName(k)}</td><td>${eff ? `${f(100 * a, 0)}% kept` : `μ ${a}`}</td><td>${eff ? `${f(100 * b, 0)}% kept` : `μ ${b}`}</td></tr>`;
 }).join('');
 const sw = $('swing'), SWW = 640, SWH = 280, sFs = chartFs(sw), sL = Math.max(52, 2.2 * sFs + 14), sR = 16, sT = 14, sB = Math.max(34, 2 * sFs + 14);
