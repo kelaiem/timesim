@@ -29,7 +29,8 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { bootMany } from './boot-pool.mjs';
 import { EXPR as ROOM_EXPR } from './probe-twin-barrel-room.mjs';
-import { drumRibbon, flangeDelta, DRUM_GAP_U } from '../src/twin-barrel.js';
+import { drumRibbon, flangeDelta } from '../src/twin-barrel.js';
+import { seatField, bootExpr, REF_EXPR, FLANGE } from './second-barrel-seats.mjs';
 import { TRAIN, CLEAR_MARGIN, UNIT_MM, PLATE_RIM_MARGIN, convexHull2, fitFittedCase, shapeArea } from '../src/layout.js';
 import { installDetMath } from '../src/det-math.js';
 installDetMath(Math);   // the pure solves read the repository's maths, as the build does (§338 landing 2)
@@ -38,15 +39,7 @@ const argOf = (k) => { const i = process.argv.indexOf(k); return i >= 0 ? proces
 const cache = argOf('--cache');
 const queries = process.argv.slice(2).filter((a, i, A) => !a.startsWith('--') && A[i - 1] !== '--cache');
 const SPECS = queries.length ? queries : ['alarm=0', 'alarm=0&case=fitted', ''];
-const FLANGE = [2.93, 4.26];   // landing 0 (c): the band clear of the chain on today's drum
-const REF_EXPR = `(() => { const g = window.__clock.equalisation.going;
-  return { k: g.k_Nm_per_rad, wind: g.windRangeRad, section: g.section, devLen: g.devLen_u, packing: g.packing, fw: window.__clock.fuseeWind }; })()`;
-const BOOT_EXPR = `({ room: (() => { const I = window.__clock.fuseeWind.inputs, ce = window.__clock.fuseeWind.chainEndROut, CM = ${CLEAR_MARGIN};
-    window.__roomGrid = { bands: [[I.FUSEE_Z0 - ce - CM, I.COIL_TOP + ce + CM], [${FLANGE[0]} - CM, ${FLANGE[1]} + CM]] };
-    return ${ROOM_EXPR}; })(),
-  fit: (() => { const c = window.__clock, F = c.formFootprint; if (!F || !F.fitted) return null;
-    return { units: Object.fromEntries(Object.entries(c.regions.units).map(([k, v]) => [k, v.hull])),
-      centre: F.fitted.centre, flatMin: F.fitted.flatMin, fitAreaMm2: F.fitAreaMm2 }; })() })`;
+const BOOT_EXPR = bootExpr(ROOM_EXPR);
 
 let boots;
 if (cache && existsSync(cache)) boots = JSON.parse(readFileSync(cache, 'utf8'));
@@ -79,32 +72,13 @@ const ener = Object.fromEntries(RBs.map((R) => { const n = rpA / R, B = drumRibb
 console.log('B alone, solved at n times the hook\'s angles (the power multiple at the same reserve, A + B over A):');
 console.log('  ' + RBs.filter((R) => Math.abs(R * 2 - Math.round(R * 2)) < 1e-9).map((R) => ener[R] ? `R ${R}: ×${f(ener[R].mult, 3)}` : `R ${R}: no ribbon`).join(', '));
 
-const mk = (G) => (x, y) => { const i = Math.round((x - G.bx0) / G.res), j = Math.round((y - G.by0) / G.res);
-  return i < 0 || j < 0 || i >= G.nx || j >= G.ny ? -Infinity : G.r[j * G.nx + i]; };
-const segD = (px, py, a, b) => { const vx = b.x - a.x, vy = b.y - a.y, L2 = vx * vx + vy * vy, t = Math.max(0, Math.min(1, ((px - a.x) * vx + (py - a.y) * vy) / L2));
-  return Math.hypot(px - a.x - t * vx, py - a.y - t * vy); };
 const circ = (x, y, r, n = 64) => Array.from({ length: n }, (_, i) => [x + (r / Math.cos(Math.PI / n)) * Math.cos((2 * Math.PI * i) / n), y + (r / Math.cos(Math.PI / n)) * Math.sin((2 * Math.PI * i) / n)]);
 const RESULT = [];
 for (const { q, room, fit } of boots.tgts) {
-  const Rr = room.reach, fus = Rr.fuseeCentre, dir = Rr.drumDir;
-  const F0 = mk(room.free.withoutDrumGroup.grid), F1 = mk(room.free.bands[0].grid), F2 = mk(room.free.bands[1].grid);
-  // drum A where the build stands it (main.js' law: FUSEE_R_LARGE + R + DRUM_GAP_U along drumDir), held to the record
-  const dA = RL + RA + DRUM_GAP_U, Ac = { x: fus[0] + dA * dir[0], y: fus[1] + dA * dir[1] };
-  const off = Math.hypot(Ac.x - Rr.drumCentre[0], Ac.y - Rr.drumCentre[1]);
+  const { Ac, centreOff: off, seatsAt: seatsRm } = seatField({ room, fw, RA, rpA });
   console.log(`\n${q || '(round default)'}: drum A at (${f(Ac.x)}, ${f(Ac.y)})${off > 1e-6 ? ` — FAIL: the build's drum stands ${f(off, 4)} away` : ' (the build\'s own centre)'}`);
   if (off > 1e-6) process.exit(1);
-  // the chain's span, both open-belt tangents from the cone's largest wrap to A's wrap
-  const T = [1, -1].map((sg) => { const r1 = RL, r2 = RA + ce, dx = Ac.x - fus[0], dy = Ac.y - fus[1], L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L, a = Math.acos((r1 - r2) / L);
-    const cs = Math.cos(sg * a), sn = Math.sin(sg * a), nx = ux * cs - uy * sn, ny = uy * cs + ux * sn;
-    return [{ x: fus[0] + nx * r1, y: fus[1] + ny * r1 }, { x: Ac.x + nx * r2, y: Ac.y + ny * r2 }]; });
-  const seatsAt = (R) => { const out = [];
-    for (let k = 0; k < 720; k++) { const ph = (k / 2) * Math.PI / 180, B = { x: Ac.x + (rpA + R) * Math.cos(ph), y: Ac.y + (rpA + R) * Math.sin(ph) };
-      const mB = Math.min(F0(B.x, B.y) - R, F2(B.x, B.y) - (R + m));
-      if (mB < 0) continue;
-      const span = Math.min(...T.map((g) => segD(B.x, B.y, ...g) - ce - R - CM));
-      if (span < 0) continue;
-      out.push({ az: k / 2, B, margin: Math.min(mB, span) }); }
-    return out; };
+  const seatsAt = (R) => seatsRm(R, m);
   const mm2 = UNIT_MM * UNIT_MM;
   const fitArea = fit && ((pts) => { const h = convexHull2(Float64Array.from(pts, (p) => p[0]), Float64Array.from(pts, (p) => p[1]), pts.length);
     const xs = h.map((p) => p[0]), ys = h.map((p) => p[1]);
