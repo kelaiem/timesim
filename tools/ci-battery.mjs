@@ -239,7 +239,11 @@ const SPEC_BOOT_RATIO = Object.freeze({
   'barrelstep=-20': 2.5,      // 58.4 s
   'rsvr=20': 2.2,             // 52.7 s
   'rsvr=30': 2.2,             // 50.8 s
-  'reserveh=48&rsvr=27': 2.3, // 53.6 s
+  // §337 landing 3 (2026-11-15): both 48 h points build the GEARED stop-work now, the default away from 30 h. Native host, one
+  // at a time on the dev container, the default 26.4 s: reserveh=48 69.8 s, reserveh=48&rsvr=27 159.7 s, and the latter under
+  // ?arrest=stop-iron (its build until today) 125.8 s, so its 2.3 was already stale by 4.8× before the gear added its search.
+  'reserveh=48&rsvr=27': 6.1, // 159.7 s against 26.4 s (was 2.3, 53.6 s)
+  'reserveh=48': 2.7,         // 69.8 s against 26.4 s
   // §337 stage 3's two geared points, measured the same way on 2026-11-07, M2 Max, two solo passes each (the default 13.7
   // and 13.9 s on the same two passes; each ratio is the slowest point over the fastest default, rounded up to a tenth, as
   // every row above): a geared reserve re-solves the Geneva line, scans every finger and star direction at 3° for the least
