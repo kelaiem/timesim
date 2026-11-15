@@ -492,6 +492,7 @@ export function lowerUi(s) {
 const DE = {
   // §291 — Schematic is shown as Wireframe
   'Wireframe': 'Drahtgitter',
+  'Build replay': 'Aufbau-Wiedergabe', 'placed': 'gesetzt', 'searched': 'gesucht', 'refused': 'verworfen', 'chosen': 'gewählt',   // the build replay (main.js BUILD_REPLAY)
   'Wireframe view': 'Drahtgitteransicht',
   // §291 — the contrast remedy and the reload offer
   'Sub-dial contrast': 'Hilfszifferblatt-Kontrast',
@@ -928,6 +929,7 @@ Object.assign(DE, {
 const ZH = {
   // §291 — Schematic is shown as Wireframe
   'Wireframe': '线框',
+  'Build replay': '构建回放', 'placed': '已放置', 'searched': '经搜索', 'refused': '被拒', 'chosen': '选定',   // the build replay (main.js BUILD_REPLAY)
   'Wireframe view': '线框视图',
   // §291 — the contrast remedy and the reload offer
   'Sub-dial contrast': '副表盘对比',
@@ -1331,6 +1333,7 @@ Object.assign(ZH, {
 const FR = {
   // §291 — Schematic is shown as Wireframe
   'Wireframe': 'Filaire',
+  'Build replay': 'Relecture du montage', 'placed': 'placé', 'searched': 'cherché', 'refused': 'refusé', 'chosen': 'retenu',   // the build replay (main.js BUILD_REPLAY)
   'Wireframe view': 'Vue filaire',
   // §291 — the contrast remedy and the reload offer
   'Sub-dial contrast': 'Contraste des compteurs',
@@ -1906,6 +1909,7 @@ const FR = {
 const JA = {
   // §291 — Schematic is shown as Wireframe
   'Wireframe': 'ワイヤーフレーム',
+  'Build replay': '組立の再生', 'placed': '配置', 'searched': '探索', 'refused': '却下', 'chosen': '採用',   // the build replay (main.js BUILD_REPLAY)
   'Wireframe view': 'ワイヤーフレーム表示',
   // §291 — the contrast remedy and the reload offer
   'Sub-dial contrast': 'インダイアルのコントラスト',
@@ -2480,6 +2484,7 @@ const JA = {
 const ZH_HANT = {
   // §291 — Schematic is shown as Wireframe
   'Wireframe': '線框',
+  'Build replay': '組裝重播', 'placed': '已放置', 'searched': '經搜尋', 'refused': '被拒', 'chosen': '選定',   // the build replay (main.js BUILD_REPLAY)
   'Wireframe view': '線框檢視',
   // §291 — the contrast remedy and the reload offer
   'Sub-dial contrast': '副錶盤對比',
@@ -3064,6 +3069,7 @@ const ZH_HANT = {
 const AR = {
   // §291 — Schematic is shown as Wireframe
   'Wireframe': 'إطار سلكي',
+  'Build replay': 'إعادة عرض البناء', 'placed': 'موضوع', 'searched': 'مبحوث', 'refused': 'مرفوض', 'chosen': 'مختار',   // the build replay (main.js BUILD_REPLAY)
   'Wireframe view': 'عرض الإطار السلكي',
   // §291 — the contrast remedy and the reload offer
   'Sub-dial contrast': 'تباين الموانئ الفرعية',
@@ -3631,6 +3637,7 @@ const AR = {
 const ES = {
   // §291 — Schematic is shown as Wireframe
   'Wireframe': 'Alámbrico',
+  'Build replay': 'Repetir montaje', 'placed': 'colocado', 'searched': 'buscado', 'refused': 'rechazado', 'chosen': 'elegido',   // the build replay (main.js BUILD_REPLAY)
   'Wireframe view': 'Vista alámbrica',
   // §291 — the contrast remedy and the reload offer
   'Sub-dial contrast': 'Contraste de los subesferas',
@@ -4195,6 +4202,7 @@ const ES = {
 const KO = {
   // §291 — Schematic is shown as Wireframe
   'Wireframe': '와이어프레임',
+  'Build replay': '조립 재생', 'placed': '배치', 'searched': '탐색', 'refused': '기각', 'chosen': '선택',   // the build replay (main.js BUILD_REPLAY)
   'Wireframe view': '와이어프레임 보기',
   // §291 — the contrast remedy and the reload offer
   'Sub-dial contrast': '서브다이얼 대비',
@@ -4761,6 +4769,7 @@ const KO = {
 const RU = {
   // §291 — Schematic is shown as Wireframe
   'Wireframe': 'Каркас',
+  'Build replay': 'Повтор сборки', 'placed': 'размещено', 'searched': 'найдено поиском', 'refused': 'отклонено', 'chosen': 'выбрано',   // the build replay (main.js BUILD_REPLAY)
   'Wireframe view': 'Каркасный вид',
   // §291 — the contrast remedy and the reload offer
   'Sub-dial contrast': 'Контраст субциферблатов',
@@ -5328,6 +5337,7 @@ const RU = {
 const PT = {
   // §291 — Schematic is shown as Wireframe
   'Wireframe': 'Aramado',
+  'Build replay': 'Repetir montagem', 'placed': 'colocado', 'searched': 'procurado', 'refused': 'recusado', 'chosen': 'escolhido',   // the build replay (main.js BUILD_REPLAY)
   'Wireframe view': 'Vista aramada',
   // §291 — the contrast remedy and the reload offer
   'Sub-dial contrast': 'Contraste dos submostradores',
@@ -5894,6 +5904,7 @@ const PT = {
 const IT = {
   // §291 — Schematic is shown as Wireframe
   'Wireframe': 'Wireframe',
+  'Build replay': 'Replica montaggio', 'placed': 'posato', 'searched': 'cercato', 'refused': 'scartato', 'chosen': 'scelto',   // the build replay (main.js BUILD_REPLAY)
   'Wireframe view': 'Vista wireframe',
   // §291 — the contrast remedy and the reload offer
   'Sub-dial contrast': 'Contrasto dei contatori',
@@ -6457,6 +6468,7 @@ const IT = {
 const HI = {
   // §291 — Schematic is shown as Wireframe
   'Wireframe': 'वायरफ़्रेम',
+  'Build replay': 'निर्माण रीप्ले', 'placed': 'रखा गया', 'searched': 'खोजा गया', 'refused': 'अस्वीकृत', 'chosen': 'चुना गया',   // the build replay (main.js BUILD_REPLAY)
   'Wireframe view': 'वायरफ़्रेम दृश्य',
   // §291 — the contrast remedy and the reload offer
   'Sub-dial contrast': 'उप-डायल कंट्रास्ट',
@@ -7024,6 +7036,7 @@ const HI = {
 const VI = {
   // §291 — Schematic is shown as Wireframe
   'Wireframe': 'Khung dây',
+  'Build replay': 'Phát lại lắp ráp', 'placed': 'đã đặt', 'searched': 'đã tìm', 'refused': 'bị loại', 'chosen': 'được chọn',   // the build replay (main.js BUILD_REPLAY)
   'Wireframe view': 'Chế độ khung dây',
   // §291 — the contrast remedy and the reload offer
   'Sub-dial contrast': 'Độ tương phản mặt phụ',
@@ -7606,6 +7619,7 @@ const VI = {
 const NL = {
   // §291 — Schematic is shown as Wireframe
   'Wireframe': 'Draadmodel',
+  'Build replay': 'Bouw afspelen', 'placed': 'geplaatst', 'searched': 'gezocht', 'refused': 'afgewezen', 'chosen': 'gekozen',   // the build replay (main.js BUILD_REPLAY)
   'Wireframe view': 'Draadmodelweergave',
   // §291 — the contrast remedy and the reload offer
   'Sub-dial contrast': 'Contrast van de subwijzerplaten',
@@ -8188,6 +8202,7 @@ const NL = {
 const FA = {
   // §291 — Schematic is shown as Wireframe
   'Wireframe': 'قاب سیمی',
+  'Build replay': 'بازپخش ساخت', 'placed': 'جای‌گذاری‌شده', 'searched': 'جست‌وجوشده', 'refused': 'ردشده', 'chosen': 'برگزیده',   // the build replay (main.js BUILD_REPLAY)
   'Wireframe view': 'نمای قاب سیمی',
   // §291 — the contrast remedy and the reload offer
   'Sub-dial contrast': 'کنتراست صفحه‌های فرعی',
@@ -8771,6 +8786,7 @@ const FA = {
 const HE = {
   // §291 — Schematic is shown as Wireframe
   'Wireframe': 'שלד',
+  'Build replay': 'שחזור הבנייה', 'placed': 'הוצב', 'searched': 'חופש', 'refused': 'נדחה', 'chosen': 'נבחר',   // the build replay (main.js BUILD_REPLAY)
   'Wireframe view': 'תצוגת שלד',
   // §291 — the contrast remedy and the reload offer
   'Sub-dial contrast': 'ניגודיות לוחות המשנה',
@@ -9353,6 +9369,7 @@ const HE = {
 const ID = {
   // §291 — Schematic is shown as Wireframe
   'Wireframe': 'Kerangka kawat',
+  'Build replay': 'Putar ulang rakitan', 'placed': 'ditempatkan', 'searched': 'dicari', 'refused': 'ditolak', 'chosen': 'dipilih',   // the build replay (main.js BUILD_REPLAY)
   'Wireframe view': 'Tampilan kerangka kawat',
   // §291 — the contrast remedy and the reload offer
   'Sub-dial contrast': 'Kontras subdial',
@@ -9936,6 +9953,7 @@ const ID = {
 const TR = {
   // §291 — Schematic is shown as Wireframe
   'Wireframe': 'Tel kafes',
+  'Build replay': 'Montaj tekrarı', 'placed': 'yerleştirildi', 'searched': 'arandı', 'refused': 'reddedildi', 'chosen': 'seçildi',   // the build replay (main.js BUILD_REPLAY)
   'Wireframe view': 'Tel kafes görünümü',
   // §291 — the contrast remedy and the reload offer
   'Sub-dial contrast': 'Alt kadran kontrastı',
@@ -10519,6 +10537,7 @@ const TR = {
 const CY = {
   // §291 — Schematic is shown as Wireframe
   'Wireframe': 'Ffrâm wifren',
+  'Build replay': 'Ailchwarae’r adeiladu', 'placed': 'wedi’i osod', 'searched': 'wedi’i chwilio', 'refused': 'wedi’i wrthod', 'chosen': 'wedi’i ddewis',   // the build replay (main.js BUILD_REPLAY)
   'Wireframe view': 'Golwg ffrâm wifren',
   // §291 — the contrast remedy and the reload offer
   'Sub-dial contrast': 'Cyferbyniad yr is-ddeialau',
@@ -11105,6 +11124,7 @@ const CY = {
 const FIL = {
   // §291 — Schematic is shown as Wireframe
   'Wireframe': 'Wireframe',
+  'Build replay': 'Replay ng pagbuo', 'placed': 'nakalagay', 'searched': 'hinanap', 'refused': 'tinanggihan', 'chosen': 'pinili',   // the build replay (main.js BUILD_REPLAY)
   'Wireframe view': 'Wireframe na view',
   // §291 — the contrast remedy and the reload offer
   'Sub-dial contrast': 'Contrast ng sub-dial',
@@ -11666,6 +11686,7 @@ const FIL = {
 const LV = {
   // §291 — Schematic is shown as Wireframe
   'Wireframe': 'Karkass',
+  'Build replay': 'Būves atkārtojums', 'placed': 'novietots', 'searched': 'meklēts', 'refused': 'noraidīts', 'chosen': 'izvēlēts',   // the build replay (main.js BUILD_REPLAY)
   'Wireframe view': 'Karkasa skats',
   // §291 — the contrast remedy and the reload offer
   'Sub-dial contrast': 'Papildciparnīcu kontrasts',
@@ -12227,6 +12248,7 @@ const LV = {
 const HU = {
   // §291 — Schematic is shown as Wireframe
   'Wireframe': 'Drótváz',
+  'Build replay': 'Szerelés lejátszása', 'placed': 'elhelyezve', 'searched': 'keresve', 'refused': 'elvetve', 'chosen': 'kiválasztva',   // the build replay (main.js BUILD_REPLAY)
   'Wireframe view': 'Drótváz nézet',
   // §291 — the contrast remedy and the reload offer
   'Sub-dial contrast': 'Segédszámlapok kontrasztja',
@@ -12781,6 +12803,7 @@ const HU = {
 const CS = {
   // §291 — Schematic is shown as Wireframe
   'Wireframe': 'Drátový model',
+  'Build replay': 'Přehrání sestavení', 'placed': 'umístěno', 'searched': 'hledáno', 'refused': 'zamítnuto', 'chosen': 'zvoleno',   // the build replay (main.js BUILD_REPLAY)
   'Wireframe view': 'Drátový pohled',
   // §291 — the contrast remedy and the reload offer
   'Sub-dial contrast': 'Kontrast vedlejších ciferníků',
@@ -13354,6 +13377,7 @@ const CS = {
 // may dispute are in tools/l10n-review/questions.mjs.
 const FI = {
   'Wireframe': 'Rautalanka',
+  'Build replay': 'Kokoonpanon toisto', 'placed': 'sijoitettu', 'searched': 'haettu', 'refused': 'hylätty', 'chosen': 'valittu',   // the build replay (main.js BUILD_REPLAY)
   'Wireframe view': 'Rautalankanäkymä',
   'Sub-dial contrast': 'Apukellotaulun kontrasti',
   'Change the hands': 'Vaihda viisarit',
@@ -13929,6 +13953,7 @@ const FI = {
 // may dispute are in tools/l10n-review/questions.mjs.
 const UK = {
   'Wireframe': 'Каркас',
+  'Build replay': 'Повтор складання', 'placed': 'розміщено', 'searched': 'знайдено пошуком', 'refused': 'відхилено', 'chosen': 'обрано',   // the build replay (main.js BUILD_REPLAY)
   'Wireframe view': 'Каркасний вигляд',
   'Sub-dial contrast': 'Контраст дод. циферблатів',
   'Change the hands': 'Змінити стрілки',
@@ -14503,6 +14528,7 @@ const UK = {
 // may dispute are in tools/l10n-review/questions.mjs.
 const PL = {
   'Wireframe': 'Szkielet',
+  'Build replay': 'Odtworzenie montażu', 'placed': 'umieszczone', 'searched': 'wyszukane', 'refused': 'odrzucone', 'chosen': 'wybrane',   // the build replay (main.js BUILD_REPLAY)
   'Wireframe view': 'Widok szkieletowy',
   'Sub-dial contrast': 'Kontrast tarczek',
   'Change the hands': 'Zmień wskazówki',
