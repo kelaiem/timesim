@@ -36,7 +36,7 @@ const EXPR = `(() => {
   return { C: { x: C.x, y: C.y }, coneTop: top, bossBot: k ? k.bossMid - k.T / 2 : null, bearing: k?.foot?.a ?? null, postS: k?.post?.s_u ?? null,
     win: win ? win.pts : null, stall: c.equalisation?.going?.energy?.fuseeTorque_Nm ?? null };
 })()`;
-const boots = await bootMany(HOURS.map((h) => `reserveh=${h}`), EXPR, { concurrency: par });
+const boots = await bootMany(HOURS.map((h) => `arrest=stop-iron&reserveh=${h}`)   // §337 landing 3: the window BEFORE the fold, which the default now cuts, EXPR, { concurrency: par });
 
 const segD = (x, y, a, b) => { const vx = b[0] - a[0], vy = b[1] - a[1], L2 = vx * vx + vy * vy || 1e-12; const t = Math.max(0, Math.min(1, ((x - a[0]) * vx + (y - a[1]) * vy) / L2)); return Math.hypot(x - a[0] - t * vx, y - a[1] - t * vy); };
 const inside = (pts, x, y) => { let s = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, yi] = pts[i], [xj, yj] = pts[j]; if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) s = !s; } return s; };
