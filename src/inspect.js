@@ -11597,8 +11597,9 @@ export function checkEqualisation(clock) {
         if (T.radius !== BALANCE_R_SPEC || T.radiusRef !== BALANCE_R_REF || T.radiusStep !== BAL_R_STEP)
           failures.push({ what: 'amplitude target block weighs a different radius from BALANCE_R_SPEC', record: { radius: T.radius, radiusRef: T.radiusRef, radiusStep: T.radiusStep }, radius: BALANCE_R_SPEC, ref: BALANCE_R_REF, step: BAL_R_STEP });
         // §343 — except a row whose radius the CASE sets (RATE_TABLE's
-        // `caseBound`): the spring could carry more, the 40 mm case cannot, and
-        // probe-343-chronometer.mjs holds that cap on both sides on booted builds.
+        // `caseBound`): the spring could carry more. Since §347 the case is not
+        // what holds it (layout.js RATE_TABLE says why); TODO 310 sizes it against the
+        // movement, and probe-343-chronometer.mjs holds the declared row on booted builds.
         // It must still sit on the grid, and carries no larger-wheel test here.
         else if (steps < 0 && !BALANCE_R_CASE_BOUND)
           failures.push({ what: 'balance larger than the shipped movement\'s (BALANCE_R_REF)', radius: BALANCE_R_SPEC, ref: BALANCE_R_REF });

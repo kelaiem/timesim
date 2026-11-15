@@ -44,6 +44,8 @@ heading, and [the index](../../TODO.md) is where it is shown.
 |---|---|
 | 313 | equalisation absent alarm-free |
 | 312 | well meets selector boss |
+| 311 | tripwire reads unposed levers |
+| 310 | balance unbounded by case |
 | 309 | free gong sets width |
 | 308 | stud straddles cock edge |
 | 307 | hack rod crosses barrel |
