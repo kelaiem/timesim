@@ -13994,23 +13994,22 @@ if (goingBarrel) {
   registerLabel('Going barrel', goingBarrelGroup);
 }
 // §339 landing 3c — at ?barrels=3: THE DRUM'S BAND and BARREL B. The band is a toothed RING on the drum's own wall in the
-// band under the chain (the pulley's flange law, PULLEY_FLANGE_TOP's rule: the chain's lowest coil at full wind less a
-// plate's half-width and the margin), its pitch circle r_pA one CLEAR_MARGIN outside the chain coiled on the drum,
+// band under the chain (its top PARALLEL_BARREL.bandTopZ, measured off the chain), its pitch circle r_pA one CLEAR_MARGIN outside the chain coiled on the drum,
 // because B's wall stands on that circle all the way up. A ring, not the pulley's disc: this drum carries its ribbon, so
 // the band starts at the wall's inner face and never enters the spring's cavity. B stands where its wall meets that
 // circle, at the declared seat's bearing off the drum (PARALLEL_BARREL.barrelAzDeg), on the drum's floor plane; its
 // teeth are a ring on its wall in the same band. Phase: a band tooth on the line of centres at the build pose, a B GAP
 // facing it; B turns −n times the drum, so the two roll together from there (tick).
-const PARALLEL_BAND_TOP = PARALLEL ? COIL_TOP - (DRUM_ROT_FULL / (2 * Math.PI) + DRUM_COIL_SLACK_TURNS) * CHAIN_COIL_PITCH - CHAIN_END_R_OUT - CLEAR_MARGIN : null;
+const PARALLEL_BAND_TOP = PARALLEL ? PARALLEL_BARREL.bandTopZ : null;   // MEASURED off the chain over the reserve (layout.js PARALLEL_BARREL: its constraint, and why not the pulley's closed form)
 const PARALLEL_BAND_T = PARALLEL ? PARALLEL_BAND_TOP - DRUM_BOT_Z : null;
 const barrelBPhi = PARALLEL ? PARALLEL_BARREL.barrelAzDeg * DEG2RAD : null;
 const barrelBPos = PARALLEL ? { x: drumPos.x + Math.cos(barrelBPhi) * PARALLEL.centreDistance,
   y: drumPos.y + Math.sin(barrelBPhi) * PARALLEL.centreDistance } : null;
-let barrelBGroup = null;
+let barrelBGroup = null, barrelBBand = null, barrelBRing = null;   // the band and B's ring, phased and declared by solveGearChain below
 if (PARALLEL) {
   const bandMidZ = DRUM_BOT_Z + PARALLEL_BAND_T / 2;
   const band = G.makeGear({ name: 'drumBand', module: PARALLEL.m, teeth: PARALLEL.zA, mates: [PARALLEL.zB], thickness: PARALLEL_BAND_T,
-    boreR: barrelDims({ radius: DRUM_R_ACTUAL, plain: true }).drumInnerR, spokes: 0, material: MATS.brass });
+    boreR: barrelDims({ radius: DRUM_R_ACTUAL, plain: true }).drumInnerR, spokes: 0, hub: false, material: MATS.brass });   // a ring on the wall: no hub (makeGear sizes one off the bore, and this bore IS the wall)
   band.position.z = bandMidZ - Z_DRUM;
   band.rotation.z = barrelBPhi;                   // a tooth on the line of centres
   drumGroup.add(band);
@@ -14018,16 +14017,25 @@ if (PARALLEL) {
   barrelBGroup.name = 'barrelBGroup';
   barrelBGroup.position.set(barrelBPos.x, barrelBPos.y, Z_DRUM);
   barrelBGroup.add(barrelB);
+  // B's wall teeth ARE its ring (below), which records the same pitch circle r = R_B; the body keeping its own `r` would
+  // read as a second rotor meshing the band (meshCandidates' criteria need r alone), so the body hands it to the ring
+  delete barrelB.userData.r; delete barrelB.userData.teeth; delete barrelB.userData.module;
   const ring = G.makeGear({ name: 'goingBarrelTeeth', module: PARALLEL.m, teeth: PARALLEL.zB, mates: [PARALLEL.zA], thickness: PARALLEL_BAND_T,
-    boreR: barrelDims({ radius: PARALLEL.RB, plain: true }).drumInnerR, spokes: 0, material: MATS.brass });
+    boreR: barrelDims({ radius: PARALLEL.RB, plain: true }).drumInnerR, spokes: 0, hub: false, material: MATS.brass });
   ring.position.z = bandMidZ - Z_DRUM;
   ring.rotation.z = barrelBPhi + Math.PI + Math.PI / PARALLEL.zB;   // a gap facing the band's tooth
   barrelBGroup.add(ring);
+  barrelBBand = band; barrelBRing = ring;
   barrelBGroup.userData.chainSeat = undefined;
   barrelBGroup.userData.parallel = { ...PARALLEL, bandTop: PARALLEL_BAND_TOP, bandT: PARALLEL_BAND_T };
   movement.add(barrelBGroup);
   registerExplode(barrelBGroup, Z_DRUM, 1);
   registerLabel('Going barrel', barrelBGroup);
+  // TODO 29 — B's ribbon restores it as the drum's restores the drum: it reverses because B's wall, its outer end's hook,
+  // does, and the winding path (keyless → fusee → chain → the drum → the band) carries it back the other way
+  declareRestoring('Going barrel', 'mainspringRibbon', 'spring',
+    'the ribbon IS the restoring element — it reverses because barrel B\'s wall its outer end is hooked to does, and the winding path (keyless → fusee → chain → drum → the band) is what carries it back the other way',
+    'mainspringRibbon');
 }
 // §100 (TODO 39): NO pivot furniture on this group any more. The old
 // addLowerPivot/addUpperPivot calls hung a staff and a bore-reaching
@@ -17069,7 +17077,12 @@ const buildSetupStack = (setupStack, SU, mainspring, MS_COLLAR_R) => {
   // (the wheel's tip circle passes 5.2 from the drum axis, disc underside
   // at L_BARREL − t/2 − bevel): the screw head's thickness is derived so
   // its top stays one margin under that face.
-  const gwUnder = GW_UNDER_Z;
+  // §339 landing 3c — only where the great wheel actually overhangs the head: its tip circle (pitch + one module of
+  // addendum) reaching the head's own radius plus the margin. At the drum it does (the drum's stack, unchanged); barrel
+  // B's stack stands 31.7 from the fusee's axis, clear of a 15.3 wheel, so its head takes the floor stock with no cap.
+  const headPlanR = 0.55, headAt = { x: SU.x + ratchetR * 1.28, y: SU.y };   // az.rotation.z is 0: the click on +x
+  const underWheel = Math.hypot(headAt.x - P.barrel.x, headAt.y - P.barrel.y) < barrelR + TRAIN.barrel.module + headPlanR + CLEAR_MARGIN;
+  const gwUnder = underWheel ? GW_UNDER_Z : Infinity;
   // TODO 12: floor stock when the under-wheel clearance allows it; the min
   // keeps the bound honest. The 0.01 is JMP_BIND_EPS's lesson relearned the
   // moment this formula first went ACTIVE: solved exactly to the bind, the
@@ -17215,7 +17228,11 @@ const buildSetupStack = (setupStack, SU, mainspring, MS_COLLAR_R) => {
     stackB.name = 'setupStackB';
     const SUB = { x: barrelBPos.x, y: barrelBPos.y, zDrum: Z_DRUM, body: barrelB, drumR: PARALLEL.RB, drumH: DRUM_HEIGHT };
     buildSetupStack(stackB, SUB, mainspringB, mainspringB.collarR)(stackB, SUB.zDrum, SUB.drumR, SUB.drumH);
-    setupWork.add(setupStack, stackB);
+    // its own unit: B's stack is a second set of base-plate furniture with its own seats, not more members of the drum's
+    setupWork.add(setupStack);
+    movement.add(stackB);
+    registerExplode(stackB, 0, 1);
+    registerLabel('Going barrel set-up', stackB);
   }
   movement.add(setupWork);
   registerExplode(setupWork, 0, 1); // base-plate furniture now
@@ -25467,6 +25484,11 @@ const solveGearChain = (label, chain, module, inputs = []) => {
 };
 await (async () => {
   await breathe(177);
+  // §339 landing 3c — the band on the drum and barrel B's wall teeth: phased tooth-into-gap and declared (§194)
+  if (PARALLEL) solveGearChain('second barrel:', [
+    { obj: barrelBBand, teeth: PARALLEL.zA, name: 'drum band' },
+    { obj: barrelBRing, teeth: PARALLEL.zB, name: 'barrel B' },
+  ], PARALLEL.m, ['wind', 'train']);
   solveGearChain('reserve stage one:', [
     { obj: reservePinion0, teeth: rsvTeethP0, name: 'p0' },
     { obj: rsvPair1, gauge: rsvWheel1, teeth: rsvTeethW1, name: 'w1 (+p1 held)' },
@@ -48637,6 +48659,7 @@ const EQUALISATION_GOING = (() => {
       stress: ribbonStress(PARALLEL ? kOf(mainspring) : k / Math.pow(RIBBON_GEAR, 2), mainspring.section, [SETUP_SWEEP * RIBBON_GEAR, SPRING_WIND_FULL * RIBBON_GEAR]),   // §339: the ribbon's own k and angles
       // §339 landing 3c — at ?barrels=3, BARREL B's ribbon, held like the drum's (equalisation's ribbon rows read it as a
       // third half): its own k, its angles n times the drum's, its set-up a whole number of its ratchet's clicks
+      ribbonK_Nm_per_rad: PARALLEL ? kOf(mainspring) : undefined,   // §339 landing 3c: the drum ribbon's own k where the hook's is the two in parallel
       barrelB: PARALLEL ? {
         k_Nm_per_rad: kOf(mainspringB), n: PARALLEL.n, zA: PARALLEL.zA, zB: PARALLEL.zB, module: PARALLEL.m, radius: PARALLEL.RB,
         section: { ...mainspringB.section }, devLen_u: mainspringB.devLen, packing: ribbonPacking(mainspringB),
@@ -61497,7 +61520,7 @@ const UNIT_GROUPS = new Map([
   ])],
   ['Fusee & chain', new Map([
     ['Fusee & great wheel', null], ['Chain', null], ['Mainspring drum', null],
-    ['Maintaining detent', null], ['Set-up work', null], ...(goingBarrelGroup || barrelBGroup ? [['Going barrel', null]] : []),   // §339: the second barrel, where one is built
+    ['Maintaining detent', null], ['Set-up work', null], ...(goingBarrelGroup || barrelBGroup ? [['Going barrel', null]] : []), ...(barrelBGroup ? [['Going barrel set-up', null]] : []),   // §339: the second barrel, where one is built
     ['Fusee cock', null],   // §336 — the fusee's top bush is in it
     [(STOPWORK || GEARED_BUILT) ? 'Winding stop-work' : 'Winding arrest', null], // §47 — the chain-thrown finger and its lug live with the cone they arrest (§329 landing 4: or the stop-work, under its key)
   ])],
@@ -67773,7 +67796,7 @@ window.__clock = {
   get bootWarns() { return __bootWarns; },
   get formHold() { return FORM ? { ...FORM_HOLD_SPEC, boreGrow: FORM_BORE_GROW } : null; },   // TODO 300 — the form case's casing-clamp hold, as cut (src/casing-clamp.js at this build's plateR)
   get formFit() { return { key: FORM_FIT_KEY, from: SPEC.formRectSpec ? 'url' : FORM_SEAT_FIT ? 'seat' : FORM_ALARMFREE_FIT ? 'table' : SPEC.caseShape && SPEC.caseShape !== 'free' ? 'formPlate' : null }; },   // TODO 298 — where this box form case's cut came from (tools/form-fits.mjs reads it)
-  get modules() { return { alarm: ALARM_BUILT }; },
+  get modules() { return { alarm: ALARM_BUILT, secondBarrel: !!(goingBarrelGroup || barrelBGroup), parallelBarrel: !!barrelBGroup }; },   // §339: the pulley's barrel or ?barrels=3's B
   get settingPinch() { return SETTING_PINCH; },   // TODO 305 — whether leg 2 passes over the reserve input pinion, where its radius stands it exactly CLEAR_MARGIN off (undeclaredClearance's tie control)   // TODO 298 — which modules this build cut (§325 landing 3's ?alarm=0 builds none of the alarm), for inspect.js' module-aware tables
   get omitted() { return BUILD_OMITTED.map((o) => ({ ...o })); },   // TODO 298 — the meshes the build's own solve left uncut, each with the reason it warned
   get buildWarns() { return __buildWarnEnd === null ? __bootWarns.slice() : __bootWarns.slice(0, __buildWarnEnd); },   // §338

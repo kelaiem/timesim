@@ -30,6 +30,7 @@ export const SERVICE_CLASS = Object.freeze({
   'Fusee & great wheel': L('a wheel'),
   'Maintaining detent': L('the maintaining work'),
   'Set-up work': L('the set-up ratchet'),
+  'Going barrel set-up': L('barrel B\'s set-up ratchet (§339 landing 3c)'),
   'Center wheel': L('a wheel'), 'Third wheel': L('a wheel'), 'Fourth wheel': L('a wheel'),
   'Escape wheel': L('the escape wheel — the member TODO 299 landing 1 prices for a century'),
   'Pallet fork': L('the fork: its stones are set for the movement\'s life (their own wear is TODO 299\'s, unpriced)'),

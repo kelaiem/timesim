@@ -1573,7 +1573,12 @@ export const PULLEY_BARREL = Object.freeze({ zA: 38, zB: 104, NB: 29,
 // field, the coupling band's and both sides of the chain's span.
 // Re-read after #989's plate-margin law shrank the round plate's room: 13° (margin 1.455 before) is no seat now, and of
 // the two left (9.5°, 10°) 10° is the wider, margin 0.146 over the field's own CLEAR_MARGIN.
-export const PARALLEL_BARREL = Object.freeze({ NB: 24, zA: 96, zB: 92, barrelAzDeg: 10, seatSpec: 'alarm=0' });
+// bandTopZ — the top of the band on the drum and of B's ring, MEASURED (landing 3c, tools/probe-339-barrel-b.mjs re-measures
+// and holds it): the chain's lowest metal within the band's reach (r_pA + m + CLEAR_MARGIN of the drum's axis) over the
+// whole reserve, 5.768 at tension 0.025 on the round alarm-free build, less CLEAR_MARGIN, rounded DOWN to 0.01. The
+// pulley's closed form (the chain's lowest coil turn) reads 5.91 there, 0.29 high: it does not see the chain where it
+// leaves the drum, which is why the band is not cut from it.
+export const PARALLEL_BARREL = Object.freeze({ NB: 24, zA: 96, zB: 92, barrelAzDeg: 10, seatSpec: 'alarm=0', bandTopZ: 5.61 });
 // The drum's azimuth every reader takes (main.js' drumDir and the form rectangle's reach): ?drumaz= when given, else the
 // pulley's declared seat at ?barrels=2, else null (drumDirOf's blend, the shipped watch, bit-exact).
 export const DRUM_AZ_DEG = SPEC.drumAzDeg !== null ? SPEC.drumAzDeg : SPEC.barrels === 2 ? PULLEY_BARREL.pulleyAzDeg : null;

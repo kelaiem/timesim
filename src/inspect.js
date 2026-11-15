@@ -95,6 +95,10 @@ export const MODULE_UNITS = Object.freeze({
     'Alarm release link', 'Alarm silence rocker', 'Alarm link', 'Alarm lock', 'Alarm winding train', 'Alarm click',
     'Alarm winding arrest', 'Alarm switch', 'Alarm gong', 'Alarm hammer', 'Alarm lifting lever', 'Alarm barrel',
     'Alarm striking wheel', 'Alarm governor', 'Alarm governor anchor']),
+  // §339 — the second barrel: the pulley's at ?barrels=2, the parallel B at ?barrels=3 (landing 3c)
+  secondBarrel: Object.freeze(['Going barrel']),
+  // §339 landing 3c — at ?barrels=3, B's own set-up work (its ratchet, click, collar and fixed arbor)
+  parallelBarrel: Object.freeze(['Going barrel set-up']),
 });
 // the build's word, read once per call: absent units (each with its reason) and omitted meshes keyed `unit/mesh`. A
 // clock that publishes no `modules` (a page older than TODO 298, a test double) is read as building every module.
@@ -122,7 +126,9 @@ export const MECH_GRAPH = {
     // ROTATING group — shafts that were not pivots but the arbor's own
     // ends, drawn on the wrong member.
     ['Mainspring drum', 'Set-up work'],      // body runs on the static arbor (floor + lid bores)
+    ['Going barrel', 'Going barrel set-up'], // §339 landing 3c: B's body runs on its own static arbor
     ['Set-up work', 'Three-quarter plate'],  // the arbor's top stands in the plate's plain bushing
+    ['Going barrel set-up', 'Three-quarter plate'], // §339 landing 3c: B's arbor's top, in its own bushing
     ['Fusee & great wheel', 'plate'],        // fusee arbor pivots plate/bridge
     ['Center wheel', 'plate'],
     ['Third wheel', 'plate'],
@@ -187,6 +193,7 @@ export const MECH_GRAPH = {
     ['Winding clutch', 'Keyless works'],     // TODO 50: rides the stem's square (the keyed
                                              // joint) and the yoke's fork — the clutch has no
                                              // bearing of its own, which is the real part's truth
+    ['Going barrel set-up', 'plate'],        // §339 landing 3c: B's ratchet and click posts on the base plate, as the drum's
     ['Set-up work', 'plate'],                // the set-up ratchet rides the drum arbor's lower
                                              // square just above the BASE plate (chronometer
                                              // practice — bench-only hardware lives on the lower
@@ -321,6 +328,8 @@ export const MECH_GRAPH = {
   ],
   drive: [
     ['mainspring', 'Mainspring drum'],
+    ['mainspring', 'Going barrel'],          // §339 landing 3c: B's own ribbon
+    ['Going barrel', 'Mainspring drum'],     // §339 landing 3c: B's wall teeth drive the band on the drum, in parallel with its ribbon
     ['Mainspring drum', 'Chain'],
     ['Chain', 'Fusee & great wheel'],
     // TODO 219 — inside this unit the drive runs cone → base ratchet → pawls →
@@ -716,6 +725,8 @@ const EXPECTED_PAIRS = [
   ['Heart cam (seconds reset)', 'Reset hammer'], // roller on the cam
   ['Keyless works', 'Fusee & great wheel'],  // transfer wheel ⇄ winding spur (+ shared band under the great wheel)
   ['Maintaining detent', 'Fusee & great wheel'], // detent beak seated in the maintaining ring's teeth
+  ['Going barrel set-up', 'Going barrel'],   // §339 landing 3c: B's static arbor, collar and hook thread its body, as the drum's do
+  ['Going barrel', 'Mainspring drum'],       // §339 landing 3c: B's wall teeth in the drum's band (the spur mesh)
   ['Set-up work', 'Mainspring drum'],        // §100: the static arbor and everything on it (square,
                                              // collar, hook pin) thread the rotating body — the
                                              // body's bored floor and lid RUN on the arbor now
@@ -775,6 +786,7 @@ const EXPECTED_PAIRS = [
   // nothing that reaches the plate. (An EXPECTED grant on a pair that can
   // no longer touch is a standing excuse; the swap keeps the list true.)
   ['Set-up work', 'Three-quarter plate'],
+  ['Going barrel set-up', 'Three-quarter plate'],   // §339 landing 3c: as the drum's
   ['Center wheel', 'Three-quarter plate'],
   ['Third wheel', 'Three-quarter plate'],
   ['Fourth wheel', 'Three-quarter plate'],
@@ -5319,6 +5331,10 @@ export const PLATE_SEATS = [
   { unit: "Set-up work", mesh: "CylinderGeometry#3", kind: "planted", why: "a stud, on the plate face" },
   { unit: "Set-up work", mesh: "CylinderGeometry#6", kind: "planted", why: "a stud, on the plate face" },
   { unit: "Set-up work", mesh: "mainspringDrumPivot", kind: "pivot", why: "the drum arbor's lower pivot" },
+  // §339 landing 3c — barrel B's own set-up stack (buildSetupStack, the drum's law): its two studs and its arbor's pivot
+  { unit: "Going barrel set-up", mesh: "CylinderGeometry#3", kind: "planted", why: "a stud, on the plate face" },
+  { unit: "Going barrel set-up", mesh: "CylinderGeometry#6", kind: "planted", why: "a stud, on the plate face" },
+  { unit: "Going barrel set-up", mesh: "mainspringDrumPivot", kind: "pivot", why: "barrel B's arbor's lower pivot" },
   { unit: "Balance cock", mesh: "cockLeg", kind: "fastened", why: "the cock's two legs, each bored for its screw (TODO 184; LatheGeometry#4/#6 until TODO 295 named them)" },
   { unit: "Balance cock", mesh: "cockFoot", kind: "fastened", why: "each leg's foot, on the plate face (LatheGeometry#5/#7 until TODO 295)" },
   { unit: "Balance cock", mesh: "screwShanks", kind: "fastened", why: "the cock screws, tapped through the plate (TODO 184)" },
@@ -11486,7 +11502,7 @@ export function checkEqualisation(clock) {
   crossCheck('Mainspring drum', E.going);
   if (E.alarm) crossCheck('Alarm barrel', E.alarm);
   const g = E.going, a = E.alarm || null;
-  const HALVES = a ? [['going', g], ['alarm', a]] : [['going', g]];   // TODO 313: the ribbons this build carries
+  const HALVES = [['going', g], ...(a ? [['alarm', a]] : []), ...(g.barrelB ? [['barrelB', g.barrelB]] : [])];   // TODO 313: the ribbons this build carries (§339 landing 3c: barrel B's at ?barrels=3)
   // Rows 9–11 — the energy column, held as arithmetic.
   const en = g.energy;
   const rel = (x, y) => Math.abs(x - y) / Math.max(Math.abs(y), 1e-300);
@@ -12292,7 +12308,7 @@ export function checkEqualisation(clock) {
     const aM = R.section.a * UNIT_MM / 1000, IM = R.section.I_u4 * Math.pow(UNIT_MM / 1000, 4);
     const thetas = half === 'going' ? R.windRangeRad : R.windRangeRad;
     thetas.forEach((th, i) => {
-      const sigma = R.k_Nm_per_rad * th * aM / IM;
+      const sigma = (R.ribbonK_Nm_per_rad ?? R.k_Nm_per_rad) * th * aM / IM;   // §339 landing 3c: the ribbon's own k where the hook's is two in parallel
       if (!(rel(st.sigma_Pa[i], sigma) <= 1e-12))
         failures.push({ what: 'ribbon stress identity', ribbon: half, end: i ? 'full' : 'run-down', record: st.sigma_Pa[i], fromMoment: sigma });
     });
@@ -12328,8 +12344,9 @@ export function checkEqualisation(clock) {
   // that makes "the shape cancels" true of this record and not just of algebra
   if (g.section.shape === 'strip') {
     const kStrip = MAINSPRING_E_PA * g.section.I_u4 * Math.pow(UNIT_MM / 1000, 4) / (g.devLen_u * UNIT_MM / 1000);
-    if (!(rel(g.k_Nm_per_rad, kStrip) <= 1e-12))
-      failures.push({ what: 'going k is not its strip', record: g.k_Nm_per_rad, fromSection: kStrip });
+    // §339 landing 3c: where the hook's k is two ribbons in parallel, the strip identity is the drum ribbon's own k
+    if (!(rel(g.ribbonK_Nm_per_rad ?? g.k_Nm_per_rad, kStrip) <= 1e-12))
+      failures.push({ what: 'going k is not its strip', record: g.ribbonK_Nm_per_rad ?? g.k_Nm_per_rad, fromSection: kStrip });
   }
   // §104 rows 4–6, 8 — held from the record (TODO 313: the alarm's half, on a build that carries it):
   const c = a ? a.cadence : null;

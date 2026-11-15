@@ -31,9 +31,21 @@ if (process.argv[2] === '--child') {
   const g = sc.getObjectByName('barrelBGroup'), d = c.labelEntries.find((e) => e.name === 'Mainspring drum')?.obj;
   const rot = [];
   if (g && d) for (const t of [0, 0.25, 0.5, 0.75]) { c.setPose({ tension: t }); rot.push(g.rotation.z / d.rotation.z); }
+  // the chain's lowest metal within the band's reach of the drum's axis (r_pA + m + CLEAR_MARGIN), over the reserve
+  let chainLow = null;
+  if (g) {
+    const P = g.userData.parallel, ch = c.labelEntries.find((e) => e.name === 'Chain').obj, V = sc.position.constructor, v = new V();
+    const dp = d.getWorldPosition(new V()), reach = P.rpA + P.m + 0.15;
+    chainLow = { z: Infinity };
+    for (let i = 0; i <= 40; i++) { c.setPose({ tension: i / 40 }); ch.updateWorldMatrix(true, true);
+      ch.traverse((m) => { if (!m.isMesh) return; const p = m.geometry.attributes.position;
+        for (let k = 0; k < p.count; k++) { v.fromBufferAttribute(p, k).applyMatrix4(m.matrixWorld);
+          if (Math.hypot(v.x - dp.x, v.y - dp.y) < reach && v.z < chainLow.z) chainLow = { z: v.z, t: i / 40 }; } }); }
+    chainLow.bandTop = P.bandTop;
+  }
   process.stdout.write('\n@@' + JSON.stringify({ warns: r.warns, early: early.filter((w) => !r.warns.includes(w)), going: E?.going ?? null,
     drumPos: d ? [d.position.x, d.position.y, d.position.z] : null, bPos: g ? [g.position.x, g.position.y, g.position.z] : null,
-    stackA: !!c.labelEntries.find((e) => e.name === 'Set-up work'), stackB: !!sc.getObjectByName('setupStackB'), band: !!sc.getObjectByName('drumBand'), rot }) + '\n');
+    stackA: !!c.labelEntries.find((e) => e.name === 'Set-up work'), stackB: !!sc.getObjectByName('setupStackB'), chainLow, band: !!sc.getObjectByName('drumBand'), rot }) + '\n');
   process.exit(0);
 }
 const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => k !== '__TIMESIM_NATIVE_LOADER__'));
@@ -52,7 +64,7 @@ const rel = (a, b) => Math.abs(a - b) / Math.abs(b), f = (x, d = 4) => (+x).toFi
 const def = boot(''), a0 = boot('alarm=0'), B3 = boot('alarm=0&barrels=3');
 const R0 = def.going, setup = R0.windRangeRad[0], sweep = R0.windRangeRad[1] - R0.windRangeRad[0];
 const fw = { setupClicks: R0.setup.clicks, setupTeeth: R0.setup.teeth };
-const { CHAIN_END_R_OUT } = await import('../src/layout.js');
+const { CHAIN_END_R_OUT, CLEAR_MARGIN } = await import('../src/layout.js');
 fw.chainEndROut = CHAIN_END_R_OUT;   // the build's own constant, the one both the band and the line spec read
 const BB = B3.going?.barrelB;
 const L = parallelBarrel({ NB: D.NB, zA: D.zA, zB: D.zB, fw, c: R0.section.c, RA: 10.71, setup, sweep });
@@ -73,6 +85,8 @@ row(!!B3.bPos && Math.hypot(B3.bPos[0] - want[0], B3.bPos[1] - want[1]) < 1e-9 &
 row(B3.rot.length === 4 && B3.rot.every((q) => Math.abs(q + L.n) < 1e-12), `3. B turns −n = −${f(L.n, 6)} times drum A at every pose sampled (${B3.rot.map((q) => f(q, 6)).join(', ')})`);
 row(B3.rot.every((q) => Math.abs(q - L.n) > 1e-3 && Math.abs(q + 1) > 1e-3), '3. control: the ratio is neither +n nor −1');
 row(B3.stackA && B3.stackB && B3.band, '3. the drum\'s band and both set-up stacks are built');
+row(!!B3.chainLow && B3.chainLow.bandTop <= B3.chainLow.z - CLEAR_MARGIN && B3.chainLow.z - CLEAR_MARGIN - B3.chainLow.bandTop < 0.01,
+  `3. the band's top ${B3.chainLow?.bandTop} stands one CLEAR_MARGIN under the chain's lowest metal in its reach over the reserve (${B3.chainLow && f(B3.chainLow.z)} at tension ${B3.chainLow?.t}), within the 0.01 it is rounded to`);
 // 4
 const DECLARED = ['§329: the lock disc lets the star go', 'TODO 192: AMPLITUDE_CLAIM_DEG', 'TODO 216: the serviced (nominal) corner knocks', 'TODO 207/242: BAL_RIM_F'];
 const extra = [...B3.warns, ...B3.early].filter((w) => !DECLARED.some((p) => w.startsWith(p))), stale = DECLARED.filter((p) => !B3.warns.some((w) => w.startsWith(p)));
