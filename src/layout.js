@@ -472,7 +472,13 @@ export const SPEC = (() => {
   // reserve PULLEY_BARREL_HOURS, where the cone's invariant and the drive's size were measured, so another reserve is
   // refused loudly and builds the one drum. null = the one drum (a `1` is that null, so it is not a second key).
   const barrels = Number(raw.barrels) === 2 ? (reserveHours === PULLEY_BARREL_HOURS ? 2
-    : (console.warn(`§339: ?barrels=2 is refused at ${reserveHours} h — PULLEY_BARREL was solved at ${PULLEY_BARREL_HOURS} h; building the one drum`), null)) : null;
+    : (console.warn(`§339: ?barrels=2 is refused at ${reserveHours} h — PULLEY_BARREL was solved at ${PULLEY_BARREL_HOURS} h; building the one drum`), null))
+    // §339 landing 3c — ?barrels=3: today's drum AND a parallel second barrel (PARALLEL_BARREL below), for POWER. Its seat
+    // was solved on the round alarm-free build at the shipped reserve, so a build with the alarm (whose metal stands in
+    // that seat), a form case (another plate) or another reserve is refused loudly and builds the one drum.
+    : Number(raw.barrels) === 3 ? (alarm === false && reserveHours === PULLEY_BARREL_HOURS && !raw.caseShape ? 3
+      : (console.warn(`§339: ?barrels=3 is refused here — PARALLEL_BARREL's seat was solved on the round alarm-free build at ${PULLEY_BARREL_HOURS} h; building the one drum`), null))
+    : null;
   return Object.freeze({ barrels, vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, rsvIdlers, alarmr, subdialr, dialr, studr, caseShape, frame, hands, formRectSpec, gongSeat, alarm, strapMm, drumAzDeg, arrest });
 })();
 // §325 landing 3 — whether this build carries the alarm complication (SPEC.alarm above)

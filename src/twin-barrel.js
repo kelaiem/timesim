@@ -217,10 +217,16 @@ export function pickPulleyBarrel({ fw, k0, c, discCap }) {
 // spring at the same reserve is where any balance first starts, and ×2 where every balance r ≤ 8 both starts and reaches
 // the 200° target. So ×2 is the target, and the pick is the smallest barrel that reaches it.
 export const POWER_TARGET = 2;
+// The geometry the integers fix, closed form (main.js builds ?barrels=3 from this, so the build and the line spec read
+// one law): A's band at r_pA = R_A + 2·c_end + CLEAR_MARGIN (flangeDelta), m = 2·r_pA/zA, B's wall R_B = m·zB/2.
+export function parallelGeometry({ NB, zA, zB, RA, ce, teeth }) {
+  const n = zA / zB, rpA = RA + 2 * ce + CLEAR_MARGIN, m = (2 * rpA) / zA, RB = (m * zB) / 2;
+  return { NB, zA, zB, n, RA, rpA, m, RB, setupB: (NB * 2 * Math.PI) / teeth, centreDistance: rpA + RB };
+}
 export function parallelBarrel({ NB, zA, zB, fw, c, RA, setup, sweep, clicksA = fw.setupClicks, teeth = fw.setupTeeth, ...opts }) {
   const n = zA / zB;
   if (Math.abs(n - NB / clicksA) > 1e-12) return { NB, zA, zB, n, feasible: false, why: 'the gear ratio is not B\'s set-up over A\'s' };
-  const rpA = RA + flangeDelta(fw), m = (2 * rpA) / zA, RB = (m * zB) / 2;
+  const { rpA, m, RB } = parallelGeometry({ NB, zA, zB, RA, ce: fw.chainEndROut, teeth });
   const A = drumRibbon({ R: RA, c, setup, sweep, ...opts });
   const B = drumRibbon({ R: RB, c, setup: n * setup, sweep: n * sweep, ...opts });
   const out = { NB, zA, zB, n, m, RA, rpA, RB, setupB: (NB * 2 * Math.PI) / teeth, centreDistance: rpA + RB, A, B };
