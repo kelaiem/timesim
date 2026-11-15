@@ -4335,13 +4335,20 @@ export function formShapeOf(kind, spec, fallbackBox) {
 // reach either side. Without it the shape is centred on the metal's own box,
 // the smallest case, which is §308's first rule and stood the hands up to
 // 1.39 mm off the case's centre.
-export function fitCaseShape(kind, hull, metal, { margin = PLATE_RIM_MARGIN, centre = null, ...opts } = {}) {
+// `pins` [[x, y, m]…] (§343 landing 5) are points the shape must ALSO hold, each m inside, fitFittedCaseSteps' word:
+// the box grows over them too, and a scale passes only when every pin stands its own m inside.
+export function fitCaseShape(kind, hull, metal, { margin = PLATE_RIM_MARGIN, centre = null, pins = [], ...opts } = {}) {
+  if (pins.length) {
+    const xs = pins.map((q) => q[0]), ys = pins.map((q) => q[1]);
+    metal = [Math.min(metal[0], ...xs), Math.max(metal[1], ...xs), Math.min(metal[2], ...ys), Math.max(metal[3], ...ys)];
+  }
   const [x0, x1, y0, y1] = metal;
   const cx = centre ? centre[0] : (x0 + x1) / 2, cy = centre ? centre[1] : (y0 + y1) / 2;
   const A = Math.max(cx - x0, x1 - cx) + margin, B = Math.max(cy - y0, y1 - cy) + margin;
   const at = (s) => caseShapeOf(kind, { xMin: cx - s * A, xMax: cx + s * A, yMin: cy - s * B, yMax: cy + s * B }, opts);
   const worst = (sh) => { let w = Infinity; for (const [x, y] of hull) w = Math.min(w, sh.inset(x, y)); return w; };
-  const ok = (s) => worst(at(s)) >= margin - 1e-9;
+  const ok = (s) => { const sh = at(s); if (!(worst(sh) >= margin - 1e-9)) return false;
+    for (const [x, y, m] of pins) if (sh.inset(x, y) < m - 1e-9) return false; return true; };
   let lo = 0.5, hi = 1;
   while (!ok(hi)) { lo = hi; hi *= 1.25; if (hi > 8) throw new Error(`fitCaseShape: no ${kind} up to 8× the box holds the metal`); }
   while (ok(lo) && lo > 0.1) { hi = lo; lo *= 0.8; }

@@ -1417,6 +1417,38 @@ export function revolvedBlankDiscClearance(A, fA, D, target) {
   const oA = fA.o;
   const apart = Math.hypot(oA[0] - c[0], oA[1] - c[1], oA[2] - c[2]) - A.R - R;
   if (apart >= tgt) return { ok: true, lb: apart - A.eps };
+  // §338 landing 17 — a disc COAXIAL with the blank (a bush on the blank's own arbor) is a
+  // second solid of revolution about ONE axis, so their distance is the distance between their
+  // meridians in a single half-plane: revolvedBlanksClearance's coaxial law, with the disc's
+  // meridian the rectangle ρ ≤ r, z ∈ [zLo, zHi]. The 2-D sampling below would refine the whole
+  // ring where the disc nears the blank's web — measured, these calls were a fifth of a boot's
+  // build — while the meridian is 1-D and settles it exactly: A's boundary sampled at δ, every
+  // point of it within δ/2 of a sample, the distance 1-Lipschitz.
+  {
+    const aA = fA.a, dotA = aA[0] * a[0] + aA[1] * a[1] + aA[2] * a[2];
+    const w = [D.o[0] - oA[0], D.o[1] - oA[1], D.o[2] - oA[2]];
+    const wz = w[0] * aA[0] + w[1] * aA[1] + w[2] * aA[2];
+    const off = Math.hypot(w[0] - wz * aA[0], w[1] - wz * aA[1], w[2] - wz * aA[2]);
+    if (Math.abs(Math.abs(dotA) - 1) < 1e-9 && off < 1e-9) {
+      const sgn = Math.sign(dotA), df = ENVELOPE_DELTA_FINE;
+      // the disc's own meridian distance at A's (ρ, z): z read along the disc's axis from D.o
+      const sdM = (rho, zA) => {
+        const zb = sgn * (zA - wz), dr = rho - D.r, dz = Math.max(D.zLo - zb, zb - D.zHi);
+        return dr <= 0 && dz <= 0 ? Math.max(dr, dz) : Math.hypot(Math.max(dr, 0), Math.max(dz, 0));
+      };
+      let lb = Infinity;
+      const n = Math.ceil(A.S / df);
+      for (let k = 0; k <= n; k++) {
+        const [r, z] = A.at((k * A.S) / n);
+        const d = sdM(r, z);
+        if (d < tgt + df / 2) return { ok: false, lb: -Infinity };
+        if (d - df / 2 < lb) lb = d - df / 2;
+      }
+      // the disc wholly inside A would never meet A's boundary: its centre is tested
+      if (_sdEnv(A, 0, wz + sgn * zm) < tgt) return { ok: false, lb: -Infinity };
+      return { ok: true, lb: lb - A.eps };
+    }
+  }
   const sd = (x, y, z) => {
     const qx = x - D.o[0], qy = y - D.o[1], qz = z - D.o[2];
     const zb = qx * a[0] + qy * a[1] + qz * a[2];
