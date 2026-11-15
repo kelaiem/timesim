@@ -1558,6 +1558,16 @@ export const PULLEY_BARREL = Object.freeze({ zA: 38, zB: 104, NB: 29,
   // and the barrel's round the pulley, movement frame, degrees counter-clockwise from +x. The rule: the seat whose box is
   // smallest, ties to the widest margin, among those clear of the three fields and of both sides of the chain's span.
   pulleyAzDeg: 115.5, barrelAzDeg: 192.5 });
+// §339 landing 3b — THE PARALLEL SECOND BARREL's integers (src/twin-barrel.js' pickParallelBarrel, the rule written
+// there: the smallest barrel B whose power multiple at the same reserve reaches POWER_TARGET, ×2, TODO 292's measured
+// figure for the 36,000 row). Drum A is today's drum; B's set-up is NB clicks of its ratchet, so n = NB / A's 23 clicks
+// = zA/zB, and the multiple 4 sets the module nearest the great wheel's. tools/probe-339-parallel-barrel.mjs re-derives
+// it and holds it. THE SEAT, on the round alarm-free build (tools/second-barrel-seats.mjs, at rest): B's azimuth round
+// drum A, movement frame, degrees counter-clockwise from +x; the rule is the seat of widest margin over the drum band's
+// field, the coupling band's and both sides of the chain's span.
+// Re-read after #989's plate-margin law shrank the round plate's room: 13° (margin 1.455 before) is no seat now, and of
+// the two left (9.5°, 10°) 10° is the wider, margin 0.146 over the field's own CLEAR_MARGIN.
+export const PARALLEL_BARREL = Object.freeze({ NB: 24, zA: 96, zB: 92, barrelAzDeg: 10, seatSpec: 'alarm=0' });
 // The drum's azimuth every reader takes (main.js' drumDir and the form rectangle's reach): ?drumaz= when given, else the
 // pulley's declared seat at ?barrels=2, else null (drumDirOf's blend, the shipped watch, bit-exact).
 export const DRUM_AZ_DEG = SPEC.drumAzDeg !== null ? SPEC.drumAzDeg : SPEC.barrels === 2 ? PULLEY_BARREL.pulleyAzDeg : null;

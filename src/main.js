@@ -36778,37 +36778,11 @@ declareRestoring('Alarm governor anchor', 'alarmGovAnchor', 'two-way',
 // moment ~4.5 N·mm — inside the real small-movement barrel range (roughly
 // 0.5–5 N·mm), which is the cross-check that the §39 scale pin, the
 // section and the length are telling one consistent story.
+// TODO 313 — the ALARM half of the TODO 32 record. The going half is EQUALISATION_GOING, computed at module scope
+// before buildAlarm() is called, so an alarm-free build publishes it too; this IIFE adds the alarm's and the record
+// keeps its shape, { going, alarm }, on every build that carries the module.
 const EQUALISATION = (() => {
-  const u4 = Math.pow(OSC_U, 4);
-  const kOf = (sp) => MAINSPRING_E_PA * (sp.section.I_u4 * u4) / (sp.devLen * OSC_U); // N·m/rad — TODO 193: the ribbon's own alloy
-  // TODO 193 — THE RIBBON AGAINST ITS MATERIAL. A spiral wound off its free
-  // coil carries a UNIFORM moment M = k·θ, so the outer fibre sees σ = M·a/I
-  // everywhere along it — which, k being E·I/L, is E·a·θ/L: the section's
-  // SHAPE cancels, and what sets the stress is the half-thickness, the wind
-  // and the length. (That is why cutting the strip moved k fourfold and the
-  // stress not at all.) Published at both ends of each ribbon's working wind
-  // against the alloy's cited band; checkEqualisation row 13 gates the full-
-  // wind end against the band's LOW end and waives by name.
-  const ribbonStress = (kNm, sec, thetas) => {
-    const aM = sec.a * OSC_U, IM = sec.I_u4 * u4;
-    const sigma = thetas.map((th) => kNm * th * aM / IM);
-    return {
-      sigma_Pa: sigma, limit_Pa: MAINSPRING_SIGMA_Y_PA, band: { ...MAINSPRING_SIGMA_Y_BAND },
-      E_Pa: MAINSPRING_E_PA, marginLow: MAINSPRING_SIGMA_Y_BAND.low / sigma[sigma.length - 1],
-      marginHigh: MAINSPRING_SIGMA_Y_BAND.high / sigma[sigma.length - 1],
-    };
-  };
-  const k = GOING_K;   // TODO 193: quoted, not re-derived — the pivots above were sized to this number
-  if (Math.abs(kOf(mainspring) * Math.pow(RIBBON_GEAR, 2) / k - 1) > 1e-12)
-    console.warn(`TODO 193: the going k has two values — GOING_K ${k} vs kOf ${kOf(mainspring)}·${RIBBON_GEAR}²`);
-  // The level product over the reserve, sampled: springTq·envR/K − 1.
-  // 257 samples ties the gate's grid to a fixed, odd count (endpoints + midpoint on the grid).
-  let levelMaxDev = 0;
-  for (let i = 0; i <= 256; i++) {
-    const t = i / 256;
-    const d = Math.abs(springTorqueAt(t) * fuseeEnvR(fuseeEngagedF(t)) / FUSEE_TORQUE_K - 1);   // §254: at the station the chain actually leaves from
-    if (d > levelMaxDev) levelMaxDev = d;
-  }
+  const { ribbonStress } = EQUALISATION_RIBBON;
   // §104 — the alarm's k is the GOVERNOR's constant, quoted rather than
   // re-derived: the I_a solve consumed ALARM_GOV_K, and a record that ran
   // kOf() again would be two chances for the same law to drift apart.
@@ -36817,741 +36791,8 @@ const EQUALISATION = (() => {
   const kAlarm = ALARM_GOV_K;
   const alarmTravel = alarmSpring.sweepFull - alarmSpring.sweepDown; // rad — the 1.75-turn strike travel
   const alarmSetup = alarmSpring.sweepDown - alarmSpring.sweepFree;  // rad — §104's 80-click set-up, as BUILT into the frames
-  // TODO 192 / §247 tier two — THE ENERGY COLUMN. Everything above this line
-  // is frictionless: the level product is an identity, k is the ribbon's,
-  // and nothing asks whether the spring can DRIVE the balance it is geared
-  // to. This block asks. It is the arithmetic of tools/probe-power-budget.mjs
-  // promoted onto the record so the battery holds it and the probe asserts
-  // against it (CLAUDE.md: a row whose figure an instrument also computes
-  // must ASSERT against it, not resemble it).
-  //
-  //  · What the ribbon RELEASES over the reserve is ½k(θ_full² − θ_setup²),
-  //    the set-up being energy the fusee never sees. Level by construction,
-  //    that is a constant torque at the fusee, E/(wrap turns · 2π), and
-  //    E/beats at the escape wheel per beat, before any loss.
-  //  · Each LOSS is a first-order efficiency of one contact, priced at
-  //    layout.js's FRICTION bands: a pivot costs μ·r_piv·(1/r_in + 1/r_out)
-  //    (the loads at the pinion and the wheel ADD — an upper bound, the two
-  //    reactions being treated as collinear), a mesh costs πμ(1/z₁ + 1/z₂)
-  //    (the classical sliding loss of involute teeth), the chain costs
-  //    μ·r_rivet·(1/r_fusee + 1/R_wrap) per link articulated on and off, and
-  //    the ribbon and the escapement are bands outright.
-  //  · The BALANCE spends, per beat, (π/Q_other)·½kθ² on everything but its
-  //    pivots and 2θ·T_f on them, T_f = μ·m·g·r: the PIVOT's radius with the
-  //    watch vertical, the pivot END's contact radius dial-flat. The
-  //    sustained amplitude is the θ at which that spend equals what arrives
-  //    — a quadratic in θ, solved in closed form — and the record carries
-  //    it at every corner beside the amplitude the movement CLAIMS
-  //    (AMPLITUDE_CLAIM_DEG), with the factor by which the claim exceeds the
-  //    supply. Measured at the shipped metal: the sustained swing is 126–293°
-  //    vertical and 172–455° dial-flat (the last past the knock at 314°, so
-  //    the balance banks there, TODO 216), 200° vertical at the nominal corner
-  //    (TODO 192's steps and TODO 193 took it from 2–7°: pivots cut, the
-  //    strip, then the ribbon proportioned to its alloy and its drum; TODO 207
-  //    then grew the drum to the plate and lightened the balance to the
-  //    AMPLITUDE_TARGET_DEG design swing). The gate holds the arithmetic (the identities,
-  //    the corners' ordering, the amplitude solve plugging back) and, since
-  //    TODO 192 step 4, the two amplitudes layout.js declares against the
-  //    solve's extremes, published here as `amplitude`: the claim at or under
-  //    the minimum, the peak loads are priced at at or over the largest swing
-  //    the balance can reach (the maximum, or the knock if it comes first —
-  //    TODO 216), each within a degree.
-  const energy = (() => {
-    // TODO 219 — every figure of the walk is GOING_POWER's (hoisted to the
-    // train's cut so the maintaining spring's floor reads the same laws).
-    const { released_J, reserve_s, beats, meshes, trainRatio, fuseeTorque_Nm, escapeTorque_Nm, perBeat_J,
-      kB, mB, corner } = GOING_POWER;
-    const g = GOING_POWER.g;
-    if (GOING_POWER.k !== k) console.warn(`TODO 219: the energy column's k ${GOING_POWER.k} is not the record's ${k}`);
-    // TODO 192 step 2 / TODO 193 — WHY EACH PIVOT IS THE SIZE IT IS, as
-    // arithmetic. Each jewelled pivot is a cantilever from its shoulder,
-    // loaded at its end by the arbor's radial reaction; the same upper bound
-    // the η law prices — the pinion's and the wheel's loads ADDED,
-    // T·(1/r_pinion + 1/r_wheel) — and the WHOLE of it on one pivot. Its
-    // bending stress σ = 32·F·L/(π·d³), d the pivot as cut across its flats
-    // (TRAIN_PIVOT_SIZES — the floor, or the load where the load binds), L the
-    // longer of the two pivots as cut. The balance's load is its weight, all
-    // on one pivot (the vertical positions), at the floor. Every row must come
-    // in at or under SPRING_SIGMA_Y_PA: a load-bound row sits ON it by
-    // construction, and its margin is the upper bound's.
-    const balancePivotL = Math.max(BALANCE_PIVOT_TIP_Z - BALANCE_SHOULDER_TOP_Z, CLEAR_MARGIN + G.jewelStone(1.0).rubyDepth);
-    const bend = (F, L_u, d_u) => 32 * F * (L_u * OSC_U) / (Math.PI * Math.pow(d_u * OSC_U, 3));
-    const pivotStrength = (() => {
-      const rows = [];
-      let T = fuseeTorque_Nm;
-      for (const m of meshes) {
-        T *= m.z2 / m.z1;                                           // the arbor's torque, one mesh down
-        const F = T * (1 / (m.rIn * OSC_U) + 1 / (m.rOut * OSC_U));
-        const size = TRAIN_PIVOT_SIZES.find((p) => p.arbor === m.arbor);
-        const sigma = bend(F, PIVOT_LEN_U, size.dU);
-        rows.push({ pivot: `${m.arbor} arbor`, load_N: F, length_u: PIVOT_LEN_U, d_u: size.dU, bound: size.bound,
-          sigma_Pa: sigma, margin: SPRING_SIGMA_Y_PA / sigma });
-      }
-      const Fb = mB * g, sigmaB = bend(Fb, balancePivotL, PIVOT_MIN_U);
-      rows.push({ pivot: 'balance', load_N: Fb, length_u: balancePivotL, d_u: PIVOT_MIN_U, bound: 'floor',
-        sigma_Pa: sigmaB, margin: SPRING_SIGMA_Y_PA / sigmaB });
-      const worst = rows.reduce((a, b) => (b.margin < a.margin ? b : a));
-      if (worst.margin < 1 - 1e-9)
-        console.warn(`TODO 193: the ${worst.pivot} pivot bends at ${(worst.sigma_Pa / 1e6).toFixed(1)} MPa at its service load, `
-          + `over the ${(SPRING_SIGMA_Y_PA / 1e6).toFixed(0)} MPa yield — TRAIN_PIVOT_SIZES and this row have parted`);
-      return { rows, dPivot_mm: PIVOT_MIN_U * UNIT_MM, yield_Pa: SPRING_SIGMA_Y_PA, worst: worst.pivot, worstMargin: worst.margin };
-    })();
-    // TODO 296 — THE CLUB TOOTH'S TIP, priced. The owner saw it first: the
-    // escape wheel's teeth "look a little thin at the ends", and measured off
-    // the cut the club is a 10.83 degree wedge whose last 0.038 mm is 0.010 mm
-    // wide — thinner in the sheet than PIVOT_MIN_U, the floor under the most
-    // slender feature the movement admits anywhere. Four instruments passed it
-    // for four different reasons (TODO 296 lists them; stockFloor reads a
-    // geometry-LOCAL bounding box, whose smallest side here is the depth) and
-    // none of them is a strength claim. This is the strength claim.
-    //
-    //  · ONE BEARING STATION, not three. TODO 226 step 3 cut the undercut so
-    //    that only the tip touches, and `deltaOnImpulseFace` puts the tooth
-    //    CIRCLE on the stone's face, so through the lock, the draw and the
-    //    whole impulse it is the TIP that bears. The club's own impulse face
-    //    never meets the stone in this model.
-    //  · THE LOAD, from the escape torque over the arm the metal gives
-    //    (ESCAPE_TOOTH_GEOM: the contact normal's moment arm about the wheel's
-    //    axis, shorter than the tooth circle because the locking face leans by
-    //    the draw). FORWARD runs — locked at the banking, the impulse — carry
-    //    the corner's delivered torque, T.etaPath. The UNLOCK carries
-    //    T/etaPath: the balance drives the train BACKWARD through the draw, so
-    //    every stage's friction opposes it and the balance pays the reciprocal
-    //    (§238's own reading). That inverts the corners for that run, and it is
-    //    the largest tooth load in the beat — 1.9x the frictionless torque at
-    //    the adverse corner, where the forward runs read 0.53x.
-    //  · THE TIP IS AN ARC, because a point is singular. The beam's stress goes
-    //    as 1/s into the apex and the Hertz pressure as 1/sqrt(rho), so a
-    //    mathematically sharp club has no finite strength at all and the only
-    //    honest price is on the radius the METAL carries — ESCAPE_TIP_R_BAND, a
-    //    finish, read at its SHARP end. This is TODO 221's treatment of the
-    //    maintaining beak's apex applied to the one other wedge in the
-    //    movement that bears a load on its point.
-    //  · TWO CRITERIA, and the record says which BINDS. Hertz: a steel radius
-    //    on the ruby's flat face, p0 = sqrt(F' E* / (pi rho)) against
-    //    LINE_CONTACT_FIRST_YIELD_P0_PER_Y x the escape steel's low end, the
-    //    line as long as the band the tip stands at full radius in. Beam: the
-    //    wedge's section where the arc leaves it (width 2 rho cos a, the load
-    //    rho(1 - sin a) ahead of it), bending plus the WHOLE of F as axial
-    //    load, under the same steel. Both go as 1/rho, so each inverts to the
-    //    radius at which it would first yield and rhoMin is the larger.
-    //  · WHAT THIS DOES NOT PRICE, said plainly: the DROP's impact. At the
-    //    landing the wheel and the train behind it arrive with kinetic energy
-    //    some seven orders over the elastic energy this contact stores at the
-    //    working load, and that is the load a thin tip really fears — but its
-    //    path is through the stone into the fork and out at the banking pin,
-    //    none of which this models. TODO 296 carries it as the step still owed.
-    const escapeTooth = (() => {
-      const H = ESCAPE_TOOTH_GEOM, tM = H.band.t_u * OSC_U, a = H.wedge.halfRad;
-      // E* for STEEL on RUBY: both bodies named, the stone corundum (§269's stocks)
-      const Estar = 1 / ((1 - STEEL_NU * STEEL_NU) / STEEL_E_PA + (1 - STOCK.corundum.nu * STOCK.corundum.nu) / STOCK.corundum.E);
-      const p0Allow = LINE_CONTACT_FIRST_YIELD_P0_PER_Y * ESCAPE_STEEL_SIGMA_Y_PA;
-      const shakeAllow = LINE_CONTACT_SHAKEDOWN_P0_PER_Y * ESCAPE_STEEL_SIGMA_Y_PA;
-      // TODO 299 landing 2 — THE TIP'S FINISH, DERIVED, and it sets everything
-      // below. The owner's point: it makes no sense to pre-sharpen an edge only
-      // to have it blunted. Landing 2 of TODO 296 measured the drop's first
-      // landings blunting the tip until the contact shakes down; that radius is
-      // a FIXED POINT of the impact (p0(ρ) = the shakedown limit), and nothing
-      // about the as-cut tip enters it — solved from starting radii four decades
-      // apart it returns the same figure to 2e-16. So the wheel is FINISHED
-      // there: it leaves the bench in the state it would have reached anyway,
-      // the only overstressed moment in its life is gone, and the one
-      // micron-scale operation on the whole wheel gets coarser.
-      //
-      // The impact's own stack first, because the fixed point needs it: the
-      // landing's energy, and the series compliance that is the TOOTH's and not
-      // the contact's (TODO 296 landing 2 says why, and the gate asserts it).
-      const impact = (() => {
-        const Lg = H.landing, cr = FORK_CROSSING;
-        if (!Lg || !cr) return null;
-        const aW = Lg.arm_u * OSC_U, aF = Lg.armFork_u * OSC_U, Iw = cr.I_wheel, If = cr.I_fork;
-        const Apk = AMPLITUDE_PEAK_DEG * DEG2RAD, wB = 2 * Math.PI * F_BALANCE, thL = PIN_FORK.liftHalf, hh = 1e-7;
-        const thetaDot = Apk * wB * Math.cos(Math.asin(Math.min(1, thL / Apk)));
-        const dPhi = Math.abs((PIN_FORK.notch.lead(thL + hh) - PIN_FORK.notch.lead(thL - hh)) / (2 * hh));
-        const gear = Math.max(...ESCAPEMENT.stones.map((stE) => {
-          const phiE = stE.sigma * stE.xE;
-          return Math.abs((ESCAPEMENT.deltaOnImpulseFace(stE.sigma, phiE + hh).delta
-                         - ESCAPEMENT.deltaOnImpulseFace(stE.sigma, phiE - hh).delta) / (2 * hh));
-        }));
-        const omega0 = gear * dPhi * thetaDot;
-        const omega = Math.sqrt(omega0 * omega0 + 2 * escapeTorque_Nm * ESCAPEMENT.drop / Iw);
-        const mStar = 1 / (aW * aW / Iw + aF * aF / If);
-        const v0 = aW * omega;
-        return { Iw, If, aW, aF, thetaDot, dPhi, gear, omega0, omega, mStar, v0,
-          energy: 0.5 * mStar * v0 * v0, dropRad: ESCAPEMENT.drop };
-      })();
-      const sArcOf = (rr) => rr * Math.pow(Math.cos(a), 2) / Math.sin(a);
-      const sRootW = Math.abs(H.wedge.holdsTo_u) * OSC_U, kWid = H.wedge.widthPerDepth;
-      const kTooth = (rr) => {
-        const sa = sArcOf(rr), A0 = 12 / (STEEL_E_PA * tM * Math.pow(kWid, 3));
-        return 1 / (A0 * (sa / sRootW - 1 + Math.log(sRootW / sa)));
-      };
-      const kHertz = (rr, F) => {
-        const Fl = F / tM, ha = Math.sqrt(4 * Fl * rr / (Math.PI * Estar));
-        return F / Math.max((2 * Fl / (Math.PI * Estar)) * (Math.log(4 * rr / ha) - 1), 1e-18);
-      };
-      const impactAt = (rr) => {
-        if (!impact) return null;
-        let F = 1e-3;
-        for (let i = 0; i < 160; i++) F = Math.sqrt(2 * impact.energy / (1 / kTooth(rr) + 1 / kHertz(rr, F)));
-        const kT = kTooth(rr), kH = kHertz(rr, F);
-        return { F, kTooth_N_per_m: kT, kHertz_N_per_m: kH, kSeries_N_per_m: 1 / (1 / kT + 1 / kH),
-          p0_Pa: Math.sqrt((F / tM) * Estar / (Math.PI * rr)) };
-      };
-      // the fixed point, from an arbitrary start (it has none of its own)
-      const rhoFixed = (p0a) => { let rr = 1e-7; for (let i = 0; i < 300; i++) rr = Math.min(1e-3, Math.max(1e-11, rr * Math.pow(impactAt(rr).p0_Pa / p0a, 2))); return rr; };
-      const rho = impact ? rhoFixed(shakeAllow) : ESCAPE_TIP_R_M;
-      // the shop floor's constraint on the derivation: a finish it cannot reach
-      // is not a specification
-      if (!(rho >= ESCAPE_TIP_R_BAND.sharp_m && rho <= ESCAPE_TIP_R_BAND.blunt_m))
-        console.warn(`TODO 299 landing 2: the impact asks the club tip to be finished at ${(rho * 1e6).toFixed(4)} µm, outside the `
-          + `${(ESCAPE_TIP_R_BAND.sharp_m * 1e6).toFixed(2)}–${(ESCAPE_TIP_R_BAND.blunt_m * 1e6).toFixed(2)} µm a polish can hold — the finish is not a specification the shop can meet`);
-      const secW = 2 * rho * Math.cos(a), secArm = rho * (1 - Math.sin(a));
-      // sigma(rho) = K/rho and p0(rho) = sqrt(J/rho), so each criterion inverts
-      const kBeam = (6 * (1 - Math.sin(a)) / (4 * Math.pow(Math.cos(a), 2)) + 1 / (2 * Math.cos(a))) / tM;
-      const rows = [];
-      for (const cname of FRICTION_CORNERS) {
-        const Cc = corner(cname);
-        const etaPath = Cc.stages.filter((st) => st.name !== 'lever escapement').reduce((p, st) => p * st.eta, 1);
-        for (const run of H.runs) {
-          const tq = run.flow === 'recoil' ? escapeTorque_Nm / etaPath : escapeTorque_Nm * etaPath;
-          const F = tq / (run.arm_u * OSC_U), Fl = F / tM;
-          const p0 = Math.sqrt(Fl * Estar / (Math.PI * rho));
-          const sigma = 6 * F * secArm / (tM * secW * secW) + F / (tM * secW);
-          const rhoHertz = Fl * Estar / (Math.PI * p0Allow * p0Allow), rhoBeam = kBeam * F / ESCAPE_STEEL_SIGMA_Y_PA;
-          rows.push({ corner: cname, stone: run.stone, run: run.run, flow: run.flow, etaPath,
-            arm_u: run.arm_u, torque_Nm: tq, load_N: F,
-            p0_Pa: p0, p0Margin: p0Allow / p0, sigma_Pa: sigma, sigmaMargin: ESCAPE_STEEL_SIGMA_Y_PA / sigma,
-            rhoHertz_m: rhoHertz, rhoBeam_m: rhoBeam,
-            rhoMin_m: Math.max(rhoHertz, rhoBeam), binds: rhoHertz >= rhoBeam ? 'hertz' : 'beam',
-            margin: Math.min(p0Allow / p0, ESCAPE_STEEL_SIGMA_Y_PA / sigma) });
-        }
-      }
-      const worstT = rows.reduce((x, y) => (y.margin < x.margin ? y : x));
-      if (worstT.margin < 1 - 1e-9)
-        console.warn(`TODO 296: the club tooth's tip works past the escape steel's low end on ${worstT.run} at the ${worstT.corner} corner — `
-          + `${worstT.binds === 'hertz' ? `p0 ${(worstT.p0_Pa / 1e9).toFixed(3)} GPa against ${(p0Allow / 1e9).toFixed(3)}` : `${(worstT.sigma_Pa / 1e6).toFixed(0)} MPa against ${(ESCAPE_STEEL_SIGMA_Y_PA / 1e6).toFixed(0)}`}`
-          + ` at a tip radius of ${(rho * 1e6).toFixed(3)} µm; it needs ${(worstT.rhoMin_m * 1e6).toFixed(3)} µm — the club wants a tip LAND`);
-      // TODO 296 landing 2 — THE DROP'S LANDING, which landing 1 named and left.
-      // At the let-off the tooth leaves the stone and the wheel runs FREE through
-      // the drop, driven by the escape torque, until the next tooth lands on the
-      // other stone's locking face. Landing 1 measured that it arrives with some
-      // seven million times the elastic energy the tip's contact stores at the
-      // working load, and said the load was not priced because its path runs
-      // through the stone into the fork and out at the banking pin. It is priced
-      // now, and the answer is not that the tooth breaks: it RUNS IN.
-      //
-      //  · THE WHEEL'S SPEED AT THE LANDING, through the model's own laws. The
-      //    balance at AMPLITUDE_PEAK_DEG (TODO 192 step 4's rule: a PEAK load is
-      //    priced at the largest swing the balance can reach) is turning
-      //    A·ω·cos(asin(θ/A)) at the let-off; the notch's `lead` wall carries the
-      //    fork at dφ/dθ of that; the impulse face's own gearing dδ/dφ carries the
-      //    wheel at that again. Then the drop: ½I(ω²−ω₀²) = τ·θ_drop, frictionless,
-      //    so the fastest landing the model admits. I is FORK_CROSSING's own
-      //    I_wheel — the escape arbor with the train reflected through its ratios,
-      //    weighed off the meshes at each stock's density (TODO 226 step 3b).
-      //  · THE IMPACT, with no restitution coefficient anywhere. Two bodies
-      //    colliding through a contact whose normal's moment arms about each axis
-      //    the geometry gives: the effective mass along that normal is
-      //    1/(a_w²/I_w + a_f²/I_f) and the closing velocity a_w·ω. The fork is
-      //    taken AT REST, which is the bound: between the let-off and the landing
-      //    it coasts toward its banking, which is the way the landing tooth will
-      //    push it, so any speed it has only opens the gap.
-      //  · WHERE THE ENERGY GOES, and this is the finding. The series compliance
-      //    is NOT the Hertz contact — it is the TOOTH, by three orders of
-      //    magnitude. The club is a tapered cantilever loaded at its tip arc
-      //    (EI y'' = F·s with I = t·(k·s)³/12, integrated from the arc's tangent
-      //    station to where the wedge ends), and that comes out ~21 kN/m against
-      //    the contact's ~22 MN/m. So the 2-D contact's datum-dependent approach
-      //    (Johnson §5.2: the compliance of two cylinders is only defined against
-      //    a reference length) cannot move the answer, which the gate asserts
-      //    rather than assumes. The fork's arm, the stone's seat and the banking
-      //    pin are further series members and are NOT modelled — every one would
-      //    soften the stack, so leaving them out makes the peak force, and the
-      //    run-in radius below, UPPER bounds.
-      //  · AND THE CRITERION IS SHAKEDOWN, not first yield. A contact that
-      //    repeats ten times a second for the life of the watch is held to
-      //    LINE_CONTACT_SHAKEDOWN_P0_PER_Y (Johnson's 4.0k), not to the elastic
-      //    limit: past first yield the apex deforms a little, residual stresses
-      //    build, and the contact becomes elastic again at a higher load. So the
-      //    tip does not fail — it BLUNTS until it shakes down, and `runIn` is the
-      //    radius where that stops, solved by the same inversion landing 1 used
-      //    (p0 ∝ ρ^−½ at fixed F). A tooth that ran in PAST its finish band would
-      //    be a tooth wearing its own lock away; that is what the gate holds.
-      const landing = (() => {
-        if (!impact) return null;
-        const Lg = H.landing;
-        const atFinish = impactAt(rho);
-        // the finish IS the fixed point, so the contact shakes down as cut and
-        // the tip does not run in. Reported as the identity it is: p0 at the
-        // finish equals the shakedown limit, and the radius a FULLY elastic
-        // contact would want is blunter still (that one is not specified — no
-        // yield at all is a stricter criterion than a repeated contact needs).
-        const elasticRho = rhoFixed(p0Allow);
-        // what a razor finish would have cost, kept because it is the reason
-        // the finish is derived rather than read off the band's sharp end
-        const atSharp = impactAt(ESCAPE_TIP_R_BAND.sharp_m);
-        // §344 — the reach the finish spends is RADIAL, because the budget it is
-        // booked against is (lockRunAt shortens the tooth CIRCLE). The arc is
-        // inscribed tangent to both flanks, its centre ρ/sin a in from the apex
-        // along the wedge's BISECTOR, and the bisector is not the radius: both
-        // flanks lean the same way off it (H.wedge.bisectorRad). So the tip's
-        // new outermost radius is |centre| + ρ, read exactly at the wheel's
-        // radius rather than as ρ(1/sin a − 1), the setback along the bisector.
-        const cutBack_u = (() => {
-          const s_u = rho / Math.sin(a) / OSC_U, R = H.tip.r, b = H.wedge.bisectorRad;
-          return R - Math.sqrt(R * R - 2 * R * s_u * Math.cos(b) + s_u * s_u) - rho / OSC_U;
-        })();
-        if (!(atFinish.p0_Pa <= shakeAllow * (1 + 1e-6)))
-          console.warn(`TODO 299 landing 2: the club tip finished at ${(rho * 1e6).toFixed(4)} µm still takes the drop at `
-            + `${(atFinish.p0_Pa / 1e9).toFixed(3)} GPa, over the ${(shakeAllow / 1e9).toFixed(3)} GPa shakedown limit — the finish is not the fixed point`);
-        return { peakDeg: AMPLITUDE_PEAK_DEG, thetaDot_rad_s: impact.thetaDot, dPhiDTheta: impact.dPhi,
-          impulseGearing: impact.gear, omegaLetoff_rad_s: impact.omega0, dropRad: impact.dropRad,
-          omegaLand_rad_s: impact.omega, I_wheel: impact.Iw, I_fork: impact.If,
-          arm_u: Lg.arm_u, armFork_u: Lg.armFork_u, atForkDeg: Lg.atForkDeg,
-          mStar_kg: impact.mStar, v0_m_s: impact.v0, energy_J: impact.energy,
-          atFinish, shakedownAllow_Pa: shakeAllow, elasticAllow_Pa: p0Allow,
-          finish: { rho_m: rho, elasticRho_m: elasticRho, cutBack_u,
-            band_m: [ESCAPE_TIP_R_BAND.sharp_m, ESCAPE_TIP_R_BAND.blunt_m],
-            atSharp, sharp_m: ESCAPE_TIP_R_BAND.sharp_m,
-            // what the derivation saved: the razor finish's own overstress, and
-            // the polishing that produced it
-            sharpOverShakedown: atSharp.p0_Pa / shakeAllow },
-          runsIn: false,
-          notModelled: ['the fork\u2019s arm', 'the stone\u2019s seat', 'the banking pin'] };
-      })();
-      // TODO 299 — THE CENTURY'S WEAR, which is what the hardening was for.
-      // Archard: the volume removed is K·F·s/H. Every factor is already here or
-      // declared — F the tooth load the rows above price, s the slip the
-      // geometry measured times the engagements the train derives, H the escape
-      // steel's own indentation hardness — and the only new one is K, a BAND
-      // read at its adverse end because what it measures is how good the polish
-      // and the epilame are, which the model cannot say.
-      //
-      // The volume becomes a DEPTH through the wedge: a tip losing area A at
-      // its apex recedes √(A/tanα), A the volume over the line the tip stands
-      // at full radius in. That concentration is why the teeth are the binding
-      // site and the pivots are not — a pivot spreads the same kind of volume
-      // over its whole projected area and loses sub-micron depth, a wedge tip
-      // spends it all in one place.
-      //
-      // WHAT THIS DOES NOT SETTLE, and the record says it in the same breath:
-      // at the adverse corner the recession is 1.32× the budget and at the
-      // nominal 0.42 of it (§344's radial reading), so the conclusion FLIPS between corners
-      // and by FRICTION's own rule that is not a conclusion. TODO 299's record
-      // carries the ceiling — holding at the adverse corner needs 1134 HV,
-      // which is no steel — and why the wheel stops at steel anyway: past it
-      // the plastic run-in that answers the drop's impact (landing 2)
-      // disappears and the impact becomes a fracture question nothing prices.
-      const wear = (() => {
-        const K = SERVICE_COUNTS, sl = H.slip, H_Pa = ESCAPE_STEEL_HARDNESS_PA;
-        const slip_m = sl.perEngagement_u * OSC_U;
-        const total_m = slip_m * K.engagementsPerTooth;
-        // §344 — and the depth the century's area makes is RADIAL too, for the
-        // same reason: the budget is a shortened tooth circle. A cut square to
-        // the radius at depth d through two straight flanks is a triangle d wide
-        // per H.wedge.widthPerDepth, area ½·d²·wpd. Until §344 this read the
-        // depth along the wedge's bisector (√(A/tan a)), which is 29° off the
-        // radius here and 15% deeper, against a radial budget. The page that
-        // draws this (service-life.html) is what exposed it: a drawing has to
-        // put the worn surface SOMEWHERE, and the two readings put it in two places.
-        const wpd = H.wedge.widthPerDepth;
-        // TODO 299 landing 2 — AND THE FINISH IS BOOKED AGAINST THE SAME BUDGET.
-        // The geometry's `budget.recession_u` is the reach from the tooth's
-        // MATHEMATICAL apex to where the lock runs out, because that is the only
-        // thing a profile can say. A tooth finished at a radius ρ does not have
-        // that apex: its tip already stands inside it (radially, §344: see the
-        // landing's cut-back, not ρ(1/sinα − 1), which is along the bisector). That is
-        // reach spent at the bench, in the same currency the century spends, so
-        // it comes off the budget — and it is the honest cost of the derivation
-        // above, not a free improvement. (It is the same cost the run-in used to
-        // charge; what the derivation removes is the overstress and the
-        // polishing, not the reach.)
-        const cutBack_u = landing ? landing.finish.cutBack_u : 0;
-        const budget_u = H.budget.recession_u - cutBack_u;
-        if (!(budget_u > 0))
-          console.warn(`TODO 299 landing 2: finishing the club tip at ${(rho * 1e6).toFixed(4)} µm spends ${cutBack_u.toFixed(5)} u of reach, `
-            + `all of the ${H.budget.recession_u.toFixed(5)} u the lock had — the wheel has no wear budget left as cut`);
-        // the load the century's slip happens under: the NOMINAL corner's runs,
-        // averaged over the engagement (the peak rows are strength's business,
-        // not a mean wear rate's)
-        const nom = rows.filter((q) => q.corner === 'nominal');
-        const Fmean = nom.reduce((x, q) => x + q.load_N, 0) / nom.length;
-        const at = (kk) => {
-          const V = kk * Fmean * total_m / H_Pa;
-          const area = V / tM;
-          const recess_m = Math.sqrt(2 * area / wpd);
-          return { K: kk, volume_m3: V, recession_m: recess_m, recession_u: recess_m / OSC_U,
-            overBudget: (recess_m / OSC_U) / budget_u };
-        };
-        const corners = Object.fromEntries(FRICTION_CORNERS.map((c) => [c, at(WEAR_K_BAND[c])]));
-        // the hardness that would hold at each corner: recession ∝ 1/√H
-        const needH = Object.fromEntries(FRICTION_CORNERS.map((c) => [c,
-          2 * WEAR_K_BAND[c] * Fmean * total_m / (Math.pow(budget_u * OSC_U, 2) * tM * wpd)]));
-        const holds = FRICTION_CORNERS.filter((c) => corners[c].overBudget <= 1);
-        if (!holds.length)
-          console.warn(`TODO 299: the club tooth loses ${(corners.favourable.recession_m * 1e6).toFixed(2)} µm of reach over `
-            + `${K.years} years at the FAVOURABLE wear corner, past the ${(budget_u * OSC_U * 1e6).toFixed(2)} µm `
-            + 'the lock can spend — the escape wheel does not reach its design life at any corner');
-        // TODO 299 step 5 — THE PALLET STONES' OWN FACES, which landing 1 named and left. The same Archard law, the same
-        // load and the same slip per engagement (the two bodies slide by one distance), read with the STONE's hardness
-        // (corundum, CORUNDUM_HARDNESS_BAND's low end). A stone takes every other beat, so it sees beats/2 engagements, a
-        // tooth beats/15. And where the tooth's century is concentrated at its tip, the stone's spreads over the face the tip
-        // runs across in one engagement (the slip, by the tooth's thickness), so its mean recession is K·F·(beats/2)/(H·t),
-        // with the slip cancelling. A REPORT: it is mild (a harder body and a larger track), measured against the same
-        // lock budget the tooth spends.
-        const stones = (() => {
-          const perStone = K.beats / 2, Hs = CORUNDUM_HARDNESS_PA;
-          const at2 = (kk) => { const V = kk * Fmean * slip_m * perStone / Hs, recess_m = V / (slip_m * tM);
-            return { K: kk, volume_m3: V, recession_m: recess_m, recession_u: recess_m / OSC_U, ofBudget: (recess_m / OSC_U) / budget_u }; };
-          return { engagementsPerStone: perStone, hardness_Pa: Hs, hardnessBand: { ...CORUNDUM_HARDNESS_BAND },
-            corners: Object.fromEntries(FRICTION_CORNERS.map((c) => [c, at2(WEAR_K_BAND[c])])) };
-        })();
-        return { years: K.years, serviceYears: K.serviceYears, services: K.services, stones,
-          engagementsPerTooth: K.engagementsPerTooth, slipPerEngagement_m: slip_m, slip_m: total_m,
-          load_N: Fmean, hardness_Pa: H_Pa, hardnessBand: { ...ESCAPE_STEEL_HARDNESS_BAND },
-          kBand: { ...WEAR_K_BAND }, budget_u, fromApex_u: H.budget.recession_u, cutBack_u,
-          lockRunFull_u: H.budget.lockRunFull_u, lockOnly_u: H.budget.lockOnly_u,
-          corners, needHardness_Pa: needH, holdsAt: holds,
-          straddles: holds.length > 0 && holds.length < FRICTION_CORNERS.length,
-          counts: K };
-      })();
-      return { rows, landing, wear, rho_m: rho, tipBand: { ...ESCAPE_TIP_R_BAND }, steel: { ...ESCAPE_STEEL_SIGMA_Y_BAND },
-        // both bodies of the contact, named, so the gate re-derives E* rather
-        // than trusting it: the tooth is steel, the stone corundum (§269's stocks)
-        bodies: { tooth: { E_Pa: STEEL_E_PA, nu: STEEL_NU }, stone: { E_Pa: STOCK.corundum.E, nu: STOCK.corundum.nu } },
-        yield_Pa: ESCAPE_STEEL_SIGMA_Y_PA, p0Allow_Pa: p0Allow, Estar_Pa: Estar, line_u: H.band.t_u,
-        wedgeDeg: H.wedge.fullDeg, worstArm_u: H.worstArm_u,
-        worst: { run: worstT.run, corner: worstT.corner, margin: worstT.margin, binds: worstT.binds },
-        rhoMin_m: Math.max(...rows.map((q) => q.rhoMin_m)), geom: H };
-    })();
-    // TODO 217 — THE MAINTAINING DETENT'S HOLD, priced. While the fusee is
-    // wound the detent holds the maintaining ring, and the maintaining spring's
-    // reaction comes back through the ring's face into the beak: that face
-    // load is the detent's real job, and TODO 210's 5–50 mN window prices only
-    // its ride.
-    //
-    //  · THE SPRING'S TORQUE, from its job. The spring is a SERIES member of the
-    //    drive — cone → base ratchet → pawls → maintaining wheel → SPRING →
-    //    great wheel — so while the watch runs it is wound to exactly the torque
-    //    it passes on: the going torque at the great wheel, which the level
-    //    product holds constant over the reserve (fuseeTorque_Nm, frictionless:
-    //    the drum's, the chain's and the fusee's losses only lower it, so this
-    //    is the upper bound, the pivots' convention above). Winding takes the
-    //    drive off, the detent holds the ring, and the spring gives up angle as
-    //    it drives the train on: the torque FALLS from there, at whatever rate
-    //    its stiffness sets. So the hold is greatest at the first instant of a
-    //    wind and equal to the going torque there, WHATEVER the stiffness — the
-    //    stiffness and preload set how long the train is kept going, which needs
-    //    the length of a wind, and nothing in the model declares one (TODO 219).
-    //  · THE FACE LOAD. The face's reaction runs along its normal through the
-    //    tip, seated at the root, and through the stud (TODO 215); its moment
-    //    arm about the ring's axis is that line's distance from the axis, read
-    //    off the click as cut (MAINT_DET_HOLD_GEOM). F = τ / arm.
-    //  · THE ARM, in combined compression and bending. Every radial section of
-    //    the arm carries F at its centroid's offset from the tip–stud chord;
-    //    the largest is at the beak's radial flank, where the plain arm begins.
-    //    A curved bar (centroid radius / depth ≈ 6.5), so the bending is
-    //    Winkler's inner fibre, M·(r_n − r_i)/(A·e·r_i), r_n = h/ln(r_o/r_i),
-    //    plus the WHOLE of F as axial load (an upper bound: only its component
-    //    along the section's normal is), under SPRING_SIGMA_Y_PA.
-    //  · THE BEAK, as a cantilever wedge carrying F at its apex: σ = F/A + 6Fe/tw²
-    //    at its kindest section (MAINT_DET_HOLD_GEOM). TODO 218 re-cut it as the
-    //    valley's own offset with its face flank relieved, so the hold bears on
-    //    the apex (the record's contact block says why): 56.7° where it was
-    //    20.4°, and under yield where it was 2.6× over. The wedge's stress goes
-    //    as 1/s toward the apex, so a sharp apex yields short of its tip (TODO
-    //    221 measured 0.3153 u): since TODO 221 the apex is an ARC, the line of
-    //    contact a Hertz cylinder on the face priced at first yield of the click
-    //    steel's low end, and the wedge's sections from where the arc begins
-    //    priced as beams under SPRING_SIGMA_Y_PA.
-    const maintainingHold = (() => {
-      const H = MAINT_DET_HOLD_GEOM;
-      const torque_Nm = fuseeTorque_Nm;
-      const load_N = torque_Nm / (H.momentArm_u * OSC_U);
-      const a = H.arm, ri = a.ri_u * OSC_U, ro = a.ro_u * OSC_U, h = ro - ri, t = a.t_u * OSC_U;
-      const A = h * t, M_Nm = load_N * a.offsetMax_u * OSC_U;
-      const rn = h / Math.log(ro / ri), ecc = (ri + ro) / 2 - rn;
-      const armBend_Pa = M_Nm * (rn - ri) / (A * ecc * ri), armAxial_Pa = load_N / A;
-      const armSigma_Pa = armBend_Pa + armAxial_Pa;
-      const b = H.beakRoot, bw = b.width_u * OSC_U, bt = b.t_u * OSC_U;
-      const beakSigma_Pa = load_N / (bw * bt) + 6 * load_N * b.offset_u * OSC_U / (bt * bw * bw);
-      // TODO 221 — the apex is an ARC of radius ρ: inside where it begins the
-      // beak is a Hertz line contact one click-thickness long, p0 = √(F·E*/(π·ρ·t))
-      // against first yield of the click steel's low end; past it, the wedge's
-      // sections where the arc begins and the worst of them, as beams.
-      const arc = H.arc, tL = arc.line_u * OSC_U;
-      const p0_Pa = Math.sqrt((load_N / tL) * arc.Estar_Pa / (Math.PI * arc.rho_u * OSC_U));
-      const halfWidth_m = Math.sqrt(4 * (load_N / tL) * arc.rho_u * OSC_U / (Math.PI * arc.Estar_Pa));
-      const secSigma = (q) => load_N / (q.width_u * OSC_U * bt) + 6 * load_N * q.offset_u * OSC_U / (bt * Math.pow(q.width_u * OSC_U, 2));
-      const arcStartSigma_Pa = secSigma(arc.arcStart), worstSigma_Pa = secSigma(arc.worst);
-      if (!(p0_Pa <= arc.p0Allow_Pa * (1 + 1e-9)))
-        console.warn(`TODO 221: the beak's arc (ρ ${arc.rho_u.toFixed(4)} u) carries the hold at p0 ${(p0_Pa / 1e9).toFixed(3)} GPa — over first yield of the click steel's low end, ${(arc.p0Allow_Pa / 1e9).toFixed(3)} GPa`);
-      if (!(worstSigma_Pa <= SPRING_SIGMA_Y_PA * (1 + 1e-9)))
-        console.warn(`TODO 221: the beak's wedge where its arc begins works at ${(worstSigma_Pa / 1e6).toFixed(1)} MPa, over ${(SPRING_SIGMA_Y_PA / 1e6).toFixed(0)}`);
-      if (Math.abs(H.contact.momentAboutStudPerN_u) > 1e-9)
-        console.warn(`TODO 218/221: the hold's contact on the arc puts ${H.contact.momentAboutStudPerN_u.toExponential(2)} u·N on the click about its stud — the contact has left the stud's line`);
-      if (!(H.contact.cornerGapAtHold_u >= CLEAR_MARGIN * (1 - 1e-9)))
-        console.warn(`TODO 218: when the back-driven face reaches the arc its far end stands ${H.contact.cornerGapAtHold_u.toFixed(4)} off the relieved flank, need ≥ ${CLEAR_MARGIN} — the hold may bear on the flank and cam the click out`);
-      if (armSigma_Pa > SPRING_SIGMA_Y_PA)
-        console.warn(`TODO 217: the maintaining detent's arm bends at ${(armSigma_Pa / 1e6).toFixed(0)} MPa holding the going torque `
-          + `(${(load_N * 1000).toFixed(0)} mN on the face, offset ${a.offsetMax_u.toFixed(4)} u) — over the ${(SPRING_SIGMA_Y_PA / 1e6).toFixed(0)} MPa yield; size the arm to its load`);
-      if (Math.abs(H.lineVsFaceNormal) > 1e-9)
-        console.warn(`TODO 217: the hold's line of action (tip → stud) has left the face's normal by ${H.lineVsFaceNormal.toExponential(2)} — the click is no longer a strut, and the moment it carries about the stud is unpriced`);
-      return {
-        // TODO 219 — the spring, as cut (MAINT_SPRING, where the ring's tooth
-        // count was solved from it). Row 16 re-derives the floor from this
-        // record's own corner, k and the preload from the torque span over the
-        // run, k again from the blade's compliance, and both stresses.
-        spring: (() => {
-          const M = MAINT_SPRING;
-          if (M.tauGo !== torque_Nm) console.warn(`TODO 219: the maintaining spring was sized to ${M.tauGo} N·m, the record's going torque is ${torque_Nm}`);
-          return {
-            torqueRun_Nm: torque_Nm, floor_Nm: M.tauFloor, floorCorner: M.floorCorner, floorFrac: M.floorFrac,
-            upstream: [...GOING_POWER.UPSTREAM],
-            ringTeeth: M.N, recoilMax_rad: M.pitch, marginRun_rad: M.marginRun, run_rad: M.run, runMax_rad: M.runMax,
-            k_Nm_per_rad: M.k, preload_rad: M.thetaPre, thetaWork_rad: M.thetaWork,
-            form: 'cantilever blade in a great-wheel crossing, filed to uniform strength (t ∝ √x, floored at STOCK_MIN_U), bearing on a pin hung from the ring; the crossing\'s arm flank is the stop',
-            b_u: M.b, tRoot_u: M.t, tMin_u: M.tMin, L_u: M.L, rE_u: M.rE, pinR_u: M.geom.rPin, pinRadius_u: M.geom.rP,
-            compliance_m_per_N: M.compliance_m_per_N, deflWork_u: M.deflWork_u,
-            E_Pa: M.E, limit_Pa: M.sigLim, band: { ...MAINSPRING_SIGMA_Y_BAND },
-            sigmaWork_Pa: M.sigmaWork, sigmaStop_Pa: M.sigmaStop, margin: M.sigLim / M.sigmaWork,
-            law: 'series member: wound by the drive to the going torque while running; at a wind it recoils the ring onto the detent (≤ one ring pitch) and then drives the great wheel on, its torque falling by k·Δ to the floor at the stop',
-          };
-        })(),
-        load_N, momentArm_u: H.momentArm_u, tipR_u: H.tipR_u, rootR_u: H.rootR_u, strut_u: H.strut_u,
-        lineVsFaceNormal: H.lineVsFaceNormal, yield_Pa: SPRING_SIGMA_Y_PA,
-        arm: { ri_u: a.ri_u, ro_u: a.ro_u, t_u: a.t_u, offset_u: a.offsetMax_u, M_Nm,
-          bend_Pa: armBend_Pa, axial_Pa: armAxial_Pa, sigma_Pa: armSigma_Pa,
-          straightBend_Pa: 6 * M_Nm / (t * h * h), margin: SPRING_SIGMA_Y_PA / armSigma_Pa },
-        beak: { wedgeRad: b.wedgeRad, s_u: b.s_u, width_u: b.width_u, t_u: b.t_u, offset_u: b.offset_u,
-          sigma_Pa: beakSigma_Pa, margin: SPRING_SIGMA_Y_PA / beakSigma_Pa,
-          arc: { ...arc, p0_Pa, halfWidth_m, p0Margin: arc.p0Allow_Pa / p0_Pa,
-            arcStart: { ...arc.arcStart, sigma_Pa: arcStartSigma_Pa }, worst: { ...arc.worst, sigma_Pa: worstSigma_Pa } },
-          contact: H.contact },
-      };
-    })();
-    // TODO 249 — THE RESET HEART'S SLIP CEILING, through the train's losses.
-    // The display arbor rides the fourth arbor on a friction coupling, and the
-    // reset hammer turns the heart against it (§137 Gate A's reset load). The
-    // coupling must slip before the hammer stalls the train, and the train is
-    // RUNNING while it does: the roller meets the heart before the hack pad
-    // has stopped the balance (measured off the live loop — the heart seats on
-    // the very frame the pad engages), so what holds the fourth arbor against
-    // the hammer is the torque the train DELIVERS there, the ideal reflected
-    // torque times every stage's η from the ribbon to that arbor, its own
-    // pivots included (they oppose the arbor's forward running too). The
-    // lossless figure stood here until TODO 249 and sat above that at every
-    // corner. The ceiling is the ADVERSE corner's — the least delivery the band
-    // allows, so a coupling under it slips everywhere. The rod's load follows by
-    // virtual work as Gate A always took it: the heart swept at most half a
-    // turn over the hammer tail's whole stroke, so a MEAN force (the heart's
-    // profile sets the peak, which nothing here prices), held under the 50 mN
-    // detent ceiling the reset rod's transfer row is priced at.
-    const corners = Object.fromEntries(FRICTION_CORNERS.map((c) => [c, corner(c)]));
-    const resetCoupling = (() => {
-      const toFourth = meshes.slice(0, meshes.findIndex((m) => m.arbor === 'fourth') + 1);
-      const ideal_Nm = fuseeTorque_Nm * toFourth.reduce((p, m) => p * m.z2 / m.z1, 1);
-      const last = 'fourth arbor pivots';
-      const byCorner = Object.fromEntries(FRICTION_CORNERS.map((c) => {
-        const S = corners[c].stages, n = S.findIndex((st) => st.name === last);
-        const eta = S.slice(0, n + 1).reduce((p, st) => p * st.eta, 1);
-        return [c, { eta, ceiling_Nm: ideal_Nm * eta }];
-      }));
-      const through = corners.adverse.stages.slice(0, corners.adverse.stages.findIndex((st) => st.name === last) + 1).map((st) => st.name);
-      const slipMax_Nm = byCorner.adverse.ceiling_Nm;
-      const tailStroke_u = 2 * HAMMER_TAIL * Math.sin(HAMMER_SWING_RAD / 2);   // the hammer tail tip's chord, retracted → seated
-      const sweep_rad = Math.PI;                                                // a heart is never driven more than half a turn
-      const rodLoad_mN = slipMax_Nm * sweep_rad / (tailStroke_u * UNIT_MM / 1000) * 1000;
-      const rodCeiling_mN = SELECTOR_DETENT_WINDOW_MN[1];
-      if (!(rodLoad_mN <= rodCeiling_mN))
-        console.warn(`TODO 249: the reset rod carries ${rodLoad_mN.toFixed(2)} mN at the heart's slip ceiling — over the ${rodCeiling_mN} mN its transfer row is priced at`);
-      return { ideal_Nm, byCorner, through, slipMax_Nm, corner: 'adverse', lossless_Nm: ideal_Nm,
-        overstatement: ideal_Nm / slipMax_Nm - 1,
-        tailStroke_u, sweep_rad, rodLoad_mN, rodCeiling_mN,
-        law: 'τ_slip ≤ τ_ideal(fourth) · Π η(ribbon → fourth arbor pivots) at the adverse corner; the rod\'s mean load τ·π / tail stroke' };
-    })();
-    return {
-      released_J, meanPower_W: released_J / reserve_s, reserve_s, beats,
-      fuseeTurns: FUSEE_WRAP_TURNS, fuseeTorque_Nm, trainRatio, escapeTorque_Nm, perBeat_J,
-      pivots: { trainStaffR_u: TRAIN_STAFF_R, trainPivotR_u: TRAIN_PIVOT_R, balancePivotR_u: BALANCE_PIVOT_R,
-                byArbor: Object.fromEntries(TRAIN_PIVOT_SIZES.map((p) => [p.arbor, { r_u: p.rU, d_u: p.dU, bound: p.bound }])),
-                fuseePivotR_u: TRAIN_STAFF_R, strength: pivotStrength },
-      escapeTooth,
-      maintainingHold,
-      balance: { mass_kg: mB, k_Nm_per_rad: kB, g_mps2: g, claimedDeg: AMPLITUDE_CLAIM_DEG, peakDeg: AMPLITUDE_PEAK_DEG },
-      resetCoupling,
-      corners,
-    };
-  })();
-  // TODO 192 step 4 — the solve's extremes over every corner and both
-  // positions, the two numbers AMPLITUDE_CLAIM_DEG and AMPLITUDE_PEAK_DEG are
-  // read from. `equalisation` row 14 holds the declarations to them.
-  {
-    const all = Object.entries(energy.corners).flatMap(([c, C]) =>
-      ['vertical', 'flat'].map((pos) => ({ corner: c, position: pos, deg: C.sustainedDeg[pos] })));
-    const min = all.reduce((a, b) => (b.deg < a.deg ? b : a)), max = all.reduce((a, b) => (b.deg > a.deg ? b : a));
-    // TODO 216 — the balance cannot swing past the KNOCK (ESCAPEMENT_KNOCK,
-    // solved off the fork blank and the pin): there its pin strikes the banked
-    // fork's horn. So the largest swing it REACHES is the smaller of the solve's
-    // maximum and the knock, and that is what the peak is held to. Every
-    // corner and position the energy column would carry past it is listed: the
-    // balance banks there instead of sustaining the solve's figure.
-    const knock = ESCAPEMENT_KNOCK.deg;
-    const reach = Math.min(max.deg, knock);
-    energy.knock = { ...ESCAPEMENT_KNOCK,
-      knocks: all.filter((a) => a.deg >= knock),
-      nominalClears: ['vertical', 'flat'].every((pos) => energy.corners.nominal.sustainedDeg[pos] < knock) };
-    energy.amplitude = { min, max, reachDeg: reach, claimDeg: AMPLITUDE_CLAIM_DEG, peakDeg: AMPLITUDE_PEAK_DEG,
-      claimHolds: AMPLITUDE_CLAIM_DEG <= min.deg && min.deg - AMPLITUDE_CLAIM_DEG < 1,
-      peakBounds: AMPLITUDE_PEAK_DEG >= reach && AMPLITUDE_PEAK_DEG - reach < 1 };
-    if (!energy.amplitude.claimHolds)
-      console.warn(`TODO 192: AMPLITUDE_CLAIM_DEG ${AMPLITUDE_CLAIM_DEG}° is not the sustained minimum rounded down — the solve's least is ${min.deg.toFixed(2)}° (${min.corner}, ${min.position})`);
-    if (!energy.amplitude.peakBounds)
-      console.warn(`TODO 216: AMPLITUDE_PEAK_DEG ${AMPLITUDE_PEAK_DEG}° is not the largest reachable swing rounded up — the solve's greatest is ${max.deg.toFixed(2)}° (${max.corner}, ${max.position}) and the pin knocks at ${knock.toFixed(2)}°`);
-    if (!energy.knock.nominalClears)
-      console.warn(`TODO 216: the serviced (nominal) corner knocks — vertical ${energy.corners.nominal.sustainedDeg.vertical.toFixed(2)}°, dial-flat ${energy.corners.nominal.sustainedDeg.flat.toFixed(2)}° against the knock at ${knock.toFixed(2)}°`);
-    // TODO 207 — the DESIGN target, at the nominal corner held vertical — and
-    // since TODO 242 the START: the balance is the heaviest rim that both
-    // reaches the target and is started by the escapement from rest. Held both
-    // ways: met and starting at BAL_RIM_F, and ONE STEP HEAVIER failing one of
-    // them — that balance weighed by balanceWheelDims and OSC_I's own law, its
-    // swing by the same solve, its start by the same drive with the spring
-    // re-solved to it (k = I·ω², and the elastica's torque scales with k at a
-    // fixed coil plan) and its pivots' friction scaled with its mass.
-    const nominalVertical = energy.corners.nominal.sustainedDeg.vertical;
-    const C = GOING_POWER.corner('nominal'), W = 2 * Math.PI * F_BALANCE;
-    // The law takes the RADIUS too, for the larger-wheel test below. The swing
-    // is exact at any radius (the column's delivered energy is the train's and
-    // the escapement's, none of it the balance's); the start reuses THIS
-    // balance's impulse table, which a larger wheel's re-solved escapement
-    // would reshape, so a larger wheel that failed only the start would be a
-    // claim about a table it does not have — the record names which one binds.
-    const atBalance = (radius, rimF) => {
-      const B = oscInertiaOf(balanceWheelDims({ radius, thickness: BAL_T, rimF }));
-      const k = B.total * W * W, tf = C.pivot.vertical_Nm * B.mass / OSC_I.mass;
-      const a = Math.PI * k / (2 * C.qOther), bq = 2 * tf;
-      const deg = (-bq + Math.sqrt(bq * bq + 4 * a * C.delivered_J)) / (2 * a) / DEG2RAD;
-      const K0 = BALANCE_DRIVE.K, ks = k / K0.k;
-      const K = { ...K0, I: B.total, k, c: B.total * W / K0.Q, spring: { ...K0.spring, y: K0.spring.y.map((v) => v * ks) } };
-      const start = BD.selfStart(K, { drive: true, brake: 0, friction: tf, weight: null });
-      return { radius, rimF, nominalVertical: deg, starts: start.starts };
-    };
-    const atRim = (rimF) => atBalance(BALANCE_R, rimF);
-    // the law weighs THIS balance as the column does, or the step above it means nothing
-    const self = atRim(BAL_RIM_F);
-    if (!(Math.abs(self.nominalVertical - nominalVertical) < 1e-6 && self.starts === BALANCE_DRIVE.selfStart.starts))
-      console.warn(`TODO 242: balanceWheelDims weighs BAL_RIM_F ${BAL_RIM_F} to ${self.nominalVertical.toFixed(6)}° (${self.starts ? 'starts' : 'no start'}) where the column reads ${nominalVertical.toFixed(6)}° (${BALANCE_DRIVE.selfStart.starts ? 'starts' : 'no start'}) — the step test reads a different balance from the one cut`);
-    const heavier = atRim(BAL_RIM_F + BAL_RIM_STEP);
-    const starts = BALANCE_DRIVE.selfStart.starts;
-    energy.amplitude.target = { deg: AMPLITUDE_TARGET_DEG, nominalVertical, starts, rimF: BAL_RIM_F, step: BAL_RIM_STEP,
-      heavier, met: nominalVertical >= AMPLITUDE_TARGET_DEG && starts,
-      tight: !(heavier.nominalVertical >= AMPLITUDE_TARGET_DEG && heavier.starts),
-      binds: heavier.nominalVertical >= AMPLITUDE_TARGET_DEG ? 'start' : 'target' };
-    // TODO 242 — the RADIUS, held the rim's way one level up (layout.js,
-    // BAL_R_STEP): a row below BALANCE_R_REF shrank its wheel because even the
-    // lightest rim on the grid the metal allows could not reach the target at
-    // the reference, so the wheel one step larger at that rim must fail.
-    const rimFloorF = balanceWheelDims({ radius: BALANCE_R, thickness: BAL_T }).rimFloorF;
-    const rimFloor = Math.ceil(rimFloorF / BAL_RIM_STEP - 1e-9) * BAL_RIM_STEP;
-    const reduced = BALANCE_R < BALANCE_R_REF;
-    const larger = reduced ? atBalance(BALANCE_R + BAL_R_STEP, rimFloor) : null;
-    Object.assign(energy.amplitude.target, { radius: BALANCE_R, radiusRef: BALANCE_R_REF, radiusStep: BAL_R_STEP, rimFloorF, rimFloor, larger,
-      radiusTight: !larger || !(larger.nominalVertical >= AMPLITUDE_TARGET_DEG && larger.starts),
-      radiusBinds: larger ? (larger.nominalVertical >= AMPLITUDE_TARGET_DEG ? 'start' : 'target') : null });
-    if (!energy.amplitude.target.radiusTight)
-      console.warn(`TODO 242: the balance at ${SPEC.vph} A/h is r ${BALANCE_R}, but one BAL_R_STEP larger (${larger.radius}) at the lightest grid rim (${rimFloor.toFixed(3)}) sustains ${larger.nominalVertical.toFixed(2)}° and starts — the wheel is smaller than it needs to be; re-solve the RATE_TABLE row's balanceR`);
-    if (!energy.amplitude.target.met || !energy.amplitude.target.tight)
-      console.warn(`TODO 207/242: BAL_RIM_F ${BAL_RIM_F} at ${SPEC.vph} A/h sustains ${nominalVertical.toFixed(2)}° nominal vertical against the ${AMPLITUDE_TARGET_DEG}° target and ${starts ? 'starts' : 'does NOT start'} itself; one step heavier (${heavier.rimF.toFixed(3)}) sustains ${heavier.nominalVertical.toFixed(2)}° and ${heavier.starts ? 'starts' : 'does not start'} — ${energy.amplitude.target.met ? 'the rim is lighter than it needs to be' : 'the balance is too heavy for its spring'}; re-solve the RATE_TABLE row's rimF`);
-  }
-  // §346 — OIL AGEING BETWEEN SERVICES (layout.js, OIL_AGEING: a POSED law). The
-  // rows that age are the map's, not a list typed here: every FRICTION row a
-  // lubricated regime prices (REGIME_INFO, every regime but 'dry'). Each moves
-  // linearly from its FRESH corner to its AGED one in the fraction f of the
-  // interval since the last service; every other row holds its fresh value. The
-  // swing at each f is the column's own walk (GOING_POWER.at) at those
-  // coefficients, so it is the corners' closed form, not a second copy of it.
-  //
-  // The SAMPLES are what the service-life page draws by straight lines, so their
-  // spacing is derived from the page's reading: it quotes a swing to READ_DEG,
-  // and the spacing halves until the swing midway between every pair of samples
-  // reads within half of that of the line between them (in both positions).
-  {
-    const READ_DEG = 0.1;            // the page's readout: a swing to a tenth of a degree
-    const N_MAX = 1024;              // a guard on the halving, not a choice: hitting it warns
-    const oiled = new Set(Object.entries(REGIME_INFO).filter(([regime]) => regime !== 'dry').flatMap(([, v]) => v.priced));
-    const rows = Object.keys(FRICTION).filter((key) => oiled.has(key));
-    const fresh = GOING_POWER.coeffs(OIL_AGEING.fresh), aged = GOING_POWER.coeffs(OIL_AGEING.aged);
-    const coeffAt = (f) => Object.fromEntries(Object.keys(FRICTION).map((key) =>
-      [key, rows.includes(key) ? fresh[key] + (aged[key] - fresh[key]) * f : fresh[key]]));
-    const swingAt = (f) => {
-      const C = GOING_POWER.at(coeffAt(f), `oil aged ${(f * 100).toFixed(1)}%`);
-      return { f, years: f * SERVICE_INTERVAL_YEARS, etaTotal: C.etaTotal, delivered_J: C.delivered_J, qOther: C.qOther,
-        pivot: { ...C.pivot }, sustainedDeg: { ...C.sustainedDeg } };
-    };
-    let n = 2, samples, interpErrDeg;
-    for (;;) {
-      samples = Array.from({ length: n + 1 }, (_, i) => swingAt(i / n));
-      interpErrDeg = 0;
-      for (let i = 0; i < n; i++) {
-        const mid = swingAt((i + 0.5) / n);
-        for (const pos of ['vertical', 'flat'])
-          interpErrDeg = Math.max(interpErrDeg, Math.abs(mid.sustainedDeg[pos] - (samples[i].sustainedDeg[pos] + samples[i + 1].sustainedDeg[pos]) / 2));
-      }
-      if (interpErrDeg <= READ_DEG / 2 || n >= N_MAX) break;
-      n *= 2;
-    }
-    const first = samples[0], last = samples[n];
-    const nominal = energy.corners[OIL_AGEING.fresh].sustainedDeg;
-    const falls = samples.every((s, i) => i === 0 || (s.sustainedDeg.vertical <= samples[i - 1].sustainedDeg.vertical
-      && s.sustainedDeg.flat <= samples[i - 1].sustainedDeg.flat));
-    energy.oilAgeing = {
-      posed: OIL_AGEING.posed, shape: OIL_AGEING.shape, why: OIL_AGEING.why,
-      fresh: OIL_AGEING.fresh, aged: OIL_AGEING.aged, rows, held: Object.keys(FRICTION).filter((key) => !oiled.has(key)),
-      coefficients: { fresh: Object.fromEntries(rows.map((key) => [key, fresh[key]])), aged: Object.fromEntries(rows.map((key) => [key, aged[key]])) },
-      intervalYears: SERVICE_INTERVAL_YEARS, readDeg: READ_DEG, intervals: n, interpErrDeg, samples,
-      dropDeg: { vertical: first.sustainedDeg.vertical - last.sustainedDeg.vertical, flat: first.sustainedDeg.flat - last.sustainedDeg.flat },
-      endDeg: { ...last.sustainedDeg }, targetDeg: AMPLITUDE_TARGET_DEG, claimDeg: AMPLITUDE_CLAIM_DEG,
-      falls, claimHolds: last.sustainedDeg.vertical >= AMPLITUDE_CLAIM_DEG,
-      law: 'μ(f) = μ_fresh + (μ_aged − μ_fresh)·f on the oiled rows, f = years since service / interval; θ(f) the column\'s sustained swing at μ(f) — POSED',
-    };
-    if (!(Math.abs(first.sustainedDeg.vertical - nominal.vertical) <= 1e-9 && Math.abs(first.sustainedDeg.flat - nominal.flat) <= 1e-9))
-      console.warn(`§346: fresh oil sustains ${first.sustainedDeg.vertical.toFixed(6)}° vertical where the ${OIL_AGEING.fresh} corner reads ${nominal.vertical.toFixed(6)}° — the ageing walk and the column have parted`);
-    if (!falls) console.warn('§346: the swing does not fall monotonically as the oil ages — an ageing row moved the wrong way between its corners');
-    // The bound the LAW guarantees is the aged corner's: every ageing row ends there and
-    // every held row stays fresh, so aged oil can only swing as far or further. Whether a
-    // build's band minimum reaches AMPLITUDE_CLAIM_DEG is TODO 192's assert, not this one
-    // (geared-36's adverse corner is under the default's claim and declares that warning);
-    // the equalisation gate's row 23 still holds the claim on the default build.
-    const agedCorner = energy.corners[OIL_AGEING.aged].sustainedDeg;
-    if (!(last.sustainedDeg.vertical >= agedCorner.vertical && last.sustainedDeg.flat >= agedCorner.flat))
-      console.warn(`§346: aged oil sustains ${last.sustainedDeg.vertical.toFixed(2)}° vertical, under the ${OIL_AGEING.aged} corner's ${agedCorner.vertical.toFixed(2)}° — it is worse than the band allows`);
-    if (interpErrDeg > READ_DEG / 2)
-      console.warn(`§346: ${n} intervals still leave ${interpErrDeg.toFixed(4)}° between the samples' line and the swing, over half the page's ${READ_DEG}° reading`);
-  }
   return Object.freeze({
-    going: {
-      k_Nm_per_rad: k,
-      energy,
-      section: { ...mainspring.section }, devLen_u: mainspring.devLen,
-      packing: ribbonPacking(mainspring),   // TODO 291 — r/e against the trade's band, and what bound the solve
-      // §339 — the set-up ratchet holds the RIBBON's set-up, which at ?barrels=2 is the barrel's (n times the hook's)
-      setup: PULLEY ? {
-        clicks: PULLEY.NB, teeth: SETUP_RATCHET_TEETH, sweepRad: PULLEY.setupB, hookRad: SETUP_SWEEP, gear: RIBBON_GEAR,
-        quantised: Number.isInteger(PULLEY.NB)
-          && Math.abs(PULLEY.setupB - PULLEY.NB * 2 * Math.PI / SETUP_RATCHET_TEETH) < 1e-12,
-      } : {
-        clicks: SETUP_CLICKS, teeth: SETUP_RATCHET_TEETH, sweepRad: SETUP_SWEEP,
-        quantised: Number.isInteger(SETUP_CLICKS)
-          && Math.abs(SETUP_SWEEP - SETUP_CLICKS * 2 * Math.PI / SETUP_RATCHET_TEETH) < 1e-12,
-      },
-      windFullRad: SPRING_WIND_FULL, tqEmpty: SPRING_TQ_EMPTY,
-      fuseeK: FUSEE_TORQUE_K, rLarge: FUSEE_R_LARGE,
-      momentRange_Nmm: [k * SETUP_SWEEP * 1000, k * SPRING_WIND_FULL * 1000],
-      windRangeRad: [SETUP_SWEEP, SPRING_WIND_FULL],
-      stress: ribbonStress(k / Math.pow(RIBBON_GEAR, 2), mainspring.section, [SETUP_SWEEP * RIBBON_GEAR, SPRING_WIND_FULL * RIBBON_GEAR]),   // §339: the ribbon's own k and angles
-      levelMaxDev,
-    },
+    going: EQUALISATION_GOING,
     alarm: {
       k_Nm_per_rad: kAlarm,
       section: { ...alarmSpring.section }, devLen_u: alarmSpring.devLen,
@@ -48551,6 +47792,780 @@ return {
   gongRadiationFactorsPath, gongWireFrame, hammerPiv, headFace, headRest, poseAlarmReleaseRun, poseAlarmSelRing,
 };
 }
+// TODO 313 — THE GOING HALF OF THE TODO 32 RECORD, at module scope. It was computed inside buildAlarm(), so an
+// alarm-free build published no record at all and checkEqualisation passed it on an empty payload. Every input it
+// reads is the going train's and stands at module scope (measured: the only buildAlarm-local names the old record
+// read were the alarm half's), and it runs just before buildAlarm(), where the old record's inputs already stood.
+const EQUALISATION_RIBBON = (() => {
+  const u4 = Math.pow(OSC_U, 4);
+  const kOf = (sp) => MAINSPRING_E_PA * (sp.section.I_u4 * u4) / (sp.devLen * OSC_U); // N·m/rad — TODO 193: the ribbon's own alloy
+  // TODO 193 — THE RIBBON AGAINST ITS MATERIAL. A spiral wound off its free
+  // coil carries a UNIFORM moment M = k·θ, so the outer fibre sees σ = M·a/I
+  // everywhere along it — which, k being E·I/L, is E·a·θ/L: the section's
+  // SHAPE cancels, and what sets the stress is the half-thickness, the wind
+  // and the length. (That is why cutting the strip moved k fourfold and the
+  // stress not at all.) Published at both ends of each ribbon's working wind
+  // against the alloy's cited band; checkEqualisation row 13 gates the full-
+  // wind end against the band's LOW end and waives by name.
+  const ribbonStress = (kNm, sec, thetas) => {
+    const aM = sec.a * OSC_U, IM = sec.I_u4 * u4;
+    const sigma = thetas.map((th) => kNm * th * aM / IM);
+    return {
+      sigma_Pa: sigma, limit_Pa: MAINSPRING_SIGMA_Y_PA, band: { ...MAINSPRING_SIGMA_Y_BAND },
+      E_Pa: MAINSPRING_E_PA, marginLow: MAINSPRING_SIGMA_Y_BAND.low / sigma[sigma.length - 1],
+      marginHigh: MAINSPRING_SIGMA_Y_BAND.high / sigma[sigma.length - 1],
+    };
+  };
+  return { u4, kOf, ribbonStress };
+})();
+const EQUALISATION_GOING = (() => {
+  const { kOf, ribbonStress } = EQUALISATION_RIBBON;
+  const k = GOING_K;   // TODO 193: quoted, not re-derived — the pivots above were sized to this number
+  if (Math.abs(kOf(mainspring) * Math.pow(RIBBON_GEAR, 2) / k - 1) > 1e-12)
+    console.warn(`TODO 193: the going k has two values — GOING_K ${k} vs kOf ${kOf(mainspring)}·${RIBBON_GEAR}²`);
+  // The level product over the reserve, sampled: springTq·envR/K − 1.
+  // 257 samples ties the gate's grid to a fixed, odd count (endpoints + midpoint on the grid).
+  let levelMaxDev = 0;
+  for (let i = 0; i <= 256; i++) {
+    const t = i / 256;
+    const d = Math.abs(springTorqueAt(t) * fuseeEnvR(fuseeEngagedF(t)) / FUSEE_TORQUE_K - 1);   // §254: at the station the chain actually leaves from
+    if (d > levelMaxDev) levelMaxDev = d;
+  }
+  // TODO 192 / §247 tier two — THE ENERGY COLUMN. Everything above this line
+  // is frictionless: the level product is an identity, k is the ribbon's,
+  // and nothing asks whether the spring can DRIVE the balance it is geared
+  // to. This block asks. It is the arithmetic of tools/probe-power-budget.mjs
+  // promoted onto the record so the battery holds it and the probe asserts
+  // against it (CLAUDE.md: a row whose figure an instrument also computes
+  // must ASSERT against it, not resemble it).
+  //
+  //  · What the ribbon RELEASES over the reserve is ½k(θ_full² − θ_setup²),
+  //    the set-up being energy the fusee never sees. Level by construction,
+  //    that is a constant torque at the fusee, E/(wrap turns · 2π), and
+  //    E/beats at the escape wheel per beat, before any loss.
+  //  · Each LOSS is a first-order efficiency of one contact, priced at
+  //    layout.js's FRICTION bands: a pivot costs μ·r_piv·(1/r_in + 1/r_out)
+  //    (the loads at the pinion and the wheel ADD — an upper bound, the two
+  //    reactions being treated as collinear), a mesh costs πμ(1/z₁ + 1/z₂)
+  //    (the classical sliding loss of involute teeth), the chain costs
+  //    μ·r_rivet·(1/r_fusee + 1/R_wrap) per link articulated on and off, and
+  //    the ribbon and the escapement are bands outright.
+  //  · The BALANCE spends, per beat, (π/Q_other)·½kθ² on everything but its
+  //    pivots and 2θ·T_f on them, T_f = μ·m·g·r: the PIVOT's radius with the
+  //    watch vertical, the pivot END's contact radius dial-flat. The
+  //    sustained amplitude is the θ at which that spend equals what arrives
+  //    — a quadratic in θ, solved in closed form — and the record carries
+  //    it at every corner beside the amplitude the movement CLAIMS
+  //    (AMPLITUDE_CLAIM_DEG), with the factor by which the claim exceeds the
+  //    supply. Measured at the shipped metal: the sustained swing is 126–293°
+  //    vertical and 172–455° dial-flat (the last past the knock at 314°, so
+  //    the balance banks there, TODO 216), 200° vertical at the nominal corner
+  //    (TODO 192's steps and TODO 193 took it from 2–7°: pivots cut, the
+  //    strip, then the ribbon proportioned to its alloy and its drum; TODO 207
+  //    then grew the drum to the plate and lightened the balance to the
+  //    AMPLITUDE_TARGET_DEG design swing). The gate holds the arithmetic (the identities,
+  //    the corners' ordering, the amplitude solve plugging back) and, since
+  //    TODO 192 step 4, the two amplitudes layout.js declares against the
+  //    solve's extremes, published here as `amplitude`: the claim at or under
+  //    the minimum, the peak loads are priced at at or over the largest swing
+  //    the balance can reach (the maximum, or the knock if it comes first —
+  //    TODO 216), each within a degree.
+  const energy = (() => {
+    // TODO 219 — every figure of the walk is GOING_POWER's (hoisted to the
+    // train's cut so the maintaining spring's floor reads the same laws).
+    const { released_J, reserve_s, beats, meshes, trainRatio, fuseeTorque_Nm, escapeTorque_Nm, perBeat_J,
+      kB, mB, corner } = GOING_POWER;
+    const g = GOING_POWER.g;
+    if (GOING_POWER.k !== k) console.warn(`TODO 219: the energy column's k ${GOING_POWER.k} is not the record's ${k}`);
+    // TODO 192 step 2 / TODO 193 — WHY EACH PIVOT IS THE SIZE IT IS, as
+    // arithmetic. Each jewelled pivot is a cantilever from its shoulder,
+    // loaded at its end by the arbor's radial reaction; the same upper bound
+    // the η law prices — the pinion's and the wheel's loads ADDED,
+    // T·(1/r_pinion + 1/r_wheel) — and the WHOLE of it on one pivot. Its
+    // bending stress σ = 32·F·L/(π·d³), d the pivot as cut across its flats
+    // (TRAIN_PIVOT_SIZES — the floor, or the load where the load binds), L the
+    // longer of the two pivots as cut. The balance's load is its weight, all
+    // on one pivot (the vertical positions), at the floor. Every row must come
+    // in at or under SPRING_SIGMA_Y_PA: a load-bound row sits ON it by
+    // construction, and its margin is the upper bound's.
+    const balancePivotL = Math.max(BALANCE_PIVOT_TIP_Z - BALANCE_SHOULDER_TOP_Z, CLEAR_MARGIN + G.jewelStone(1.0).rubyDepth);
+    const bend = (F, L_u, d_u) => 32 * F * (L_u * OSC_U) / (Math.PI * Math.pow(d_u * OSC_U, 3));
+    const pivotStrength = (() => {
+      const rows = [];
+      let T = fuseeTorque_Nm;
+      for (const m of meshes) {
+        T *= m.z2 / m.z1;                                           // the arbor's torque, one mesh down
+        const F = T * (1 / (m.rIn * OSC_U) + 1 / (m.rOut * OSC_U));
+        const size = TRAIN_PIVOT_SIZES.find((p) => p.arbor === m.arbor);
+        const sigma = bend(F, PIVOT_LEN_U, size.dU);
+        rows.push({ pivot: `${m.arbor} arbor`, load_N: F, length_u: PIVOT_LEN_U, d_u: size.dU, bound: size.bound,
+          sigma_Pa: sigma, margin: SPRING_SIGMA_Y_PA / sigma });
+      }
+      const Fb = mB * g, sigmaB = bend(Fb, balancePivotL, PIVOT_MIN_U);
+      rows.push({ pivot: 'balance', load_N: Fb, length_u: balancePivotL, d_u: PIVOT_MIN_U, bound: 'floor',
+        sigma_Pa: sigmaB, margin: SPRING_SIGMA_Y_PA / sigmaB });
+      const worst = rows.reduce((a, b) => (b.margin < a.margin ? b : a));
+      if (worst.margin < 1 - 1e-9)
+        console.warn(`TODO 193: the ${worst.pivot} pivot bends at ${(worst.sigma_Pa / 1e6).toFixed(1)} MPa at its service load, `
+          + `over the ${(SPRING_SIGMA_Y_PA / 1e6).toFixed(0)} MPa yield — TRAIN_PIVOT_SIZES and this row have parted`);
+      return { rows, dPivot_mm: PIVOT_MIN_U * UNIT_MM, yield_Pa: SPRING_SIGMA_Y_PA, worst: worst.pivot, worstMargin: worst.margin };
+    })();
+    // TODO 296 — THE CLUB TOOTH'S TIP, priced. The owner saw it first: the
+    // escape wheel's teeth "look a little thin at the ends", and measured off
+    // the cut the club is a 10.83 degree wedge whose last 0.038 mm is 0.010 mm
+    // wide — thinner in the sheet than PIVOT_MIN_U, the floor under the most
+    // slender feature the movement admits anywhere. Four instruments passed it
+    // for four different reasons (TODO 296 lists them; stockFloor reads a
+    // geometry-LOCAL bounding box, whose smallest side here is the depth) and
+    // none of them is a strength claim. This is the strength claim.
+    //
+    //  · ONE BEARING STATION, not three. TODO 226 step 3 cut the undercut so
+    //    that only the tip touches, and `deltaOnImpulseFace` puts the tooth
+    //    CIRCLE on the stone's face, so through the lock, the draw and the
+    //    whole impulse it is the TIP that bears. The club's own impulse face
+    //    never meets the stone in this model.
+    //  · THE LOAD, from the escape torque over the arm the metal gives
+    //    (ESCAPE_TOOTH_GEOM: the contact normal's moment arm about the wheel's
+    //    axis, shorter than the tooth circle because the locking face leans by
+    //    the draw). FORWARD runs — locked at the banking, the impulse — carry
+    //    the corner's delivered torque, T.etaPath. The UNLOCK carries
+    //    T/etaPath: the balance drives the train BACKWARD through the draw, so
+    //    every stage's friction opposes it and the balance pays the reciprocal
+    //    (§238's own reading). That inverts the corners for that run, and it is
+    //    the largest tooth load in the beat — 1.9x the frictionless torque at
+    //    the adverse corner, where the forward runs read 0.53x.
+    //  · THE TIP IS AN ARC, because a point is singular. The beam's stress goes
+    //    as 1/s into the apex and the Hertz pressure as 1/sqrt(rho), so a
+    //    mathematically sharp club has no finite strength at all and the only
+    //    honest price is on the radius the METAL carries — ESCAPE_TIP_R_BAND, a
+    //    finish, read at its SHARP end. This is TODO 221's treatment of the
+    //    maintaining beak's apex applied to the one other wedge in the
+    //    movement that bears a load on its point.
+    //  · TWO CRITERIA, and the record says which BINDS. Hertz: a steel radius
+    //    on the ruby's flat face, p0 = sqrt(F' E* / (pi rho)) against
+    //    LINE_CONTACT_FIRST_YIELD_P0_PER_Y x the escape steel's low end, the
+    //    line as long as the band the tip stands at full radius in. Beam: the
+    //    wedge's section where the arc leaves it (width 2 rho cos a, the load
+    //    rho(1 - sin a) ahead of it), bending plus the WHOLE of F as axial
+    //    load, under the same steel. Both go as 1/rho, so each inverts to the
+    //    radius at which it would first yield and rhoMin is the larger.
+    //  · WHAT THIS DOES NOT PRICE, said plainly: the DROP's impact. At the
+    //    landing the wheel and the train behind it arrive with kinetic energy
+    //    some seven orders over the elastic energy this contact stores at the
+    //    working load, and that is the load a thin tip really fears — but its
+    //    path is through the stone into the fork and out at the banking pin,
+    //    none of which this models. TODO 296 carries it as the step still owed.
+    const escapeTooth = (() => {
+      const H = ESCAPE_TOOTH_GEOM, tM = H.band.t_u * OSC_U, a = H.wedge.halfRad;
+      // E* for STEEL on RUBY: both bodies named, the stone corundum (§269's stocks)
+      const Estar = 1 / ((1 - STEEL_NU * STEEL_NU) / STEEL_E_PA + (1 - STOCK.corundum.nu * STOCK.corundum.nu) / STOCK.corundum.E);
+      const p0Allow = LINE_CONTACT_FIRST_YIELD_P0_PER_Y * ESCAPE_STEEL_SIGMA_Y_PA;
+      const shakeAllow = LINE_CONTACT_SHAKEDOWN_P0_PER_Y * ESCAPE_STEEL_SIGMA_Y_PA;
+      // TODO 299 landing 2 — THE TIP'S FINISH, DERIVED, and it sets everything
+      // below. The owner's point: it makes no sense to pre-sharpen an edge only
+      // to have it blunted. Landing 2 of TODO 296 measured the drop's first
+      // landings blunting the tip until the contact shakes down; that radius is
+      // a FIXED POINT of the impact (p0(ρ) = the shakedown limit), and nothing
+      // about the as-cut tip enters it — solved from starting radii four decades
+      // apart it returns the same figure to 2e-16. So the wheel is FINISHED
+      // there: it leaves the bench in the state it would have reached anyway,
+      // the only overstressed moment in its life is gone, and the one
+      // micron-scale operation on the whole wheel gets coarser.
+      //
+      // The impact's own stack first, because the fixed point needs it: the
+      // landing's energy, and the series compliance that is the TOOTH's and not
+      // the contact's (TODO 296 landing 2 says why, and the gate asserts it).
+      const impact = (() => {
+        const Lg = H.landing, cr = FORK_CROSSING;
+        if (!Lg || !cr) return null;
+        const aW = Lg.arm_u * OSC_U, aF = Lg.armFork_u * OSC_U, Iw = cr.I_wheel, If = cr.I_fork;
+        const Apk = AMPLITUDE_PEAK_DEG * DEG2RAD, wB = 2 * Math.PI * F_BALANCE, thL = PIN_FORK.liftHalf, hh = 1e-7;
+        const thetaDot = Apk * wB * Math.cos(Math.asin(Math.min(1, thL / Apk)));
+        const dPhi = Math.abs((PIN_FORK.notch.lead(thL + hh) - PIN_FORK.notch.lead(thL - hh)) / (2 * hh));
+        const gear = Math.max(...ESCAPEMENT.stones.map((stE) => {
+          const phiE = stE.sigma * stE.xE;
+          return Math.abs((ESCAPEMENT.deltaOnImpulseFace(stE.sigma, phiE + hh).delta
+                         - ESCAPEMENT.deltaOnImpulseFace(stE.sigma, phiE - hh).delta) / (2 * hh));
+        }));
+        const omega0 = gear * dPhi * thetaDot;
+        const omega = Math.sqrt(omega0 * omega0 + 2 * escapeTorque_Nm * ESCAPEMENT.drop / Iw);
+        const mStar = 1 / (aW * aW / Iw + aF * aF / If);
+        const v0 = aW * omega;
+        return { Iw, If, aW, aF, thetaDot, dPhi, gear, omega0, omega, mStar, v0,
+          energy: 0.5 * mStar * v0 * v0, dropRad: ESCAPEMENT.drop };
+      })();
+      const sArcOf = (rr) => rr * Math.pow(Math.cos(a), 2) / Math.sin(a);
+      const sRootW = Math.abs(H.wedge.holdsTo_u) * OSC_U, kWid = H.wedge.widthPerDepth;
+      const kTooth = (rr) => {
+        const sa = sArcOf(rr), A0 = 12 / (STEEL_E_PA * tM * Math.pow(kWid, 3));
+        return 1 / (A0 * (sa / sRootW - 1 + Math.log(sRootW / sa)));
+      };
+      const kHertz = (rr, F) => {
+        const Fl = F / tM, ha = Math.sqrt(4 * Fl * rr / (Math.PI * Estar));
+        return F / Math.max((2 * Fl / (Math.PI * Estar)) * (Math.log(4 * rr / ha) - 1), 1e-18);
+      };
+      const impactAt = (rr) => {
+        if (!impact) return null;
+        let F = 1e-3;
+        for (let i = 0; i < 160; i++) F = Math.sqrt(2 * impact.energy / (1 / kTooth(rr) + 1 / kHertz(rr, F)));
+        const kT = kTooth(rr), kH = kHertz(rr, F);
+        return { F, kTooth_N_per_m: kT, kHertz_N_per_m: kH, kSeries_N_per_m: 1 / (1 / kT + 1 / kH),
+          p0_Pa: Math.sqrt((F / tM) * Estar / (Math.PI * rr)) };
+      };
+      // the fixed point, from an arbitrary start (it has none of its own)
+      const rhoFixed = (p0a) => { let rr = 1e-7; for (let i = 0; i < 300; i++) rr = Math.min(1e-3, Math.max(1e-11, rr * Math.pow(impactAt(rr).p0_Pa / p0a, 2))); return rr; };
+      const rho = impact ? rhoFixed(shakeAllow) : ESCAPE_TIP_R_M;
+      // the shop floor's constraint on the derivation: a finish it cannot reach
+      // is not a specification
+      if (!(rho >= ESCAPE_TIP_R_BAND.sharp_m && rho <= ESCAPE_TIP_R_BAND.blunt_m))
+        console.warn(`TODO 299 landing 2: the impact asks the club tip to be finished at ${(rho * 1e6).toFixed(4)} µm, outside the `
+          + `${(ESCAPE_TIP_R_BAND.sharp_m * 1e6).toFixed(2)}–${(ESCAPE_TIP_R_BAND.blunt_m * 1e6).toFixed(2)} µm a polish can hold — the finish is not a specification the shop can meet`);
+      const secW = 2 * rho * Math.cos(a), secArm = rho * (1 - Math.sin(a));
+      // sigma(rho) = K/rho and p0(rho) = sqrt(J/rho), so each criterion inverts
+      const kBeam = (6 * (1 - Math.sin(a)) / (4 * Math.pow(Math.cos(a), 2)) + 1 / (2 * Math.cos(a))) / tM;
+      const rows = [];
+      for (const cname of FRICTION_CORNERS) {
+        const Cc = corner(cname);
+        const etaPath = Cc.stages.filter((st) => st.name !== 'lever escapement').reduce((p, st) => p * st.eta, 1);
+        for (const run of H.runs) {
+          const tq = run.flow === 'recoil' ? escapeTorque_Nm / etaPath : escapeTorque_Nm * etaPath;
+          const F = tq / (run.arm_u * OSC_U), Fl = F / tM;
+          const p0 = Math.sqrt(Fl * Estar / (Math.PI * rho));
+          const sigma = 6 * F * secArm / (tM * secW * secW) + F / (tM * secW);
+          const rhoHertz = Fl * Estar / (Math.PI * p0Allow * p0Allow), rhoBeam = kBeam * F / ESCAPE_STEEL_SIGMA_Y_PA;
+          rows.push({ corner: cname, stone: run.stone, run: run.run, flow: run.flow, etaPath,
+            arm_u: run.arm_u, torque_Nm: tq, load_N: F,
+            p0_Pa: p0, p0Margin: p0Allow / p0, sigma_Pa: sigma, sigmaMargin: ESCAPE_STEEL_SIGMA_Y_PA / sigma,
+            rhoHertz_m: rhoHertz, rhoBeam_m: rhoBeam,
+            rhoMin_m: Math.max(rhoHertz, rhoBeam), binds: rhoHertz >= rhoBeam ? 'hertz' : 'beam',
+            margin: Math.min(p0Allow / p0, ESCAPE_STEEL_SIGMA_Y_PA / sigma) });
+        }
+      }
+      const worstT = rows.reduce((x, y) => (y.margin < x.margin ? y : x));
+      if (worstT.margin < 1 - 1e-9)
+        console.warn(`TODO 296: the club tooth's tip works past the escape steel's low end on ${worstT.run} at the ${worstT.corner} corner — `
+          + `${worstT.binds === 'hertz' ? `p0 ${(worstT.p0_Pa / 1e9).toFixed(3)} GPa against ${(p0Allow / 1e9).toFixed(3)}` : `${(worstT.sigma_Pa / 1e6).toFixed(0)} MPa against ${(ESCAPE_STEEL_SIGMA_Y_PA / 1e6).toFixed(0)}`}`
+          + ` at a tip radius of ${(rho * 1e6).toFixed(3)} µm; it needs ${(worstT.rhoMin_m * 1e6).toFixed(3)} µm — the club wants a tip LAND`);
+      // TODO 296 landing 2 — THE DROP'S LANDING, which landing 1 named and left.
+      // At the let-off the tooth leaves the stone and the wheel runs FREE through
+      // the drop, driven by the escape torque, until the next tooth lands on the
+      // other stone's locking face. Landing 1 measured that it arrives with some
+      // seven million times the elastic energy the tip's contact stores at the
+      // working load, and said the load was not priced because its path runs
+      // through the stone into the fork and out at the banking pin. It is priced
+      // now, and the answer is not that the tooth breaks: it RUNS IN.
+      //
+      //  · THE WHEEL'S SPEED AT THE LANDING, through the model's own laws. The
+      //    balance at AMPLITUDE_PEAK_DEG (TODO 192 step 4's rule: a PEAK load is
+      //    priced at the largest swing the balance can reach) is turning
+      //    A·ω·cos(asin(θ/A)) at the let-off; the notch's `lead` wall carries the
+      //    fork at dφ/dθ of that; the impulse face's own gearing dδ/dφ carries the
+      //    wheel at that again. Then the drop: ½I(ω²−ω₀²) = τ·θ_drop, frictionless,
+      //    so the fastest landing the model admits. I is FORK_CROSSING's own
+      //    I_wheel — the escape arbor with the train reflected through its ratios,
+      //    weighed off the meshes at each stock's density (TODO 226 step 3b).
+      //  · THE IMPACT, with no restitution coefficient anywhere. Two bodies
+      //    colliding through a contact whose normal's moment arms about each axis
+      //    the geometry gives: the effective mass along that normal is
+      //    1/(a_w²/I_w + a_f²/I_f) and the closing velocity a_w·ω. The fork is
+      //    taken AT REST, which is the bound: between the let-off and the landing
+      //    it coasts toward its banking, which is the way the landing tooth will
+      //    push it, so any speed it has only opens the gap.
+      //  · WHERE THE ENERGY GOES, and this is the finding. The series compliance
+      //    is NOT the Hertz contact — it is the TOOTH, by three orders of
+      //    magnitude. The club is a tapered cantilever loaded at its tip arc
+      //    (EI y'' = F·s with I = t·(k·s)³/12, integrated from the arc's tangent
+      //    station to where the wedge ends), and that comes out ~21 kN/m against
+      //    the contact's ~22 MN/m. So the 2-D contact's datum-dependent approach
+      //    (Johnson §5.2: the compliance of two cylinders is only defined against
+      //    a reference length) cannot move the answer, which the gate asserts
+      //    rather than assumes. The fork's arm, the stone's seat and the banking
+      //    pin are further series members and are NOT modelled — every one would
+      //    soften the stack, so leaving them out makes the peak force, and the
+      //    run-in radius below, UPPER bounds.
+      //  · AND THE CRITERION IS SHAKEDOWN, not first yield. A contact that
+      //    repeats ten times a second for the life of the watch is held to
+      //    LINE_CONTACT_SHAKEDOWN_P0_PER_Y (Johnson's 4.0k), not to the elastic
+      //    limit: past first yield the apex deforms a little, residual stresses
+      //    build, and the contact becomes elastic again at a higher load. So the
+      //    tip does not fail — it BLUNTS until it shakes down, and `runIn` is the
+      //    radius where that stops, solved by the same inversion landing 1 used
+      //    (p0 ∝ ρ^−½ at fixed F). A tooth that ran in PAST its finish band would
+      //    be a tooth wearing its own lock away; that is what the gate holds.
+      const landing = (() => {
+        if (!impact) return null;
+        const Lg = H.landing;
+        const atFinish = impactAt(rho);
+        // the finish IS the fixed point, so the contact shakes down as cut and
+        // the tip does not run in. Reported as the identity it is: p0 at the
+        // finish equals the shakedown limit, and the radius a FULLY elastic
+        // contact would want is blunter still (that one is not specified — no
+        // yield at all is a stricter criterion than a repeated contact needs).
+        const elasticRho = rhoFixed(p0Allow);
+        // what a razor finish would have cost, kept because it is the reason
+        // the finish is derived rather than read off the band's sharp end
+        const atSharp = impactAt(ESCAPE_TIP_R_BAND.sharp_m);
+        // §344 — the reach the finish spends is RADIAL, because the budget it is
+        // booked against is (lockRunAt shortens the tooth CIRCLE). The arc is
+        // inscribed tangent to both flanks, its centre ρ/sin a in from the apex
+        // along the wedge's BISECTOR, and the bisector is not the radius: both
+        // flanks lean the same way off it (H.wedge.bisectorRad). So the tip's
+        // new outermost radius is |centre| + ρ, read exactly at the wheel's
+        // radius rather than as ρ(1/sin a − 1), the setback along the bisector.
+        const cutBack_u = (() => {
+          const s_u = rho / Math.sin(a) / OSC_U, R = H.tip.r, b = H.wedge.bisectorRad;
+          return R - Math.sqrt(R * R - 2 * R * s_u * Math.cos(b) + s_u * s_u) - rho / OSC_U;
+        })();
+        if (!(atFinish.p0_Pa <= shakeAllow * (1 + 1e-6)))
+          console.warn(`TODO 299 landing 2: the club tip finished at ${(rho * 1e6).toFixed(4)} µm still takes the drop at `
+            + `${(atFinish.p0_Pa / 1e9).toFixed(3)} GPa, over the ${(shakeAllow / 1e9).toFixed(3)} GPa shakedown limit — the finish is not the fixed point`);
+        return { peakDeg: AMPLITUDE_PEAK_DEG, thetaDot_rad_s: impact.thetaDot, dPhiDTheta: impact.dPhi,
+          impulseGearing: impact.gear, omegaLetoff_rad_s: impact.omega0, dropRad: impact.dropRad,
+          omegaLand_rad_s: impact.omega, I_wheel: impact.Iw, I_fork: impact.If,
+          arm_u: Lg.arm_u, armFork_u: Lg.armFork_u, atForkDeg: Lg.atForkDeg,
+          mStar_kg: impact.mStar, v0_m_s: impact.v0, energy_J: impact.energy,
+          atFinish, shakedownAllow_Pa: shakeAllow, elasticAllow_Pa: p0Allow,
+          finish: { rho_m: rho, elasticRho_m: elasticRho, cutBack_u,
+            band_m: [ESCAPE_TIP_R_BAND.sharp_m, ESCAPE_TIP_R_BAND.blunt_m],
+            atSharp, sharp_m: ESCAPE_TIP_R_BAND.sharp_m,
+            // what the derivation saved: the razor finish's own overstress, and
+            // the polishing that produced it
+            sharpOverShakedown: atSharp.p0_Pa / shakeAllow },
+          runsIn: false,
+          notModelled: ['the fork\u2019s arm', 'the stone\u2019s seat', 'the banking pin'] };
+      })();
+      // TODO 299 — THE CENTURY'S WEAR, which is what the hardening was for.
+      // Archard: the volume removed is K·F·s/H. Every factor is already here or
+      // declared — F the tooth load the rows above price, s the slip the
+      // geometry measured times the engagements the train derives, H the escape
+      // steel's own indentation hardness — and the only new one is K, a BAND
+      // read at its adverse end because what it measures is how good the polish
+      // and the epilame are, which the model cannot say.
+      //
+      // The volume becomes a DEPTH through the wedge: a tip losing area A at
+      // its apex recedes √(A/tanα), A the volume over the line the tip stands
+      // at full radius in. That concentration is why the teeth are the binding
+      // site and the pivots are not — a pivot spreads the same kind of volume
+      // over its whole projected area and loses sub-micron depth, a wedge tip
+      // spends it all in one place.
+      //
+      // WHAT THIS DOES NOT SETTLE, and the record says it in the same breath:
+      // at the adverse corner the recession is 1.32× the budget and at the
+      // nominal 0.42 of it (§344's radial reading), so the conclusion FLIPS between corners
+      // and by FRICTION's own rule that is not a conclusion. TODO 299's record
+      // carries the ceiling — holding at the adverse corner needs 1134 HV,
+      // which is no steel — and why the wheel stops at steel anyway: past it
+      // the plastic run-in that answers the drop's impact (landing 2)
+      // disappears and the impact becomes a fracture question nothing prices.
+      const wear = (() => {
+        const K = SERVICE_COUNTS, sl = H.slip, H_Pa = ESCAPE_STEEL_HARDNESS_PA;
+        const slip_m = sl.perEngagement_u * OSC_U;
+        const total_m = slip_m * K.engagementsPerTooth;
+        // §344 — and the depth the century's area makes is RADIAL too, for the
+        // same reason: the budget is a shortened tooth circle. A cut square to
+        // the radius at depth d through two straight flanks is a triangle d wide
+        // per H.wedge.widthPerDepth, area ½·d²·wpd. Until §344 this read the
+        // depth along the wedge's bisector (√(A/tan a)), which is 29° off the
+        // radius here and 15% deeper, against a radial budget. The page that
+        // draws this (service-life.html) is what exposed it: a drawing has to
+        // put the worn surface SOMEWHERE, and the two readings put it in two places.
+        const wpd = H.wedge.widthPerDepth;
+        // TODO 299 landing 2 — AND THE FINISH IS BOOKED AGAINST THE SAME BUDGET.
+        // The geometry's `budget.recession_u` is the reach from the tooth's
+        // MATHEMATICAL apex to where the lock runs out, because that is the only
+        // thing a profile can say. A tooth finished at a radius ρ does not have
+        // that apex: its tip already stands inside it (radially, §344: see the
+        // landing's cut-back, not ρ(1/sinα − 1), which is along the bisector). That is
+        // reach spent at the bench, in the same currency the century spends, so
+        // it comes off the budget — and it is the honest cost of the derivation
+        // above, not a free improvement. (It is the same cost the run-in used to
+        // charge; what the derivation removes is the overstress and the
+        // polishing, not the reach.)
+        const cutBack_u = landing ? landing.finish.cutBack_u : 0;
+        const budget_u = H.budget.recession_u - cutBack_u;
+        if (!(budget_u > 0))
+          console.warn(`TODO 299 landing 2: finishing the club tip at ${(rho * 1e6).toFixed(4)} µm spends ${cutBack_u.toFixed(5)} u of reach, `
+            + `all of the ${H.budget.recession_u.toFixed(5)} u the lock had — the wheel has no wear budget left as cut`);
+        // the load the century's slip happens under: the NOMINAL corner's runs,
+        // averaged over the engagement (the peak rows are strength's business,
+        // not a mean wear rate's)
+        const nom = rows.filter((q) => q.corner === 'nominal');
+        const Fmean = nom.reduce((x, q) => x + q.load_N, 0) / nom.length;
+        const at = (kk) => {
+          const V = kk * Fmean * total_m / H_Pa;
+          const area = V / tM;
+          const recess_m = Math.sqrt(2 * area / wpd);
+          return { K: kk, volume_m3: V, recession_m: recess_m, recession_u: recess_m / OSC_U,
+            overBudget: (recess_m / OSC_U) / budget_u };
+        };
+        const corners = Object.fromEntries(FRICTION_CORNERS.map((c) => [c, at(WEAR_K_BAND[c])]));
+        // the hardness that would hold at each corner: recession ∝ 1/√H
+        const needH = Object.fromEntries(FRICTION_CORNERS.map((c) => [c,
+          2 * WEAR_K_BAND[c] * Fmean * total_m / (Math.pow(budget_u * OSC_U, 2) * tM * wpd)]));
+        const holds = FRICTION_CORNERS.filter((c) => corners[c].overBudget <= 1);
+        if (!holds.length)
+          console.warn(`TODO 299: the club tooth loses ${(corners.favourable.recession_m * 1e6).toFixed(2)} µm of reach over `
+            + `${K.years} years at the FAVOURABLE wear corner, past the ${(budget_u * OSC_U * 1e6).toFixed(2)} µm `
+            + 'the lock can spend — the escape wheel does not reach its design life at any corner');
+        // TODO 299 step 5 — THE PALLET STONES' OWN FACES, which landing 1 named and left. The same Archard law, the same
+        // load and the same slip per engagement (the two bodies slide by one distance), read with the STONE's hardness
+        // (corundum, CORUNDUM_HARDNESS_BAND's low end). A stone takes every other beat, so it sees beats/2 engagements, a
+        // tooth beats/15. And where the tooth's century is concentrated at its tip, the stone's spreads over the face the tip
+        // runs across in one engagement (the slip, by the tooth's thickness), so its mean recession is K·F·(beats/2)/(H·t),
+        // with the slip cancelling. A REPORT: it is mild (a harder body and a larger track), measured against the same
+        // lock budget the tooth spends.
+        const stones = (() => {
+          const perStone = K.beats / 2, Hs = CORUNDUM_HARDNESS_PA;
+          const at2 = (kk) => { const V = kk * Fmean * slip_m * perStone / Hs, recess_m = V / (slip_m * tM);
+            return { K: kk, volume_m3: V, recession_m: recess_m, recession_u: recess_m / OSC_U, ofBudget: (recess_m / OSC_U) / budget_u }; };
+          return { engagementsPerStone: perStone, hardness_Pa: Hs, hardnessBand: { ...CORUNDUM_HARDNESS_BAND },
+            corners: Object.fromEntries(FRICTION_CORNERS.map((c) => [c, at2(WEAR_K_BAND[c])])) };
+        })();
+        return { years: K.years, serviceYears: K.serviceYears, services: K.services, stones,
+          engagementsPerTooth: K.engagementsPerTooth, slipPerEngagement_m: slip_m, slip_m: total_m,
+          load_N: Fmean, hardness_Pa: H_Pa, hardnessBand: { ...ESCAPE_STEEL_HARDNESS_BAND },
+          kBand: { ...WEAR_K_BAND }, budget_u, fromApex_u: H.budget.recession_u, cutBack_u,
+          lockRunFull_u: H.budget.lockRunFull_u, lockOnly_u: H.budget.lockOnly_u,
+          corners, needHardness_Pa: needH, holdsAt: holds,
+          straddles: holds.length > 0 && holds.length < FRICTION_CORNERS.length,
+          counts: K };
+      })();
+      return { rows, landing, wear, rho_m: rho, tipBand: { ...ESCAPE_TIP_R_BAND }, steel: { ...ESCAPE_STEEL_SIGMA_Y_BAND },
+        // both bodies of the contact, named, so the gate re-derives E* rather
+        // than trusting it: the tooth is steel, the stone corundum (§269's stocks)
+        bodies: { tooth: { E_Pa: STEEL_E_PA, nu: STEEL_NU }, stone: { E_Pa: STOCK.corundum.E, nu: STOCK.corundum.nu } },
+        yield_Pa: ESCAPE_STEEL_SIGMA_Y_PA, p0Allow_Pa: p0Allow, Estar_Pa: Estar, line_u: H.band.t_u,
+        wedgeDeg: H.wedge.fullDeg, worstArm_u: H.worstArm_u,
+        worst: { run: worstT.run, corner: worstT.corner, margin: worstT.margin, binds: worstT.binds },
+        rhoMin_m: Math.max(...rows.map((q) => q.rhoMin_m)), geom: H };
+    })();
+    // TODO 217 — THE MAINTAINING DETENT'S HOLD, priced. While the fusee is
+    // wound the detent holds the maintaining ring, and the maintaining spring's
+    // reaction comes back through the ring's face into the beak: that face
+    // load is the detent's real job, and TODO 210's 5–50 mN window prices only
+    // its ride.
+    //
+    //  · THE SPRING'S TORQUE, from its job. The spring is a SERIES member of the
+    //    drive — cone → base ratchet → pawls → maintaining wheel → SPRING →
+    //    great wheel — so while the watch runs it is wound to exactly the torque
+    //    it passes on: the going torque at the great wheel, which the level
+    //    product holds constant over the reserve (fuseeTorque_Nm, frictionless:
+    //    the drum's, the chain's and the fusee's losses only lower it, so this
+    //    is the upper bound, the pivots' convention above). Winding takes the
+    //    drive off, the detent holds the ring, and the spring gives up angle as
+    //    it drives the train on: the torque FALLS from there, at whatever rate
+    //    its stiffness sets. So the hold is greatest at the first instant of a
+    //    wind and equal to the going torque there, WHATEVER the stiffness — the
+    //    stiffness and preload set how long the train is kept going, which needs
+    //    the length of a wind, and nothing in the model declares one (TODO 219).
+    //  · THE FACE LOAD. The face's reaction runs along its normal through the
+    //    tip, seated at the root, and through the stud (TODO 215); its moment
+    //    arm about the ring's axis is that line's distance from the axis, read
+    //    off the click as cut (MAINT_DET_HOLD_GEOM). F = τ / arm.
+    //  · THE ARM, in combined compression and bending. Every radial section of
+    //    the arm carries F at its centroid's offset from the tip–stud chord;
+    //    the largest is at the beak's radial flank, where the plain arm begins.
+    //    A curved bar (centroid radius / depth ≈ 6.5), so the bending is
+    //    Winkler's inner fibre, M·(r_n − r_i)/(A·e·r_i), r_n = h/ln(r_o/r_i),
+    //    plus the WHOLE of F as axial load (an upper bound: only its component
+    //    along the section's normal is), under SPRING_SIGMA_Y_PA.
+    //  · THE BEAK, as a cantilever wedge carrying F at its apex: σ = F/A + 6Fe/tw²
+    //    at its kindest section (MAINT_DET_HOLD_GEOM). TODO 218 re-cut it as the
+    //    valley's own offset with its face flank relieved, so the hold bears on
+    //    the apex (the record's contact block says why): 56.7° where it was
+    //    20.4°, and under yield where it was 2.6× over. The wedge's stress goes
+    //    as 1/s toward the apex, so a sharp apex yields short of its tip (TODO
+    //    221 measured 0.3153 u): since TODO 221 the apex is an ARC, the line of
+    //    contact a Hertz cylinder on the face priced at first yield of the click
+    //    steel's low end, and the wedge's sections from where the arc begins
+    //    priced as beams under SPRING_SIGMA_Y_PA.
+    const maintainingHold = (() => {
+      const H = MAINT_DET_HOLD_GEOM;
+      const torque_Nm = fuseeTorque_Nm;
+      const load_N = torque_Nm / (H.momentArm_u * OSC_U);
+      const a = H.arm, ri = a.ri_u * OSC_U, ro = a.ro_u * OSC_U, h = ro - ri, t = a.t_u * OSC_U;
+      const A = h * t, M_Nm = load_N * a.offsetMax_u * OSC_U;
+      const rn = h / Math.log(ro / ri), ecc = (ri + ro) / 2 - rn;
+      const armBend_Pa = M_Nm * (rn - ri) / (A * ecc * ri), armAxial_Pa = load_N / A;
+      const armSigma_Pa = armBend_Pa + armAxial_Pa;
+      const b = H.beakRoot, bw = b.width_u * OSC_U, bt = b.t_u * OSC_U;
+      const beakSigma_Pa = load_N / (bw * bt) + 6 * load_N * b.offset_u * OSC_U / (bt * bw * bw);
+      // TODO 221 — the apex is an ARC of radius ρ: inside where it begins the
+      // beak is a Hertz line contact one click-thickness long, p0 = √(F·E*/(π·ρ·t))
+      // against first yield of the click steel's low end; past it, the wedge's
+      // sections where the arc begins and the worst of them, as beams.
+      const arc = H.arc, tL = arc.line_u * OSC_U;
+      const p0_Pa = Math.sqrt((load_N / tL) * arc.Estar_Pa / (Math.PI * arc.rho_u * OSC_U));
+      const halfWidth_m = Math.sqrt(4 * (load_N / tL) * arc.rho_u * OSC_U / (Math.PI * arc.Estar_Pa));
+      const secSigma = (q) => load_N / (q.width_u * OSC_U * bt) + 6 * load_N * q.offset_u * OSC_U / (bt * Math.pow(q.width_u * OSC_U, 2));
+      const arcStartSigma_Pa = secSigma(arc.arcStart), worstSigma_Pa = secSigma(arc.worst);
+      if (!(p0_Pa <= arc.p0Allow_Pa * (1 + 1e-9)))
+        console.warn(`TODO 221: the beak's arc (ρ ${arc.rho_u.toFixed(4)} u) carries the hold at p0 ${(p0_Pa / 1e9).toFixed(3)} GPa — over first yield of the click steel's low end, ${(arc.p0Allow_Pa / 1e9).toFixed(3)} GPa`);
+      if (!(worstSigma_Pa <= SPRING_SIGMA_Y_PA * (1 + 1e-9)))
+        console.warn(`TODO 221: the beak's wedge where its arc begins works at ${(worstSigma_Pa / 1e6).toFixed(1)} MPa, over ${(SPRING_SIGMA_Y_PA / 1e6).toFixed(0)}`);
+      if (Math.abs(H.contact.momentAboutStudPerN_u) > 1e-9)
+        console.warn(`TODO 218/221: the hold's contact on the arc puts ${H.contact.momentAboutStudPerN_u.toExponential(2)} u·N on the click about its stud — the contact has left the stud's line`);
+      if (!(H.contact.cornerGapAtHold_u >= CLEAR_MARGIN * (1 - 1e-9)))
+        console.warn(`TODO 218: when the back-driven face reaches the arc its far end stands ${H.contact.cornerGapAtHold_u.toFixed(4)} off the relieved flank, need ≥ ${CLEAR_MARGIN} — the hold may bear on the flank and cam the click out`);
+      if (armSigma_Pa > SPRING_SIGMA_Y_PA)
+        console.warn(`TODO 217: the maintaining detent's arm bends at ${(armSigma_Pa / 1e6).toFixed(0)} MPa holding the going torque `
+          + `(${(load_N * 1000).toFixed(0)} mN on the face, offset ${a.offsetMax_u.toFixed(4)} u) — over the ${(SPRING_SIGMA_Y_PA / 1e6).toFixed(0)} MPa yield; size the arm to its load`);
+      if (Math.abs(H.lineVsFaceNormal) > 1e-9)
+        console.warn(`TODO 217: the hold's line of action (tip → stud) has left the face's normal by ${H.lineVsFaceNormal.toExponential(2)} — the click is no longer a strut, and the moment it carries about the stud is unpriced`);
+      return {
+        // TODO 219 — the spring, as cut (MAINT_SPRING, where the ring's tooth
+        // count was solved from it). Row 16 re-derives the floor from this
+        // record's own corner, k and the preload from the torque span over the
+        // run, k again from the blade's compliance, and both stresses.
+        spring: (() => {
+          const M = MAINT_SPRING;
+          if (M.tauGo !== torque_Nm) console.warn(`TODO 219: the maintaining spring was sized to ${M.tauGo} N·m, the record's going torque is ${torque_Nm}`);
+          return {
+            torqueRun_Nm: torque_Nm, floor_Nm: M.tauFloor, floorCorner: M.floorCorner, floorFrac: M.floorFrac,
+            upstream: [...GOING_POWER.UPSTREAM],
+            ringTeeth: M.N, recoilMax_rad: M.pitch, marginRun_rad: M.marginRun, run_rad: M.run, runMax_rad: M.runMax,
+            k_Nm_per_rad: M.k, preload_rad: M.thetaPre, thetaWork_rad: M.thetaWork,
+            form: 'cantilever blade in a great-wheel crossing, filed to uniform strength (t ∝ √x, floored at STOCK_MIN_U), bearing on a pin hung from the ring; the crossing\'s arm flank is the stop',
+            b_u: M.b, tRoot_u: M.t, tMin_u: M.tMin, L_u: M.L, rE_u: M.rE, pinR_u: M.geom.rPin, pinRadius_u: M.geom.rP,
+            compliance_m_per_N: M.compliance_m_per_N, deflWork_u: M.deflWork_u,
+            E_Pa: M.E, limit_Pa: M.sigLim, band: { ...MAINSPRING_SIGMA_Y_BAND },
+            sigmaWork_Pa: M.sigmaWork, sigmaStop_Pa: M.sigmaStop, margin: M.sigLim / M.sigmaWork,
+            law: 'series member: wound by the drive to the going torque while running; at a wind it recoils the ring onto the detent (≤ one ring pitch) and then drives the great wheel on, its torque falling by k·Δ to the floor at the stop',
+          };
+        })(),
+        load_N, momentArm_u: H.momentArm_u, tipR_u: H.tipR_u, rootR_u: H.rootR_u, strut_u: H.strut_u,
+        lineVsFaceNormal: H.lineVsFaceNormal, yield_Pa: SPRING_SIGMA_Y_PA,
+        arm: { ri_u: a.ri_u, ro_u: a.ro_u, t_u: a.t_u, offset_u: a.offsetMax_u, M_Nm,
+          bend_Pa: armBend_Pa, axial_Pa: armAxial_Pa, sigma_Pa: armSigma_Pa,
+          straightBend_Pa: 6 * M_Nm / (t * h * h), margin: SPRING_SIGMA_Y_PA / armSigma_Pa },
+        beak: { wedgeRad: b.wedgeRad, s_u: b.s_u, width_u: b.width_u, t_u: b.t_u, offset_u: b.offset_u,
+          sigma_Pa: beakSigma_Pa, margin: SPRING_SIGMA_Y_PA / beakSigma_Pa,
+          arc: { ...arc, p0_Pa, halfWidth_m, p0Margin: arc.p0Allow_Pa / p0_Pa,
+            arcStart: { ...arc.arcStart, sigma_Pa: arcStartSigma_Pa }, worst: { ...arc.worst, sigma_Pa: worstSigma_Pa } },
+          contact: H.contact },
+      };
+    })();
+    // TODO 249 — THE RESET HEART'S SLIP CEILING, through the train's losses.
+    // The display arbor rides the fourth arbor on a friction coupling, and the
+    // reset hammer turns the heart against it (§137 Gate A's reset load). The
+    // coupling must slip before the hammer stalls the train, and the train is
+    // RUNNING while it does: the roller meets the heart before the hack pad
+    // has stopped the balance (measured off the live loop — the heart seats on
+    // the very frame the pad engages), so what holds the fourth arbor against
+    // the hammer is the torque the train DELIVERS there, the ideal reflected
+    // torque times every stage's η from the ribbon to that arbor, its own
+    // pivots included (they oppose the arbor's forward running too). The
+    // lossless figure stood here until TODO 249 and sat above that at every
+    // corner. The ceiling is the ADVERSE corner's — the least delivery the band
+    // allows, so a coupling under it slips everywhere. The rod's load follows by
+    // virtual work as Gate A always took it: the heart swept at most half a
+    // turn over the hammer tail's whole stroke, so a MEAN force (the heart's
+    // profile sets the peak, which nothing here prices), held under the 50 mN
+    // detent ceiling the reset rod's transfer row is priced at.
+    const corners = Object.fromEntries(FRICTION_CORNERS.map((c) => [c, corner(c)]));
+    const resetCoupling = (() => {
+      const toFourth = meshes.slice(0, meshes.findIndex((m) => m.arbor === 'fourth') + 1);
+      const ideal_Nm = fuseeTorque_Nm * toFourth.reduce((p, m) => p * m.z2 / m.z1, 1);
+      const last = 'fourth arbor pivots';
+      const byCorner = Object.fromEntries(FRICTION_CORNERS.map((c) => {
+        const S = corners[c].stages, n = S.findIndex((st) => st.name === last);
+        const eta = S.slice(0, n + 1).reduce((p, st) => p * st.eta, 1);
+        return [c, { eta, ceiling_Nm: ideal_Nm * eta }];
+      }));
+      const through = corners.adverse.stages.slice(0, corners.adverse.stages.findIndex((st) => st.name === last) + 1).map((st) => st.name);
+      const slipMax_Nm = byCorner.adverse.ceiling_Nm;
+      const tailStroke_u = 2 * HAMMER_TAIL * Math.sin(HAMMER_SWING_RAD / 2);   // the hammer tail tip's chord, retracted → seated
+      const sweep_rad = Math.PI;                                                // a heart is never driven more than half a turn
+      const rodLoad_mN = slipMax_Nm * sweep_rad / (tailStroke_u * UNIT_MM / 1000) * 1000;
+      const rodCeiling_mN = SELECTOR_DETENT_WINDOW_MN[1];
+      if (!(rodLoad_mN <= rodCeiling_mN))
+        console.warn(`TODO 249: the reset rod carries ${rodLoad_mN.toFixed(2)} mN at the heart's slip ceiling — over the ${rodCeiling_mN} mN its transfer row is priced at`);
+      return { ideal_Nm, byCorner, through, slipMax_Nm, corner: 'adverse', lossless_Nm: ideal_Nm,
+        overstatement: ideal_Nm / slipMax_Nm - 1,
+        tailStroke_u, sweep_rad, rodLoad_mN, rodCeiling_mN,
+        law: 'τ_slip ≤ τ_ideal(fourth) · Π η(ribbon → fourth arbor pivots) at the adverse corner; the rod\'s mean load τ·π / tail stroke' };
+    })();
+    return {
+      released_J, meanPower_W: released_J / reserve_s, reserve_s, beats,
+      fuseeTurns: FUSEE_WRAP_TURNS, fuseeTorque_Nm, trainRatio, escapeTorque_Nm, perBeat_J,
+      pivots: { trainStaffR_u: TRAIN_STAFF_R, trainPivotR_u: TRAIN_PIVOT_R, balancePivotR_u: BALANCE_PIVOT_R,
+                byArbor: Object.fromEntries(TRAIN_PIVOT_SIZES.map((p) => [p.arbor, { r_u: p.rU, d_u: p.dU, bound: p.bound }])),
+                fuseePivotR_u: TRAIN_STAFF_R, strength: pivotStrength },
+      escapeTooth,
+      maintainingHold,
+      balance: { mass_kg: mB, k_Nm_per_rad: kB, g_mps2: g, claimedDeg: AMPLITUDE_CLAIM_DEG, peakDeg: AMPLITUDE_PEAK_DEG },
+      resetCoupling,
+      corners,
+    };
+  })();
+  // TODO 192 step 4 — the solve's extremes over every corner and both
+  // positions, the two numbers AMPLITUDE_CLAIM_DEG and AMPLITUDE_PEAK_DEG are
+  // read from. `equalisation` row 14 holds the declarations to them.
+  {
+    const all = Object.entries(energy.corners).flatMap(([c, C]) =>
+      ['vertical', 'flat'].map((pos) => ({ corner: c, position: pos, deg: C.sustainedDeg[pos] })));
+    const min = all.reduce((a, b) => (b.deg < a.deg ? b : a)), max = all.reduce((a, b) => (b.deg > a.deg ? b : a));
+    // TODO 216 — the balance cannot swing past the KNOCK (ESCAPEMENT_KNOCK,
+    // solved off the fork blank and the pin): there its pin strikes the banked
+    // fork's horn. So the largest swing it REACHES is the smaller of the solve's
+    // maximum and the knock, and that is what the peak is held to. Every
+    // corner and position the energy column would carry past it is listed: the
+    // balance banks there instead of sustaining the solve's figure.
+    const knock = ESCAPEMENT_KNOCK.deg;
+    const reach = Math.min(max.deg, knock);
+    energy.knock = { ...ESCAPEMENT_KNOCK,
+      knocks: all.filter((a) => a.deg >= knock),
+      nominalClears: ['vertical', 'flat'].every((pos) => energy.corners.nominal.sustainedDeg[pos] < knock) };
+    energy.amplitude = { min, max, reachDeg: reach, claimDeg: AMPLITUDE_CLAIM_DEG, peakDeg: AMPLITUDE_PEAK_DEG,
+      claimHolds: AMPLITUDE_CLAIM_DEG <= min.deg && min.deg - AMPLITUDE_CLAIM_DEG < 1,
+      peakBounds: AMPLITUDE_PEAK_DEG >= reach && AMPLITUDE_PEAK_DEG - reach < 1 };
+    if (!energy.amplitude.claimHolds)
+      console.warn(`TODO 192: AMPLITUDE_CLAIM_DEG ${AMPLITUDE_CLAIM_DEG}° is not the sustained minimum rounded down — the solve's least is ${min.deg.toFixed(2)}° (${min.corner}, ${min.position})`);
+    if (!energy.amplitude.peakBounds)
+      console.warn(`TODO 216: AMPLITUDE_PEAK_DEG ${AMPLITUDE_PEAK_DEG}° is not the largest reachable swing rounded up — the solve's greatest is ${max.deg.toFixed(2)}° (${max.corner}, ${max.position}) and the pin knocks at ${knock.toFixed(2)}°`);
+    if (!energy.knock.nominalClears)
+      console.warn(`TODO 216: the serviced (nominal) corner knocks — vertical ${energy.corners.nominal.sustainedDeg.vertical.toFixed(2)}°, dial-flat ${energy.corners.nominal.sustainedDeg.flat.toFixed(2)}° against the knock at ${knock.toFixed(2)}°`);
+    // TODO 207 — the DESIGN target, at the nominal corner held vertical — and
+    // since TODO 242 the START: the balance is the heaviest rim that both
+    // reaches the target and is started by the escapement from rest. Held both
+    // ways: met and starting at BAL_RIM_F, and ONE STEP HEAVIER failing one of
+    // them — that balance weighed by balanceWheelDims and OSC_I's own law, its
+    // swing by the same solve, its start by the same drive with the spring
+    // re-solved to it (k = I·ω², and the elastica's torque scales with k at a
+    // fixed coil plan) and its pivots' friction scaled with its mass.
+    const nominalVertical = energy.corners.nominal.sustainedDeg.vertical;
+    const C = GOING_POWER.corner('nominal'), W = 2 * Math.PI * F_BALANCE;
+    // The law takes the RADIUS too, for the larger-wheel test below. The swing
+    // is exact at any radius (the column's delivered energy is the train's and
+    // the escapement's, none of it the balance's); the start reuses THIS
+    // balance's impulse table, which a larger wheel's re-solved escapement
+    // would reshape, so a larger wheel that failed only the start would be a
+    // claim about a table it does not have — the record names which one binds.
+    const atBalance = (radius, rimF) => {
+      const B = oscInertiaOf(balanceWheelDims({ radius, thickness: BAL_T, rimF }));
+      const k = B.total * W * W, tf = C.pivot.vertical_Nm * B.mass / OSC_I.mass;
+      const a = Math.PI * k / (2 * C.qOther), bq = 2 * tf;
+      const deg = (-bq + Math.sqrt(bq * bq + 4 * a * C.delivered_J)) / (2 * a) / DEG2RAD;
+      const K0 = BALANCE_DRIVE.K, ks = k / K0.k;
+      const K = { ...K0, I: B.total, k, c: B.total * W / K0.Q, spring: { ...K0.spring, y: K0.spring.y.map((v) => v * ks) } };
+      const start = BD.selfStart(K, { drive: true, brake: 0, friction: tf, weight: null });
+      return { radius, rimF, nominalVertical: deg, starts: start.starts };
+    };
+    const atRim = (rimF) => atBalance(BALANCE_R, rimF);
+    // the law weighs THIS balance as the column does, or the step above it means nothing
+    const self = atRim(BAL_RIM_F);
+    if (!(Math.abs(self.nominalVertical - nominalVertical) < 1e-6 && self.starts === BALANCE_DRIVE.selfStart.starts))
+      console.warn(`TODO 242: balanceWheelDims weighs BAL_RIM_F ${BAL_RIM_F} to ${self.nominalVertical.toFixed(6)}° (${self.starts ? 'starts' : 'no start'}) where the column reads ${nominalVertical.toFixed(6)}° (${BALANCE_DRIVE.selfStart.starts ? 'starts' : 'no start'}) — the step test reads a different balance from the one cut`);
+    const heavier = atRim(BAL_RIM_F + BAL_RIM_STEP);
+    const starts = BALANCE_DRIVE.selfStart.starts;
+    energy.amplitude.target = { deg: AMPLITUDE_TARGET_DEG, nominalVertical, starts, rimF: BAL_RIM_F, step: BAL_RIM_STEP,
+      heavier, met: nominalVertical >= AMPLITUDE_TARGET_DEG && starts,
+      tight: !(heavier.nominalVertical >= AMPLITUDE_TARGET_DEG && heavier.starts),
+      binds: heavier.nominalVertical >= AMPLITUDE_TARGET_DEG ? 'start' : 'target' };
+    // TODO 242 — the RADIUS, held the rim's way one level up (layout.js,
+    // BAL_R_STEP): a row below BALANCE_R_REF shrank its wheel because even the
+    // lightest rim on the grid the metal allows could not reach the target at
+    // the reference, so the wheel one step larger at that rim must fail.
+    const rimFloorF = balanceWheelDims({ radius: BALANCE_R, thickness: BAL_T }).rimFloorF;
+    const rimFloor = Math.ceil(rimFloorF / BAL_RIM_STEP - 1e-9) * BAL_RIM_STEP;
+    const reduced = BALANCE_R < BALANCE_R_REF;
+    const larger = reduced ? atBalance(BALANCE_R + BAL_R_STEP, rimFloor) : null;
+    Object.assign(energy.amplitude.target, { radius: BALANCE_R, radiusRef: BALANCE_R_REF, radiusStep: BAL_R_STEP, rimFloorF, rimFloor, larger,
+      radiusTight: !larger || !(larger.nominalVertical >= AMPLITUDE_TARGET_DEG && larger.starts),
+      radiusBinds: larger ? (larger.nominalVertical >= AMPLITUDE_TARGET_DEG ? 'start' : 'target') : null });
+    if (!energy.amplitude.target.radiusTight)
+      console.warn(`TODO 242: the balance at ${SPEC.vph} A/h is r ${BALANCE_R}, but one BAL_R_STEP larger (${larger.radius}) at the lightest grid rim (${rimFloor.toFixed(3)}) sustains ${larger.nominalVertical.toFixed(2)}° and starts — the wheel is smaller than it needs to be; re-solve the RATE_TABLE row's balanceR`);
+    if (!energy.amplitude.target.met || !energy.amplitude.target.tight)
+      console.warn(`TODO 207/242: BAL_RIM_F ${BAL_RIM_F} at ${SPEC.vph} A/h sustains ${nominalVertical.toFixed(2)}° nominal vertical against the ${AMPLITUDE_TARGET_DEG}° target and ${starts ? 'starts' : 'does NOT start'} itself; one step heavier (${heavier.rimF.toFixed(3)}) sustains ${heavier.nominalVertical.toFixed(2)}° and ${heavier.starts ? 'starts' : 'does not start'} — ${energy.amplitude.target.met ? 'the rim is lighter than it needs to be' : 'the balance is too heavy for its spring'}; re-solve the RATE_TABLE row's rimF`);
+  }
+  // §346 — OIL AGEING BETWEEN SERVICES (layout.js, OIL_AGEING: a POSED law). The
+  // rows that age are the map's, not a list typed here: every FRICTION row a
+  // lubricated regime prices (REGIME_INFO, every regime but 'dry'). Each moves
+  // linearly from its FRESH corner to its AGED one in the fraction f of the
+  // interval since the last service; every other row holds its fresh value. The
+  // swing at each f is the column's own walk (GOING_POWER.at) at those
+  // coefficients, so it is the corners' closed form, not a second copy of it.
+  //
+  // The SAMPLES are what the service-life page draws by straight lines, so their
+  // spacing is derived from the page's reading: it quotes a swing to READ_DEG,
+  // and the spacing halves until the swing midway between every pair of samples
+  // reads within half of that of the line between them (in both positions).
+  {
+    const READ_DEG = 0.1;            // the page's readout: a swing to a tenth of a degree
+    const N_MAX = 1024;              // a guard on the halving, not a choice: hitting it warns
+    const oiled = new Set(Object.entries(REGIME_INFO).filter(([regime]) => regime !== 'dry').flatMap(([, v]) => v.priced));
+    const rows = Object.keys(FRICTION).filter((key) => oiled.has(key));
+    const fresh = GOING_POWER.coeffs(OIL_AGEING.fresh), aged = GOING_POWER.coeffs(OIL_AGEING.aged);
+    const coeffAt = (f) => Object.fromEntries(Object.keys(FRICTION).map((key) =>
+      [key, rows.includes(key) ? fresh[key] + (aged[key] - fresh[key]) * f : fresh[key]]));
+    const swingAt = (f) => {
+      const C = GOING_POWER.at(coeffAt(f), `oil aged ${(f * 100).toFixed(1)}%`);
+      return { f, years: f * SERVICE_INTERVAL_YEARS, etaTotal: C.etaTotal, delivered_J: C.delivered_J, qOther: C.qOther,
+        pivot: { ...C.pivot }, sustainedDeg: { ...C.sustainedDeg } };
+    };
+    let n = 2, samples, interpErrDeg;
+    for (;;) {
+      samples = Array.from({ length: n + 1 }, (_, i) => swingAt(i / n));
+      interpErrDeg = 0;
+      for (let i = 0; i < n; i++) {
+        const mid = swingAt((i + 0.5) / n);
+        for (const pos of ['vertical', 'flat'])
+          interpErrDeg = Math.max(interpErrDeg, Math.abs(mid.sustainedDeg[pos] - (samples[i].sustainedDeg[pos] + samples[i + 1].sustainedDeg[pos]) / 2));
+      }
+      if (interpErrDeg <= READ_DEG / 2 || n >= N_MAX) break;
+      n *= 2;
+    }
+    const first = samples[0], last = samples[n];
+    const nominal = energy.corners[OIL_AGEING.fresh].sustainedDeg;
+    const falls = samples.every((s, i) => i === 0 || (s.sustainedDeg.vertical <= samples[i - 1].sustainedDeg.vertical
+      && s.sustainedDeg.flat <= samples[i - 1].sustainedDeg.flat));
+    energy.oilAgeing = {
+      posed: OIL_AGEING.posed, shape: OIL_AGEING.shape, why: OIL_AGEING.why,
+      fresh: OIL_AGEING.fresh, aged: OIL_AGEING.aged, rows, held: Object.keys(FRICTION).filter((key) => !oiled.has(key)),
+      coefficients: { fresh: Object.fromEntries(rows.map((key) => [key, fresh[key]])), aged: Object.fromEntries(rows.map((key) => [key, aged[key]])) },
+      intervalYears: SERVICE_INTERVAL_YEARS, readDeg: READ_DEG, intervals: n, interpErrDeg, samples,
+      dropDeg: { vertical: first.sustainedDeg.vertical - last.sustainedDeg.vertical, flat: first.sustainedDeg.flat - last.sustainedDeg.flat },
+      endDeg: { ...last.sustainedDeg }, targetDeg: AMPLITUDE_TARGET_DEG, claimDeg: AMPLITUDE_CLAIM_DEG,
+      falls, claimHolds: last.sustainedDeg.vertical >= AMPLITUDE_CLAIM_DEG,
+      law: 'μ(f) = μ_fresh + (μ_aged − μ_fresh)·f on the oiled rows, f = years since service / interval; θ(f) the column\'s sustained swing at μ(f) — POSED',
+    };
+    if (!(Math.abs(first.sustainedDeg.vertical - nominal.vertical) <= 1e-9 && Math.abs(first.sustainedDeg.flat - nominal.flat) <= 1e-9))
+      console.warn(`§346: fresh oil sustains ${first.sustainedDeg.vertical.toFixed(6)}° vertical where the ${OIL_AGEING.fresh} corner reads ${nominal.vertical.toFixed(6)}° — the ageing walk and the column have parted`);
+    if (!falls) console.warn('§346: the swing does not fall monotonically as the oil ages — an ageing row moved the wrong way between its corners');
+    // The bound the LAW guarantees is the aged corner's: every ageing row ends there and
+    // every held row stays fresh, so aged oil can only swing as far or further. Whether a
+    // build's band minimum reaches AMPLITUDE_CLAIM_DEG is TODO 192's assert, not this one
+    // (geared-36's adverse corner is under the default's claim and declares that warning);
+    // the equalisation gate's row 23 still holds the claim on the default build.
+    const agedCorner = energy.corners[OIL_AGEING.aged].sustainedDeg;
+    if (!(last.sustainedDeg.vertical >= agedCorner.vertical && last.sustainedDeg.flat >= agedCorner.flat))
+      console.warn(`§346: aged oil sustains ${last.sustainedDeg.vertical.toFixed(2)}° vertical, under the ${OIL_AGEING.aged} corner's ${agedCorner.vertical.toFixed(2)}° — it is worse than the band allows`);
+    if (interpErrDeg > READ_DEG / 2)
+      console.warn(`§346: ${n} intervals still leave ${interpErrDeg.toFixed(4)}° between the samples' line and the swing, over half the page's ${READ_DEG}° reading`);
+  }
+  return {
+      k_Nm_per_rad: k,
+      energy,
+      section: { ...mainspring.section }, devLen_u: mainspring.devLen,
+      packing: ribbonPacking(mainspring),   // TODO 291 — r/e against the trade's band, and what bound the solve
+      // §339 — the set-up ratchet holds the RIBBON's set-up, which at ?barrels=2 is the barrel's (n times the hook's)
+      setup: PULLEY ? {
+        clicks: PULLEY.NB, teeth: SETUP_RATCHET_TEETH, sweepRad: PULLEY.setupB, hookRad: SETUP_SWEEP, gear: RIBBON_GEAR,
+        quantised: Number.isInteger(PULLEY.NB)
+          && Math.abs(PULLEY.setupB - PULLEY.NB * 2 * Math.PI / SETUP_RATCHET_TEETH) < 1e-12,
+      } : {
+        clicks: SETUP_CLICKS, teeth: SETUP_RATCHET_TEETH, sweepRad: SETUP_SWEEP,
+        quantised: Number.isInteger(SETUP_CLICKS)
+          && Math.abs(SETUP_SWEEP - SETUP_CLICKS * 2 * Math.PI / SETUP_RATCHET_TEETH) < 1e-12,
+      },
+      windFullRad: SPRING_WIND_FULL, tqEmpty: SPRING_TQ_EMPTY,
+      fuseeK: FUSEE_TORQUE_K, rLarge: FUSEE_R_LARGE,
+      momentRange_Nmm: [k * SETUP_SWEEP * 1000, k * SPRING_WIND_FULL * 1000],
+      windRangeRad: [SETUP_SWEEP, SPRING_WIND_FULL],
+      stress: ribbonStress(k / Math.pow(RIBBON_GEAR, 2), mainspring.section, [SETUP_SWEEP * RIBBON_GEAR, SPRING_WIND_FULL * RIBBON_GEAR]),   // §339: the ribbon's own k and angles
+      levelMaxDev,
+  };
+})();
 const {
   ALARM_ARBOR_BUSH_R, ALARM_ARM_LEN, ALARM_BARREL_TURNS, ALARM_BEVEL_TEETH, ALARM_CAM_RISE_FRAC, ALARM_COL_BASE_H,
   ALARM_COL_BASE_R, ALARM_COL_BORE_R, ALARM_COL_COLUMNS, ALARM_COL_H, ALARM_COL_INNER, ALARM_COL_POS,
@@ -48577,7 +48592,7 @@ const {
   ALARM_TAIL_REST_AZ, ALARM_TAIL_RISER, ALARM_TAIL_T, ALARM_TIER_DISCS, ALARM_TIER_MESHED, ALARM_TIER_VARIES,
   ALARM_TRACK_RMID, ALARM_WIND_IDLER_TEETH, ALARM_WIND_PINION_TEETH, ALARM_WIND_RATIO, ARREST_AZ, ARREST_BLANK_AT,
   ARREST_BOUND_BY, ARREST_CD, ARREST_CLICKS, ARREST_CROSS_AZ, ARREST_FINGER_AZ, ARREST_PINION_TEETH, ARREST_SLACK,
-  ARREST_SPEC, ARREST_WIND_CEILING, ARREST_Z, EQUALISATION, GONG_A1, GONG_ACOUSTICS, GONG_ARCH, GONG_BAND_TOP,
+  ARREST_SPEC, ARREST_WIND_CEILING, ARREST_Z, EQUALISATION: EQUALISATION_WITH_ALARM, GONG_A1, GONG_ACOUSTICS, GONG_ARCH, GONG_BAND_TOP,
   GONG_BLOW, GONG_BLOW_AZ, GONG_HAND, GONG_MODE_BL, GONG_POST_R, GONG_POST_R_BUILT, GONG_POST_TOP, GONG_R,
   GONG_RIM_PLANT, GONG_RIM_Z, GONG_SEAT, GONG_SEATED, GONG_SEAT_PTS, HAMMER_HEAD_GAP, HAMMER_POST_R, LIFT_PIV,
   PUSHER_HEAD_R, PUSHER_SEAT_COS, PUSHER_SEAT_SLOPE, STRIKE_SKIRT_ARM, SUB_BESIDE_R, SUB_BEVEL_MODULE,
@@ -48603,6 +48618,8 @@ const {
   gongArchModes, gongBesselJ, gongFootClearAt, gongModes, gongPost, gongPostRFor, gongRadiationFactors,
   gongRadiationFactorsPath, gongWireFrame, hammerPiv, headFace, headRest, poseAlarmReleaseRun, poseAlarmSelRing,
 } = ALARM_BUILT ? await buildAlarm() : {};
+// TODO 313 — the record every build publishes: the alarm build's { going, alarm } as before, or the going half alone
+const EQUALISATION = EQUALISATION_WITH_ALARM ?? Object.freeze({ going: EQUALISATION_GOING, alarm: null });
 if (!ALARM_BUILT) declareGoingRestoring();   // TODO 298 — the going side's rows buildAlarm() would have declared
 // §325 landing 3 — rows that name the alarm's parts, built only when the movement carries it
 const alarmRows = (f) => (ALARM_BUILT ? f() : []);
