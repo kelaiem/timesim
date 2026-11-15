@@ -98,4 +98,18 @@ for (const q of ['barrels=3', 'alarm=0&barrels=3&case=fitted']) {
   const b = boot(q);
   row(b.early.some((w) => w.startsWith('§339: ?barrels=3 is refused')) && !b.bPos && !b.going.barrelB, `5. '${q}' is refused loudly and builds the one drum`);
 }
+// 6. THE 36,000 ROW ON THIS BUILD (landing 3d): RATE_TABLE[36000].parallel's balance (r 8.25, rim 0.235) reaches the
+//    target and starts, so the record's TODO 192/216/207/242 rows are SILENT there, and the rate builds (not refused).
+//    Its remaining warnings are exactly the debts this landing records: the escape pinion's bore band (TODO 175), the
+//    maintaining detent's beak at the doubled torque (TODO 218, 221), and the stop-work's lock disc (§329).
+{
+  const b = boot('alarm=0&barrels=3&vph=36000');
+  const all = [...b.warns, ...b.early];
+  const amp = all.filter((w) => /^TODO (192|216|207\/242|242):/.test(w));
+  row(!all.some((w) => w.startsWith('TODO 292: ?vph=36000 is refused')) && amp.length === 0,
+    `6. alarm=0&barrels=3&vph=36000 builds the rate, and its balance rows are silent${amp.length ? `: ${amp.map((w) => w.slice(0, 80)).join(' | ')}` : ''}`);
+  const DECL36 = ['TODO 175: makePinion(6T, m 0.168)', 'TODO 218 detent beak', 'TODO 221 detent beak', '§329: the lock disc lets the star go'];
+  const extra36 = all.filter((w) => !DECL36.some((p) => w.startsWith(p))), stale36 = DECL36.filter((p) => !all.some((w) => w.startsWith(p)));
+  row(!extra36.length && !stale36.length, `6. its other warnings are exactly the four recorded debts (${all.length} lines)${extra36.length ? `; beyond them: ${extra36.map((w) => w.slice(0, 80)).join(' | ')}` : ''}${stale36.length ? `; stopped firing: ${stale36.join(', ')}` : ''}`);
+}
 process.exit(fail ? 1 : 0);
