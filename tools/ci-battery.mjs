@@ -1078,6 +1078,18 @@ export const SPEC_POINTS = [
   { name: 'free-alarm', q: 'case=free', expect: 'declared', sweep: true,
     expectWarns: ['§261: cased assembly'],
     why: '§343 landing 4 — the free case with the alarm and its arc gong held in the fit; boots exactly §261\'s row, swept' },
+  // §343 landing 5 — THE FITTED TONNEAU WITH ITS ALARM, SWEPT. Its seat search did not close at the 14,400 movement, so it
+  // carries §198's fallback arc and was cut to formPlate, which counts no gong: the wire and its post stood 0.000 on
+  // caseMiddle. It is now cut to a generated fit that holds the arc (src/form-fits.js; the wire 0.608 off caseMiddle, the
+  // post 0.695), and this point sweeps it. It boots §261's depth row, TODO 266's strike-opening land (−0.522, the
+  // hammer's opening against its bore; the item's fix is a re-sited hammer) and §34's selector boss at 300° against the
+  // seconds well's wall (−0.14: the larger fit grows the dial and its well; TODO 312).
+  // Its sweep reads ONE finding, not this landing's and not cleared by it: the hammer's tail (alarmTail) stands in the
+  // three-quarter plate at every pose, 0.000 on main's formPlate cut too. That is TODO 266's strike opening, which the
+  // plate cannot cut with its land; until a re-sited hammer closes it the point stays swept and out of the validated set.
+  { name: 'fitted-alarm', q: 'case=fitted', expect: 'declared', sweep: true,
+    expectWarns: ['§34 selector post az300 vs seconds-well ring', 'TODO 266: the strike group\'s opening', '§261: cased assembly'],
+    why: '§343 landing 5 — the fitted tonneau with the alarm, its fallback arc gong held in a generated fit; boots exactly §34\'s, TODO 266\'s and §261\'s rows, swept' },
   // TODO 298 landing 3 — THE BUILD WITHOUT THE ALARM, ON A BOX FORM CASE. Until TODO 298 no alarm-free box build had ever
   // been swept: the battery's tables named the alarm's units and threw, and the case was cut to the solvers' guess, through
   // the setting lever. Now the battery stands down the module's rows on the build's own word and the case is cut to its
@@ -1221,6 +1233,9 @@ const POINT_COSTS = {
   // §343 landing 4 — the free case with the alarm: against the round default it changes the case and the plates' cut, a form
   // build's reach; carried at stopwork-140's number until a run writes its own `ms` back (wall clock, never a verdict).
   'free-alarm': 1174,
+  // §343 landing 5 — the fitted tonneau with the alarm: a form build's reach, carried at free-alarm's number until a run
+  // writes its own `ms` back (wall clock, never a verdict).
+  'fitted-alarm': 1174,
   // TODO 298 landing 3 — against the round alarm default this build changes most of the movement (no alarm at all, a form
   // case and plates), stopwork-140's reach; carried at its number until a run writes its own `ms` back (wall clock, never a verdict)
   'alarm-free-fitted': 1174,

@@ -3114,7 +3114,12 @@ const FORM_SEAT_FIT = (() => {
 // (tools/form-fits.mjs iterates to that, then writes the row). The key is the spec without the knobs that move no metal
 // (the hands, the fit itself, the seat), so a frame, strap or arrest the table has no row for still falls back to formPlate
 // and warns, rather than taking a fit cut for other metal. An explicit ?formrect= wins, as it does for the seat's.
-const FORM_FIT_KEY = SPEC.caseShape && SPEC.caseShape !== 'free' && !ALARM_BUILT
+// §343 landing 5 — AND AN ALARM BUILD WITH NO SEAT TO CUT TO. A kind whose seat search did not close at this movement (the
+// fitted tonneau at 14,400) has no row FORM_SEAT_FIT can read, so it builds §198's fallback arc on the round case's annulus
+// and fell back to formPlate, which counts no gong: the wire and its post stood 0.000 on caseMiddle. Its fit holds the arc
+// (FORM_FOOTPRINT's GONG_ARC_PINS), so it is generated here like an alarm-free kind's, one boot from its own fixed point.
+// ?gong=arc is excluded: that is the seat generator measuring the bare case on purpose, at the fit it passes.
+const FORM_FIT_KEY = SPEC.caseShape && SPEC.caseShape !== 'free' && (!ALARM_BUILT || (!FORM_SEAT_FIT && SPEC.gongSeat !== 'arc'))
   ? configKey({ spec: { ...SPEC, hands: null, formRectSpec: null, gongSeat: null } }) : null;
 const FORM_ALARMFREE_FIT = FORM_FIT_KEY && !SPEC.formRectSpec && FORM_FITS[FORM_FIT_KEY] ? Object.freeze([...FORM_FITS[FORM_FIT_KEY]]) : null;
 const FORM = !SPEC.caseShape ? null
@@ -55358,10 +55363,23 @@ const FORM_FOOTPRINT = await (async () => {
         fit: fit ? { area: fit.area, pts: fit.pts.map(([x, y]) => [r4(x), r4(y)]), flat: fit.flat, worst: fit.worst.d } : null },
       hull: hull.map(([hx, hy]) => [r4(hx), r4(hy)]) };
   }
+  // §343 landing 5 — A FALLBACK ARC IS HELD IN THE FIT. The gong is out of FORM_COUNTED on the seated gong's premise
+  // that it follows the outline (a seat is laid in the case fitted without it, and GONG_SEAT_CHECK holds its wire). An
+  // alarm build with no seat carries §198's arc on the ROUND case's annulus instead, which follows nothing, so the
+  // fit holds it as the free fit does (landing 4): the arc's centreline in steps of one wire radius, each the wire's
+  // radius and the margin, and the block at the foot, each at its OWN need rather than the rim margin, since the gong
+  // stands in the case's band and not on the plate. ?gong=arc stays bare: the seat generator measures the empty case.
+  const GONG_ARC_PINS = [];
+  if (ALARM_BUILT && !GONG_SEATED && SPEC.gongSeat !== 'arc') {
+    const lo = Math.min(GONG_A0, GONG_A1), hi = Math.max(GONG_A0, GONG_A1);
+    const n = Math.max(1, Math.ceil(((hi - lo) * GONG_R) / GONG_WIRE_R));
+    for (let q = 0; q <= n; q++) { const a = lo + ((hi - lo) * q) / n; GONG_ARC_PINS.push([Math.cos(a) * GONG_R, Math.sin(a) * GONG_R, GONG_WIRE_R + CLEAR_MARGIN]); }
+    GONG_ARC_PINS.push([gongFoot.x, gongFoot.y, GONG_POST_R_BUILT]);
+  }
   let fit;
   if (FORM.kind === 'fitted') {
     const gen = fitFittedCaseSteps(hull, [x0, x1, y0, y1], { margin: M, centre: [P.dial.x, P.dial.y],
-      flatMin: FITTED_FLAT_MIN });
+      flatMin: FITTED_FLAT_MIN, pins: GONG_ARC_PINS });
     // Handed back on breathe()'s own budget but NOT through a numbered seam: the
     // boot bar's table (§267) is measured on the DEFAULT build, which never comes
     // here, so a seam would be a null row — and regenerating the table on this
@@ -55374,7 +55392,7 @@ const FORM_FOOTPRINT = await (async () => {
       if (held > breatheWorstHeld) breatheWorstHeld = held;
       if (held >= BREATHE_MS) { breatheCount++; await yieldToEventLoop(); breatheMark = performance.now(); }
     }
-  } else fit = fitCaseShape(FORM.kind, hull, [x0, x1, y0, y1], { margin: M, centre: [P.dial.x, P.dial.y] });
+  } else fit = fitCaseShape(FORM.kind, hull, [x0, x1, y0, y1], { margin: M, centre: [P.dial.x, P.dial.y], pins: GONG_ARC_PINS });
   const fb = fit.shape.bounds;
   const rect = [Math.floor(fb.xMin * 100) / 100, Math.ceil(fb.xMax * 100) / 100,
     Math.floor(fb.yMin * 100) / 100, Math.ceil(fb.yMax * 100) / 100,
@@ -55385,6 +55403,12 @@ const FORM_FOOTPRINT = await (async () => {
   let margin = Infinity;
   for (const [hx, hy] of hull) margin = Math.min(margin, FORM.inset(hx, hy));
   const holds = margin >= 0;
+  // and the fallback arc's pins at their own need (§343 landing 5)
+  for (const [px, py, m] of GONG_ARC_PINS) {
+    const d = FORM.inset(px, py);
+    if (d < m - 1e-3) { console.warn(`§343: the ${FORM.kind} case stands ${d.toFixed(3)} u outside the fallback gong at (${px.toFixed(2)}, ${py.toFixed(2)}), under its ${m.toFixed(3)} — `
+      + `boot with ?formrect=${rectText(rect).join(',')}, or run node tools/form-fits.mjs`); break; }
+  }
   if (!(margin >= M - 1e-3))
     console.warn(`§307/§308: the movement's counted metal stands ${margin.toFixed(3)} u inside the ${FORM.kind} it was cut to (required ≥ the rim margin ${M}) — `
       + `the fitted ${FORM.kind} is [${rectText(rect).join(', ')}] and the plates were cut to [${rectText([FORM.xMin, FORM.xMax, FORM.yMin, FORM.yMax, ...(FORM.fitted ? [FORM.fitted.k, FORM.fitted.tau] : [])]).join(', ')}] — `
@@ -67734,6 +67758,13 @@ window.__clock = {
     alarmCornerIndex = 0; alarmCornerWasEngaged = false; // TODO 140: and the corner's re-solved index — a session accumulator, so resetInputs owns it
     maintHold = null;                    // TODO 224: the drive on — a wind's hold is session state, and canonical is running
     balancePosition = BD.DEFAULT_POSITION; driveState = null; driveDesync = false; lastDTau = 0; // §246: canonical is hanging, posed
+    // §343 landing 5: and the boot's SYNC is a session's claim, not the reference. A virgin
+    // boot runs syncStart(), and live frames walk it pull → settle → push → catchup until
+    // the sweep hold freezes them; the alarm block is skipped while syncPhase is 'catchup'
+    // (the catch-up skips through time), so a page frozen in that phase posed the alarm
+    // detector, its reader, the feeler and the dial from stale state, and the fingerprint
+    // was a function of how fast the host reached the hold (#991's arm64 native-host).
+    syncCancel();
     syncPositionUI();
   },
   // Inspection hook: force the mechanism into an exact pose. Assigns the
