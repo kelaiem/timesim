@@ -1565,7 +1565,9 @@ export const PULLEY_BARREL = Object.freeze({ zA: 38, zB: 104, NB: 29,
 // it and holds it. THE SEAT, on the round alarm-free build (tools/second-barrel-seats.mjs, at rest): B's azimuth round
 // drum A, movement frame, degrees counter-clockwise from +x; the rule is the seat of widest margin over the drum band's
 // field, the coupling band's and both sides of the chain's span.
-export const PARALLEL_BARREL = Object.freeze({ NB: 24, zA: 96, zB: 92, barrelAzDeg: 13, seatSpec: 'alarm=0' });
+// Re-read after #989's plate-margin law shrank the round plate's room: 13° (margin 1.455 before) is no seat now, and of
+// the two left (9.5°, 10°) 10° is the wider, margin 0.146 over the field's own CLEAR_MARGIN.
+export const PARALLEL_BARREL = Object.freeze({ NB: 24, zA: 96, zB: 92, barrelAzDeg: 10, seatSpec: 'alarm=0' });
 // The drum's azimuth every reader takes (main.js' drumDir and the form rectangle's reach): ?drumaz= when given, else the
 // pulley's declared seat at ?barrels=2, else null (drumDirOf's blend, the shipped watch, bit-exact).
 export const DRUM_AZ_DEG = SPEC.drumAzDeg !== null ? SPEC.drumAzDeg : SPEC.barrels === 2 ? PULLEY_BARREL.pulleyAzDeg : null;
