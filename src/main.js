@@ -771,9 +771,16 @@ function solveSubLayers() {
 }
 
 const labelEntries = []; // { name, obj }
+// THE BUILD-REPLAY RECORD (the schematic view's "Build replay"): the order the build places its units in, and what the
+// searches that site them tried. Display only, and READ only: a search logs the candidates it already judged and the
+// answer it already kept, never a second judgement, so nothing the build measures depends on it. `atUnit` is how many
+// units stood when the search ran, which is where the replay plays it. Published as __clock.buildLog.
+const BUILD_LOG = { units: [], searches: [] };
 function registerLabel(name, obj) {
   labelEntries.push({ name, obj });
+  BUILD_LOG.units.push({ name });
 }
+const logSearch = (unit, kind, data) => { BUILD_LOG.searches.push({ unit, kind, atUnit: labelEntries.length, ...data }); };
 
 // §36 job A — DECLARED TRAVELS.
 //
@@ -2768,10 +2775,13 @@ const TRAIN_ARRANGED = SPEC.barrelStepDeg !== null || SPEC.escapeStepDeg !== nul
   }
 }
 await breathe(28);
+const BALANCE_TRACE = { tried: [] };   // the build-replay record: every balance angle the solve judged
 const { P, BALANCE_STEP_DEG, forkBaseAngle, PIN_AIM, rotAppliedRad } = solveLayout({
   ...LAYOUT_INPUTS,
   warn: (m) => console.warn(m),
+  trace: BALANCE_TRACE,
 });
+logSearch('Balance', 'points', { centre: BALANCE_TRACE.centre, pts: BALANCE_TRACE.tried, chosen: [BALANCE_TRACE.chosen], rings: BALANCE_TRACE.obstacles });
 // §308 landing 5 — THE BARREL'S OWN TURN off the design, in degrees, wrapped
 // to (−180, 180]. The fusee stands at 180° + BARREL_STEP_DEG = 145° as designed
 // (solveLayout steps the centre off it and shifts the centre to the hands), so
@@ -17581,6 +17591,9 @@ const BALANCE_COCK = (() => {
   }
   // makeCock: jewel at +COCK_JEWEL_AT·L, foot centre at −0.5·L → the
   // staff→tail distance is (0.5 + COCK_JEWEL_AT)·L.
+  // The build-replay record: each bearing the last pass judged (φ off the cut's aim), drawn as a ray to the foot.
+  logSearch('Balance cock', 'bearings', { centre: { x: P.balance.x, y: P.balance.y }, aim: TQ_CUT.aim, len: best.dFoot,
+    rows: scanRows.map((r) => ({ deg: r.deg, ok: r.clr >= CLEAR_MARGIN })), chosenDeg: best.phi / DEG2RAD });
   return { ...best, reach, length: best.dFoot / (0.5 + COCK_JEWEL_AT) };
 })();
 // COCK IN THE PLATE BAND, standing on the BASE plate. The slab occupies
@@ -19620,6 +19633,9 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
     movement.add(pillarsGroup);
     registerLabel('pillars', pillarsGroup);
   }
+  // The build-replay record: every seat the ring scan judged, and the seats kept (pillarSeats, filled below).
+  const pillarTried = [];
+  logSearch(FRAME_LANDS ? 'Base plate' : 'pillars', 'points', { centre: { x: 0, y: 0 }, pts: pillarTried, chosen: pillarSeats });
   for (const base of [45, 135, 225, 315]) {
     let best = null;
     for (let dA = 0; dA <= 60; dA += 1) {
@@ -19633,6 +19649,7 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
         for (let r = rTop; r >= plateR - 16; r -= 0.5) {
           const x = Math.cos(a) * r, y = Math.sin(a) * r;
           const c = seatClearance(x, y);
+          pillarTried.push({ x, y, ok: c >= CLEAR_MARGIN });
           // §325 landing 6: a LAND takes the first seat that holds (r runs outward in, so the outermost on the nearest bearing)
           // — on the FREE outline. §328: on every other kind a land takes the PILLAR's seat (the deepest on the ring, the
           // scan's own rule), so it stands on exactly the footprint every later siting solve was given (`pillarSeats`, the
@@ -20030,6 +20047,9 @@ ESCAPE_COCK = await (async () => {
   const discEscape = { x: P.escape.x, y: P.escape.y, r: xyRadiusAbout(escapeArbor, P.escape) };
   const discFourth = { x: P.fourth.x, y: P.fourth.y, r: xyRadiusAbout(fourthArbor, P.fourth) };
   const foot = await footFor(P.escape, discEscape, discFourth, 'foot');
+  // The build-replay record: each bearing's nearest candidate the scan judged, and the foot it kept.
+  logSearch('Escape cock', 'points', { centre: { x: P.escape.x, y: P.escape.y },
+    pts: foot.landscape.filter(Boolean).map((b) => ({ x: b.x, y: b.y, ok: b.short >= 0 })), chosen: [{ x: foot.x, y: foot.y }] });
   // 4. The floor, re-measured against the whole plan: nothing under the boss,
   //    the bar or the foot may stand higher than the floor the wheels set.
   const chain = [
@@ -49893,6 +49913,18 @@ viewHud.innerHTML = `
     <span class="label-small">Wireframe</span><!-- §291: shown as Wireframe; the mode, its id, state and ?schematic= keep the old name -->
     <button id="btn-schematic">Off</button>
   </div>
+  <!-- the build replay: the schematic view plays the build's placements in order, and the searches that sited them -->
+  <div class="row">
+    <span class="label-small">Build replay</span>
+    <button id="btn-replay">Off</button>
+  </div>
+  <div class="row" id="replay-legend" hidden>
+    <span class="label-small"><span style="color:#8b95a1">&#9632;</span> <span>placed</span>
+      <span style="color:#58b368">&#9632;</span> <span>searched</span>
+      <span style="color:#e05555">&#9632;</span> <span>refused</span>
+      <span style="color:#e0a355">&#9632;</span> <span>chosen</span></span>
+  </div>
+  <div class="row" id="replay-status" hidden><span class="label-small" id="replay-status-text"></span></div>
   <div class="row">
     <span class="label-small">Case</span>
     <button id="btn-case">On</button>
@@ -56191,7 +56223,144 @@ document.getElementById('btn-schematic').addEventListener('click', () => {
   // back on exit. A deliberate click WHILE in the mode is the new preference,
   // or leaving the mode would silently undo the click just made.
   if (reconfOn) reconfSchematicWas = SCHEMATIC.on;
+  if (!SCHEMATIC.on && BUILD_REPLAY.on) stopBuildReplay();   // the replay is a schematic-view mode
 });
+
+// --- BUILD REPLAY ----------------------------------------------------------
+// Plays BUILD_LOG back in the schematic view: each unit's plan footprint appears in the order the build placed it, and
+// where a search sited it, the candidates that search judged fan out (clear in green, refused in red) before the one it
+// kept lights (brass). It draws what the build RECORDED, never re-judges anything, and owns its own camera layer (2), so
+// the schematic tier's proxies and occluders keep their layer and their state. Every object is a Line or Points (the
+// tier's never-a-Mesh rule) flagged `schematic`, so collectUnits prunes it from every sweep, and nothing exists until the
+// button is pressed: the boot and its fingerprint are untouched.
+const BUILD_REPLAY = { on: false, group: null, raf: 0, layersWas: 0 };
+const REPLAY_LAYER = 2;
+const REPLAY_COL = { placed: 0x8b95a1, searched: 0x58b368, refused: 0xe05555, chosen: 0xe0a355 };
+const REPLAY_UNIT_S = 0.12, REPLAY_SEARCH_S = 1.6, REPLAY_FAN_S = 1.0;
+function replayObj(obj) {
+  obj.userData.schematic = true;
+  obj.layers.set(REPLAY_LAYER);
+  obj.renderOrder = 10;
+  BUILD_REPLAY.group.add(obj);
+  return obj;
+}
+const replayMat = (color, opacity = 0) => new THREE.LineBasicMaterial({ color, transparent: true, opacity, depthTest: false });
+const replayDots = (pts, color, size) => {
+  const g = new THREE.BufferGeometry().setFromPoints(pts.map((q) => new THREE.Vector3(q.x, q.y, 0)));
+  return replayObj(new THREE.Points(g, new THREE.PointsMaterial({ color, size, sizeAttenuation: false, transparent: true, opacity: 0, depthTest: false })));
+};
+// a unit's plan footprint: the convex hull of its metal in the movement's xy, sampled to a bounded vertex count
+function replayFootprint(obj) {
+  const xs = [], ys = [], v = new THREE.Vector3();
+  obj.updateWorldMatrix(true, true);
+  obj.traverse((o) => {
+    if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
+    const p = o.geometry.attributes.position, step = Math.max(1, Math.ceil(p.count / 1500));
+    for (let i = 0; i < p.count; i += step) { v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld); xs.push(v.x); ys.push(v.y); }
+  });
+  return xs.length >= 3 ? convexHull2(xs, ys, xs.length) : null;
+}
+function buildReplayTimeline() {
+  const events = [], t0 = { t: 0 };
+  const searchesAt = (k) => BUILD_LOG.searches.filter((sr) => sr.atUnit === k);
+  const pushSearches = (k) => { for (const sr of searchesAt(k)) { events.push({ kind: 'search', sr, t: t0.t }); t0.t += REPLAY_SEARCH_S; } };
+  labelEntries.forEach((e, i) => {
+    pushSearches(i);
+    const hull = replayFootprint(e.obj);
+    if (hull) {
+      const searched = BUILD_LOG.searches.some((sr) => sr.unit === e.name);
+      const line = replayObj(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(hull.map(([x, y]) => new THREE.Vector3(x, y, 0))),
+        replayMat(searched ? REPLAY_COL.searched : REPLAY_COL.placed)));
+      events.push({ kind: 'unit', name: e.name, i, line, t: t0.t });
+    }
+    t0.t += REPLAY_UNIT_S;
+  });
+  pushSearches(labelEntries.length);
+  for (const ev of events) {
+    if (ev.kind !== 'search') continue;
+    const sr = ev.sr;
+    if (sr.kind === 'bearings') {
+      const ray = (deg) => { const a = sr.aim + deg * DEG2RAD; return [new THREE.Vector3(sr.centre.x, sr.centre.y, 0),
+        new THREE.Vector3(sr.centre.x + Math.cos(a) * sr.len, sr.centre.y + Math.sin(a) * sr.len, 0)]; };
+      const seg = (rows) => new THREE.BufferGeometry().setFromPoints(rows.flatMap((r) => ray(r.deg)));
+      ev.clear = replayObj(new THREE.LineSegments(seg(sr.rows.filter((r) => r.ok)), replayMat(REPLAY_COL.searched)));
+      ev.refused = replayObj(new THREE.LineSegments(seg(sr.rows.filter((r) => !r.ok)), replayMat(REPLAY_COL.refused)));
+      ev.chosen = replayObj(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(ray(sr.chosenDeg)), replayMat(REPLAY_COL.chosen)));
+      ev.n = [ev.clear, ev.refused].map((o) => o.geometry.attributes.position.count);
+    } else {
+      ev.clear = replayDots(sr.pts.filter((q) => q.ok), REPLAY_COL.searched, 3);
+      ev.refused = replayDots(sr.pts.filter((q) => !q.ok), REPLAY_COL.refused, 3);
+      ev.chosen = replayDots(sr.chosen, REPLAY_COL.chosen, 9);
+      ev.n = [ev.clear, ev.refused].map((o) => o.geometry.attributes.position.count);
+      for (const ring of sr.rings ?? []) {
+        const pts = Array.from({ length: 49 }, (_, k) => new THREE.Vector3(ring.x + Math.cos(k / 48 * 2 * Math.PI) * ring.r, ring.y + Math.sin(k / 48 * 2 * Math.PI) * ring.r, 0));
+        (ev.rings || (ev.rings = [])).push(replayObj(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), replayMat(REPLAY_COL.refused))));
+      }
+    }
+  }
+  return { events, total: t0.t + REPLAY_SEARCH_S };
+}
+function stopBuildReplay() {
+  if (!BUILD_REPLAY.on) return;
+  BUILD_REPLAY.on = false;
+  cancelAnimationFrame(BUILD_REPLAY.raf);
+  BUILD_REPLAY.group.traverse((o) => { o.geometry?.dispose(); o.material?.dispose(); });
+  scene.remove(BUILD_REPLAY.group);
+  BUILD_REPLAY.group = null;
+  camera.layers.mask = BUILD_REPLAY.layersWas;
+  setBtnState(document.getElementById('btn-replay'), false);
+  document.getElementById('btn-replay').classList.toggle('active', false);
+  document.getElementById('replay-legend').hidden = true;
+  document.getElementById('replay-status').hidden = true;
+}
+function startBuildReplay() {
+  if (BUILD_REPLAY.on) return;
+  if (!SCHEMATIC.on) setSchematic(true);
+  BUILD_REPLAY.on = true;
+  BUILD_REPLAY.group = new THREE.Group();
+  BUILD_REPLAY.group.userData.schematic = true;
+  scene.add(BUILD_REPLAY.group);
+  const { events, total } = buildReplayTimeline();
+  BUILD_REPLAY.layersWas = camera.layers.mask;
+  camera.layers.set(REPLAY_LAYER);
+  // A plan view from the movement side, square to the plate: the footprints and the searches are drawn in the plate's
+  // plane, and any oblique view skews them. Framed on the case body by the camera block's own 42° fit rule (≈3.8 × the
+  // radius to fill ~70% of the half-frame), and the 0.9 s fly-to (a snap under reduced motion) every preset uses.
+  goToPose(new THREE.Vector3(P.dial.x, P.dial.y, CASE_R_OUT * 3.8), new THREE.Vector3(P.dial.x, P.dial.y, 0));
+  setBtnState(document.getElementById('btn-replay'), true);
+  document.getElementById('btn-replay').classList.toggle('active', true);
+  document.getElementById('replay-legend').hidden = false;
+  document.getElementById('replay-status').hidden = false;
+  const status = document.getElementById('replay-status-text'), nUnits = labelEntries.length;
+  const start = performance.now();
+  const step = () => {
+    if (!BUILD_REPLAY.on) return;
+    const t = (performance.now() - start) / 1000;
+    let label = null;
+    for (const ev of events) {
+      const u = (t - ev.t);
+      if (ev.kind === 'unit') {
+        ev.line.material.opacity = u < 0 ? 0 : Math.min(1, u / REPLAY_UNIT_S) * 0.85;
+        if (u >= 0) label = `${ev.i + 1} / ${nUnits} · ${t_(ev.name)}`;
+      } else {
+        const fan = u < 0 ? 0 : Math.min(1, u / REPLAY_FAN_S), live = u >= 0 && u < REPLAY_SEARCH_S;
+        ['clear', 'refused'].forEach((k, j) => {
+          ev[k].geometry.setDrawRange(0, Math.floor(ev.n[j] * fan / (ev.sr.kind === 'bearings' ? 2 : 1)) * (ev.sr.kind === 'bearings' ? 2 : 1));
+          ev[k].material.opacity = u < 0 ? 0 : live ? 0.55 : 0.12;
+        });
+        ev.chosen.material.opacity = u < REPLAY_FAN_S ? 0 : 1;
+        for (const r of ev.rings ?? []) r.material.opacity = u < 0 ? 0 : live ? 0.5 : 0.1;
+        if (live) label = `${t_(ev.sr.unit)} · ${fmtInt((ev.sr.rows ?? ev.sr.pts).length)}`;
+      }
+    }
+    if (label) status.textContent = label;
+    if (t > total + 1) { stopBuildReplay(); return; }
+    BUILD_REPLAY.raf = requestAnimationFrame(step);
+  };
+  BUILD_REPLAY.raf = requestAnimationFrame(step);
+}
+const t_ = (s) => t(s);   // display only (CLAUDE.md: values stay canonical, display translates)
+document.getElementById('btn-replay').addEventListener('click', () => (BUILD_REPLAY.on ? stopBuildReplay() : startBuildReplay()));
 
 // Backlog (watch case) — the case line-drawing's own toggle. Tier furniture
 // with no tick-law visibility, so the mesh.visible invariant does not apply
@@ -67160,6 +67329,7 @@ refreshConfigMark();
 // Debug/verification hook: step the sim and render without rAF (occluded windows
 // throttle requestAnimationFrame, which stalls automated checks).
 window.__clock = {
+  buildLog: BUILD_LOG,   // the build-replay record (BUILD_LOG beside registerLabel): unit order and what the searches tried
   // §75 step 1 — the mainspring drum's placement in the movement frame (P's x/y): centre, direction off the fusee (P.barrel),
   // its absolute azimuth in degrees (counter-clockwise from +x, the frame ?drumaz= takes), the centre distance and the chain
   // coil's outer reach (DRUM_WRAP_R + CHAIN_END_R_OUT). Serializable, for the drum probes.

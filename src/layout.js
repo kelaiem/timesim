@@ -2604,6 +2604,7 @@ export function solveLayout({
   swept,          // { great, center, third, fourth, escape, balance } — measured swept radii
   clearMargin = CLEAR_MARGIN,
   warn = () => {},
+  trace = null,   // { tried: [] } — the build-replay record (main.js BUILD_LOG): every balance angle `ok` judged, in the final frame
 }) {
   const DEG2RAD = Math.PI / 180;
   const barrelPos = { x: 0, y: 0 };
@@ -2644,7 +2645,9 @@ export function solveLayout({
   ];
   const ok = (deg) => {
     const p = stepPos(escapePos, deg, escToBalance);
-    return obstacles.every((o) => Math.hypot(p.x - o.pos.x, p.y - o.pos.y) >= o.rr);
+    const clear = obstacles.every((o) => Math.hypot(p.x - o.pos.x, p.y - o.pos.y) >= o.rr);
+    if (trace) trace.tried.push({ x: p.x, y: p.y, ok: clear });   // read only: the verdict is the expression above, unchanged
+    return clear;
   };
   // TODO 196 — THE ANSWER IS THE EDGE, NOT THE SEARCH. The constraint: an
   // infeasible target walks out to the nearest clear angle, and that angle is a
@@ -2778,6 +2781,15 @@ export function solveLayout({
   // rotAppliedRad: §33 step 3's handles map pointer azimuths back into the
   // solver's (unrotated) frame — the one place the applied rotation must
   // be visible downstream.
+  // The replay trace is mapped into the final frame (the recentring shift, then the crown's rotation) the same way P was,
+  // AFTER P is built, so no float of the layout itself is touched.
+  if (trace) {
+    const c = Math.cos(rotApplied), sn = Math.sin(rotApplied);
+    const toFinal = (q) => { const r = shift(q); return { x: r.x * c - r.y * sn, y: r.x * sn + r.y * c }; };
+    trace.tried = trace.tried.map((t) => ({ ...toFinal(t), ok: t.ok }));
+    trace.centre = P.escape; trace.chosen = P.balance;
+    trace.obstacles = obstacles.map((o) => ({ ...toFinal(o.pos), r: o.rr - rBal - clearMargin }));
+  }
   return { P, BALANCE_STEP_DEG, forkBaseAngle: forkBaseOut, PIN_AIM: pinAimOut, rotAppliedRad: rotApplied };
 }
 
