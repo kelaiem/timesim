@@ -7832,9 +7832,10 @@ const bushLengthFor = (journalR, overhangs) => Math.max(2 * journalR * MW_BUSH_L
 const stubBushFor = (footSpec) => {
   const len = bushLengthFor(MW_RISE_R, [footSpec.zWebHi + CLEAR_MARGIN - bevelLoadZ(footSpec),
     MW_CAP_CORNER_SPEC.zWebHi + CLEAR_MARGIN - bevelLoadZ(MW_CAP_CORNER_SPEC)]);
-  // each web a margin off the bush, as the envelope judge CERTIFIES it: revolvedBlankDiscClearance samples the
-  // blank's surface at its own resolution and reads a bush exactly a margin off a web as short, so the pad past
-  // the margin is the least the judge signs for (scanned at its finest step), per blank
+  // each web a margin off the bush, as the envelope judge CERTIFIES it: revolvedBlankDiscClearance reads a bush
+  // coaxial with its blank on the two meridians (§338 landing 17), sampled at the finest step, and reads one
+  // exactly a margin off a web as short by up to half that step, so the pad past the margin is the least the
+  // judge signs for (scanned at its finest step), per blank
   const padF = webPadFor(footSpec, len), padC = webPadFor(MW_CAP_CORNER_SPEC, len);
   return { len, padF, padC, floor: footSpec.zWebHi + CLEAR_MARGIN + padF + len + padC + CLEAR_MARGIN + MW_CAP_CORNER_SPEC.zWebHi };
 };
