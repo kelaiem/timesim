@@ -67758,6 +67758,13 @@ window.__clock = {
     alarmCornerIndex = 0; alarmCornerWasEngaged = false; // TODO 140: and the corner's re-solved index — a session accumulator, so resetInputs owns it
     maintHold = null;                    // TODO 224: the drive on — a wind's hold is session state, and canonical is running
     balancePosition = BD.DEFAULT_POSITION; driveState = null; driveDesync = false; lastDTau = 0; // §246: canonical is hanging, posed
+    // §343 landing 5: and the boot's SYNC is a session's claim, not the reference. A virgin
+    // boot runs syncStart(), and live frames walk it pull → settle → push → catchup until
+    // the sweep hold freezes them; the alarm block is skipped while syncPhase is 'catchup'
+    // (the catch-up skips through time), so a page frozen in that phase posed the alarm
+    // detector, its reader, the feeler and the dial from stale state, and the fingerprint
+    // was a function of how fast the host reached the hold (#991's arm64 native-host).
+    syncCancel();
     syncPositionUI();
   },
   // Inspection hook: force the mechanism into an exact pose. Assigns the
