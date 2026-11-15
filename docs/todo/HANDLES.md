@@ -42,6 +42,7 @@ heading, and [the index](../../TODO.md) is where it is shown.
 
 | item | handle |
 |---|---|
+| 315 | rate probe expects 18,000 |
 | 313 | equalisation absent alarm-free |
 | 312 | well meets selector boss |
 | 311 | tripwire reads unposed levers |
