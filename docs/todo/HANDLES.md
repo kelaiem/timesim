@@ -42,6 +42,7 @@ heading, and [the index](../../TODO.md) is where it is shown.
 
 | item | handle |
 |---|---|
+| 314 | geared bulge thins land |
 | 313 | equalisation absent alarm-free |
 | 312 | well meets selector boss |
 | 311 | tripwire reads unposed levers |
