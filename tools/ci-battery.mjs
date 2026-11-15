@@ -239,7 +239,11 @@ const SPEC_BOOT_RATIO = Object.freeze({
   'barrelstep=-20': 2.5,      // 58.4 s
   'rsvr=20': 2.2,             // 52.7 s
   'rsvr=30': 2.2,             // 50.8 s
-  'reserveh=48&rsvr=27': 2.3, // 53.6 s
+  // §337 landing 3 (2026-11-15): both 48 h points build the GEARED stop-work now, the default away from 30 h. Native host, one
+  // at a time on the dev container, the default 26.4 s: reserveh=48 69.8 s, reserveh=48&rsvr=27 159.7 s, and the latter under
+  // ?arrest=stop-iron (its build until today) 125.8 s, so its 2.3 was already stale by 4.8× before the gear added its search.
+  'reserveh=48&rsvr=27': 6.1, // 159.7 s against 26.4 s (was 2.3, 53.6 s)
+  'reserveh=48': 2.7,         // 69.8 s against 26.4 s
   // §337 stage 3's two geared points, measured the same way on 2026-11-07, M2 Max, two solo passes each (the default 13.7
   // and 13.9 s on the same two passes; each ratio is the slowest point over the fastest default, rounded up to a tenth, as
   // every row above): a geared reserve re-solves the Geneva line, scans every finger and star direction at 3° for the least
@@ -1105,6 +1109,11 @@ export const SPEC_POINTS = [
   // itself), and §47's stop iron is the supported alternative, `?arrest=stop-iron`: swept here so it stays buildable.
   { name: 'stop-iron', q: 'arrest=stop-iron', expect: 'silent', sweep: true,
     why: '§329 — §47\'s stop iron on the default build: the shipped arrest until the stop-work became the default (2026-11-05), kept buildable and swept' },
+  // §337 landing 3 (2026-11-15) — THE GEARED GENEVA IS THE DEFAULT AWAY FROM 30 h, so these two rows now boot the bare reserve
+  // (`?arrest=geared` normalises to it, the same build under the same key) and the landing 2b account below reads with "the
+  // key" meaning "the default". What they hold is unchanged: the reserve's own debt, the arrest's six rows gone, exactly.
+  // §47's stop iron at a reserve is `?arrest=stop-iron&reserveh=N`, which no longer folds.
+  //
   // §337 landing 2b stage 3 — THE GEARED GENEVA, BOOTED. `?arrest=geared` gears a finger wheel off the cone so a reserve
   // whose direct star has no exact stop gets one. BOTH ROWS CARRY A RESERVE, and that is the whole reason they exist as a
   // pair: the bare key is the DEFAULT MOVEMENT. At 30 h the line is `direct` (g = 1), the key folds to null and §329's own
@@ -1129,7 +1138,7 @@ export const SPEC_POINTS = [
   // movement, at a reserve carrying twelve red rows of its own before the key is read. Stage 3 makes no clean-sweep claim
   // and this table must not imply one (validated-configs takes only clean rows). A boot, at the cost of a boot: 31.2 s and
   // 41.4 s solo against the default's 13.7 (M2 Max, 2026-11-07), which is what SPEC_BOOT_RATIO's two rows carry.
-  { name: 'geared-24', q: 'arrest=geared&reserveh=24', expect: 'declared',
+  { name: 'geared-24', q: 'reserveh=24', expect: 'declared',
     // TODO 291 moved this reserve's own debt by one row each way: the honest spring's lower torque brackets the
     // detent beak's relief solve (TODO 221's row went), and the 30 h balance it re-solved knocks at 24 h's serviced
     // corner (TODO 216's row came: 236.50° hanging, 334.00° dial-flat, against the knock at 310.46°). §343 landing 3 took
@@ -1142,7 +1151,7 @@ export const SPEC_POINTS = [
   // 36 h is the reserve that EARNED THE RANGE SWEEP: its worst pressure angle falls at an interior −5.81° of a ±15.49°
   // range, which stage 3's two-endpoint sweep would have missed (24 h's lands on the endpoint, so one of the two would
   // have read right by luck). Its set is 24 h's plus §254's flank-slope row, which a 36 h wrap carries on its own.
-  { name: 'geared-36', q: 'arrest=geared&reserveh=36', expect: 'declared',
+  { name: 'geared-36', q: 'reserveh=36', expect: 'declared',
     // TODO 291: TODO 221's row went here too (the lower torque brackets the beak's relief solve).
     expectWarns: ['fusee §254: flank slope', 'TODO 53: the drum\'s hook plane',
       'TODO 192: AMPLITUDE_CLAIM_DEG', 'TODO 207/242: BAL_RIM_F',

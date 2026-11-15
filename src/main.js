@@ -53887,6 +53887,11 @@ const FUSEE_COCK = await (async () => {
         const branchShape = new THREE.Shape(); branchOutline.forEach(([x, y], i) => (i ? branchShape.lineTo(x, y) : branchShape.moveTo(x, y))); branchShape.closePath();
         const branch = new THREE.Mesh(new THREE.ExtrudeGeometry(branchShape, { depth: FUSEE_COCK_T, bevelEnabled: false }), MATS.ribbedNickel);
         branch.name = 'fuseeCockBranch'; branch.position.z = FUSEE_BOSS_BOT; FUSEE_COCK.obj.add(branch);
+        // §337 landing 3 — the branch is the COCK's, so it is no plate load either (§336's rule, which the cock's own traverse set
+        // before the branch existed): it stands in the cone window's air, the bulge below keeps a margin off its strips and pads,
+        // and read as a keep its box and bounding circle (r 5.6 at 27 h) claimed plate it never meets — the §62 window check fired
+        // at 27 h, where the star stands furthest out, on this arm and nothing else.
+        branch.userData.notPlateLoad = true;
         // THE BULGE: the cone window gains the discs the layers need and the branch arm's slot, offset a margin (and the float tie
         // the cock's slot carries), merged into the one opening the cock's slot already makes
         const tie = M + 2 * Math.pow(2, -23) * 64;
