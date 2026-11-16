@@ -199,7 +199,7 @@ const priceAt = (F, rho, a = halfV) => {
   return { p0, sigma, p0Margin: allow / p0, sigmaMargin: L.ESCAPE_STEEL_SIGMA_Y_PA / sigma,
     rhoH, rhoB, rhoMin: Math.max(rhoH, rhoB), binds: rhoH >= rhoB ? 'hertz' : 'beam' };
 };
-const etaOf = (cname) => en.corners[cname].stages.filter((s) => s.name !== 'lever escapement').reduce((p, s) => p * s.eta, 1);
+const etaOf = (cname) => en.corners[cname].stages.filter((s) => !s.name.startsWith('lever escapement')).reduce((p, s) => p * s.eta, 1);
 near(Estar, et.Estar_Pa, 1e-12, 'the contact modulus disagrees');
 near(allow, et.p0Allow_Pa, 1e-12, 'the allowable contact pressure disagrees');
 // since TODO 299 landing 2 the radius is DERIVED (the impact's fixed point),

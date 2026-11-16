@@ -363,15 +363,22 @@ architectures, so a build whose wear record moves owes a re-run).
 draws sets the tip back by the build's own cut-back, the readouts, the √t year).
 **Since §346 it also draws the OIL AGEING**, a POSED law (`OIL_AGEING` in
 `layout.js`): the FRICTION rows a lubricated regime prices (read off
-`REGIME_INFO`, never listed; the pallet oil through `escEff`, an upper bound
-because that band also carries the drop and draw) move linearly from the
+`REGIME_INFO`, never listed; the pallet oil through `muPallet`) move linearly from the
 nominal corner to the adverse one across each interval and back at each service, and the energy
 column's own walk (`GOING_POWER.at`, each stage naming the `row` it is priced
 with) publishes the swing at each sample (`going.energy.oilAgeing`, spaced so the
 page's straight lines read within half its 0.1° readout). The `equalisation`
 gate's row 23 re-derives every sample from the two corners' stages, and
-`tools/probe-346-oil-ageing.mjs` watches it refuse nine sabotages. It moves the
-swing only: not the wear, not the rate.
+`tools/probe-346-oil-ageing.mjs` watches it refuse fifteen sabotages. It moves the
+swing only: not the wear, not the rate. **Since §346 landing 2 the escapement's
+band is SPLIT**, so the pallet oil's share is exact rather than an upper bound:
+the faces' sliding is a law of `muPallet` off the solve's own contacts
+(`palletFaces` in `src/escapement.js`: quasi-static, the tip's normal and
+friction moments about the wheel and the fork, Gauss–Legendre per run,
+frictionless exactly the solve's δ_E − δ_rest), and the REST (drop, run, pin,
+fork) is `escEff` over that law at the same corner, so no corner moves. Row 24
+holds the split from the published nodes; the record carries the share
+(`oilAgeing.palletShare`, the end with the faces held fresh).
 
 `explain.html` is the mechanism explainer (§65, plates for every
 mechanism as of §67), styled as the HUD. §95 made the PRIMER the HUD's

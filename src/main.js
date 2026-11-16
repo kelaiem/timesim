@@ -4,7 +4,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as G from './geometry.js';
 import { chooseGearedStopwork, MODULE_MIN_U as GG_MODULE_U } from './geared-geneva.js';   // §337 landing 2b
 import * as SC from './slide-cam.js';   // §325 landing 8 — the minute hand's lazy-tongs, solved in free space (pure)
-import { leverEscapement, pinNotchSteps, LOCK_DEG, RUN_DEG, EMBRACE_DEG, TOOTH_RAKE_DEG } from './escapement.js';   // TODO 226 step 3: the lever escapement's one solve
+import { leverEscapement, palletFaces, pinNotchSteps, LOCK_DEG, RUN_DEG, EMBRACE_DEG, TOOTH_RAKE_DEG } from './escapement.js';   // TODO 226 step 3: the lever escapement's one solve
 import { MeshBVH } from '../vendor/three-mesh-bvh.module.js';   // TODO 151: the jumper's siting solve measures the real metal with the battery's own closest-point machinery
 import { MATS, CRYSTAL_GLASS, stockKeyOf, xrayClearFor, applyDecorationFromAesthetics, applyBrushFromAesthetics, applyCaseMetalFromAesthetics } from './materials.js';
 import { geometryOverridePaths } from './aesthetics.js';
@@ -13556,6 +13556,35 @@ for (const row of TRAIN_PIVOT_SIZES) {
   movement.add(jewel);
   lo.jewel = jewel;
 }
+// §346 landing 2 — THE PALLET FACES' SLIDING, split out of the escapement's band.
+// FRICTION.escEff is the classical measured total, and only the faces' sliding
+// is an oil's, so the column prices that part as a law of muPallet off the
+// solve's own contacts (escapement.js palletFaces says how) and the REST as the
+// band over that law at the same corner: every corner's escapement total is
+// still escEff's, and an aged pallet oil moves only the faces. The asserts are
+// the law's own controls: frictionless it is the solve's δ_E − δ_rest (virtual
+// work, step by step and summed), the slide runs along the face, the normal
+// keeps one side, no corner of the band self-locks a face, and η falls with μ.
+const PALLET_FACES = palletFaces(ESCAPEMENT, { muProbe: FRICTION.muPallet.adverse });
+{
+  const PF = PALLET_FACES, c = PF.checks;
+  if (!PF.converged)
+    console.warn(`§346 landing 2: the pallet faces' law still moved ${PF.moved.toExponential(2)} at ${PF.nodes} nodes a run, over its ${PF.tol} tolerance`);
+  if (!(Math.abs(PF.zeroQuad - PF.zero) <= 1e-9 * Math.abs(PF.zero)))
+    console.warn(`§346 landing 2: frictionless, the faces deliver ${PF.zeroQuad} where the solve's δ_E − δ_rest is ${PF.zero}`);
+  if (!(c.vw < 1e-5 && c.normalFlips === 0 && c.slideFlips === 0))
+    console.warn(`§346 landing 2: the pallet faces' contacts fail their controls — gearing off the solve's by ${c.vw.toExponential(2)}, `
+      + `${c.normalFlips} normal flip(s), ${c.slideFlips} reversal(s) of the slide inside a run`);
+  const muMax = Math.max(...FRICTION_CORNERS.map((cn) => FRICTION.muPallet[cn]));
+  const locks = PF.rows.filter((r) => !(1 + muMax * r.b > 0));
+  if (locks.length) console.warn(`§346 landing 2: ${locks.length} step(s) of the pallet faces self-lock at μ ${muMax}`);
+  const etas = FRICTION_CORNERS.map((cn) => PF.eta(FRICTION.muPallet[cn]));
+  if (!(etas.every((e) => e > 0 && e <= 1) && etas[0] >= etas[1] && etas[1] >= etas[2]))
+    console.warn(`§346 landing 2: the pallet faces' efficiency at the band's corners is ${etas.map((e) => e.toFixed(6)).join(', ')} — not in (0, 1] and falling`);
+  const rests = FRICTION_CORNERS.map((cn, i) => FRICTION.escEff[cn] / etas[i]);
+  if (!(rests.every((e) => e > 0 && e <= 1) && rests[0] >= rests[1] && rests[1] >= rests[2]))
+    console.warn(`§346 landing 2: escEff over the faces' law leaves ${rests.map((e) => e.toFixed(6)).join(', ')} for the drop, the run and the pin — not in (0, 1] and falling`);
+}
 // TODO 219 — THE ENERGY COLUMN'S LAWS, hoisted to where the train is cut. The
 // column itself is published on EQUALISATION (below, beside both ribbons), but
 // its per-corner walk — the losses from the ribbon to the balance and the
@@ -13598,8 +13627,11 @@ const GOING_POWER = (() => {
       push(`mesh ${m.name}`, 1 - Math.PI * A.muTooth * (1 / m.z1 + 1 / m.z2), 'πμ_tooth(1/z₁ + 1/z₂)', 'muTooth');
       push(`${m.arbor} arbor pivots`, 1 - A.muJewel * m.rPiv * (1 / m.rIn + 1 / m.rOut), 'μ_jewel·r_pivot·(1/r_pinion + 1/r_wheel)', 'muJewel');
     }
-    push('lever escapement', A.escEff, 'FRICTION.escEff', 'escEff');
-    const etaTrain = stages.filter((s) => s.name !== 'mainspring coil friction' && s.name !== 'lever escapement').reduce((p, s) => p * s.eta, 1);
+    // §346 landing 2: the escapement in two stages, the faces' sliding (the oil's) and the rest (no oil's).
+    // `escRest` is a coefficient `coeffs` DERIVES per corner, so the product is escEff's at every corner.
+    push('lever escapement: the pallet faces', PALLET_FACES.eta(A.muPallet), 'η_faces(μ_pallet), off the solve\'s contacts (escapement.js palletFaces)', 'muPallet');
+    push('lever escapement: drop, run and pin', A.escRest, 'FRICTION.escEff ÷ η_faces(μ_pallet), both at its corner', 'escEff');
+    const etaTrain = stages.filter((s) => s.name !== 'mainspring coil friction' && !s.name.startsWith('lever escapement')).reduce((p, s) => p * s.eta, 1);
     const etaTotal = stages.reduce((p, s) => p * s.eta, 1);
     const delivered_J = etaTotal * perBeat_J;
     const tfVertical_Nm = A.muJewel * mB * g * BALANCE_PIVOT_R * OSC_U;
@@ -13620,7 +13652,12 @@ const GOING_POWER = (() => {
                springEnergyNeeded_J: needAtClaim_J / etaTotal * beats },
     };
   };
-  const coeffs = (cname) => Object.fromEntries(Object.keys(FRICTION).map((key) => [key, FRICTION[key][cname]]));
+  // A corner's coefficients: every FRICTION row's, and the escapement's REST derived from two of them (§346 landing 2).
+  const coeffs = (cname) => {
+    const A = Object.fromEntries(Object.keys(FRICTION).map((key) => [key, FRICTION[key][cname]]));
+    A.escRest = A.escEff / PALLET_FACES.eta(A.muPallet);
+    return A;
+  };
   const corner = (cname) => at(coeffs(cname), cname);
   return { k, released_J, reserve_s, beats, meshes, trainRatio, fuseeTorque_Nm, escapeTorque_Nm, perBeat_J,
     rArbor, rWrap, rFuseeMean, rGreat, kB, mB, g, thetaClaim, UPSTREAM, at, coeffs, corner };
@@ -13767,7 +13804,7 @@ const BALANCE_DRIVE = (() => {
   const ESC_TORQUE = (() => {
     const { notch, unlockHalf, entryHalf, liftHalf } = PIN_FORK, endHalf = FORK_CROSSING.endHalf;
     const T = GOING_POWER.escapeTorque_Nm;
-    const etaPath = C.stages.filter((st) => st.name !== 'lever escapement').reduce((p, st) => p * st.eta, 1);
+    const etaPath = C.stages.filter((st) => !st.name.startsWith('lever escapement')).reduce((p, st) => p * st.eta, 1);
     // δ along each branch of the contact (escapeAngle: φ = −ψ, the +x stone unlocking on a +θ swing)
     const along = (wall) => (u) => ESCAPEMENT.deltaAt(1, -wall(u));
     const dLock = along(notch.lag), dImp = along(notch.lead);
@@ -47874,7 +47911,7 @@ const EQUALISATION_GOING = (() => {
     // TODO 219 — every figure of the walk is GOING_POWER's (hoisted to the
     // train's cut so the maintaining spring's floor reads the same laws).
     const { released_J, reserve_s, beats, meshes, trainRatio, fuseeTorque_Nm, escapeTorque_Nm, perBeat_J,
-      kB, mB, corner } = GOING_POWER;
+      kB, mB, corner, coeffs } = GOING_POWER;
     const g = GOING_POWER.g;
     if (GOING_POWER.k !== k) console.warn(`TODO 219: the energy column's k ${GOING_POWER.k} is not the record's ${k}`);
     // TODO 192 step 2 / TODO 193 — WHY EACH PIVOT IS THE SIZE IT IS, as
@@ -48026,7 +48063,7 @@ const EQUALISATION_GOING = (() => {
       const rows = [];
       for (const cname of FRICTION_CORNERS) {
         const Cc = corner(cname);
-        const etaPath = Cc.stages.filter((st) => st.name !== 'lever escapement').reduce((p, st) => p * st.eta, 1);
+        const etaPath = Cc.stages.filter((st) => !st.name.startsWith('lever escapement')).reduce((p, st) => p * st.eta, 1);
         for (const run of H.runs) {
           const tq = run.flow === 'recoil' ? escapeTorque_Nm / etaPath : escapeTorque_Nm * etaPath;
           const F = tq / (run.arm_u * OSC_U), Fl = F / tM;
@@ -48396,6 +48433,20 @@ const EQUALISATION_GOING = (() => {
       balance: { mass_kg: mB, k_Nm_per_rad: kB, g_mps2: g, claimedDeg: AMPLITUDE_CLAIM_DEG, peakDeg: AMPLITUDE_PEAK_DEG },
       resetCoupling,
       corners,
+      // §346 landing 2 — the escapement's band split: the faces' law as its steps (so the gate evaluates it
+      // without escapement.js), its controls, and what it and the rest read at each corner
+      palletFaces: {
+        nodes: PALLET_FACES.nodes, tol: PALLET_FACES.tol, muProbe: PALLET_FACES.muProbe, sigmaW: PALLET_FACES.sigmaW,
+        zeroQuad: PALLET_FACES.zeroQuad,
+        rows: PALLET_FACES.rows.map(({ stone, face, dd, a, b }) => ({ stone, face, dd, a, b })),
+        zero: PALLET_FACES.zero, beat: PALLET_FACES.beat, geometric: PALLET_FACES.geometric, perStone: PALLET_FACES.perStone,
+        checks: { ...PALLET_FACES.checks },
+        corners: Object.fromEntries(FRICTION_CORNERS.map((c) => {
+          const A = coeffs(c);
+          return [c, { muPallet: A.muPallet, escEff: A.escEff, faces: PALLET_FACES.eta(A.muPallet), rest: A.escRest }];
+        })),
+        law: 'dW = T·dδ·(1 + μ·a)/(1 + μ·b), Gauss–Legendre per run; η_faces(μ) = ΣdW(μ)/ΣdW(0); the rest = escEff ÷ η_faces(μ_pallet) at its corner',
+      },
     };
   })();
   // TODO 192 step 4 — the solve's extremes over every corner and both
@@ -48496,10 +48547,13 @@ const EQUALISATION_GOING = (() => {
     const oiled = new Set(Object.entries(REGIME_INFO).filter(([regime]) => regime !== 'dry').flatMap(([, v]) => v.priced));
     const rows = Object.keys(FRICTION).filter((key) => oiled.has(key));
     const fresh = GOING_POWER.coeffs(OIL_AGEING.fresh), aged = GOING_POWER.coeffs(OIL_AGEING.aged);
-    const coeffAt = (f) => Object.fromEntries(Object.keys(FRICTION).map((key) =>
+    // every coefficient the walk reads, the derived escapement REST among them: a held one stays fresh
+    const coeffAt = (f) => Object.fromEntries(Object.keys(fresh).map((key) =>
       [key, rows.includes(key) ? fresh[key] + (aged[key] - fresh[key]) * f : fresh[key]]));
-    const swingAt = (f) => {
-      const C = GOING_POWER.at(coeffAt(f), `oil aged ${(f * 100).toFixed(1)}%`);
+    const swingAt = (f, hold = null) => {
+      const A = coeffAt(f);
+      if (hold) A[hold] = fresh[hold];
+      const C = GOING_POWER.at(A, `oil aged ${(f * 100).toFixed(1)}%${hold ? `, ${hold} fresh` : ''}`);
       return { f, years: f * SERVICE_INTERVAL_YEARS, etaTotal: C.etaTotal, delivered_J: C.delivered_J, qOther: C.qOther,
         pivot: { ...C.pivot }, sustainedDeg: { ...C.sustainedDeg } };
     };
@@ -48519,6 +48573,12 @@ const EQUALISATION_GOING = (() => {
     const nominal = energy.corners[OIL_AGEING.fresh].sustainedDeg;
     const falls = samples.every((s, i) => i === 0 || (s.sustainedDeg.vertical <= samples[i - 1].sustainedDeg.vertical
       && s.sustainedDeg.flat <= samples[i - 1].sustainedDeg.flat));
+    // §346 landing 2 — THE PALLET OIL'S SHARE, now exact under the faces' law: the interval's end with every
+    // other oil aged and the pallet faces' held fresh, against the whole fall. (The shares do not add: each
+    // stage multiplies the others, so this is the pallet oil's share given everything else aged.)
+    const withoutPallet = swingAt(1, 'muPallet').sustainedDeg;
+    const palletShare = { withoutDeg: { ...withoutPallet },
+      shareDeg: { vertical: withoutPallet.vertical - last.sustainedDeg.vertical, flat: withoutPallet.flat - last.sustainedDeg.flat } };
     energy.oilAgeing = {
       posed: OIL_AGEING.posed, shape: OIL_AGEING.shape, why: OIL_AGEING.why,
       fresh: OIL_AGEING.fresh, aged: OIL_AGEING.aged, rows, held: Object.keys(FRICTION).filter((key) => !oiled.has(key)),
@@ -48526,7 +48586,7 @@ const EQUALISATION_GOING = (() => {
       intervalYears: SERVICE_INTERVAL_YEARS, readDeg: READ_DEG, intervals: n, interpErrDeg, samples,
       dropDeg: { vertical: first.sustainedDeg.vertical - last.sustainedDeg.vertical, flat: first.sustainedDeg.flat - last.sustainedDeg.flat },
       endDeg: { ...last.sustainedDeg }, targetDeg: AMPLITUDE_TARGET_DEG, claimDeg: AMPLITUDE_CLAIM_DEG,
-      falls, claimHolds: last.sustainedDeg.vertical >= AMPLITUDE_CLAIM_DEG,
+      falls, claimHolds: last.sustainedDeg.vertical >= AMPLITUDE_CLAIM_DEG, palletShare,
       law: 'μ(f) = μ_fresh + (μ_aged − μ_fresh)·f on the oiled rows, f = years since service / interval; θ(f) the column\'s sustained swing at μ(f) — POSED',
     };
     if (!(Math.abs(first.sustainedDeg.vertical - nominal.vertical) <= 1e-9 && Math.abs(first.sustainedDeg.flat - nominal.flat) <= 1e-9))

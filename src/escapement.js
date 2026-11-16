@@ -270,6 +270,123 @@ export function leverEscapement({ span, beatRad, bank0Rad, sense, lockDeg = LOCK
   };
 }
 
+// §346 landing 2 — THE PALLET FACES' SLIDING, priced off this solve. The
+// escapement's efficiency band (layout.js FRICTION.escEff) is the classical
+// measured total: drop, draw, the faces' sliding, the unlocking, the pin in the
+// fork. Only the sliding is an oil's, so to age the pallet oil and no more, the
+// sliding is split out here as a law of the face friction μ, read off the same
+// contacts the wheel's angle is (`deltaOnLockFace`, `deltaOnImpulseFace`).
+//
+// THE LAW, quasi-static (the wheel and the fork massless, as the energy column
+// treats the train). The tooth's tip bears on a stone's face at P with a normal
+// force N along n (into the stone) and a friction μN along the face, opposing
+// the tip's slide over the stone. The train holds the wheel against that force,
+// so N follows from the escape torque T, and the fork turns under it. Where the
+// wheel advances dδ, the work the fork takes is
+//
+//   dW = T·dδ·(1 + μ·a)/(1 + μ·b),   a = τ_f,t/τ_f,n,   b = τ_w,t/τ_w,n,
+//
+// τ the moments of the normal (n) and the friction (t) about the fork's pivot
+// (f) and the wheel's centre (w). At μ = 0 that is T·dδ, virtual work, so the
+// frictionless beat delivers T(δ_E − δ_rest): the impulse less the recoil. The
+// UNLOCK is the same law run backwards (dδ < 0, the balance paying), and the
+// friction makes it cost more; the IMPULSE makes it deliver less. The drop and
+// the run are the wheel's own travel with nothing delivered, and are not here.
+//
+// The integral over each run (the unlock down a stone's locking face, the
+// impulse along its impulse face) is GAUSS–LEGENDRE in the fork's angle, the
+// gearing dδ/dφ = −σ_w·τ_f,n/τ_w,n taken off the same moments (virtual work, and
+// a control holds it to the solve's own δ by finite difference). Each node's
+// (dd = w·dδ/dx·Δx, a, b) is published so a gate can evaluate the law without
+// this module. The node count is not chosen: it doubles until the reading at
+// `muProbe` (the band's harshest μ) stops moving by `tol`.
+//
+// `eta(μ)` is the beat's delivery at μ over its delivery at 0: the FACES'
+// efficiency alone, the factor the column multiplies in.
+function gaussLegendre(n) {
+  const x = new Array(n), w = new Array(n);
+  for (let i = 0; i < n; i++) {
+    let z = Math.cos(Math.PI * (i + 0.75) / (n + 0.5)), dp = 0;
+    for (let it = 0; it < 100; it++) {
+      let p0 = 1, p1 = z;
+      for (let k = 2; k <= n; k++) { const p2 = ((2 * k - 1) * z * p1 - (k - 1) * p0) / k; p0 = p1; p1 = p2; }
+      dp = n * (z * p1 - p0) / (z * z - 1);
+      const dz = p1 / dp;
+      z -= dz;
+      if (Math.abs(dz) < 1e-16) break;
+    }
+    x[i] = z; w[i] = 2 / ((1 - z * z) * dp * dp);
+  }
+  return { x, w };
+}
+
+export function palletFaces(esc, { muProbe, tol = 1e-12, maxNodes = 1024 } = {}) {
+  const { W0, stones, bank, unlock, beat } = esc;
+  const cross = (p, q) => p[0] * q[1] - p[1] * q[0];
+  const perp = (p) => [-p[1], p[0]];
+  const contact = (st, face, x) => {
+    const phi = st.sigma * x, A = rot(st.K, phi);
+    const v = face === 'lock' ? rot(st.tau, phi) : rot(sub(st.E, st.K), phi);
+    const q = face === 'lock' ? esc.deltaOnLockFace(st.sigma, phi) : esc.deltaOnImpulseFace(st.sigma, phi);
+    return { P: add(A, mul(v, q.t)), u: mul(v, 1 / len(v)), phi, delta: q.delta };
+  };
+  // the wheel's forward sense in the solve's frame, off the solve's own map (a tip advanced δ)
+  const st0 = stones[0], r0 = sub(st0.C, W0), r1 = sub(esc.tipAt(st0.C, 1e-3), W0);
+  const sigmaW = Math.sign(cross(r0, r1));
+  const walk = (n) => {
+    const { x: gx, w: gw } = gaussLegendre(n);
+    const rows = [], checks = { vw: 0, normalFlips: 0, slideFlips: 0 };
+    for (const st of stones)
+      for (const [face, x0, x1] of [['lock', bank, unlock], ['impulse', unlock, st.xE]]) {
+        let nPrev = null, sPrev = null;
+        const half = (x1 - x0) / 2, mid = (x1 + x0) / 2;
+        for (let i = 0; i < n; i++) {
+          const x = mid + half * gx[i], m = contact(st, face, x);
+          const rw = sub(m.P, W0), n0 = perp(m.u);
+          // the normal INTO the stone: the one whose force on the wheel resists its forward turning
+          const nf = sigmaW * cross(rw, n0) > 0 ? n0 : mul(n0, -1);
+          const tfn = cross(m.P, nf), twn = cross(rw, mul(nf, -1));
+          const g = -sigmaW * tfn / twn;                   // dδ/dφ, virtual work
+          // the control: the gearing is the solve's own, by central difference on its δ
+          const h = 1e-7 * Math.max(Math.abs(x1 - x0), 1e-9);
+          const gFd = (contact(st, face, x + h).delta - contact(st, face, x - h).delta) / (2 * h * st.sigma);
+          checks.vw = Math.max(checks.vw, Math.abs(g - gFd) / Math.max(Math.abs(gFd), 1e-12));
+          // the tip's slide over the stone, per unit of the fork's turning, in the beat's own direction of time
+          const vRel = mul(sub(mul(perp(rw), sigmaW * g), perp(m.P)), Math.sign(st.sigma * (x1 - x0)));
+          const s = Math.sign(dot(vRel, m.u));
+          if (nPrev && dot(nPrev, nf) < 0) checks.normalFlips++;
+          if (sPrev !== null && s !== sPrev) checks.slideFlips++;
+          nPrev = nf; sPrev = s;
+          const fric = mul(m.u, s);
+          const tft = cross(m.P, fric), twt = cross(rw, mul(fric, -1));
+          // dδ = g·dφ = g·σ·dx, weighted
+          rows.push({ stone: st.sigma, face, dd: gw[i] * half * g * st.sigma, a: tft / tfn, b: twt / twn });
+        }
+      }
+    return { rows, checks };
+  };
+  const evalRows = (rows, mu) => rows.reduce((p, r) => p + r.dd * (1 + mu * r.a) / (1 + mu * r.b), 0);
+  const zero = stones.reduce((p, st) => p + (st.deltaE - st.deltaRest), 0);
+  let nodes = 8, W = walk(nodes), prev = evalRows(W.rows, muProbe) / evalRows(W.rows, 0), moved = Infinity;
+  while (nodes < maxNodes) {
+    const W2 = walk(nodes * 2), cur = evalRows(W2.rows, muProbe) / evalRows(W2.rows, 0);
+    nodes *= 2; W = W2; moved = Math.abs(cur - prev); prev = cur;
+    if (moved <= tol) break;
+  }
+  const rows = W.rows;
+  const delivered0 = evalRows(rows, 0);
+  const eta = (mu) => evalRows(rows, mu) / delivered0;
+  return {
+    nodes, rows, eta, sigmaW, checks: W.checks, moved, tol, muProbe,
+    converged: moved <= tol,
+    // frictionless, as the solve's own angles and as this quadrature (the control)
+    zero, zeroQuad: delivered0,
+    beat, perStone: stones.map((st) => ({ stone: st.sigma, deltaE: st.deltaE, deltaRest: st.deltaRest })),
+    // the beat's frictionless delivery over the wheel's advance: the drop and the run are what it leaves
+    geometric: zero / stones.length / beat,
+  };
+}
+
 // TODO 226 step 3b — THE PIN IN THE NOTCH, the other half of the escapement,
 // solved in the same pure 2-D. The notch closes on the pin to a SHAKE: two
 // parallel walls standing `shake` off the pin's flanks on either side, so the
