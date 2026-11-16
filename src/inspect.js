@@ -11344,8 +11344,9 @@ export function checkOscillator(clock) {
 //     one that binds, and the wedge's sections from where the arc begins join
 //     the beak member's stress. Since TODO 219 it holds the SPRING too: the floor re-derived from the
 //     record's nominal corner (the torque at the great wheel that sustains the
-//     claim), the run one ring pitch of recoil plus the margin and the ring's
-//     tooth count the fewest whose pitch fits, k = (τ_going − τ_floor)/run, the
+//     claim), the run the click's worst recoil (since §339 its ride's crest back
+//     to the face, under a pitch) plus the margin and the ring's tooth count the
+//     fewest whose recoil fits, k = (τ_going − τ_floor)/run, the
 //     preload, k again from the blade's own compliance, and the root's stress at
 //     the working point and the stop under the alloy's low end.
 // 17. THE BALANCE KNOCKS WHERE THE METAL SAYS, AND NOT AS SERVICED (TODO 216) —
@@ -12217,8 +12218,8 @@ export function checkEqualisation(clock) {
       // Row 16, the SPRING (TODO 219). The floor is re-derived from this
       // record's own corner — the torque at the great wheel that sustains the
       // claim there, the stages upstream of the wheel out of the path — and
-      // the spring's law is held to it: the run covers one ring pitch of recoil
-      // plus the margin and is the FEWEST teeth's (one tooth fewer would not fit
+      // the spring's law is held to it: the run covers the worst recoil (§339:
+      // the click's ride, crest to face) plus the margin and is the FEWEST teeth's (one tooth fewer would not fit
       // inside the run the blade can give), k takes the torque from the
       // working point to the floor over the run, the preload is the floor's
       // angle, the blade's own compliance gives the same k, and its root works
@@ -12239,11 +12240,23 @@ export function checkEqualisation(clock) {
           if (!(sp.floor_Nm < sp.torqueRun_Nm))
             failures.push({ what: 'spring floor at or over the working torque — no run is possible', floor_Nm: sp.floor_Nm, work_Nm: sp.torqueRun_Nm });
         }
+        // §339 — the run covers the WORST RECOIL the click's ride allows (the crest
+        // back to the face, r_crest < one pitch) and the margin, and the ring is the
+        // fewest teeth whose run the blade can give: the record carries the ring one
+        // tooth coarser, refused (its recoil over the run, no cut, or a click that
+        // does not stand: a finding on its cut or its hold over a limit). A build the
+        // recoil rule refused keeps the pitch rule (a whole pitch of recoil), held as before.
         const pitch = 2 * Math.PI / sp.ringTeeth;
-        if (!(Number.isInteger(sp.ringTeeth) && rel(sp.recoilMax_rad, pitch) <= 1e-12 && rel(sp.run_rad, pitch + sp.marginRun_rad) <= 1e-12))
-          failures.push({ what: 'spring identity: run = one ring pitch + the margin', run: sp.run_rad, pitch, margin: sp.marginRun_rad, teeth: sp.ringTeeth });
-        if (!(sp.run_rad <= sp.runMax_rad && 2 * Math.PI / (sp.ringTeeth - 1) + sp.marginRun_rad > sp.runMax_rad))
-          failures.push({ what: 'ring tooth count is not the fewest whose pitch fits the blade\'s run', teeth: sp.ringTeeth, run: sp.run_rad, runMax: sp.runMax_rad });
+        const recoilOk = sp.recoilRule ? (sp.recoilMax_rad > 0 && sp.recoilMax_rad < pitch) : rel(sp.recoilMax_rad, pitch) <= 1e-12;
+        if (!(Number.isInteger(sp.ringTeeth) && recoilOk && rel(sp.run_rad, sp.recoilMax_rad + sp.marginRun_rad) <= 1e-12))
+          failures.push({ what: 'spring identity: run = the worst recoil + the margin', run: sp.run_rad, recoil: sp.recoilMax_rad, pitch, margin: sp.marginRun_rad, teeth: sp.ringTeeth, recoilRule: sp.recoilRule });
+        const b = sp.below;
+        const fewest = sp.recoilRule
+          ? !!b && b.teeth === sp.ringTeeth - 1 && (!b.cut || !b.faceFound || !(b.rCrest_rad < 2 * Math.PI / b.teeth) || b.run_rad > b.runMax_rad
+            || (b.stands === false && b.why.length > 0))   // or its click does not stand (the build's own findings on it)
+          : 2 * Math.PI / (sp.ringTeeth - 1) + sp.marginRun_rad > sp.runMax_rad;
+        if (!(sp.run_rad <= sp.runMax_rad && fewest))
+          failures.push({ what: 'ring tooth count is not the fewest whose recoil fits the blade\'s run', teeth: sp.ringTeeth, run: sp.run_rad, runMax: sp.runMax_rad, below: b ?? null });
         const k = (sp.torqueRun_Nm - sp.floor_Nm) / sp.run_rad;
         if (!(rel(sp.k_Nm_per_rad, k) <= 1e-12))
           failures.push({ what: 'spring identity: k over the run', record: sp.k_Nm_per_rad, fromSpan: k });

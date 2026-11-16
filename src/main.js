@@ -15139,12 +15139,14 @@ if (MAINT_FLANGE_BOT < MAINT_RING_TOP + 0.1)
 //    (TODO 219 records the energy bound).
 //  · ITS RUN — when a wind takes the drive off, the ring is free until its
 //    face reaches the detent's beak, so the spring first RECOILS the ring back
-//    to the beak, and only then drives the wheel on. The beak can be anywhere
-//    on the tooth it is riding, so the recoil is at most ONE PITCH of the ring —
-//    the face of the tooth behind the beak is never further than that. The run
-//    the stop allows must cover that worst recoil and still leave the pin one
-//    CLEAR_MARGIN of travel short of the stop, which is the run the spring then
-//    drives the train through: R = 2π/N + CLEAR_MARGIN/r_pin.
+//    to the beak, and only then drives the wheel on. The worst recoil is from
+//    the CREST: a beak on the ramp falls back down it onto the face of the tooth
+//    behind, a beak on the face is already there, so the most is the way from
+//    the crest back to the face, r_crest, read off the click's own ride
+//    (maintRecoil; under one pitch, which was the bound until §339 read it). The
+//    run the stop allows must cover that worst recoil and still leave the pin
+//    one CLEAR_MARGIN of travel short of the stop, which is the run the spring
+//    then drives the train through: R = r_crest(N) + CLEAR_MARGIN/r_pin.
 //  · ITS LAW — a cantilever from its foot, loaded at its free end through the
 //    pin along the face's normal (a frictionless contact). That normal is
 //    square to the blade, so its moment arm about the arbor is the contact's
@@ -15160,10 +15162,669 @@ if (MAINT_FLANGE_BOT < MAINT_RING_TOP + 0.1)
 // THE TOOTH COUNT follows: the longest blade the crossing holds, worked to the
 // alloy's limit at the working point, gives the most run any blade there can
 // (R_max = (1 − τ_floor/τ_going)·θ_work at σ = σ_lim); the ring needs the
-// fewest teeth whose pitch, plus the margin, fits inside it. Then the blade is
-// cut to the run that count needs — stiffer than the limit, so under it.
+// fewest teeth whose worst recoil, plus the margin, fits inside it (§339 — the
+// whole-pitch bound first, then the click's own ride, below). Then the blade
+// is cut to the run that count needs — stiffer than the limit, so under it.
 await breathe(105);
-const MAINT_SPRING = (() => {
+// TODO 215 — THE RING'S RUN PAST ITS DETENT, the one declaration the detent's
+// hand is read from. The maintaining wheel rides barrelArbor (the going train,
+// MOVEMENT_SENSE) and the detent stands on the plate, so while the watch runs the
+// ring turns past the beak in the train's own sense. The PAWLS see the opposite:
+// their flange is the fusee, which reverses under them in winding, so the two
+// saws of this sandwich are cut to OPPOSITE hands — which is why the ring's cut
+// used to be wrong. It shared the flange's `reverse: false`, the right hand for
+// a click the wheel passes BACKWARD, and the beak climbed each tooth's 28% face
+// while the watch ran (TODO 215, measured on the cut).
+//
+// A fixed click climbs a saw's RAMP only when the teeth lean AGAINST the
+// wheel's motion past it; `makeRatchetAndClick` leans an unreversed cut WITH its
+// `sense`, so the cut is reversed exactly when the ring runs with the train. The
+// click is then cut from the ring's own polygon (the detent block below), so
+// nothing else here carries the hand; the guard beside the pawls' (§115) steps
+// barrelMeshAngle's real run against the cut and measures which flank the beak
+// climbs.
+const MAINT_RING_RUN = MOVEMENT_SENSE;
+// TODO 217 — the click's stock (the ring's band, less a tenth).
+const MAINT_DET_CLICK_T = MAINT_RING_T * 0.9;
+// TODO 219 — the ring's tooth keeps the 24-tooth cut's PROPORTIONS (below, where
+// the ring is cut, says why): its depth fraction at N teeth.
+const maintRingDepthF = (N) => 0.2 * MAINT_TEETH / N;
+// THE CLICK, CUT FROM AN N-TOOTH RING, AND ITS RIDE (TODO 215/217/218/221) — a
+// pure function of the tooth count, so the spring's solve below can choose the
+// ring from the click's own ride before anything is cut (§339). The ring is the
+// saw makeRatchetAndClick will cut (G.ratchetOutline, its one law); the going
+// torque the beak is sized against is GOING_POWER's, which is the spring's
+// tauGo. Its rule-6 findings are COLLECTED, not raised: a candidate's finding is
+// not the build's, so the build raises the chosen cut's (the detent block).
+const maintClickCut = (N) => {
+  const warns = [], warn = (w) => warns.push(w);
+  const MAINT_RING_TEETH = N, depthF = maintRingDepthF(N);
+  const MAINT_RING_ROOT_CUT = MAINT_RING_R * (1 - depthF);
+  const MAINT_RING_POLY = G.ratchetOutline({ radius: MAINT_RING_R, teeth: N, reverse: MAINT_RING_RUN * MOVEMENT_SENSE > 0, depthF });
+  let MAINT_DET_SIGN = 1, MAINT_DET_LEVER = 1, MAINT_DET_BASE = 0, MAINT_DET_SEAT_TIP = null, MAINT_DET_PIV_R = 0;
+  let MAINT_DET_HOLD_GEOM = null, MAINT_DET_RIDE = null;
+  const pivR = windSpurR + KW_MODULE + CLEAR_MARGIN + 0.4;
+  // ---- TODO 215 — THE CLICK, CUT FROM THE RING IT HOLDS. ------------------
+  // The first click was a straight 2.518 bar aimed by a scan at a beak depth of
+  // 0.35 of the tooth — and it could never seat. Its pivot stands 0.53 outside
+  // the tip circle (r 4.970 against 4.44), so a straight bar from there to the
+  // root lies ~80° off radial and its BODY cuts through the tooth the beak sits
+  // behind: measured on the cut, 0.10–0.26 inside the ring at every pose, and
+  // solved honestly against the polygon it could only ride the tips (0.048 of
+  // travel). It also had the pawls' hand — its tip sat on the side of the pivot
+  // that loads it in TENSION when the face holds the back-drive.
+  //
+  // So the click is CRANKED, and every dimension is read off the ring's own
+  // polygon (MAINT_RING_POLY — the cut carries the hand, so the click follows
+  // whatever the ring's declaration cut):
+  //   · THE SEAT — the tip in a valley, SEAT_RELIEF off both flanks (the
+  //     hairline the instruments need between surfaces that are meant to
+  //     touch): on the V's bisector, relief/sin(half the V) from its root.
+  //   · THE PIVOT'S BEARING — the face's reaction, when winding back-drives
+  //     the ring, runs along the face's normal; the tip is placed so that line
+  //     passes THROUGH the stud. The hold is then a pure STRUT: no moment about
+  //     the pivot either way, so the face holds without the spring's help (the
+  //     hold is the saw's, TODO 210's window prices only the ride) and without
+  //     camming the beak out. That fixes the beak's azimuth from the pivot.
+  //   · THE ARM — concentric with the ring, its inner edge exactly CLEAR_MARGIN
+  //     outside the tip circle at the seat (the click's innermost pose: the ride
+  //     only ever turns it outward), and the pivot on its centreline, so the
+  //     half-width is the band between them, pivR − (MAINT_RING_R + margin).
+  //     The boss is the arm's own section, rounded about the stud.
+  //   · THE BEAK — the only metal inside the margin: the VALLEY'S OWN OFFSET
+  //     (TODO 218), a wedge whose apex is the tip. On the pivot's side its flank
+  //     runs PARALLEL TO THE RAMP, SEAT_RELIEF off it at the seat; on the far
+  //     side it runs up the face, RELIEVED off it so that the hold bears on the
+  //     APEX and nowhere else (derived below). TODO 215 cut it as a 20.40° wedge
+  //     between a radial flank and a face-parallel one, which carried the hold
+  //     almost square to its axis at 2075.7 MPa against SPRING_SIGMA_Y_PA's 800
+  //     — and whose face-parallel flank, measured, would have taken the hold at
+  //     the face's far end and cammed the click out (the contact block below).
+  const pitchR = (Math.PI * 2) / MAINT_RING_TEETH;   // TODO 219: the RING's pitch (the pawls' flange keeps MAINT_TEETH)
+  const rIn = MAINT_RING_R + CLEAR_MARGIN;            // the arm's inner edge
+  const armW = pivR - rIn;                             // the arm's half-width: the band from the margin to the stud
+  if (!(armW > 0.2 + 0.05))                            // the stud is ⌀0.4 (below); the boss must stand round it
+    warn(`TODO 215 detent click: the band between the ring's margin and the stud is ${armW.toFixed(4)} — the boss cannot stand round a ⌀0.4 stud`);
+  const _v2 = (x, y) => ({ x, y });
+  const _rot = (p, a) => _v2(p.x * Math.cos(a) - p.y * Math.sin(a), p.x * Math.sin(a) + p.y * Math.cos(a));
+  const _unit = (p) => { const l = Math.hypot(p.x, p.y); return _v2(p.x / l, p.y / l); };
+  const cutV = (() => {
+    const poly = MAINT_RING_POLY, n = poly.length;
+    let iV = 0, best = Infinity;
+    for (let i = 0; i < n; i++) {                      // a root of the cut at azimuth 0 — both hands put one there
+      const [x, y] = poly[i];
+      if (Math.hypot(x, y) > MAINT_RING_ROOT_CUT + 0.25 * (MAINT_RING_R - MAINT_RING_ROOT_CUT)) continue;
+      const a = Math.abs(Math.atan2(y, x));
+      if (a < best) { best = a; iV = i; }
+    }
+    const V = _v2(...poly[iV]), q0 = _v2(...poly[(iV + n - 1) % n]), q1 = _v2(...poly[(iV + 1) % n]);
+    const dAz = (q) => Math.abs(wrapPi(Math.atan2(q.y, q.x) - Math.atan2(V.y, V.x)));
+    // The FACE is the steep flank — 0.28 of the pitch in azimuth to the ramp's
+    // 0.72; halfway between the two is the classifier, not a tolerance.
+    const [faceTip, rampTip] = dAz(q0) < dAz(q1) ? [q0, q1] : [q1, q0];
+    if (!(dAz(faceTip) < 0.5 * pitchR && dAz(rampTip) > 0.5 * pitchR))
+      warn(`TODO 215 detent click: the ring's valley has no face/ramp pair (${(dAz(faceTip) / pitchR).toFixed(3)}, ${(dAz(rampTip) / pitchR).toFixed(3)} of a pitch)`);
+    return { V, faceTip, rampTip };
+  })();
+  const uFace = _unit(_v2(cutV.faceTip.x - cutV.V.x, cutV.faceTip.y - cutV.V.y));   // up the face, root → tip
+  const uRamp = _unit(_v2(cutV.rampTip.x - cutV.V.x, cutV.rampTip.y - cutV.V.y));
+  const halfV = Math.acos(uFace.x * uRamp.x + uFace.y * uRamp.y) / 2;
+  const uBis = _unit(_v2(uFace.x + uRamp.x, uFace.y + uRamp.y));
+  const seatD = SEAT_RELIEF / Math.sin(halfV);
+  const T0 = _v2(cutV.V.x + uBis.x * seatD, cutV.V.y + uBis.y * seatD);   // the SHARP apex's seat (TODO 215/218), the reference the radius is measured from
+  let nFace = _v2(-uFace.y, uFace.x);                  // the face's normal, out of the metal into the valley
+  if (nFace.x * (cutV.rampTip.x - cutV.V.x) + nFace.y * (cutV.rampTip.y - cutV.V.y) < 0) nFace = _v2(-nFace.x, -nFace.y);
+  const _dot = (a, b) => a.x * b.x + a.y * b.y, _crs = (a, b) => a.x * b.y - a.y * b.x;
+  const _add = (a, b, k = 1) => _v2(a.x + k * b.x, a.y + k * b.y);
+  const sdLine = (p, a, b) => { const u = _unit(_v2(b.x - a.x, b.y - a.y)); return (p.x - a.x) * u.y - (p.y - a.y) * u.x; };
+  const sgnIn = Math.sign(_crs(uFace, uRamp));            // the sense that turns the face's direction into the beak
+  // ---- TODO 221 — THE APEX IS A RADIUS, SIZED FROM THE HOLD. ---------------
+  // TODO 218 left the hold bearing on a sharp LINE: the wedge's 1/s law reached
+  // yield 0.3153 u from the apex, and inside that a line contact yields under any
+  // load. So the apex is cut to a RADIUS ρ — a cylinder on the ring's flat face,
+  // a Hertz line contact one click-thickness long — and every dimension that
+  // followed from the sharp tip is re-derived from the arc:
+  //   · THE ARC'S CENTRE on the valley's bisector at (ρ + SEAT_RELIEF)/sin(½V)
+  //     from the root, so the arc stands SEAT_RELIEF off BOTH flanks at the seat
+  //     (the tip rises up the bisector by ρ(1/sin ½V − 1)). The stud-side flank
+  //     keeps TODO 218's line, parallel to the ramp at SEAT_RELIEF, tangent to it.
+  //   · THE CONTACT is where the face is tangent to the arc: the foot of the
+  //     face's normal through the centre. The hold's line is that normal.
+  //   · THE STUD on that normal, at the pivot radius — TODO 215's strut, kept:
+  //     the hold puts no moment on the click (left on the sharp apex's line the
+  //     arc would cam it out against nothing but friction, TODO 221's measure).
+  //   · THE FACE FLANK tangent to the arc, turned into the beak until the face's
+  //     far end stands CLEAR_MARGIN off it at the instant the face reaches the
+  //     arc (TODO 218's relief, re-solved on the arc).
+  //   · ρ itself is the LARGER of two radii, each the least that does its job:
+  //     the BEAM minimum (the wedge's section where the arc begins, and every
+  //     section past it, under SPRING_SIGMA_Y_PA — the click's bending rows keep
+  //     the spring band's limit, layout.js says why) and the HERTZ radius (the
+  //     contact's peak pressure p0 = √(F·E*/(π·ρ·t)) at first yield of the click
+  //     steel's LOW end, LINE_CONTACT_FIRST_YIELD_P0_PER_Y · CLICK_STEEL_SIGMA_Y_PA).
+  //     F is the going torque over the hold line's own moment arm, which grows
+  //     as the contact moves up the face, so ρ is a fixed point of it.
+  const ARC_E_STAR = STEEL_E_PA / (2 * (1 - STEEL_NU * STEEL_NU));   // E* for steel on steel (click and ring, one band)
+  const ARC_P0_ALLOW = LINE_CONTACT_FIRST_YIELD_P0_PER_Y * CLICK_STEEL_SIGMA_Y_PA;
+  const ARC_T_M = MAINT_DET_CLICK_T * OSC_U;            // the contact line: the click's thickness (inside the ring's band)
+  const faceTipR = cutV.faceTip;
+  // The cut at a radius ρ, in the RING frame (the stud on +x comes after).
+  const arcCut = (rho) => {
+    const O = _add(cutV.V, uBis, (rho + SEAT_RELIEF) / Math.sin(halfV));
+    const C = _add(O, nFace, -rho);                     // the arc's point nearest the seated face: the hold's contact
+    const tn = _dot(C, nFace);
+    const strut = -tn + Math.sqrt(tn * tn - _dot(C, C) + pivR * pivR);   // |C + s·n| = pivR
+    const P = _add(C, nFace, strut);
+    const momentArm = Math.abs(_crs(C, nFace));          // the hold line's distance from the ring's axis
+    const F = GOING_POWER.fuseeTorque_Nm / (momentArm * OSC_U);  // the going torque on the face (the record re-reads it)
+    // The face, swung about the ring's axis until it is tangent to the arc.
+    const backS = Math.sign(_crs(C, nFace));             // the ring turn that drives the face onto the beak
+    const s0 = Math.sign(sdLine(O, cutV.V, faceTipR));
+    const gap = (d) => s0 * sdLine(O, _rot(cutV.V, backS * d), _rot(faceTipR, backS * d)) - rho;
+    let lo = 0, hi = 4 * SEAT_RELIEF / Math.hypot(C.x, C.y);
+    if (!(gap(hi) < 0)) warn('TODO 221 detent beak: the back-driven face never reaches the arc in the bracket');
+    for (let i = 0; i < 80; i++) { const m = (lo + hi) / 2; if (gap(m) > 0) lo = m; else hi = m; }
+    const holdTurn = hi;
+    const K = _rot(faceTipR, backS * holdTurn);         // the face's far end at the hold
+    // The face flank: tangent to the arc on the face's side, turned into the
+    // beak by β until K stands CLEAR_MARGIN off it.
+    const flankAt = (beta) => {
+      const u = _rot(uFace, sgnIn * beta);
+      let m = _v2(-u.y, u.x); if (_dot(m, nFace) > 0) m = _v2(-m.x, -m.y);
+      const TF = _add(O, m, rho);
+      return { u, TF, d: Math.abs(_crs(u, _v2(K.x - TF.x, K.y - TF.y))) };
+    };
+    let bLo = 0, bHi = Math.PI / 2;
+    if (!(flankAt(bLo).d < CLEAR_MARGIN && flankAt(bHi).d > CLEAR_MARGIN))
+      warn(`TODO 221 detent beak: the face flank's relief is not bracketed at ρ ${rho.toFixed(4)} (${flankAt(bLo).d.toFixed(4)}..${flankAt(bHi).d.toFixed(4)} against ${CLEAR_MARGIN})`);
+    for (let i = 0; i < 80; i++) { const m = (bLo + bHi) / 2; if (flankAt(m).d < CLEAR_MARGIN) bLo = m; else bHi = m; }
+    const relief = bHi, fl = flankAt(relief);
+    const TR = _add(T0, uRamp, _dot(_v2(O.x - T0.x, O.y - T0.y), uRamp));   // the arc's tangent on the ramp flank
+    // The wedge the two flanks make, its virtual apex, and its sections square
+    // to the bisector, each carrying F along the hold line at its midpoint's
+    // offset (TODO 218's F/A + 6Fe/tw²). Priced from where the arc begins (the
+    // farther tangent point's station) out to the kindest section, where the
+    // first flank reaches the arm's inner edge.
+    const wedge = Math.acos(clamp(_dot(uRamp, fl.u), -1, 1));
+    const bis = _unit(_add(uRamp, fl.u));
+    const A = (() => { const w = fl.u, den = _crs(uRamp, w); return _add(T0, uRamp, _crs(_v2(fl.TF.x - T0.x, fl.TF.y - T0.y), w) / den); })();
+    const onFlankR = (p, u, r) => { const b = _dot(p, u), c = _dot(p, p) - r * r; return _add(p, u, -b + Math.sqrt(b * b - c)); };
+    const sStart = Math.max(_dot(_v2(TR.x - A.x, TR.y - A.y), bis), _dot(_v2(fl.TF.x - A.x, fl.TF.y - A.y), bis));
+    const rampIn = onFlankR(T0, uRamp, rIn), faceIn = onFlankR(fl.TF, fl.u, rIn);
+    const sRoot = Math.cos(wedge / 2) * Math.min(Math.hypot(rampIn.x - A.x, rampIn.y - A.y), Math.hypot(faceIn.x - A.x, faceIn.y - A.y));
+    const nL = _unit(_v2(P.x - C.x, P.y - C.y));
+    const section = (s) => {
+      const M = _add(A, bis, s), w = 2 * s * Math.tan(wedge / 2), e = Math.abs(_crs(nL, _v2(M.x - C.x, M.y - C.y)));
+      const sigma = F / (w * OSC_U * ARC_T_M) + 6 * F * e * OSC_U / (ARC_T_M * Math.pow(w * OSC_U, 2));
+      return { s_u: s, width_u: w, offset_u: e, sigma };
+    };
+    let worst = section(sStart);
+    for (let i = 1; i <= 400; i++) { const q = section(sStart + ((sRoot - sStart) * i) / 400); if (q.sigma > worst.sigma) worst = q; }
+    const p0 = Math.sqrt((F / ARC_T_M) * ARC_E_STAR / (Math.PI * rho * OSC_U));
+    return { rho, O, C, P, strut, momentArm, F, backS, holdTurn, K, relief, uFr: fl.u, TF: fl.TF, TR, wedge, bis, A, sStart, sRoot,
+      arcStart: section(sStart), worst, root: section(sRoot), p0 };
+  };
+  // ρ: the Hertz radius (a fixed point of F(ρ), which only falls as ρ grows),
+  // the beam minimum (bisected: the worst section falls as ρ grows), and the
+  // larger of the two.
+  const ARC_RHO_HERTZ = (() => {
+    let r = 0.05;
+    for (let i = 0; i < 60; i++) r = (arcCut(r).F / ARC_T_M) * ARC_E_STAR / (Math.PI * Math.pow(ARC_P0_ALLOW, 2)) / OSC_U;
+    return r;
+  })();
+  const ARC_RHO_BEAM = (() => {
+    let lo = 1e-4, hi = Math.max(ARC_RHO_HERTZ, 0.05);
+    for (let i = 0; i < 8 && !(arcCut(hi).worst.sigma <= SPRING_SIGMA_Y_PA); i++) hi *= 1.5;
+    for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (arcCut(m).worst.sigma <= SPRING_SIGMA_Y_PA) hi = m; else lo = m; }
+    return hi;
+  })();
+  const ARC = arcCut(Math.max(ARC_RHO_HERTZ, ARC_RHO_BEAM));
+  // The arc must stay on the tooth: its contact below the face's far end by
+  // the margin it is relieved to, and the wedge still a wedge.
+  if (!(ARC.wedge > 0.1 && Math.hypot(ARC.K.x - ARC.C.x, ARC.K.y - ARC.C.y) > 2 * CLEAR_MARGIN))
+    warn(`TODO 221 detent beak: the ${ARC.rho.toFixed(4)} u radius does not fit the tooth (wedge ${(ARC.wedge / DEG2RAD).toFixed(2)}°, contact ${Math.hypot(ARC.K.x - ARC.C.x, ARC.K.y - ARC.C.y).toFixed(4)} from the face's far end)`);
+  const phiP = Math.atan2(ARC.P.y, ARC.P.x);
+  // …into the cock's azimuth frame, the stud on +x.
+  const Vz = _rot(cutV.V, -phiP), uFz = _rot(uFace, -phiP), uRz = _rot(uRamp, -phiP), uFr = _rot(ARC.uFr, -phiP);
+  const T0z = _rot(T0, -phiP), Oz = _rot(ARC.O, -phiP), Cz = _rot(ARC.C, -phiP);
+  const TFz = _rot(ARC.TF, -phiP), TRz = _rot(ARC.TR, -phiP), Az = _rot(ARC.A, -phiP);
+  // THE TIP: the arc's point on the valley's bisector, the innermost of the
+  // beak (the ride's cap and the lift's sense are read from it).
+  const Tz = _rot(_add(ARC.O, uBis, -ARC.rho), -phiP);
+  MAINT_DET_LEVER = ARC.strut;                          // |C − P|: the strut, and the arm the beak's force works at
+  MAINT_DET_BASE = 0;                                  // the click is cut in this frame, seated
+  MAINT_DET_SEAT_TIP = Tz; MAINT_DET_PIV_R = pivR;
+  const tipAz = Math.atan2(Cz.y, Cz.x);                // where the hold enters the click
+  const sideP = Math.sign(-tipAz);                     // which way round from the beak the stud lies
+  const FACE_RELIEF = ARC.relief;
+  const holdTurn = ARC.holdTurn;
+  const nFz = _rot(nFace, -phiP), faceTz = _rot(cutV.faceTip, -phiP);
+  const faceCornerAtHold = _rot(ARC.K, -phiP);
+  const onFlank = (p, u, rho) => {                     // the flank through p along u, at radius rho
+    const b = p.x * u.x + p.y * u.y, c = p.x * p.x + p.y * p.y - rho * rho;
+    const s = -b + Math.sqrt(b * b - c);
+    return _v2(p.x + s * u.x, p.y + s * u.y);
+  };
+  // The counterfactual TODO 218 decided against, kept on the record beside the
+  // decision: a flank PARALLEL to the face through the contact — where it would
+  // first bear, and the friction that would have had to hold the click there.
+  const flankBearing = (() => {
+    const P = _v2(pivR, 0);
+    const off = (faceTz.x - Cz.x) * uFz.x + (faceTz.y - Cz.y) * uFz.y;     // along the face, from the contact
+    const q = _v2(Cz.x + off * uFz.x, Cz.y + off * uFz.y);
+    const moment = (q.x - P.x) * nFz.y - (q.y - P.y) * nFz.x;               // per unit load, about the stud
+    const fricArm = Math.abs((q.x - P.x) * uFz.y - (q.y - P.y) * uFz.x);
+    const lam = (p) => p.x * uFz.x + p.y * uFz.y;                         // along the face from the axis' foot
+    return { offsetAlongFace_u: off, closeRateTip: Math.abs(lam(Cz)), closeRateCorner: Math.abs(lam(faceTz)),
+      momentPerN_u: moment, muToHold: Math.abs(moment) / fricArm };
+  })();
+  const rOut = pivR + armW;
+  const ptC = onFlank(TFz, uFr, rIn), ptD = onFlank(TFz, uFr, rOut), ptB = onFlank(TFz, uFr, pivR);
+  const ptA = onFlank(TRz, uRz, pivR);                 // the ramp flank's top, inside the arm
+  if (Math.hypot(ptA.x - pivR, ptA.y) < 0.2 + CLEAR_MARGIN)   // the stud is ⌀0.4 (below)
+    warn(`TODO 218 detent beak: the ramp flank tops out ${Math.hypot(ptA.x - pivR, ptA.y).toFixed(4)} from the stud — the beak would cover it`);
+  // The arm's sections are priced (below) from whichever lies farther from the
+  // stud: the contact's azimuth, or the arm's own beak end along the relieved
+  // flank (TODO 221: the radius's steeper relief ends the arm stud-ward of the
+  // contact). Every real section of the arm is then inside the sampled span,
+  // and the span beyond its end is priced as if the arm ran on, which only
+  // puts its centroid farther off the chord — the upper bound, as before.
+  const armFromAz = [tipAz, Math.atan2(ptC.y, ptC.x), Math.atan2(ptD.y, ptD.x)].reduce((m, a) => (sideP * a < sideP * m ? a : m));
+  // THE ARM'S OUTLINE (cock frame). The inner arc is a CIRCUMSCRIBED polygon:
+  // each chord is tangent to rIn at its midpoint, so no edge dips inside the
+  // margin between vertices (the alarm click's segment-minimum lesson). It runs
+  // from the face flank's crossing C to the stud's azimuth, the boss rounds the
+  // stud at the arm's half-width, and the outer arc returns to the flank's
+  // crossing D; D → C closes along the flank's own line.
+  const armPts = [];
+  let armInnerVertexR = rIn;                           // TODO 217: the circumscribed arc's vertex radius — the arm's shallowest section
+  {
+    const azC = Math.atan2(ptC.y, ptC.x);
+    const Nin = Math.max(4, Math.ceil(Math.abs(azC) / 0.04));
+    const dIn = -azC / Nin, rc = rIn / Math.cos(Math.abs(dIn) / 2);
+    armInnerVertexR = rc;
+    armPts.push(ptC);
+    for (let k = 0; k < Nin; k++) { const a = azC + (k + 0.5) * dIn; armPts.push(_v2(rc * Math.cos(a), rc * Math.sin(a))); }
+    const M = 12;                                      // the boss: about the stud, on the side away from the beak
+    for (let k = 0; k <= M; k++) { const th = Math.PI - sideP * Math.PI * (k / M); armPts.push(_v2(pivR + armW * Math.cos(th), armW * Math.sin(th))); }
+    const azD = Math.atan2(ptD.y, ptD.x);
+    const Nout = Math.max(4, Math.ceil(Math.abs(azD) / 0.04));
+    for (let k = 1; k <= Nout; k++) { const a = (azD * k) / Nout; armPts.push(_v2(rOut * Math.cos(a), rOut * Math.sin(a))); }
+    armPts[armPts.length - 1] = ptD;
+  }
+  // THE BEAK (cock frame): the ramp flank from its tangent point up to the
+  // arm's centreline, the top along that arc (one vertex at mid-azimuth), the
+  // face flank down to its tangent point, and the ARC back to the ramp's. The
+  // arc is cut as chords whose sagitta is a fifth of SEAT_RELIEF — the chords
+  // lie inside the circle, so the cut stands at most that much farther off
+  // than the arc the contact is priced on — with a vertex AT the contact, so
+  // the face meets the metal where the Hertz row says it does.
+  const azM = (Math.atan2(ptA.y, ptA.x) + Math.atan2(ptB.y, ptB.x)) / 2;
+  const beakPts = [TRz, ptA, _v2(pivR * Math.cos(azM), pivR * Math.sin(azM)), ptB, TFz];
+  {
+    const ang = (p) => Math.atan2(p.y - Oz.y, p.x - Oz.x);
+    const aF = ang(TFz), aC = ang(Cz), aR = ang(TRz);
+    const dStep = 2 * Math.acos(1 - SEAT_RELIEF / 5 / ARC.rho);
+    const legs = [[aF, wrapPi(aC - aF)], [aC, wrapPi(aR - aC)]];
+    if (Math.sign(legs[0][1]) !== Math.sign(legs[1][1]))
+      warn('TODO 221 detent beak: the arc from the face flank to the ramp flank does not pass the contact');
+    for (const [a0, da] of legs) {
+      const k = Math.max(1, Math.ceil(Math.abs(da) / dStep));
+      for (let j = a0 === aF ? 1 : 0; j < k; j++) { const a = a0 + (da * j) / k; beakPts.push(_v2(Oz.x + ARC.rho * Math.cos(a), Oz.y + ARC.rho * Math.sin(a))); }
+    }
+  }
+  // Rule 6, the segment minimum: at the seat every edge of the ARM stands
+  // CLEAR_MARGIN outside the tip circle (to float noise — the inner arc is
+  // tangent to it by construction).
+  const segMinR = (a, b) => {
+    const dx = b.x - a.x, dy = b.y - a.y, L2 = dx * dx + dy * dy || 1e-12;
+    const t = clamp(-(a.x * dx + a.y * dy) / L2, 0, 1);
+    return Math.hypot(a.x + t * dx, a.y + t * dy);
+  };
+  {
+    let m = Infinity;
+    for (let i = 0; i < armPts.length; i++) m = Math.min(m, segMinR(armPts[i], armPts[(i + 1) % armPts.length]));
+    if (m < rIn - 1e-9)
+      warn(`TODO 215 detent click: the arm's edge passes r ${m.toFixed(4)} at the seat — inside the tip circle + margin (${rIn.toFixed(4)})`);
+  }
+  // Rule 6: both outlines SIMPLE (the outlines gate's own question, asked at
+  // the cut — a folded ring ships open and every parity raycast lies).
+  for (const [who, pts] of [['arm', armPts], ['beak', beakPts]]) {
+    for (let i = 0; i < pts.length; i++) for (let j = i + 2; j < pts.length; j++) {
+      if (i === 0 && j === pts.length - 1) continue;
+      const a = pts[i], b = pts[(i + 1) % pts.length], c = pts[j], d = pts[(j + 1) % pts.length];
+      const s1 = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+      const s2 = (b.x - a.x) * (d.y - a.y) - (b.y - a.y) * (d.x - a.x);
+      const s3 = (d.x - c.x) * (a.y - c.y) - (d.y - c.y) * (a.x - c.x);
+      const s4 = (d.x - c.x) * (b.y - c.y) - (d.y - c.y) * (b.x - c.x);
+      if (s1 * s2 < 0 && s3 * s4 < 0) warn(`TODO 215 detent click: the ${who}'s outline self-intersects at edges ${i} and ${j}`);
+    }
+  }
+  // The lift's sense, by finite difference about the stud.
+  const tipAt = (rot) => { const q = _rot(_v2(Tz.x - pivR, Tz.y), rot); return _v2(pivR + q.x, q.y); };
+  MAINT_DET_SIGN = Math.sign(Math.hypot(tipAt(1e-4).x, tipAt(1e-4).y) - Math.hypot(Tz.x, Tz.y)) || 1;
+  // ---- TODO 217 — THE HOLD'S GEOMETRY, read off the click as cut. --------
+  // While the fusee is wound the maintaining spring's reaction comes back
+  // through the ring into the beak along the face's normal, which runs through
+  // the stud (TODO 215; since TODO 221 the normal through the arc's centre): the
+  // click holds it as a STRUT. But the strut is a CHORD — the metal between the
+  // contact and the stud is the beak and the arm running round the ring a
+  // margin outside the tips — so every section of the arm carries the load at
+  // an offset from that chord, and bends. Published here as geometry (the load
+  // is the energy column's, priced in EQUALISATION, which is defined after the
+  // fusee): the line of action, its moment arm about the ring's axis (what
+  // turns the spring's torque into a face load), and each section's offset.
+  MAINT_DET_HOLD_GEOM = (() => {
+    const P = _v2(pivR, 0);
+    const strutLen = Math.hypot(P.x - Cz.x, P.y - Cz.y);
+    const n = _v2((P.x - Cz.x) / strutLen, (P.y - Cz.y) / strutLen);   // contact → stud
+    const offLine = (q) => Math.abs((q.x - Cz.x) * n.y - (q.y - Cz.y) * n.x);
+    // THE ARM. Its sections are radial: inner edge the circumscribed arc's
+    // VERTEX radius (the shallowest the polygon cuts it), outer edge rOut, the
+    // stock CLICK_T. Sampled from armFromAz (above) to the stud, the ARM
+    // ALONE: the beak's ramp flank runs stud-ward under the arm, so the sections
+    // near the beak carry its metal too, which lies between the arm and the
+    // chord and only deepens them — the arm alone is the upper bound.
+    const ri = armInnerVertexR, ro = rOut, Rc = (ri + ro) / 2;
+    const N = 400;
+    let eMax = 0, azAt = 0;
+    for (let k = 0; k <= N; k++) {
+      const a = armFromAz * (1 - k / N);
+      const e = offLine(_v2(Rc * Math.cos(a), Rc * Math.sin(a)));
+      if (e > eMax) { eMax = e; azAt = a; }
+    }
+    // THE BEAK (TODO 218, re-cut by TODO 221). The wedge between the ramp flank
+    // and the relieved face flank, its apex cut to the arc the load arrives at.
+    // Three of its sections, square to the wedge's bisector, each carrying F
+    // along the hold line at its midpoint's offset: the KINDEST (where the
+    // first flank reaches the arm's inner edge — the row TODO 218 priced), the
+    // section where the ARC BEGINS (the farther tangent point's station), and
+    // the WORST between them. Inside the arc the beak is a contact, priced as
+    // one (EQUALISATION: Hertz, at ρ).
+    const pick = (q) => ({ s_u: q.s_u, width_u: q.width_u, offset_u: q.offset_u });
+    const beakRoot = { wedgeRad: ARC.wedge, ...pick(ARC.root), t_u: MAINT_DET_CLICK_T };
+    const arc = {
+      rho_u: ARC.rho, rhoHertz_u: ARC_RHO_HERTZ, rhoBeam_u: ARC_RHO_BEAM, binds: ARC_RHO_HERTZ >= ARC_RHO_BEAM ? 'hertz' : 'beam',
+      tipRise_u: ARC.rho * (1 / Math.sin(halfV) - 1),
+      contactUpFace_u: (Cz.x - T0z.x) * uFz.x + (Cz.y - T0z.y) * uFz.y,
+      studMove_u: Math.hypot(ARC.P.x - (() => { const tn = _dot(T0, nFace); return T0.x + nFace.x * (-tn + Math.sqrt(tn * tn - _dot(T0, T0) + pivR * pivR)); })(),
+        ARC.P.y - (() => { const tn = _dot(T0, nFace); return T0.y + nFace.y * (-tn + Math.sqrt(tn * tn - _dot(T0, T0) + pivR * pivR)); })()),
+      line_u: MAINT_DET_CLICK_T, Estar_Pa: ARC_E_STAR, p0Allow_Pa: ARC_P0_ALLOW,
+      firstYieldPerY: LINE_CONTACT_FIRST_YIELD_P0_PER_Y, steel: { ...CLICK_STEEL_SIGMA_Y_BAND },
+      arcStart: pick(ARC.arcStart), worst: pick(ARC.worst),
+    };
+    // THE CONTACT, as decided: the arc, its line through the stud, and the
+    // face's far end CLEAR_MARGIN off the relieved flank when the face reaches
+    // the arc — and the parallel flank's failure, which is why (TODO 218).
+    const contact = { model: 'radius', faceReliefRad: FACE_RELIEF, holdTurnRad: holdTurn,
+      cornerGapAtHold_u: Math.abs(sdLine(faceCornerAtHold, TFz, _v2(TFz.x + uFr.x, TFz.y + uFr.y))),
+      momentAboutStudPerN_u: (Cz.x - P.x) * nFz.y - (Cz.y - P.y) * nFz.x,
+      parallelFlank: flankBearing };
+    return {
+      strut_u: strutLen, tipR_u: Math.hypot(Tz.x, Tz.y), contactR_u: Math.hypot(Cz.x, Cz.y), rootR_u: MAINT_RING_ROOT_CUT, beakRoot, arc, contact,
+      // the face's normal and the contact→stud line are one line by construction
+      // (TODO 215/221); a click recut off it would put a moment on the pivot
+      lineVsFaceNormal: 1 - Math.abs(n.x * nFz.x + n.y * nFz.y),
+      momentArm_u: offLine(_v2(0, 0)),
+      arm: { ri_u: ri, ro_u: ro, depth_u: ro - ri, t_u: MAINT_DET_CLICK_T, centroidR_u: Rc,
+             offsetMax_u: eMax, azFromStud: azAt, azBeak: tipAz, azSampledFrom: armFromAz },
+    };
+  })();
+  // THE RIDE, on the cut. The beak's three edges densified to ≤ 0.02 (vertices
+  // are not the surface); the ring's vertices are tested against the beak too,
+  // so a tooth's corner cannot slip between two samples. A saw is star-shaped
+  // about its axis — every chord is monotone in azimuth — so the metal's
+  // boundary at an azimuth is the one chord that spans it.
+  MAINT_DET_RIDE = (() => {
+    const poly = MAINT_RING_POLY, n = poly.length;
+    const E = poly.map((a, i) => {
+      const b = poly[(i + 1) % n];
+      return { ax: a[0], ay: a[1], bx: b[0], by: b[1], a0: Math.atan2(a[1], a[0]),
+        da: wrapPi(Math.atan2(b[1], b[0]) - Math.atan2(a[1], a[0])), mid: Math.atan2(a[1] + b[1], a[0] + b[0]) };
+    });
+    const segD = (x, y, ax, ay, bx, by) => {
+      const dx = bx - ax, dy = by - ay;
+      const t = clamp(((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy), 0, 1);
+      return Math.hypot(x - ax - t * dx, y - ay - t * dy);
+    };
+    // The edges that can pass the window test below, by azimuth bin. The test
+    // keeps an edge whose midpoint is within 2·pitchR of the sample; a sample
+    // in a bin lies within half a bin of the bin's centre, so every edge it
+    // could keep is within 2·pitchR + half a bin (+ a rounding margin) of that
+    // centre — a SUPERSET, listed in E's own order. ringSd still applies the
+    // exact original test to each candidate, so it visits the same edges in the
+    // same order and returns the same double; what it no longer does is
+    // evaluate `wrapPi` (a floating-point modulo) on all 48 edges for each of
+    // the ~300,000 samples a fast-forward frame asks about.
+    const RING_NB = 96, RING_BW = (2 * Math.PI) / RING_NB;
+    const ringCand = Array.from({ length: RING_NB }, (_, b) => {
+      const c = -Math.PI + (b + 0.5) * RING_BW;
+      return E.filter((e) => Math.abs(wrapPi(e.mid - c)) <= 2 * pitchR + RING_BW / 2 + 1e-9);
+    });
+    const ringSd = (x, y) => {                         // + outside the ring's metal, − inside
+      const az = Math.atan2(y, x), r = Math.hypot(x, y);
+      let d = Infinity, rb = null;
+      const bin = Math.min(RING_NB - 1, Math.max(0, Math.floor((az + Math.PI) / RING_BW)));
+      for (const e of ringCand[bin] ?? E) {            // a NaN sample has no bin: every edge, as before
+        if (Math.abs(wrapPi(e.mid - az)) > 2 * pitchR) continue;
+        d = Math.min(d, segD(x, y, e.ax, e.ay, e.bx, e.by));
+        if (rb === null) {
+          const s = wrapPi(az - e.a0) / e.da;
+          if (s >= 0 && s <= 1) {
+            const ux = Math.cos(az), uy = Math.sin(az), dx = e.bx - e.ax, dy = e.by - e.ay;
+            rb = (e.ax * dy - e.ay * dx) / (ux * dy - uy * dx);
+          }
+        }
+      }
+      return rb !== null && r < rb ? -d : d;
+    };
+    const B = beakPts.map((p) => _v2(p.x - pivR, p.y));   // pivot-local, as cut
+    // The two FLANKS and the ARC are sampled (ramp tangent → ramp flank's top,
+    // face flank's top → its tangent → round the arc, TODO 221); the top runs
+    // inside the arm, more than a margin off the tips at every lift, and is
+    // still read through the corner test below.
+    const samples = [];
+    for (let i = 0; i < B.length; i++) {
+      if (i === 1 || i === 2) continue;                // the top's two edges
+      const j = (i + 1) % B.length;
+      const a = B[i], b = B[j], k = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 0.02));
+      for (let j = 0; j < k; j++) samples.push(_v2(a.x + ((b.x - a.x) * j) / k, a.y + ((b.y - a.y) * j) / k));
+    }
+    const area2 = B.reduce((s, p, i) => s + p.x * B[(i + 1) % B.length].y - B[(i + 1) % B.length].x * p.y, 0);
+    const beakSd = (x, y) => {                         // + outside the beak, − inside (convex)
+      let inside = true, d = Infinity;
+      for (let i = 0; i < B.length; i++) {
+        const a = B[i], b = B[(i + 1) % B.length];
+        if (Math.sign(area2) * ((b.x - a.x) * (y - a.y) - (b.y - a.y) * (x - a.x)) < 0) inside = false;
+        d = Math.min(d, segD(x, y, a.x, a.y, b.x, b.y));
+      }
+      return inside ? -d : d;
+    };
+    const cx = B.reduce((a, p) => a + p.x, 0) / B.length + pivR, cy = B.reduce((a, p) => a + p.y, 0) / B.length;
+    const reach = Math.max(...B.map((p) => Math.hypot(p.x + pivR - cx, p.y - cy))) + 0.5;
+    const clearAt = (net, t) => {
+      const lam = MAINT_DET_SIGN * t, c = Math.cos(lam), s = Math.sin(lam);
+      const cn = Math.cos(net), sn = Math.sin(net);
+      let m = Infinity;
+      for (const p of samples) {
+        const ax = pivR + p.x * c - p.y * s, ay = p.x * s + p.y * c;         // cock frame
+        m = Math.min(m, ringSd(ax * cn + ay * sn, -ax * sn + ay * cn));       // → ring-local
+      }
+      for (const [vx, vy] of poly) {
+        const ax = vx * cn - vy * sn, ay = vx * sn + vy * cn;                 // ring-local → cock frame
+        if (Math.hypot(ax - cx, ay - cy) > reach) continue;
+        const qx = ax - pivR, qy = ay;
+        m = Math.min(m, beakSd(qx * c + qy * s, -qx * s + qy * c));
+      }
+      return m;
+    };
+    // §257 — `clearAt(net, t) − SEAT_RELIEF >= 0` asked as a question. The solve
+    // below only ever tests that sign, and `m − r >= 0` is `m >= r` for doubles,
+    // so "every term is at least r" is the same answer as "the minimum of the
+    // terms is at least r" — and it can stop at the first term that is not. A
+    // NaN term fails here as it poisons the minimum there. The terms and their
+    // order are clearAt's own; `clearAt` stays whole for the instruments that
+    // read the gap itself.
+    //   And since the answer is a conjunction, the order its terms are asked
+    // in cannot change it: the term that refused the last question is asked
+    // first (the bisection's neighbouring tilts are refused by the same corner
+    // of the cut), then every term in clearAt's order. Each term is the same
+    // expression either way.
+    let lastRefuser = -1;
+    const nS = samples.length;
+    const termOk = (k, c, s, cn, sn, thr) => {
+      if (k < nS) {
+        const p = samples[k];
+        const ax = pivR + p.x * c - p.y * s, ay = p.x * s + p.y * c;
+        return ringSd(ax * cn + ay * sn, -ax * sn + ay * cn) >= thr;
+      }
+      const [vx, vy] = poly[k - nS];
+      const ax = vx * cn - vy * sn, ay = vx * sn + vy * cn;
+      if (Math.hypot(ax - cx, ay - cy) > reach) return true;
+      const qx = ax - pivR, qy = ay;
+      return beakSd(qx * c + qy * s, -qx * s + qy * c) >= thr;
+    };
+    const clearsAt = (net, t, thr) => {
+      const lam = MAINT_DET_SIGN * t, c = Math.cos(lam), s = Math.sin(lam);
+      const cn = Math.cos(net), sn = Math.sin(net);
+      if (lastRefuser >= 0 && !termOk(lastRefuser, c, s, cn, sn, thr)) return false;
+      for (let k = 0, nT = nS + poly.length; k < nT; k++) {
+        if (k === lastRefuser) continue;
+        if (!termOk(k, c, s, cn, sn, thr)) { lastRefuser = k; return false; }
+      }
+      return true;
+    };
+    // The cap: the turn that carries the tip a margin past the tip circle.
+    let cap; {
+      let lo = 0, hi = 1.5;
+      for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; const q = tipAt(MAINT_DET_SIGN * m); if (Math.hypot(q.x, q.y) < MAINT_RING_R + CLEAR_MARGIN) lo = m; else hi = m; }
+      cap = hi;
+    }
+    const liftSolve = (net) => {
+      if (clearAt(net, 0) - SEAT_RELIEF >= -1e-9) return 0;
+      let lo = 0, hi = cap;
+      for (let i = 1; i <= 24; i++) { const cand = (cap * i) / 24; if (clearsAt(net, cand, SEAT_RELIEF)) { hi = cand; lo = (cap * (i - 1)) / 24; break; } }
+      for (let i = 0; i < 32; i++) { const m = (lo + hi) / 2; if (clearsAt(net, m, SEAT_RELIEF)) hi = m; else lo = m; }
+      return hi;
+    };
+    // The tick calls this every frame and every swept pose, and the solve is
+    // up to 56 clearance passes over the cut polygon: a measured 6× on
+    // `transmits` and 2.6× on `restoring` before it was memoised. It is a
+    // PURE function of `net`, so the memo is keyed on the exact double (no
+    // quantising — every answer is bit-identical to the unmemoised solve) and
+    // bounded so a long run cannot grow it without limit.
+    const LIFT_MEMO_MAX = 8192, liftMemo = new Map();
+    const liftAt = (net) => {
+      let v = liftMemo.get(net);
+      if (v === undefined) {
+        v = liftSolve(net);
+        if (liftMemo.size >= LIFT_MEMO_MAX) liftMemo.delete(liftMemo.keys().next().value);
+        liftMemo.set(net, v);
+      }
+      return v;
+    };
+    // The tip's own gap — the contact, if the cut is ridden by the tip.
+    const tipGapAt = (net, t) => {
+      const lam = MAINT_DET_SIGN * t, q = _rot(_v2(Tz.x - pivR, Tz.y), lam);
+      const ax = pivR + q.x, ay = q.y, cn = Math.cos(net), sn = Math.sin(net);
+      return ringSd(ax * cn + ay * sn, -ax * sn + ay * cn);
+    };
+    return { liftAt, clearAt, tipGapAt, cap, seatNet: Math.atan2(Vz.y, Vz.x) - Math.atan2(cutV.V.y, cutV.V.x) };
+  })();
+  return { N, warns, poly: MAINT_RING_POLY, pitchR, armPts, _rot, _v2, pivR, segMinR, rIn, beakPts, armW,
+    sign: MAINT_DET_SIGN, lever: MAINT_DET_LEVER, base: MAINT_DET_BASE, seatTip: MAINT_DET_SEAT_TIP,
+    holdGeom: MAINT_DET_HOLD_GEOM, ride: MAINT_DET_RIDE };
+};
+// TODO 224 — THE RECOIL, read off a click's ride (MAINT_HOLD's law, step 1,
+// and the spring's tooth count since §339): the hold (the face of the tooth
+// behind, swung back from the valley, at SEAT_RELIEF off the seated beak), the
+// crest (where the beak tops the ramp), and the worst recoil between them,
+// r_crest. A pure function of the ride and the ring's tooth count.
+const maintRecoil = (ride, N) => {
+  const RUN = MAINT_RING_RUN;                    // the ring's run past the beak (TODO 215)
+  // The RECOIL's sense: the spring's reaction on the ring drives it AGAINST
+  // the run. A direction-committed declaration (TODO 115's class), made ONCE,
+  // here — MAINT_HOLD reads it back — and the guard there reads the cut, and the
+  // one at the spring's guard reads the blade.
+  const REC = -MAINT_RING_RUN;
+  const pitch = (Math.PI * 2) / N;
+  const pm = (x, p) => x - p * Math.floor(x / p);
+  const s0 = ride.seatNet;
+  // 1 — the face, swung back from the valley until it reaches the seated beak.
+  const gapBack = (d) => ride.clearAt(s0 + REC * d, 0) - SEAT_RELIEF;
+  let dHold = 0, faceFound = gapBack(0) <= 0;
+  if (!faceFound) {
+    const N = 400;
+    let lo = 0, hi = null;
+    for (let i = 1; i <= N; i++) { const d = (0.5 * pitch * i) / N; if (gapBack(d) <= 0) { hi = d; lo = (0.5 * pitch * (i - 1)) / N; break; } }
+    if (hi !== null) {
+      for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (gapBack(m) <= 0) hi = m; else lo = m; }
+      dHold = lo; faceFound = true;              // the last angle still a relief off: the face AT the apex
+    }
+  }
+  const holdNet = s0 + REC * dHold;
+  // the crest — where the beak tops the ramp (sampled, then golden section).
+  // The SAME nets RIDE_TRAVEL walked (the seat plus j/96 of a pitch, then its
+  // golden section): the ride is periodic in the pitch, so this finds the same
+  // crest, and every liftAt here is a hit on that solve's memo rather than a
+  // second ride solve at boot.
+  const crestNet = (() => {
+    const N = 96;
+    let best = { t: -1, j: 0 };
+    for (let j = 0; j < N; j++) { const t = ride.liftAt(s0 + (j * pitch) / N); if (t > best.t) best = { t, j }; }
+    let a = s0 + ((best.j - 1) * pitch) / N, b = s0 + ((best.j + 1) * pitch) / N;
+    const g = (Math.sqrt(5) - 1) / 2;
+    for (let i = 0; i < 40; i++) {
+      const c = b - g * (b - a), d = a + g * (b - a);
+      if (ride.liftAt(c) > ride.liftAt(d)) b = d; else a = c;
+    }
+    return (a + b) / 2;
+  })();
+  const rCrest = pm(RUN * (crestNet - holdNet), pitch);
+  return { RUN, REC, pitch, pm, s0, gapBack, dHold, faceFound, holdNet, crestNet, rCrest };
+};
+// TODO 217/218/221 — THE HOLD, PRICED (the energy column's maintainingHold
+// reads it): the face load, the arm's Winkler bending and axial load, the beak's
+// wedge and its arc's Hertz contact, from a click's hold geometry and the going
+// torque. Pure, so §339's ring choice can ask whether a candidate click STANDS
+// before it is cut; its findings are returned, and the record raises the
+// chosen click's.
+const maintHoldPrice = (H, torque_Nm) => {
+  const find = [];
+  const load_N = torque_Nm / (H.momentArm_u * OSC_U);
+  const a = H.arm, ri = a.ri_u * OSC_U, ro = a.ro_u * OSC_U, h = ro - ri, t = a.t_u * OSC_U;
+  const A = h * t, M_Nm = load_N * a.offsetMax_u * OSC_U;
+  const rn = h / Math.log(ro / ri), ecc = (ri + ro) / 2 - rn;
+  const armBend_Pa = M_Nm * (rn - ri) / (A * ecc * ri), armAxial_Pa = load_N / A;
+  const armSigma_Pa = armBend_Pa + armAxial_Pa;
+  const b = H.beakRoot, bw = b.width_u * OSC_U, bt = b.t_u * OSC_U;
+  const beakSigma_Pa = load_N / (bw * bt) + 6 * load_N * b.offset_u * OSC_U / (bt * bw * bw);
+  // TODO 221 — the apex is an ARC of radius ρ: inside where it begins the
+  // beak is a Hertz line contact one click-thickness long, p0 = √(F·E*/(π·ρ·t))
+  // against first yield of the click steel's low end; past it, the wedge's
+  // sections where the arc begins and the worst of them, as beams.
+  const arc = H.arc, tL = arc.line_u * OSC_U;
+  const p0_Pa = Math.sqrt((load_N / tL) * arc.Estar_Pa / (Math.PI * arc.rho_u * OSC_U));
+  const halfWidth_m = Math.sqrt(4 * (load_N / tL) * arc.rho_u * OSC_U / (Math.PI * arc.Estar_Pa));
+  const secSigma = (q) => load_N / (q.width_u * OSC_U * bt) + 6 * load_N * q.offset_u * OSC_U / (bt * Math.pow(q.width_u * OSC_U, 2));
+  const arcStartSigma_Pa = secSigma(arc.arcStart), worstSigma_Pa = secSigma(arc.worst);
+  if (!(p0_Pa <= arc.p0Allow_Pa * (1 + 1e-9)))
+    find.push(`TODO 221: the beak's arc (ρ ${arc.rho_u.toFixed(4)} u) carries the hold at p0 ${(p0_Pa / 1e9).toFixed(3)} GPa — over first yield of the click steel's low end, ${(arc.p0Allow_Pa / 1e9).toFixed(3)} GPa`);
+  if (!(worstSigma_Pa <= SPRING_SIGMA_Y_PA * (1 + 1e-9)))
+    find.push(`TODO 221: the beak's wedge where its arc begins works at ${(worstSigma_Pa / 1e6).toFixed(1)} MPa, over ${(SPRING_SIGMA_Y_PA / 1e6).toFixed(0)}`);
+  if (Math.abs(H.contact.momentAboutStudPerN_u) > 1e-9)
+    find.push(`TODO 218/221: the hold's contact on the arc puts ${H.contact.momentAboutStudPerN_u.toExponential(2)} u·N on the click about its stud — the contact has left the stud's line`);
+  if (!(H.contact.cornerGapAtHold_u >= CLEAR_MARGIN * (1 - 1e-9)))
+    find.push(`TODO 218: when the back-driven face reaches the arc its far end stands ${H.contact.cornerGapAtHold_u.toFixed(4)} off the relieved flank, need ≥ ${CLEAR_MARGIN} — the hold may bear on the flank and cam the click out`);
+  if (armSigma_Pa > SPRING_SIGMA_Y_PA)
+    find.push(`TODO 217: the maintaining detent's arm bends at ${(armSigma_Pa / 1e6).toFixed(0)} MPa holding the going torque `
+      + `(${(load_N * 1000).toFixed(0)} mN on the face, offset ${a.offsetMax_u.toFixed(4)} u) — over the ${(SPRING_SIGMA_Y_PA / 1e6).toFixed(0)} MPa yield; size the arm to its load`);
+  if (Math.abs(H.lineVsFaceNormal) > 1e-9)
+    find.push(`TODO 217: the hold's line of action (tip → stud) has left the face's normal by ${H.lineVsFaceNormal.toExponential(2)} — the click is no longer a strut, and the moment it carries about the stud is unpriced`);
+  return { find, torque_Nm, load_N, a, ri, ro, h, t, A, M_Nm, rn, ecc, armBend_Pa, armAxial_Pa, armSigma_Pa,
+    b, bw, bt, beakSigma_Pa, arc, tL, p0_Pa, halfWidth_m, arcStartSigma_Pa, worstSigma_Pa };
+};
+const MAINT_SPRING = await (async () => {
   const U = OSC_U;
   const tauGo = GOING_POWER.fuseeTorque_Nm, tauFloor = MAINT_FLOOR_NM;
   const E = MAINSPRING_E_PA, sigLim = MAINSPRING_SIGMA_Y_PA;
@@ -15285,6 +15946,92 @@ const MAINT_SPRING = (() => {
     console.warn(`TODO 219: the maintaining spring has no run — the floor ${(tauFloor * 1e3).toFixed(4)} N·mm against the going ${(tauGo * 1e3).toFixed(4)} (the ${MAINT_FLOOR_CORNER} corner cannot sustain AMPLITUDE_CLAIM_DEG at this configuration's train), the blade's most run ${lim.runMax.toFixed(5)} rad against the ${lim.margin.toFixed(5)} margin; cut at ${MAINT_TEETH} teeth and the alloy's limit, unpriced`);
     N = MAINT_TEETH; lim = atLimit((Math.PI * 2) / N + lim.margin); R = (Math.PI * 2) / N + lim.margin;
   }
+  // §339 — THE RING FROM ITS CLICK'S RIDE. The loop above sized the ring by a
+  // whole pitch of recoil, which is the bound when nothing is known of the
+  // beak. The beak IS known — maintClickCut solves it, and its ride, at any
+  // tooth count — and the worst recoil it can take is not a pitch but the way
+  // from the crest back to the face (maintRecoil: the beak on the crest falls
+  // back down the ramp onto the face of the tooth behind; anywhere on the face
+  // it is already there). So the run need only cover that recoil and the
+  // margin, R = r_crest(N) + CLEAR_MARGIN/r_pin, and the ring takes the FEWEST
+  // teeth whose run the blade at the limit can give: the coarsest saw, which is
+  // the kindest to the beak (a finer saw's smaller tooth is what refuses the
+  // beak's radius first, §339's 36,000 build). r_crest falls as N grows (the
+  // tooth, and the ramp the crest stands on, shrink with the pitch), so the
+  // answer is a bisection between a ring too coarse and the pitch rule's,
+  // which always fits (r_crest < pitch). A cut the geometry cannot make, or a
+  // ride with no face to stand on, is no ring.
+  const cuts = new Map();
+  const cutOf = (n) => { if (!cuts.has(n)) { let c = null; try { c = maintClickCut(n); } catch { c = null; } cuts.set(n, c); } return cuts.get(n); };
+  const fits = new Map();
+  const fitAt = (n) => {
+    if (fits.has(n)) return fits.get(n);
+    const c = cutOf(n), rec = c && c.ride && maintRecoil(c.ride, n);
+    let out = { n, ok: false, cut: !!c, rec: rec || null };
+    if (rec && rec.faceFound && rec.rCrest > 0 && rec.rCrest < (Math.PI * 2) / n) {
+      let Rr = rec.rCrest + lim.margin, l = lim;
+      for (let it = 0; it < 60; it++) { l = atLimit(Rr); const Rn = rec.rCrest + l.margin; if (Math.abs(Rn - Rr) < 1e-13) { Rr = Rn; break; } Rr = Rn; }
+      out = { n, ok: Rr <= l.runMax, cut: true, rec, R: Rr, lim: l };
+    }
+    fits.set(n, out);
+    return out;
+  };
+  // A click STANDS when its cut raised no finding and its hold, priced at the
+  // going torque, is under every limit (maintHoldPrice: the arm, the beak's
+  // wedge and its arc). Fewer teeth are kinder to the beak but load the arm
+  // harder (the coarser tooth puts the contact farther off the arm's chord),
+  // so the ring is the FEWEST teeth whose recoil fits AND whose click stands:
+  // the recoil rule's bisection, then upward until a click stands (none up to
+  // 60 teeth: the recoil rule's own, its findings raised).
+  //   And the ring must still SEAT the spring's pin: the pin is let into the
+  // ring's underside to mid-thickness (the blade block below), at r_P ± its
+  // radius, so its hole must lie inside the ring's ROOT land. A deeper tooth (a
+  // coarser ring keeps the 24-tooth cut's proportions) cuts the root inward,
+  // and past the pin's outer edge the hole breaks out into the tooth gaps,
+  // where the beak rides — the pin standing in its path at whatever phase the
+  // crossing puts it (measured on the 20-tooth cut: 0.145 off the beak against
+  // CLEAR_MARGIN, its hole 0.178 through the root). The pitch rule met this by
+  // chance (TODO 316 files the wall it left).
+  const standsAt = (n) => {
+    const c = cutOf(n), f = fitAt(n);
+    if (!c || !c.holdGeom) return { stands: false, why: ['no cut'] };
+    const why = [...c.warns, ...maintHoldPrice(c.holdGeom, tauGo).find];
+    if (f.lim) {
+      const pinOut = f.lim.g.rP + f.lim.g.rPin, root = MAINT_RING_R * (1 - maintRingDepthF(n));
+      if (!(root >= pinOut)) why.push(`§339 maintaining ring: the spring pin's seat (out to r ${pinOut.toFixed(4)}) breaks out of the ${n}-tooth ring's root land (r ${root.toFixed(4)})`);
+    }
+    return { stands: why.length === 0, why };
+  };
+  let pick = null, below = null;
+  if (feasible) {
+    await breathe(387);
+    const top = fitAt(N);
+    if (!top.ok) console.warn(`§339 maintaining ring: the pitch rule's ${N} teeth do not fit the recoil rule (r_crest + margin over the blade's run) — kept at the pitch rule`);
+    else {
+      pick = top;
+      let lo = 2, hi = N;
+      while (hi - lo > 1) {
+        await breathe(388);
+        const mid = (lo + hi) >> 1, f = fitAt(mid);
+        if (f.ok) { hi = mid; pick = f; } else lo = mid;
+      }
+      // upward from the fewest that fits, past the pitch rule's count if need be
+      // (the recoil fits at every count above it), to the 60 the decision allows
+      for (let n = pick.n; n <= 60; n++) {
+        await breathe(389);
+        const f = fitAt(n);
+        if (f.ok && standsAt(n).stands) { pick = f; break; }
+      }
+      N = pick.n; R = pick.R; lim = pick.lim;
+      // the witness the record carries: one tooth fewer, and why it was refused
+      // (its recoil over the run, or a click that does not stand); the gate re-reads it
+      const w = fits.get(N - 1) ?? fitAt(N - 1), st = standsAt(N - 1);
+      below = { teeth: N - 1, cut: w.cut, rCrest_rad: w.rec ? w.rec.rCrest : null, faceFound: w.rec ? w.rec.faceFound : false,
+        run_rad: w.R ?? null, runMax_rad: w.lim ? w.lim.runMax : null, recoilFits: w.ok, stands: st.stands, why: st.why.map((x) => x.slice(0, 120)) };
+    }
+  }
+  const CUT = cutOf(N) ?? maintClickCut(N);
+  const REC = pick ? pick.rec : (CUT && CUT.ride ? maintRecoil(CUT.ride, N) : null);
   const gLim = lim.g, tLim = lim.t;
   gLim.runMax = lim.runMax; gLim.thetaWorkLim = lim.thetaWorkLim;
   // 2 — the blade cut to that run: k from the torque span over it, the root's
@@ -15304,6 +16051,7 @@ const MAINT_SPRING = (() => {
   const sigmaStop = sigmaWork * tauFloor / tauGo;
   const pitch = (Math.PI * 2) / N;
   return { N, feasible, pitch, run: R, marginRun: CLEAR_MARGIN / g.rP, k, thetaWork, thetaPre, tauGo, tauFloor,
+    rCrest: REC ? REC.rCrest : pitch, recoilRule: !!pick, below, cut: CUT,
     floorFrac: tauFloor / tauGo, floorCorner: MAINT_FLOOR_CORNER,
     E, sigLim, b, t, tMin, L: g.L, rE: g.rE, sigmaWork, sigmaStop,
     deflWork_u: thetaWork * g.rE, compliance_m_per_N: complianceOf(t, g.L), tAt: (x) => tAt(t, g.L, x),
@@ -15313,12 +16061,13 @@ const MAINT_SPRING = (() => {
 // The ring's tooth count, from the spring (the pawls' flange keeps MAINT_TEETH).
 await breathe(106);
 const MAINT_RING_TEETH = MAINT_SPRING.N;
+const MAINT_CLICK_CUT = MAINT_SPRING.cut;   // the click cut from it (the detent block raises its findings)
 // …and its tooth keeps the 24-tooth cut's PROPORTIONS: the depth scales with
 // the pitch (the builder's 0.2 of the radius at MAINT_TEETH), so the valley
 // the beak is cut from keeps its included angle and the beak (the valley's own
 // offset, TODO 218) keeps its wedge. Left at 0.2·R, a 52-tooth saw is a comb
 // of 0.89-deep slots whose valley the TODO 218 beak cannot be cut into.
-const MAINT_RING_DEPTH_F = 0.2 * MAINT_TEETH / MAINT_RING_TEETH;
+const MAINT_RING_DEPTH_F = maintRingDepthF(MAINT_RING_TEETH);
 const MAINT_RING_ROOT_CUT = MAINT_RING_R * (1 - MAINT_RING_DEPTH_F);
 if (MAINT_RING_TEETH > 60)
   console.warn(`TODO 219: the maintaining ring needs ${MAINT_RING_TEETH} teeth for its pitch to fit the spring's run — over the 60 the decision allows`);
@@ -15345,24 +16094,7 @@ const maintWheel = new THREE.Group();
 const MAINT_PAWL_SEATS = []; // filled below; tick rides them on windBack
 let MAINT_SPRING_PIN = null;   // TODO 219: placed in the ring's frame after the great wheel is phased
 let MAINT_BLADE = null;        // TODO 224: the blade's posed frames, built with it below
-// TODO 215 — THE RING'S RUN PAST ITS DETENT, the one declaration the detent's
-// hand is read from. The maintaining wheel rides barrelArbor (the going train,
-// MOVEMENT_SENSE) and the detent stands on the plate, so while the watch runs the
-// ring turns past the beak in the train's own sense. The PAWLS see the opposite:
-// their flange is the fusee, which reverses under them in winding, so the two
-// saws of this sandwich are cut to OPPOSITE hands — which is why the ring's cut
-// used to be wrong. It shared the flange's `reverse: false`, the right hand for
-// a click the wheel passes BACKWARD, and the beak climbed each tooth's 28% face
-// while the watch ran (TODO 215, measured on the cut).
-//
-// A fixed click climbs a saw's RAMP only when the teeth lean AGAINST the
-// wheel's motion past it; `makeRatchetAndClick` leans an unreversed cut WITH its
-// `sense`, so the cut is reversed exactly when the ring runs with the train. The
-// click is then cut from the ring's own polygon (the detent block below), so
-// nothing else here carries the hand; the guard beside the pawls' (§115) steps
-// barrelMeshAngle's real run against the cut and measures which flank the beak
-// climbs.
-const MAINT_RING_RUN = MOVEMENT_SENSE;
+// (MAINT_RING_RUN, the ring's run past its detent, is declared above the spring.)
 let MAINT_TIP_OVERHANG = null;   // TODO 291/293 — set when the blade's tip is trimmed to clear the hub land at the stop: how far its face runs past the contact
 let MAINT_RING_POLY = null;   // the ring's cut outline, ring-local — the detent rides THIS, not sawRadiusAt
 {
@@ -15701,7 +16433,7 @@ let MAINT_DETENT_AZ = 0, MAINT_DET_LEVER = 1, MAINT_DET_BASE = 0, MAINT_DET_SIGN
 // azimuth frame.
 // TODO 217 — the click's stock (the ring's band, less a tenth), and the hold's
 // geometry read off the click as cut (built with the cock below; null until).
-const MAINT_DET_CLICK_T = MAINT_RING_T * 0.9;
+// (MAINT_DET_CLICK_T, the click's stock, is declared above the spring: the cut is solved there.)
 let MAINT_DET_HOLD_GEOM = null;
 // A fast-forward frame runs FF_TICKS_PER_FRAME coarse ticks and draws the last.
 // A pose that is a pure function of the state a tick has just written, that
@@ -15858,534 +16590,18 @@ const maintDetent = new THREE.Group();
   // Pivot: just outside the winding spur's tip circle (the beak's stud
   // hangs here — nothing of the cock reaches lower than the arm at this
   // radius, so the spur's band below is never entered).
-  const pivR = windSpurR + KW_MODULE + CLEAR_MARGIN + 0.4;
-  // ---- TODO 215 — THE CLICK, CUT FROM THE RING IT HOLDS. ------------------
-  // The first click was a straight 2.518 bar aimed by a scan at a beak depth of
-  // 0.35 of the tooth — and it could never seat. Its pivot stands 0.53 outside
-  // the tip circle (r 4.970 against 4.44), so a straight bar from there to the
-  // root lies ~80° off radial and its BODY cuts through the tooth the beak sits
-  // behind: measured on the cut, 0.10–0.26 inside the ring at every pose, and
-  // solved honestly against the polygon it could only ride the tips (0.048 of
-  // travel). It also had the pawls' hand — its tip sat on the side of the pivot
-  // that loads it in TENSION when the face holds the back-drive.
-  //
-  // So the click is CRANKED, and every dimension is read off the ring's own
-  // polygon (MAINT_RING_POLY — the cut carries the hand, so the click follows
-  // whatever the ring's declaration cut):
-  //   · THE SEAT — the tip in a valley, SEAT_RELIEF off both flanks (the
-  //     hairline the instruments need between surfaces that are meant to
-  //     touch): on the V's bisector, relief/sin(half the V) from its root.
-  //   · THE PIVOT'S BEARING — the face's reaction, when winding back-drives
-  //     the ring, runs along the face's normal; the tip is placed so that line
-  //     passes THROUGH the stud. The hold is then a pure STRUT: no moment about
-  //     the pivot either way, so the face holds without the spring's help (the
-  //     hold is the saw's, TODO 210's window prices only the ride) and without
-  //     camming the beak out. That fixes the beak's azimuth from the pivot.
-  //   · THE ARM — concentric with the ring, its inner edge exactly CLEAR_MARGIN
-  //     outside the tip circle at the seat (the click's innermost pose: the ride
-  //     only ever turns it outward), and the pivot on its centreline, so the
-  //     half-width is the band between them, pivR − (MAINT_RING_R + margin).
-  //     The boss is the arm's own section, rounded about the stud.
-  //   · THE BEAK — the only metal inside the margin: the VALLEY'S OWN OFFSET
-  //     (TODO 218), a wedge whose apex is the tip. On the pivot's side its flank
-  //     runs PARALLEL TO THE RAMP, SEAT_RELIEF off it at the seat; on the far
-  //     side it runs up the face, RELIEVED off it so that the hold bears on the
-  //     APEX and nowhere else (derived below). TODO 215 cut it as a 20.40° wedge
-  //     between a radial flank and a face-parallel one, which carried the hold
-  //     almost square to its axis at 2075.7 MPa against SPRING_SIGMA_Y_PA's 800
-  //     — and whose face-parallel flank, measured, would have taken the hold at
-  //     the face's far end and cammed the click out (the contact block below).
-  const pitchR = (Math.PI * 2) / MAINT_RING_TEETH;   // TODO 219: the RING's pitch (the pawls' flange keeps MAINT_TEETH)
-  const rIn = MAINT_RING_R + CLEAR_MARGIN;            // the arm's inner edge
-  const armW = pivR - rIn;                             // the arm's half-width: the band from the margin to the stud
-  if (!(armW > 0.2 + 0.05))                            // the stud is ⌀0.4 (below); the boss must stand round it
-    console.warn(`TODO 215 detent click: the band between the ring's margin and the stud is ${armW.toFixed(4)} — the boss cannot stand round a ⌀0.4 stud`);
-  const _v2 = (x, y) => ({ x, y });
-  const _rot = (p, a) => _v2(p.x * Math.cos(a) - p.y * Math.sin(a), p.x * Math.sin(a) + p.y * Math.cos(a));
-  const _unit = (p) => { const l = Math.hypot(p.x, p.y); return _v2(p.x / l, p.y / l); };
-  const cutV = (() => {
-    const poly = MAINT_RING_POLY, n = poly.length;
-    let iV = 0, best = Infinity;
-    for (let i = 0; i < n; i++) {                      // a root of the cut at azimuth 0 — both hands put one there
-      const [x, y] = poly[i];
-      if (Math.hypot(x, y) > MAINT_RING_ROOT_CUT + 0.25 * (MAINT_RING_R - MAINT_RING_ROOT_CUT)) continue;
-      const a = Math.abs(Math.atan2(y, x));
-      if (a < best) { best = a; iV = i; }
-    }
-    const V = _v2(...poly[iV]), q0 = _v2(...poly[(iV + n - 1) % n]), q1 = _v2(...poly[(iV + 1) % n]);
-    const dAz = (q) => Math.abs(wrapPi(Math.atan2(q.y, q.x) - Math.atan2(V.y, V.x)));
-    // The FACE is the steep flank — 0.28 of the pitch in azimuth to the ramp's
-    // 0.72; halfway between the two is the classifier, not a tolerance.
-    const [faceTip, rampTip] = dAz(q0) < dAz(q1) ? [q0, q1] : [q1, q0];
-    if (!(dAz(faceTip) < 0.5 * pitchR && dAz(rampTip) > 0.5 * pitchR))
-      console.warn(`TODO 215 detent click: the ring's valley has no face/ramp pair (${(dAz(faceTip) / pitchR).toFixed(3)}, ${(dAz(rampTip) / pitchR).toFixed(3)} of a pitch)`);
-    return { V, faceTip, rampTip };
-  })();
-  const uFace = _unit(_v2(cutV.faceTip.x - cutV.V.x, cutV.faceTip.y - cutV.V.y));   // up the face, root → tip
-  const uRamp = _unit(_v2(cutV.rampTip.x - cutV.V.x, cutV.rampTip.y - cutV.V.y));
-  const halfV = Math.acos(uFace.x * uRamp.x + uFace.y * uRamp.y) / 2;
-  const uBis = _unit(_v2(uFace.x + uRamp.x, uFace.y + uRamp.y));
-  const seatD = SEAT_RELIEF / Math.sin(halfV);
-  const T0 = _v2(cutV.V.x + uBis.x * seatD, cutV.V.y + uBis.y * seatD);   // the SHARP apex's seat (TODO 215/218), the reference the radius is measured from
-  let nFace = _v2(-uFace.y, uFace.x);                  // the face's normal, out of the metal into the valley
-  if (nFace.x * (cutV.rampTip.x - cutV.V.x) + nFace.y * (cutV.rampTip.y - cutV.V.y) < 0) nFace = _v2(-nFace.x, -nFace.y);
-  const _dot = (a, b) => a.x * b.x + a.y * b.y, _crs = (a, b) => a.x * b.y - a.y * b.x;
-  const _add = (a, b, k = 1) => _v2(a.x + k * b.x, a.y + k * b.y);
-  const sdLine = (p, a, b) => { const u = _unit(_v2(b.x - a.x, b.y - a.y)); return (p.x - a.x) * u.y - (p.y - a.y) * u.x; };
-  const sgnIn = Math.sign(_crs(uFace, uRamp));            // the sense that turns the face's direction into the beak
-  // ---- TODO 221 — THE APEX IS A RADIUS, SIZED FROM THE HOLD. ---------------
-  // TODO 218 left the hold bearing on a sharp LINE: the wedge's 1/s law reached
-  // yield 0.3153 u from the apex, and inside that a line contact yields under any
-  // load. So the apex is cut to a RADIUS ρ — a cylinder on the ring's flat face,
-  // a Hertz line contact one click-thickness long — and every dimension that
-  // followed from the sharp tip is re-derived from the arc:
-  //   · THE ARC'S CENTRE on the valley's bisector at (ρ + SEAT_RELIEF)/sin(½V)
-  //     from the root, so the arc stands SEAT_RELIEF off BOTH flanks at the seat
-  //     (the tip rises up the bisector by ρ(1/sin ½V − 1)). The stud-side flank
-  //     keeps TODO 218's line, parallel to the ramp at SEAT_RELIEF, tangent to it.
-  //   · THE CONTACT is where the face is tangent to the arc: the foot of the
-  //     face's normal through the centre. The hold's line is that normal.
-  //   · THE STUD on that normal, at the pivot radius — TODO 215's strut, kept:
-  //     the hold puts no moment on the click (left on the sharp apex's line the
-  //     arc would cam it out against nothing but friction, TODO 221's measure).
-  //   · THE FACE FLANK tangent to the arc, turned into the beak until the face's
-  //     far end stands CLEAR_MARGIN off it at the instant the face reaches the
-  //     arc (TODO 218's relief, re-solved on the arc).
-  //   · ρ itself is the LARGER of two radii, each the least that does its job:
-  //     the BEAM minimum (the wedge's section where the arc begins, and every
-  //     section past it, under SPRING_SIGMA_Y_PA — the click's bending rows keep
-  //     the spring band's limit, layout.js says why) and the HERTZ radius (the
-  //     contact's peak pressure p0 = √(F·E*/(π·ρ·t)) at first yield of the click
-  //     steel's LOW end, LINE_CONTACT_FIRST_YIELD_P0_PER_Y · CLICK_STEEL_SIGMA_Y_PA).
-  //     F is the going torque over the hold line's own moment arm, which grows
-  //     as the contact moves up the face, so ρ is a fixed point of it.
-  const ARC_E_STAR = STEEL_E_PA / (2 * (1 - STEEL_NU * STEEL_NU));   // E* for steel on steel (click and ring, one band)
-  const ARC_P0_ALLOW = LINE_CONTACT_FIRST_YIELD_P0_PER_Y * CLICK_STEEL_SIGMA_Y_PA;
-  const ARC_T_M = MAINT_DET_CLICK_T * OSC_U;            // the contact line: the click's thickness (inside the ring's band)
-  const faceTipR = cutV.faceTip;
-  // The cut at a radius ρ, in the RING frame (the stud on +x comes after).
-  const arcCut = (rho) => {
-    const O = _add(cutV.V, uBis, (rho + SEAT_RELIEF) / Math.sin(halfV));
-    const C = _add(O, nFace, -rho);                     // the arc's point nearest the seated face: the hold's contact
-    const tn = _dot(C, nFace);
-    const strut = -tn + Math.sqrt(tn * tn - _dot(C, C) + pivR * pivR);   // |C + s·n| = pivR
-    const P = _add(C, nFace, strut);
-    const momentArm = Math.abs(_crs(C, nFace));          // the hold line's distance from the ring's axis
-    const F = MAINT_SPRING.tauGo / (momentArm * OSC_U);  // the going torque on the face (the record re-reads it)
-    // The face, swung about the ring's axis until it is tangent to the arc.
-    const backS = Math.sign(_crs(C, nFace));             // the ring turn that drives the face onto the beak
-    const s0 = Math.sign(sdLine(O, cutV.V, faceTipR));
-    const gap = (d) => s0 * sdLine(O, _rot(cutV.V, backS * d), _rot(faceTipR, backS * d)) - rho;
-    let lo = 0, hi = 4 * SEAT_RELIEF / Math.hypot(C.x, C.y);
-    if (!(gap(hi) < 0)) console.warn('TODO 221 detent beak: the back-driven face never reaches the arc in the bracket');
-    for (let i = 0; i < 80; i++) { const m = (lo + hi) / 2; if (gap(m) > 0) lo = m; else hi = m; }
-    const holdTurn = hi;
-    const K = _rot(faceTipR, backS * holdTurn);         // the face's far end at the hold
-    // The face flank: tangent to the arc on the face's side, turned into the
-    // beak by β until K stands CLEAR_MARGIN off it.
-    const flankAt = (beta) => {
-      const u = _rot(uFace, sgnIn * beta);
-      let m = _v2(-u.y, u.x); if (_dot(m, nFace) > 0) m = _v2(-m.x, -m.y);
-      const TF = _add(O, m, rho);
-      return { u, TF, d: Math.abs(_crs(u, _v2(K.x - TF.x, K.y - TF.y))) };
-    };
-    let bLo = 0, bHi = Math.PI / 2;
-    if (!(flankAt(bLo).d < CLEAR_MARGIN && flankAt(bHi).d > CLEAR_MARGIN))
-      console.warn(`TODO 221 detent beak: the face flank's relief is not bracketed at ρ ${rho.toFixed(4)} (${flankAt(bLo).d.toFixed(4)}..${flankAt(bHi).d.toFixed(4)} against ${CLEAR_MARGIN})`);
-    for (let i = 0; i < 80; i++) { const m = (bLo + bHi) / 2; if (flankAt(m).d < CLEAR_MARGIN) bLo = m; else bHi = m; }
-    const relief = bHi, fl = flankAt(relief);
-    const TR = _add(T0, uRamp, _dot(_v2(O.x - T0.x, O.y - T0.y), uRamp));   // the arc's tangent on the ramp flank
-    // The wedge the two flanks make, its virtual apex, and its sections square
-    // to the bisector, each carrying F along the hold line at its midpoint's
-    // offset (TODO 218's F/A + 6Fe/tw²). Priced from where the arc begins (the
-    // farther tangent point's station) out to the kindest section, where the
-    // first flank reaches the arm's inner edge.
-    const wedge = Math.acos(clamp(_dot(uRamp, fl.u), -1, 1));
-    const bis = _unit(_add(uRamp, fl.u));
-    const A = (() => { const w = fl.u, den = _crs(uRamp, w); return _add(T0, uRamp, _crs(_v2(fl.TF.x - T0.x, fl.TF.y - T0.y), w) / den); })();
-    const onFlankR = (p, u, r) => { const b = _dot(p, u), c = _dot(p, p) - r * r; return _add(p, u, -b + Math.sqrt(b * b - c)); };
-    const sStart = Math.max(_dot(_v2(TR.x - A.x, TR.y - A.y), bis), _dot(_v2(fl.TF.x - A.x, fl.TF.y - A.y), bis));
-    const rampIn = onFlankR(T0, uRamp, rIn), faceIn = onFlankR(fl.TF, fl.u, rIn);
-    const sRoot = Math.cos(wedge / 2) * Math.min(Math.hypot(rampIn.x - A.x, rampIn.y - A.y), Math.hypot(faceIn.x - A.x, faceIn.y - A.y));
-    const nL = _unit(_v2(P.x - C.x, P.y - C.y));
-    const section = (s) => {
-      const M = _add(A, bis, s), w = 2 * s * Math.tan(wedge / 2), e = Math.abs(_crs(nL, _v2(M.x - C.x, M.y - C.y)));
-      const sigma = F / (w * OSC_U * ARC_T_M) + 6 * F * e * OSC_U / (ARC_T_M * Math.pow(w * OSC_U, 2));
-      return { s_u: s, width_u: w, offset_u: e, sigma };
-    };
-    let worst = section(sStart);
-    for (let i = 1; i <= 400; i++) { const q = section(sStart + ((sRoot - sStart) * i) / 400); if (q.sigma > worst.sigma) worst = q; }
-    const p0 = Math.sqrt((F / ARC_T_M) * ARC_E_STAR / (Math.PI * rho * OSC_U));
-    return { rho, O, C, P, strut, momentArm, F, backS, holdTurn, K, relief, uFr: fl.u, TF: fl.TF, TR, wedge, bis, A, sStart, sRoot,
-      arcStart: section(sStart), worst, root: section(sRoot), p0 };
-  };
-  // ρ: the Hertz radius (a fixed point of F(ρ), which only falls as ρ grows),
-  // the beam minimum (bisected: the worst section falls as ρ grows), and the
-  // larger of the two.
-  const ARC_RHO_HERTZ = (() => {
-    let r = 0.05;
-    for (let i = 0; i < 60; i++) r = (arcCut(r).F / ARC_T_M) * ARC_E_STAR / (Math.PI * Math.pow(ARC_P0_ALLOW, 2)) / OSC_U;
-    return r;
-  })();
-  const ARC_RHO_BEAM = (() => {
-    let lo = 1e-4, hi = Math.max(ARC_RHO_HERTZ, 0.05);
-    for (let i = 0; i < 8 && !(arcCut(hi).worst.sigma <= SPRING_SIGMA_Y_PA); i++) hi *= 1.5;
-    for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (arcCut(m).worst.sigma <= SPRING_SIGMA_Y_PA) hi = m; else lo = m; }
-    return hi;
-  })();
-  const ARC = arcCut(Math.max(ARC_RHO_HERTZ, ARC_RHO_BEAM));
-  // The arc must stay on the tooth: its contact below the face's far end by
-  // the margin it is relieved to, and the wedge still a wedge.
-  if (!(ARC.wedge > 0.1 && Math.hypot(ARC.K.x - ARC.C.x, ARC.K.y - ARC.C.y) > 2 * CLEAR_MARGIN))
-    console.warn(`TODO 221 detent beak: the ${ARC.rho.toFixed(4)} u radius does not fit the tooth (wedge ${(ARC.wedge / DEG2RAD).toFixed(2)}°, contact ${Math.hypot(ARC.K.x - ARC.C.x, ARC.K.y - ARC.C.y).toFixed(4)} from the face's far end)`);
-  const phiP = Math.atan2(ARC.P.y, ARC.P.x);
-  // …into the cock's azimuth frame, the stud on +x.
-  const Vz = _rot(cutV.V, -phiP), uFz = _rot(uFace, -phiP), uRz = _rot(uRamp, -phiP), uFr = _rot(ARC.uFr, -phiP);
-  const T0z = _rot(T0, -phiP), Oz = _rot(ARC.O, -phiP), Cz = _rot(ARC.C, -phiP);
-  const TFz = _rot(ARC.TF, -phiP), TRz = _rot(ARC.TR, -phiP), Az = _rot(ARC.A, -phiP);
-  // THE TIP: the arc's point on the valley's bisector, the innermost of the
-  // beak (the ride's cap and the lift's sense are read from it).
-  const Tz = _rot(_add(ARC.O, uBis, -ARC.rho), -phiP);
-  MAINT_DET_LEVER = ARC.strut;                          // |C − P|: the strut, and the arm the beak's force works at
-  MAINT_DET_BASE = 0;                                  // the click is cut in this frame, seated
-  MAINT_DET_SEAT_TIP = Tz; MAINT_DET_PIV_R = pivR;
-  const tipAz = Math.atan2(Cz.y, Cz.x);                // where the hold enters the click
-  const sideP = Math.sign(-tipAz);                     // which way round from the beak the stud lies
-  const FACE_RELIEF = ARC.relief;
-  const holdTurn = ARC.holdTurn;
-  const nFz = _rot(nFace, -phiP), faceTz = _rot(cutV.faceTip, -phiP);
-  const faceCornerAtHold = _rot(ARC.K, -phiP);
-  const onFlank = (p, u, rho) => {                     // the flank through p along u, at radius rho
-    const b = p.x * u.x + p.y * u.y, c = p.x * p.x + p.y * p.y - rho * rho;
-    const s = -b + Math.sqrt(b * b - c);
-    return _v2(p.x + s * u.x, p.y + s * u.y);
-  };
-  // The counterfactual TODO 218 decided against, kept on the record beside the
-  // decision: a flank PARALLEL to the face through the contact — where it would
-  // first bear, and the friction that would have had to hold the click there.
-  const flankBearing = (() => {
-    const P = _v2(pivR, 0);
-    const off = (faceTz.x - Cz.x) * uFz.x + (faceTz.y - Cz.y) * uFz.y;     // along the face, from the contact
-    const q = _v2(Cz.x + off * uFz.x, Cz.y + off * uFz.y);
-    const moment = (q.x - P.x) * nFz.y - (q.y - P.y) * nFz.x;               // per unit load, about the stud
-    const fricArm = Math.abs((q.x - P.x) * uFz.y - (q.y - P.y) * uFz.x);
-    const lam = (p) => p.x * uFz.x + p.y * uFz.y;                         // along the face from the axis' foot
-    return { offsetAlongFace_u: off, closeRateTip: Math.abs(lam(Cz)), closeRateCorner: Math.abs(lam(faceTz)),
-      momentPerN_u: moment, muToHold: Math.abs(moment) / fricArm };
-  })();
-  const rOut = pivR + armW;
-  const ptC = onFlank(TFz, uFr, rIn), ptD = onFlank(TFz, uFr, rOut), ptB = onFlank(TFz, uFr, pivR);
-  const ptA = onFlank(TRz, uRz, pivR);                 // the ramp flank's top, inside the arm
-  if (Math.hypot(ptA.x - pivR, ptA.y) < 0.2 + CLEAR_MARGIN)   // the stud is ⌀0.4 (below)
-    console.warn(`TODO 218 detent beak: the ramp flank tops out ${Math.hypot(ptA.x - pivR, ptA.y).toFixed(4)} from the stud — the beak would cover it`);
-  // The arm's sections are priced (below) from whichever lies farther from the
-  // stud: the contact's azimuth, or the arm's own beak end along the relieved
-  // flank (TODO 221: the radius's steeper relief ends the arm stud-ward of the
-  // contact). Every real section of the arm is then inside the sampled span,
-  // and the span beyond its end is priced as if the arm ran on, which only
-  // puts its centroid farther off the chord — the upper bound, as before.
-  const armFromAz = [tipAz, Math.atan2(ptC.y, ptC.x), Math.atan2(ptD.y, ptD.x)].reduce((m, a) => (sideP * a < sideP * m ? a : m));
-  // THE ARM'S OUTLINE (cock frame). The inner arc is a CIRCUMSCRIBED polygon:
-  // each chord is tangent to rIn at its midpoint, so no edge dips inside the
-  // margin between vertices (the alarm click's segment-minimum lesson). It runs
-  // from the face flank's crossing C to the stud's azimuth, the boss rounds the
-  // stud at the arm's half-width, and the outer arc returns to the flank's
-  // crossing D; D → C closes along the flank's own line.
-  const armPts = [];
-  let armInnerVertexR = rIn;                           // TODO 217: the circumscribed arc's vertex radius — the arm's shallowest section
-  {
-    const azC = Math.atan2(ptC.y, ptC.x);
-    const Nin = Math.max(4, Math.ceil(Math.abs(azC) / 0.04));
-    const dIn = -azC / Nin, rc = rIn / Math.cos(Math.abs(dIn) / 2);
-    armInnerVertexR = rc;
-    armPts.push(ptC);
-    for (let k = 0; k < Nin; k++) { const a = azC + (k + 0.5) * dIn; armPts.push(_v2(rc * Math.cos(a), rc * Math.sin(a))); }
-    const M = 12;                                      // the boss: about the stud, on the side away from the beak
-    for (let k = 0; k <= M; k++) { const th = Math.PI - sideP * Math.PI * (k / M); armPts.push(_v2(pivR + armW * Math.cos(th), armW * Math.sin(th))); }
-    const azD = Math.atan2(ptD.y, ptD.x);
-    const Nout = Math.max(4, Math.ceil(Math.abs(azD) / 0.04));
-    for (let k = 1; k <= Nout; k++) { const a = (azD * k) / Nout; armPts.push(_v2(rOut * Math.cos(a), rOut * Math.sin(a))); }
-    armPts[armPts.length - 1] = ptD;
-  }
-  // THE BEAK (cock frame): the ramp flank from its tangent point up to the
-  // arm's centreline, the top along that arc (one vertex at mid-azimuth), the
-  // face flank down to its tangent point, and the ARC back to the ramp's. The
-  // arc is cut as chords whose sagitta is a fifth of SEAT_RELIEF — the chords
-  // lie inside the circle, so the cut stands at most that much farther off
-  // than the arc the contact is priced on — with a vertex AT the contact, so
-  // the face meets the metal where the Hertz row says it does.
-  const azM = (Math.atan2(ptA.y, ptA.x) + Math.atan2(ptB.y, ptB.x)) / 2;
-  const beakPts = [TRz, ptA, _v2(pivR * Math.cos(azM), pivR * Math.sin(azM)), ptB, TFz];
-  {
-    const ang = (p) => Math.atan2(p.y - Oz.y, p.x - Oz.x);
-    const aF = ang(TFz), aC = ang(Cz), aR = ang(TRz);
-    const dStep = 2 * Math.acos(1 - SEAT_RELIEF / 5 / ARC.rho);
-    const legs = [[aF, wrapPi(aC - aF)], [aC, wrapPi(aR - aC)]];
-    if (Math.sign(legs[0][1]) !== Math.sign(legs[1][1]))
-      console.warn('TODO 221 detent beak: the arc from the face flank to the ramp flank does not pass the contact');
-    for (const [a0, da] of legs) {
-      const k = Math.max(1, Math.ceil(Math.abs(da) / dStep));
-      for (let j = a0 === aF ? 1 : 0; j < k; j++) { const a = a0 + (da * j) / k; beakPts.push(_v2(Oz.x + ARC.rho * Math.cos(a), Oz.y + ARC.rho * Math.sin(a))); }
-    }
-  }
-  // Rule 6, the segment minimum: at the seat every edge of the ARM stands
-  // CLEAR_MARGIN outside the tip circle (to float noise — the inner arc is
-  // tangent to it by construction).
-  const segMinR = (a, b) => {
-    const dx = b.x - a.x, dy = b.y - a.y, L2 = dx * dx + dy * dy || 1e-12;
-    const t = clamp(-(a.x * dx + a.y * dy) / L2, 0, 1);
-    return Math.hypot(a.x + t * dx, a.y + t * dy);
-  };
-  {
-    let m = Infinity;
-    for (let i = 0; i < armPts.length; i++) m = Math.min(m, segMinR(armPts[i], armPts[(i + 1) % armPts.length]));
-    if (m < rIn - 1e-9)
-      console.warn(`TODO 215 detent click: the arm's edge passes r ${m.toFixed(4)} at the seat — inside the tip circle + margin (${rIn.toFixed(4)})`);
-  }
-  // Rule 6: both outlines SIMPLE (the outlines gate's own question, asked at
-  // the cut — a folded ring ships open and every parity raycast lies).
-  for (const [who, pts] of [['arm', armPts], ['beak', beakPts]]) {
-    for (let i = 0; i < pts.length; i++) for (let j = i + 2; j < pts.length; j++) {
-      if (i === 0 && j === pts.length - 1) continue;
-      const a = pts[i], b = pts[(i + 1) % pts.length], c = pts[j], d = pts[(j + 1) % pts.length];
-      const s1 = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
-      const s2 = (b.x - a.x) * (d.y - a.y) - (b.y - a.y) * (d.x - a.x);
-      const s3 = (d.x - c.x) * (a.y - c.y) - (d.y - c.y) * (a.x - c.x);
-      const s4 = (d.x - c.x) * (b.y - c.y) - (d.y - c.y) * (b.x - c.x);
-      if (s1 * s2 < 0 && s3 * s4 < 0) console.warn(`TODO 215 detent click: the ${who}'s outline self-intersects at edges ${i} and ${j}`);
-    }
-  }
-  // The lift's sense, by finite difference about the stud.
-  const tipAt = (rot) => { const q = _rot(_v2(Tz.x - pivR, Tz.y), rot); return _v2(pivR + q.x, q.y); };
-  MAINT_DET_SIGN = Math.sign(Math.hypot(tipAt(1e-4).x, tipAt(1e-4).y) - Math.hypot(Tz.x, Tz.y)) || 1;
-  // ---- TODO 217 — THE HOLD'S GEOMETRY, read off the click as cut. --------
-  // While the fusee is wound the maintaining spring's reaction comes back
-  // through the ring into the beak along the face's normal, which runs through
-  // the stud (TODO 215; since TODO 221 the normal through the arc's centre): the
-  // click holds it as a STRUT. But the strut is a CHORD — the metal between the
-  // contact and the stud is the beak and the arm running round the ring a
-  // margin outside the tips — so every section of the arm carries the load at
-  // an offset from that chord, and bends. Published here as geometry (the load
-  // is the energy column's, priced in EQUALISATION, which is defined after the
-  // fusee): the line of action, its moment arm about the ring's axis (what
-  // turns the spring's torque into a face load), and each section's offset.
-  MAINT_DET_HOLD_GEOM = (() => {
-    const P = _v2(pivR, 0);
-    const strutLen = Math.hypot(P.x - Cz.x, P.y - Cz.y);
-    const n = _v2((P.x - Cz.x) / strutLen, (P.y - Cz.y) / strutLen);   // contact → stud
-    const offLine = (q) => Math.abs((q.x - Cz.x) * n.y - (q.y - Cz.y) * n.x);
-    // THE ARM. Its sections are radial: inner edge the circumscribed arc's
-    // VERTEX radius (the shallowest the polygon cuts it), outer edge rOut, the
-    // stock CLICK_T. Sampled from armFromAz (above) to the stud, the ARM
-    // ALONE: the beak's ramp flank runs stud-ward under the arm, so the sections
-    // near the beak carry its metal too, which lies between the arm and the
-    // chord and only deepens them — the arm alone is the upper bound.
-    const ri = armInnerVertexR, ro = rOut, Rc = (ri + ro) / 2;
-    const N = 400;
-    let eMax = 0, azAt = 0;
-    for (let k = 0; k <= N; k++) {
-      const a = armFromAz * (1 - k / N);
-      const e = offLine(_v2(Rc * Math.cos(a), Rc * Math.sin(a)));
-      if (e > eMax) { eMax = e; azAt = a; }
-    }
-    // THE BEAK (TODO 218, re-cut by TODO 221). The wedge between the ramp flank
-    // and the relieved face flank, its apex cut to the arc the load arrives at.
-    // Three of its sections, square to the wedge's bisector, each carrying F
-    // along the hold line at its midpoint's offset: the KINDEST (where the
-    // first flank reaches the arm's inner edge — the row TODO 218 priced), the
-    // section where the ARC BEGINS (the farther tangent point's station), and
-    // the WORST between them. Inside the arc the beak is a contact, priced as
-    // one (EQUALISATION: Hertz, at ρ).
-    const pick = (q) => ({ s_u: q.s_u, width_u: q.width_u, offset_u: q.offset_u });
-    const beakRoot = { wedgeRad: ARC.wedge, ...pick(ARC.root), t_u: MAINT_DET_CLICK_T };
-    const arc = {
-      rho_u: ARC.rho, rhoHertz_u: ARC_RHO_HERTZ, rhoBeam_u: ARC_RHO_BEAM, binds: ARC_RHO_HERTZ >= ARC_RHO_BEAM ? 'hertz' : 'beam',
-      tipRise_u: ARC.rho * (1 / Math.sin(halfV) - 1),
-      contactUpFace_u: (Cz.x - T0z.x) * uFz.x + (Cz.y - T0z.y) * uFz.y,
-      studMove_u: Math.hypot(ARC.P.x - (() => { const tn = _dot(T0, nFace); return T0.x + nFace.x * (-tn + Math.sqrt(tn * tn - _dot(T0, T0) + pivR * pivR)); })(),
-        ARC.P.y - (() => { const tn = _dot(T0, nFace); return T0.y + nFace.y * (-tn + Math.sqrt(tn * tn - _dot(T0, T0) + pivR * pivR)); })()),
-      line_u: MAINT_DET_CLICK_T, Estar_Pa: ARC_E_STAR, p0Allow_Pa: ARC_P0_ALLOW,
-      firstYieldPerY: LINE_CONTACT_FIRST_YIELD_P0_PER_Y, steel: { ...CLICK_STEEL_SIGMA_Y_BAND },
-      arcStart: pick(ARC.arcStart), worst: pick(ARC.worst),
-    };
-    // THE CONTACT, as decided: the arc, its line through the stud, and the
-    // face's far end CLEAR_MARGIN off the relieved flank when the face reaches
-    // the arc — and the parallel flank's failure, which is why (TODO 218).
-    const contact = { model: 'radius', faceReliefRad: FACE_RELIEF, holdTurnRad: holdTurn,
-      cornerGapAtHold_u: Math.abs(sdLine(faceCornerAtHold, TFz, _v2(TFz.x + uFr.x, TFz.y + uFr.y))),
-      momentAboutStudPerN_u: (Cz.x - P.x) * nFz.y - (Cz.y - P.y) * nFz.x,
-      parallelFlank: flankBearing };
-    return {
-      strut_u: strutLen, tipR_u: Math.hypot(Tz.x, Tz.y), contactR_u: Math.hypot(Cz.x, Cz.y), rootR_u: MAINT_RING_ROOT_CUT, beakRoot, arc, contact,
-      // the face's normal and the contact→stud line are one line by construction
-      // (TODO 215/221); a click recut off it would put a moment on the pivot
-      lineVsFaceNormal: 1 - Math.abs(n.x * nFz.x + n.y * nFz.y),
-      momentArm_u: offLine(_v2(0, 0)),
-      arm: { ri_u: ri, ro_u: ro, depth_u: ro - ri, t_u: MAINT_DET_CLICK_T, centroidR_u: Rc,
-             offsetMax_u: eMax, azFromStud: azAt, azBeak: tipAz, azSampledFrom: armFromAz },
-    };
-  })();
-  // THE RIDE, on the cut. The beak's three edges densified to ≤ 0.02 (vertices
-  // are not the surface); the ring's vertices are tested against the beak too,
-  // so a tooth's corner cannot slip between two samples. A saw is star-shaped
-  // about its axis — every chord is monotone in azimuth — so the metal's
-  // boundary at an azimuth is the one chord that spans it.
-  MAINT_DET_RIDE = (() => {
-    const poly = MAINT_RING_POLY, n = poly.length;
-    const E = poly.map((a, i) => {
-      const b = poly[(i + 1) % n];
-      return { ax: a[0], ay: a[1], bx: b[0], by: b[1], a0: Math.atan2(a[1], a[0]),
-        da: wrapPi(Math.atan2(b[1], b[0]) - Math.atan2(a[1], a[0])), mid: Math.atan2(a[1] + b[1], a[0] + b[0]) };
-    });
-    const segD = (x, y, ax, ay, bx, by) => {
-      const dx = bx - ax, dy = by - ay;
-      const t = clamp(((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy), 0, 1);
-      return Math.hypot(x - ax - t * dx, y - ay - t * dy);
-    };
-    // The edges that can pass the window test below, by azimuth bin. The test
-    // keeps an edge whose midpoint is within 2·pitchR of the sample; a sample
-    // in a bin lies within half a bin of the bin's centre, so every edge it
-    // could keep is within 2·pitchR + half a bin (+ a rounding margin) of that
-    // centre — a SUPERSET, listed in E's own order. ringSd still applies the
-    // exact original test to each candidate, so it visits the same edges in the
-    // same order and returns the same double; what it no longer does is
-    // evaluate `wrapPi` (a floating-point modulo) on all 48 edges for each of
-    // the ~300,000 samples a fast-forward frame asks about.
-    const RING_NB = 96, RING_BW = (2 * Math.PI) / RING_NB;
-    const ringCand = Array.from({ length: RING_NB }, (_, b) => {
-      const c = -Math.PI + (b + 0.5) * RING_BW;
-      return E.filter((e) => Math.abs(wrapPi(e.mid - c)) <= 2 * pitchR + RING_BW / 2 + 1e-9);
-    });
-    const ringSd = (x, y) => {                         // + outside the ring's metal, − inside
-      const az = Math.atan2(y, x), r = Math.hypot(x, y);
-      let d = Infinity, rb = null;
-      const bin = Math.min(RING_NB - 1, Math.max(0, Math.floor((az + Math.PI) / RING_BW)));
-      for (const e of ringCand[bin] ?? E) {            // a NaN sample has no bin: every edge, as before
-        if (Math.abs(wrapPi(e.mid - az)) > 2 * pitchR) continue;
-        d = Math.min(d, segD(x, y, e.ax, e.ay, e.bx, e.by));
-        if (rb === null) {
-          const s = wrapPi(az - e.a0) / e.da;
-          if (s >= 0 && s <= 1) {
-            const ux = Math.cos(az), uy = Math.sin(az), dx = e.bx - e.ax, dy = e.by - e.ay;
-            rb = (e.ax * dy - e.ay * dx) / (ux * dy - uy * dx);
-          }
-        }
-      }
-      return rb !== null && r < rb ? -d : d;
-    };
-    const B = beakPts.map((p) => _v2(p.x - pivR, p.y));   // pivot-local, as cut
-    // The two FLANKS and the ARC are sampled (ramp tangent → ramp flank's top,
-    // face flank's top → its tangent → round the arc, TODO 221); the top runs
-    // inside the arm, more than a margin off the tips at every lift, and is
-    // still read through the corner test below.
-    const samples = [];
-    for (let i = 0; i < B.length; i++) {
-      if (i === 1 || i === 2) continue;                // the top's two edges
-      const j = (i + 1) % B.length;
-      const a = B[i], b = B[j], k = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 0.02));
-      for (let j = 0; j < k; j++) samples.push(_v2(a.x + ((b.x - a.x) * j) / k, a.y + ((b.y - a.y) * j) / k));
-    }
-    const area2 = B.reduce((s, p, i) => s + p.x * B[(i + 1) % B.length].y - B[(i + 1) % B.length].x * p.y, 0);
-    const beakSd = (x, y) => {                         // + outside the beak, − inside (convex)
-      let inside = true, d = Infinity;
-      for (let i = 0; i < B.length; i++) {
-        const a = B[i], b = B[(i + 1) % B.length];
-        if (Math.sign(area2) * ((b.x - a.x) * (y - a.y) - (b.y - a.y) * (x - a.x)) < 0) inside = false;
-        d = Math.min(d, segD(x, y, a.x, a.y, b.x, b.y));
-      }
-      return inside ? -d : d;
-    };
-    const cx = B.reduce((a, p) => a + p.x, 0) / B.length + pivR, cy = B.reduce((a, p) => a + p.y, 0) / B.length;
-    const reach = Math.max(...B.map((p) => Math.hypot(p.x + pivR - cx, p.y - cy))) + 0.5;
-    const clearAt = (net, t) => {
-      const lam = MAINT_DET_SIGN * t, c = Math.cos(lam), s = Math.sin(lam);
-      const cn = Math.cos(net), sn = Math.sin(net);
-      let m = Infinity;
-      for (const p of samples) {
-        const ax = pivR + p.x * c - p.y * s, ay = p.x * s + p.y * c;         // cock frame
-        m = Math.min(m, ringSd(ax * cn + ay * sn, -ax * sn + ay * cn));       // → ring-local
-      }
-      for (const [vx, vy] of poly) {
-        const ax = vx * cn - vy * sn, ay = vx * sn + vy * cn;                 // ring-local → cock frame
-        if (Math.hypot(ax - cx, ay - cy) > reach) continue;
-        const qx = ax - pivR, qy = ay;
-        m = Math.min(m, beakSd(qx * c + qy * s, -qx * s + qy * c));
-      }
-      return m;
-    };
-    // §257 — `clearAt(net, t) − SEAT_RELIEF >= 0` asked as a question. The solve
-    // below only ever tests that sign, and `m − r >= 0` is `m >= r` for doubles,
-    // so "every term is at least r" is the same answer as "the minimum of the
-    // terms is at least r" — and it can stop at the first term that is not. A
-    // NaN term fails here as it poisons the minimum there. The terms and their
-    // order are clearAt's own; `clearAt` stays whole for the instruments that
-    // read the gap itself.
-    //   And since the answer is a conjunction, the order its terms are asked
-    // in cannot change it: the term that refused the last question is asked
-    // first (the bisection's neighbouring tilts are refused by the same corner
-    // of the cut), then every term in clearAt's order. Each term is the same
-    // expression either way.
-    let lastRefuser = -1;
-    const nS = samples.length;
-    const termOk = (k, c, s, cn, sn, thr) => {
-      if (k < nS) {
-        const p = samples[k];
-        const ax = pivR + p.x * c - p.y * s, ay = p.x * s + p.y * c;
-        return ringSd(ax * cn + ay * sn, -ax * sn + ay * cn) >= thr;
-      }
-      const [vx, vy] = poly[k - nS];
-      const ax = vx * cn - vy * sn, ay = vx * sn + vy * cn;
-      if (Math.hypot(ax - cx, ay - cy) > reach) return true;
-      const qx = ax - pivR, qy = ay;
-      return beakSd(qx * c + qy * s, -qx * s + qy * c) >= thr;
-    };
-    const clearsAt = (net, t, thr) => {
-      const lam = MAINT_DET_SIGN * t, c = Math.cos(lam), s = Math.sin(lam);
-      const cn = Math.cos(net), sn = Math.sin(net);
-      if (lastRefuser >= 0 && !termOk(lastRefuser, c, s, cn, sn, thr)) return false;
-      for (let k = 0, nT = nS + poly.length; k < nT; k++) {
-        if (k === lastRefuser) continue;
-        if (!termOk(k, c, s, cn, sn, thr)) { lastRefuser = k; return false; }
-      }
-      return true;
-    };
-    // The cap: the turn that carries the tip a margin past the tip circle.
-    let cap; {
-      let lo = 0, hi = 1.5;
-      for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; const q = tipAt(MAINT_DET_SIGN * m); if (Math.hypot(q.x, q.y) < MAINT_RING_R + CLEAR_MARGIN) lo = m; else hi = m; }
-      cap = hi;
-    }
-    const liftSolve = (net) => {
-      if (clearAt(net, 0) - SEAT_RELIEF >= -1e-9) return 0;
-      let lo = 0, hi = cap;
-      for (let i = 1; i <= 24; i++) { const cand = (cap * i) / 24; if (clearsAt(net, cand, SEAT_RELIEF)) { hi = cand; lo = (cap * (i - 1)) / 24; break; } }
-      for (let i = 0; i < 32; i++) { const m = (lo + hi) / 2; if (clearsAt(net, m, SEAT_RELIEF)) hi = m; else lo = m; }
-      return hi;
-    };
-    // The tick calls this every frame and every swept pose, and the solve is
-    // up to 56 clearance passes over the cut polygon: a measured 6× on
-    // `transmits` and 2.6× on `restoring` before it was memoised. It is a
-    // PURE function of `net`, so the memo is keyed on the exact double (no
-    // quantising — every answer is bit-identical to the unmemoised solve) and
-    // bounded so a long run cannot grow it without limit.
-    const LIFT_MEMO_MAX = 8192, liftMemo = new Map();
-    const liftAt = (net) => {
-      let v = liftMemo.get(net);
-      if (v === undefined) {
-        v = liftSolve(net);
-        if (liftMemo.size >= LIFT_MEMO_MAX) liftMemo.delete(liftMemo.keys().next().value);
-        liftMemo.set(net, v);
-      }
-      return v;
-    };
-    // The tip's own gap — the contact, if the cut is ridden by the tip.
-    const tipGapAt = (net, t) => {
-      const lam = MAINT_DET_SIGN * t, q = _rot(_v2(Tz.x - pivR, Tz.y), lam);
-      const ax = pivR + q.x, ay = q.y, cn = Math.cos(net), sn = Math.sin(net);
-      return ringSd(ax * cn + ay * sn, -ax * sn + ay * cn);
-    };
-    return { liftAt, clearAt, tipGapAt, cap, seatNet: Math.atan2(Vz.y, Vz.x) - Math.atan2(cutV.V.y, cutV.V.x) };
-  })();
+  // TODO 215/217/218/221 — the click's cut and its ride, solved by maintClickCut
+  // (above the spring, which chose the ring's tooth count from this very ride:
+  // §339's recoil rule). The chosen cut is the one the build uses; its rule-6
+  // findings are raised here, where they always were.
+  const CUT = MAINT_CLICK_CUT;
+  for (const w of CUT.warns) console.warn(w);
+  const { pitchR, armPts, _rot, _v2, pivR, segMinR, rIn, beakPts, armW } = CUT;
+  MAINT_DET_SIGN = CUT.sign; MAINT_DET_LEVER = CUT.lever; MAINT_DET_BASE = CUT.base;
+  MAINT_DET_SEAT_TIP = CUT.seatTip; MAINT_DET_PIV_R = CUT.pivR; MAINT_DET_HOLD_GEOM = CUT.holdGeom; MAINT_DET_RIDE = CUT.ride;
+  // the ring as cut and the polygon the click was solved on are one polygon
+  if (!(MAINT_RING_POLY.length === CUT.poly.length && MAINT_RING_POLY.every((q, i) => q[0] === CUT.poly[i][0] && q[1] === CUT.poly[i][1])))
+    console.warn('§339 maintaining click: the ring as cut is not the polygon its click was solved on');
   // TRAVEL, measured on the cut: the most the ride lifts the click over one
   // tooth (sampled, then refined on the crest by golden section).
   await breathe(111);
@@ -16865,46 +17081,13 @@ for (const [end, F, Fb, arm, L, d, k] of [
 // the metal books it at pick-up, when the cone turns forward through the same
 // angle — the bank after a wind is the same either way.
 const MAINT_HOLD = (() => {
-  const RUN = MAINT_RING_RUN;                    // the ring's run past the beak (TODO 215)
-  // The RECOIL's sense: the spring's reaction on the ring drives it AGAINST
-  // the run. A direction-committed declaration (TODO 115's class) — the guard
-  // below reads the cut, and the one at the spring's guard reads the blade.
-  const REC = -MAINT_RING_RUN;
-  const pitch = (Math.PI * 2) / MAINT_RING_TEETH, R = MAINT_SPRING.run;
-  const pm = (x, p) => x - p * Math.floor(x / p);
-  const ride = MAINT_DET_RIDE, s0 = ride.seatNet;
-  // 1 — the face, swung back from the valley until it reaches the seated beak.
-  const gapBack = (d) => ride.clearAt(s0 + REC * d, 0) - SEAT_RELIEF;
-  let dHold = 0, faceFound = gapBack(0) <= 0;
-  if (!faceFound) {
-    const N = 400;
-    let lo = 0, hi = null;
-    for (let i = 1; i <= N; i++) { const d = (0.5 * pitch * i) / N; if (gapBack(d) <= 0) { hi = d; lo = (0.5 * pitch * (i - 1)) / N; break; } }
-    if (hi !== null) {
-      for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (gapBack(m) <= 0) hi = m; else lo = m; }
-      dHold = lo; faceFound = true;              // the last angle still a relief off: the face AT the apex
-    }
-  }
+  // The recoil, read off the ride by maintRecoil — which also declares its
+  // sense (REC, against the run: TODO 115's class); the guard below reads the cut.
+  const RC = maintRecoil(MAINT_DET_RIDE, MAINT_RING_TEETH);
+  const RUN = RC.RUN, REC = RC.REC;
+  const pitch = RC.pitch, R = MAINT_SPRING.run, pm = RC.pm, ride = MAINT_DET_RIDE, s0 = RC.s0, gapBack = RC.gapBack;
+  const { dHold, faceFound, holdNet, crestNet, rCrest } = RC;
   if (!faceFound) console.warn(`TODO 224 maintaining hold: swinging the ring back ${(0.5 * pitch).toFixed(4)} rad from the seat meets no face — the recoil has nothing to stand on`);
-  const holdNet = s0 + REC * dHold;
-  // the crest — where the beak tops the ramp (sampled, then golden section).
-  // The SAME nets RIDE_TRAVEL walked (the seat plus j/96 of a pitch, then its
-  // golden section): the ride is periodic in the pitch, so this finds the same
-  // crest, and every liftAt here is a hit on that solve's memo rather than a
-  // second ride solve at boot.
-  const crestNet = (() => {
-    const N = 96;
-    let best = { t: -1, j: 0 };
-    for (let j = 0; j < N; j++) { const t = ride.liftAt(s0 + (j * pitch) / N); if (t > best.t) best = { t, j }; }
-    let a = s0 + ((best.j - 1) * pitch) / N, b = s0 + ((best.j + 1) * pitch) / N;
-    const g = (Math.sqrt(5) - 1) / 2;
-    for (let i = 0; i < 40; i++) {
-      const c = b - g * (b - a), d = a + g * (b - a);
-      if (ride.liftAt(c) > ride.liftAt(d)) b = d; else a = c;
-    }
-    return (a + b) / 2;
-  })();
-  const rCrest = pm(RUN * (crestNet - holdNet), pitch);
   // GUARD (§115's class, measured on the cut): the recoil must take the beak
   // DOWN the ramp — the ring backing from mid-ramp lowers the click — and past
   // the hold the face must block it. Flip REC and the ring "recoils" up the
@@ -48375,37 +48558,10 @@ const EQUALISATION_GOING = (() => {
     //    priced as beams under SPRING_SIGMA_Y_PA.
     const maintainingHold = (() => {
       const H = MAINT_DET_HOLD_GEOM;
-      const torque_Nm = fuseeTorque_Nm;
-      const load_N = torque_Nm / (H.momentArm_u * OSC_U);
-      const a = H.arm, ri = a.ri_u * OSC_U, ro = a.ro_u * OSC_U, h = ro - ri, t = a.t_u * OSC_U;
-      const A = h * t, M_Nm = load_N * a.offsetMax_u * OSC_U;
-      const rn = h / Math.log(ro / ri), ecc = (ri + ro) / 2 - rn;
-      const armBend_Pa = M_Nm * (rn - ri) / (A * ecc * ri), armAxial_Pa = load_N / A;
-      const armSigma_Pa = armBend_Pa + armAxial_Pa;
-      const b = H.beakRoot, bw = b.width_u * OSC_U, bt = b.t_u * OSC_U;
-      const beakSigma_Pa = load_N / (bw * bt) + 6 * load_N * b.offset_u * OSC_U / (bt * bw * bw);
-      // TODO 221 — the apex is an ARC of radius ρ: inside where it begins the
-      // beak is a Hertz line contact one click-thickness long, p0 = √(F·E*/(π·ρ·t))
-      // against first yield of the click steel's low end; past it, the wedge's
-      // sections where the arc begins and the worst of them, as beams.
-      const arc = H.arc, tL = arc.line_u * OSC_U;
-      const p0_Pa = Math.sqrt((load_N / tL) * arc.Estar_Pa / (Math.PI * arc.rho_u * OSC_U));
-      const halfWidth_m = Math.sqrt(4 * (load_N / tL) * arc.rho_u * OSC_U / (Math.PI * arc.Estar_Pa));
-      const secSigma = (q) => load_N / (q.width_u * OSC_U * bt) + 6 * load_N * q.offset_u * OSC_U / (bt * Math.pow(q.width_u * OSC_U, 2));
-      const arcStartSigma_Pa = secSigma(arc.arcStart), worstSigma_Pa = secSigma(arc.worst);
-      if (!(p0_Pa <= arc.p0Allow_Pa * (1 + 1e-9)))
-        console.warn(`TODO 221: the beak's arc (ρ ${arc.rho_u.toFixed(4)} u) carries the hold at p0 ${(p0_Pa / 1e9).toFixed(3)} GPa — over first yield of the click steel's low end, ${(arc.p0Allow_Pa / 1e9).toFixed(3)} GPa`);
-      if (!(worstSigma_Pa <= SPRING_SIGMA_Y_PA * (1 + 1e-9)))
-        console.warn(`TODO 221: the beak's wedge where its arc begins works at ${(worstSigma_Pa / 1e6).toFixed(1)} MPa, over ${(SPRING_SIGMA_Y_PA / 1e6).toFixed(0)}`);
-      if (Math.abs(H.contact.momentAboutStudPerN_u) > 1e-9)
-        console.warn(`TODO 218/221: the hold's contact on the arc puts ${H.contact.momentAboutStudPerN_u.toExponential(2)} u·N on the click about its stud — the contact has left the stud's line`);
-      if (!(H.contact.cornerGapAtHold_u >= CLEAR_MARGIN * (1 - 1e-9)))
-        console.warn(`TODO 218: when the back-driven face reaches the arc its far end stands ${H.contact.cornerGapAtHold_u.toFixed(4)} off the relieved flank, need ≥ ${CLEAR_MARGIN} — the hold may bear on the flank and cam the click out`);
-      if (armSigma_Pa > SPRING_SIGMA_Y_PA)
-        console.warn(`TODO 217: the maintaining detent's arm bends at ${(armSigma_Pa / 1e6).toFixed(0)} MPa holding the going torque `
-          + `(${(load_N * 1000).toFixed(0)} mN on the face, offset ${a.offsetMax_u.toFixed(4)} u) — over the ${(SPRING_SIGMA_Y_PA / 1e6).toFixed(0)} MPa yield; size the arm to its load`);
-      if (Math.abs(H.lineVsFaceNormal) > 1e-9)
-        console.warn(`TODO 217: the hold's line of action (tip → stud) has left the face's normal by ${H.lineVsFaceNormal.toExponential(2)} — the click is no longer a strut, and the moment it carries about the stud is unpriced`);
+      const PR = maintHoldPrice(H, fuseeTorque_Nm);
+      for (const w of PR.find) console.warn(w);
+      const { torque_Nm, load_N, a, t, h, M_Nm, armBend_Pa, armAxial_Pa, armSigma_Pa, b, beakSigma_Pa, arc, p0_Pa, halfWidth_m,
+        arcStartSigma_Pa, worstSigma_Pa } = PR;
       return {
         // TODO 219 — the spring, as cut (MAINT_SPRING, where the ring's tooth
         // count was solved from it). Row 16 re-derives the floor from this
@@ -48417,14 +48573,14 @@ const EQUALISATION_GOING = (() => {
           return {
             torqueRun_Nm: torque_Nm, floor_Nm: M.tauFloor, floorCorner: M.floorCorner, floorFrac: M.floorFrac,
             upstream: [...GOING_POWER.UPSTREAM],
-            ringTeeth: M.N, recoilMax_rad: M.pitch, marginRun_rad: M.marginRun, run_rad: M.run, runMax_rad: M.runMax,
+            ringTeeth: M.N, recoilMax_rad: M.recoilRule ? M.rCrest : M.pitch, recoilRule: M.recoilRule, below: M.below, marginRun_rad: M.marginRun, run_rad: M.run, runMax_rad: M.runMax,
             k_Nm_per_rad: M.k, preload_rad: M.thetaPre, thetaWork_rad: M.thetaWork,
             form: 'cantilever blade in a great-wheel crossing, filed to uniform strength (t ∝ √x, floored at STOCK_MIN_U), bearing on a pin hung from the ring; the crossing\'s arm flank is the stop',
             b_u: M.b, tRoot_u: M.t, tMin_u: M.tMin, L_u: M.L, rE_u: M.rE, pinR_u: M.geom.rPin, pinRadius_u: M.geom.rP,
             compliance_m_per_N: M.compliance_m_per_N, deflWork_u: M.deflWork_u,
             E_Pa: M.E, limit_Pa: M.sigLim, band: { ...MAINSPRING_SIGMA_Y_BAND },
             sigmaWork_Pa: M.sigmaWork, sigmaStop_Pa: M.sigmaStop, margin: M.sigLim / M.sigmaWork,
-            law: 'series member: wound by the drive to the going torque while running; at a wind it recoils the ring onto the detent (≤ one ring pitch) and then drives the great wheel on, its torque falling by k·Δ to the floor at the stop',
+            law: 'series member: wound by the drive to the going torque while running; at a wind it recoils the ring onto the detent (at most from the crest back to the face, under one ring pitch) and then drives the great wheel on, its torque falling by k·Δ to the floor at the stop',
           };
         })(),
         load_N, momentArm_u: H.momentArm_u, tipR_u: H.tipR_u, rootR_u: H.rootR_u, strut_u: H.strut_u,
