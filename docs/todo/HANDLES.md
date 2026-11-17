@@ -42,6 +42,7 @@ heading, and [the index](../../TODO.md) is where it is shown.
 
 | item | handle |
 |---|---|
+| 317 | reversal floor misses recoil |
 | 316 | maintaining pin seat wall |
 | 315 | rate probe expects 18,000 |
 | 314 | geared bulge thins land |

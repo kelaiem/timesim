@@ -1949,6 +1949,16 @@ for (const unit of ['Fourth wheel', 'Third wheel', 'Center wheel', 'Small second
   declareRestoring(unit, '*', 'two-way',
     'geared to the escape wheel: the mainspring drives it forward, and the escape wheel\'s draw recoil drives it back through the same teeth',
     ['Mainspring drum/mainspringRibbon', 'Escape wheel/*']);
+// TODO 317 — the recoil does not stop at the centre arbor. The cannon pinion is
+// friction-fit on it (MECH_GRAPH's 'Center wheel' → 'Motion works'), so the draw
+// recoil carries on through the motion works to the hour wheel, divided by 12
+// on the way. The §36 registry could not see it while its dwell floor was an
+// ANGLE (1e-6 rad against the hour wheel's ~1.6e-6); asked of the metal it
+// reads, so the two are declared on the train's own terms.
+for (const unit of ['Motion works', 'Hour wheel'])
+  declareRestoring(unit, '*', 'two-way',
+    'carried on the centre arbor through the cannon pinion: the mainspring drives it forward, and the escape wheel\'s draw recoil, travelling back up the train, drives it back',
+    ['Mainspring drum/mainspringRibbon', 'Escape wheel/*']);
 // The balance IS a spring oscillator, and the hairspring is what makes it
 // one. SCOPE, stated: §48 asks whether a restoring element is DECLARED, not
 // whether its rate is modelled from stiffness — rate and force modelling are
