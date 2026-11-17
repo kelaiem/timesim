@@ -65022,6 +65022,13 @@ function tick(t) {
   // travel is that hand times the drum's rotation — one source per barrel.
   const paidOut = goingBarrelGroup ? -MOVEMENT_SENSE * goingBarrelGroup.rotation.z : MOVEMENT_SENSE * drumRot;
   mainspring.setWind(mainspring.sweepFull - paidOut);   // §339: the ribbon rides the drum it lives in
+  // §339 landing 3c's BARREL B (?barrels=3) carries a ribbon of its own, cut to
+  // the same hand as the pulley's (−MOVEMENT_SENSE, the spur mesh turns it
+  // against the drum), and nothing wound it: it stood on its build frame and
+  // only turned rigidly with B through the reserve — the frozen-ribbon defect
+  // again, on the barrel the one setWind above does not reach. Its travel is
+  // read by the same law, its own hand times its own rotation.
+  if (barrelBGroup) mainspringB.setWind(mainspringB.sweepFull - (-MOVEMENT_SENSE * barrelBGroup.rotation.z));
 
   // Cap pinion at the dial end of the motion-works arbor. It meshes the MINUTE
   // WHEEL, beside the cannon pinion that meshes the same wheel, so it turns
