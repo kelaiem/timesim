@@ -1732,7 +1732,7 @@ export function gearOuterR({ module, teeth, thickness, bevel: bevelOn = true, ma
 }
 
 export function makeGear({ module, teeth, thickness, boreR = 1, spokes = 5, name = '',
-                           material, hub = true, bevel: bevelOn = true, mates }) {
+                           material, hub = true, bevel: bevelOn = true, mates, landToHub = false }) {
   const mat = material || MATS.brass;
   mates = gearMates(mates, teeth, 'makeGear');
   // THE TRAP DISARMED AT THE SOURCE (§81's weldAssert precedent). A caller
@@ -1773,7 +1773,13 @@ export function makeGear({ module, teeth, thickness, boreR = 1, spokes = 5, name
   // ring around a bore is a member, so its WALL answers to STOCK_MIN_U, not
   // to whatever fraction of the bore it happened to be.
   const hubR = gearHubR(pitchR, boreR, hub);   // one law with gearFaceReach (§234)
-  const innerR = Math.max(hubR + module * 0.35, boreR * 2.0);
+  // The crossings' inner edge: a land of 0.35 module round the hub, or the bore
+  // doubled where that is larger (a proportion, so a large bore keeps a land
+  // that looks its size). `landToHub` takes the hub's own term alone, for a
+  // wheel whose crossings carry a working part that wants the land as small as
+  // the hub allows (§339 3f / TODO 316: the great wheel, whose crossing seats
+  // the maintaining spring's pin at the least radius it gives).
+  const innerR = landToHub ? hubR + module * 0.35 : Math.max(hubR + module * 0.35, boreR * 2.0);
   const outerR = rootR - module * 0.7;
   const useSpokes = outerR > innerR + module ? spokes : 0;
   const bevel = gearBevel(module, thickness, bevelOn);

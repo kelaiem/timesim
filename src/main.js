@@ -1209,7 +1209,7 @@ const COIL_TOP = DRUM_TOP_Z - 0.6; // hook plane: just under the drum's lid (dec
 await breathe(5);
 const GW_T = 1.4;   // the great wheel's stock
 await breathe(6);
-const greatWheel = G.makeGear({ name: 'greatWheel', module: TRAIN.barrel.module, teeth: TRAIN.barrel.teeth, mates: [TRAIN.barrel.pinion], thickness: GW_T, boreR: 1.4, spokes: 5, material: MATS.brass });
+const greatWheel = G.makeGear({ name: 'greatWheel', module: TRAIN.barrel.module, teeth: TRAIN.barrel.teeth, mates: [TRAIN.barrel.pinion], thickness: GW_T, boreR: 1.4, spokes: 5, material: MATS.brass, landToHub: true });   // §339 3f: the land to the hub, so the maintaining pin seats in the ring's solid (TODO 316)
 // The disc's UNDERSIDE (the wheel sits at L_BARREL, centred): half the stock
 // plus makeGear's own edge bevel, read through the builder's law with this
 // wheel's OWN module. Three sites used to restate it with a 0.36 module literal,
@@ -15985,20 +15985,22 @@ const MAINT_SPRING = await (async () => {
   // 60 teeth: the recoil rule's own, its findings raised).
   //   And the ring must still SEAT the spring's pin: the pin is let into the
   // ring's underside to mid-thickness (the blade block below), at r_P ± its
-  // radius, so its hole must lie inside the ring's ROOT land. A deeper tooth (a
+  // radius, so its hole must lie inside the ring's ROOT land, behind §50's wall
+  // (TODO 316; the great wheel's land is cut to its hub, `landToHub`, so r_P is
+  // the least the hub allows). A deeper tooth (a
   // coarser ring keeps the 24-tooth cut's proportions) cuts the root inward,
   // and past the pin's outer edge the hole breaks out into the tooth gaps,
   // where the beak rides — the pin standing in its path at whatever phase the
   // crossing puts it (measured on the 20-tooth cut: 0.145 off the beak against
   // CLEAR_MARGIN, its hole 0.178 through the root). The pitch rule met this by
-  // chance (TODO 316 files the wall it left).
+  // chance, with 0.036 of wall (TODO 316).
   const standsAt = (n) => {
     const c = cutOf(n), f = fitAt(n);
     if (!c || !c.holdGeom) return { stands: false, why: ['no cut'] };
     const why = [...c.warns, ...maintHoldPrice(c.holdGeom, tauGo).find];
     if (f.lim) {
       const pinOut = f.lim.g.rP + f.lim.g.rPin, root = MAINT_RING_R * (1 - maintRingDepthF(n));
-      if (!(root >= pinOut)) why.push(`§339 maintaining ring: the spring pin's seat (out to r ${pinOut.toFixed(4)}) breaks out of the ${n}-tooth ring's root land (r ${root.toFixed(4)})`);
+      if (!(root - pinOut >= STOCK_MIN_U)) why.push(`TODO 316 maintaining ring: the spring pin's seat (out to r ${pinOut.toFixed(4)}) leaves ${(root - pinOut).toFixed(4)} of wall under the ${n}-tooth ring's root (r ${root.toFixed(4)}), under §50's ${STOCK_MIN_U.toFixed(4)}`);
     }
     return { stands: why.length === 0, why };
   };
@@ -16050,8 +16052,11 @@ const MAINT_SPRING = await (async () => {
   const thetaWork = tauGo / k, thetaPre = tauFloor / k;
   const sigmaStop = sigmaWork * tauFloor / tauGo;
   const pitch = (Math.PI * 2) / N;
+  // TODO 316 — the pin's seat: its hole's wall to the chosen ring's tooth gaps
+  const pinSeat = { pinOut_u: g.rP + g.rPin, root_u: MAINT_RING_R * (1 - maintRingDepthF(N)) };
+  pinSeat.wall_u = pinSeat.root_u - pinSeat.pinOut_u;
   return { N, feasible, pitch, run: R, marginRun: CLEAR_MARGIN / g.rP, k, thetaWork, thetaPre, tauGo, tauFloor,
-    rCrest: REC ? REC.rCrest : pitch, recoilRule: !!pick, below, cut: CUT,
+    rCrest: REC ? REC.rCrest : pitch, recoilRule: !!pick, below, cut: CUT, pinSeat,
     floorFrac: tauFloor / tauGo, floorCorner: MAINT_FLOOR_CORNER,
     E, sigLim, b, t, tMin, L: g.L, rE: g.rE, sigmaWork, sigmaStop,
     deflWork_u: thetaWork * g.rE, compliance_m_per_N: complianceOf(t, g.L), tAt: (x) => tAt(t, g.L, x),
@@ -48573,7 +48578,7 @@ const EQUALISATION_GOING = (() => {
           return {
             torqueRun_Nm: torque_Nm, floor_Nm: M.tauFloor, floorCorner: M.floorCorner, floorFrac: M.floorFrac,
             upstream: [...GOING_POWER.UPSTREAM],
-            ringTeeth: M.N, recoilMax_rad: M.recoilRule ? M.rCrest : M.pitch, recoilRule: M.recoilRule, below: M.below, marginRun_rad: M.marginRun, run_rad: M.run, runMax_rad: M.runMax,
+            ringTeeth: M.N, recoilMax_rad: M.recoilRule ? M.rCrest : M.pitch, recoilRule: M.recoilRule, below: M.below, pinSeat: { ...M.pinSeat, floor_u: STOCK_MIN_U }, marginRun_rad: M.marginRun, run_rad: M.run, runMax_rad: M.runMax,
             k_Nm_per_rad: M.k, preload_rad: M.thetaPre, thetaWork_rad: M.thetaWork,
             form: 'cantilever blade in a great-wheel crossing, filed to uniform strength (t ∝ √x, floored at STOCK_MIN_U), bearing on a pin hung from the ring; the crossing\'s arm flank is the stop',
             b_u: M.b, tRoot_u: M.t, tMin_u: M.tMin, L_u: M.L, rE_u: M.rE, pinR_u: M.geom.rPin, pinRadius_u: M.geom.rP,

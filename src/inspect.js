@@ -12255,6 +12255,11 @@ export function checkEqualisation(clock) {
           ? !!b && b.teeth === sp.ringTeeth - 1 && (!b.cut || !b.faceFound || !(b.rCrest_rad < 2 * Math.PI / b.teeth) || b.run_rad > b.runMax_rad
             || (b.stands === false && b.why.length > 0))   // or its click does not stand (the build's own findings on it)
           : 2 * Math.PI / (sp.ringTeeth - 1) + sp.marginRun_rad > sp.runMax_rad;
+        // TODO 316 — the spring's pin is seated in the ring's root land behind §50's
+        // wall to the tooth gaps the beak rides: re-derived from the record's own radii
+        const ps = sp.pinSeat;
+        if (!ps || !(Math.abs(ps.wall_u - (ps.root_u - ps.pinOut_u)) <= 1e-12 && ps.wall_u >= ps.floor_u))
+          failures.push({ what: 'maintaining pin seat: its wall to the ring\'s root under §50\'s floor', pinSeat: ps ?? null });
         if (!(sp.run_rad <= sp.runMax_rad && fewest))
           failures.push({ what: 'ring tooth count is not the fewest whose recoil fits the blade\'s run', teeth: sp.ringTeeth, run: sp.run_rad, runMax: sp.runMax_rad, below: b ?? null });
         const k = (sp.torqueRun_Nm - sp.floor_Nm) / sp.run_rad;
