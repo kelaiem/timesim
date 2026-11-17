@@ -9,7 +9,10 @@
 // stood frozen and turned rigidly with the drum through the whole reserve, while
 // every gate stayed green (a frozen ribbon is a valid, clear piece of metal).
 // This probe boots the default build and §339's spur-driven barrel
-// (`barrels=2`, whose ribbon is cut to the other hand) and holds, per build:
+// (`barrels=2`, whose ribbon is cut to the other hand) and §339 landing 3c's
+// parallel barrel B (`alarm=0&barrels=3`, two going ribbons: the drum's own and
+// B's, whose ribbon nothing wound until this probe held EVERY going ribbon
+// rather than the first one found) and holds, per ribbon:
 //   1. the ribbon's frame at full wind is the wound frame (0) and at run-down
 //      the run-down frame (the last);
 //   2. the frame never moves toward wound as tension falls (monotone over a
@@ -30,7 +33,7 @@ import { fileURLToPath } from 'node:url';
 const bi = process.argv.indexOf('--build');
 if (bi < 0) {
   let bad = 0;
-  for (const q of ['', 'barrels=2']) {
+  for (const q of ['', 'barrels=2', 'alarm=0&barrels=3']) {
     const r = spawnSync(process.execPath, ['--import', new URL('./native/loader.mjs', import.meta.url).href, fileURLToPath(import.meta.url), '--build', q], { stdio: 'inherit', env: { ...process.env, __TIMESIM_NATIVE_LOADER__: '' } });   // the loader registers once per process, keyed on this
     if (r.status !== 0) bad++;
   }
@@ -41,41 +44,48 @@ const { bootNative } = await import('./native/host.mjs');
 
 const fails = [];
 const ok = (cond, what, detail) => { if (!cond) fails.push({ what, detail }); return !!cond; };
+const EXPECT = { 'alarm=0&barrels=3': 2 };   // going ribbons per build: the drum's own and §339 landing 3c's barrel B
 const N = 40;   // tension samples: the default ribbon has 69 frames, so ≥ 1 frame per sample on average is not asked — monotone and spread are
 
 for (const query of [process.argv[bi + 1] ?? '']) {
-  const tag = query || 'default';
+  const tagB = query || 'default';
   const { clock: C } = await bootNative({ query });
   const springs = [];
   C.scene.traverse((o) => { if (o.name === 'spring' && o.userData.mainspring) springs.push(o); });
-  const going = springs.find((s) => s.parent && /^(barrel|goingBarrel)$/.test(s.parent.name));
-  if (!ok(going, `${tag}: the going mainspring is found`, springs.map((s) => s.parent?.name))) continue;
-  const ms = going.userData.mainspring;
-  const ribbon = going.getObjectByName('mainspringRibbon');
-  const last = ms.frames - 1;
-  const at = (t) => { C.setPose({ tension: t }); return { frame: ribbon.userData.spiralFrame, geo: ribbon.geometry }; };
+  // EVERY going ribbon, not the first found: ?barrels=3 builds two (the drum's own
+  // and §339's barrel B), and a probe that held only the first passed B frozen.
+  const goings = springs.filter((s) => s.parent && /^(barrel|goingBarrel)$/.test(s.parent.name));
+  const want = EXPECT[query] ?? 1;
+  if (!ok(goings.length === want, `${tagB}: ${want} going mainspring(s) found`, springs.map((s) => s.parent?.name))) continue;
+  for (const [gi, going] of goings.entries()) {
+    const tag = goings.length > 1 ? `${tagB} [${going.parent.name} #${gi}]` : tagB;
+    const ms = going.userData.mainspring;
+    const ribbon = going.getObjectByName('mainspringRibbon');
+    const last = ms.frames - 1;
+    const at = (t) => { C.setPose({ tension: t }); return { frame: ribbon.userData.spiralFrame, geo: ribbon.geometry }; };
 
-  const seq = [];
-  for (let i = 0; i <= N; i++) seq.push(at(1 - i / N).frame);   // full → empty
-  const full = at(1), empty = at(0);
-  ok(full.frame === 0, `${tag}: full wind wears the wound frame`, { frame: full.frame });
-  ok(empty.frame === last, `${tag}: run-down wears the run-down frame`, { frame: empty.frame, last });
-  const back = seq.findIndex((f, i) => i > 0 && f < seq[i - 1]);
-  ok(back < 0, `${tag}: the frame never moves toward wound as tension falls`, { at: back, seq });
-  const distinct = new Set(seq).size;
-  ok(distinct >= Math.min(N, last) / 2, `${tag}: the sweep visits a spread of frames`, { distinct, of: ms.frames });
-  ok(full.geo !== empty.geo, `${tag}: the mesh's geometry changes between full and empty`);
+    const seq = [];
+    for (let i = 0; i <= N; i++) seq.push(at(1 - i / N).frame);   // full → empty
+    const full = at(1), empty = at(0);
+    ok(full.frame === 0, `${tag}: full wind wears the wound frame`, { frame: full.frame });
+    ok(empty.frame === last, `${tag}: run-down wears the run-down frame`, { frame: empty.frame, last });
+    const back = seq.findIndex((f, i) => i > 0 && f < seq[i - 1]);
+    ok(back < 0, `${tag}: the frame never moves toward wound as tension falls`, { at: back, seq });
+    const distinct = new Set(seq).size;
+    ok(distinct >= Math.min(N, last) / 2, `${tag}: the sweep visits a spread of frames`, { distinct, of: ms.frames });
+    ok(full.geo !== empty.geo, `${tag}: the mesh's geometry changes between full and empty`);
 
-  if (!query) {
-    // CONTROL — the pre-fix law: the drum group's signed angle read as travel.
-    C.setPose({ tension: 0 });
-    const drum = going.parent.parent;   // drumGroup: the barrel hangs under it
-    ms.setWind(ms.sweepFull - drum.rotation.z);
-    ok(ribbon.userData.spiralFrame === 0, 'control: the pre-fix law freezes the ribbon wound at run-down',
-      { frame: ribbon.userData.spiralFrame, drumRot: drum.rotation.z });
-    C.setPose({ tension: 1 });
+    if (!query && gi === 0) {
+      // CONTROL — the pre-fix law: the drum group's signed angle read as travel.
+      C.setPose({ tension: 0 });
+      const drum = going.parent.parent;   // drumGroup: the barrel hangs under it
+      ms.setWind(ms.sweepFull - drum.rotation.z);
+      ok(ribbon.userData.spiralFrame === 0, 'control: the pre-fix law freezes the ribbon wound at run-down',
+        { frame: ribbon.userData.spiralFrame, drumRot: drum.rotation.z });
+      C.setPose({ tension: 1 });
+    }
+    console.log(`${tag}: ${ms.frames} frames; full → empty visits ${distinct} (${seq[0]} … ${seq[seq.length - 1]})`);
   }
-  console.log(`${tag}: ${ms.frames} frames; full → empty visits ${distinct} (${seq[0]} … ${seq[seq.length - 1]})`);
 }
 
 if (fails.length) {
