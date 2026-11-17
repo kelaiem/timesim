@@ -8754,17 +8754,12 @@ export async function buildSweptRegistry(clock, {
       // step neither votes nor resets; only an axis boundary resets. The
       // per-step floor is 1e-6 rad — the same bar the old product test set
       // (two steps at 1e-6 were its −1e-12), applied per step.
+      // TODO 317 — the vote is the WITNESS's arc length, with hysteresis, not
+      // the sign of each step against an angle floor (arcTrackReverses).
+      const rW = Math.hypot(states[stateAt[0]].pts[0] - cx, states[stateAt[0]].pts[1] - cy);
       const arcFlipAxes = new Set();
-      {
-        let prev = null;
-        for (let i = 0; i < steps.length; i++) {
-          const s = steps[i];
-          if (s === null) { prev = null; continue; }         // axis boundary
-          if (Math.abs(s) < 1e-6) continue;                  // dwell: no vote, no reset
-          if (prev !== null && s * prev < 0) arcFlipAxes.add(Math.floor((i + 1) / perAxis));
-          prev = s;
-        }
-      }
+      for (let a = 0; a * perAxis < witA.length; a++)
+        if (arcTrackReverses(witA.slice(a * perAxis, (a + 1) * perAxis), rW)) arcFlipAxes.add(a);
       let reversed = arcFlipAxes.size > 0;
       let dilate = 0;
       if (!full && reversed && !bounded) { full = true; reason = 'oscillates'; }
@@ -8809,7 +8804,7 @@ export async function buildSweptRegistry(clock, {
           box: null, boxes: buildPathHull(poseBoxes, perAxis), zBand: [zLo, zHi],
           from: 'oscillates', reversed,
           reversedVia: reversed ? 'arc' : undefined,         // turned one way then the other
-          _confirm: reversed ? { type: 'arc', axes: [...arcFlipAxes], cx, cy } : undefined,
+          _confirm: reversed ? { type: 'arc', axes: [...arcFlipAxes], cx, cy, rW } : undefined,
         });
         continue;
       }
@@ -8820,7 +8815,7 @@ export async function buildSweptRegistry(clock, {
         reversedVia: reversed ? 'arc' : undefined,
         declaredRad: dilate || undefined,
         coverage: full ? 1 : +(bins.reduce((a, b) => a + b, 0) / THETA_BINS).toFixed(4),
-        _confirm: reversed ? { type: 'arc', axes: [...arcFlipAxes], cx, cy } : undefined,
+        _confirm: reversed ? { type: 'arc', axes: [...arcFlipAxes], cx, cy, rW } : undefined,
       });
     }
   }
@@ -9125,17 +9120,10 @@ export async function buildSweptRegistry(clock, {
           const t = tracks.get(v);
           let flips = false;
           if (v._confirm.type === 'arc') {
-            // same dwell-chaining as the coarse test — a fork parked on its
-            // banking between strokes must not launder the sign
-            let prev = null;
-            for (let i = 1; i < t.length && !flips; i++) {
-              let step = t[i] - t[i - 1];
-              while (step > Math.PI) step -= Math.PI * 2;
-              while (step < -Math.PI) step += Math.PI * 2;
-              if (Math.abs(step) < 1e-6) continue;           // dwell: no vote, no reset
-              if (prev !== null && step * prev < 0) flips = true;
-              prev = step;
-            }
+            // the coarse test's own law on the fine track (TODO 317): a fork
+            // parked on its banking between strokes does not launder the sign,
+            // and a recoil spread over many fine steps still counts
+            flips = arcTrackReverses(t, v._confirm.rW);
           } else {
             // the track test's own deadband, on this axis's fine track alone
             const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
@@ -17180,6 +17168,35 @@ export function fingerprintDiff(before, after) {
 // of one tree produce (measured: 0 of 56 rows differ across two virgin
 // contexts, the gate the harness gets from this).
 export const DIGEST_PLACE_Q = 1e6;
+
+// TODO 317 — DOES A WITNESS ON A REVOLVING PART REVERSE? The §36 registry's
+// `reversed` flag (the §48 audit's population) asked it of each sampled step:
+// a step under 1e-6 RAD was a dwell, and a sign change between two voting
+// steps a reversal. An angle is the wrong currency, twice over. A recoil is
+// divided down every mesh it travels back through, so at 36,000 A/h the centre
+// wheel's whole draw recoil is 7.7e-6 rad, each sampled step a fraction of it,
+// and the wheel read as dwelling while its metal moved; and a per-step floor
+// goes BLINDER as the sampling gets finer, which the confirm pass does. So the
+// question is asked of the METAL: the witness vertex's unwrapped arc length
+// (angle × its radius about the fitted axis), and a reversal is a RETREAT from
+// its running extreme by more than ARC_DWELL_U, whatever the step size. The
+// floor is one PLACE cell, the digest's own bar for "this metal did not move"
+// (DIGEST_PLACE_Q), orders over the float noise of a pose.
+export const ARC_DWELL_U = 1 / DIGEST_PLACE_Q;
+export function arcTrackReverses(angles, rW, floor = ARC_DWELL_U) {
+  if (!(angles.length > 1 && rW > 0)) return false;
+  let x = 0, dir = 0, ext = 0;
+  for (let i = 1; i < angles.length; i++) {
+    let d = angles[i] - angles[i - 1];
+    while (d > Math.PI) d -= Math.PI * 2;
+    while (d < -Math.PI) d += Math.PI * 2;
+    x += d * rW;
+    if (dir === 0) { if (Math.abs(x) > floor) { dir = Math.sign(x); ext = x; } }
+    else if (dir * (x - ext) > 0) ext = x;              // running on: a new extreme
+    else if (dir * (ext - x) > floor) return true;      // retreated past the floor
+  }
+  return false;
+}
 
 // The one unit whose digest can never mean anything, named here rather than
 // left to the caller. updateChain re-tessellates lazily — only when the
