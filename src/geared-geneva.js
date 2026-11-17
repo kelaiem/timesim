@@ -31,10 +31,10 @@
 //     own hub (its arbor at the §50 pivot floor and a wall) by a margin.
 // Choice: of every (m, n) with at least one closed slot, the one whose plan reaches least far from the cone's axis (the
 // gear pair's centre distance plus the star's far edge from the finger's axis); fewer teeth breaks a tie.
-import { STOCK_MIN_U, PIVOT_MIN_U, CLEAR_MARGIN, PINION_LEAVES_MIN, SPRING_SIGMA_Y_PA, UNIT_MM, GREAT_WHEEL_TEETH, CENTRE_PINION_LEAVES } from './layout.js';
+import { STOCK_MIN_U, MODULE_MIN_U, PIVOT_MIN_U, CLEAR_MARGIN, PINION_LEAVES_MIN, SPRING_SIGMA_Y_PA, UNIT_MM, GREAT_WHEEL_TEETH, CENTRE_PINION_LEAVES } from './layout.js';
 import { genevaDims, travelTurns, floorsHold, PIN_FLOOR_U, STUD_FLOOR_U } from './stopwork-arrest.js';
 
-export const MODULE_MIN_U = (2 * STOCK_MIN_U) / Math.PI;     // a tooth's pitch-line thickness at the §50 floor
+export { MODULE_MIN_U };   // a tooth's pitch-line thickness at the §50 floor — the law is layout.js's, beside STOCK_MIN_U
 export const DEDENDUM_F = 1.25;                               // root depth in modules (the movement's tooth form)
 export const LINE_LAYER_GAP_U = CLEAR_MARGIN;                 // free space: one margin between the line's layers
 const gcd = (a, b) => (b ? gcd(b, a % b) : a);
