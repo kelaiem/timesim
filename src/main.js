@@ -21377,13 +21377,25 @@ arrest47: {   // labelled: §329 landing 4's stop-work branch leaves it before �
     const sideHeld = (al, sgn) => { for (let k = 1; k <= Math.ceil(GAMMA / (TAU2 / NA)); k++) if (fullAt(al + sgn * k * (TAU2 / NA))) return true; return false; };
     let unlockedDeg = 0;
     const DWELL_N = 720, dPhi = (PHI_HI - En / 2) / (DWELL_N - 1);
+    // §339 landing 3h — WHO HOLDS THE STAR. While the pin's centre lies between a slot's straight walls (in the star's frame:
+    // off the axis by no more than the running fit W − rPin, short of √(rTip² − W²) where slot() ends the walls), the walls
+    // hold the star both ways; anywhere else only the lock arc on its disc does (merely inside the tip circle is NOT held:
+    // past a mouth the star rests and the pin runs on BESIDE the slot; that radius test read a disc 0.4 small as 0° unlocked
+    // where it is 14°). The dwell's first and last samples are the passage's own ends (θ = ±E/2, the
+    // pin at the slot's mouth on its centreline), so the check asked the disc to hold a star the pin was holding, and read
+    // "unlocked" wherever the relief began one 1° bin past that azimuth (measured: 319° against the boundary's 318° on
+    // alarm=0&barrels=3, whose stall-sized pin is 0.21; on the default the relief began at 320°, by the same luck). What
+    // must hold is the HAND-OFF: no pose of the dwell where neither the pin nor the disc holds the star.
+    const PIN_HOLD_S = Math.sqrt(rTip * rTip - W * W), PIN_HOLD_OFF = W - rPin + 1e-9;   // + float noise: the construction puts the pin ON the axis at ±E/2 to 1e-9
+    const pinHolds = (phi) => { const [u, v] = toStar(pinAt(phi), rhoAt(phi)); for (let k = 0; k < n; k++) { const b = slotAz(k); if (Math.abs(-u * Math.sin(b) + v * Math.cos(b)) <= PIN_HOLD_OFF && u * Math.cos(b) + v * Math.sin(b) <= PIN_HOLD_S) return true; } return false; };
+    const starHeld = (phi, al) => pinHolds(phi) || (sideHeld(al, 1) && sideHeld(al, -1));
     for (let j = 0; j < DWELL_N; j++) {
       const phi = En / 2 + j * dPhi;
       let inPass = false; for (let k = 1; k <= m; k++) if (Math.abs(phi - k * TAU2) < En / 2) inPass = true;
       if (inPass) continue;
       const coneAng = datum + OMEGA * (phi - PHI_HI);
       let al = (azS - coneAng) % TAU2; if (al < 0) al += TAU2;
-      if (!(sideHeld(al, 1) && sideHeld(al, -1))) unlockedDeg += (dPhi * 180) / Math.PI;
+      if (!starHeld(phi, al)) unlockedDeg += (dPhi * 180) / Math.PI;
     }
     if (unlockedDeg > 1e-9)
       console.warn(`§329: the lock disc lets the star go for ${unlockedDeg.toFixed(1)}° of the finger's dwell — its relief reaches under both ends of the lock arc`);
@@ -54143,13 +54155,25 @@ const FUSEE_COCK = await (async () => {
             const sideHeld = (al, sgn) => { for (let k = 1; k <= Math.ceil(GAMMA / (TAU2 / NA)); k++) if (fullAt(al + sgn * k * (TAU2 / NA))) return true; return false; };
             let unlockedDeg = 0;
             const DWELL_N = 720, dPhi = (PHI_HI - En / 2) / (DWELL_N - 1);
+            // §339 landing 3h — WHO HOLDS THE STAR. While the pin's centre lies between a slot's straight walls (in the star's frame:
+            // off the axis by no more than the running fit W − rPin, short of √(rTip² − W²) where slot() ends the walls), the walls
+            // hold the star both ways; anywhere else only the lock arc on its disc does (merely inside the tip circle is NOT held:
+            // past a mouth the star rests and the pin runs on BESIDE the slot; that radius test read a disc 0.4 small as 0° unlocked
+            // where it is 14°). The dwell's first and last samples are the passage's own ends (θ = ±E/2, the
+            // pin at the slot's mouth on its centreline), so the check asked the disc to hold a star the pin was holding, and read
+            // "unlocked" wherever the relief began one 1° bin past that azimuth (measured: 319° against the boundary's 318° on
+            // alarm=0&barrels=3, whose stall-sized pin is 0.21; on the default the relief began at 320°, by the same luck). What
+            // must hold is the HAND-OFF: no pose of the dwell where neither the pin nor the disc holds the star.
+            const PIN_HOLD_S = Math.sqrt(rTip * rTip - W * W), PIN_HOLD_OFF = W - rPin + 1e-9;   // + float noise: the construction puts the pin ON the axis at ±E/2 to 1e-9
+            const pinHolds = (phi) => { const [u, v] = toStar(pinAt(phi), rhoAt(phi)); for (let k = 0; k < n; k++) { const b = slotAz(k); if (Math.abs(-u * Math.sin(b) + v * Math.cos(b)) <= PIN_HOLD_OFF && u * Math.cos(b) + v * Math.sin(b) <= PIN_HOLD_S) return true; } return false; };
+            const starHeld = (phi, al) => pinHolds(phi) || (sideHeld(al, 1) && sideHeld(al, -1));
             for (let j = 0; j < DWELL_N; j++) {
               const phi = En / 2 + j * dPhi;
               let inPass = false; for (let k = 1; k <= m; k++) if (Math.abs(phi - k * TAU2) < En / 2) inPass = true;
               if (inPass) continue;
               const coneAng = datum + OMEGA * (phi - PHI_HI);
               let al = (azS - coneAng) % TAU2; if (al < 0) al += TAU2;
-              if (!(sideHeld(al, 1) && sideHeld(al, -1))) unlockedDeg += (dPhi * 180) / Math.PI;
+              if (!starHeld(phi, al)) unlockedDeg += (dPhi * 180) / Math.PI;
             }
             if (unlockedDeg > 1e-9)
               console.warn(`§329: the lock disc lets the star go for ${unlockedDeg.toFixed(1)}° of the finger's dwell — its relief reaches under both ends of the lock arc`);
@@ -54174,7 +54198,7 @@ const FUSEE_COCK = await (async () => {
           if (inPass) continue;
           const coneAng = datum + OMEGA * (phi - PHI_HI);
           let al = (azS - coneAng) % TAU2; if (al < 0) al += TAU2;
-          if (!(sideHeld(al, 1) && sideHeld(al, -1))) unlockedAt.push([+(phi / TAU2).toFixed(3), +((al * 180) / Math.PI).toFixed(1), sideHeld(al, 1), sideHeld(al, -1)]);
+          if (!starHeld(phi, al)) unlockedAt.push([+(phi / TAU2).toFixed(3), +((al * 180) / Math.PI).toFixed(1), sideHeld(al, 1), sideHeld(al, -1)]);
         }
         const fullArcs = []; { let st = null; for (let i2 = 0; i2 <= NA; i2++) { const f = i2 < NA && discR[i2] >= R_L - 1e-9; if (f && st === null) st = i2; if (!f && st !== null) { fullArcs.push([st * 360 / NA, (i2 - 1) * 360 / NA]); st = null; } } }
         // --- the metal --------------------------------------------------------------------------------------------------------
