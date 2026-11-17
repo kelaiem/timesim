@@ -53,8 +53,13 @@ const args = process.argv.slice(2);
 const opt = (k, d) => { const i = args.indexOf(k); if (i < 0) return d; const v = args[i + 1]; args.splice(i, 2); return v; };
 const vph = Number(opt('--vph', '36000')), query = opt('--query', 'alarm=0'), rim = Number(opt('--rim', '0.235'));
 const radii = args.length ? args.map(Number) : [5.5, 6, 6.5, 7, 7.5, 8];
-const FROM = { 36000: "module: 0.168, undriven: 'TODO 292 — no balance the honest mainspring (TODO 291) drives to AMPLITUDE_TARGET_DEG and starts at this rate' }, // 6/120",
+const FROM = { 36000: "module: 'floor', undriven: 'TODO 292 — no balance the honest mainspring (TODO 291) drives to AMPLITUDE_TARGET_DEG and starts at this rate',",
   28800: "escPinion: 6, undriven: 'TODO 292 — no balance the honest mainspring (TODO 291) drives to AMPLITUDE_TARGET_DEG and starts at this rate' }, // 6/96" }[vph];
+// §339 landing 3g: on ?barrels=3 the 36,000 row's balance is its `parallel` entry (rateBalanceRow), so the trial radius
+// and rim go THERE too, or the boot would beat on the declared balance while the probe reported the trial one. The
+// literal is the row's own text; a row that moves makes this patch fail loudly (source-patch: 0 occurrences).
+const PAR = (r) => (vph === 36000 && /barrels=3/.test(query)
+  ? [{ file: 'src/layout.js', from: 'parallel: { balanceR: 8.25, rimF: 0.240, claimDeg: 134, peakDeg: 305,', to: `parallel: { balanceR: ${r}, rimF: ${rim}, claimDeg: 100, peakDeg: 400,` }] : []);
 const TO = (r) => FROM.replace(/undriven: '[^']*'/, `balanceR: ${r}, rimF: ${rim}, claimDeg: 100, peakDeg: 400`);
 // Diagnostic only (never a design): CROSS_T scales the torque that drives the shake's crossing,
 // CROSS_I the fork's and train's inertia it moves (main.js FORK_CROSSING_SOLVE), to find what the start needs.
@@ -66,7 +71,7 @@ if (process.env.CROSS_T) EXTRA.push({ file: 'src/main.js', from: '  const T = GO
 if (process.env.CROSS_I) EXTRA.push({ file: 'src/main.js', from: '  const Ieff = (psi) => { const g = G(psi); return I_fork + I_wheel * g * g; };', to: `  const Ieff = (psi) => { const g = G(psi); return (I_fork + I_wheel * g * g) * ${Number(process.env.CROSS_I)}; };` });
 const boot = (r) => new Promise((res) => {
   const p = spawn(process.execPath, ['--import', './tools/native/loader.mjs', fileURLToPath(import.meta.url), '--child', `${query}&vph=${vph}`],
-    { cwd: ROOT, env: { ...process.env, TIMESIM_PATCH: JSON.stringify([{ file: 'src/layout.js', from: FROM, to: TO(r) }, ...EXTRA]) } });
+    { cwd: ROOT, env: { ...process.env, TIMESIM_PATCH: JSON.stringify([{ file: 'src/layout.js', from: FROM, to: TO(r) }, ...PAR(r), ...EXTRA]) } });
   let out = '', err = ''; p.stdout.on('data', (d) => (out += d)); p.stderr.on('data', (d) => (err += d));
   p.on('close', () => { const l = out.split('\n').find((x) => x.startsWith('@@')); res(l ? { r, ...JSON.parse(l.slice(2)) } : { r, fail: err.slice(-600) }); });
 });

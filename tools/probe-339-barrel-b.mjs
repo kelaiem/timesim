@@ -10,9 +10,8 @@
 //   3. THE DRIVE: over the wind (setPose tension 0…1) B turns exactly −n times drum A (the band's spur mesh), and both
 //      set-up stacks (the drum's and B's) are built. Control: the ratio is not +n and not −1.
 //   4. THE WORD: the boot raises exactly the warnings this landing records as its debt (DECLARED below, by their names):
-//      the doubled drive overdriving the 14,400 balance (TODO 192, 216, 207/242; the 36,000 row is the target) and the
-//      stop-work sized to the doubled stall torque losing its lock disc (§329). A warning beyond them, or a declared one
-//      that stopped firing, fails.
+//      the doubled drive overdriving the 14,400 balance (TODO 192, 216, 207/242; the 36,000 row is the target). A warning
+//      beyond them, or a declared one that stopped firing, fails.
 //   5. NOTHING ELSE MOVED: the default and `alarm=0` boot silent with no B (equalisation.going.barrelB null, no
 //      barrelBGroup), and ?barrels=3 is REFUSED, loudly, where its seat was never solved (with the alarm; on a form case).
 import { spawnSync } from 'node:child_process';
@@ -88,7 +87,7 @@ row(B3.stackA && B3.stackB && B3.band, '3. the drum\'s band and both set-up stac
 row(!!B3.chainLow && B3.chainLow.bandTop <= B3.chainLow.z - CLEAR_MARGIN && B3.chainLow.z - CLEAR_MARGIN - B3.chainLow.bandTop < 0.01,
   `3. the band's top ${B3.chainLow?.bandTop} stands one CLEAR_MARGIN under the chain's lowest metal in its reach over the reserve (${B3.chainLow && f(B3.chainLow.z)} at tension ${B3.chainLow?.t}), within the 0.01 it is rounded to`);
 // 4
-const DECLARED = ['§329: the lock disc lets the star go', 'TODO 192: AMPLITUDE_CLAIM_DEG', 'TODO 216: the serviced (nominal) corner knocks', 'TODO 207/242: BAL_RIM_F'];
+const DECLARED = ['TODO 192: AMPLITUDE_CLAIM_DEG', 'TODO 216: the serviced (nominal) corner knocks', 'TODO 207/242: BAL_RIM_F'];
 const extra = [...B3.warns, ...B3.early].filter((w) => !DECLARED.some((p) => w.startsWith(p))), stale = DECLARED.filter((p) => !B3.warns.some((w) => w.startsWith(p)));
 row(!extra.length && !stale.length, `4. the boot raises exactly the ${DECLARED.length} declared warnings${extra.length ? `; beyond them: ${extra.map((w) => w.slice(0, 90)).join(' | ')}` : ''}${stale.length ? `; stopped firing: ${stale.join(', ')}` : ''}`);
 // 5
@@ -100,17 +99,19 @@ for (const q of ['barrels=3', 'alarm=0&barrels=3&case=fitted']) {
 }
 // 6. THE 36,000 ROW ON THIS BUILD (landing 3d): RATE_TABLE[36000].parallel's balance (r 8.25, rim 0.235) reaches the
 //    target and starts, so the record's TODO 192/216/207/242 rows are SILENT there, and the rate builds (not refused).
-//    Its remaining warnings are exactly the debts this landing records: the escape pinion's bore band (TODO 175) and the
-//    stop-work's lock disc (§329). The maintaining detent's beak at the doubled torque (TODO 218, 221) went quiet when the
-//    ring was chosen by its click's worst recoil rather than a whole pitch (27 teeth where the pitch rule wanted 37).
+//    It raises nothing else. The stop-work's lock disc (§329) went quiet at landing 3h, when its check credited the pin
+//    holding the star at the passage's ends (probe-339-stopwork-hold.mjs). The maintaining
+//    detent's beak at the doubled torque (TODO 218, 221) went quiet when the ring was chosen by its click's worst recoil
+//    rather than a whole pitch (landing 3f), and the escape pinion's bore band (TODO 175) when landing 3g cut the mesh
+//    140/7 at the module floor and re-laid the escape and balance stations for it.
 {
   const b = boot('alarm=0&barrels=3&vph=36000');
   const all = [...b.warns, ...b.early];
   const amp = all.filter((w) => /^TODO (192|216|207\/242|242):/.test(w));
   row(!all.some((w) => w.startsWith('TODO 292: ?vph=36000 is refused')) && amp.length === 0,
     `6. alarm=0&barrels=3&vph=36000 builds the rate, and its balance rows are silent${amp.length ? `: ${amp.map((w) => w.slice(0, 80)).join(' | ')}` : ''}`);
-  const DECL36 = ['TODO 175: makePinion(6T, m 0.168)', '§329: the lock disc lets the star go'];
+  const DECL36 = [];
   const extra36 = all.filter((w) => !DECL36.some((p) => w.startsWith(p))), stale36 = DECL36.filter((p) => !all.some((w) => w.startsWith(p)));
-  row(!extra36.length && !stale36.length, `6. its other warnings are exactly the two recorded debts (${all.length} lines)${extra36.length ? `; beyond them: ${extra36.map((w) => w.slice(0, 80)).join(' | ')}` : ''}${stale36.length ? `; stopped firing: ${stale36.join(', ')}` : ''}`);
+  row(!extra36.length && !stale36.length, `6. it raises no other warning (${all.length} lines)${extra36.length ? `; beyond them: ${extra36.map((w) => w.slice(0, 80)).join(' | ')}` : ''}${stale36.length ? `; stopped firing: ${stale36.join(', ')}` : ''}`);
 }
 process.exit(fail ? 1 : 0);

@@ -140,12 +140,23 @@ const RATE_TABLE = {
   18000: { fourthTeeth: 80, escPinion: 8, d4: 18.214767593871496, d4Form: 18.7520672519568, balanceR: 11, rimF: 0.245, claimDeg: 129, peakDeg: 325 }, // 8/80 = 1/10 — the shipped movement until §343 landing 3
   21600: { fourthTeeth: 96, escPinion: 8, d4: 18.214767593871496, d4Form: 19.22106386092866, balanceR: 9.25, rimF: 0.245, claimDeg: 129, peakDeg: 313 }, // 8/96 = 1/12
   28800: { fourthTeeth: 96, escPinion: 6, undriven: 'TODO 292 — no balance the honest mainspring (TODO 291) drives to AMPLITUDE_TARGET_DEG and starts at this rate' }, // 6/96 = 1/16
-  36000: { fourthTeeth: 120, escPinion: 6, module: 0.168, undriven: 'TODO 292 — no balance the honest mainspring (TODO 291) drives to AMPLITUDE_TARGET_DEG and starts at this rate',
-    // §339 landing 3d — at ?barrels=3 (×2.134 of the one drum's drive): the TODO 242 solve, measured on alarm=0&barrels=3 by
-    // tools/probe-292-fast-start.mjs — r 8.25 is the largest BAL_R_STEP wheel whose lightest grid rim (0.235) both reaches
-    // AMPLITUDE_TARGET_DEG (200.47°) and starts itself; r 8.5 does neither (192.00°, no start). claimDeg and peakDeg are
-    // the solve's extremes read the safe way (TODO 192 step 4), held by equalisation row 14.
-    parallel: { balanceR: 8.25, rimF: 0.235, claimDeg: 133, peakDeg: 305 } },   // 133.38° adverse vertical; the knock 304.55° under the solve's 347.00° // 6/120 = 1/20 — §204: at 0.168 the wheel keeps the 96-tooth rows' pitch radius
+  // §339 landing 3g — TODO 292's mesh: 7 leaves clear the bore where 6 cannot, cut at §50's module floor.
+  36000: { fourthTeeth: 140, escPinion: 7, module: 'floor', undriven: 'TODO 292 — no balance the honest mainspring (TODO 291) drives to AMPLITUDE_TARGET_DEG and starts at this rate',
+    // §339 landing 3d — at ?barrels=3 (×2.134 of the one drum's drive): the TODO 242 solve on alarm=0&barrels=3. r 8.25
+    // is the largest BAL_R_STEP wheel whose lightest grid rim both reaches AMPLITUDE_TARGET_DEG and starts itself.
+    // Re-solved at landing 3g on the 140/7 mesh, whose 7-leaf pinion is more efficient: rim 0.240 sustains 200.75° and
+    // starts, one step heavier (0.245) 198.56°, and r 8.5 at the lightest rim 194.42°, each read off the equalisation
+    // record's `amplitude.target`. claimDeg and peakDeg are the solve's extremes read the safe way (TODO 192 step 4),
+    // held by equalisation row 14: the least sustained swing is 134.18°.
+    parallel: { balanceR: 8.25, rimF: 0.240, claimDeg: 134, peakDeg: 305,
+      // §339 landing 3g — THE ARRANGEMENT the 140/7 mesh needs (TODO 292: the 6-leaf pinion's root falls in its bore at
+      // every module the fourth wheel can carry, so the mesh is 140/7 at §50's module floor, its wheel 4 u larger). At
+      // the designed escape step (−57.9°) that wheel puts the balance cock on no clear seat (−3.95), the escape cock's
+      // foot 0.001 short and the stop-work crank on its bracket (−0.05). Scanned on alarm=0&barrels=3 (escape step on a
+      // 1° grid, balance target 45–60°, each a native boot judged by its warnings, which carry CLEAR_MARGIN): every
+      // step from −42° up boots clean at the designed balance target, and −43° clamps the balance cock's reveal. So the
+      // escape step is the clean one NEAREST the design, −42°, and the balance keeps its designed target.
+      escapeStepDeg: -42 } },   // 7/140 = 1/20
 };
 export const DEFAULT_VPH = 14400;   // §343 landing 3 — the chronometer's beat is the shipped watch (the owner's call)
 // The row a rate's balance reads: its own, or the shipped movement's.
@@ -492,7 +503,11 @@ export const SPEC = (() => {
   if (!drivenHere)
     console.warn(`TODO 292: ?vph=${vphAsked} is refused — ${RATE_TABLE[vphAsked].undriven}; this build is the ${DEFAULT_VPH} A/h watch`);
   const vph = drivenHere ? vphAsked : DEFAULT_VPH;
-  return Object.freeze({ barrels, vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, rsvIdlers, alarmr, subdialr, dialr, studr, caseShape, frame, hands, formRectSpec, gongSeat, alarm, strapMm, drumAzDeg, arrest });
+  // §339 landing 3g — a row's `parallel` entry may DECLARE its train's arrangement (the 36,000 row's 140/7 fourth wheel
+  // is 4 u larger in radius, so the escape and balance stations move): it stands where the spec names no step.
+  const parRow = barrels === 3 && vph === vphAsked ? RATE_TABLE[vph].parallel : null;
+  const escapeStepDegR = escapeStepDeg ?? parRow?.escapeStepDeg ?? null;
+  return Object.freeze({ barrels, vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg: escapeStepDegR, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, rsvIdlers, alarmr, subdialr, dialr, studr, caseShape, frame, hands, formRectSpec, gongSeat, alarm, strapMm, drumAzDeg, arrest });
 })();
 // §325 landing 3 — whether this build carries the alarm complication (SPEC.alarm above)
 export const ALARM_BUILT = SPEC.alarm !== false;
@@ -1056,6 +1071,7 @@ export const CHAIN_COIL_PITCH = CHAIN_PIN_LEN + 0.03;
 // §50/TODO 12: the wheel-and-plate stock floor, in UNITS, so a thickness can
 // be built to clear it rather than measured against it after the fact.
 export const STOCK_MIN_U = 0.12 / UNIT_MM;             // 0.317 u
+export const MODULE_MIN_U = (2 * STOCK_MIN_U) / Math.PI;     // a tooth's pitch-line thickness at the §50 floor (geared-geneva.js re-exports it)
 // §54's slenderness ceiling, L/t. Lives HERE rather than in inspect.js so the
 // GEOMETRY can be derived from the same number the CHECK enforces — a part
 // sized against the check that measures it cannot drift away from it.
@@ -2361,7 +2377,8 @@ export const TRAIN = {
   // module is the row's when it carries one (36,000 must, or it does not
   // fit the case) and the mesh's 0.21 otherwise, so the identity spec's
   // literal is unchanged and the fingerprint with it.
-  fourth: { module: RATE_TABLE[SPEC.vph].module ?? FOURTH_MODULE_DEFAULT, teeth: RATE_TABLE[SPEC.vph].fourthTeeth, pinion: RATE_TABLE[SPEC.vph].escPinion },
+  // A row may name the module FLOOR ('floor': §50's MODULE_MIN_U) where its mesh is cut as fine as metal allows.
+  fourth: { module: RATE_TABLE[SPEC.vph].module === 'floor' ? MODULE_MIN_U : (RATE_TABLE[SPEC.vph].module ?? FOURTH_MODULE_DEFAULT), teeth: RATE_TABLE[SPEC.vph].fourthTeeth, pinion: RATE_TABLE[SPEC.vph].escPinion },
 };
 
 // Keyless works + winding path (the SETTING side, not the going train).
