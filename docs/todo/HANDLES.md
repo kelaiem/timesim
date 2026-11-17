@@ -42,6 +42,8 @@ heading, and [the index](../../TODO.md) is where it is shown.
 
 | item | handle |
 |---|---|
+| 316 | maintaining pin seat wall |
+| 315 | rate probe expects 18,000 |
 | 314 | geared bulge thins land |
 | 313 | equalisation absent alarm-free |
 | 312 | well meets selector boss |

@@ -733,9 +733,9 @@ it into prose either.
    the ribbons' rule. Since TODO 219 the spring itself is metal on the same row
    (`maintainingHold.spring`): a blade in a great-wheel crossing, of the
    ribbons' ALLOY and held to its low end — the one member besides the ribbons
-   that is — with its floor re-derived from the NOMINAL corner, its run one ring
-   pitch of recoil plus the margin (so the ring's tooth count is the fewest that
-   fits), and k, the preload and the blade's own compliance at float noise. And
+   that is — with its floor re-derived from the NOMINAL corner, its run the worst
+   recoil plus the margin (since §339 its click's own ride, crest back to face, under
+   one ring pitch; so the ring's tooth count is the fewest whose recoil fits), and k, the preload and the blade's own compliance at float noise. And
    since TODO 192 step 4 the AMPLITUDE: the one 270° literal the spring could
    not sustain is two, each the solve read the safe way — `AMPLITUDE_CLAIM_DEG`
    its minimum rounded DOWN (126: adverse, vertical), `AMPLITUDE_PEAK_DEG` the

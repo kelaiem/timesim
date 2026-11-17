@@ -140,11 +140,18 @@ const RATE_TABLE = {
   18000: { fourthTeeth: 80, escPinion: 8, d4: 18.214767593871496, d4Form: 18.7520672519568, balanceR: 11, rimF: 0.245, claimDeg: 129, peakDeg: 325 }, // 8/80 = 1/10 — the shipped movement until §343 landing 3
   21600: { fourthTeeth: 96, escPinion: 8, d4: 18.214767593871496, d4Form: 19.22106386092866, balanceR: 9.25, rimF: 0.245, claimDeg: 129, peakDeg: 313 }, // 8/96 = 1/12
   28800: { fourthTeeth: 96, escPinion: 6, undriven: 'TODO 292 — no balance the honest mainspring (TODO 291) drives to AMPLITUDE_TARGET_DEG and starts at this rate' }, // 6/96 = 1/16
-  36000: { fourthTeeth: 120, escPinion: 6, module: 0.168, undriven: 'TODO 292 — no balance the honest mainspring (TODO 291) drives to AMPLITUDE_TARGET_DEG and starts at this rate' }, // 6/120 = 1/20 — §204: at 0.168 the wheel keeps the 96-tooth rows' pitch radius
+  36000: { fourthTeeth: 120, escPinion: 6, module: 0.168, undriven: 'TODO 292 — no balance the honest mainspring (TODO 291) drives to AMPLITUDE_TARGET_DEG and starts at this rate',
+    // §339 landing 3d — at ?barrels=3 (×2.134 of the one drum's drive): the TODO 242 solve, measured on alarm=0&barrels=3 by
+    // tools/probe-292-fast-start.mjs — r 8.25 is the largest BAL_R_STEP wheel whose lightest grid rim (0.235) both reaches
+    // AMPLITUDE_TARGET_DEG (200.47°) and starts itself; r 8.5 does neither (192.00°, no start). claimDeg and peakDeg are
+    // the solve's extremes read the safe way (TODO 192 step 4), held by equalisation row 14.
+    parallel: { balanceR: 8.25, rimF: 0.235, claimDeg: 133, peakDeg: 305 } },   // 133.38° adverse vertical; the knock 304.55° under the solve's 347.00° // 6/120 = 1/20 — §204: at 0.168 the wheel keeps the 96-tooth rows' pitch radius
 };
 export const DEFAULT_VPH = 14400;   // §343 landing 3 — the chronometer's beat is the shipped watch (the owner's call)
 // The row a rate's balance reads: its own, or the shipped movement's.
-const rateBalanceRow = (vph) => (RATE_TABLE[vph].rimF !== undefined ? RATE_TABLE[vph] : RATE_TABLE[DEFAULT_VPH]);
+// §339 landing 3d: at ?barrels=3 a row's `parallel` balance, the one the two barrels' doubled drive is solved for.
+const rateBalanceRow = (vph) => (SPEC.barrels === 3 && RATE_TABLE[vph].parallel ? RATE_TABLE[vph].parallel
+  : RATE_TABLE[vph].rimF !== undefined ? RATE_TABLE[vph] : RATE_TABLE[DEFAULT_VPH]);
 export const FOURTH_MODULE_DEFAULT = 0.21; // the fourth⇄escape mesh's cut, the rows above's module when they carry none
 // §308/§317 — the kinds of the shape library a CASE may take (the circle is
 // the round build, never named): one list, read by SPEC and by every tool that
@@ -206,10 +213,9 @@ export const SPEC = (() => {
   const raw = !designed && !Object.keys(ARRANGEMENT).some((k) => given(raw0[k])) ? { ...raw0, ...ARRANGEMENT } : raw0;
   // TODO 292 — a rate whose row carries no balance the spring can drive is REFUSED, loudly: the build is the 18,000
   // watch, never a stale balance quietly claiming the target at the asked rate.
+  // §339 landing 3d: a row may carry a `parallel` balance, the one ?barrels=3's doubled drive reaches, so the refusal is
+  // decided below, once the barrels are (nothing between here and there reads the rate)
   const vphAsked = RATE_TABLE[raw.vph] ? Number(raw.vph) : DEFAULT_VPH;
-  if (RATE_TABLE[vphAsked].undriven)
-    console.warn(`TODO 292: ?vph=${vphAsked} is refused — ${RATE_TABLE[vphAsked].undriven}; this build is the ${DEFAULT_VPH} A/h watch`);
-  const vph = RATE_TABLE[vphAsked].undriven ? DEFAULT_VPH : vphAsked;
   // Reserve clamped to what the STRUCTURE accepts: below ~12 h the fusee
   // loses its reason to exist; above 48 h the cone's groove stack (0.7 u per
   // turn, one turn per 8 h) grows past what the plate floor can absorb —
@@ -475,7 +481,17 @@ export const SPEC = (() => {
   // reserve PULLEY_BARREL_HOURS, where the cone's invariant and the drive's size were measured, so another reserve is
   // refused loudly and builds the one drum. null = the one drum (a `1` is that null, so it is not a second key).
   const barrels = Number(raw.barrels) === 2 ? (reserveHours === PULLEY_BARREL_HOURS ? 2
-    : (console.warn(`§339: ?barrels=2 is refused at ${reserveHours} h — PULLEY_BARREL was solved at ${PULLEY_BARREL_HOURS} h; building the one drum`), null)) : null;
+    : (console.warn(`§339: ?barrels=2 is refused at ${reserveHours} h — PULLEY_BARREL was solved at ${PULLEY_BARREL_HOURS} h; building the one drum`), null))
+    // §339 landing 3c — ?barrels=3: today's drum AND a parallel second barrel (PARALLEL_BARREL below), for POWER. Its seat
+    // was solved on the round alarm-free build at the shipped reserve, so a build with the alarm (whose metal stands in
+    // that seat), a form case (another plate) or another reserve is refused loudly and builds the one drum.
+    : Number(raw.barrels) === 3 ? (alarm === false && reserveHours === PULLEY_BARREL_HOURS && !raw.caseShape ? 3
+      : (console.warn(`§339: ?barrels=3 is refused here — PARALLEL_BARREL's seat was solved on the round alarm-free build at ${PULLEY_BARREL_HOURS} h; building the one drum`), null))
+    : null;
+  const drivenHere = !RATE_TABLE[vphAsked].undriven || (barrels === 3 && !!RATE_TABLE[vphAsked].parallel);
+  if (!drivenHere)
+    console.warn(`TODO 292: ?vph=${vphAsked} is refused — ${RATE_TABLE[vphAsked].undriven}; this build is the ${DEFAULT_VPH} A/h watch`);
+  const vph = drivenHere ? vphAsked : DEFAULT_VPH;
   return Object.freeze({ barrels, vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, rsvIdlers, alarmr, subdialr, dialr, studr, caseShape, frame, hands, formRectSpec, gongSeat, alarm, strapMm, drumAzDeg, arrest });
 })();
 // §325 landing 3 — whether this build carries the alarm complication (SPEC.alarm above)
@@ -1571,7 +1587,12 @@ export const PULLEY_BARREL = Object.freeze({ zA: 38, zB: 104, NB: 29,
 // field, the coupling band's and both sides of the chain's span.
 // Re-read after #989's plate-margin law shrank the round plate's room: 13° (margin 1.455 before) is no seat now, and of
 // the two left (9.5°, 10°) 10° is the wider, margin 0.146 over the field's own CLEAR_MARGIN.
-export const PARALLEL_BARREL = Object.freeze({ NB: 24, zA: 96, zB: 92, barrelAzDeg: 10, seatSpec: 'alarm=0' });
+// bandTopZ — the top of the band on the drum and of B's ring, MEASURED (landing 3c, tools/probe-339-barrel-b.mjs re-measures
+// and holds it): the chain's lowest metal within the band's reach (r_pA + m + CLEAR_MARGIN of the drum's axis) over the
+// whole reserve, 5.768 at tension 0.025 on the round alarm-free build, less CLEAR_MARGIN, rounded DOWN to 0.01. The
+// pulley's closed form (the chain's lowest coil turn) reads 5.91 there, 0.29 high: it does not see the chain where it
+// leaves the drum, which is why the band is not cut from it.
+export const PARALLEL_BARREL = Object.freeze({ NB: 24, zA: 96, zB: 92, barrelAzDeg: 10, seatSpec: 'alarm=0', bandTopZ: 5.61 });
 // The drum's azimuth every reader takes (main.js' drumDir and the form rectangle's reach): ?drumaz= when given, else the
 // pulley's declared seat at ?barrels=2, else null (drumDirOf's blend, the shipped watch, bit-exact).
 export const DRUM_AZ_DEG = SPEC.drumAzDeg !== null ? SPEC.drumAzDeg : SPEC.barrels === 2 ? PULLEY_BARREL.pulleyAzDeg : null;

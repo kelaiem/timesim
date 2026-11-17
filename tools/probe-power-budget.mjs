@@ -55,10 +55,11 @@ const SRC = {
   main: readFileSync(join(ROOT, 'src/main.js'), 'utf8'),
   geom: readFileSync(join(ROOT, 'src/geometry.js'), 'utf8'),
   esc: readFileSync(join(ROOT, 'src/escapement.js'), 'utf8'),   // TODO 226 moved the drop there
+  ribbon: readFileSync(join(ROOT, 'src/ribbon-solve.js'), 'utf8'),   // TODO 291 / §339 moved the ribbon's laws there
 };
 function quote(file, re, what) {
   const m = SRC[file].match(re);
-  if (!m) throw new Error(`quote went stale: ${what} (${re}) no longer matches src/${{ main: 'main', geom: 'geometry', esc: 'escapement' }[file]}.js`);
+  if (!m) throw new Error(`quote went stale: ${what} (${re}) no longer matches src/${{ main: 'main', geom: 'geometry', esc: 'escapement', ribbon: 'ribbon-solve' }[file]}.js`);
   return Number(m[1]);
 }
 const Q = {
@@ -66,8 +67,8 @@ const Q = {
   forkStaffR: quote('main', /addLowerPivot\(forkGroup, \{ staffR: ([\d.]+)/, 'pallet fork lower staffR'),
   balStaffR: quote('main', /^const BALANCE_STAFF_R = ([\d.]+);/m, 'BALANCE_STAFF_R'),
   pivotSegs: quote('main', /^const PIVOT_SEGMENTS = (\d+);/m, 'PIVOT_SEGMENTS'),
-  drumR: quote('main', /const DRUM_R_ACTUAL = ([\d.]+);/, 'DRUM_R_ACTUAL'),
-  arborK: quote('geom', /export const barrelArborR = \(radius\) => radius \* ([\d.]+);/, 'barrelArborR factor'),
+  drumR: quote('main', /const DRUM_R_SINGLE = ([\d.]+);/, 'DRUM_R_SINGLE (the default build\'s DRUM_R_ACTUAL)'),
+  arborK: quote('ribbon', /export const barrelArborR = \(radius\) => radius \* ([\d.]+);/, 'barrelArborR factor'),
   // TODO 226 step 3 named the radius (the stations are laid out from it), so the
   // quote follows the name, and the call is held to it as text below
   escR: quote('main', /^const ESCAPE_WHEEL_R = ([\d.]+);/m, 'ESCAPE_WHEEL_R'),
@@ -315,8 +316,12 @@ const spring = spRec && spRec.k_Nm_per_rad ? (() => {
   const etaGreat = C.stages.slice(3).reduce((p, s) => p * s.eta, 1);
   const floor = C.atClaim.needPerBeat_J * beats / (etaGreat * 2 * Math.PI * fuseeTurns);
   const margin = L.CLEAR_MARGIN / spRec.pinRadius_u;
-  const N = Math.ceil(2 * Math.PI / (spRec.runMax_rad - margin));
-  const runR = 2 * Math.PI / N + margin;
+  // §339: the run covers the click's WORST RECOIL (the ride's crest back to the face), read off the record because
+  // only the cut click can ride (the equalisation gate holds the tooth count the fewest, off the record's witness);
+  // the pitch rule stands where the build refused the recoil rule. Either way the run is this probe's sum.
+  const N = spRec.recoilRule ? spRec.ringTeeth : Math.ceil(2 * Math.PI / (spRec.runMax_rad - margin));
+  const recoil = spRec.recoilRule ? spRec.recoilMax_rad : 2 * Math.PI / N;
+  const runR = recoil + margin;
   const k = (tauFusee - floor) / runR;
   let c = 0;
   { const n = 2000, h = spRec.L_u / n;
@@ -326,7 +331,7 @@ const spring = spRec && spRec.k_Nm_per_rad ? (() => {
     }
     c *= (h * U) / 3; }
   const sigmaWork = 6 * (tauFusee / (spRec.rE_u * U)) * (spRec.L_u * U) / (spRec.b_u * U * (spRec.tRoot_u * U) ** 2);
-  return { floor_Nm: floor, etaGreat, N, run: runR, margin, k, preload: floor / k, thetaWork: tauFusee / k,
+  return { floor_Nm: floor, etaGreat, N, recoil, run: runR, margin, k, preload: floor / k, thetaWork: tauFusee / k,
     kBlade: (spRec.rE_u * U) ** 2 / c, sigmaWork, sigmaStop: sigmaWork * floor / tauFusee };
 })() : null;
 // BEFORE THE CUT: TODO 192 step 2 shouldered every jewelled train staff and
@@ -401,7 +406,7 @@ if (hold) {
 if (spring) {
   console.log(`\n--- the maintaining spring (TODO 219): the floor at the ${spRec.floorCorner} corner, the alloy's low end ${f(L.MAINSPRING_SIGMA_Y_PA / 1e6, 0)} MPa ---`);
   console.log(`  floor ${f(spring.floor_Nm * 1e3, 4)} N·mm at the great wheel (η great wheel → balance ${f(spring.etaGreat, 4)}), ${f(spring.floor_Nm / tauFusee, 4)} of the going ${f(tauFusee * 1e3, 4)}`);
-  console.log(`  ring ${spring.N} teeth: run ${f(spring.run, 5)} rad = one pitch ${f(2 * Math.PI / spring.N, 5)} + margin ${f(spring.margin, 5)} (the blade can give ${f(spRec.runMax_rad, 5)})`);
+  console.log(`  ring ${spring.N} teeth: run ${f(spring.run, 5)} rad = ${spRec.recoilRule ? 'the worst recoil' : 'one pitch'} ${f(spring.recoil, 5)} (pitch ${f(2 * Math.PI / spring.N, 5)}) + margin ${f(spring.margin, 5)} (the blade can give ${f(spRec.runMax_rad, 5)})`);
   console.log(`  k ${e(spring.k)} N·m/rad (blade's own compliance: ${e(spring.kBlade)}), preload ${f(spring.preload, 5)} rad, working ${f(spring.thetaWork, 5)} rad`);
   console.log(`  root σ ${f(spring.sigmaWork / 1e6, 1)} MPa working, ${f(spring.sigmaStop / 1e6, 1)} at the stop; blade ${f(spRec.tRoot_u * L.UNIT_MM, 4)} → ${f(spRec.tMin_u * L.UNIT_MM, 4)} mm × ${f(spRec.b_u * L.UNIT_MM, 4)} mm, free length ${f(spRec.L_u * L.UNIT_MM, 3)} mm`);
 }

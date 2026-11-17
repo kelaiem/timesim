@@ -1732,7 +1732,7 @@ export function gearOuterR({ module, teeth, thickness, bevel: bevelOn = true, ma
 }
 
 export function makeGear({ module, teeth, thickness, boreR = 1, spokes = 5, name = '',
-                           material, hub = true, bevel: bevelOn = true, mates }) {
+                           material, hub = true, bevel: bevelOn = true, mates, landToHub = false }) {
   const mat = material || MATS.brass;
   mates = gearMates(mates, teeth, 'makeGear');
   // THE TRAP DISARMED AT THE SOURCE (§81's weldAssert precedent). A caller
@@ -1773,7 +1773,13 @@ export function makeGear({ module, teeth, thickness, boreR = 1, spokes = 5, name
   // ring around a bore is a member, so its WALL answers to STOCK_MIN_U, not
   // to whatever fraction of the bore it happened to be.
   const hubR = gearHubR(pitchR, boreR, hub);   // one law with gearFaceReach (§234)
-  const innerR = Math.max(hubR + module * 0.35, boreR * 2.0);
+  // The crossings' inner edge: a land of 0.35 module round the hub, or the bore
+  // doubled where that is larger (a proportion, so a large bore keeps a land
+  // that looks its size). `landToHub` takes the hub's own term alone, for a
+  // wheel whose crossings carry a working part that wants the land as small as
+  // the hub allows (§339 3f / TODO 316: the great wheel, whose crossing seats
+  // the maintaining spring's pin at the least radius it gives).
+  const innerR = landToHub ? hubR + module * 0.35 : Math.max(hubR + module * 0.35, boreR * 2.0);
   const outerR = rootR - module * 0.7;
   const useSpokes = outerR > innerR + module ? spokes : 0;
   const bevel = gearBevel(module, thickness, bevelOn);
@@ -5914,10 +5920,11 @@ export function makeTorsionSpring({ coilR, wireR, coils, startAz = 0, sense = 1,
 // `sense`: which train this saw turns with — MOVEMENT_SENSE for the going
 // side, ALARM_SENSE for the alarm's own motor (layout.js says why they are
 // two). The `reverse` flag keeps its meaning against whichever it is given.
-export function makeRatchetAndClick({ radius, teeth = 24, thickness, includeClick = true, squareBore = null, reverse = false,
-                                      sense = MOVEMENT_SENSE, depthF = 0.2 }) {
-  const g = new THREE.Group();
-  const rShape = new THREE.Shape();
+// The saw's OUTLINE alone, as [x, y] points — the polygon makeRatchetAndClick
+// cuts, published so a caller can solve against a cut before it makes one (the
+// maintaining ring's tooth count is chosen from its click's ride on this very
+// polygon, §339). One law: makeRatchetAndClick cuts exactly this.
+export function ratchetOutline({ radius, teeth = 24, reverse = false, sense = MOVEMENT_SENSE, depthF = 0.2 }) {
   const outline = [];
   for (let i = 0; i < teeth; i++) {
     const a0 = (i / teeth) * Math.PI * 2;
@@ -5929,6 +5936,14 @@ export function makeRatchetAndClick({ radius, teeth = 24, thickness, includeClic
   // the mirror it applies is XORed with that train's `sense`. The flag keeps
   // its meaning for every caller; what changes is which cut it produces.
   if (reverse !== (sense < 0)) { for (const p of outline) p[1] = -p[1]; outline.reverse(); }
+  return outline;
+}
+
+export function makeRatchetAndClick({ radius, teeth = 24, thickness, includeClick = true, squareBore = null, reverse = false,
+                                      sense = MOVEMENT_SENSE, depthF = 0.2 }) {
+  const g = new THREE.Group();
+  const rShape = new THREE.Shape();
+  const outline = ratchetOutline({ radius, teeth, reverse, sense, depthF });
   // TODO 115 GUARD — a saw is handed on purpose: the RAMP is the flank the
   // working direction climbs and the steep FACE is the one that catches the
   // reverse. Measured off the outline just built rather than from `reverse`,

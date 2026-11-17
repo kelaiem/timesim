@@ -1064,16 +1064,17 @@
         teeth standing in the way — not a part welded to a profile. <b>The detent sees one
         reverse pass, and it is the one it is there for.</b> A wind takes the drive off, and
         the blade drives the ring back against the pawls' drag until the face of the tooth
-        behind the beak meets its apex — up to 0.876 of a ring pitch from the crest, nothing
+        behind the beak meets its apex — up to 0.780 of a ring pitch from the crest, nothing
         at all from the face — and there the ring stands. That recoil is what the spring's run
-        was sized for: one ring pitch and a margin. The great wheel runs on the blade, which
+        was sized for: the worst of it and a margin, on the fewest teeth whose worst recoil the
+        blade can carry and whose click still holds the going torque (22). The great wheel runs on the blade, which
         relaxes after its pin (the lower panel, the blade posed from the pin's own circle) from
         3.2296 N·mm to 1.6334 at the end of the run, until the pin lands on the crossing's
         flank — Harrison's stop — and the train stops; when the wind ends the pawls take the
         ring forward to where it rode. The rates are the movement's own: one pawl snap per flange tooth, 24 to the
         fusee turn and 42 over a full 1.75-turn wind; one detent tick per rim tooth, which at
         one barrel revolution per 120/7 h (≈ 17.14 h, §124's first stage) is a tick every
-        29.4 minutes.</figcaption>
+        46.8 minutes.</figcaption>
       </figure>
 
       <p class="note">Honesty ledger: <b>TODO 40 is closed whole — rows 1 and 2 first,
@@ -4887,10 +4888,13 @@
         var pivR = SPUR_R + KW + CM + 0.4;
         var RELIEF = 0.005;                                     // SEAT_RELIEF
         // TODO 219 — the RING has its own count, solved from the maintaining
-        // spring's run (a wind first recoils the ring up to one pitch onto the
-        // beak, and the blade's run must cover that): 25 teeth, their depth
-        // scaled with the pitch so the valley keeps the 24-tooth cut's shape.
-        var RING_TEETH = 25, RING_DEPTH = 0.2 * TEETH / RING_TEETH;   // MAINT_RING_TEETH, MAINT_RING_DEPTH_F
+        // spring's run (a wind first recoils the ring onto the beak, at most
+        // from the crest back to the face, and the blade's run must cover that;
+        // §339: the fewest teeth whose worst recoil fits, whose click holds and
+        // whose root land seats the spring's pin behind §50's wall, TODO 316):
+        // 22 teeth, their depth scaled with the pitch so the valley keeps the
+        // 24-tooth cut's shape.
+        var RING_TEETH = 22, RING_DEPTH = 0.2 * TEETH / RING_TEETH;   // MAINT_RING_TEETH, MAINT_RING_DEPTH_F
         var pitch = (Math.PI * 2) / RING_TEETH;
         var RUN = 1;                                            // this plate's wheel turns + while running
         function sawPoly(R, lean) {                             // the builder's outline: root→tip over 0.72 of the pitch
@@ -5255,7 +5259,7 @@
         // face comes to RELIEF off the seated beak. The crest: where the beak
         // tops the ramp. A wind backs the ring from wherever it stands on the
         // ramp to the face; from the face itself (the beak descending it, the
-        // last eighth of every pitch) it does not move at all.
+        // last part of every pitch) it does not move at all.
         var HOLD_NET = (function () {
           var g = function (d) { return clearAt(seatNet - RUN * d, 0) - RELIEF; };
           if (g(0) <= 0) return seatNet;

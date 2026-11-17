@@ -73,6 +73,11 @@ const LUBRICATION_ROWS = {
   // ---- the barrel, chain and fusee ----
   'mainspring > Mainspring drum':       L('grease', 'a mainspring is greased: coil-on-coil friction is the ribbon\'s hysteresis (FRICTION.springInt), and this ribbon works near coil bind', { mu: 'springInt', src: 'roadmap §247 seed table' }),
   'Mainspring drum :: bearing':         L('oil-medium', 'the drum runs on its fixed arbor, a plain bore, under the chain\'s full tension and slowly', { mu: 'muPlain', sink: 'plain-bush', src: 'roadmap §247 seed table' }),
+  // §339 landing 3c — barrel B (?barrels=3), on the drum's rules: its ribbon greased, its body on its own fixed arbor, and
+  // its wall teeth in the drum's band run dry like every train mesh the energy column prices
+  'mainspring > Going barrel':          L('grease', 'barrel B\'s ribbon, greased as the drum\'s: coil-on-coil friction is the ribbon\'s hysteresis (FRICTION.springInt)', { mu: 'springInt', src: 'the drum\'s row (mainspring > Mainspring drum)' }),
+  'Going barrel :: bearing':            L('oil-medium', 'barrel B runs on its fixed arbor, a plain bore, under the band\'s reaction and slowly, as the drum does', { mu: 'muPlain', sink: 'plain-bush', src: 'the drum\'s row (Mainspring drum :: bearing)' }),
+  'Going barrel > Mainspring drum':     L('dry', 'B\'s wall teeth in the drum\'s band: train teeth run dry, as every mesh the energy column prices', { mu: 'muTooth', src: 'the train\'s rows (Fusee & great wheel > Center wheel)' }),
   'Mainspring drum > Chain':            L('dry', 'the chain\'s hook on the drum wall is a fixing, not a bearing', { src: 'derived: a hooked end has no relative motion to lubricate' }),
   'Chain > Fusee & great wheel':        L('dry', 'the chain lies in a cut groove: oil here collects dirt into the groove, so it is dry or a trace', { src: 'roadmap §247 seed table' }),
   'Chain :: bearing':                   L('oil-fine', 'the rivets articulate at every wrap, steel in steel, and are oiled sparingly (FRICTION.muChain)', { mu: 'muChain', sink: 'plain-bush', src: 'roadmap §247 seed table; failure 4, TODO 248' }),

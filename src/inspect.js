@@ -95,6 +95,10 @@ export const MODULE_UNITS = Object.freeze({
     'Alarm release link', 'Alarm silence rocker', 'Alarm link', 'Alarm lock', 'Alarm winding train', 'Alarm click',
     'Alarm winding arrest', 'Alarm switch', 'Alarm gong', 'Alarm hammer', 'Alarm lifting lever', 'Alarm barrel',
     'Alarm striking wheel', 'Alarm governor', 'Alarm governor anchor']),
+  // §339 — the second barrel: the pulley's at ?barrels=2, the parallel B at ?barrels=3 (landing 3c)
+  secondBarrel: Object.freeze(['Going barrel']),
+  // §339 landing 3c — at ?barrels=3, B's own set-up work (its ratchet, click, collar and fixed arbor)
+  parallelBarrel: Object.freeze(['Going barrel set-up']),
 });
 // the build's word, read once per call: absent units (each with its reason) and omitted meshes keyed `unit/mesh`. A
 // clock that publishes no `modules` (a page older than TODO 298, a test double) is read as building every module.
@@ -122,7 +126,9 @@ export const MECH_GRAPH = {
     // ROTATING group — shafts that were not pivots but the arbor's own
     // ends, drawn on the wrong member.
     ['Mainspring drum', 'Set-up work'],      // body runs on the static arbor (floor + lid bores)
+    ['Going barrel', 'Going barrel set-up'], // §339 landing 3c: B's body runs on its own static arbor
     ['Set-up work', 'Three-quarter plate'],  // the arbor's top stands in the plate's plain bushing
+    ['Going barrel set-up', 'Three-quarter plate'], // §339 landing 3c: B's arbor's top, in its own bushing
     ['Fusee & great wheel', 'plate'],        // fusee arbor pivots plate/bridge
     ['Center wheel', 'plate'],
     ['Third wheel', 'plate'],
@@ -187,6 +193,7 @@ export const MECH_GRAPH = {
     ['Winding clutch', 'Keyless works'],     // TODO 50: rides the stem's square (the keyed
                                              // joint) and the yoke's fork — the clutch has no
                                              // bearing of its own, which is the real part's truth
+    ['Going barrel set-up', 'plate'],        // §339 landing 3c: B's ratchet and click posts on the base plate, as the drum's
     ['Set-up work', 'plate'],                // the set-up ratchet rides the drum arbor's lower
                                              // square just above the BASE plate (chronometer
                                              // practice — bench-only hardware lives on the lower
@@ -321,6 +328,8 @@ export const MECH_GRAPH = {
   ],
   drive: [
     ['mainspring', 'Mainspring drum'],
+    ['mainspring', 'Going barrel'],          // §339 landing 3c: B's own ribbon
+    ['Going barrel', 'Mainspring drum'],     // §339 landing 3c: B's wall teeth drive the band on the drum, in parallel with its ribbon
     ['Mainspring drum', 'Chain'],
     ['Chain', 'Fusee & great wheel'],
     // TODO 219 — inside this unit the drive runs cone → base ratchet → pawls →
@@ -716,6 +725,8 @@ const EXPECTED_PAIRS = [
   ['Heart cam (seconds reset)', 'Reset hammer'], // roller on the cam
   ['Keyless works', 'Fusee & great wheel'],  // transfer wheel ⇄ winding spur (+ shared band under the great wheel)
   ['Maintaining detent', 'Fusee & great wheel'], // detent beak seated in the maintaining ring's teeth
+  ['Going barrel set-up', 'Going barrel'],   // §339 landing 3c: B's static arbor, collar and hook thread its body, as the drum's do
+  ['Going barrel', 'Mainspring drum'],       // §339 landing 3c: B's wall teeth in the drum's band (the spur mesh)
   ['Set-up work', 'Mainspring drum'],        // §100: the static arbor and everything on it (square,
                                              // collar, hook pin) thread the rotating body — the
                                              // body's bored floor and lid RUN on the arbor now
@@ -775,6 +786,7 @@ const EXPECTED_PAIRS = [
   // nothing that reaches the plate. (An EXPECTED grant on a pair that can
   // no longer touch is a standing excuse; the swap keeps the list true.)
   ['Set-up work', 'Three-quarter plate'],
+  ['Going barrel set-up', 'Three-quarter plate'],   // §339 landing 3c: as the drum's
   ['Center wheel', 'Three-quarter plate'],
   ['Third wheel', 'Three-quarter plate'],
   ['Fourth wheel', 'Three-quarter plate'],
@@ -1675,7 +1687,8 @@ export const AXES = [
     //                  recoil leaves — setPose ADVANCES τ by the train's own law —
     //                  reaching the stop (h = 1) at the last held sample and
     //                  standing there for any f the refine engine visits past it;
-    //   f = 1          the pick-up at the stop's τ: the ring back on the wheel.
+    //   f = 1          the pick-up at the stop: the ring back on the wheel, posed at the
+    //                  balance's last rest before τ_stop (§338's rule for an inverted τ).
     // Out and back within the axis, so the reversal is the ring's own motion
     // (alarmToggle's reason), and a pure function of f (alarmPress's), so the
     // axis is index-sliceable. tension stays 1, the fusee standing at the
@@ -5319,6 +5332,10 @@ export const PLATE_SEATS = [
   { unit: "Set-up work", mesh: "CylinderGeometry#3", kind: "planted", why: "a stud, on the plate face" },
   { unit: "Set-up work", mesh: "CylinderGeometry#6", kind: "planted", why: "a stud, on the plate face" },
   { unit: "Set-up work", mesh: "mainspringDrumPivot", kind: "pivot", why: "the drum arbor's lower pivot" },
+  // §339 landing 3c — barrel B's own set-up stack (buildSetupStack, the drum's law): its two studs and its arbor's pivot
+  { unit: "Going barrel set-up", mesh: "CylinderGeometry#3", kind: "planted", why: "a stud, on the plate face" },
+  { unit: "Going barrel set-up", mesh: "CylinderGeometry#6", kind: "planted", why: "a stud, on the plate face" },
+  { unit: "Going barrel set-up", mesh: "mainspringDrumPivot", kind: "pivot", why: "barrel B's arbor's lower pivot" },
   { unit: "Balance cock", mesh: "cockLeg", kind: "fastened", why: "the cock's two legs, each bored for its screw (TODO 184; LatheGeometry#4/#6 until TODO 295 named them)" },
   { unit: "Balance cock", mesh: "cockFoot", kind: "fastened", why: "each leg's foot, on the plate face (LatheGeometry#5/#7 until TODO 295)" },
   { unit: "Balance cock", mesh: "screwShanks", kind: "fastened", why: "the cock screws, tapped through the plate (TODO 184)" },
@@ -7344,6 +7361,39 @@ export const MAINT_DETENT_HANDOFF_POSES = [
   ['holding', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 0.5 }],
   ['runout', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 1 }],
 ];
+// §339 landing 3e — the two running instants READ OFF THE BUILD'S LAW per build, as the table's own history did by hand
+// at every layout move (the comment above: `seated` a tenth after the ring's net angle crosses holdNet, `crest` just
+// before it reaches rCrest). A drive that re-sizes the maintaining spring (?barrels=3's doubled torque: the spring is a
+// series member of the drive, so its floor and its ring move with it) moves both instants, and a fixed τ then samples
+// another phase entirely (the seat read Infinity: no face within a pitch). So each is the law's crossing NEAREST the
+// table's τ, rounded the table's way — seated UP to the tenth after the crossing, crest DOWN to the tenth before it.
+// MEASURED on main at 1f68bf9d, the table had already gone stale: at τ 3367.3 the beak stands ON the face (onFace, not
+// the seat), and at τ 2875.4 the recoil is 0.165 against rCrest's 0.2023 (the comment's 0.12945 is an older ring's).
+// The law's crossings there are 3238.x (crest) and 3719.x (seat), which this reads; the rows held because their
+// expectations happen to hold at the wrong phases too, which is the failure a hand-read instant invites.
+export function maintDetentPosesFor(clock) {
+  const law = clock && clock.maintHoldLaw;
+  if (!law || typeof law.begin !== 'function') return MAINT_DETENT_HANDOFF_POSES;
+  const raw = (t) => { const b = law.begin(t); return b.onFace ? null : b.recoil; };   // r in [0, rCrest], or null on the face
+  const T = Object.fromEntries(MAINT_DETENT_HANDOFF_POSES.map(([n, p]) => [n, p.tau]));
+  const STEP = 1, T_MAX = 2 * Math.max(T.seated, T.crest);
+  const ups = [], downs = [];   // ups: the face turns over to r ≈ 0 (the seat); downs: r reaches rCrest and turns onto the face
+  let prev = raw(0);
+  for (let t = STEP; t <= T_MAX; t += STEP) {
+    const cur = raw(t);
+    if (prev === null && cur !== null) ups.push(t);
+    if (prev !== null && cur === null) downs.push(t);
+    prev = cur;
+  }
+  const refine = (t1, wantRecoilAfter) => { let lo = t1 - STEP, hi = t1;
+    for (let i = 0; i < 50; i++) { const m = (lo + hi) / 2; if ((raw(m) !== null) === wantRecoilAfter) hi = m; else lo = m; }
+    return hi; };
+  const nearest = (xs, ref) => xs.reduce((a, x) => (a === null || Math.abs(x - ref) < Math.abs(a - ref) ? x : a), null);
+  const up = nearest(ups, T.seated), down = nearest(downs, T.crest);
+  if (up === null || down === null) return MAINT_DETENT_HANDOFF_POSES;
+  const seated = Math.ceil(refine(up, true) * 10) / 10, crest = Math.floor(refine(down, false) * 10) / 10;
+  return MAINT_DETENT_HANDOFF_POSES.map(([n, p]) => [n, n === 'seated' ? { ...p, tau: seated } : n === 'crest' ? { ...p, tau: crest } : p]);
+}
 export const MAINT_DETENT_HANDOFFS = [
   {
     label: 'detent blade ⇄ click tail (the spring seats the beak)',
@@ -11295,8 +11345,9 @@ export function checkOscillator(clock) {
 //     one that binds, and the wedge's sections from where the arc begins join
 //     the beak member's stress. Since TODO 219 it holds the SPRING too: the floor re-derived from the
 //     record's nominal corner (the torque at the great wheel that sustains the
-//     claim), the run one ring pitch of recoil plus the margin and the ring's
-//     tooth count the fewest whose pitch fits, k = (τ_going − τ_floor)/run, the
+//     claim), the run the click's worst recoil (since §339 its ride's crest back
+//     to the face, under a pitch) plus the margin and the ring's tooth count the
+//     fewest whose recoil fits, k = (τ_going − τ_floor)/run, the
 //     preload, k again from the blade's own compliance, and the root's stress at
 //     the working point and the stop under the alloy's low end.
 // 17. THE BALANCE KNOCKS WHERE THE METAL SAYS, AND NOT AS SERVICED (TODO 216) —
@@ -11486,7 +11537,7 @@ export function checkEqualisation(clock) {
   crossCheck('Mainspring drum', E.going);
   if (E.alarm) crossCheck('Alarm barrel', E.alarm);
   const g = E.going, a = E.alarm || null;
-  const HALVES = a ? [['going', g], ['alarm', a]] : [['going', g]];   // TODO 313: the ribbons this build carries
+  const HALVES = [['going', g], ...(a ? [['alarm', a]] : []), ...(g.barrelB ? [['barrelB', g.barrelB]] : [])];   // TODO 313: the ribbons this build carries (§339 landing 3c: barrel B's at ?barrels=3)
   // Rows 9–11 — the energy column, held as arithmetic.
   const en = g.energy;
   const rel = (x, y) => Math.abs(x - y) / Math.max(Math.abs(y), 1e-300);
@@ -12229,8 +12280,8 @@ export function checkEqualisation(clock) {
       // Row 16, the SPRING (TODO 219). The floor is re-derived from this
       // record's own corner — the torque at the great wheel that sustains the
       // claim there, the stages upstream of the wheel out of the path — and
-      // the spring's law is held to it: the run covers one ring pitch of recoil
-      // plus the margin and is the FEWEST teeth's (one tooth fewer would not fit
+      // the spring's law is held to it: the run covers the worst recoil (§339:
+      // the click's ride, crest to face) plus the margin and is the FEWEST teeth's (one tooth fewer would not fit
       // inside the run the blade can give), k takes the torque from the
       // working point to the floor over the run, the preload is the floor's
       // angle, the blade's own compliance gives the same k, and its root works
@@ -12251,11 +12302,28 @@ export function checkEqualisation(clock) {
           if (!(sp.floor_Nm < sp.torqueRun_Nm))
             failures.push({ what: 'spring floor at or over the working torque — no run is possible', floor_Nm: sp.floor_Nm, work_Nm: sp.torqueRun_Nm });
         }
+        // §339 — the run covers the WORST RECOIL the click's ride allows (the crest
+        // back to the face, r_crest < one pitch) and the margin, and the ring is the
+        // fewest teeth whose run the blade can give: the record carries the ring one
+        // tooth coarser, refused (its recoil over the run, no cut, or a click that
+        // does not stand: a finding on its cut or its hold over a limit). A build the
+        // recoil rule refused keeps the pitch rule (a whole pitch of recoil), held as before.
         const pitch = 2 * Math.PI / sp.ringTeeth;
-        if (!(Number.isInteger(sp.ringTeeth) && rel(sp.recoilMax_rad, pitch) <= 1e-12 && rel(sp.run_rad, pitch + sp.marginRun_rad) <= 1e-12))
-          failures.push({ what: 'spring identity: run = one ring pitch + the margin', run: sp.run_rad, pitch, margin: sp.marginRun_rad, teeth: sp.ringTeeth });
-        if (!(sp.run_rad <= sp.runMax_rad && 2 * Math.PI / (sp.ringTeeth - 1) + sp.marginRun_rad > sp.runMax_rad))
-          failures.push({ what: 'ring tooth count is not the fewest whose pitch fits the blade\'s run', teeth: sp.ringTeeth, run: sp.run_rad, runMax: sp.runMax_rad });
+        const recoilOk = sp.recoilRule ? (sp.recoilMax_rad > 0 && sp.recoilMax_rad < pitch) : rel(sp.recoilMax_rad, pitch) <= 1e-12;
+        if (!(Number.isInteger(sp.ringTeeth) && recoilOk && rel(sp.run_rad, sp.recoilMax_rad + sp.marginRun_rad) <= 1e-12))
+          failures.push({ what: 'spring identity: run = the worst recoil + the margin', run: sp.run_rad, recoil: sp.recoilMax_rad, pitch, margin: sp.marginRun_rad, teeth: sp.ringTeeth, recoilRule: sp.recoilRule });
+        const b = sp.below;
+        const fewest = sp.recoilRule
+          ? !!b && b.teeth === sp.ringTeeth - 1 && (!b.cut || !b.faceFound || !(b.rCrest_rad < 2 * Math.PI / b.teeth) || b.run_rad > b.runMax_rad
+            || (b.stands === false && b.why.length > 0))   // or its click does not stand (the build's own findings on it)
+          : 2 * Math.PI / (sp.ringTeeth - 1) + sp.marginRun_rad > sp.runMax_rad;
+        // TODO 316 — the spring's pin is seated in the ring's root land behind §50's
+        // wall to the tooth gaps the beak rides: re-derived from the record's own radii
+        const ps = sp.pinSeat;
+        if (!ps || !(Math.abs(ps.wall_u - (ps.root_u - ps.pinOut_u)) <= 1e-12 && ps.wall_u >= ps.floor_u))
+          failures.push({ what: 'maintaining pin seat: its wall to the ring\'s root under §50\'s floor', pinSeat: ps ?? null });
+        if (!(sp.run_rad <= sp.runMax_rad && fewest))
+          failures.push({ what: 'ring tooth count is not the fewest whose recoil fits the blade\'s run', teeth: sp.ringTeeth, run: sp.run_rad, runMax: sp.runMax_rad, below: b ?? null });
         const k = (sp.torqueRun_Nm - sp.floor_Nm) / sp.run_rad;
         if (!(rel(sp.k_Nm_per_rad, k) <= 1e-12))
           failures.push({ what: 'spring identity: k over the run', record: sp.k_Nm_per_rad, fromSpan: k });
@@ -12353,7 +12421,7 @@ export function checkEqualisation(clock) {
     const aM = R.section.a * UNIT_MM / 1000, IM = R.section.I_u4 * Math.pow(UNIT_MM / 1000, 4);
     const thetas = half === 'going' ? R.windRangeRad : R.windRangeRad;
     thetas.forEach((th, i) => {
-      const sigma = R.k_Nm_per_rad * th * aM / IM;
+      const sigma = (R.ribbonK_Nm_per_rad ?? R.k_Nm_per_rad) * th * aM / IM;   // §339 landing 3c: the ribbon's own k where the hook's is two in parallel
       if (!(rel(st.sigma_Pa[i], sigma) <= 1e-12))
         failures.push({ what: 'ribbon stress identity', ribbon: half, end: i ? 'full' : 'run-down', record: st.sigma_Pa[i], fromMoment: sigma });
     });
@@ -12389,8 +12457,9 @@ export function checkEqualisation(clock) {
   // that makes "the shape cancels" true of this record and not just of algebra
   if (g.section.shape === 'strip') {
     const kStrip = MAINSPRING_E_PA * g.section.I_u4 * Math.pow(UNIT_MM / 1000, 4) / (g.devLen_u * UNIT_MM / 1000);
-    if (!(rel(g.k_Nm_per_rad, kStrip) <= 1e-12))
-      failures.push({ what: 'going k is not its strip', record: g.k_Nm_per_rad, fromSection: kStrip });
+    // §339 landing 3c: where the hook's k is two ribbons in parallel, the strip identity is the drum ribbon's own k
+    if (!(rel(g.ribbonK_Nm_per_rad ?? g.k_Nm_per_rad, kStrip) <= 1e-12))
+      failures.push({ what: 'going k is not its strip', record: g.ribbonK_Nm_per_rad ?? g.k_Nm_per_rad, fromSection: kStrip });
   }
   // §104 rows 4–6, 8 — held from the record (TODO 313: the alarm's half, on a build that carries it):
   const c = a ? a.cadence : null;
@@ -16520,7 +16589,7 @@ const CHECKS = {
   // TODO 210 — the maintaining detent's blade on the click's tail, same
   // instrument, own phase table: contact at every phase of a tooth.
   maintDetentHandoff: (clock, opts) => checkAlarmHandoffs(clock,
-    { poses: MAINT_DETENT_HANDOFF_POSES, handoffs: MAINT_DETENT_HANDOFFS, ...opts }),
+    { poses: maintDetentPosesFor(clock), handoffs: MAINT_DETENT_HANDOFFS, ...opts }),   // §339 landing 3e: the instants read off the law
   // TODO 226 step 3b — the impulse pin on the notch's walls, same instrument,
   // poses read off the clock's own law (escapementHandoffPoses says which).
   escapementHandoff: (clock, opts) => checkAlarmHandoffs(clock,
