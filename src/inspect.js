@@ -1687,7 +1687,8 @@ export const AXES = [
     //                  recoil leaves — setPose ADVANCES τ by the train's own law —
     //                  reaching the stop (h = 1) at the last held sample and
     //                  standing there for any f the refine engine visits past it;
-    //   f = 1          the pick-up at the stop's τ: the ring back on the wheel.
+    //   f = 1          the pick-up at the stop: the ring back on the wheel, posed at the
+    //                  balance's last rest before τ_stop (§338's rule for an inverted τ).
     // Out and back within the axis, so the reversal is the ring's own motion
     // (alarmToggle's reason), and a pure function of f (alarmPress's), so the
     // axis is index-sliceable. tension stays 1, the fusee standing at the

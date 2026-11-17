@@ -15777,6 +15777,7 @@ const maintClickCut = (N) => {
 // behind, swung back from the valley, at SEAT_RELIEF off the seated beak), the
 // crest (where the beak tops the ramp), and the worst recoil between them,
 // r_crest. A pure function of the ride and the ring's tooth count.
+const MAINT_RECOIL_Q = 1e-6;   // rad — the worst recoil's grid (maintRecoil says why)
 const maintRecoil = (ride, N) => {
   const RUN = MAINT_RING_RUN;                    // the ring's run past the beak (TODO 215)
   // The RECOIL's sense: the spring's reaction on the ring drives it AGAINST
@@ -15817,8 +15818,17 @@ const maintRecoil = (ride, N) => {
     }
     return (a + b) / 2;
   })();
-  const rCrest = pm(RUN * (crestNet - holdNet), pitch);
-  return { RUN, REC, pitch, pm, s0, gapBack, dHold, faceFound, holdNet, crestNet, rCrest };
+  // The worst recoil, read the SAFE way (AMPLITUDE_CLAIM_DEG's convention):
+  // rounded UP to MAINT_RECOIL_Q. The crest is a golden section over a bisected
+  // ride, resolved to ~1e-11 rad, and §339's ring sizes the spring's run from
+  // this number, so a last-ulp difference in the maths moved the pin's seat by
+  // 4e-11 at every pose (probe-338-pose-conditioning, seed 1) against the
+  // digest's 1.4e-12 budget. On a grid five orders over the search's noise and
+  // three under anything a cutter holds, the recoil moves only where it
+  // straddles a grid edge — the PLACE cell's convention.
+  const rCrestRaw = pm(RUN * (crestNet - holdNet), pitch);
+  const rCrest = Math.ceil(rCrestRaw / MAINT_RECOIL_Q) * MAINT_RECOIL_Q;
+  return { RUN, REC, pitch, pm, s0, gapBack, dHold, faceFound, holdNet, crestNet, rCrest, rCrestRaw };
 };
 // TODO 217/218/221 — THE HOLD, PRICED (the energy column's maintainingHold
 // reads it): the face load, the arm's Winkler bending and axial load, the beak's
@@ -16660,7 +16670,11 @@ const maintDetent = new THREE.Group();
     const t = MAINT_DET_RIDE.liftAt((a + b) / 2);
     if (!(t < MAINT_DET_RIDE.cap * (1 - 1e-6)))
       console.warn(`TODO 215 detent click: the ride hit its cap (${t.toFixed(4)} of ${MAINT_DET_RIDE.cap.toFixed(4)} rad) — the beak cannot clear the teeth`);
-    return Math.max(best.t, t);
+    // read the safe way, up on the worst recoil's grid (MAINT_RECOIL_Q, the same
+    // reason): the detent's spring is sized from this travel, and a golden
+    // section over a bisected ride resolves it only to ~1e-11, which put the
+    // spring's metal at 0.64 of the pose-conditioning budget on §339 3f's ring
+    return Math.ceil(Math.max(best.t, t) / MAINT_RECOIL_Q) * MAINT_RECOIL_Q;
   })();
   // THE BODY, over the ride: every edge of the arm a margin outside the tip
   // circle from the seat to the crest (the lift turns it outward; this holds it).
@@ -68496,7 +68510,14 @@ window.__clock = {
       if (h > 0) {
         const H = MAINT_HOLD.begin(tauIntegrated);
         const t = MAINT_HOLD.tauAt(H.tau0, H.A0, h * (MAINT_HOLD.run - H.recoil));
-        tauIntegrated = h < 1 ? MAINT_HOLD.restAtOrBefore(t, H.tau0) : t;   // §338: a hold stands at a rest; the stop is a place
+        // §338: a hold stands at a rest; the stop is a place. The PICK-UP at the
+        // stop is not the stop: the movement runs on from it, so it is posed at
+        // the last rest before τ_stop (the pin a fraction of a beat short of the
+        // flank), where τ's last-ulp error moves no metal. Posed at the inverse
+        // itself it amplified one ulp of the great wheel's angle by 1/ω into
+        // 6.9e-6 of the balance's metal (probe-338-pose-conditioning, seed 1, on
+        // §339 3f's ring), which no other pose comes within five orders of.
+        tauIntegrated = h < 1 || p.maintPickUp ? MAINT_HOLD.restAtOrBefore(t, H.tau0) : t;
         maintHold = p.maintPickUp ? null : H;
       } else maintHold = null;
     }
