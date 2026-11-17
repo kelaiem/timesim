@@ -462,16 +462,19 @@ export const SPEC = (() => {
   // landings since swept it, fixed the gates only the default runs, priced it at P1 and held its contacts. So the key's null is
   // the shipped arrest, as every other key's null is, and the default's configuration key does not move with the metal (every
   // landing changes the default's metal under one key). `stopwork` is accepted and normalised to that null. `stop-iron` builds
-  // §47's arrest at every reserve (the old default, kept buildable and swept), and folds to null where the stop-work does not
-  // stand anyway, the same build. `trailing` measures §47's trailing side and so builds §47. `stopwork-site` is a MEASUREMENT key
+  // §47's arrest at every reserve (the old default, kept buildable and swept).
+  // §337 landing 3 — AND THE GEARED GENEVA IS THE DEFAULT EVERYWHERE ELSE: the owner's flip, 2026-11-15. Where the direct star
+  // does not stand, the null builds §337's geared stop-work (a finger wheel geared off the cone, its ratio the exact one that
+  // lands the star's travel on the wind), which every geared reserve sites (docs/built/0337.md, the 2026-11-15 re-read) and where
+  // §47's stop iron has no legal site at all (its own boot warnings at those reserves). `geared` is normalised to that null, so
+  // it names the same build under the same key. Since stop-iron is no longer either default, it no longer folds. `trailing` measures §47's trailing side and so builds §47. `stopwork-site` is a MEASUREMENT key
   // (the reserves probe): the stop-work's site search at any reserve, with no fold. Whether the stop-work is BUILT is the
   // derived STOPWORK_BUILT below, which every reader asks instead of comparing this key.
   const stopworkStands = stopworkReaches(reserveHours) && STOPWORK_SITED_HOURS.includes(reserveHours);
   const arrest = raw.arrest === 'trailing' ? 'trailing'
     : raw.arrest === 'stopwork-site' ? 'stopwork-site'
-    : raw.arrest === 'stop-iron' ? (stopworkStands ? 'stop-iron' : null)
-    : raw.arrest === 'geared' ? (stopworkStands ? null : 'geared')   // §337 landing 2b: the geared Geneva (src/geared-geneva.js); folds to null at 30 h, where the direct stop-work stands
-    : null;
+    : raw.arrest === 'stop-iron' ? 'stop-iron'   // §337 landing 3: §47's stop iron at EVERY reserve now, since neither default is it
+    : null;   // §337 landing 3: `geared` (and `stopwork`) normalise to the default, which is the geared Geneva wherever the direct one does not stand
   const drumAzDeg = raw.drumAzDeg !== undefined && raw.drumAzDeg !== null && raw.drumAzDeg !== '' && Number.isFinite(Number(raw.drumAzDeg))
     ? ((Number(raw.drumAzDeg) % 360) + 360) % 360 : null;
   // §339 landing 2b — ?barrels=2: the chain pulley and one barrel (PULLEY_BARREL below). Its integers were solved at the
@@ -577,10 +580,11 @@ export function configKey({ spec = SPEC, route = null, tuned = [] } = {}) {
 }
 // §329 — is the Geneva stop-work BUILT (main.js, in §47's block), instead of §47's stop iron? The one question every reader asks
 // (main.js, inspect.js, lubrication.js, the action groups below), derived from the spec so all of them agree before the build.
-// §337 landing 2b — ?arrest=geared builds the GEARED Geneva stop-work (src/geared-geneva.js) at the reserves where the direct one
-// does not stand, behind a key until the battery vouches for it (the direct stop-work's own staging). It replaces §47's arrest
-// there, so the §47 block is left as the stop-work's no-site path leaves it.
-export const GEARED_BUILT = SPEC.arrest === 'geared';
+// §337 landing 2b — the GEARED Geneva stop-work (src/geared-geneva.js) at the reserves where the direct one does not stand. It
+// replaces §47's arrest there, so the §47 block is left as the stop-work's no-site path leaves it. Behind `?arrest=geared` until
+// landing 3 made it the default's (the null): built wherever the null does not build the direct stop-work.
+export const GEARED_BUILT = SPEC.arrest === null
+  && !(stopworkReaches(SPEC.reserveHours) && STOPWORK_SITED_HOURS.includes(SPEC.reserveHours));
 export const STOPWORK_BUILT = SPEC.arrest === 'stopwork-site'
   || (SPEC.arrest === null && stopworkReaches(SPEC.reserveHours) && STOPWORK_SITED_HOURS.includes(SPEC.reserveHours));
 // The rates the menu offers: every row with a balance the spring drives (TODO 292). The refused rows are listed beside
@@ -1857,13 +1861,16 @@ export const ALARM_SPRING_HEADROOM = 3;
 // is the worst a watch contact gets, and it is exactly what MU_STEEL was
 // sized for; the kinder corners are what oil and polish buy.
 export const FRICTION_CORNERS = Object.freeze(['favourable', 'nominal', 'adverse']);
+// Polished hardened steel on ruby under an oil, the pairing of every jewelled
+// pivot AND of the pallet faces (§346 landing 2): named once, by reference.
+const MU_RUBY_ON_STEEL_OILED = Object.freeze({ favourable: 0.10, nominal: 0.12, adverse: 0.15 });
 export const FRICTION = Object.freeze({
   // Brass wheel on hardened steel pinion, running DRY — train teeth are never
   // oiled (oil there collects abrasive).
   muTooth:  Object.freeze({ favourable: 0.12, nominal: 0.15, adverse: MU_STEEL,
     why: 'brass on hardened steel, dry; the adverse corner is MU_STEEL' }),
   // Polished steel pivot in an oiled ruby hole (a 9010-class oil).
-  muJewel:  Object.freeze({ favourable: 0.10, nominal: 0.12, adverse: 0.15,
+  muJewel:  Object.freeze({ ...MU_RUBY_ON_STEEL_OILED,
     why: 'polished steel in oiled ruby; the adverse corner is a thinned or aged oil' }),
   // Steel pivot in an oiled brass or steel bush — the fusee's plain top
   // bearing, the drum on its fixed arbor.
@@ -1878,9 +1885,20 @@ export const FRICTION = Object.freeze({
   springInt: Object.freeze({ favourable: 0.95, nominal: 0.90, adverse: 0.85,
     why: 'greased ribbon hysteresis; this one runs near coil bind' }),
   // Swiss lever escapement, escape-wheel work to balance work: drop, draw,
-  // impulse-face sliding and unlocking — the classical measured range.
+  // impulse-face sliding and unlocking — the classical measured range. Since
+  // §346 landing 2 the column SPLITS it: the faces' sliding is a law of
+  // muPallet read off the escapement solve (escapement.js palletFaces), and the
+  // REST (the drop, the run, the pin in the fork, the fork's own pivots and its
+  // momentum at the banking) is this band over that law at the same corner, so
+  // every corner's total is still this row's and no corner moves.
   escEff:   Object.freeze({ favourable: 0.40, nominal: 0.35, adverse: 0.30,
     why: 'Swiss lever, escape-wheel energy delivered to the balance' }),
+  // The tooth's tip sliding on the ruby pallet stone's locking and impulse
+  // faces, under a 9415-class oil on epilamed surfaces: the jewel pairing, so
+  // muJewel's band (an aged oil at the adverse corner). It prices only the
+  // faces' share of escEff, through the solve's own contact geometry.
+  muPallet: Object.freeze({ ...MU_RUBY_ON_STEEL_OILED,
+    why: 'the tooth tip on the ruby pallet faces under a 9415-class oil, epilamed; the jewel pairing, so muJewel\'s band by reference' }),
   // The balance's Q with PIVOT friction removed (air, hairspring hysteresis,
   // the pin and fork): the pivot term is computed from the staff, not assumed.
   qOther:   Object.freeze({ favourable: 500, nominal: 350, adverse: 250,
@@ -1904,12 +1922,12 @@ export const FRICTION = Object.freeze({
 //    lubricated regime prices (REGIME_INFO's `priced`, every regime but 'dry').
 //    Teeth run dry by design, so muTooth does not age; qOther and endContactMm
 //    are no lubricant's rows, so they stay where the fresh oil leaves them. The
-//    PALLET OIL ages through escEff, the row the 'escapement' regime prices: it
-//    is the oil that goes first in a real watch. That band is the whole
-//    escapement's efficiency, though (drop, draw, impulse sliding, unlocking),
-//    and only the sliding is the oil's, so ageing it from nominal to adverse
-//    lays the band's whole spread on the oil: the pallet's share of the fall is
-//    an UPPER bound, and the records say so.
+//    PALLET OIL ages through muPallet, the row the 'escapement' regime prices: it
+//    is the oil that goes first in a real watch. Since §346 landing 2 that row
+//    prices only the faces' sliding (escapement.js palletFaces, off the solve's
+//    contacts), and the rest of escEff (the drop, the run, the pin, the fork)
+//    holds, so the pallet oil's share of the fall is EXACT under that law. The
+//    first landing aged the whole escEff band and its share was an upper bound.
 //  · THE TWO ENDS are band corners, never new numbers. FRESH is the NOMINAL
 //    corner: the serviced watch, where TODO 207's design swing is held. AGED,
 //    at the end of an interval, is the ADVERSE corner, which muJewel's row

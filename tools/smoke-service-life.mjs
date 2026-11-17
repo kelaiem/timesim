@@ -7,7 +7,9 @@
 // worn; the worst case runs out of allowance in the year the record's √t law puts it; and at 390 wide nothing
 // scrolls sideways. Since §346 the OIL too: the swing the page reads at a moment between two of the record's
 // samples is the straight line between them, a service puts it back to the fresh corner's, the end of an
-// interval reads the record's aged swing, and the page says the law is posed. `--shots DIR` saves a picture at
+// interval reads the record's aged swing, and the page says the law is posed. Since §346 landing 2 the pallet
+// oil's share it quotes is the record's (and the faces' two efficiencies), and nothing on it calls the share a
+// bound any more. `--shots DIR` saves a picture at
 // each width.
 import { createServer } from 'node:http';
 import { readFile, mkdir } from 'node:fs/promises';
@@ -62,6 +64,14 @@ for (const width of [1280, 390]) {
   ok(`${width}: just before a service the swing is the record's aged one`, aged.vert === `${OS[O.intervals].vertical.toFixed(1)}°` && aged.flat === `${OS[O.intervals].flat.toFixed(1)}°`, `${aged.vert} / ${aged.flat}`);
   const posed = await page.evaluate(() => /posed/i.test(document.querySelector('.oil').textContent) && /posed/i.test(document.getElementById('swing-cap').textContent));
   ok(`${width}: the page calls the oil law posed`, O.posed === true && posed);
+  // §346 landing 2 — the pallet oil's share is the record's, quoted, and no longer called a bound
+  const share = await page.evaluate(() => ({ share: document.getElementById('oil-pallet-share').textContent,
+    fresh: document.getElementById('oil-faces-fresh').textContent, aged: document.getElementById('oil-faces-aged').textContent,
+    bound: /upper bound/i.test(document.body.textContent) }));
+  const wantShare = `${O.palletShare.vertical.toFixed(1)}° of the ${O.dropDeg.vertical.toFixed(1)}° fall upright`;
+  ok(`${width}: the pallet oil's share is the record's, and not called a bound`,
+    share.share.startsWith(wantShare) && share.fresh === `${(100 * O.palletFaces.fresh).toFixed(1)}%` && share.aged === `${(100 * O.palletFaces.aged).toFixed(1)}%` && !share.bound,
+    `${share.share.split(',')[0]}; faces ${share.fresh} fresh, ${share.aged} aged`);
   await read(100, 'nominal');
   const wide = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   ok(`${width}: nothing scrolls sideways`, wide <= 0, `${wide} px`);

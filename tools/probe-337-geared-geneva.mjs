@@ -43,7 +43,8 @@ const staffM = /const TRAIN_STAFF_R = ([\d.]+);/.exec(readFileSync(join(ROOT, 's
 if (!staffM) { console.error('could not read TRAIN_STAFF_R from src/main.js'); process.exit(2); }
 const coneBoreR = Number(staffM[1]);
 
-const boots = await bootMany(HOURS.map((h) => `reserveh=${h}`), '(() => window.__clock.equalisation?.going?.energy?.fuseeTorque_Nm ?? null)()', par ? { concurrency: par } : {});
+// §337 landing 3: the stall alone, off the cheaper build (the arrest does not move it)
+const boots = await bootMany(HOURS.map((h) => `arrest=stop-iron&reserveh=${h}`), '(() => window.__clock.equalisation?.going?.energy?.fuseeTorque_Nm ?? null)()', par ? { concurrency: par } : {});
 let failed = 0;
 const pass = (m) => console.log(`PASS  ${m}`);
 const fail = (m) => { failed++; console.log(`FAIL  ${m}`); };
