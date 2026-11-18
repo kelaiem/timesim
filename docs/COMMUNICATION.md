@@ -319,6 +319,15 @@ Presentation rules that apply now, and more strongly once a toolbox exists:
   under **The future**: a second design to maintain, a second set of checks.
 - Reusing a pattern is a **soft** constraint. It gives way to any hard one,
   and to a stated reason.
+- **Only the owner promotes a design to preferred.** An agent may propose
+  one, with where it is already used; it never labels one preferred itself.
+- **The point of a pattern is that a problem is solved once.** Patterns are
+  kept in families, one per job. When the preferred design does not fit, the
+  options are offered in this order: use it as it is; use it with declared
+  changes; adapt the family by adding a variant others can reuse; and only
+  for a job no family covers, a new design. An option that solves a covered
+  job with an unrelated design must say why no member of the family could
+  serve.
 
 ### Worked example
 
