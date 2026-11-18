@@ -334,6 +334,30 @@ Presentation rules that apply now, and more strongly once a toolbox exists:
   do better and what it would cost, and records it in the backlog. It is
   never left out because a preferred design already exists.
 
+### Improvement areas
+
+The opposite of a preferred pattern is an **improvement area**: a part or
+module where the design is not settled and new ideas are wanted. The measure
+is the number of open items against it in `TODO.md`, each of which is one
+place where what is built does not match how a real watch works. The module
+with the most open items is the first candidate for redesign, as opposed to
+another patch.
+
+What this asks of a message:
+
+- When work touches a module, say in a clause where it stands: "the alarm
+  carries the most open honesty items of any module, so a redesign is worth
+  weighing here", or "this reuses a preferred design".
+- When the choice is between patching and redesigning, the module's open
+  count goes under **The future** for each option: does this option close
+  items, leave them, or add one?
+- When something built turns out not to behave as a regular watch does, it
+  gets a `TODO` item, even if a roadmap entry already plans the fix. The
+  roadmap says what will be built; the `TODO` list is where the debt is
+  counted.
+- A count is a first measure. One item saying a mechanism cannot work
+  outweighs several small ones, so name the heaviest item beside the number.
+
 ### Worked example
 
 > **Decision:** should we start keeping a toolbox of preferred patterns, and
