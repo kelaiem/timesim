@@ -351,6 +351,13 @@ whose levels read the gong's level law through `src/gong-level.js`, the pure lea
 `main.js`' acoustics block calls, moved there verbatim so the two cannot part.
 `tools/probe-alarm-volume.mjs` holds the spec (pure Node, each rule with a control).
 
+`src/keyless-rocking-bar.js` (§334 landing 1) is the KEYLESS FUSEE'S ROCKING BAR designed in a line, pure and
+imported by nothing yet: the winding wheels on a bar pivoted on the transfer wheel's arbor, sprung out of mesh with
+the fusee's winding spur and carried in by friction when the crown winds, because no one-way can keep the crown
+still (the chain's torque has one sign winding and running; TODO 318 has the argument). One carried wheel or two
+(two keep the default routing's winding sense), the spring's window between the bar's weight and the carry's
+ceiling. `tools/probe-keyless-rocking-bar.mjs` holds it, each rule with a control.
+
 `service-life.html` (§344) is the SERVICE-LIFE VIEW: the escape wheel's club
 tooth worn over a century of 5-yearly service (TODO 299's Archard row),
 magnified, because at true scale the century is under the tooth's own bevel and
