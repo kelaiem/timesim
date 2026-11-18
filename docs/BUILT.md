@@ -32,7 +32,7 @@ that band's swept footprint.
 
 | § | Title | Parts |
 |---|---|---|
-| [§349](built/0349.md) | A usage report the visitor previews and sends themselves — PARTIAL: landing 1 (the table, the tally and the preview) shipped | 1 |
+| [§349](built/0349.md) | A usage report the visitor previews and sends themselves — PARTIAL: landing 1 (the table, the tally and the preview) and 1b (a reload keeps the tally) shipped | 1 |
 | [§348](built/0348.md) | The build replay: the schematic view plays the build's placements and the searches that sited them | 1 |
 | [§347](built/0347.md) | The round plate's station term is the measured metal | 1 |
 | [§346](built/0346.md) | Oil ageing between services, as a posed law: the oiled rows' friction from fresh to aged, and the balance's swing it leaves | 1 |

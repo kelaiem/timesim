@@ -20,9 +20,17 @@
 // nothing, when the page is driven by automation (`navigator.webdriver`: the
 // battery, every probe and smoke test) unless `?usage=1` forces it on for this
 // landing's own probe, on a `?trial` boot (§33's throwaway iframes), and under
-// the native host (§338), which has no real document. Landing 1 also STORES
-// nothing: the tally lives in memory for this page load, which is the owner's
-// ruling until a visitor turns remembering on (landing 2).
+// the native host (§338), which has no real document.
+//
+// WHERE IT LIVES. In this TAB's sessionStorage, written through on every mark
+// and read back at boot, so a reload keeps it (the owner's ruling, 2026-11-18,
+// once landing 1 found that every reload-tier control ended the tally and a
+// dropdown-chosen spec value could never reach a report). The browser deletes
+// it when the tab closes; nothing goes to localStorage until a visitor turns
+// remembering on (landing 2). The key is named for the page's directory, so
+// the three Pages environments, which share one origin, keep separate tallies.
+// A stored tally is read back THROUGH mark(), so a stash cannot carry a key,
+// a via or a value-shaped string the table would refuse.
 //
 // WHAT LEAVES. Nothing, from here. The dialog's Copy puts the text the visitor
 // is looking at on their clipboard; landing 2 adds the two ways out (a mail
@@ -45,13 +53,46 @@ function computeEnabled() {
 export const USAGE_ON = computeEnabled();
 
 const tally = createTally();
-const since = monthOf(new Date());
+let since = monthOf(new Date());
+
+const STASH_KEY = typeof location !== 'undefined'
+  ? `timesim-usage:${location.pathname.replace(/[^/]*$/, '')}` : 'timesim-usage:';
+const STASH_FORMAT = 1;
+function stashWrite() {
+  const marks = {};
+  for (const [k, e] of tally.entries()) {
+    marks[k] = { via: [...e.via], values: Object.fromEntries([...e.values].map(([v, vias]) => [v, [...vias]])) };
+  }
+  try { sessionStorage.setItem(STASH_KEY, JSON.stringify({ v: STASH_FORMAT, since, marks })); } catch { /* storage refused: the tally still lives for this load */ }
+}
+function stashRead() {
+  let o = null;
+  try { o = JSON.parse(sessionStorage.getItem(STASH_KEY) || 'null'); } catch { return; }
+  if (!o || o.v !== STASH_FORMAT || typeof o.marks !== 'object' || !o.marks) return;
+  if (typeof o.since === 'string' && /^\d{4}-\d{2}$/.test(o.since)) since = o.since;
+  for (const [k, e] of Object.entries(o.marks)) {
+    if (!e || !Array.isArray(e.via)) continue;
+    for (const via of e.via) tally.mark(k, via);
+    for (const [v, vias] of Object.entries(e.values || {})) {
+      // Restored from this tab's own record of a dropdown's choice; mark()
+      // still holds the row, the via and the value's alphabet.
+      if (Array.isArray(vias)) for (const via of vias) tally.mark(k, via, v, [v]);
+    }
+  }
+}
+
+// Every mark goes through here, so the stash is never behind the tally.
+function take(key, via, value, options) {
+  const ok = tally.mark(key, via, value, options);
+  if (ok) stashWrite();
+  return ok;
+}
 
 // main.js' gesture sites call this. A refused key is a bug at the call site,
 // so it warns (boot-silent: no site marks during the build).
 export function usageMark(key, via = 'g') {
   if (!USAGE_ON) return false;
-  const ok = tally.mark(key, via);
+  const ok = take(key, via);
   if (!ok) console.warn(`usage: refused mark ${key} via ${via} — not a USAGE_FEATURES row`);
   return ok;
 }
@@ -83,7 +124,7 @@ function onChange(e) {
   // A value only from the dropdown that IS the tagged control, and only one
   // its own option list carries (src/usage.js: the owner's ruling).
   if (r && r.values === 'options' && target === el && target.tagName === 'SELECT') {
-    tally.mark(key, 'c', target.value, optionValues(target)) || usageMark(key, 'c');
+    take(key, 'c', target.value, optionValues(target)) || usageMark(key, 'c');
   } else {
     usageMark(key, 'c');
   }
@@ -199,5 +240,6 @@ export function installUsage({ header, button } = {}) {
   window.addEventListener('keydown', () => { keyDepth = false; });   // registered last: runs after the shortcut table's
   document.addEventListener('click', (e) => onClick(e, () => keyDepth), true);
   document.addEventListener('change', onChange, true);
+  stashRead();
   readLinkParams();
 }

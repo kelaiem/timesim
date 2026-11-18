@@ -88,8 +88,9 @@ panel control, a gesture, a keyboard shortcut, or the link that opened the
 page. It counts each feature once per visit, and never records which part you
 looked at, anything you typed, or where you clicked. **Advanced → Usage report →
 Preview** shows the whole tally as plain text: you can edit or delete any of
-it and copy it to send to the maintainer yourself. The tally is kept in memory
-only and is gone when you close or reload the page. The design and its rules
+it and copy it to send to the maintainer yourself. The tally is kept in this
+tab's session storage, so a reload keeps it, and your browser deletes it when
+you close the tab. Nothing is kept across visits. The design and its rules
 are §349 in `docs/BUILT.md`; `src/usage.js` holds the list of everything that
 can be counted.
 
