@@ -2,13 +2,29 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Watch Sim — Mechanical Clock Simulation</title>
 <link rel="manifest" href="./manifest.webmanifest" />
 <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
 <link rel="alternate icon" href="./favicon.png" />
 <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
 <style>
+  /* THE SAFE AREA. `viewport-fit=cover` above lets the page reach the whole
+     screen; without it a phone with a cutout lays the page out INSIDE the safe
+     area, and the canvas stops short of the cutout's side with a dead strip
+     nothing can draw in (owner's screenshot, landscape: the strip on the
+     right). The canvas wants the whole glass, the chrome does not: every
+     fixed control adds its side's inset, read through these four names so a
+     browser without env() resolves them to 0 and lays out as before.
+     --app-h is the VISIBLE height: 100vh on a phone is the toolbar-retracted
+     height, taller than what is on screen, so a panel capped by it runs its
+     last rows under the browser's bar. */
+  :root {
+    --sa-t: env(safe-area-inset-top, 0px); --sa-r: env(safe-area-inset-right, 0px);
+    --sa-b: env(safe-area-inset-bottom, 0px); --sa-l: env(safe-area-inset-left, 0px);
+    --app-h: 100vh;
+  }
+  @supports (height: 100dvh) { :root { --app-h: 100dvh; } }
   html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0d10; }
   #app { position: fixed; inset: 0; }
   canvas { display: block; }
@@ -37,14 +53,23 @@
      rather than crossing a colour. */
   #boot {
     position: fixed; inset: 0; z-index: 50;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 18px; padding: 24px; box-sizing: border-box; text-align: center;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 18px; box-sizing: border-box; text-align: center;
+    /* Clear of the cutout on every side, and SCROLLABLE: on a short screen (a
+       phone on its side) the column is taller than the viewport, and centring
+       an overflowing column cuts its top off where nothing can reach it — the
+       ring and the first line. The two spacers below centre it while it fits
+       and collapse when it does not, so it starts at the top and scrolls. */
+    padding: calc(24px + var(--sa-t, 0px)) calc(24px + var(--sa-r, 0px)) calc(24px + var(--sa-b, 0px)) calc(24px + var(--sa-l, 0px));
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
     background: #0b0d10; color: #eaf0f7;
     font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
   /* The retire: opacity only, and `display` is never touched — a transition
      the compositor can run, on the one frame where the scene's first pixels
      land. main.js removes the element on transitionend. */
+  #boot::before, #boot::after { content: ""; flex: 1 0 0; margin: -9px 0; }
+  #boot > * { flex-shrink: 0; }
   #boot.done { opacity: 0; transition: opacity 0.45s ease; pointer-events: none; }
   #boot .boot-ring {
     width: 44px; height: 44px; border-radius: 50%;
