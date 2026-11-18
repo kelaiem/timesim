@@ -16,6 +16,7 @@ says how to add a row.
 | Item | What | Status | Branch | Since |
 |---|---|---|---|---|
 | §339 | A twin-barrel going train: two smaller mainspring drums feeding the one fusee chain, so a form case can be cut smaller around them. | Redesigned as a small chain pulley geared to one barrel. With the dial's feet fixed (TODO 297) the drum sets the alarm-free fitted case, but measured, the barrel cannot shrink it: every seat clear of the going train widens the case, and a barrel small enough to fit inside it drives the train at under two thirds of today's. Paused until a different layout is chosen | `claude/hopeful-cori-3t4xn7` | 2026-11-09 |
+| §349 | A usage report you preview and send yourself: the app keeps a tally of which features you explored, shows you exactly what it says, and lets you email it or post it as a GitHub discussion. The app itself never transmits anything. | Designed; not started. | `claude/hopeful-lamport-85n0e5` | 2026-11-18 |
 <!-- /roadmap:rows -->
 
 ## Stopped
