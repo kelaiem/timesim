@@ -29,7 +29,10 @@
 //   7  typing in the box does not reach the movement's shortcuts
 //   8  nothing leaves: no request to another origin, no sendBeacon
 //   9  off means off: under automation without ?usage=1 nothing counts, and no
-//      boot writes a usage key to storage
+//      boot writes a usage key to either storage
+//  10  a reload keeps the tally: a reload-tier dropdown (the alarm spec) carries
+//      the tally and its own chosen value into the next load of the same tab,
+//      through sessionStorage; a new tab starts empty (boot B is one)
 
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
@@ -110,7 +113,7 @@ const openAll = (page) => page.evaluate(() => { for (const d of document.querySe
   await openAll(pageC);
   await pageC.click('#btn-copy-view');
   const [on, m, stored] = await pageC.evaluate(() => [window.__usage.on, window.__usage.marks(),
-    Object.keys(localStorage).filter((k) => /usage/i.test(k))]);
+    [...Object.keys(localStorage), ...Object.keys(sessionStorage)].filter((k) => /usage/i.test(k))]);
   ok('9 under automation without ?usage=1 nothing counts', on === false && Object.keys(m).length === 0, `on=${on}, ${Object.keys(m).length} marks`);
   ok('9 no boot wrote a usage key to storage', stored.length === 0, stored.join() || 'none');
   await pageC.close();
@@ -210,6 +213,33 @@ await page.waitForSelector('#usage-dialog[open]');
   ok('6 Copy puts exactly the edited box on the clipboard', clip === edited, `${clip.length} chars`);
   ok('6 control: the edit changed the text', edited !== box);
   await page.click('#usage-close');
+}
+
+// --- 10. a reload keeps the tally ---------------------------------------------
+{
+  // The Alarm spec sits in the left Menu panel, which opens hidden; show it by
+  // a code click (the tally ignores those) so the select can take focus.
+  await page.evaluate(() => { const m = document.getElementById('chrome-t-ui'); if (m.dataset.state !== 'on') m.click(); });
+  const before = await marks(page);
+  const t3 = Date.now();
+  await page.focus('#spec-alarm');
+  const chose = await page.evaluate(() => document.getElementById('spec-alarm').value);
+  await page.keyboard.press('ArrowDown');
+  const nowChose = await page.evaluate(() => document.getElementById('spec-alarm').value).catch(() => '(navigating)');
+  console.log(`  spec-alarm ${JSON.stringify(chose)} → ${JSON.stringify(nowChose)}`);
+  // 'commit', not 'load': the page's top-level build holds its load event back.
+  await page.waitForURL(/alarm=0/, { waitUntil: 'commit', timeout: 120000 });
+  await page.waitForFunction(() => !!window.__usage || !!window.__bootError, null, { timeout: 600000 });
+  console.log(`  reload to ${new URL(page.url()).search} ${((Date.now() - t3) / 1000).toFixed(0)} s`);
+  const after = await marks(page);
+  const lost = Object.keys(before).filter((k) => !after[k]);
+  ok('10 a reload the visitor caused keeps every mark', lost.length === 0 && Object.keys(before).length > 0, lost.join() || `${Object.keys(before).length} kept`);
+  const a = after['spec:alarm'];
+  ok('10 the reloading dropdown\'s chosen value reaches the next load', a && Object.keys(a.values).join() === '0' && a.via.includes('l'), JSON.stringify(a));
+  ok('10 control: the reload really rebuilt the page', /alarm=0/.test(page.url()));
+  const rep = await page.evaluate(() => window.__usage.report());
+  ok('10 the report carries the value', /spec:alarm=0 1 c/.test(rep), rep.split('\n').find((l) => l.startsWith('build:')) || '');
+  await openAll(page);
 }
 
 // --- 4. the restore ----------------------------------------------------------
