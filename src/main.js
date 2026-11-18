@@ -50475,11 +50475,11 @@ viewHud.innerHTML = `
            the panel nothing. §95: the link's front door is now the PRIMER
            (the sim's default audience is the curious visitor, not the
            contributor); each page cross-links the other in its header, so
-           the technical page is one click further, not gone. The strings
-           are unchanged, so their tier-one translations carry over. -->
+           the technical page is one click further, not gone. The link
+           NAMES its page: "How they work" described both pages equally. -->
       <div class="row">
         <span class="label-small">Mechanisms</span>
-        <a class="ui-link" href="./primer.html">How they work</a>
+        <a class="ui-link" href="./primer.html">Primer</a>
       </div>
       <div class="row">
         <span class="label-small">Power flow</span>
@@ -62733,7 +62733,7 @@ function scriptEnterStep(i, { viewOnly = false, step = null } = {}) {
   // run has hidden (INSPECT_STEPS' own lesson).
   captionActionsEl.innerHTML = '';
   if (s.links) {
-    for (const [href, label] of [['./primer.html', 'How they work'], ['./explain.html', 'The explainer']]) {
+    for (const [href, label] of [['./primer.html', 'Primer: the watch in plain language'], ['./explain.html', 'Explainer: every mechanism, with its numbers']]) {
       const a = document.createElement('a'); a.href = href; a.textContent = t(label); captionActionsEl.appendChild(a);
     }
   }
