@@ -325,9 +325,14 @@ Presentation rules that apply now, and more strongly once a toolbox exists:
   kept in families, one per job. When the preferred design does not fit, the
   options are offered in this order: use it as it is; use it with declared
   changes; adapt the family by adding a variant others can reuse; and only
-  for a job no family covers, a new design. An option that solves a covered
-  job with an unrelated design must say why no member of the family could
-  serve.
+  for a job no family covers, a new design. An option to BUILD an unrelated
+  design for a covered job must say why no member of the family could serve.
+- **A different idea is welcome and is written down.** Preferring a pattern
+  limits what is built, not what is suggested. When an agent sees an
+  unrelated way to do a job, it says so in a sentence or two after the
+  options ("Another approach, not proposed for now: ..."), with what it might
+  do better and what it would cost, and records it in the backlog. It is
+  never left out because a preferred design already exists.
 
 ### Worked example
 
