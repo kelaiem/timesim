@@ -49643,13 +49643,16 @@ html:lang(ko) { word-break: keep-all; }
      (phone) viewport and scrolls internally rather than running its lower
      controls off-screen. §110 inherits this per panel rather than per id —
      a second panel on a phone has the same viewport to fit inside. */
-  max-height: calc(100vh - 28px); overflow-y: auto;
+  max-height: calc(var(--app-h, 100vh) - 28px - var(--sa-t, 0px) - var(--sa-b, 0px)); overflow-y: auto;
   font: 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: #d8dee6; user-select: none;
 }
 /* Position is the only thing an individual panel owns. */
-#clock-ui { top: 14px; left: 14px; }
-#view-hud { right: 14px; }   /* its top is derived from the chrome bar, below */
+/* Every inset below is the design's own 14/16 px PLUS that side's safe-area
+   inset (index.html's --sa-*): the canvas runs under a phone's cutout, the
+   controls must not. */
+#clock-ui { top: calc(14px + var(--sa-t, 0px)); left: calc(14px + var(--sa-l, 0px)); }
+#view-hud { right: calc(14px + var(--sa-r, 0px)); }   /* its top is derived from the chrome bar, below */
 .hud-panel h1 { font-size: 12px; margin: 0 0 10px; letter-spacing: 0.06em; text-transform: uppercase; color: #8fa6bf; font-weight: 600; }
 /* Collapsible section (BUILT §15) — a native <details> disclosure so there is
    no JS state to track. Reused wherever the panel needs a labelled, foldable
@@ -49680,7 +49683,7 @@ html:lang(ko) { word-break: keep-all; }
    Its own box is deliberately NOT a .hud-panel — it has no padding of its
    own and no width; it is three buttons and the gap between them. */
 #chrome-bar {
-  position: fixed; top: 14px; right: 14px; z-index: 12;
+  position: fixed; top: calc(14px + var(--sa-t, 0px)); right: calc(14px + var(--sa-r, 0px)); z-index: 12;
   display: flex; gap: 6px;
 }
 #chrome-bar button {
@@ -49704,8 +49707,8 @@ html:lang(ko) { word-break: keep-all; }
    size rather than typed: change the touch floor and this follows, including
    the scroll floor, which must lose exactly the height the bar took. */
 #view-hud {
-  top: calc(14px + 44px + 8px);
-  max-height: calc(100vh - 28px - 44px - 8px);
+  top: calc(14px + 44px + 8px + var(--sa-t, 0px));
+  max-height: calc(var(--app-h, 100vh) - 28px - 44px - 8px - var(--sa-t, 0px) - var(--sa-b, 0px));
 }
 .hud-panel .row { display: flex; align-items: center; justify-content: space-between; margin: 8px 0; gap: 8px; flex-wrap: wrap; }
 .hud-panel button {
@@ -49826,7 +49829,7 @@ html:lang(ko) { word-break: keep-all; }
    every gesture in it is a drag — without it a phone scrolls the page instead
    of turning the crown. */
 #ctl-hud {
-  position: fixed; right: 16px; bottom: 16px; z-index: 7; display: none;
+  position: fixed; right: calc(16px + var(--sa-r, 0px)); bottom: calc(16px + var(--sa-b, 0px)); z-index: 7; display: none;
   width: 150px; padding: 6px; touch-action: none;
   /* §110 — MORE TRANSPARENT THAN THE PANELS, and it is the one piece of
      chrome that should be. The panels sit BESIDE the movement; this pad sits
@@ -50018,7 +50021,7 @@ html:lang(ko) { word-break: keep-all; }
    only while a script runs and never intercepts pointer input (so any click
    still reaches the canvas and cancels the script). */
 #clock-caption {
-  position: fixed; left: 50%; bottom: 34px; transform: translateX(-50%);
+  position: fixed; left: 50%; bottom: calc(34px + var(--sa-b, 0px)); transform: translateX(-50%);
   z-index: 8; max-width: min(80vw, 640px); text-align: center;
   background: rgba(15,17,20,0.82); backdrop-filter: blur(6px);
   border: 1px solid rgba(255,255,255,0.12); border-radius: 10px;
@@ -50059,7 +50062,7 @@ html[dir="rtl"] #clock-caption .cap-nav button { transform: scaleX(-1); }
      run: on a short viewport the HUD panel's box reaches the bottom-left
      corner and, stacked higher, swallowed the toast's clicks — a prompt
      whose whole job is to be clicked cannot sit under passive chrome. */
-  position: fixed; left: 16px; bottom: 16px; z-index: 11;
+  position: fixed; left: calc(16px + var(--sa-l, 0px)); bottom: calc(16px + var(--sa-b, 0px)); z-index: 11;
   background: rgba(15,17,20,0.9); backdrop-filter: blur(6px);
   border: 1px solid rgba(255,255,255,0.16); border-radius: 10px;
   padding: 10px 12px; color: #eaf0f7; display: none; align-items: center; gap: 10px;
@@ -50724,21 +50727,36 @@ function setBarState(id, on) {
 //     exclusive — opening one closes the other.
 // Recomputed on resize, because a phone rotating is the case that produces
 // both at once.
+// The safe-area insets in px, for the arithmetic below. Read off a probe's
+// padding rather than off the --sa-* names: a computed padding is always a
+// resolved length, in every engine. 0 on every side wherever there is no
+// cutout (and under the native host), so every rule below is then the rule
+// it was.
+const safeProbe = document.createElement('div');
+safeProbe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;visibility:hidden;pointer-events:none;'
+  + 'padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px);';
+document.body.appendChild(safeProbe);
+function safeInsets() {
+  const cs = getComputedStyle(safeProbe), px = (v) => parseFloat(v) || 0;
+  return { t: px(cs.paddingTop), r: px(cs.paddingRight), b: px(cs.paddingBottom), l: px(cs.paddingLeft) };
+}
 function chromeFits() {
-  const bar = chromeBar.getBoundingClientRect();
+  const bar = chromeBar.getBoundingClientRect(), sa = safeInsets();
   return {
-    panelClearsBar: PANEL_INSET + PANEL_W + PANEL_GAP <= bar.left,
-    twoPanels: window.innerWidth >= TWO_PANEL_MIN_W,
+    panelClearsBar: sa.l + PANEL_INSET + PANEL_W + PANEL_GAP <= bar.left,
+    // The width the panels can USE: the screen less the cutout's sides.
+    twoPanels: window.innerWidth - sa.l - sa.r >= TWO_PANEL_MIN_W,
     barBottom: bar.height,
+    sa,
   };
 }
 function layoutChrome() {
   const f = chromeFits();
   // A panel the bar overlaps loses its own corner and takes the one below it,
   // derived from the bar's measured height rather than a repeated literal.
-  panel.style.top = f.panelClearsBar ? '' : `${PANEL_INSET + f.barBottom + PANEL_GAP}px`;
+  panel.style.top = f.panelClearsBar ? '' : `${f.sa.t + PANEL_INSET + f.barBottom + PANEL_GAP}px`;
   panel.style.maxHeight = f.panelClearsBar ? ''
-    : `calc(100vh - ${2 * PANEL_INSET + f.barBottom + PANEL_GAP}px)`;
+    : `calc(var(--app-h, 100vh) - ${f.sa.t + f.sa.b + 2 * PANEL_INSET + f.barBottom + PANEL_GAP}px)`;
   // THE RIGHT COLUMN IS SHARED, and §57's pad has the bottom of it. The view
   // panel hangs from the bar and grows DOWN; the pad sits on the bottom inset
   // and grows UP. On a short viewport they meet, and the pad loses — it is
@@ -50761,7 +50779,7 @@ function layoutChrome() {
   const hudNow = document.getElementById('ctl-hud');
   const hudBox = hudNow && getComputedStyle(hudNow).display !== 'none'
     ? hudNow.getBoundingClientRect() : null;
-  const viewTop = PANEL_INSET + f.barBottom + PANEL_GAP;
+  const viewTop = f.sa.t + PANEL_INSET + f.barBottom + PANEL_GAP;
   viewHud.style.maxHeight = hudBox && hudBox.height > 0
     ? `${Math.max(0, Math.round(hudBox.top - PANEL_GAP - viewTop))}px`
     : '';
@@ -50781,20 +50799,23 @@ function placeConfigMark() {
   const bar = chromeBar.getBoundingClientRect();
   const pr = vis(panel) ? panel.getBoundingClientRect() : null;
   pill.style.transform = 'none';
-  pill.style.maxWidth = `${Math.max(0, window.innerWidth - 2 * PANEL_INSET)}px`;
+  // The strip's two ends and its top, each inside the safe area.
+  const sa = safeInsets();
+  const edgeL = sa.l + PANEL_INSET, edgeR = window.innerWidth - sa.r - PANEL_INSET;
+  pill.style.maxWidth = `${Math.max(0, edgeR - edgeL)}px`;
   const w = pill.getBoundingClientRect().width;
-  const lo = pr && pr.top < bar.bottom ? pr.right + PANEL_GAP : PANEL_INSET;
+  const lo = pr && pr.top < bar.bottom ? pr.right + PANEL_GAP : edgeL;
   const hi = bar.left - PANEL_GAP;
   if (hi - lo >= w) {
-    pill.style.top = `${PANEL_INSET}px`;
+    pill.style.top = `${sa.t + PANEL_INSET}px`;
     pill.style.left = `${Math.round(lo + (hi - lo - w) / 2)}px`;
     return;
   }
   const vr = vis(viewHud) ? viewHud.getBoundingClientRect() : null;
-  const right = vr ? vr.left - PANEL_GAP : window.innerWidth - PANEL_INSET;
+  const right = vr ? vr.left - PANEL_GAP : edgeR;
   pill.style.top = `${Math.round(bar.bottom + PANEL_GAP)}px`;
-  pill.style.maxWidth = `${Math.max(0, right - PANEL_INSET)}px`;
-  pill.style.left = `${Math.round(Math.max(PANEL_INSET, PANEL_INSET + (right - PANEL_INSET - pill.getBoundingClientRect().width) / 2))}px`;
+  pill.style.maxWidth = `${Math.max(0, right - edgeL)}px`;
+  pill.style.left = `${Math.round(Math.max(edgeL, edgeL + (right - edgeL - pill.getBoundingClientRect().width) / 2))}px`;
 }
 function setPanelHidden(hidden) {
   panel.style.display = hidden ? 'none' : '';
@@ -50821,7 +50842,7 @@ document.getElementById('chrome-t-view').addEventListener('click',
 // the bar's own state for it is seeded there too, so `?hud=1` and the panel
 // row cannot disagree with this button about whether the pad is up.
 await breathe(291);
-setViewHudHidden(window.innerWidth < TWO_PANEL_MIN_W);
+setViewHudHidden(!chromeFits().twoPanels);
 await breathe(292);
 layoutChrome();
 // Rotating a phone changes both answers at once, so both are re-derived. Not
@@ -51984,7 +52005,7 @@ function askTour(onProceed) {
       const bar = document.createElement('div');
       bar.id = 'aes-link-receipt';
       bar.setAttribute('role', 'status');
-      bar.style.cssText = 'position:fixed; bottom:16px; left:50%; transform:translateX(-50%); z-index:45;'
+      bar.style.cssText = 'position:fixed; bottom:calc(16px + var(--sa-b, 0px)); left:50%; transform:translateX(-50%); z-index:45;'
         + 'width:max-content; max-width:min(92vw, 520px); display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center;'
         + 'background:rgba(15,17,20,0.92); backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,0.14);'
         + 'border-radius:8px; padding:8px 12px; color:#cfd6df; font:12px system-ui, sans-serif;';
@@ -67719,7 +67740,7 @@ function refreshConfigMark() {
     pill.id = 'config-unverified';
     pill.setAttribute('role', 'status');
     pill.dataset.state = 'unverified';
-    pill.style.cssText = 'position:fixed; top:14px; left:50%; z-index:13;'
+    pill.style.cssText = 'position:fixed; top:calc(14px + var(--sa-t, 0px)); left:50%; z-index:13;'
       + 'width:max-content; display:flex; gap:8px; align-items:center;'
       + 'background:rgba(60,40,10,0.9); backdrop-filter:blur(6px); border:1px solid rgba(240,190,90,0.55);'
       + 'border-radius:999px; padding:4px 10px; color:#f3dca8; font:12px system-ui, sans-serif;';
