@@ -1,9 +1,9 @@
-// §339 landing 3c — BARREL B AS METAL: does ?barrels=3 build the parallel second barrel the line spec declares
+// §339 landing 3c — BARREL B AS METAL: does ?barrels=2 build the parallel second barrel the line spec declares
 // (PARALLEL_BARREL, held by tools/probe-339-parallel-barrel.mjs), drive it through the band, and leave every other build
 // as it was? Acceptance, native (one process per boot).
 //   node --import ./tools/native/loader.mjs tools/probe-339-barrel-b.mjs           (exit 1 on any failed row)
 // Rows, each with its control:
-//   1. THE LINE SPEC IN THE METAL (`alarm=0&barrels=3`): the record's hook k is the line spec's k_A + n²·k_B (the pure
+//   1. THE LINE SPEC IN THE METAL (`alarm=0&barrels=2`): the record's hook k is the line spec's k_A + n²·k_B (the pure
 //      solve of both ribbons, twin-barrel.js parallelBarrel, from the default's own record) to 1e-12; the released energy
 //      is the line spec's multiple of the one drum's to 1e-9; B's ribbon (section, packing, stress) is the line spec's B.
 //   2. THE SEAT: B's group stands at drum A's centre + the declared bearing × the centre distance, on the drum's plane.
@@ -13,7 +13,7 @@
 //      the doubled drive overdriving the 14,400 balance (TODO 192, 216, 207/242; the 36,000 row is the target). A warning
 //      beyond them, or a declared one that stopped firing, fails.
 //   5. NOTHING ELSE MOVED: the default and `alarm=0` boot silent with no B (equalisation.going.barrelB null, no
-//      barrelBGroup), and ?barrels=3 is REFUSED, loudly, where its seat was never solved (with the alarm; on a form case).
+//      barrelBGroup), and ?barrels=2 is REFUSED, loudly, where its seat was never solved (with the alarm; on a form case).
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -60,7 +60,7 @@ let fail = 0;
 const row = (ok, what) => { console.log(`${ok ? 'OK  ' : 'FAIL'} ${what}`); if (!ok) fail++; };
 const rel = (a, b) => Math.abs(a - b) / Math.abs(b), f = (x, d = 4) => (+x).toFixed(d);
 
-const def = boot(''), a0 = boot('alarm=0'), B3 = boot('alarm=0&barrels=3');
+const def = boot(''), a0 = boot('alarm=0'), B3 = boot('alarm=0&barrels=2');
 const R0 = def.going, setup = R0.windRangeRad[0], sweep = R0.windRangeRad[1] - R0.windRangeRad[0];
 const fw = { setupClicks: R0.setup.clicks, setupTeeth: R0.setup.teeth };
 const { CHAIN_END_R_OUT, CLEAR_MARGIN } = await import('../src/layout.js');
@@ -93,9 +93,9 @@ row(!extra.length && !stale.length, `4. the boot raises exactly the ${DECLARED.l
 // 5
 for (const [q, b] of [['(default)', def], ['alarm=0', a0]])
   row(b.warns.length === 0 && b.early.length === 0 && !b.going.barrelB && !b.bPos && !b.stackB, `5. ${q} boots silent with no second barrel`);
-for (const q of ['barrels=3', 'alarm=0&barrels=3&case=fitted']) {
+for (const q of ['barrels=2', 'alarm=0&barrels=2&case=fitted']) {
   const b = boot(q);
-  row(b.early.some((w) => w.startsWith('§339: ?barrels=3 is refused')) && !b.bPos && !b.going.barrelB, `5. '${q}' is refused loudly and builds the one drum`);
+  row(b.early.some((w) => w.startsWith('§339: ?barrels=2 is refused')) && !b.bPos && !b.going.barrelB, `5. '${q}' is refused loudly and builds the one drum`);
 }
 // 6. THE 36,000 ROW ON THIS BUILD (landing 3d): RATE_TABLE[36000].parallel's balance (r 8.25, rim 0.235) reaches the
 //    target and starts, so the record's TODO 192/216/207/242 rows are SILENT there, and the rate builds (not refused).
@@ -105,11 +105,11 @@ for (const q of ['barrels=3', 'alarm=0&barrels=3&case=fitted']) {
 //    rather than a whole pitch (landing 3f), and the escape pinion's bore band (TODO 175) when landing 3g cut the mesh
 //    140/7 at the module floor and re-laid the escape and balance stations for it.
 {
-  const b = boot('alarm=0&barrels=3&vph=36000');
+  const b = boot('alarm=0&barrels=2&vph=36000');
   const all = [...b.warns, ...b.early];
   const amp = all.filter((w) => /^TODO (192|216|207\/242|242):/.test(w));
   row(!all.some((w) => w.startsWith('TODO 292: ?vph=36000 is refused')) && amp.length === 0,
-    `6. alarm=0&barrels=3&vph=36000 builds the rate, and its balance rows are silent${amp.length ? `: ${amp.map((w) => w.slice(0, 80)).join(' | ')}` : ''}`);
+    `6. alarm=0&barrels=2&vph=36000 builds the rate, and its balance rows are silent${amp.length ? `: ${amp.map((w) => w.slice(0, 80)).join(' | ')}` : ''}`);
   const DECL36 = [];
   const extra36 = all.filter((w) => !DECL36.some((p) => w.startsWith(p))), stale36 = DECL36.filter((p) => !all.some((w) => w.startsWith(p)));
   row(!extra36.length && !stale36.length, `6. it raises no other warning (${all.length} lines)${extra36.length ? `; beyond them: ${extra36.map((w) => w.slice(0, 80)).join(' | ')}` : ''}${stale36.length ? `; stopped firing: ${stale36.join(', ')}` : ''}`);

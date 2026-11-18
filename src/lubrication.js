@@ -73,7 +73,7 @@ const LUBRICATION_ROWS = {
   // ---- the barrel, chain and fusee ----
   'mainspring > Mainspring drum':       L('grease', 'a mainspring is greased: coil-on-coil friction is the ribbon\'s hysteresis (FRICTION.springInt), and this ribbon works near coil bind', { mu: 'springInt', src: 'roadmap §247 seed table' }),
   'Mainspring drum :: bearing':         L('oil-medium', 'the drum runs on its fixed arbor, a plain bore, under the chain\'s full tension and slowly', { mu: 'muPlain', sink: 'plain-bush', src: 'roadmap §247 seed table' }),
-  // §339 landing 3c — barrel B (?barrels=3), on the drum's rules: its ribbon greased, its body on its own fixed arbor, and
+  // §339 landing 3c — barrel B (?barrels=2), on the drum's rules: its ribbon greased, its body on its own fixed arbor, and
   // its wall teeth in the drum's band run dry like every train mesh the energy column prices
   'mainspring > Going barrel':          L('grease', 'barrel B\'s ribbon, greased as the drum\'s: coil-on-coil friction is the ribbon\'s hysteresis (FRICTION.springInt)', { mu: 'springInt', src: 'the drum\'s row (mainspring > Mainspring drum)' }),
   'Going barrel :: bearing':            L('oil-medium', 'barrel B runs on its fixed arbor, a plain bore, under the band\'s reaction and slowly, as the drum does', { mu: 'muPlain', sink: 'plain-bush', src: 'the drum\'s row (Mainspring drum :: bearing)' }),

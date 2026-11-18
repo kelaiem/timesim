@@ -62,7 +62,7 @@ export const SERVICE_CLASS = Object.freeze({
 // The parts REPLACED at service, inside the units that carry them. Each names a mesh; a row whose unit is built and whose
 // mesh is neither there nor left uncut on the build's own word (clock.omitted) is stale.
 export const EXPENDABLE_PARTS = Object.freeze([
-  // the going mainspring lives in the drum, or with two barrels (?barrels=2) in the going barrel: ONE part, carried by
+  // the going mainspring lives in the drum, or with the chain pulley (?pulley=1) in the going barrel: ONE part, carried by
   // whichever of its units the build has
   Object.freeze({ units: ['Mainspring drum', 'Going barrel'], mesh: 'mainspringRibbon', why: 'the going mainspring: a set ribbon is replaced at service, not reformed' }),
   Object.freeze({ unit: 'Alarm barrel', mesh: 'mainspringRibbon', why: 'the alarm mainspring, on the same rule' }),

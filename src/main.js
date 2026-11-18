@@ -1198,7 +1198,7 @@ const barrelR = (TRAIN.barrel.module * TRAIN.barrel.teeth) / 2;
 // held by the assert beside drumPos; rounded down). It was the bare 10, and
 // the spring's energy at a fixed peak stress goes as the ribbon's volume, so
 // every unit of radius the plate allows is energy the balance is owed.
-const DRUM_R_SINGLE = 10.71;   // the one drum's (DRUM_R_ACTUAL below: §339's pulley at ?barrels=2)
+const DRUM_R_SINGLE = 10.71;   // the one drum's (DRUM_R_ACTUAL below: §339's pulley at ?pulley=1)
 const DRUM_BOT_Z = L_BARREL + 0.7 + 0.08 + CLEAR_MARGIN;
 const DRUM_TOP_Z = TRAIN_CEILING_Z; // §218 tier two — the train's own ceiling, not the raised spring stack (layout.js says why)
 const DRUM_HEIGHT = DRUM_TOP_Z - DRUM_BOT_Z;
@@ -1314,19 +1314,19 @@ const STOPWORK = STOPWORK_BUILT;   // §329 landing 4: option B's Geneva stop-wo
 const SETUP_RATCHET_TEETH = 24;   // the set-up ratchet's cut — its build below consumes THIS
 const SETUP_CLICKS = 23;          // integer detents of pre-tension — 0.95833 turns, 6.02139 rad
 const SETUP_SWEEP_SINGLE = (SETUP_CLICKS * Math.PI * 2) / SETUP_RATCHET_TEETH;
-// §339 landing 2b — ?barrels=2: A CHAIN PULLEY AND ONE BARREL (src/twin-barrel.js' pulleyGeometry, the integers declared
+// §339 landing 2b — ?pulley=1: A CHAIN PULLEY AND ONE BARREL (src/twin-barrel.js' pulleyGeometry, the integers declared
 // in layout.js' PULLEY_BARREL). The chain coils on a springless pulley; the one barrel stands in the free disc and its
 // wall teeth mesh a flange on the pulley, n = zA/zB. The set-up is the BARREL's (NB clicks on this same ratchet cut), so
 // the hook sees θ_s = θ_sB/n, and the pulley's radius is the one that keeps the cone the SAME cone,
 // θ_s·R_wrap = θ_s₀·R_wrap₀ (with P scaled with θ_s below, r₀ = P/θ_s held). null = the one drum, bit-exact.
-const PULLEY = SPEC.barrels === 2 ? pulleyGeometry({ zA: PULLEY_BARREL.zA, zB: PULLEY_BARREL.zB, NB: PULLEY_BARREL.NB,
+const PULLEY = SPEC.pulley ? pulleyGeometry({ zA: PULLEY_BARREL.zA, zB: PULLEY_BARREL.zB, NB: PULLEY_BARREL.NB,
   teeth: SETUP_RATCHET_TEETH, Q: SETUP_SWEEP_SINGLE * (DRUM_R_SINGLE + CHAIN_END_R_OUT), ce: CHAIN_END_R_OUT }) : null;
-// §339 landing 3c — ?barrels=3: today's drum, its ribbon, set-up and chain untouched, AND a parallel second barrel B
+// §339 landing 3c — ?barrels=2: today's drum, its ribbon, set-up and chain untouched, AND a parallel second barrel B
 // (src/twin-barrel.js' parallelGeometry, the integers declared in layout.js' PARALLEL_BARREL and held by
 // tools/probe-339-parallel-barrel.mjs). B meshes a toothed band on the drum's wall under the chain, n = zA/zB = NB/23,
 // so its ribbon, solved at n times the drum's angles, shows the hook (k_A + n²·k_B)·θ over the drum's own two angles:
 // the cone, the chain and the arrest are the one drum's, bit for bit. null = no second barrel.
-const PARALLEL = SPEC.barrels === 3 ? parallelGeometry({ NB: PARALLEL_BARREL.NB, zA: PARALLEL_BARREL.zA, zB: PARALLEL_BARREL.zB,
+const PARALLEL = SPEC.barrels === 2 ? parallelGeometry({ NB: PARALLEL_BARREL.NB, zA: PARALLEL_BARREL.zA, zB: PARALLEL_BARREL.zB,
   RA: DRUM_R_SINGLE, ce: CHAIN_END_R_OUT, teeth: SETUP_RATCHET_TEETH }) : null;
 const SETUP_SWEEP = PULLEY ? PULLEY.setupHook : SETUP_SWEEP_SINGLE;
 const DRUM_R_ACTUAL = PULLEY ? PULLEY.RA : DRUM_R_SINGLE;
@@ -13434,7 +13434,7 @@ let barrelStep;
 while (!(barrelStep = barrelSteps.next()).done) await breathe(385);
 const barrel = barrelStep.value;
 await breathe(101);
-// §339 landing 2b — THE ONE BARREL at ?barrels=2, in the free disc: a plain drum on its own fixed arbor, its ribbon
+// §339 landing 2b — THE ONE BARREL at ?pulley=1, in the free disc: a plain drum on its own fixed arbor, its ribbon
 // solved by the build's law at n times the pulley's angles, wound to the opposite hand because a spur mesh turns it
 // against the pulley (the ribbon tightens against its drum: the hand follows the drum's sense, SENSE_REL beside
 // mainspringFrames). Its height is PULLEY_DRIVE's, standing on the drum's floor plane.
@@ -13445,7 +13445,7 @@ const goingBarrel = PULLEY && PULLEY_DRIVE ? G.makeBarrel({ name: 'goingBarrel',
   ribbonSolve: { sigmaOverE: MAINSPRING_SIGMA_Y_PA / MAINSPRING_E_PA, alphaMin: MAINSPRING_ALPHA_MIN },
   sense: -MOVEMENT_SENSE,
 }) : null;
-// §339 landing 3c — BARREL B at ?barrels=3: the pulley's barrel law (a plain drum on its own fixed arbor, the ribbon
+// §339 landing 3c — BARREL B at ?barrels=2: the pulley's barrel law (a plain drum on its own fixed arbor, the ribbon
 // solved by the build's law at n times the drum's angles, wound to the opposite hand because the spur mesh turns it
 // against the drum), at the drum's own height, so its ribbon is the drum's strip height (the line spec's c).
 const barrelB = PARALLEL ? G.makeBarrel({ name: 'goingBarrel',
@@ -13473,7 +13473,7 @@ const ribbonPacking = (sp) => {
     rOverOuter: r / sp.outerR, fill: (e * sp.devLen) / (Math.PI * (Math.pow(sp.outerR, 2) - Math.pow(r, 2))), coils: sp.coils,
     solved: !!sp.solve, binds: sp.solve?.binds ?? null };
 };
-// §339 — at ?barrels=2 the ribbon is the BARREL's and turns n times the pulley's angle, so the hook sees n²·k_B: every
+// §339 — at ?pulley=1 the ribbon is the BARREL's and turns n times the pulley's angle, so the hook sees n²·k_B: every
 // reader below takes the hook's k and the hook's angles (the fusee's law), and the RIBBON's own (its stress, its set-up
 // click) read RIBBON_GEAR = n times them.
 const RIBBON_GEAR = PULLEY ? PULLEY.n : 1;
@@ -14005,7 +14005,7 @@ drumGroup.add(barrel);
 movement.add(drumGroup);
 registerExplode(drumGroup, Z_DRUM, 1);
 registerLabel('Mainspring drum', drumGroup);
-// §339 landing 2b — at ?barrels=2: THE PULLEY'S FLANGE and THE ONE BARREL. The flange is the pulley's toothed disc in the
+// §339 landing 2b — at ?pulley=1: THE PULLEY'S FLANGE and THE ONE BARREL. The flange is the pulley's toothed disc in the
 // band under the chain (PULLEY_FLANGE_TOP), its pitch circle r_pA one CLEAR_MARGIN outside the chain coiled on the
 // pulley, because the barrel's wall stands on that circle up its whole height. The barrel stands where its wall meets
 // that circle, at the declared seat's bearing off the pulley (PULLEY_BARREL.barrelAzDeg), on the drum's floor plane, and
@@ -14040,7 +14040,7 @@ if (goingBarrel) {
   registerExplode(goingBarrelGroup, GOING_BARREL_Z, 1);
   registerLabel('Going barrel', goingBarrelGroup);
 }
-// §339 landing 3c — at ?barrels=3: THE DRUM'S BAND and BARREL B. The band is a toothed RING on the drum's own wall in the
+// §339 landing 3c — at ?barrels=2: THE DRUM'S BAND and BARREL B. The band is a toothed RING on the drum's own wall in the
 // band under the chain (its top PARALLEL_BARREL.bandTopZ, measured off the chain), its pitch circle r_pA one CLEAR_MARGIN outside the chain coiled on the drum,
 // because B's wall stands on that circle all the way up. A ring, not the pulley's disc: this drum carries its ribbon, so
 // the band starts at the wall's inner face and never enters the spring's cavity. B stands where its wall meets that
@@ -17272,7 +17272,7 @@ declareRestoring('Fusee & great wheel', 'maintRing', 'two-way',
 // the spiral never visits its free coil in the built movement.
 // ---------------------------------------------------------------------------
 const setupWork = new THREE.Group();
-// §339 landing 2b — at ?barrels=2 the set-up (ratchet, click, collar, hook) stands under the ONE BARREL, which carries
+// §339 landing 2b — at ?pulley=1 the set-up (ratchet, click, collar, hook) stands under the ONE BARREL, which carries
 // the ribbon, and the pulley keeps a bare fixed arbor of its own. Both are this unit's: `setupWork` is then a container
 // at the movement's origin holding the two stacks at their own centres (so addUpperPivot reads each one's position as
 // the plate bore's). At the one drum the stack IS setupWork, as built.
@@ -17281,7 +17281,7 @@ const SU = goingBarrel
   : { x: drumPos.x, y: drumPos.y, zDrum: Z_DRUM, body: barrel, drumR: DRUM_R, drumH: DRUM_HEIGHT };
 const setupStack = goingBarrel || PARALLEL ? new THREE.Group() : setupWork;
 // §339 landing 3c — the set-up stack on ONE barrel's axis (square, ratchet, click and its spring, collar, hook, fixed
-// arbor), a function because ?barrels=3 builds it twice: on the drum, as always, and on barrel B, whose ribbon it holds.
+// arbor), a function because ?barrels=2 builds it twice: on the drum, as always, and on barrel B, whose ribbon it holds.
 // It returns `arborStack`, the fixed arbor's own builder, which the pulley also calls for its bare arbor.
 const buildSetupStack = (setupStack, SU, mainspring, MS_COLLAR_R) => {
   const SQ = 0.6 * Math.SQRT2; // across-corners = the lower staff's diameter (addLowerPivot staffR 0.6)
@@ -21384,7 +21384,7 @@ arrest47: {   // labelled: §329 landing 4's stop-work branch leaves it before �
     // where it is 14°). The dwell's first and last samples are the passage's own ends (θ = ±E/2, the
     // pin at the slot's mouth on its centreline), so the check asked the disc to hold a star the pin was holding, and read
     // "unlocked" wherever the relief began one 1° bin past that azimuth (measured: 319° against the boundary's 318° on
-    // alarm=0&barrels=3, whose stall-sized pin is 0.21; on the default the relief began at 320°, by the same luck). What
+    // alarm=0&barrels=2, whose stall-sized pin is 0.21; on the default the relief began at 320°, by the same luck). What
     // must hold is the HAND-OFF: no pose of the dwell where neither the pin nor the disc holds the star.
     const PIN_HOLD_S = Math.sqrt(rTip * rTip - W * W), PIN_HOLD_OFF = W - rPin + 1e-9;   // + float noise: the construction puts the pin ON the axis at ±E/2 to 1e-9
     const pinHolds = (phi) => { const [u, v] = toStar(pinAt(phi), rhoAt(phi)); for (let k = 0; k < n; k++) { const b = slotAz(k); if (Math.abs(-u * Math.sin(b) + v * Math.cos(b)) <= PIN_HOLD_OFF && u * Math.cos(b) + v * Math.sin(b) <= PIN_HOLD_S) return true; } return false; };
@@ -48174,7 +48174,7 @@ const EQUALISATION_RIBBON = (() => {
 const EQUALISATION_GOING = (() => {
   const { kOf, ribbonStress } = EQUALISATION_RIBBON;
   const k = GOING_K;   // TODO 193: quoted, not re-derived — the pivots above were sized to this number
-  // §339 landing 3c: at ?barrels=3 the hook's k is the two ribbons in parallel, k_A + n²·k_B, each its own kOf
+  // §339 landing 3c: at ?barrels=2 the hook's k is the two ribbons in parallel, k_A + n²·k_B, each its own kOf
   const kRibbons = kOf(mainspring) * Math.pow(RIBBON_GEAR, 2) + (PARALLEL ? Math.pow(PARALLEL.n, 2) * kOf(mainspringB) : 0);
   if (Math.abs(kRibbons / k - 1) > 1e-12)
     console.warn(`TODO 193: the going k has two values — GOING_K ${k} vs the ribbons' kOf ${kRibbons}`);
@@ -48899,7 +48899,7 @@ const EQUALISATION_GOING = (() => {
       energy,
       section: { ...mainspring.section }, devLen_u: mainspring.devLen,
       packing: ribbonPacking(mainspring),   // TODO 291 — r/e against the trade's band, and what bound the solve
-      // §339 — the set-up ratchet holds the RIBBON's set-up, which at ?barrels=2 is the barrel's (n times the hook's)
+      // §339 — the set-up ratchet holds the RIBBON's set-up, which at ?pulley=1 is the barrel's (n times the hook's)
       setup: PULLEY ? {
         clicks: PULLEY.NB, teeth: SETUP_RATCHET_TEETH, sweepRad: PULLEY.setupB, hookRad: SETUP_SWEEP, gear: RIBBON_GEAR,
         quantised: Number.isInteger(PULLEY.NB)
@@ -48914,7 +48914,7 @@ const EQUALISATION_GOING = (() => {
       momentRange_Nmm: [k * SETUP_SWEEP * 1000, k * SPRING_WIND_FULL * 1000],
       windRangeRad: [SETUP_SWEEP, SPRING_WIND_FULL],
       stress: ribbonStress(PARALLEL ? kOf(mainspring) : k / Math.pow(RIBBON_GEAR, 2), mainspring.section, [SETUP_SWEEP * RIBBON_GEAR, SPRING_WIND_FULL * RIBBON_GEAR]),   // §339: the ribbon's own k and angles
-      // §339 landing 3c — at ?barrels=3, BARREL B's ribbon, held like the drum's (equalisation's ribbon rows read it as a
+      // §339 landing 3c — at ?barrels=2, BARREL B's ribbon, held like the drum's (equalisation's ribbon rows read it as a
       // third half): its own k, its angles n times the drum's, its set-up a whole number of its ratchet's clicks
       ribbonK_Nm_per_rad: PARALLEL ? kOf(mainspring) : undefined,   // §339 landing 3c: the drum ribbon's own k where the hook's is the two in parallel
       barrelB: PARALLEL ? {
@@ -54162,7 +54162,7 @@ const FUSEE_COCK = await (async () => {
             // where it is 14°). The dwell's first and last samples are the passage's own ends (θ = ±E/2, the
             // pin at the slot's mouth on its centreline), so the check asked the disc to hold a star the pin was holding, and read
             // "unlocked" wherever the relief began one 1° bin past that azimuth (measured: 319° against the boundary's 318° on
-            // alarm=0&barrels=3, whose stall-sized pin is 0.21; on the default the relief began at 320°, by the same luck). What
+            // alarm=0&barrels=2, whose stall-sized pin is 0.21; on the default the relief began at 320°, by the same luck). What
             // must hold is the HAND-OFF: no pose of the dwell where neither the pin nor the disc holds the star.
             const PIN_HOLD_S = Math.sqrt(rTip * rTip - W * W), PIN_HOLD_OFF = W - rPin + 1e-9;   // + float noise: the construction puts the pin ON the axis at ±E/2 to 1e-9
             const pinHolds = (phi) => { const [u, v] = toStar(pinAt(phi), rhoAt(phi)); for (let k = 0; k < n; k++) { const b = slotAz(k); if (Math.abs(-u * Math.sin(b) + v * Math.cos(b)) <= PIN_HOLD_OFF && u * Math.cos(b) + v * Math.sin(b) <= PIN_HOLD_S) return true; } return false; };
@@ -65046,7 +65046,7 @@ function tick(t) {
   // travel is that hand times the drum's rotation — one source per barrel.
   const paidOut = goingBarrelGroup ? -MOVEMENT_SENSE * goingBarrelGroup.rotation.z : MOVEMENT_SENSE * drumRot;
   mainspring.setWind(mainspring.sweepFull - paidOut);   // §339: the ribbon rides the drum it lives in
-  // §339 landing 3c's BARREL B (?barrels=3) carries a ribbon of its own, cut to
+  // §339 landing 3c's BARREL B (?barrels=2) carries a ribbon of its own, cut to
   // the same hand as the pulley's (−MOVEMENT_SENSE, the spur mesh turns it
   // against the drum), and nothing wound it: it stood on its build frame and
   // only turned rigidly with B through the reserve — the frozen-ribbon defect
@@ -68077,7 +68077,7 @@ window.__clock = {
   get bootWarns() { return __bootWarns; },
   get formHold() { return FORM ? { ...FORM_HOLD_SPEC, boreGrow: FORM_BORE_GROW } : null; },   // TODO 300 — the form case's casing-clamp hold, as cut (src/casing-clamp.js at this build's plateR)
   get formFit() { return { key: FORM_FIT_KEY, from: SPEC.formRectSpec ? 'url' : FORM_SEAT_FIT ? 'seat' : FORM_ALARMFREE_FIT ? 'table' : SPEC.caseShape && SPEC.caseShape !== 'free' ? 'formPlate' : null }; },   // TODO 298 — where this box form case's cut came from (tools/form-fits.mjs reads it)
-  get modules() { return { alarm: ALARM_BUILT, secondBarrel: !!(goingBarrelGroup || barrelBGroup), parallelBarrel: !!barrelBGroup }; },   // §339: the pulley's barrel or ?barrels=3's B
+  get modules() { return { alarm: ALARM_BUILT, secondBarrel: !!(goingBarrelGroup || barrelBGroup), parallelBarrel: !!barrelBGroup }; },   // §339: the pulley's barrel or ?barrels=2's B
   get settingPinch() { return SETTING_PINCH; },   // TODO 305 — whether leg 2 passes over the reserve input pinion, where its radius stands it exactly CLEAR_MARGIN off (undeclaredClearance's tie control)   // TODO 298 — which modules this build cut (§325 landing 3's ?alarm=0 builds none of the alarm), for inspect.js' module-aware tables
   get omitted() { return BUILD_OMITTED.map((o) => ({ ...o })); },   // TODO 298 — the meshes the build's own solve left uncut, each with the reason it warned
   get buildWarns() { return __buildWarnEnd === null ? __bootWarns.slice() : __bootWarns.slice(0, __buildWarnEnd); },   // §338
