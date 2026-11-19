@@ -356,7 +356,10 @@ imported by nothing yet: the winding wheels on a bar pivoted on the transfer whe
 the fusee's winding spur and carried in by friction when the crown winds, because no one-way can keep the crown
 still (the chain's torque has one sign winding and running; TODO 318 has the argument). One carried wheel or two
 (two keep the default routing's winding sense), the spring's window between the bar's weight and the carry's
-ceiling. `tools/probe-keyless-rocking-bar.mjs` holds it, each rule with a control.
+ceiling. Since landing 2 it is cut as METAL in the line: the bar's width from its load, the pins by TODO 193's law,
+the bankings one pin in an arc slot, the return blade at the flat-blade floor bearing on the bar's boss (a blade on
+the first wheel closed the window, and is the control), the friction clip over muPlain's band.
+`tools/probe-keyless-rocking-bar.mjs` holds it, each rule with a control.
 
 `service-life.html` (§344) is the SERVICE-LIFE VIEW: the escape wheel's club
 tooth worn over a century of 5-yearly service (TODO 299's Archard row),

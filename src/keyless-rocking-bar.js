@@ -36,13 +36,21 @@
 //    wheels: two. A one-wheel bar reverses it. The idler routing already carries one idler, so a one-wheel bar
 //    there keeps the sense. Idlers cancel from the ratio either way.
 //
-// WHAT THIS LANDING DOES NOT CLAIM. Modelled, not simulated: the bar is placed at its two bankings, nothing steps
-// it. The bar's own section (P1) is a placeholder plate in the weight row only; its blade spring and friction
-// spring are moments here, not cut metal. Tip-on-tip arrival as the last wheel swings in, and shock, are not
-// covered. The two search snippets that ground the mechanism are quoted in TODO 318 and still owe a full read.
+// LANDING 2 (§334): THE METAL, still in the line. The bar's in-plane width from the moment and push the tooth loads put
+// along it (SPRING_SIGMA_Y_PA, floored at §50); each carried wheel's pin by TODO 193's law; the two bankings one pin,
+// the last wheel's arbor run into an arc slot whose ends stand the swing apart; the return blade a cantilever of the
+// ribbons' alloy at the flat-blade floor bearing on the bar's boss; the friction carry a two-jaw clip on D's arbor
+// sized over muPlain's band. The window is re-solved with all of it: the blade's rise and the band's spread are fixed
+// ratios inside it, and the three margins left are equal.
+//
+// WHAT THIS DOES NOT CLAIM. Modelled, not simulated: the bar is placed at its two bankings, nothing steps it. The load
+// is the fusee's torque at D, the one the watch already sizes its winding train to; what a hand can add at the winding
+// stop is declared nowhere in the movement and is not priced. The clip's interference (about 6 µm a jaw) is reported,
+// not judged, for want of a tolerance to judge it by. Shock is not covered. The two search snippets that ground the
+// mechanism are quoted in TODO 318 and still owe a full read.
 import { gearToothSpec } from './geometry.js';
-import { KW_MODULE, crownWheelTeeth, WIND_SPUR_TEETH, KW_WIND_IDLER_TEETH, CLEAR_MARGIN, UNIT_MM, FRICTION, STOCK }
-  from './layout.js';
+import { KW_MODULE, crownWheelTeeth, windPinionTeeth, WIND_SPUR_TEETH, KW_WIND_IDLER_TEETH, CLEAR_MARGIN, UNIT_MM,
+  FRICTION, STOCK, STOCK_MIN_U, SPRING_FLAT_U, SPRING_SIGMA_Y_PA, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, PIVOT_BORE_CLEAR } from './layout.js';
 
 const G_ACC = 9.80665;   // m/s², standard gravity
 
@@ -61,6 +69,8 @@ export const ROCKING_BAR_INPUTS = Object.freeze({
     why: 'GOING_POWER.fuseeTorque_Nm × 1000, read off the default build\'s equalisation record at main 196e37e3; the fold reads it live' },
   stock_u: { v: 0.725, why: 'the winding band\'s stock (WIND_T in main.js), the bar and its wheels cut from it' },
   pivotR_u: { v: 0.7, why: 'the winding train\'s bore radius (the spur\'s boreR), the bar\'s bearing on D\'s arbor' },
+  bladeH_u: { v: SPRING_FLAT_U, why: 'the movement\'s flat-blade floor (SPRING_FLAT_U, 0.05 mm), which every blade spring here is cut to' },
+  bladeAt: { v: 'boss', why: 'where the return blade bears: the bar\'s boss round D, the smallest lever (\'firstWheel\' is landing 2\'s first draft, kept for the control)' },
 });
 
 const rot = (x, y, a) => ({ x: x * Math.cos(a) - y * Math.sin(a), y: x * Math.sin(a) + y * Math.cos(a) });
@@ -154,7 +164,7 @@ export function solveRockingBar(variant = 'two', over = {}, side = null) {
   // its centre; its moment about D, per unit torque at D, is k.
   const meshes = chain.length - 1;
   const senseOf = (i, regimeMotion) => regimeMotion * I.windSense * (i % 2 === 0 ? 1 : -1);   // each mesh reverses
-  const kAt = (P, alphas, regime) => {
+  const forcesAt = (P, alphas, regime) => {
     // regime 'wind': motion in the winding sense, torque flowing D→F. 'run': the crown side back-driven, the
     // motion reversed and torque flowing F→D. Either way the force on the downstream member of each mesh is
     // built from the DRIVING member's surface velocity. 'torqueReversed' (the winding motion with torque flowing
@@ -174,8 +184,9 @@ export function solveRockingBar(variant = 'two', over = {}, side = null) {
     }
     let M = 0;   // N·mm per N·mm: forces in N, arms in mm
     for (let i = 1; i <= last; i++) M += cross({ x: P[i].x * UNIT_MM, y: P[i].y * UNIT_MM }, net[i]);
-    return M;
+    return { M, net };
   };
+  const kAt = (P, alphas, regime) => forcesAt(P, alphas, regime).M;
   const corners = [];
   const amax = (i) => Math.max(spec[i].maxPressureAngle, spec[i + 1].maxPressureAngle);
   for (let code = 0; code < Math.pow(3, meshes); code++) {
@@ -188,30 +199,138 @@ export function solveRockingBar(variant = 'two', over = {}, side = null) {
   const kMin = Math.min(...kEng), kMax = Math.max(...kEng);
   const sameForceSystem = Math.max(...corners.map((r) => Math.abs(r.kWind - r.kRun)));
 
-  // THE WINDOW. Torque at D while winding, lossless (the hold needs the smallest it can be): the fusee's torque
-  // through the bar's ratio, driver over follower.
+  // THE LOAD every part is sized to: the torque at D while winding, the fusee's through the bar's ratio, lossless.
+  // It is the load the watch already sizes its winding train to (the geared stop-work takes the fusee's torque as
+  // its stall). What a hand can add at the winding stop is declared nowhere in the movement and is not priced here.
   const Tw = I.fuseeTorque_Nmm * (nD / nF);
-  // the carry's ceiling: one more plain pivot carrying D's mesh load at the bar's bearing radius, adverse corner
-  const meshLoad_N = Tw / (spec[0].pitchR * UNIT_MM);
-  const MfMax = FRICTION.muPlain.adverse * meshLoad_N * I.pivotR_u * UNIT_MM;   // N·mm
-  // the floor: the bar's own weight at its worst attitude. Wheels as solid discs of the band's stock; the bar as a
-  // plate one stock thick and one smallest-idler radius wide along its two arms (P1 owes the real section).
-  const rho = STOCK.steel.rho, t_m = I.stock_u * UNIT_MM * 1e-3, mm = (u) => u * UNIT_MM * 1e-3;
+  const mmOf = (u) => u * UNIT_MM;
+  const sigY = SPRING_SIGMA_Y_PA / 1e6;                 // N/mm², the bar and its pins (steel)
+  const sigSpring = MAINSPRING_SIGMA_Y_PA / 1e6, Esp = MAINSPRING_E_PA / 1e6;   // the blades: the ribbons' alloy, low end
+  const tBar = mmOf(I.stock_u), hBlade = mmOf(I.bladeH_u);
+  const pinLaw = (F_N, lever_mm) => Math.max(mmOf(STOCK_MIN_U), Math.cbrt(32 * F_N * lever_mm / (Math.PI * sigY)));   // TODO 193's pivot law
+
+  // THE BANKINGS are one pin: the last wheel's arbor, run through the bar into an arc slot in the plate about D's
+  // axis. The slot's ends are the depth banking and the neutral banking, so the angle between them IS the swing,
+  // and the end walls (radial lines) push the pin tangentially.
+  const B = PE[last], Bmm = { x: mmOf(B.x), y: mmOf(B.y) };
+  const tB = { x: -Bmm.y / len(Bmm), y: Bmm.x / len(Bmm) };
+  const metalAt = (alphas, T) => {
+    const { net } = forcesAt(PE, alphas, 'wind');
+    const Fw = net.map((f) => ({ x: f.x * T, y: f.y * T }));
+    let Mw = 0;
+    for (let i = 1; i <= last; i++) Mw += cross({ x: mmOf(PE[i].x), y: mmOf(PE[i].y) }, Fw[i]);
+    const fb = -Mw / cross(Bmm, tB);                     // the depth banking's reaction, tangential at the pin
+    const Fb = { x: fb * tB.x, y: fb * tB.y };
+    // bending along the bar's centre line (D → wheel 1 → wheel 2): at each section, the moment and the axial load of
+    // everything outboard of it (the wheels beyond, and the banking at the end)
+    let Mmax = 0, Nmax = 0;
+    for (let seg = 1; seg <= last; seg++) {
+      const A = { x: mmOf(PE[seg - 1].x), y: mmOf(PE[seg - 1].y) }, C = { x: mmOf(PE[seg].x), y: mmOf(PE[seg].y) };
+      const u = unit(sub(C, A));
+      for (let k = 0; k <= 200; k++) {
+        const X = { x: A.x + (C.x - A.x) * k / 200, y: A.y + (C.y - A.y) * k / 200 };
+        let M = cross(sub(Bmm, X), Fb), Fx = Fb.x, Fy = Fb.y;
+        for (let i = seg; i <= last; i++) { const Pi = { x: mmOf(PE[i].x), y: mmOf(PE[i].y) }; M += cross(sub(Pi, X), Fw[i]); Fx += Fw[i].x; Fy += Fw[i].y; }
+        Mmax = Math.max(Mmax, Math.abs(M)); Nmax = Math.max(Nmax, Math.abs(Fx * u.x + Fy * u.y));
+      }
+    }
+    return { Fw, Fb, fb: Math.abs(fb), Mmax, Nmax };
+  };
+  const sizeMetal = (T) => {
+    let Mmax = 0, Nmax = 0, Fpin = wheels.map(() => 0), Fbank = 0;
+    for (const r of corners) {
+      const g = metalAt(r.alphas, T);
+      Mmax = Math.max(Mmax, g.Mmax); Nmax = Math.max(Nmax, g.Nmax); Fbank = Math.max(Fbank, g.fb);
+      for (let i = 1; i <= last; i++) Fpin[i - 1] = Math.max(Fpin[i - 1], len(g.Fw[i]));
+    }
+    // in-plane bending of a plate `tBar` thick: σ = 6M/(t·w²) + N/(t·w). The width that works at σ_y under BOTH is
+    // the root of σ_y·t·w² − N·w − 6M = 0 (first draft solved the bending alone and the axial term then carried the
+    // two-wheel bar to 811 MPa); floored at §50.
+    const wLoad = (Nmax + Math.sqrt(Nmax * Nmax + 24 * sigY * tBar * Mmax)) / (2 * sigY * tBar);
+    const w = Math.max(mmOf(STOCK_MIN_U), wLoad);
+    const sigma = 6 * Mmax / (tBar * w * w) + Nmax / (tBar * w);
+    // each carried wheel turns on a pin riveted in the bar, loaded at the wheel's mid-plane: half the bar, the
+    // margin, half the wheel; the last wheel's pin also takes the banking, a margin below the bar in the slot
+    const lever = tBar + mmOf(CLEAR_MARGIN);
+    const pins = Fpin.map((F, i) => ({ F_N: F, d_mm: pinLaw(F + (i === last - 1 ? Fbank : 0), lever) }));
+    return { Mmax, Nmax, Fbank, wLoad, w, sigma, pins, lever };
+  };
+  const metal = sizeMetal(Tw);
+  const rC0 = mmOf(I.pivotR_u);                          // the bar's bore on D's arbor
+
+  // THE WEIGHT, from the metal: the wheels as solid discs of the band's stock (an upper bound), the bar as its arms
+  // at the solved width plus a boss of the same width round each bore.
+  const rho = STOCK.steel.rho, mKg = (vol_mm3) => rho * vol_mm3 * 1e-9;
   let mass = 0, mom = { x: 0, y: 0 };
-  const addMass = (kg, at) => { mass += kg; mom.x += kg * at.x; mom.y += kg * at.y; };
-  for (let i = 1; i <= last; i++) addMass(rho * Math.PI * Math.pow(mm(spec[i].pitchR), 2) * t_m, PE[i]);
-  const barW = Math.min(...wheels.map((n) => (m * n) / 2));
+  const addMass = (kg, at) => { mass += kg; mom.x += kg * mmOf(at.x); mom.y += kg * mmOf(at.y); };
+  for (let i = 1; i <= last; i++) addMass(mKg(Math.PI * Math.pow(mmOf(spec[i].pitchR), 2) * tBar), PE[i]);
   for (let i = 1; i <= last; i++) {
-    const a = PE[i - 1 === 0 ? 0 : i - 1], b = PE[i];
-    addMass(rho * mm(len(sub(b, a))) * mm(barW) * t_m, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+    const a = PE[i - 1], b = PE[i];
+    addMass(mKg(mmOf(len(sub(b, a))) * metal.w * tBar), { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
   }
-  const arm_m = Math.hypot(mom.x, mom.y) / mass * UNIT_MM * 1e-3;
-  const Mg = mass * G_ACC * arm_m * 1000;   // N·mm, the bar's centre of mass horizontal of D
-  // ratio middles: the spring between the weight and the carry, the carry between the spring and its ceiling,
-  // solved together so the two margins are equal ratios: Ms = Mg·q, Mf = Ms·q, MfMax = Mf·q → q = (MfMax/Mg)^(1/3)
-  const q = Math.cbrt(MfMax / Mg);
-  const Ms = Mg * q, Mf = Ms * q;
-  const releaseLimit_Nmm = (Ms + Mf) / kMax;   // crown-side drag at D the bar still lets go of
+  const boss = (rBore) => mKg(Math.PI * (Math.pow(rBore + metal.w, 2) - rBore * rBore) * tBar);
+  addMass(boss(mmOf(I.pivotR_u)), D);
+  for (let i = 1; i <= last; i++) addMass(boss(metal.pins[i - 1].d_mm / 2), PE[i]);
+  const arm_mm = Math.hypot(mom.x, mom.y) / mass;
+  const Mg = mass * G_ACC * arm_mm;                     // N·mm: the centre of mass horizontal of D
+
+  // THE CARRY'S CEILING: one more plain pivot carrying D's mesh load at the bar's bearing radius, adverse corner
+  const meshLoad_N = Tw / mmOf(spec[0].pitchR);
+  const rC = rC0;
+  const MfMax = FRICTION.muPlain.adverse * meshLoad_N * rC;
+
+  // THE RETURN BLADE: a uniform cantilever of the ribbons' alloy from a stud on the plate, its tip on the bar's boss
+  // round D, square to the radius there. Swinging in deflects it further by that radius times the swing, so its
+  // moment RISES by k·swing·r²: the bar's own boss edge is the smallest lever there is (first draft: the first
+  // wheel's boss, whose rise outgrew the carry and closed the window, q 0.21), and a blade as long as the bar reaches
+  // and as thin as the flat-blade floor is the softest one. One band stock deep.
+  const rS = I.bladeAt === 'boss' ? rC0 + metal.w : mmOf(c[0]), Lb = I.bladeAt === 'boss' ? len(Bmm) : mmOf(c[0]);
+  const Ib = tBar * Math.pow(hBlade, 3) / 12, kB = 3 * Esp * Ib / Math.pow(Lb, 3);   // N/mm
+  const dSwing = rS * swing;                            // mm of extra deflection, neutral → engaged
+  // THE FRICTION CARRY: a two-jaw clip in the bar's boss gripping D's arbor at the bore radius, each jaw a quarter
+  // round of the bore long, as thin as §50 allows. Its friction is muPlain's band (steel on oiled steel): the slip
+  // torque must clear the spring at the LOW corner and stay under the ceiling at the HIGH one.
+  const muLo = FRICTION.muPlain.favourable, muNom = FRICTION.muPlain.nominal, muHi = FRICTION.muPlain.adverse;
+  const Lc = Math.PI * rC / 2;
+
+  // THE WINDOW, solved with the metal: weight < spring at neutral < spring at engaged < carry at its low corner <
+  // carry at its high corner < ceiling. The two fixed ratios are the spring's rise (from its rate and preload) and
+  // the friction band's spread; the three free margins are made equal: q³ = MfMax / (Mg · rise · μhi/μlo). The
+  // rise depends on the preload, so the two are iterated together.
+  let rise = 1, q = 1, Ms = 0;
+  for (let it = 0; it < 100; it++) {
+    q = Math.cbrt(MfMax / (Mg * rise * (muHi / muLo)));
+    Ms = Mg * q;
+    const d0 = (Ms / rS) / kB;
+    const nr = (d0 + dSwing) / d0;
+    if (Math.abs(nr - rise) < 1e-15) { rise = nr; break; }
+    rise = nr;
+  }
+  const MsE = Ms * rise, MfLo = MsE * q, MfHi = MfLo * (muHi / muLo), MfNom = MfLo * (muNom / muLo);
+  const F0 = Ms / rS, d0 = F0 / kB, FE = MsE / rS;
+  const blade = { lever_mm: rS, L_mm: Lb, h_mm: hBlade, b_mm: tBar, k_Npmm: kB, preload_mm: d0, swing_mm: dSwing, F0_N: F0, FE_N: FE,
+    sigmaE: 6 * FE * Lb / (tBar * hBlade * hBlade), sigmaLimit: sigSpring };
+  const Nc = MfLo / (muLo * rC);                       // the clip's total grip
+  // each jaw as thin as its own grip lets it work at the alloy's low end, floored at the flat-blade floor: the
+  // thinnest jaw needs the most interference, which is the easiest to hold to a tolerance
+  const hC = Math.max(mmOf(SPRING_FLAT_U), Math.sqrt(6 * (Nc / 2) * Lc / (tBar * sigSpring)));
+  const Ic = tBar * Math.pow(hC, 3) / 12;
+  const clip = { r_mm: rC, jawL_mm: Lc, h_mm: hC, N_N: Nc, interference_mm: (Nc / 2) * Math.pow(Lc, 3) / (3 * Esp * Ic),
+    sigma: 6 * (Nc / 2) * Lc / (tBar * hC * hC), sigmaLimit: sigSpring };
+  const releaseLimit_Nmm = (MsE + MfLo) / kMax;        // at engaged, the weakest the spring and carry can be
+
+  // TIP ON TIP. As the bar swings in, the last wheel's tips may land on F's. The wheel is still turning (D drives
+  // it while the crown winds), so its tip slides off within one pitch, as long as D's torque beats the tip's
+  // friction under the carry's push. The push: the strongest carry over the moment arm of the centre line about D.
+  const uLF = unit(sub(F, PE[last]));
+  const armTip = Math.abs(cross({ x: mmOf(PE[last].x), y: mmOf(PE[last].y) }, uLF));
+  const Ntip = MfHi / armTip;
+  const tipTorqueAtD = FRICTION.muTooth.adverse * Ntip * mmOf(spec[last].tipR) * (nD / chain[last]);
+  const tip = { push_N: Ntip, tipTorqueAtD_Nmm: tipTorqueAtD, margin: Tw / tipTorqueAtD,
+    crownTurnDeg: 360 * (1 / nD) * (crownWheelTeeth / windPinionTeeth) };   // one pitch of the last wheel, at the stem
+
+  const slot = { r_mm: len(Bmm), pinD_mm: metal.pins[last - 1].d_mm, travel_mm: len(Bmm) * swing,
+    width_mm: metal.pins[last - 1].d_mm + 2 * mmOf(PIVOT_BORE_CLEAR) };
 
   const parity = meshes % 2;   // 1 = odd meshes = the direct routing's sense
   return {
@@ -219,7 +338,9 @@ export function solveRockingBar(variant = 'two', over = {}, side = null) {
     engaged: { phi: phiE, centres: PE, depthErr: depthErr(PE), clear: pairClear(PE) },
     neutral: { phi: phiN, centres: PN, gap: gapLF(PN), clear: pairClear(PN) },
     swing, carrySense: Math.sign(phiE - phiN), corners, kMin, kMax, sameForceSystem,
-    window: { Tw_Nmm: Tw, MfMax_Nmm: MfMax, Mg_Nmm: Mg, Ms_Nmm: Ms, Mf_Nmm: Mf, q, releaseLimit_Nmm, mass_kg: mass },
+    window: { Tw_Nmm: Tw, MfMax_Nmm: MfMax, Mg_Nmm: Mg, Ms_Nmm: Ms, MsE_Nmm: MsE, MfLo_Nmm: MfLo, MfNom_Nmm: MfNom,
+      MfHi_Nmm: MfHi, rise, muSpread: muHi / muLo, q, releaseLimit_Nmm, mass_kg: mass },
+    metal, blade, clip, tip, slot, sizeMetal,
     sense: { meshes, sameAsDirect: parity === 1 },
     ratio: nD / nF,
   };
