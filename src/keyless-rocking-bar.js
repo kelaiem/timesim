@@ -43,6 +43,9 @@
 // sized over muPlain's band. The window is re-solved with all of it: the blade's rise and the band's spread are fixed
 // ratios inside it, and the three margins left are equal.
 //
+// LANDING 3a: the transfer stands CLEAR of the spur (RB16), so the centre distance is derived rather than the direct
+// routing's 7.48, where the two still mesh and the bar would be bypassed.
+//
 // WHAT THIS DOES NOT CLAIM. Modelled, not simulated: the bar is placed at its two bankings, nothing steps it. The load
 // is the fusee's torque at D, the one the watch already sizes its winding train to; what a hand can add at the winding
 // stop is declared nowhere in the movement and is not priced. The clip's interference (about 6 µm a jaw) is reported,
@@ -61,9 +64,11 @@ export const ROCKING_BAR_INPUTS = Object.freeze({
   followerTeeth: { v: WIND_SPUR_TEETH, why: 'the fusee\'s winding spur (WIND_SPUR_TEETH)' },
   carried: { v: { one: [KW_WIND_IDLER_TEETH], two: [KW_WIND_IDLER_TEETH, KW_WIND_IDLER_TEETH] },
     why: 'the keyless family\'s idler (KW_WIND_IDLER_TEETH), one wheel or two' },
-  // the default build's routing is DIRECT: transfer and spur at one mesh distance (layout.js solveKeyless)
-  centreDistance_u: { v: (KW_MODULE * (crownWheelTeeth + WIND_SPUR_TEETH)) / 2,
-    why: 'the default build\'s transfer-to-spur distance, module·(20 + 24)/2 (solveKeyless, direct routing)' },
+  // null = DERIVED: the nearest the transfer can stand to the spur with their tips CLEAR_MARGIN apart. Landings 1 and
+  // 2 took the default build's direct-routing distance, module·(20 + 24)/2 = 7.48, where the two still MESH: the bar
+  // would be bypassed and the crown would go on turning. pairClear skipped that pair as "fixed by the routing", which
+  // is how it passed. A fork may set a larger distance (an idler routing's); a smaller one fails RB16.
+  centreDistance_u: { v: null, why: 'the transfer moved out from the spur until their tips clear by CLEAR_MARGIN (RB16)' },
   windSense: { v: +1, why: 'D turns counter-clockwise in the line\'s own frame to wind; the fold maps it' },
   fuseeTorque_Nmm: { v: 1.76029057487366,
     why: 'GOING_POWER.fuseeTorque_Nm × 1000, read off the default build\'s equalisation record at main 196e37e3; the fold reads it live' },
@@ -88,6 +93,9 @@ export function solveRockingBar(variant = 'two', over = {}, side = null) {
   const chain = [nD, ...wheels, nF];
   const spec = chain.map((n, i) => gearToothSpec({ module: m, teeth: n,
     mates: [chain[i - 1], chain[i + 1]].filter((x) => x !== undefined).map((t) => ({ teeth: t, mates: [n] })) }));
+  // THE TRANSFER STANDS CLEAR OF THE SPUR: the bar must be the only path between them.
+  const dClear = spec[0].tipR + spec[spec.length - 1].tipR + CLEAR_MARGIN;
+  if (I.centreDistance_u === null) I.centreDistance_u = dClear;
   const D = { x: 0, y: 0 }, F = { x: I.centreDistance_u, y: 0 };
   const c = chain.slice(1).map((n, i) => (m * (chain[i] + n)) / 2);   // centre distance of each mesh, in order
   const last = wheels.length;                                           // index of the last carried wheel in `chain`
@@ -334,7 +342,7 @@ export function solveRockingBar(variant = 'two', over = {}, side = null) {
 
   const parity = meshes % 2;   // 1 = odd meshes = the direct routing's sense
   return {
-    feasible: true, variant, inputs: I, chain, spec, side: s, beta, centres, engagedAt, pairClear, gapLF, kAt,
+    feasible: true, variant, inputs: I, chain, spec, dClear, gapDF: I.centreDistance_u - spec[0].tipR - spec[spec.length - 1].tipR, side: s, beta, centres, engagedAt, pairClear, gapLF, kAt,
     engaged: { phi: phiE, centres: PE, depthErr: depthErr(PE), clear: pairClear(PE) },
     neutral: { phi: phiN, centres: PN, gap: gapLF(PN), clear: pairClear(PN) },
     swing, carrySense: Math.sign(phiE - phiN), corners, kMin, kMax, sameForceSystem,

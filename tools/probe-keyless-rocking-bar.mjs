@@ -31,6 +31,8 @@
 //   RB13 the friction clip's grip gives the carry at both ends of muPlain's band; its interference is REPORTED
 //   RB14 a tip landing on a tip slides off under the winding torque (and the crown turn that costs)
 //   RB15 the banking slot's ends stand the swing apart
+//   RB16 the transfer and the spur stand CLEAR_MARGIN apart, so the bar is the only path between them (the centre
+//        distance is DERIVED from it). CONTROL: at the direct routing's mesh distance the two still mesh
 import { solveRockingBar, ROCKING_BAR_INPUTS } from '../src/keyless-rocking-bar.js';
 import { CLEAR_MARGIN, STOCK_MIN_U, UNIT_MM, SPRING_SIGMA_Y_PA, FRICTION, PIVOT_BORE_CLEAR } from '../src/layout.js';
 
@@ -87,6 +89,14 @@ for (const v of ['one', 'two']) {
   ok(`[${v}] RB7 CONTROL landing 2's first draft (blade on the first wheel, at the plate floor) has no window`, draft.window.q < 1,
     `q ${f(draft.window.q, 3)}: the blade's moment rises ×${f(draft.window.rise, 4)} over the swing`);
 
+  // RB16 the bar is the only path: the transfer and the spur stand clear of each other
+  ok(`[${v}] RB16 the transfer and the spur stand CLEAR_MARGIN apart, so the bar is the only path between them`,
+    B.gapDF >= CLEAR_MARGIN - 1e-12, `centre distance ${f(B.inputs.centreDistance_u)} u, tips ${f(B.gapDF)} u apart`);
+  const direct = B.inputs.module * (B.chain[0] + B.chain.at(-1)) / 2;
+  const viaDirect = solveRockingBar(v, { centreDistance_u: direct });
+  ok(`[${v}] RB16 CONTROL at the direct routing's ${f(direct)} u the two still mesh`, viaDirect.gapDF < 0,
+    `tips ${f(viaDirect.gapDF)} u apart (landings 1 and 2 used this distance)`);
+
   // RB10 the bar's section
   const M_ = B.metal, sigY = SPRING_SIGMA_Y_PA / 1e6;
   ok(`[${v}] RB10 the bar's section carries its worst load at or under yield`, M_.sigma <= sigY * (1 + 1e-9) && M_.w >= STOCK_MIN_U * UNIT_MM - 1e-12,
@@ -134,7 +144,7 @@ for (const v of ['one', 'two']) {
 
   const c = B.inputs.module * (B.chain[0] + B.chain[1]) / 2 + B.inputs.module * (B.chain.at(-2) + B.chain.at(-1)) / 2;
   const reach = v === 'one' ? c : Infinity;
-  const forkD = ROCKING_BAR_INPUTS.centreDistance_u.v * 1.35;
+  const forkD = B.inputs.centreDistance_u * 1.35;
   const K = solveRockingBar(v, { centreDistance_u: forkD });
   ok(`[${v}] RB9 a fork of the centre distance re-derives`, K.feasible && Math.abs(K.engaged.depthErr) < 1e-9 && Math.abs(K.neutral.gap - CLEAR_MARGIN) < 1e-9 && K.kMin > 0,
     K.feasible ? `at ${f(forkD)} u: engaged ${deg(K.engaged.phi)}°, swing ${deg(K.swing)}°, k ≥ ${f(K.kMin)}` : K.why);
