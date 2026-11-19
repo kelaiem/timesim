@@ -43,7 +43,7 @@ that band's swept footprint.
 | [§337](built/0337.md) | The geared Geneva stop-work: a finger wheel geared off the cone, so every reserve has an exact star | 1 |
 | [§336](built/0336.md) | The fusee cock: the fusee's top bush on a cranked cock standing on the base plate | 1 |
 | [§335](built/0335.md) | Fusee gear window: the great wheel framed through a second window outside the cone's | 1 |
-| [§334](built/0334.md) | The crown stands still while the watch runs: the keyless fusee's rocking bar, designed in a line — PARTIAL: landing 1 (the line spec) shipped | 1 |
+| [§334](built/0334.md) | The crown stands still while the watch runs: the keyless fusee's rocking bar, designed in a line — PARTIAL: landings 1 (the line spec) and 2 (the metal) shipped | 1 |
 | [§332](built/0332.md) | The free case's dial print follows the case: scaled to the smallest seconds face that reads | 1 |
 | [§331](built/0331.md) | The convex form case: its band bored for its tubes, and cut without slivers | 1 |
 | [§330](built/0330.md) | Hosted pull requests take the push's four-way battery split | 1 |

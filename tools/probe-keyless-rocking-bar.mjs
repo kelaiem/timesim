@@ -19,12 +19,20 @@
 //        apart, and why a one-way cannot either). CONTROL: reversing the TORQUE reverses it (at zero pressure angle)
 //   RB6  sense and ratio: the two-wheel bar keeps the direct routing's winding sense, the one-wheel bar reverses
 //        it; the idlers cancel from the ratio
-//   RB7  the window: the bar's weight < spring < carry < carry ceiling, at equal ratio margins.
-//        CONTROL: a bar thick enough to outweigh the span closes it
+//   RB7  the window, with the metal: the bar's weight < the spring at neutral < at engaged < the carry at the
+//        friction band's low corner < at its high corner < the carry's ceiling, three equal ratio margins.
+//        CONTROL: landing 2's first draft (the blade on the first wheel, at the plate floor) closes it
 //   RB8  released, the bar lets go of a positive crown-side drag (reported)
 //   RB9  a fork of the centre distance re-derives every row. CONTROL: out of reach, the bar refuses
+//   RB10 the bar's in-plane section carries its worst load (bending and axial) at or under yield, floored at §50.
+//        CONTROL: a thousandfold load is load-governed and works exactly at yield
+//   RB11 each carried wheel's pin by TODO 193's law, the last also taking the banking. CONTROL: likewise
+//   RB12 the return blade's preload and rate give the window's spring at both bankings, under the ribbons' alloy
+//   RB13 the friction clip's grip gives the carry at both ends of muPlain's band; its interference is REPORTED
+//   RB14 a tip landing on a tip slides off under the winding torque (and the crown turn that costs)
+//   RB15 the banking slot's ends stand the swing apart
 import { solveRockingBar, ROCKING_BAR_INPUTS } from '../src/keyless-rocking-bar.js';
-import { CLEAR_MARGIN } from '../src/layout.js';
+import { CLEAR_MARGIN, STOCK_MIN_U, UNIT_MM, SPRING_SIGMA_Y_PA, FRICTION, PIVOT_BORE_CLEAR } from '../src/layout.js';
 
 const fails = [];
 const ok = (name, cond, detail = '') => { console.log(`${cond ? 'PASS' : 'FAIL'}  ${name}${detail ? ` — ${detail}` : ''}`); if (!cond) fails.push(name); };
@@ -68,14 +76,58 @@ for (const v of ['one', 'two']) {
     `${B.sense.meshes} meshes: ${B.sense.sameAsDirect ? 'the direct routing\'s sense' : 'REVERSED against the direct routing (right only where an idler already routes it)'}`);
 
   const W = B.window;
-  const ordered = W.Mg_Nmm < W.Ms_Nmm && W.Ms_Nmm < W.Mf_Nmm && W.Mf_Nmm < W.MfMax_Nmm;
-  const equal = Math.abs(W.Ms_Nmm / W.Mg_Nmm - W.q) < 1e-9 * W.q && Math.abs(W.Mf_Nmm / W.Ms_Nmm - W.q) < 1e-9 * W.q && Math.abs(W.MfMax_Nmm / W.Mf_Nmm - W.q) < 1e-9 * W.q;
-  ok(`[${v}] RB7 weight < spring < carry < ceiling, equal ratio margins`, ordered && equal && W.q > 1,
-    `${f(W.Mg_Nmm)} < ${f(W.Ms_Nmm)} < ${f(W.Mf_Nmm)} < ${f(W.MfMax_Nmm)} N·mm, each ×${f(W.q, 3)}`);
-  // the window spans q³ from weight to ceiling, and weight goes with thickness while the ceiling does not
-  const thick = 1.1 * Math.pow(W.q, 3);
-  const heavy = solveRockingBar(v, { stock_u: thick * ROCKING_BAR_INPUTS.stock_u.v });
-  ok(`[${v}] RB7 CONTROL a bar ${thick.toFixed(0)}× thicker (just past the window's span) has none`, heavy.window.q <= 1, `q ${f(heavy.window.q, 3)}`);
+  const chain = [W.Mg_Nmm, W.Ms_Nmm, W.MsE_Nmm, W.MfLo_Nmm, W.MfHi_Nmm, W.MfMax_Nmm];
+  const ordered = chain.every((x, i) => i === 0 || chain[i - 1] < x);
+  const rel = (a, b) => Math.abs(a / b - 1) < 1e-9;
+  const equal = rel(W.Ms_Nmm / W.Mg_Nmm, W.q) && rel(W.MfLo_Nmm / W.MsE_Nmm, W.q) && rel(W.MfMax_Nmm / W.MfHi_Nmm, W.q)
+    && rel(W.MsE_Nmm / W.Ms_Nmm, W.rise) && rel(W.MfHi_Nmm / W.MfLo_Nmm, W.muSpread);
+  ok(`[${v}] RB7 weight < spring (neutral, engaged) < carry (low, high μ) < ceiling, equal ratio margins`, ordered && equal && W.q > 1,
+    `${chain.map((x) => f(x)).join(' < ')} N·mm; margins ×${f(W.q, 3)}, spring rise ×${f(W.rise, 3)}, friction spread ×${f(W.muSpread, 3)}`);
+  const draft = solveRockingBar(v, { bladeAt: 'firstWheel', bladeH_u: STOCK_MIN_U });
+  ok(`[${v}] RB7 CONTROL landing 2's first draft (blade on the first wheel, at the plate floor) has no window`, draft.window.q < 1,
+    `q ${f(draft.window.q, 3)}: the blade's moment rises ×${f(draft.window.rise, 4)} over the swing`);
+
+  // RB10 the bar's section
+  const M_ = B.metal, sigY = SPRING_SIGMA_Y_PA / 1e6;
+  ok(`[${v}] RB10 the bar's section carries its worst load at or under yield`, M_.sigma <= sigY * (1 + 1e-9) && M_.w >= STOCK_MIN_U * UNIT_MM - 1e-12,
+    `width ${f(M_.w * 1000)} µm (${M_.wLoad > STOCK_MIN_U * UNIT_MM ? 'load' : '§50 floor'}), ${f(M_.sigma)} MPa against ${sigY}; M ${f(M_.Mmax)} N·mm, N ${f(M_.Nmax)} N`);
+  const big = B.sizeMetal(B.window.Tw_Nmm * 1e3);
+  ok(`[${v}] RB10 CONTROL a thousandfold load is load-governed and works exactly at yield`, big.wLoad > STOCK_MIN_U * UNIT_MM && rel(big.sigma, sigY),
+    `width ${f(big.w * 1000)} µm at ${f(big.sigma)} MPa`);
+
+  // RB11 the pins (TODO 193's law)
+  const pinSig = (F, L, d) => 32 * F * L / (Math.PI * Math.pow(d, 3));
+  const pinsOk = M_.pins.every((p, i) => pinSig(p.F_N + (i === M_.pins.length - 1 ? M_.Fbank : 0), M_.lever, p.d_mm) <= sigY * (1 + 1e-9));
+  ok(`[${v}] RB11 every carried wheel's pin at or under yield, the last carrying the banking`, pinsOk,
+    M_.pins.map((p) => `⌀${f(p.d_mm * 1000)} µm for ${f(p.F_N)} N`).join(', ') + `; banking ${f(M_.Fbank)} N`);
+  const bigLast = big.pins.at(-1);
+  ok(`[${v}] RB11 CONTROL under a thousandfold load the last pin works exactly at yield`,
+    rel(pinSig(bigLast.F_N + big.Fbank, big.lever, bigLast.d_mm), sigY), `⌀${f(bigLast.d_mm * 1000)} µm`);
+
+  // RB12 the return blade
+  const Bl = B.blade;
+  const mN = Bl.k_Npmm * Bl.preload_mm * Bl.lever_mm, mE = Bl.k_Npmm * (Bl.preload_mm + Bl.swing_mm) * Bl.lever_mm;   // rate × deflection × lever
+  ok(`[${v}] RB12 the blade's preload and rate give the window's spring at both bankings`,
+    rel(mN, B.window.Ms_Nmm) && rel(mE, B.window.MsE_Nmm) && rel(Bl.swing_mm, Bl.lever_mm * B.swing),
+    `bearing at ${f(Bl.lever_mm)} mm from D; ${f(Bl.L_mm)} mm × ${f(Bl.h_mm * 1000)} µm, rate ${f(Bl.k_Npmm)} N/mm, preload ${f(Bl.preload_mm * 1000)} µm, swing ${f(Bl.swing_mm * 1000)} µm`);
+  ok(`[${v}] RB12 the blade works under the ribbons' alloy at full swing`, Bl.sigmaE <= Bl.sigmaLimit, `${f(Bl.sigmaE)} MPa against ${Bl.sigmaLimit}`);
+
+  // RB13 the friction carry
+  const C_ = B.clip, mu = FRICTION.muPlain;
+  ok(`[${v}] RB13 the clip's grip gives the carry at both ends of the friction band`,
+    rel(mu.favourable * C_.N_N * C_.r_mm, B.window.MfLo_Nmm) && rel(mu.adverse * C_.N_N * C_.r_mm, B.window.MfHi_Nmm) && C_.sigma <= C_.sigmaLimit * (1 + 1e-9),
+    `grip ${f(C_.N_N)} N at r ${f(C_.r_mm)} mm, jaws ${f(C_.jawL_mm)} mm × ${f(C_.h_mm * 1000)} µm at ${f(C_.sigma)} MPa`);
+  ok(`[${v}] RB13 the clip's interference (REPORT)`, true, `${f(C_.interference_mm * 1000)} µm a jaw: tight to hold; a longer jaw would ease it and is the fold's to find`);
+
+  // RB14 tip on tip
+  ok(`[${v}] RB14 a tip landing on a tip slides off under the winding torque`, B.tip.margin > 1,
+    `the carry pushes ${f(B.tip.push_N * 1000)} mN; its tip friction needs ${f(B.tip.tipTorqueAtD_Nmm)} N·mm at the transfer against ${f(W.Tw_Nmm)} (×${f(B.tip.margin)}); at worst ${f(B.tip.crownTurnDeg)}° more crown turn before it drops in`);
+
+  // RB15 the banking slot
+  const Sl = B.slot;
+  ok(`[${v}] RB15 the slot's ends stand the swing apart, its width the pin's with running clearance`,
+    rel(Sl.travel_mm / Sl.r_mm, B.swing) && rel(Sl.width_mm, Sl.pinD_mm + 2 * PIVOT_BORE_CLEAR * UNIT_MM),
+    `radius ${f(Sl.r_mm)} mm, travel ${f(Sl.travel_mm * 1000)} µm, width ${f(Sl.width_mm * 1000)} µm`);
 
   ok(`[${v}] RB8 released, the bar lets go of crown-side drag`, W.releaseLimit_Nmm > 0,
     `up to ${f(W.releaseLimit_Nmm)} N·mm at the transfer wheel, ${(100 * W.releaseLimit_Nmm / W.Tw_Nmm).toFixed(2)}% of the ${f(W.Tw_Nmm)} N·mm winding torque there (REPORT: the movement models no load-independent crown drag)`);
