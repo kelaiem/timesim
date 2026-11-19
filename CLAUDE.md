@@ -17,6 +17,7 @@ lever escapement. Everything is procedural — there are no model assets.
 | `docs/RUNNERS.md` | Where the battery job runs (§200): the fork-routing rule, the `BATTERY_RUNS_ON` variable, and how a host is set up. |
 | `docs/LOCALIZATION.md` | How the chrome and the two static pages are localized, the rules for changing UI text, and the checklist for adding a locale. |
 | `.github/pull_request_template.md` | The PR body's layout. Read before opening one — see Conventions. |
+| `docs/COMMUNICATION.md` | How to write TO THE OWNER: the reading-level ladders, inline definitions, grounding a choice in its constraint, and the layout of a decision. Read before asking the owner anything — see Conventions. |
 
 `test-geometry.html` is a per-part visual smoke test, separate from the
 inspector.
@@ -349,6 +350,13 @@ stops falling; a snail cam, a jumper and a hammer carriage, every row derived) a
 whose levels read the gong's level law through `src/gong-level.js`, the pure leaves
 `main.js`' acoustics block calls, moved there verbatim so the two cannot part.
 `tools/probe-alarm-volume.mjs` holds the spec (pure Node, each rule with a control).
+
+`src/keyless-rocking-bar.js` (§334 landing 1) is the KEYLESS FUSEE'S ROCKING BAR designed in a line, pure and
+imported by nothing yet: the winding wheels on a bar pivoted on the transfer wheel's arbor, sprung out of mesh with
+the fusee's winding spur and carried in by friction when the crown winds, because no one-way can keep the crown
+still (the chain's torque has one sign winding and running; TODO 318 has the argument). One carried wheel or two
+(two keep the default routing's winding sense), the spring's window between the bar's weight and the carry's
+ceiling. `tools/probe-keyless-rocking-bar.mjs` holds it, each rule with a control.
 
 `service-life.html` (§344) is the SERVICE-LIFE VIEW: the escape wheel's club
 tooth worn over a century of 5-yearly service (TODO 299's Archard row),
@@ -1983,6 +1991,23 @@ and `balanceDriveModel` hands an instrument the very constants the loop steps wi
 
 Branch for the work; don't commit to `main`. Commit messages explain *why*
 the number changed, not just that it did — the reasoning is the artifact.
+
+**Messages to the owner are written to `docs/COMMUNICATION.md`.** The owner
+directs this project and is coming up to speed on its engineering, so a chat
+reply, a question or the top of a PR body is pitched at their level in three
+subjects (watchmaking, mathematics, this code base), read from the private
+`docs/READER_PROFILE.md` in `kelaiem/timesim-roadmap` or, where that repo is
+not in the session, at the guide's defaults. Three rules carry most of it. **A
+term above their level is defined inline, in the sentence that uses it** — the
+plain thing first, the identifier or § number after it, never alone. **A
+choice or workaround names the constraint it serves and says HARD or SOFT**:
+"needed because without it we would break X, which exists so that Y; the cost
+is Z" — and the owner is never asked whether to break a hard one. **Options
+are rated on the same four yardsticks** (the watch, the cost, the risk, the
+future), the decision and the recommendation first, a proven design to reuse
+listed before a new one. It governs what the owner reads, not source comments,
+the record or commit messages. An agent that defines a new term for the owner
+or learns one is known updates the profile's ledger.
 
 **PRs are written to `.github/pull_request_template.md`**, which GitHub
 prefills into the body. It is a LAYOUT, not a checklist to satisfy: the

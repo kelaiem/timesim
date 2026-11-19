@@ -7,7 +7,7 @@ plus an alarm complication with its own barrel and gong, and a dial with
 correctly driven hour/minute hands, a small-seconds sub-dial, a power-reserve
 sub-dial and a 12 h alarm-setting ring.
 
-**Tornado layout** — the movement is composed as a face design on a flat
+**Layout** — the movement is composed as a face design on a flat
 construction: crown and barrel exit at ~1:50, the fourth wheel sits exactly
 at 6 o'clock so its arbor carries the small-seconds display directly (no fake
 linkage), the escapement trails to ~6:25 with the balance at 8, and the
@@ -76,6 +76,23 @@ else. Repo documentation (every `*.md`, including `docs/`), `dev_server.py` and
 the git hooks describe the project to people working on it and are not site
 content, so they stay in the repository. Both workflows assert both halves —
 no doc leaks in, no licence goes missing.
+
+## What this site records about you
+
+Nothing leaves your browser unless you send it. The site has no analytics, no
+backend and no third-party scripts.
+
+While a page is open it keeps a short tally of which features you used (for
+example "x-ray, the Train camera, the tour") and how you reached each one: a
+panel control, a gesture, a keyboard shortcut, or the link that opened the
+page. It counts each feature once per visit, and never records which part you
+looked at, anything you typed, or where you clicked. **Advanced → Usage report →
+Preview** shows the whole tally as plain text: you can edit or delete any of
+it and copy it to send to the maintainer yourself. The tally is kept in this
+tab's session storage, so a reload keeps it, and your browser deletes it when
+you close the tab. Nothing is kept across visits. The design and its rules
+are §349 in `docs/BUILT.md`; `src/usage.js` holds the list of everything that
+can be counted.
 
 ## Simulation vs. model — how this project uses the words
 
@@ -199,9 +216,9 @@ The chrome is localised, in the languages listed by `LOCALES` in
 panel or by `?lang=fr` / `?lang=zh-Hant` (a script subtag, so `zh-TW`,
 `zh-HK` and `zh-MO` all resolve to Traditional) / `?lang=ar` (Arabic, Hebrew
 and Persian are right-to-left: the document's direction follows them, the
-drawings and the panels' corners do not). `primer.html` and `explain.html`,
-the mechanism explainer linked from the HUD, are translated in every one of
-them. See `docs/LOCALIZATION.md`. A released build also **loads with
+drawings and the panels' corners do not). `primer.html` (the plain-language
+primer, linked from the HUD) and `explain.html` (the technical explainer,
+linked from the primer) are translated in every one of them. See `docs/LOCALIZATION.md`. A released build also **loads with
 the network gone**: a service worker precaches the release, so a page that
 has been visited online once boots offline, deep links included. Neither
 applies to a source tree, which registers no worker at all so that an edit is
@@ -226,8 +243,10 @@ never shadowed by a cache.
 - `src/i18n.js` — the UI localisation, keyed by the English source string.
   `src/page-i18n.js` is the shared engine for the two static pages, and
   `src/explain-i18n*.js` / `src/primer-i18n*.js` are their per-locale tables.
-- `explain.html` — the mechanism explainer: a plate per mechanism, quoting the
-  real source constants, linked from the HUD and styled as it.
+- `primer.html` — the primer: the watch in plain language, quantities rounded
+  and with units, no source identifiers. Linked from the HUD.
+- `explain.html` — the technical explainer: a plate per mechanism, quoting the
+  real source constants. Linked from the primer and styled as the HUD.
 - `sw.js`, `manifest.webmanifest`, `favicon.svg` — the offline worker (inert in
   a source tree; baked at release time), the web-app manifest, and the icon,
   which `tools/make-favicon.mjs` generates from the same monogram the winding
