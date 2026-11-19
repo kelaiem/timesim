@@ -142,7 +142,7 @@ const RATE_TABLE = {
   28800: { fourthTeeth: 96, escPinion: 6, undriven: 'TODO 292 — no balance the honest mainspring (TODO 291) drives to AMPLITUDE_TARGET_DEG and starts at this rate' }, // 6/96 = 1/16
   // §339 landing 3g — TODO 292's mesh: 7 leaves clear the bore where 6 cannot, cut at §50's module floor.
   36000: { fourthTeeth: 140, escPinion: 7, module: 'floor', undriven: 'TODO 292 — no balance the honest mainspring (TODO 291) drives to AMPLITUDE_TARGET_DEG and starts at this rate',
-    // §339 landing 3d — at ?barrels=3 (×2.134 of the one drum's drive): the TODO 242 solve on alarm=0&barrels=3. r 8.25
+    // §339 landing 3d — at ?barrels=2 (×2.134 of the one drum's drive): the TODO 242 solve on alarm=0&barrels=2. r 8.25
     // is the largest BAL_R_STEP wheel whose lightest grid rim both reaches AMPLITUDE_TARGET_DEG and starts itself.
     // Re-solved at landing 3g on the 140/7 mesh, whose 7-leaf pinion is more efficient: rim 0.240 sustains 200.75° and
     // starts, one step heavier (0.245) 198.56°, and r 8.5 at the lightest rim 194.42°, each read off the equalisation
@@ -152,7 +152,7 @@ const RATE_TABLE = {
       // §339 landing 3g — THE ARRANGEMENT the 140/7 mesh needs (TODO 292: the 6-leaf pinion's root falls in its bore at
       // every module the fourth wheel can carry, so the mesh is 140/7 at §50's module floor, its wheel 4 u larger). At
       // the designed escape step (−57.9°) that wheel puts the balance cock on no clear seat (−3.95), the escape cock's
-      // foot 0.001 short and the stop-work crank on its bracket (−0.05). Scanned on alarm=0&barrels=3 (escape step on a
+      // foot 0.001 short and the stop-work crank on its bracket (−0.05). Scanned on alarm=0&barrels=2 (escape step on a
       // 1° grid, balance target 45–60°, each a native boot judged by its warnings, which carry CLEAR_MARGIN): every
       // step from −42° up boots clean at the designed balance target, and −43° clamps the balance cock's reveal. So the
       // escape step is the clean one NEAREST the design, −42°, and the balance keeps its designed target.
@@ -160,8 +160,8 @@ const RATE_TABLE = {
 };
 export const DEFAULT_VPH = 14400;   // §343 landing 3 — the chronometer's beat is the shipped watch (the owner's call)
 // The row a rate's balance reads: its own, or the shipped movement's.
-// §339 landing 3d: at ?barrels=3 a row's `parallel` balance, the one the two barrels' doubled drive is solved for.
-const rateBalanceRow = (vph) => (SPEC.barrels === 3 && RATE_TABLE[vph].parallel ? RATE_TABLE[vph].parallel
+// §339 landing 3d: at ?barrels=2 a row's `parallel` balance, the one the two barrels' doubled drive is solved for.
+const rateBalanceRow = (vph) => (SPEC.barrels === 2 && RATE_TABLE[vph].parallel ? RATE_TABLE[vph].parallel
   : RATE_TABLE[vph].rimF !== undefined ? RATE_TABLE[vph] : RATE_TABLE[DEFAULT_VPH]);
 export const FOURTH_MODULE_DEFAULT = 0.21; // the fourth⇄escape mesh's cut, the rows above's module when they carry none
 // §308/§317 — the kinds of the shape library a CASE may take (the circle is
@@ -224,7 +224,7 @@ export const SPEC = (() => {
   const raw = !designed && !Object.keys(ARRANGEMENT).some((k) => given(raw0[k])) ? { ...raw0, ...ARRANGEMENT } : raw0;
   // TODO 292 — a rate whose row carries no balance the spring can drive is REFUSED, loudly: the build is the 18,000
   // watch, never a stale balance quietly claiming the target at the asked rate.
-  // §339 landing 3d: a row may carry a `parallel` balance, the one ?barrels=3's doubled drive reaches, so the refusal is
+  // §339 landing 3d: a row may carry a `parallel` balance, the one ?barrels=2's doubled drive reaches, so the refusal is
   // decided below, once the barrels are (nothing between here and there reads the rate)
   const vphAsked = RATE_TABLE[raw.vph] ? Number(raw.vph) : DEFAULT_VPH;
   // Reserve clamped to what the STRUCTURE accepts: below ~12 h the fusee
@@ -488,26 +488,38 @@ export const SPEC = (() => {
     : null;   // §337 landing 3: `geared` (and `stopwork`) normalise to the default, which is the geared Geneva wherever the direct one does not stand
   const drumAzDeg = raw.drumAzDeg !== undefined && raw.drumAzDeg !== null && raw.drumAzDeg !== '' && Number.isFinite(Number(raw.drumAzDeg))
     ? ((Number(raw.drumAzDeg) % 360) + 360) % 360 : null;
-  // §339 landing 2b — ?barrels=2: the chain pulley and one barrel (PULLEY_BARREL below). Its integers were solved at the
-  // reserve PULLEY_BARREL_HOURS, where the cone's invariant and the drive's size were measured, so another reserve is
-  // refused loudly and builds the one drum. null = the one drum (a `1` is that null, so it is not a second key).
-  const barrels = Number(raw.barrels) === 2 ? (reserveHours === PULLEY_BARREL_HOURS ? 2
-    : (console.warn(`§339: ?barrels=2 is refused at ${reserveHours} h — PULLEY_BARREL was solved at ${PULLEY_BARREL_HOURS} h; building the one drum`), null))
-    // §339 landing 3c — ?barrels=3: today's drum AND a parallel second barrel (PARALLEL_BARREL below), for POWER. Its seat
-    // was solved on the round alarm-free build at the shipped reserve, so a build with the alarm (whose metal stands in
-    // that seat), a form case (another plate) or another reserve is refused loudly and builds the one drum.
-    : Number(raw.barrels) === 3 ? (alarm === false && reserveHours === PULLEY_BARREL_HOURS && !raw.caseShape ? 3
-      : (console.warn(`§339: ?barrels=3 is refused here — PARALLEL_BARREL's seat was solved on the round alarm-free build at ${PULLEY_BARREL_HOURS} h; building the one drum`), null))
+  // §339 landing 2b — ?pulley=1: THE DRUM DETACHED FROM THE CONE. The going drum becomes a CHAIN PULLEY geared to ONE BARREL in
+  // the free disc (PULLEY_BARREL below), so the spring no longer has to stand where the chain leaves the fusee. An experimental
+  // feature of its own (it was `?barrels=2` until 2026-11-18, when the owner gave that key to the double barrel): it delivers
+  // less drive than the one drum and is kept to explore the placement. Its integers were solved at the reserve
+  // PULLEY_BARREL_HOURS, where the cone's invariant and the drive's size were measured, so another reserve is refused loudly
+  // and builds the one drum. It is not solved together with the double barrel, so the two are refused together.
+  // null = the drum on the chain, as designed.
+  const wantsPulley = Number(raw.pulley) === 1, wantsDouble = Number(raw.barrels) === 2;
+  const pulley = !wantsPulley ? null
+    : wantsDouble ? (console.warn('§339: ?pulley=1 is refused with ?barrels=2 — the chain pulley and the double barrel were never solved together; building the double barrel where it stands'), null)
+    : reserveHours === PULLEY_BARREL_HOURS ? true
+    : (console.warn(`§339: ?pulley=1 is refused at ${reserveHours} h — PULLEY_BARREL was solved at ${PULLEY_BARREL_HOURS} h; building the one drum`), null);
+  // §339 landing 3c — ?barrels=2: THE DOUBLE BARREL. Today's drum AND a parallel second barrel (PARALLEL_BARREL below), for
+  // POWER (the owner's rewiring, 2026-11-18: the key names the design that IS two going barrels; it was `?barrels=3` while
+  // `2` meant the chain pulley above). Its seat was solved on the round alarm-free build at the shipped reserve, so a build
+  // with the alarm (whose metal stands in that seat), a form case (another plate) or another reserve is refused loudly and
+  // builds the one drum. null = the one drum (a `1` is that null, so it is not a second key). Any other count names no
+  // design and says so: an old `?barrels=3` link must not quietly build the default.
+  const barrels = wantsDouble ? (alarm === false && reserveHours === PULLEY_BARREL_HOURS && !raw.caseShape ? 2
+      : (console.warn(`§339: ?barrels=2 is refused here — PARALLEL_BARREL's seat was solved on the round alarm-free build at ${PULLEY_BARREL_HOURS} h; building the one drum`), null))
+    : given(raw.barrels) && Number(raw.barrels) !== 1
+      ? (console.warn(`§339: ?barrels=${raw.barrels} names no design — 2 is the double barrel (it was 3 before 2026-11-18), and the chain pulley is ?pulley=1; building the one drum`), null)
     : null;
-  const drivenHere = !RATE_TABLE[vphAsked].undriven || (barrels === 3 && !!RATE_TABLE[vphAsked].parallel);
+  const drivenHere = !RATE_TABLE[vphAsked].undriven || (barrels === 2 && !!RATE_TABLE[vphAsked].parallel);
   if (!drivenHere)
     console.warn(`TODO 292: ?vph=${vphAsked} is refused — ${RATE_TABLE[vphAsked].undriven}; this build is the ${DEFAULT_VPH} A/h watch`);
   const vph = drivenHere ? vphAsked : DEFAULT_VPH;
   // §339 landing 3g — a row's `parallel` entry may DECLARE its train's arrangement (the 36,000 row's 140/7 fourth wheel
   // is 4 u larger in radius, so the escape and balance stations move): it stands where the spec names no step.
-  const parRow = barrels === 3 && vph === vphAsked ? RATE_TABLE[vph].parallel : null;
+  const parRow = barrels === 2 && vph === vphAsked ? RATE_TABLE[vph].parallel : null;
   const escapeStepDegR = escapeStepDeg ?? parRow?.escapeStepDeg ?? null;
-  return Object.freeze({ barrels, vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg: escapeStepDegR, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, rsvIdlers, alarmr, subdialr, dialr, studr, caseShape, frame, hands, formRectSpec, gongSeat, alarm, strapMm, drumAzDeg, arrest });
+  return Object.freeze({ barrels, pulley, vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg: escapeStepDegR, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, rsvIdlers, alarmr, subdialr, dialr, studr, caseShape, frame, hands, formRectSpec, gongSeat, alarm, strapMm, drumAzDeg, arrest });
 })();
 // §325 landing 3 — whether this build carries the alarm complication (SPEC.alarm above)
 export const ALARM_BUILT = SPEC.alarm !== false;
@@ -1610,8 +1622,8 @@ export const PULLEY_BARREL = Object.freeze({ zA: 38, zB: 104, NB: 29,
 // leaves the drum, which is why the band is not cut from it.
 export const PARALLEL_BARREL = Object.freeze({ NB: 24, zA: 96, zB: 92, barrelAzDeg: 10, seatSpec: 'alarm=0', bandTopZ: 5.61 });
 // The drum's azimuth every reader takes (main.js' drumDir and the form rectangle's reach): ?drumaz= when given, else the
-// pulley's declared seat at ?barrels=2, else null (drumDirOf's blend, the shipped watch, bit-exact).
-export const DRUM_AZ_DEG = SPEC.drumAzDeg !== null ? SPEC.drumAzDeg : SPEC.barrels === 2 ? PULLEY_BARREL.pulleyAzDeg : null;
+// pulley's declared seat at ?pulley=1, else null (drumDirOf's blend, the shipped watch, bit-exact).
+export const DRUM_AZ_DEG = SPEC.drumAzDeg !== null ? SPEC.drumAzDeg : SPEC.pulley ? PULLEY_BARREL.pulleyAzDeg : null;
 // TODO 221 — THE CLICK STEEL, named, and why a CONTACT needs it where a beam
 // does not. The maintaining detent's beak bears the whole hold (the going
 // torque on the ring's face, ~2.2 N) across a line one click-thickness long

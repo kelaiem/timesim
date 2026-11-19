@@ -95,9 +95,9 @@ export const MODULE_UNITS = Object.freeze({
     'Alarm release link', 'Alarm silence rocker', 'Alarm link', 'Alarm lock', 'Alarm winding train', 'Alarm click',
     'Alarm winding arrest', 'Alarm switch', 'Alarm gong', 'Alarm hammer', 'Alarm lifting lever', 'Alarm barrel',
     'Alarm striking wheel', 'Alarm governor', 'Alarm governor anchor']),
-  // §339 — the second barrel: the pulley's at ?barrels=2, the parallel B at ?barrels=3 (landing 3c)
+  // §339 — the second barrel: the pulley's at ?pulley=1, the parallel B at ?barrels=2 (landing 3c)
   secondBarrel: Object.freeze(['Going barrel']),
-  // §339 landing 3c — at ?barrels=3, B's own set-up work (its ratchet, click, collar and fixed arbor)
+  // §339 landing 3c — at ?barrels=2, B's own set-up work (its ratchet, click, collar and fixed arbor)
   parallelBarrel: Object.freeze(['Going barrel set-up']),
 });
 // the build's word, read once per call: absent units (each with its reason) and omitted meshes keyed `unit/mesh`. A
@@ -7363,7 +7363,7 @@ export const MAINT_DETENT_HANDOFF_POSES = [
 ];
 // §339 landing 3e — the two running instants READ OFF THE BUILD'S LAW per build, as the table's own history did by hand
 // at every layout move (the comment above: `seated` a tenth after the ring's net angle crosses holdNet, `crest` just
-// before it reaches rCrest). A drive that re-sizes the maintaining spring (?barrels=3's doubled torque: the spring is a
+// before it reaches rCrest). A drive that re-sizes the maintaining spring (?barrels=2's doubled torque: the spring is a
 // series member of the drive, so its floor and its ring move with it) moves both instants, and a fixed τ then samples
 // another phase entirely (the seat read Infinity: no face within a pitch). So each is the law's crossing NEAREST the
 // table's τ, rounded the table's way — seated UP to the tenth after the crossing, crest DOWN to the tenth before it.
@@ -11525,7 +11525,7 @@ export function checkEqualisation(clock) {
   crossCheck('Mainspring drum', E.going);
   if (E.alarm) crossCheck('Alarm barrel', E.alarm);
   const g = E.going, a = E.alarm || null;
-  const HALVES = [['going', g], ...(a ? [['alarm', a]] : []), ...(g.barrelB ? [['barrelB', g.barrelB]] : [])];   // TODO 313: the ribbons this build carries (§339 landing 3c: barrel B's at ?barrels=3)
+  const HALVES = [['going', g], ...(a ? [['alarm', a]] : []), ...(g.barrelB ? [['barrelB', g.barrelB]] : [])];   // TODO 313: the ribbons this build carries (§339 landing 3c: barrel B's at ?barrels=2)
   // Rows 9–11 — the energy column, held as arithmetic.
   const en = g.energy;
   const rel = (x, y) => Math.abs(x - y) / Math.max(Math.abs(y), 1e-300);

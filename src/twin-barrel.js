@@ -217,7 +217,7 @@ export function pickPulleyBarrel({ fw, k0, c, discCap }) {
 // spring at the same reserve is where any balance first starts, and ×2 where every balance r ≤ 8 both starts and reaches
 // the 200° target. So ×2 is the target, and the pick is the smallest barrel that reaches it.
 export const POWER_TARGET = 2;
-// The geometry the integers fix, closed form (main.js builds ?barrels=3 from this, so the build and the line spec read
+// The geometry the integers fix, closed form (main.js builds ?barrels=2 from this, so the build and the line spec read
 // one law): A's band at r_pA = R_A + 2·c_end + CLEAR_MARGIN (flangeDelta), m = 2·r_pA/zA, B's wall R_B = m·zB/2.
 export function parallelGeometry({ NB, zA, zB, RA, ce, teeth }) {
   const n = zA / zB, rpA = RA + 2 * ce + CLEAR_MARGIN, m = (2 * rpA) / zA, RB = (m * zB) / 2;

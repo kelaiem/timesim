@@ -9,8 +9,8 @@
 // stood frozen and turned rigidly with the drum through the whole reserve, while
 // every gate stayed green (a frozen ribbon is a valid, clear piece of metal).
 // This probe boots the default build and §339's spur-driven barrel
-// (`barrels=2`, whose ribbon is cut to the other hand) and §339 landing 3c's
-// parallel barrel B (`alarm=0&barrels=3`, two going ribbons: the drum's own and
+// (`pulley=1`, whose ribbon is cut to the other hand) and §339 landing 3c's
+// parallel barrel B (`alarm=0&barrels=2`, two going ribbons: the drum's own and
 // B's, whose ribbon nothing wound until this probe held EVERY going ribbon
 // rather than the first one found) and holds, per ribbon:
 //   1. the ribbon's frame at full wind is the wound frame (0) and at run-down
@@ -33,7 +33,7 @@ import { fileURLToPath } from 'node:url';
 const bi = process.argv.indexOf('--build');
 if (bi < 0) {
   let bad = 0;
-  for (const q of ['', 'barrels=2', 'alarm=0&barrels=3']) {
+  for (const q of ['', 'pulley=1', 'alarm=0&barrels=2']) {
     const r = spawnSync(process.execPath, ['--import', new URL('./native/loader.mjs', import.meta.url).href, fileURLToPath(import.meta.url), '--build', q], { stdio: 'inherit', env: { ...process.env, __TIMESIM_NATIVE_LOADER__: '' } });   // the loader registers once per process, keyed on this
     if (r.status !== 0) bad++;
   }
@@ -44,7 +44,7 @@ const { bootNative } = await import('./native/host.mjs');
 
 const fails = [];
 const ok = (cond, what, detail) => { if (!cond) fails.push({ what, detail }); return !!cond; };
-const EXPECT = { 'alarm=0&barrels=3': 2 };   // going ribbons per build: the drum's own and §339 landing 3c's barrel B
+const EXPECT = { 'alarm=0&barrels=2': 2 };   // going ribbons per build: the drum's own and §339 landing 3c's barrel B
 const N = 40;   // tension samples: the default ribbon has 69 frames, so ≥ 1 frame per sample on average is not asked — monotone and spread are
 
 for (const query of [process.argv[bi + 1] ?? '']) {
@@ -52,7 +52,7 @@ for (const query of [process.argv[bi + 1] ?? '']) {
   const { clock: C } = await bootNative({ query });
   const springs = [];
   C.scene.traverse((o) => { if (o.name === 'spring' && o.userData.mainspring) springs.push(o); });
-  // EVERY going ribbon, not the first found: ?barrels=3 builds two (the drum's own
+  // EVERY going ribbon, not the first found: ?barrels=2 builds two (the drum's own
   // and §339's barrel B), and a probe that held only the first passed B frozen.
   const goings = springs.filter((s) => s.parent && /^(barrel|goingBarrel)$/.test(s.parent.name));
   const want = EXPECT[query] ?? 1;

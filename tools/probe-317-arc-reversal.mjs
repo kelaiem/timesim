@@ -11,7 +11,7 @@
 //      (c) a monotone run with float-noise jitter of 1e-12 does not reverse;
 //      (d) a fork-like swing parked on a dwell between strokes reverses, the dwell neither voting nor resetting;
 //      (e) the same track at 10× the sampling reads the same: the answer is not a function of the step size.
-//   2. THE BUILDS: on `alarm=0&barrels=3&vph=36000` the train's two-way declarations (Center wheel among them) are all
+//   2. THE BUILDS: on `alarm=0&barrels=2&vph=36000` the train's two-way declarations (Center wheel among them) are all
 //      in the population and none is stale; on the default the motion works and hour wheel, which the recoil reaches
 //      through the cannon pinion, are in it and declared.
 import { spawnSync } from 'node:child_process';
@@ -64,7 +64,7 @@ const boot = (q) => { const p = spawnSync(process.execPath, ['--import', './tool
   if (!l) throw new Error(`boot '${q}' failed: ${(p.stderr || '').slice(-400)}`);
   return JSON.parse(l.slice(2)); };
 const train = ['Escape wheel', 'Fourth wheel', 'Third wheel', 'Center wheel'];
-const b36 = boot('alarm=0&barrels=3&vph=36000');
+const b36 = boot('alarm=0&barrels=2&vph=36000');
 row(train.every((u) => b36.twoWay.includes(u)) && b36.stale.length === 0,
   `2. at 36,000 the train reverses and is two-way (${train.filter((u) => b36.twoWay.includes(u)).length}/${train.length}), stale declarations: ${JSON.stringify(b36.stale)}`);
 const d = boot('');

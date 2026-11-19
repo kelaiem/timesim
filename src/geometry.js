@@ -6804,7 +6804,7 @@ export function* makeBarrelSteps({ radius, height, teeth, module, plain = false,
   //    most whose collar there meets α, and the record names which constraint
   //    bound. Without `alphaMin` the collar is `springArborR` as before,
   //    bit-exact.
-  // §339 landing 2b — `spring: false` builds the BODY only (the chain pulley at ?barrels=2: a drum with no ribbon in it).
+  // §339 landing 2b — `spring: false` builds the BODY only (the chain pulley at ?pulley=1: a drum with no ribbon in it).
   if (hasSpring) {
     const solved = solveRibbon({ springOuter, springArborR, springWindSweep, springSetupSweep, ribbonSolve });   // ribbon-solve.js
     const sCoils = solved ? solved.coils : 5;
