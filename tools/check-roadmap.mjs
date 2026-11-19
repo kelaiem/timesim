@@ -30,10 +30,11 @@
 // stalled branch resets it — a lenient reading, accepted, because the
 // alternative (author dates) would flag a freshly rebased live branch.
 //
-// A MERGED BRANCH IS NOT A DEAD ONE (§349). The repository deletes a PR's head
-// branch when it merges, and an item that ships in PART ("Continues") merges
-// the very branch its row names, so the row failed the day after its first
-// landing while the work was live (§349's landing 1b, 2026-11-18). A row whose
+// A MERGED BRANCH IS NOT A DEAD ONE (§349). Merged branches are deleted (by
+// hand: the repository's auto-delete is off), and an item that ships in PART
+// ("Continues") merges the very branch its row names, so the row failed the
+// day after its first landing while the work was live (§349's landing 1b,
+// 2026-11-18). A row whose
 // branch is gone therefore passes if main MERGED that branch, read off the
 // merge commit's own subject ("Merge pull request #N from <owner>/<branch>"),
 // and the merge's date is its last activity: the same STALE_DAYS window then

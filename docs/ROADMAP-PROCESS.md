@@ -35,8 +35,10 @@ BACKLOG (private) → ROADMAP row (public, in progress) → BUILT section (publi
 - **It ships:** the PR that adds the `docs/BUILT.md` section (its `docs/built/NNNN.md` file) deletes the row.
   The checker fails if both exist. If more of the same § is genuinely still
   being built (a partial ship), start Status with `Continues`.
-- **A partial ship merges the row's branch, and the repository deletes it.** That
-  is fine: a row whose branch is gone passes if `main` merged that branch, and
+- **A partial ship merges the row's branch, and that branch may then be deleted.**
+  Before deleting a merged branch, check whether a row here still names it: if
+  one does, the item is not finished. A deleted one is still tolerated: a row
+  whose branch is gone passes if `main` merged that branch, and
   the merge counts as its last commit. If nothing has continued the work within
   `STALE_DAYS` of the merge, the nightly fails the row as stale. By then, push the
   next landing to a branch and name that branch in the row, or delete the row.
