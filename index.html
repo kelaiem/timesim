@@ -27,7 +27,14 @@
   @supports (height: 100dvh) { :root { --app-h: 100dvh; } }
   html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0d10; }
   #app { position: fixed; inset: 0; }
+  /* The canvas fills #app by CSS, not by a size main.js writes: #app is
+     `position: fixed; inset: 0`, so its box is the viewport as the browser
+     lays it out, and main.js sizes the drawing buffer FROM that box
+     (fitRenderer). A canvas sized from window.innerWidth at a resize event
+     keeps whatever iOS reported at that instant, which after a rotation or a
+     toolbar change can be the old size, and leaves a strip it never fills. */
   canvas { display: block; }
+  #app > canvas { width: 100%; height: 100%; }
 
   /* §238 — THE BOOT SCREEN, and why it lives in this document rather than in
      a module. Building the movement is ONE synchronous block: main.js cuts

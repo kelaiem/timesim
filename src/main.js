@@ -427,7 +427,7 @@ await breathe(1);
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 await breathe(2);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setSize(window.innerWidth, window.innerHeight, false); // the buffer only: the canvas's CSS box is #app's (index.html)
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = aesthetics.rendering.toneMappingExposure;
@@ -653,11 +653,27 @@ const studioEnv = buildStudioEnvironment(renderer);
 scene.environment = studioEnv.texture;
 
 await breathe(4);
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
+// The drawing buffer follows #app's own box (index.html stretches the canvas
+// over it in CSS), so `updateStyle` is false: the size is READ from the
+// layout, never written into it. Three things can tell it the box moved, and
+// any one is enough: a ResizeObserver on #app (the one that cannot be early or
+// stale, because it reports the box after layout), the visual viewport's
+// resize (iOS fires it when its toolbars move), and the window's resize, kept
+// because BUILD_GUARDED_EVENTS replays a swallowed one at the end of boot.
+// innerWidth/innerHeight are the fallback for a host whose box reads 0.
+let fitW = 0, fitH = 0;
+function fitRenderer() {
+  const w = app.clientWidth || window.innerWidth, h = app.clientHeight || window.innerHeight;
+  if (!(w > 0 && h > 0) || (w === fitW && h === fitH)) return;
+  fitW = w; fitH = h;
+  camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
+  renderer.setSize(w, h, false);
+}
+fitRenderer();
+window.addEventListener('resize', fitRenderer);
+if (window.visualViewport) window.visualViewport.addEventListener('resize', fitRenderer);
+if (typeof ResizeObserver === 'function') new ResizeObserver(fitRenderer).observe(app);
 
 // ---------------------------------------------------------------------------
 // Movement assembly
