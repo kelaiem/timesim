@@ -64,6 +64,20 @@ function tableRows(block) {
   return lines.slice(2).map((l) => l.replace(/^\||\|$/g, '').split('|').map((c) => c.trim()));
 }
 
+// The branch each in-progress row names: the roadmap's own word that the work
+// on that branch is not finished. tools/branches-finished.mjs reads it here, so
+// the two readers of the table cannot part.
+export function roadmapBranches(doc) {
+  const prog = SECTION('rows').exec(doc);
+  if (!prog) return null;
+  const out = new Map();
+  for (const cells of tableRows(prog[1])) {
+    const b = /^`([^`]+)`$/.exec(cells[3] || '')?.[1];
+    if (b) out.set(b, cells[0]);
+  }
+  return out;
+}
+
 function parseId(cell) {
   const m = ID.exec(cell);
   if (!m) return null;

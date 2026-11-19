@@ -2031,6 +2031,11 @@ to get wrong, all of them written in the template's own comments:
   that is a change to the filter in its own PR, not a skip taken here.
 - **The Record section is this file's reconciliation rule as a checkbox**:
   `TODO.md`, `docs/BUILT.md`, `explain.html` — whichever the change owes.
+- **The Branch section says whether the branch is finished.** The owner
+  deletes merged branches by hand, so the author declares it: `finished`, or
+  `continues` with what lands next and where. `node tools/branches-finished.mjs`
+  is the report the owner runs before a cleanup (merged, no roadmap row, no open
+  PR, never `main` or `production`); it deletes nothing.
 
 Keep the template and this file in step. It cites standing rule 1, rule 4's
 instruments and the session-link rule below; edit one of those and the

@@ -42,6 +42,8 @@ BACKLOG (private) → ROADMAP row (public, in progress) → BUILT section (publi
   the merge counts as its last commit. If nothing has continued the work within
   `STALE_DAYS` of the merge, the nightly fails the row as stale. By then, push the
   next landing to a branch and name that branch in the row, or delete the row.
+  `node tools/branches-finished.mjs` lists the merged branches no row names
+  (and, where `gh` is signed in, no open PR names): those are the safe ones.
 - **It stops:** move the row to *Stopped* with a reason and the date. A stale
   "in progress" is the same kind of false claim this repo polices elsewhere.
 
