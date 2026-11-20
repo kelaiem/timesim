@@ -137,6 +137,18 @@ abandoned approach is worse than no plan.
       `node tools/explain-i18n.mjs --check`)
 - [ ] Nothing above applies
 
+## Branch
+
+<!--
+Whether the work on this PR's branch is done, said by whoever pushed it: merged
+branches are deleted by hand, and only the author knows whether more is coming.
+A roadmap row that names the branch says "continues" too, and
+`node tools/branches-finished.mjs` reads both before a cleanup.
+-->
+
+- [ ] **Finished**: delete it once this merges
+- [ ] **Continues**: what lands next, and on which branch:
+
 <!--
 No session links. `.githooks/commit-msg` strips them from commit messages and
 purge-session-links.yml fixes this body in place, but neither is a reason to

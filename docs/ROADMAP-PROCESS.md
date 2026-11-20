@@ -35,6 +35,15 @@ BACKLOG (private) → ROADMAP row (public, in progress) → BUILT section (publi
 - **It ships:** the PR that adds the `docs/BUILT.md` section (its `docs/built/NNNN.md` file) deletes the row.
   The checker fails if both exist. If more of the same § is genuinely still
   being built (a partial ship), start Status with `Continues`.
+- **A partial ship merges the row's branch, and that branch may then be deleted.**
+  Before deleting a merged branch, check whether a row here still names it: if
+  one does, the item is not finished. A deleted one is still tolerated: a row
+  whose branch is gone passes if `main` merged that branch, and
+  the merge counts as its last commit. If nothing has continued the work within
+  `STALE_DAYS` of the merge, the nightly fails the row as stale. By then, push the
+  next landing to a branch and name that branch in the row, or delete the row.
+  `node tools/branches-finished.mjs` lists the merged branches no row names
+  (and, where `gh` is signed in, no open PR names): those are the safe ones.
 - **It stops:** move the row to *Stopped* with a reason and the date. A stale
   "in progress" is the same kind of false claim this repo polices elsewhere.
 
@@ -42,8 +51,10 @@ BACKLOG (private) → ROADMAP row (public, in progress) → BUILT section (publi
 
 `node tools/check-roadmap.mjs` (workflow `roadmap.yml`, on PRs touching these
 files, on pushes to `main`, and nightly) fails when a row has no claim file, its
-§ already has a BUILT section (or its TODO is CLOSED), its branch does not
-exist, it is listed twice, or a cell is malformed. A branch with no commit in
+§ already has a BUILT section (or its TODO is CLOSED), its branch neither exists
+nor was merged into `main` (read off the merge commit's "Merge pull request #N
+from …" subject, so a squash-merged branch still reads as missing), it is listed
+twice, or a cell is malformed. A branch with no commit in
 `STALE_DAYS` (7, derivation in the script) is **reported on PRs** so an unrelated
 PR is not blocked by someone else's row, and **fails the nightly**.
 
