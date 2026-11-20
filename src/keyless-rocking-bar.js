@@ -43,6 +43,9 @@
 // sized over muPlain's band. The window is re-solved with all of it: the blade's rise and the band's spread are fixed
 // ratios inside it, and the three margins left are equal.
 //
+// LANDING 3a: the transfer stands CLEAR of the spur (RB16), so the centre distance is derived rather than the direct
+// routing's 7.48, where the two still mesh and the bar would be bypassed.
+//
 // WHAT THIS DOES NOT CLAIM. Modelled, not simulated: the bar is placed at its two bankings, nothing steps it. The load
 // is the fusee's torque at D, the one the watch already sizes its winding train to; what a hand can add at the winding
 // stop is declared nowhere in the movement and is not priced. The clip's interference (about 6 µm a jaw) is reported,
@@ -61,15 +64,19 @@ export const ROCKING_BAR_INPUTS = Object.freeze({
   followerTeeth: { v: WIND_SPUR_TEETH, why: 'the fusee\'s winding spur (WIND_SPUR_TEETH)' },
   carried: { v: { one: [KW_WIND_IDLER_TEETH], two: [KW_WIND_IDLER_TEETH, KW_WIND_IDLER_TEETH] },
     why: 'the keyless family\'s idler (KW_WIND_IDLER_TEETH), one wheel or two' },
-  // the default build's routing is DIRECT: transfer and spur at one mesh distance (layout.js solveKeyless)
-  centreDistance_u: { v: (KW_MODULE * (crownWheelTeeth + WIND_SPUR_TEETH)) / 2,
-    why: 'the default build\'s transfer-to-spur distance, module·(20 + 24)/2 (solveKeyless, direct routing)' },
+  // null = DERIVED: the nearest the transfer can stand to the spur with their tips CLEAR_MARGIN apart. Landings 1 and
+  // 2 took the default build's direct-routing distance, module·(20 + 24)/2 = 7.48, where the two still MESH: the bar
+  // would be bypassed and the crown would go on turning. pairClear skipped that pair as "fixed by the routing", which
+  // is how it passed. A fork may set a larger distance (an idler routing's); a smaller one fails RB16.
+  centreDistance_u: { v: null, why: 'the transfer moved out from the spur until their tips clear by CLEAR_MARGIN (RB16)' },
   windSense: { v: +1, why: 'D turns counter-clockwise in the line\'s own frame to wind; the fold maps it' },
   fuseeTorque_Nmm: { v: 1.76029057487366,
     why: 'GOING_POWER.fuseeTorque_Nm × 1000, read off the default build\'s equalisation record at main 196e37e3; the fold reads it live' },
   stock_u: { v: 0.725, why: 'the winding band\'s stock (WIND_T in main.js), the bar and its wheels cut from it' },
   pivotR_u: { v: 0.7, why: 'the winding train\'s bore radius (the spur\'s boreR), the bar\'s bearing on D\'s arbor' },
   bladeH_u: { v: SPRING_FLAT_U, why: 'the movement\'s flat-blade floor (SPRING_FLAT_U, 0.05 mm), which every blade spring here is cut to' },
+  bendDeg: { v: null, why: 'a two-wheel bar\'s bend between its arms, degrees; null = DERIVED (the roomiest: its non-meshing members farthest apart). The fold forks it where the movement\'s metal forces another' },
+  armBends: { v: null, why: 'each arm\'s sideways bow at its middle, u (left of the arm\'s run positive); null = straight. The fold sets them to route an arm round metal it meets (the owner\'s rule: a link yields), never the wheels\' centres' },
   bladeAt: { v: 'boss', why: 'where the return blade bears: the bar\'s boss round D, the smallest lever (\'firstWheel\' is landing 2\'s first draft, kept for the control)' },
 });
 
@@ -88,6 +95,9 @@ export function solveRockingBar(variant = 'two', over = {}, side = null) {
   const chain = [nD, ...wheels, nF];
   const spec = chain.map((n, i) => gearToothSpec({ module: m, teeth: n,
     mates: [chain[i - 1], chain[i + 1]].filter((x) => x !== undefined).map((t) => ({ teeth: t, mates: [n] })) }));
+  // THE TRANSFER STANDS CLEAR OF THE SPUR: the bar must be the only path between them.
+  const dClear = spec[0].tipR + spec[spec.length - 1].tipR + CLEAR_MARGIN;
+  if (I.centreDistance_u === null) I.centreDistance_u = dClear;
   const D = { x: 0, y: 0 }, F = { x: I.centreDistance_u, y: 0 };
   const c = chain.slice(1).map((n, i) => (m * (chain[i] + n)) / 2);   // centre distance of each mesh, in order
   const last = wheels.length;                                           // index of the last carried wheel in `chain`
@@ -138,7 +148,8 @@ export function solveRockingBar(variant = 'two', over = {}, side = null) {
   // BEND (two-wheel bars): the β that keeps the worst non-mesh clearance largest at the engaged angle, the
   // roomiest bar. A one-wheel bar has no bend.
   let beta = 0;
-  if (wheels.length > 1) {
+  if (wheels.length > 1 && I.bendDeg !== null) beta = I.bendDeg * Math.PI / 180;
+  else if (wheels.length > 1) {
     let best = -Infinity;
     for (let k = -1800; k <= 1800; k++) {
       const b = (k / 1800) * Math.PI;
@@ -151,6 +162,16 @@ export function solveRockingBar(variant = 'two', over = {}, side = null) {
   const phiE = engagedAt(beta, s);
   if (phiE === null) return { feasible: false, variant, why: 'the last wheel cannot reach F\'s mesh distance on this side' };
   const PE = centres(phiE, beta);
+  // THE ARMS as cut: wheel centre to wheel centre, each bowed sideways at its middle by its armBends row. A bow moves
+  // metal, never a centre, so the gearing is untouched; what it costs is the bending its offset adds, which the
+  // section below reads off the same polyline.
+  const bends = I.armBends ?? wheels.map(() => 0);
+  const armPath = (P, j) => {   // arm j runs from P[j] to P[j + 1]
+    const a = P[j], b = P[j + 1], h = bends[j] || 0;
+    if (!h) return [a, b];
+    const u = unit(sub(b, a));
+    return [a, { x: (a.x + b.x) / 2 - u.y * h, y: (a.y + b.y) / 2 + u.x * h }, b];
+  };
 
   // NEUTRAL: the swing past engaged (away from F, so in +s) that stands the tips CLEAR_MARGIN apart.
   let lo = 0, hi = Math.PI / 2;
@@ -224,8 +245,8 @@ export function solveRockingBar(variant = 'two', over = {}, side = null) {
     // bending along the bar's centre line (D → wheel 1 → wheel 2): at each section, the moment and the axial load of
     // everything outboard of it (the wheels beyond, and the banking at the end)
     let Mmax = 0, Nmax = 0;
-    for (let seg = 1; seg <= last; seg++) {
-      const A = { x: mmOf(PE[seg - 1].x), y: mmOf(PE[seg - 1].y) }, C = { x: mmOf(PE[seg].x), y: mmOf(PE[seg].y) };
+    for (let seg = 1; seg <= last; seg++) for (const [A0, C0] of armPath(PE, seg - 1).slice(0, -1).map((q, k, arr) => [q, armPath(PE, seg - 1)[k + 1]])) {
+      const A = { x: mmOf(A0.x), y: mmOf(A0.y) }, C = { x: mmOf(C0.x), y: mmOf(C0.y) };
       const u = unit(sub(C, A));
       for (let k = 0; k <= 200; k++) {
         const X = { x: A.x + (C.x - A.x) * k / 200, y: A.y + (C.y - A.y) * k / 200 };
@@ -265,8 +286,11 @@ export function solveRockingBar(variant = 'two', over = {}, side = null) {
   const addMass = (kg, at) => { mass += kg; mom.x += kg * mmOf(at.x); mom.y += kg * mmOf(at.y); };
   for (let i = 1; i <= last; i++) addMass(mKg(Math.PI * Math.pow(mmOf(spec[i].pitchR), 2) * tBar), PE[i]);
   for (let i = 1; i <= last; i++) {
-    const a = PE[i - 1], b = PE[i];
-    addMass(mKg(mmOf(len(sub(b, a))) * metal.w * tBar), { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+    const path = armPath(PE, i - 1);
+    for (let k = 1; k < path.length; k++) {
+      const a = path[k - 1], b = path[k];
+      addMass(mKg(mmOf(len(sub(b, a))) * metal.w * tBar), { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+    }
   }
   const boss = (rBore) => mKg(Math.PI * (Math.pow(rBore + metal.w, 2) - rBore * rBore) * tBar);
   addMass(boss(mmOf(I.pivotR_u)), D);
@@ -334,14 +358,146 @@ export function solveRockingBar(variant = 'two', over = {}, side = null) {
 
   const parity = meshes % 2;   // 1 = odd meshes = the direct routing's sense
   return {
-    feasible: true, variant, inputs: I, chain, spec, side: s, beta, centres, engagedAt, pairClear, gapLF, kAt,
+    feasible: true, variant, inputs: I, chain, spec, dClear, gapDF: I.centreDistance_u - spec[0].tipR - spec[spec.length - 1].tipR, side: s, beta, centres, engagedAt, pairClear, gapLF, kAt,
     engaged: { phi: phiE, centres: PE, depthErr: depthErr(PE), clear: pairClear(PE) },
     neutral: { phi: phiN, centres: PN, gap: gapLF(PN), clear: pairClear(PN) },
     swing, carrySense: Math.sign(phiE - phiN), corners, kMin, kMax, sameForceSystem,
     window: { Tw_Nmm: Tw, MfMax_Nmm: MfMax, Mg_Nmm: Mg, Ms_Nmm: Ms, MsE_Nmm: MsE, MfLo_Nmm: MfLo, MfNom_Nmm: MfNom,
       MfHi_Nmm: MfHi, rise, muSpread: muHi / muLo, q, releaseLimit_Nmm, mass_kg: mass },
-    metal, blade, clip, tip, slot, sizeMetal,
+    metal, blade, clip, tip, slot, sizeMetal, armPath,
     sense: { meshes, sameAsDirect: parity === 1 },
     ratio: nD / nF,
+  };
+}
+
+// THE FOLD'S PLAN (§334 landing 3b): the bar placed in the movement, still nothing cut. The bar's wheels share the
+// winding band with the spur; the bar's plate and its return blade sit in a POCKET milled into the base plate's top
+// face under them (the owner's choice, 2026-11-19: the band has no stratum for the plate, the great wheel overhangs it).
+//  · PLACEMENT. The transfer moves out along its line from the spur to the derived centre distance (RB16). The bar's
+//    side follows the WORLD winding sense: the line spec is solved for the transfer winding counter-clockwise in its
+//    own frame, so the frame's y is mirrored when the movement winds it clockwise.
+//  · THE RETURN BLADE presses a PIN set in the bar's boss edge (a blade on the round boss would push at the pivot and
+//    turn nothing). Its force is square to the radius there, so the blade lies ALONG that radius, from the pin out to
+//    its stud; where round the boss the pin goes is free, and the plan takes the azimuth whose blade stands farthest
+//    from everything else the pocket must clear.
+//  · ARMS ROUTED ROUND METAL. Where an arm's pocket would leave less than `landMin` of plate to an opening already
+//    cut, the arm is bowed away from it, by the least bow that restores the land (a link yields), and the section
+//    is re-solved with the bow; the wheels' centres never move.
+//  · THE POCKET is a set of convex pieces, each the hull of one member over the whole swing grown by CLEAR_MARGIN:
+//    each arm, each boss, the blade. Its floor is the plate's top less the bar's stock and a margin.
+// Inputs are plain numbers: { transferAt:{x,y}, spurAt:{x,y}, windSenseWorld: ±1, plateTopZ, plateBackZ,
+// openings:[{ name, pts:[[x,y]…] convex, finished }], landMin }.
+const hull = (pts) => {   // Andrew's monotone chain, CCW
+  const P = [...pts].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo = [], up = [];
+  for (const p of P) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); }
+  for (const p of P.slice().reverse()) { while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop(); up.push(p); }
+  return lo.slice(0, -1).concat(up.slice(0, -1));
+};
+const circ = (c, r, n = 48) => Array.from({ length: n }, (_, k) => [c.x + r * Math.cos(2 * Math.PI * k / n), c.y + r * Math.sin(2 * Math.PI * k / n)]);
+const segSeg2 = (a, b, c, d) => {   // squared distance between segments (0 if they cross)
+  const cr = (o, p, q) => (p[0] - o[0]) * (q[1] - o[1]) - (p[1] - o[1]) * (q[0] - o[0]);
+  if (cr(a, b, c) * cr(a, b, d) < 0 && cr(c, d, a) * cr(c, d, b) < 0) return 0;
+  const ps = (p, s0, s1) => { const dx = s1[0] - s0[0], dy = s1[1] - s0[1], L = dx * dx + dy * dy, t = L ? Math.max(0, Math.min(1, ((p[0] - s0[0]) * dx + (p[1] - s0[1]) * dy) / L)) : 0;
+    return Math.pow(p[0] - s0[0] - t * dx, 2) + Math.pow(p[1] - s0[1] - t * dy, 2); };
+  return Math.min(ps(a, c, d), ps(b, c, d), ps(c, a, b), ps(d, a, b));
+};
+const inConvex = (P, q) => P.every((a, i) => { const b = P[(i + 1) % P.length]; return (b[0] - a[0]) * (q[1] - a[1]) - (b[1] - a[1]) * (q[0] - a[0]) >= 0; });
+// signed gap between two simple polygons, convex or not (even-odd containment, then edge distances): negative on overlap
+const inPoly = (P, q) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const a = P[i], b = P[j];
+  if ((a[1] > q[1]) !== (b[1] > q[1]) && q[0] < (b[0] - a[0]) * (q[1] - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; };
+export const polyGap = (P, Q) => {
+  if (P.some((p) => inPoly(Q, p)) || Q.some((q) => inPoly(P, q))) return -1;
+  let d = Infinity;
+  for (let i = 0; i < P.length; i++) for (let j = 0; j < Q.length; j++)
+    d = Math.min(d, segSeg2(P[i], P[(i + 1) % P.length], Q[j], Q[(j + 1) % Q.length]));
+  return d === 0 ? -1 : Math.sqrt(d);
+};
+// signed gap between two convex CCW polygons: negative when they overlap
+export const convexGap = (P, Q) => {
+  if (P.some((p) => inConvex(Q, p)) || Q.some((q) => inConvex(P, q))) return -1;
+  let d = Infinity;
+  for (let i = 0; i < P.length; i++) for (let j = 0; j < Q.length; j++)
+    d = Math.min(d, segSeg2(P[i], P[(i + 1) % P.length], Q[j], Q[(j + 1) % Q.length]));
+  return d === 0 ? -1 : Math.sqrt(d);
+};
+
+export function foldRockingBar({ transferAt, spurAt, windSenseWorld, plateTopZ, plateBackZ, openings = [], landMin, variant = 'two', samples = 21, fork = {} }) {
+  const M = CLEAR_MARGIN, mm = 1 / UNIT_MM;
+  const ex = unit(sub(transferAt, spurAt));                         // spur → transfer
+  const solveWith = (over) => solveRockingBar(variant, { ...fork, ...over });
+  let B = solveWith({});
+  const d = B.inputs.centreDistance_u;
+  const D = { x: spurAt.x + ex.x * d, y: spurAt.y + ex.y * d };
+  const xh = { x: -ex.x, y: -ex.y }, yh = { x: -xh.y * windSenseWorld, y: xh.x * windSenseWorld };
+  const toW = (p) => ({ x: D.x + xh.x * p.x + yh.x * p.y, y: D.y + xh.y * p.x + yh.y * p.y });
+  const phis = (b) => Array.from({ length: samples }, (_, k) => b.engaged.phi + (b.neutral.phi - b.engaged.phi) * k / (samples - 1));
+  const wU = (b) => b.metal.w * mm;
+  // one convex piece per member over the swing, grown by the margin
+  const armPiece = (b, j) => hull(phis(b).flatMap((phi) => {
+    const path = b.armPath(b.centres(phi, b.beta), j).map(toW);
+    return path.flatMap((q) => circ(q, wU(b) / 2 + M, 24));
+  }));
+  // an arm of more than two points is two convex pieces (a bow), so pieces are per straight run
+  const armPieces = (b, j) => {
+    const runs = [];
+    const paths = phis(b).map((phi) => b.armPath(b.centres(phi, b.beta), j).map(toW));
+    for (let k = 1; k < paths[0].length; k++) runs.push(hull(paths.flatMap((pa) => [...circ(pa[k - 1], wU(b) / 2 + M, 24), ...circ(pa[k], wU(b) / 2 + M, 24)])));
+    return runs;
+  };
+  const bossPieces = (b) => {
+    const out = [hull(circ(D, B.inputs.pivotR_u + wU(b) + M))];
+    b.metal.pins.forEach((p, i) => out.push(hull(phis(b).flatMap((phi) => circ(toW(b.centres(phi, b.beta)[i + 1]), p.d_mm * mm / 2 + wU(b) + M, 24)))));
+    return out;
+  };
+  // the blade: from its pin on the boss edge (radius rS, at azimuth psi in the bar's frame) radially out to its stud
+  const bladePiece = (b, psi) => {
+    const rS = b.blade.lever_mm * mm, L = b.blade.L_mm * mm, h = b.blade.h_mm * mm;
+    const pts = phis(b).flatMap((phi) => {
+      const a = phi + psi, pin = toW({ x: rS * Math.cos(a), y: rS * Math.sin(a) });
+      const stud = toW({ x: (rS + L) * Math.cos(phis(b)[samples - 1] + psi), y: (rS + L) * Math.sin(phis(b)[samples - 1] + psi) });
+      return [...circ(pin, h / 2 + M, 12), ...circ(stud, h / 2 + M, 12)];
+    });
+    return hull(pts);
+  };
+  const landOf = (piece) => Math.min(Infinity, ...openings.map((o) => polyGap(piece, o.pts)));
+  // 1 — bow each arm the least that keeps its pocket landMin off every opening (bisection per arm, either side)
+  let armBends = Array.from({ length: B.chain.length - 2 }, () => 0);
+  const report = [];
+  for (let j = 0; j < armBends.length; j++) {
+    const ok = (h) => { const t = [...armBends]; t[j] = h; const b = solveWith({ armBends: t }); return armPieces(b, j).every((pc) => landOf(pc) >= landMin); };
+    if (ok(0)) continue;
+    let best = null;
+    for (const sgn of [+1, -1]) {
+      let hi = 0; for (let k = 1; k <= 40 && !ok(sgn * hi); k++) hi = k * 0.1;
+      if (!ok(sgn * hi)) continue;
+      let lo = 0; for (let it = 0; it < 50; it++) { const mid = (lo + hi) / 2; if (ok(sgn * mid)) hi = mid; else lo = mid; }
+      if (!best || hi < Math.abs(best)) best = sgn * hi;
+    }
+    if (best === null) return { feasible: false, why: `arm ${j + 1}: no bow within 4 u restores the land to the openings` };
+    armBends[j] = best;
+    report.push(`arm ${j + 1} bowed ${best.toFixed(4)} u`);
+  }
+  B = solveWith({ armBends });
+  // 2 — the blade's azimuth: the one whose piece stands farthest from the openings and from the bar's arms
+  const bars = [...B.chain.slice(0, -2).flatMap((_, j) => armPieces(B, j)), ...bossPieces(B).slice(1)];
+  let psiBest = null, psiGap = -Infinity;
+  for (let k = 0; k < 360; k += 2) {
+    const psi = k * Math.PI / 180, pc = bladePiece(B, psi);
+    const g = Math.min(landOf(pc), ...bars.map((q) => convexGap(pc, q) + 2 * M));   // the blade may share the pocket with the bar: its metal a margin off the bar's
+    if (g > psiGap) { psiGap = g; psiBest = psi; }
+  }
+  const pieces = [
+    ...B.chain.slice(0, -2).flatMap((_, j) => armPieces(B, j).map((pts, k) => ({ name: `arm ${j + 1}${k ? ` run ${k + 1}` : ''}`, pts }))),
+    ...bossPieces(B).map((pts, i) => ({ name: i ? `boss of wheel ${i}` : 'boss at the transfer', pts })),
+    { name: 'return blade', pts: bladePiece(B, psiBest) },
+  ];
+  const floorZ = plateTopZ - (B.inputs.stock_u + M);
+  return {
+    feasible: true, bar: B, transferAt: D, moved: d - len(sub(transferAt, spurAt)), side: windSenseWorld, armBends, report,
+    blade: { psi: psiBest, clearance: psiGap }, pockets: pieces.map((p) => ({ ...p, land: landOf(p.pts) })),
+    floorZ, floorLeft: floorZ - plateBackZ,
+    centresWorld: { engaged: B.engaged.centres.map(toW), neutral: B.neutral.centres.map(toW) },
   };
 }
