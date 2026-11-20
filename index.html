@@ -27,7 +27,14 @@
   @supports (height: 100dvh) { :root { --app-h: 100dvh; } }
   html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0d10; }
   #app { position: fixed; inset: 0; }
+  /* The canvas fills #app by CSS, not by a size main.js writes: #app is
+     `position: fixed; inset: 0`, so its box is the viewport as the browser
+     lays it out, and main.js sizes the drawing buffer FROM that box
+     (fitRenderer). A canvas sized from window.innerWidth at a resize event
+     keeps whatever iOS reported at that instant, which after a rotation or a
+     toolbar change can be the old size, and leaves a strip it never fills. */
   canvas { display: block; }
+  #app > canvas { width: 100%; height: 100%; }
 
   /* §238 — THE BOOT SCREEN, and why it lives in this document rather than in
      a module. Building the movement is ONE synchronous block: main.js cuts
@@ -129,6 +136,9 @@
   #boot .boot-reset { display: none; font: inherit; font-size: 13px; color: #eaf0f7; background: transparent; border-radius: 999px; padding: 6px 16px; cursor: pointer; border: 1px solid rgba(255,255,255,0.28); -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
   #boot .boot-reset:focus-visible { outline: 2px solid #7a3ad8; outline-offset: 2px; }
   #boot.failed .boot-reset { display: inline-block; }
+  /* The error itself, on the screen: on a phone there is no console to read. */
+  #boot .boot-error { display: none; margin: 0; max-width: min(560px, 100%); font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: #f3b9a8; overflow-wrap: anywhere; user-select: text; -webkit-user-select: text; }
+  #boot.failed .boot-error { display: block; }
   /* §291 — the appearance preselect: static (§238 — nothing here animates a
      layout property), two columns of label and control, hidden on a failed
      build. Its controls only ever WRITE a choice; the build reads it when it
@@ -184,6 +194,55 @@
      read and die on the bare specifier "three". Measured on the SwiftShader
      container: 3 of 3 warm reloads failed on one run and 1 of 3 on clean
      main, 0 of 6 after this order; tools/probe-240-import.mjs holds it. -->
+<script>
+// MEASURE (#measure): the sizes the browser reports, printed on the page,
+// for a gap the canvas leaves in iOS Safari that no emulator reproduces
+// (the installed web app fills the screen on the same release). A phone has
+// no console, so the numbers go on the glass. Off unless the URL's fragment
+// is #measure: the fragment is not a spec parameter, so the build and its
+// validated-configuration key are exactly the default's. Display only, and
+// independent of main.js, so it reads on the boot screen too and on a build
+// that fails. The ROOT turns magenta: any magenta on screen is the page's own
+// ground showing where #app (and so the canvas) does not reach, while a strip
+// that stays dark is outside the page altogether (the browser's own area).
+(function () {
+  if (location.hash !== '#measure') return;
+  document.documentElement.style.background = '#ff00ff';
+  document.addEventListener('DOMContentLoaded', () => {
+    document.body.style.background = 'transparent';
+    const sa = document.createElement('div');
+    sa.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;visibility:hidden;pointer-events:none;'
+      + 'padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px);';
+    const box = document.createElement('pre');
+    box.id = 'measure';
+    box.style.cssText = 'position:fixed;left:calc(8px + env(safe-area-inset-left,0px));top:calc(8px + env(safe-area-inset-top,0px));z-index:2147483647;margin:0;padding:6px 8px;'
+      + 'font:11px/1.35 ui-monospace,Menlo,monospace;color:#0f0;background:rgba(0,0,0,0.82);border:1px solid #0f0;pointer-events:none;white-space:pre;max-width:calc(100vw - 16px);overflow:hidden;';
+    document.body.append(sa, box);
+    const r = (el) => { if (!el) return 'none'; const b = el.getBoundingClientRect(); return `${Math.round(b.left)},${Math.round(b.top)} ${Math.round(b.width)}x${Math.round(b.height)}`; };
+    const update = () => {
+      const vv = window.visualViewport, de = document.documentElement, cs = getComputedStyle(sa), c = document.querySelector('#app canvas');
+      const px = (v) => Math.round(parseFloat(v) || 0);
+      box.textContent = [
+        `inner     ${innerWidth}x${innerHeight}  dpr ${devicePixelRatio}`,
+        `client    ${de.clientWidth}x${de.clientHeight}  scroll ${de.scrollWidth}x${de.scrollHeight}`,
+        `visual    ${vv ? `${Math.round(vv.width)}x${Math.round(vv.height)} @${Math.round(vv.offsetLeft)},${Math.round(vv.offsetTop)} x${vv.scale.toFixed(2)}` : 'n/a'}`,
+        `screen    ${screen.width}x${screen.height}  ${(screen.orientation && screen.orientation.type) || window.orientation}`,
+        `safe      t${px(cs.paddingTop)} r${px(cs.paddingRight)} b${px(cs.paddingBottom)} l${px(cs.paddingLeft)}`,
+        `pageXY    ${Math.round(scrollX)},${Math.round(scrollY)}`,
+        `app       ${r(document.getElementById('app'))}`,
+        `canvas    ${r(c)}${c ? `  buf ${c.width}x${c.height}` : ''}`,
+        `boot      ${r(document.getElementById('boot'))}`,
+        `standalone ${navigator.standalone === true || matchMedia('(display-mode: standalone)').matches}`,
+      ].join('\n');
+    };
+    update();
+    addEventListener('resize', update);
+    addEventListener('scroll', update, { passive: true });
+    if (window.visualViewport) { visualViewport.addEventListener('resize', update); visualViewport.addEventListener('scroll', update); }
+    setInterval(update, 500);
+  });
+})();
+</script>
 <script type="importmap">
 {
   "imports": {
@@ -222,6 +281,7 @@
          during the wait, and hands the stream to main.js. -->
     <button type="button" class="boot-selfie" id="boot-selfie" aria-pressed="false">Camera reflection</button>
   </div>
+  <p class="boot-error" id="boot-error"></p>
   <button type="button" class="boot-reset" id="boot-reset">Reset</button>
   <!-- §291: preselect the look while the movement builds. Each control is
        applied when the build reaches what it changes; the sapphire dial is cut
@@ -512,13 +572,59 @@
       boot.classList.add('failed');
       boot.querySelector('.boot-head').textContent = t('The movement did not build');
       boot.querySelector('.boot-note').textContent = t('The browser console has the error.');
+      const shown = boot.querySelector('#boot-error');
+      if (shown) shown.textContent = window.__bootError.message;
     }
     setTimeout(() => { throw err; });
   });
-  // A build that fails leaves a spec in the URL that may be the reason: reset
-  // reloads at the default build, dropping every query parameter.
+  // RESET puts back everything a failed build could have been built FROM, then
+  // reloads at the default build. Dropping the query parameters alone did not:
+  // a build also reads the saved session (state.js: the wind, the crown, the
+  // camera, the view) and, on a published release, every file through this
+  // scope's service worker, so a crash that came from either one came straight
+  // back after the reload. Three things, each in its own try so one failing
+  // cannot keep the others or the reload from happening:
+  //   · the saved session, in both stores (localStorage, and the dev server's
+  //     /__state on loopback). It is COPIED to RESET_BACKUP_KEY first, so a
+  //     visitor whose crash was not the session's has lost nothing for good;
+  //   · this scope's service worker and ITS caches only, by sw.js's own name
+  //     (`timesim-<scope path>-`): the other environments share the origin
+  //     and their caches are not ours to drop (§88);
+  //   · the query parameters, as before.
+  // Tuned appearance is left alone: aesthetics.js already drops a lethal
+  // tuning on the boot after a death (§23's marker), without being asked.
+  // A ceiling on the wait, because a hung request must not keep the button
+  // from doing the one thing it says.
+  const RESET_BACKUP_KEY = 'timesim-state.before-reset';
+  const RESET_WAIT_MS = 2000;
+  async function resetStores() {
+    try {
+      const saved = localStorage.getItem('timesim-state');
+      if (saved !== null) localStorage.setItem(RESET_BACKUP_KEY, saved);
+      localStorage.removeItem('timesim-state');
+    } catch { }
+    try {
+      if (['localhost', '127.0.0.1', '::1', '[::1]'].includes(location.hostname)) {
+        const r = await fetch('/__state', { cache: 'no-store' });
+        if (r.ok) { try { localStorage.setItem(RESET_BACKUP_KEY, await r.text()); } catch { } }
+        await fetch('/__state', { method: 'DELETE' });
+      }
+    } catch { }
+    try {
+      const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : null;
+      if (reg) {
+        const prefix = `timesim-${new URL(reg.scope).pathname}-`;
+        await reg.unregister();
+        if (window.caches) for (const k of await caches.keys()) if (k.startsWith(prefix)) await caches.delete(k);
+      }
+    } catch { }
+  }
   const resetBtn = boot && boot.querySelector('#boot-reset');
-  if (resetBtn) resetBtn.addEventListener('click', () => { location.href = location.pathname; });
+  if (resetBtn) resetBtn.addEventListener('click', async () => {
+    resetBtn.disabled = true;
+    await Promise.race([resetStores(), new Promise((r) => setTimeout(r, RESET_WAIT_MS))]);
+    location.replace(location.pathname);
+  });
 </script>
 </body>
 </html>

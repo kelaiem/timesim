@@ -29,6 +29,17 @@
 // "Last commit" is the branch tip's committer date, so a merge of main into a
 // stalled branch resets it — a lenient reading, accepted, because the
 // alternative (author dates) would flag a freshly rebased live branch.
+//
+// A MERGED BRANCH IS NOT A DEAD ONE (§349). Merged branches are deleted (by
+// hand: the repository's auto-delete is off), and an item that ships in PART
+// ("Continues") merges the very branch its row names, so the row failed the
+// day after its first landing while the work was live (§349's landing 1b,
+// 2026-11-18). A row whose
+// branch is gone therefore passes if main MERGED that branch, read off the
+// merge commit's own subject ("Merge pull request #N from <owner>/<branch>"),
+// and the merge's date is its last activity: the same STALE_DAYS window then
+// catches a row nothing has continued. Residue, stated: a SQUASH merge's
+// subject names no branch, so a squash-merged branch still reads as missing.
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { itemText, treeSource } from './item-docs.mjs';   // docs/todo/ and docs/built/, one file per item
 import { execFileSync } from 'node:child_process';
@@ -53,6 +64,20 @@ function tableRows(block) {
   return lines.slice(2).map((l) => l.replace(/^\||\|$/g, '').split('|').map((c) => c.trim()));
 }
 
+// The branch each in-progress row names: the roadmap's own word that the work
+// on that branch is not finished. tools/branches-finished.mjs reads it here, so
+// the two readers of the table cannot part.
+export function roadmapBranches(doc) {
+  const prog = SECTION('rows').exec(doc);
+  if (!prog) return null;
+  const out = new Map();
+  for (const cells of tableRows(prog[1])) {
+    const b = /^`([^`]+)`$/.exec(cells[3] || '')?.[1];
+    if (b) out.set(b, cells[0]);
+  }
+  return out;
+}
+
 function parseId(cell) {
   const m = ID.exec(cell);
   if (!m) return null;
@@ -65,8 +90,9 @@ function parseId(cell) {
 //   built     Set of § numbers with a `## §n` section in docs/BUILT.md
 //   todo      Map of TODO number -> heading title
 //   branches  Map of branch name -> last commit unix seconds
+//   merged    Map of branch name -> unix seconds of main's latest merge of it
 //   now       unix seconds
-export function check({ doc, claims, built, todo, branches, now }) {
+export function check({ doc, claims, built, todo, branches, merged = new Map(), now }) {
   const failures = [];
   const stale = [];
   const fail = (m) => failures.push(m);
@@ -115,7 +141,11 @@ export function check({ doc, claims, built, todo, branches, now }) {
 
     const branch = /^`([^`]+)`$/.exec(branchCell)?.[1];
     if (!branch) fail(`${where}: Branch must be a branch name in backticks`);
-    else if (!branches.has(branch)) fail(`${where}: branch ${branch} does not exist — merged? delete the row. Abandoned? move it to Stopped with a reason`);
+    else if (!branches.has(branch) && merged.has(branch)) {
+      // Deleted on merge: alive for STALE_DAYS from the merge, like a branch from its last commit.
+      const days = (now - merged.get(branch)) / 86400;
+      if (days > STALE_DAYS) stale.push(`${where}: ${branch} was merged ${days.toFixed(1)} days ago and nothing has continued it (window ${STALE_DAYS}) — done? delete the row; still going? name the branch carrying it`);
+    } else if (!branches.has(branch)) fail(`${where}: branch ${branch} does not exist and main never merged it — abandoned? move it to Stopped with a reason`);
     else {
       const days = (now - branches.get(branch)) / 86400;
       if (days > STALE_DAYS) stale.push(`${where}: ${branch} last committed ${days.toFixed(1)} days ago (window ${STALE_DAYS})`);
@@ -163,7 +193,17 @@ function readTree() {
     const name = ref.replace(/^refs\/heads\//, '').replace(/^refs\/remotes\/origin\//, '');
     branches.set(name, Math.max(branches.get(name) || 0, Number(ts)));
   }
-  return { doc, claims, built, todo, branches, now: Number(process.env.NOW) || Math.floor(Date.now() / 1000) };
+  // main's merges of PR branches, newest date per branch. origin/main where the
+  // clone has it (CI checks out with full history), else HEAD.
+  const merged = new Map();
+  let mainRef = 'HEAD';
+  try { execFileSync('git', ['rev-parse', '--verify', '-q', 'refs/remotes/origin/main'], { cwd: ROOT, stdio: 'ignore' }); mainRef = 'refs/remotes/origin/main'; } catch { /* no remote-tracking main: read HEAD's history */ }
+  const log = execFileSync('git', ['log', '--merges', '--format=%ct%x09%s', mainRef], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  for (const l of log.split('\n')) {
+    const m = /^(\d+)\tMerge pull request #\d+ from [^/\s]+\/(\S+)$/.exec(l);
+    if (m) merged.set(m[2], Math.max(merged.get(m[2]) || 0, Number(m[1])));
+  }
+  return { doc, claims, built, todo, branches, merged, now: Number(process.env.NOW) || Math.floor(Date.now() / 1000) };
 }
 
 // ---- the control: every defect planted must be caught ----------------------
@@ -187,6 +227,7 @@ ${stopped}
     built: new Set([1]),
     todo: new Map([[50, 'An open item'], [51, 'A done item — CLOSED (§5)']]),
     branches: new Map([['feat/a', now - day], ['feat/old', now - 9 * day]]),
+    merged: new Map([['feat/landed', now - 2 * day], ['feat/landed-long-ago', now - 9 * day]]),
     now,
   };
   const cases = [
@@ -198,6 +239,8 @@ ${stopped}
     ['closed TODO', wrap('| TODO 51 | A thing | Started | `feat/a` | 2027-01-01 |'), (r) => r.failures.some((f) => /CLOSED/.test(f))],
     ['missing TODO', wrap('| TODO 52 | A thing | Started | `feat/a` | 2027-01-01 |'), (r) => r.failures.some((f) => /no item 52/.test(f))],
     ['missing branch', wrap(good.replace('feat/a', 'feat/gone')), (r) => r.failures.some((f) => /does not exist/.test(f))],
+    ['a branch deleted on merge passes inside the window', wrap(good.replace('feat/a', 'feat/landed')), (r) => r.failures.length === 0 && r.stale.length === 0],
+    ['a branch merged and never continued goes stale', wrap(good.replace('feat/a', 'feat/landed-long-ago')), (r) => r.stale.length === 1 && /merged 9\.0 days ago/.test(r.stale[0]) && r.failures.length === 0],
     ['stale branch is reported, not failed', wrap(good.replace('feat/a', 'feat/old')), (r) => r.stale.length === 1 && !r.failures.some((f) => /feat\/old/.test(f))],
     ['duplicate row', wrap(`${good}\n${good}`), (r) => r.failures.some((f) => /twice/.test(f))],
     ['malformed row', wrap('| §900 | only three | cells |'), (r) => r.failures.some((f) => /want 5/.test(f))],
