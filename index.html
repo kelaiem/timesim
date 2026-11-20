@@ -194,6 +194,55 @@
      read and die on the bare specifier "three". Measured on the SwiftShader
      container: 3 of 3 warm reloads failed on one run and 1 of 3 on clean
      main, 0 of 6 after this order; tools/probe-240-import.mjs holds it. -->
+<script>
+// MEASURE (#measure): the sizes the browser reports, printed on the page,
+// for a gap the canvas leaves in iOS Safari that no emulator reproduces
+// (the installed web app fills the screen on the same release). A phone has
+// no console, so the numbers go on the glass. Off unless the URL's fragment
+// is #measure: the fragment is not a spec parameter, so the build and its
+// validated-configuration key are exactly the default's. Display only, and
+// independent of main.js, so it reads on the boot screen too and on a build
+// that fails. The ROOT turns magenta: any magenta on screen is the page's own
+// ground showing where #app (and so the canvas) does not reach, while a strip
+// that stays dark is outside the page altogether (the browser's own area).
+(function () {
+  if (location.hash !== '#measure') return;
+  document.documentElement.style.background = '#ff00ff';
+  document.addEventListener('DOMContentLoaded', () => {
+    document.body.style.background = 'transparent';
+    const sa = document.createElement('div');
+    sa.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;visibility:hidden;pointer-events:none;'
+      + 'padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px);';
+    const box = document.createElement('pre');
+    box.id = 'measure';
+    box.style.cssText = 'position:fixed;left:calc(8px + env(safe-area-inset-left,0px));top:calc(8px + env(safe-area-inset-top,0px));z-index:2147483647;margin:0;padding:6px 8px;'
+      + 'font:11px/1.35 ui-monospace,Menlo,monospace;color:#0f0;background:rgba(0,0,0,0.82);border:1px solid #0f0;pointer-events:none;white-space:pre;max-width:calc(100vw - 16px);overflow:hidden;';
+    document.body.append(sa, box);
+    const r = (el) => { if (!el) return 'none'; const b = el.getBoundingClientRect(); return `${Math.round(b.left)},${Math.round(b.top)} ${Math.round(b.width)}x${Math.round(b.height)}`; };
+    const update = () => {
+      const vv = window.visualViewport, de = document.documentElement, cs = getComputedStyle(sa), c = document.querySelector('#app canvas');
+      const px = (v) => Math.round(parseFloat(v) || 0);
+      box.textContent = [
+        `inner     ${innerWidth}x${innerHeight}  dpr ${devicePixelRatio}`,
+        `client    ${de.clientWidth}x${de.clientHeight}  scroll ${de.scrollWidth}x${de.scrollHeight}`,
+        `visual    ${vv ? `${Math.round(vv.width)}x${Math.round(vv.height)} @${Math.round(vv.offsetLeft)},${Math.round(vv.offsetTop)} x${vv.scale.toFixed(2)}` : 'n/a'}`,
+        `screen    ${screen.width}x${screen.height}  ${(screen.orientation && screen.orientation.type) || window.orientation}`,
+        `safe      t${px(cs.paddingTop)} r${px(cs.paddingRight)} b${px(cs.paddingBottom)} l${px(cs.paddingLeft)}`,
+        `pageXY    ${Math.round(scrollX)},${Math.round(scrollY)}`,
+        `app       ${r(document.getElementById('app'))}`,
+        `canvas    ${r(c)}${c ? `  buf ${c.width}x${c.height}` : ''}`,
+        `boot      ${r(document.getElementById('boot'))}`,
+        `standalone ${navigator.standalone === true || matchMedia('(display-mode: standalone)').matches}`,
+      ].join('\n');
+    };
+    update();
+    addEventListener('resize', update);
+    addEventListener('scroll', update, { passive: true });
+    if (window.visualViewport) { visualViewport.addEventListener('resize', update); visualViewport.addEventListener('scroll', update); }
+    setInterval(update, 500);
+  });
+})();
+</script>
 <script type="importmap">
 {
   "imports": {

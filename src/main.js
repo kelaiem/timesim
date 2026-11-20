@@ -52859,7 +52859,7 @@ updateCrownUI();
     badge.className = 'exp-tier';
     badge.dataset.tier = row.tier;   // state is an attribute (§72): the word is display, the tier is the value
     badge.textContent = t(TIER_WORD[row.tier]);
-    badge.title = t(row.tier === 'incubating' ? 'Works at one setting only; refused elsewhere' : 'Works across its range, checked by the battery');
+    badge.title = t(row.tier === 'incubating' ? 'Works at one setting only; refused elsewhere' : 'Works across its range, checked by the automated tests');
     name.append(' ', badge);
     const sel = document.createElement('select');
     sel.id = `exp-${row.id}`;
