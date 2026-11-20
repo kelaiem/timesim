@@ -217,6 +217,14 @@ export const stopworkReaches = (reserveHours) => {
 export const STOPWORK_SITED_HOURS = Object.freeze([30]);
 // §339 landing 2b — the reserve PULLEY_BARREL's integers were solved at (the default's: SPEC.reserveHours' own fallback).
 export const PULLEY_BARREL_HOURS = 30;
+// THE SPEC'S REFUSALS, recorded as well as warned. SPEC (and ROUTE_SPEC below) is evaluated when this module is
+// IMPORTED, before main.js installs the boot's warning buffer, so a refusal's console.warn reached no instrument and no
+// panel: `?vph=36000` without the double barrel built the default watch and the build's warnings read empty, exactly like
+// the default's. Each refusal is pushed here too, and main.js shows them in the spec panel's verdict row and publishes
+// them as `__clock.specRefusals`. They are a record of what the URL ASKED that was not built, not build warnings: the
+// build that runs is a whole supported watch, so rule 6's silence is about it and this list is about the request.
+const SPEC_REFUSALS_ = [];
+const refuseSpec = (msg) => { SPEC_REFUSALS_.push(msg); console.warn(msg); };
 export const SPEC = (() => {
   const raw0 = (typeof globalThis !== 'undefined' && globalThis.__WATCH_SPEC) || {};
   const given = (v) => v !== undefined && v !== null && v !== '';
@@ -497,9 +505,9 @@ export const SPEC = (() => {
   // null = the drum on the chain, as designed.
   const wantsPulley = Number(raw.pulley) === 1, wantsDouble = Number(raw.barrels) === 2;
   const pulley = !wantsPulley ? null
-    : wantsDouble ? (console.warn('§339: ?pulley=1 is refused with ?barrels=2 — the chain pulley and the double barrel were never solved together; building the double barrel where it stands'), null)
+    : wantsDouble ? (refuseSpec('§339: ?pulley=1 is refused with ?barrels=2 — the chain pulley and the double barrel were never solved together; building the double barrel where it stands'), null)
     : reserveHours === PULLEY_BARREL_HOURS ? true
-    : (console.warn(`§339: ?pulley=1 is refused at ${reserveHours} h — PULLEY_BARREL was solved at ${PULLEY_BARREL_HOURS} h; building the one drum`), null);
+    : (refuseSpec(`§339: ?pulley=1 is refused at ${reserveHours} h — PULLEY_BARREL was solved at ${PULLEY_BARREL_HOURS} h; building the one drum`), null);
   // §339 landing 3c — ?barrels=2: THE DOUBLE BARREL. Today's drum AND a parallel second barrel (PARALLEL_BARREL below), for
   // POWER (the owner's rewiring, 2026-11-18: the key names the design that IS two going barrels; it was `?barrels=3` while
   // `2` meant the chain pulley above). Its seat was solved on the round alarm-free build at the shipped reserve, so a build
@@ -507,13 +515,13 @@ export const SPEC = (() => {
   // builds the one drum. null = the one drum (a `1` is that null, so it is not a second key). Any other count names no
   // design and says so: an old `?barrels=3` link must not quietly build the default.
   const barrels = wantsDouble ? (alarm === false && reserveHours === PULLEY_BARREL_HOURS && !raw.caseShape ? 2
-      : (console.warn(`§339: ?barrels=2 is refused here — PARALLEL_BARREL's seat was solved on the round alarm-free build at ${PULLEY_BARREL_HOURS} h; building the one drum`), null))
+      : (refuseSpec(`§339: ?barrels=2 is refused here — PARALLEL_BARREL's seat was solved on the round alarm-free build at ${PULLEY_BARREL_HOURS} h; building the one drum`), null))
     : given(raw.barrels) && Number(raw.barrels) !== 1
-      ? (console.warn(`§339: ?barrels=${raw.barrels} names no design — 2 is the double barrel (it was 3 before 2026-11-18), and the chain pulley is ?pulley=1; building the one drum`), null)
+      ? (refuseSpec(`§339: ?barrels=${raw.barrels} names no design — 2 is the double barrel (it was 3 before 2026-11-18), and the chain pulley is ?pulley=1; building the one drum`), null)
     : null;
   const drivenHere = !RATE_TABLE[vphAsked].undriven || (barrels === 2 && !!RATE_TABLE[vphAsked].parallel);
   if (!drivenHere)
-    console.warn(`TODO 292: ?vph=${vphAsked} is refused — ${RATE_TABLE[vphAsked].undriven}; this build is the ${DEFAULT_VPH} A/h watch`);
+    refuseSpec(`TODO 292: ?vph=${vphAsked} is refused — ${RATE_TABLE[vphAsked].undriven}; this build is the ${DEFAULT_VPH} A/h watch`);
   const vph = drivenHere ? vphAsked : DEFAULT_VPH;
   // §339 landing 3g — a row's `parallel` entry may DECLARE its train's arrangement (the 36,000 row's 140/7 fourth wheel
   // is 4 u larger in radius, so the escape and balance stations move): it stands where the spec names no step.
@@ -550,7 +558,7 @@ export const ROUTE_SPEC = (() => {
   const raw = (typeof globalThis !== 'undefined' && globalThis.__WATCH_SPEC) || {};
   if (raw.routeSpec === undefined) return null;      // the identity build: no key, no paths
   const refuse = (why) => {
-    console.warn(`§36 route spec refused (${why}) — building the identity movement`);
+    refuseSpec(`§36 route spec refused (${why}) — building the identity movement`);
     return null;
   };
   const nums = (s, n) => {
@@ -582,6 +590,8 @@ export const ROUTE_SPEC = (() => {
   }
   return Object.freeze({ points: Object.freeze(points), bushes: Object.freeze(bushes) });
 })();
+// Every refusal SPEC and ROUTE_SPEC made, in the order made (frozen now that both have been evaluated).
+export const SPEC_REFUSALS = Object.freeze(SPEC_REFUSALS_.slice());
 
 // TODO 158 — THE CONFIGURATION KEY: an exact name for the geometry a build
 // was asked to cut, so a page can say whether the battery ever swept it. The
