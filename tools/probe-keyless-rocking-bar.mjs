@@ -33,7 +33,7 @@
 //   RB15 the banking slot's ends stand the swing apart
 //   RB16 the transfer and the spur stand CLEAR_MARGIN apart, so the bar is the only path between them (the centre
 //        distance is DERIVED from it). CONTROL: at the direct routing's mesh distance the two still mesh
-import { solveRockingBar as solveLine, ROCKING_BAR_INPUTS, ROCKING_BAR_FOLD_FORK, foldForkRows } from '../src/keyless-rocking-bar.js';
+import { solveRockingBar as solveLine, ROCKING_BAR_INPUTS } from '../src/keyless-rocking-bar.js';
 import { CLEAR_MARGIN, STOCK_MIN_U, UNIT_MM, SPRING_SIGMA_Y_PA, FRICTION, PIVOT_BORE_CLEAR } from '../src/layout.js';
 
 const fails = [];
@@ -41,10 +41,8 @@ const ok = (name, cond, detail = '') => { console.log(`${cond ? 'PASS' : 'FAIL'}
 const deg = (r) => (r * 180 / Math.PI).toFixed(3);
 const f = (v, n = 4) => Number(v).toPrecision(n);
 
-// §334 landing 3c: the default build's bar is the two-wheel line under the fold's fork (ROCKING_BAR_FOLD_FORK, the
-// carried wheels the barrel forces), so every rule is held for it too, each with its own control, the way a fork is
-// re-derived from the reference's own laws at its inputs
-const CASES = [['one', 'one', {}], ['two', 'two', {}], ['two, fold fork', 'two', foldForkRows()]];
+// each case a label, a variant and a fork of the line's inputs (the line's own two, unforked)
+const CASES = [['one', 'one', {}], ['two', 'two', {}]];
 for (const [label, v, FK] of CASES) {
   const solveRockingBar = (vv, over = {}, side) => solveLine(vv, { ...FK, ...over }, side);
   const B = solveRockingBar(v);
@@ -154,10 +152,7 @@ for (const [label, v, FK] of CASES) {
   const reach = v === 'one' ? c : Infinity;
   const forkD = B.inputs.centreDistance_u * 1.35;
   const K = solveRockingBar(v, { centreDistance_u: forkD });
-  // the fold fork is the DEFAULT build's bar, at its own distance: whether it would re-derive at another is reported, since
-  // the idler routings that stand the transfer farther out take the one-wheel bar (§334 landing 3d)
-  if (label === 'two, fold fork') console.log(`REPORT [${label}] RB9 at ${f(forkD)} u the forked bar ${K.feasible ? `re-derives (k ≥ ${f(K.kMin)})` : `does not: ${K.why}`}`);
-  else ok(`[${label}] RB9 a fork of the centre distance re-derives`, K.feasible && Math.abs(K.engaged.depthErr) < 1e-9 && Math.abs(K.neutral.gap - CLEAR_MARGIN) < 1e-9 && K.kMin > 0,
+  ok(`[${label}] RB9 a fork of the centre distance re-derives`, K.feasible && Math.abs(K.engaged.depthErr) < 1e-9 && Math.abs(K.neutral.gap - CLEAR_MARGIN) < 1e-9 && K.kMin > 0,
     K.feasible ? `at ${f(forkD)} u: engaged ${deg(K.engaged.phi)}°, swing ${deg(K.swing)}°, k ≥ ${f(K.kMin)}` : K.why);
   if (Number.isFinite(reach)) {
     const out = solveRockingBar(v, { centreDistance_u: reach + 0.1 });

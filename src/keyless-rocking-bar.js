@@ -51,7 +51,7 @@
 // stop is declared nowhere in the movement and is not priced. The clip's interference (about 6 µm a jaw) is reported,
 // not judged, for want of a tolerance to judge it by. Shock is not covered. The two search snippets that ground the
 // mechanism are quoted in TODO 318 and still owe a full read.
-import { gearToothSpec } from './geometry.js';
+import { gearToothSpec, gearOuterR } from './geometry.js';
 import { KW_MODULE, crownWheelTeeth, windPinionTeeth, WIND_SPUR_TEETH, KW_WIND_IDLER_TEETH, CLEAR_MARGIN, UNIT_MM,
   FRICTION, STOCK, STOCK_MIN_U, SPRING_FLAT_U, SPRING_SIGMA_Y_PA, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, PIVOT_BORE_CLEAR } from './layout.js';
 
@@ -95,8 +95,13 @@ export function solveRockingBar(variant = 'two', over = {}, side = null) {
   const chain = [nD, ...wheels, nF];
   const spec = chain.map((n, i) => gearToothSpec({ module: m, teeth: n,
     mates: [chain[i - 1], chain[i + 1]].filter((x) => x !== undefined).map((t) => ({ teeth: t, mates: [n] })) }));
+  // THE REACH every clearance is judged at: the CUT wheel's, its tip plus the edge bevel that stands proud of it
+  // (gearOuterR, the bound the cut wheels are held to, §115). Landing 3c's corrected probe found the moved transfer
+  // 0.093 u off the spur where this solve said 0.15: the line judged at the bare tip circle.
+  const reach = chain.map((n, i) => gearOuterR({ module: m, teeth: n, thickness: I.stock_u,
+    mates: [chain[i - 1], chain[i + 1]].filter((x) => x !== undefined).map((t) => ({ teeth: t, mates: [n] })) }));
   // THE TRANSFER STANDS CLEAR OF THE SPUR: the bar must be the only path between them.
-  const dClear = spec[0].tipR + spec[spec.length - 1].tipR + CLEAR_MARGIN;
+  const dClear = reach[0] + reach[reach.length - 1] + CLEAR_MARGIN;
   if (I.centreDistance_u === null) I.centreDistance_u = dClear;
   const D = { x: 0, y: 0 }, F = { x: I.centreDistance_u, y: 0 };
   const c = chain.slice(1).map((n, i) => (m * (chain[i] + n)) / 2);   // centre distance of each mesh, in order
@@ -117,7 +122,7 @@ export function solveRockingBar(variant = 'two', over = {}, side = null) {
     return P;
   };
   // gap between the last carried wheel's tips and F's (negative = the teeth overlap)
-  const gapLF = (P) => len(sub(P[last], F)) - spec[last].tipR - spec[last + 1].tipR;
+  const gapLF = (P) => len(sub(P[last], F)) - reach[last] - reach[last + 1];
   const depthErr = (P) => len(sub(P[last], F)) - c[last];
 
   // Clearances the bar must keep that are NOT meshes: every pair of chain members not adjacent in the chain.
@@ -126,7 +131,7 @@ export function solveRockingBar(variant = 'two', over = {}, side = null) {
     for (let i = 0; i < P.length; i++) for (let j = i + 2; j < P.length; j++) {
       if (i === 0 && j === P.length - 1) continue;   // D and F: fixed by the routing, not by the bar
       if (i === last && j === last + 1) continue;
-      const g = len(sub(P[i], P[j])) - spec[i].tipR - spec[j].tipR;
+      const g = len(sub(P[i], P[j])) - reach[i] - reach[j];
       if (g < worst.gap) worst = { gap: g, pair: [chain[i], chain[j], i, j] };
     }
     return worst;
@@ -148,7 +153,7 @@ export function solveRockingBar(variant = 'two', over = {}, side = null) {
   // BEND (two-wheel bars): the β that keeps the worst non-mesh clearance largest at the engaged angle, the
   // roomiest bar, AMONG the bends at which the load holds the bar on its depth banking (RB4: k > 0 at every
   // pressure-angle corner). Landing 3c added the second clause: the reference's two 18T idlers met it at their roomiest
-  // bend by luck, and the fold's 12 + 10 bar does not (79.2°, k down to −0.25: the mesh would throw the bar out). Each
+  // bend by luck, and a 12 + 10 bar does not (79.2°, k down to −0.25: the mesh would throw the bar out). Each
   // candidate is solved whole at its bend, roomiest first, and the first that holds is taken. A one-wheel bar has no bend.
   let beta = 0;
   if (wheels.length > 1 && I.bendDeg !== null) beta = I.bendDeg * Math.PI / 180;
@@ -364,7 +369,7 @@ export function solveRockingBar(variant = 'two', over = {}, side = null) {
 
   const parity = meshes % 2;   // 1 = odd meshes = the direct routing's sense
   return {
-    feasible: true, variant, inputs: I, chain, spec, dClear, gapDF: I.centreDistance_u - spec[0].tipR - spec[spec.length - 1].tipR, side: s, beta, centres, engagedAt, pairClear, gapLF, kAt,
+    feasible: true, variant, inputs: I, chain, spec, dClear, gapDF: I.centreDistance_u - reach[0] - reach[reach.length - 1], reach, side: s, beta, centres, engagedAt, pairClear, gapLF, kAt,
     engaged: { phi: phiE, centres: PE, depthErr: depthErr(PE), clear: pairClear(PE) },
     neutral: { phi: phiN, centres: PN, gap: gapLF(PN), clear: pairClear(PN) },
     swing, carrySense: Math.sign(phiE - phiN), corners, kMin, kMax, sameForceSystem,
@@ -375,24 +380,6 @@ export function solveRockingBar(variant = 'two', over = {}, side = null) {
     ratio: nD / nF,
   };
 }
-
-// THE FOLD'S FORK (§334 landing 3c): the rows the default build's metal forces off the line spec, each with what
-// forced it. The carried wheels are the only one. At the reference's two 18T idlers the bar's plate stands over the
-// mainspring barrel, which sits in a well in the base plate's top face with its top 0.44 u under that face: there is
-// no plate there to pocket the bar into, and no stratum over the barrel (the winding band above it is full). No bend
-// clears it, because the bar's own non-meshing members want a bend of 51° to 111° and every one of those lies over the
-// barrel. So the wheels are made smaller, which draws the bar in toward the line between the transfer and the spur.
-// SURVEYED (tools/probe-keyless-rocking-bar-fold.mjs SURVEY=1): every pair of 10–18T, each at its bend derived against
-// the barrel (foldRockingBar's keepOut) under the line's own two clauses (members apart, the load holding the bar in),
-// and the pair whose pocket stands farthest off the barrel taken. 11 + 10 is it (0.41 u past the margin, at 47.7°); ten
-// pairs clear, none with a wheel of 15T or more. The owner chose it, 2026-11-21 (first 12 + 10, on the survey's reading
-// before the bend's second clause existed). A carried wheel changes no ratio (the transfer to the spur is 20:24
-// whatever carries it), so the winding ratio is untouched.
-export const ROCKING_BAR_FOLD_FORK = Object.freeze({
-  carried: { v: { one: [KW_WIND_IDLER_TEETH], two: [11, 10] },
-    forcedBy: 'the mainspring barrel: at two 18T idlers the bar\'s plate stands over the barrel\'s well, where the base plate has no metal to pocket and the barrel\'s top stands 0.44 u under the plate\'s top face, against the bar plate\'s 0.725 u and a margin either side' },
-});
-export const foldForkRows = (fork = ROCKING_BAR_FOLD_FORK) => Object.fromEntries(Object.entries(fork).map(([k, r]) => [k, r.v]));
 
 // THE FOLD'S PLAN (§334 landing 3b): the bar placed in the movement, still nothing cut. The bar's wheels share the
 // winding band with the spur; the bar's plate and its return blade sit in a POCKET milled into the base plate's top
@@ -409,15 +396,10 @@ export const foldForkRows = (fork = ROCKING_BAR_FOLD_FORK) => Object.fromEntries
 //    is re-solved with the bow; the wheels' centres never move.
 //  · THE POCKET is a set of convex pieces, each the hull of one member over the whole swing grown by CLEAR_MARGIN:
 //    each arm, each boss, the blade. Its floor is the plate's top less the bar's stock and a margin.
-//  · THE BEND AGAINST METAL (landing 3c). Where the movement has metal outside the plate that the pocket must clear
-//    (`keepOut`: swept discs, e.g. the mainspring barrel in its well), the two-wheel bar's bend is DERIVED again: the
-//    roomiest bend (the line's own rule: its members CLEAR_MARGIN apart and the load holding it in) among those whose
-//    pocket pieces stand off every keep-out, on the line's own 0.1° grid. A bend forked in `fork` is taken as given and
-//    only reported against the keep-outs. The blade's azimuth also asks `metalGap(pts, zLo, zHi)` where given: the
-//    caller's exact clearance of a pocket piece to the movement's metal (at 210° the blade's pocket read the
-//    three-quarter plate's foot inside it).
+//  · THE BLADE ASKS THE METAL (landing 3c). Where the caller gives `metalGap(pts, zLo, zHi)`, its exact clearance
+//    of a pocket piece to the movement's metal, the blade's azimuth is held to it too.
 // Inputs are plain numbers: { transferAt:{x,y}, spurAt:{x,y}, windSenseWorld: ±1, plateTopZ, plateBackZ,
-// openings:[{ name, pts:[[x,y]…] convex, finished }], landMin, keepOut:[{ name, x, y, r, zLo, zHi }] }.
+// openings:[{ name, pts:[[x,y]…] convex, finished }], landMin, metalGap? }.
 const hull = (pts) => {   // Andrew's monotone chain, CCW
   const P = [...pts].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
   const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
@@ -454,18 +436,10 @@ export const convexGap = (P, Q) => {
   return d === 0 ? -1 : Math.sqrt(d);
 };
 
-// the gap from a convex CCW polygon to a disc in plan: negative when the disc's centre is inside or the two overlap
-const discGap = (P, d) => {
-  if (inConvex(P, [d.x, d.y])) return -1;
-  let g = Infinity;
-  for (let i = 0; i < P.length; i++) g = Math.min(g, Math.sqrt(segSeg2(P[i], P[(i + 1) % P.length], [d.x, d.y], [d.x, d.y])));
-  return g - d.r;
-};
-
-export function foldRockingBar({ transferAt, spurAt, windSenseWorld, plateTopZ, plateBackZ, openings = [], landMin, keepOut = [], metalGap = null, variant = 'two', samples = 21, fork = {} }) {
+export function foldRockingBar({ transferAt, spurAt, windSenseWorld, plateTopZ, plateBackZ, openings = [], landMin, metalGap = null, variant = 'two', samples = 21, fork = {} }) {
   const M = CLEAR_MARGIN, mm = 1 / UNIT_MM;
   const ex = unit(sub(transferAt, spurAt));                         // spur → transfer
-  let solveWith = (over) => solveRockingBar(variant, { ...fork, ...over });
+  const solveWith = (over) => solveRockingBar(variant, { ...fork, ...over });
   let B = solveWith({});
   if (!B.feasible) return { feasible: false, why: `the line spec does not solve under this fork: ${B.why}` };
   const d = B.inputs.centreDistance_u;
@@ -501,30 +475,6 @@ export function foldRockingBar({ transferAt, spurAt, windSenseWorld, plateTopZ, 
     });
     return hull(pts);
   };
-  // 0 — the bend against the keep-outs (landing 3c): a keep-out counts only where its band meets the pocket's
-  const floorZ0 = plateTopZ - (B.inputs.stock_u + M);
-  const kos = keepOut.filter((d) => !(d.zHi < floorZ0 || d.zLo > plateTopZ));
-  const koGap = (b) => Math.min(Infinity, ...[...b.chain.slice(0, -2).flatMap((_, j) => armPieces(b, j)), ...bossPieces(b)]
-    .flatMap((pc) => kos.map((d) => discGap(pc, d))));
-  let bend = null;
-  if (kos.length && B.chain.length > 3) {
-    if (fork.bendDeg != null) bend = { deg: fork.bendDeg, forked: true, keepOutGap: koGap(B) };
-    else {
-      let best = null;
-      for (let k = -1800; k <= 1800; k++) {
-        const b = solveRockingBar(variant, { ...fork, bendDeg: k / 10 });
-        if (!b.feasible || !(b.engaged.clear.gap >= M) || !(b.kMin > 0)) continue;   // the line's own two clauses (RB2, RB4)
-        if (best && b.engaged.clear.gap <= best.clear) continue;
-        const g = koGap(b);
-        if (g >= 0) best = { deg: k / 10, clear: b.engaged.clear.gap, keepOutGap: g };
-      }
-      if (!best) return { feasible: false, why: `no bend keeps the bar's own members CLEAR_MARGIN apart, the load holding it in and its pocket off ${kos.map((d) => d.name).join(', ')}` };
-      bend = { ...best, forked: false, roomiestDeg: B.beta * 180 / Math.PI, roomiestGap: koGap(B) };
-      const fixed = { ...fork, bendDeg: best.deg };
-      solveWith = (over) => solveRockingBar(variant, { ...fixed, ...over });
-      B = solveWith({});
-    }
-  }
   const landOf = (piece) => Math.min(Infinity, ...openings.map((o) => polyGap(piece, o.pts)));
   // 1 — bow each arm the least that keeps its pocket landMin off every opening (bisection per arm, either side)
   let armBends = Array.from({ length: B.chain.length - 2 }, () => 0);
@@ -549,7 +499,7 @@ export function foldRockingBar({ transferAt, spurAt, windSenseWorld, plateTopZ, 
   let psiBest = null, psiGap = -Infinity;
   for (let k = 0; k < 360; k += 2) {
     const psi = k * Math.PI / 180, pc = bladePiece(B, psi);
-    let g = Math.min(landOf(pc), ...bars.map((q) => convexGap(pc, q) + 2 * M), ...kos.map((k) => discGap(pc, k)));   // the blade may share the pocket with the bar: its metal a margin off the bar's
+    let g = Math.min(landOf(pc), ...bars.map((q) => convexGap(pc, q) + 2 * M));   // the blade may share the pocket with the bar: its metal a margin off the bar's
     if (metalGap && g > psiGap) g = Math.min(g, metalGap(pc, plateTopZ - (B.inputs.stock_u + M), plateTopZ));   // exact, only where it could win
     if (g > psiGap) { psiGap = g; psiBest = psi; }
   }
@@ -560,8 +510,7 @@ export function foldRockingBar({ transferAt, spurAt, windSenseWorld, plateTopZ, 
   ];
   const floorZ = plateTopZ - (B.inputs.stock_u + M);
   return {
-    feasible: true, bar: B, transferAt: D, moved: d - len(sub(transferAt, spurAt)), side: windSenseWorld, armBends, report, bend,
-    keepOutGap: kos.length ? Math.min(...pieces.flatMap((p) => kos.map((k) => discGap(p.pts, k)))) : null,
+    feasible: true, bar: B, transferAt: D, moved: d - len(sub(transferAt, spurAt)), side: windSenseWorld, armBends, report,
     blade: { psi: psiBest, clearance: psiGap }, pockets: pieces.map((p) => ({ ...p, land: landOf(p.pts) })),
     floorZ, floorLeft: floorZ - plateBackZ,
     centresWorld: { engaged: B.engaged.centres.map(toW), neutral: B.neutral.centres.map(toW) },
