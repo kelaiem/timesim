@@ -14,8 +14,9 @@
 //       (the line's q: the friction band the clip must cover, over the band it has)
 //   U1  the line solves with nF = nD (today's winding ratio) and one carried wheel (two meshes: today's winding sense)
 //   U2  the follower is on the spur's circle (the transfer wheel keeps its mesh with the spur) and d from the axis
+//   U4  (once built, landing 5a) every bar member and the moved transfer wheel stand where the plan puts them
 //   U3  exact mesh distance (meshClearance) ≥ CLEAR_MARGIN from every other metal: the driver, the follower, the carried
-//       wheel at every sampled swing angle, the bar's plate under them, the follower's arbor below and above the plate,
+//       wheel, its pin and the bar's plate at every sampled swing angle (underPlateMetal, the build's own law), the follower's arbor below and above the plate,
 //       and the moved transfer wheel (its mate the spur excused). The plate itself, and the transfer wheel and arbor
 //       the fold replaces, are excused. CONTROL: the other crossing of the spur's circle (side −1) reads under the
 //       margin — the setting traverse and the winding pinion stand there
@@ -25,7 +26,7 @@ import { bootNative } from './native/host.mjs';
 const r = await bootNative({ query: '' });
 const C = r.clock, THREE = await import('three');
 const I = await import('../src/inspect.js');
-const { foldUnderPlate, UNDER_PLATE } = await import('../src/keyless-rocking-bar.js');
+const { foldUnderPlate, underPlateMetal, UNDER_PLATE } = await import('../src/keyless-rocking-bar.js');
 const { gearOuterR } = await import('../src/geometry.js');
 const { CLEAR_MARGIN: M, UNIT_MM, KW_MODULE, crownWheelTeeth, WIND_SPUR_TEETH } = await import('../src/layout.js');
 const { plateFaces } = await import('./plate-faces.mjs');
@@ -37,7 +38,8 @@ const PF = plateFaces(C, THREE).base;
 const byName = {}; C.scene.traverse((o) => { if (o.name && !byName[o.name]) byName[o.name] = o; });
 const wp = (n) => byName[n].getWorldPosition(new THREE.Vector3());
 C.setPose({}); C.scene.updateMatrixWorld(true);
-const axis = wp('transferArbor'), spur = wp('windSpur');
+const built = !!byName.kbBar;   // §334 landing 5a: the bar is in the build; before it, the plan was read off the coaxial transfer
+const axis = wp(built ? 'crownWheelArbor' : 'transferArbor'), spur = wp('windSpur');
 // the winding sense, measured on the transfer wheel as the spring winds (the crown wheel turns with it today)
 const TW = byName.transferWheel;
 const ang = () => { const v = new THREE.Vector3(1, 0, 0).applyQuaternion(TW.getWorldQuaternion(new THREE.Quaternion())); return Math.atan2(v.y, v.x); };
@@ -49,7 +51,7 @@ const fuseeTorque_Nmm = C.going?.energy?.windTorqueAtTransfer_Nmm ?? 1.760290574
 
 const meshes = []; C.scene.traverse((o) => { if (o.isMesh && !o.userData?.schematic && o.geometry?.attributes?.position) meshes.push(o); });
 const within = (o, names) => { for (let p = o; p; p = p.parent) if (names.includes(p.name)) return true; return false; };
-const REPLACED = ['transferArbor', 'transferWheel', 'backPlate'];
+const REPLACED = ['transferArbor', 'transferWheel', 'backPlate', 'crownWheelArbor', 'kbDriver', 'kbCarried', 'kbFollower', 'kbBar', 'kbPin'];   // the bar's own metal, and what it replaced
 const nearest = (probe, excuse = []) => { const pb = new THREE.Box3().setFromObject(probe).expandByScalar(1.5); let best = { d: Infinity, n: '-' };
   for (const o of meshes) { if (within(o, REPLACED) || within(o, excuse)) continue; if (!new THREE.Box3().setFromObject(o).intersectsBox(pb)) continue;
     const d = I.meshClearance(probe, o, 1.5); if (d < best.d) best = { d, n: o.name || `(in ${o.parent?.name})` }; } return best; };
@@ -60,26 +62,27 @@ const hull = (pts) => { const P = [...pts].sort((a, b) => a[0] - b[0] || a[1] - 
   for (const p of P.slice().reverse()) { while (up.length >= 2 && cr(up.at(-2), up.at(-1), p) <= 0) up.pop(); up.push(p); } return lo.slice(0, -1).concat(up.slice(0, -1)); };
 const circ = (c, rr, n = 24) => Array.from({ length: n }, (_, k) => [c.x + rr * Math.cos(2 * Math.PI * k / n), c.y + rr * Math.sin(2 * Math.PI * k / n)]);
 
-// the stack: the bar's wheels one margin under the plate's back face, the bar's plate one margin under them
-const stock = 0.725, zW1 = PF.back - M, zW0 = zW1 - stock, zB1 = zW0 - M, zB0 = zB1 - stock;
 const tb = new THREE.Box3().setFromObject(TW);
-const twR = gearOuterR({ module: KW_MODULE, teeth: crownWheelTeeth, thickness: stock, mates: [{ teeth: WIND_SPUR_TEETH, mates: [crownWheelTeeth] }] });
+const twR = gearOuterR({ module: KW_MODULE, teeth: crownWheelTeeth, thickness: 0.725, mates: [{ teeth: WIND_SPUR_TEETH, mates: [crownWheelTeeth] }] });
 
 function fit(driverTeeth, carriedTeeth, side) {
   const U = foldUnderPlate({ axisAt: axis, spurAt: spur, windSenseWorld: wind, driverTeeth, carriedTeeth, fuseeTorque_Nmm, side });
   if (!U.feasible) return { U, rows: [], worst: -Infinity };
   const L = U.line, F = U.followerAt, rows = [];
+  const K = underPlateMetal(U, PF.back), { zW0, zW1, zB0, zB1 } = K;
   rows.push(['driver', nearest(disc(axis, L.reach[0], zW0, zW1))]);
   rows.push(['follower', nearest(disc(F, L.reach[2], zW0, zW1))]);
-  rows.push(['follower arbor under the plate', nearest(disc(F, 0.7, zB0, PF.back))]);
+  rows.push(['follower arbor under the plate', nearest(disc(F, 0.7, zW0, PF.back))]);
   rows.push(['follower arbor over the plate', nearest(disc(F, 0.7, PF.top, tb.min.z))]);
   rows.push(['transfer wheel (spur excused)', nearest(disc(F, twR, tb.min.z, tb.max.z), ['windSpur'])]);
-  let w = { d: Infinity }; const pts = [], wR = L.metal.w / UNIT_MM;
-  for (let k = 0; k <= 8; k++) { const P = U.centresWorld(L.engaged.phi + (L.neutral.phi - L.engaged.phi) * k / 8);
-    const n = nearest(disc(P[1], L.reach[1], zW0, zW1)); if (n.d < w.d) w = n; pts.push(...circ(P[1], wR / 2 + 0.3)); }
+  let w = { d: Infinity }, pinW = { d: Infinity }, plW = { d: Infinity };
+  for (let k = 0; k <= 8; k++) { const phi = L.engaged.phi + (L.neutral.phi - L.engaged.phi) * k / 8, Kk = underPlateMetal(U, PF.back, { phi });
+    const n = nearest(disc(Kk.centres[1], L.reach[1], zW0, zW1)); if (n.d < w.d) w = n;
+    const p = nearest(disc(Kk.pin.at, Kk.pin.r, Kk.pin.z0, Kk.pin.z1)); if (p.d < pinW.d) pinW = p;
+    const b = nearest(prism(Kk.outline, zB0, zB1)); if (b.d < plW.d) plW = b; }
   rows.push(['carried wheel (whole swing)', w]);
-  pts.push(...circ(axis, 0.5 + wR));
-  rows.push(['bar plate', nearest(prism(hull(pts), zB0, zB1))]);
+  rows.push(['carried wheel pin (whole swing)', pinW]);
+  rows.push(['bar plate (whole swing)', plW]);
   return { U, rows, worst: Math.min(...rows.map(([, n]) => n.d)) };
 }
 
@@ -104,6 +107,15 @@ row('U2', eS < 1e-9 && eD < 1e-9, `follower at (${U.followerAt.x.toFixed(3)}, ${
 for (const [w, n] of D.rows) console.log(`    ${w.padEnd(32)} ${n.d.toFixed(3)}  (${n.n})`);
 const ctl = fit(UNDER_PLATE.driverTeeth, UNDER_PLATE.carriedTeeth, -1);
 row('U3', D.worst >= M && ctl.worst < M, `worst ${D.worst.toFixed(3)} ≥ ${M}; CONTROL side −1 worst ${ctl.worst.toFixed(3)} (${ctl.rows.find(([, n]) => n.d === ctl.worst)?.[1].n})`);
-console.log(`  REPORT stack: wheels z ${zW0.toFixed(3)}…${zW1.toFixed(3)}, bar plate ${zB0.toFixed(3)}…${zB1.toFixed(3)} (plate back ${PF.back}), transfer wheel ${tb.min.z.toFixed(3)}…${tb.max.z.toFixed(3)}; window q ${L.window.q.toFixed(3)}`);
+const KS = underPlateMetal(U, PF.back);
+// U4 (landing 5a): the build placed exactly this plan
+if (built) {
+  const K = underPlateMetal(U, PF.back), at = (n) => wp(n), e = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  const errs = { driver: e(at('kbDriver'), axis), carried: e(at('kbCarried'), K.centres[1]), follower: e(at('kbFollower'), U.followerAt),
+    transfer: e(at('transferWheel'), U.followerAt), pin: e(at('kbPin'), K.pin.at) };
+  const worstE = Math.max(...Object.values(errs));
+  row('U4', worstE < 1e-9, `the build's bar is the plan: worst centre error ${worstE.toExponential(1)} (${Object.entries(errs).map(([k, v]) => `${k} ${v.toExponential(0)}`).join(', ')})`);
+} else console.log('  U4 not built: the plan only');
+console.log(`  REPORT stack: wheels z ${KS.zW0.toFixed(3)}…${KS.zW1.toFixed(3)}, bar plate ${KS.zB0.toFixed(3)}…${KS.zB1.toFixed(3)} (plate back ${PF.back}), transfer wheel ${tb.min.z.toFixed(3)}…${tb.max.z.toFixed(3)}; window q ${L.window.q.toFixed(3)}`);
 console.log(fails.length ? `FAIL ${fails.join(', ')}` : 'PASS all rows');
 process.exit(fails.length ? 1 : 0);
