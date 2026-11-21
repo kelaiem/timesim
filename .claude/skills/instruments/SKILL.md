@@ -149,6 +149,17 @@ minus radius) instead, and let the sign carry the answer.
 standing at 217° reads 5.4815. Read `geometry.parameters` for a built section;
 use boxes only to PRUNE, never to conclude.
 
+**A box over an object takes in its CHILDREN.** `new THREE.Box3().setFromObject(plate)`
+walks everything parented to the plate: the base plate's four pillars reach
+z 8.40 where its top face is at 0, and the three-quarter plate's screw shanks
+hang to 4.45 where its underside is at 8.40. §334 landing 3c read the base
+plate's top off that box, put a pocket 7.5 u in the air, and drew two wrong
+conclusions (both withdrawn); four alarm-placement probes read the upper
+plate's underside 4 u low. Read a plate's faces with `tools/plate-faces.mjs`
+(`plateFaces(clock, THREE)`: the build's own `clock.plateFaces`, held to the
+slab's own geometry), and any other part's extent off its own geometry
+(`ownBox`), never off a box over the object.
+
 **An OPEN mesh reads as colliding.** `meshClearance` guards BVH near-zeros
 with a parity raycast, which assumes a closed solid. Four missing caps made
 `sweptOverlap` CONFIRM a pair 3.7 units apart (TODO 27).

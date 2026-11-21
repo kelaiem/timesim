@@ -27,7 +27,9 @@ const res = await page.evaluate(async () => {
   const out = [];
   const f = (n) => n.toFixed(2);
   const plate = clock.labelEntries.find((e) => e.name === 'Three-quarter plate');
-  const TQ_BOT = new THREE.Box3().setFromObject(plate.obj).min.z;
+  // the plate's own underside from the build, held to its slab (tools/plate-faces.mjs): a box over the unit took in the
+  // screw shanks hanging to 4.45 and read it 4 u low (§334 landing 3c)
+  const TQ_BOT = (await import(new URL('tools/plate-faces.mjs', location.href).href)).plateFaces(clock, THREE).threeQuarter.bottom;
   const MODULE = ['Alarm gong', 'Alarm hammer', 'Alarm striking wheel', 'Alarm barrel',
     'Alarm governor', 'Alarm governor anchor', 'Alarm click', 'Alarm lock',
     'Alarm switch', 'Alarm link', 'Alarm winding train'];

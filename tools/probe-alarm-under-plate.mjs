@@ -35,8 +35,10 @@ const res = await page.evaluate(async () => {
   const f = (n) => n.toFixed(2);
   // The plate's own band, read off the built plate rather than restated.
   const plate = clock.labelEntries.find((e) => e.name === 'Three-quarter plate');
-  const plateBox = new THREE.Box3().setFromObject(plate.obj);
-  const TQ_BOT = plateBox.min.z, TQ_TOP = plateBox.max.z;
+  // the plate's own faces from the build, held to its slab (tools/plate-faces.mjs): a box over the unit took in the
+  // screw shanks hanging to 4.45 and read the underside 4 u low (§334 landing 3c)
+  const TQF = (await import(new URL('tools/plate-faces.mjs', location.href).href)).plateFaces(clock, THREE).threeQuarter;
+  const TQ_BOT = TQF.bottom, TQ_TOP = TQF.top;
   // The module: the action group that stands on the plate's top face. The
   // three that reach across the movement (switch, link, winding train) are
   // members too, but their z is set at the other end, so they are excluded

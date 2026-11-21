@@ -362,8 +362,9 @@ the first wheel closed the window, and is the control), the friction clip over m
 `tools/probe-keyless-rocking-bar.mjs` holds it, each rule with a control. Since landings 3a–3b the FOLD is
 planned against a native boot (`foldRockingBar`, held by `tools/probe-keyless-rocking-bar-fold.mjs`): the bar's plate
 in a pocket in the base plate's top face, RED on the motion works' corner K, whose opening lies under the bar's first
-arm. **Read a plate's faces off its slab mesh, never its group's box**, which takes in the parts mounted on it:
-landing 3c's first cut put the top face at 8.40 (it is at 0) and was withdrawn. Since 3c the line's bend is the
+arm. **Read a plate's faces with `tools/plate-faces.mjs`, never off a box over the plate**, which takes in what is
+mounted on it (the build publishes `clock.plateFaces`; the helper holds each face to the slab's own geometry):
+landing 3c's first cut put the base plate's top at 8.40 (it is at 0, the pillars reach 8.40) and was withdrawn. Since 3c the line's bend is the
 roomiest at which the LOAD HOLDS THE BAR IN (RB4); the 18T bar met it by luck.
 
 `service-life.html` (§344) is the SERVICE-LIFE VIEW: the escape wheel's club

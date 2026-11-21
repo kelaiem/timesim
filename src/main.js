@@ -67987,6 +67987,13 @@ window.__clock = {
   // §234 fold — the setting traverse's fold and the cap-bearing scan that
   // sited it, read-only, for tools/probe-234-cap-bearing.mjs (a derivation
   // that is silent at boot when it succeeds, read back here).
+  // The two plates' FACES as the build cut them, for tools/plate-faces.mjs (a probe reads a plate's height here, never
+  // off a box over the plate's object, which takes in what is mounted on it: the base plate's pillars reach z 8.40 and
+  // the three-quarter plate's screw shanks hang to 4.45; §334 landing 3c's first cut was withdrawn for reading one)
+  plateFaces: Object.freeze({
+    base: Object.freeze({ back: PLATE_BACK_FACE, top: PLATE_TOP_FACE, thickness: BACK_PLATE_T }),
+    threeQuarter: Object.freeze({ bottom: TQ_BOT_Z, top: TQ_TOP_Z, thickness: TQ_T }),
+  }),
   settingFold: Object.freeze({
     bearingDeg: CAP_BEARING / DEG2RAD, swingDeg: rsvSwing / DEG2RAD,
     rsvLineDeg: Math.atan2(rsvU.y, rsvU.x) / DEG2RAD,
