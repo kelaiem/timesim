@@ -516,3 +516,32 @@ export function foldRockingBar({ transferAt, spurAt, windSenseWorld, plateTopZ, 
     centresWorld: { engaged: B.engaged.centres.map(toW), neutral: B.neutral.centres.map(toW) },
   };
 }
+
+// THE DIAL-SIDE FOLD (§334 landing 4, the owner's "one customizable module"): the bar is a COUPLING VARIANT of the
+// keyless works, under the base plate in the keyless layer, not a plate-top add-on. The driver rides the crown wheel's
+// own arbor (which today carries the transfer wheel straight up through the plate); the FOLLOWER stands on a new arbor
+// that passes THROUGH the plate in a jewelled hole and carries the transfer wheel on the top face, where it meshes the
+// fusee's winding spur as today. So the transfer wheel only moves round the spur, at its own mesh distance: on the
+// spur's circle of radius |transfer − spur|, d from the crown wheel's axis (law of cosines), on the side `side` names.
+// The line is solved with nF = nD so the winding ratio is today's, and ONE carried wheel, so the two meshes keep the
+// driver and the follower turning the same way, which keeps the winding sense (the line's RB rules decide the rest).
+// Pure: no metal is cut here. Returns the follower's centre, the swing round the spur and the line it placed.
+export function foldUnderPlate({ axisAt, spurAt, windSenseWorld, driverTeeth, carriedTeeth, fuseeTorque_Nmm, side = 1, pivotR_u = 0.5 }) {
+  const L = solveRockingBar('one', { driverTeeth, followerTeeth: driverTeeth, carried: { one: [carriedTeeth], two: [12, 12] }, fuseeTorque_Nmm, pivotR_u });
+  if (!L.feasible) return { feasible: false, why: `the line does not solve: ${L.why}` };
+  const d = L.inputs.centreDistance_u, ex = axisAt.x - spurAt.x, ey = axisAt.y - spurAt.y, rS = Math.hypot(ex, ey);
+  const c = 1 - d * d / (2 * rS * rS);
+  if (Math.abs(c) > 1) return { feasible: false, why: `the bar's span ${d.toFixed(3)} u cannot reach the spur's circle` };
+  const swing = side * Math.acos(c), a = Math.atan2(ey, ex) + swing;
+  const F = { x: spurAt.x + rS * Math.cos(a), y: spurAt.y + rS * Math.sin(a) };
+  const xh = { x: (F.x - axisAt.x) / d, y: (F.y - axisAt.y) / d }, yh = { x: -xh.y * windSenseWorld, y: xh.x * windSenseWorld };
+  const toW = (p) => ({ x: axisAt.x + xh.x * p.x + yh.x * p.y, y: axisAt.y + xh.y * p.x + yh.y * p.y });
+  return { feasible: true, line: L, followerAt: F, swingDeg: swing * 180 / Math.PI, spurR: rS, toW,
+    centresWorld: (phi) => L.centres(phi, 0).map(toW) };
+}
+
+// The dial-side fold's choice, re-derived by tools/probe-keyless-rocking-bar-under.mjs (U0): over driver teeth 8–9 (a
+// 10T reaches the winding pinion's inner end, 2.15 u off the crown wheel's axis) and one carried wheel of 10–14, the
+// fit whose every member stands CLEAR_MARGIN off the movement with the WIDEST spring window; side +1 is the crossing
+// of the spur's circle south of today's transfer (the other is the setting traverse's and the winding pinion's).
+export const UNDER_PLATE = Object.freeze({ driverTeeth: 9, carriedTeeth: 11, side: 1 });

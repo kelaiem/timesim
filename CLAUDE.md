@@ -368,7 +368,7 @@ landing 3c's first cut put the base plate's top at 8.40 (it is at 0, the pillars
 roomiest at which the LOAD HOLDS THE BAR IN (RB4); the 18T bar met it by luck. The setting traverse that clears it is
 designed in a line in `src/setting-traverse-line.js` (pure, imported by nothing yet: two corners A → K1 → K2 → B, the
 build's own corner, opening and block laws, leg 1 swung the least that clears the bar's pocket, the barrel's column
-and the reserve train's swept discs), held by `tools/probe-setting-traverse-line.mjs`.
+and the reserve train's swept discs), held by `tools/probe-setting-traverse-line.mjs`. Since landing 4 the bar is planned UNDER the plate as a coupling of the keyless works (`foldUnderPlate`: the driver on the crown wheel's arbor, the follower's arbor through the plate carrying the transfer wheel, swung round the spur), held by `tools/probe-keyless-rocking-bar-under.mjs`; the traverse is the fallback.
 
 `service-life.html` (§344) is the SERVICE-LIFE VIEW: the escape wheel's club
 tooth worn over a century of 5-yearly service (TODO 299's Archard row),
