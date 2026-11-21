@@ -68002,6 +68002,9 @@ window.__clock = {
     leg1HeadingMeasuredDeg: MW_FOLD_LEG1_HEADING_DEG, stemTurnDeg: STEM_TURN_DEG,   // §308 landing 5 — the heading as used is the measured one turned with the stem
     alphaDeg: MW_FOLD.alphaDeg, side: MW_FOLD.side, beta2Deg: MW_FOLD.beta2 / DEG2RAD, phiDeg: MW_FOLD.phi / DEG2RAD, needCol: MW_FOLD.needCol,
     shaftAngleDeg: MW_FOLD.shaftAngleDeg, module: MW_FOLD_MODULE, templateModule: BEVEL_MODULE,
+    // §334 landing 3c — what a traverse designed in a line reads (src/setting-traverse-line.js): the flattest corner the
+    // blanks can be cut at, the traverse's plane, the barrel column's reach the legs pass, the blanks' tooth count
+    foldDeflectMinDeg: FOLD_DEFLECT_MIN / DEG2RAD, zSetting: Z_SETTING, rsvArbExtR: RSV_ARB_EXT_R, bevelTeeth: BEVEL_TEETH,
     blankThinnest: MW_FOLD_BLANK_THINNEST, stockMinU: STOCK_MIN_U_FOLD,
     len1: MW_FOLD.len1, len2: MW_FOLD.len2, leg1R: MW_LEG1_R, leg2R: MW_LEG2_R,
     turnLdTarget: TURN_LD_TARGET, turnLdMax: TURN_LD_MAX,
