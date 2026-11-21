@@ -5,12 +5,13 @@
 // keyless rocking bar's first arm (§334 landing 3b; tools/probe-keyless-rocking-bar-fold.mjs row K). So K moves, and the
 // traverse gains a corner: A → K1 → K2 → B.
 //
-// WHY LEG 1'S HEADING MUST MOVE. A fold corner cannot be cut flatter than FOLD_DEFLECT_MIN (14.5°: past it the pair's
-// tip cone passes the 85° a plane-bounded blank holds, TODO 138), and K turns 17.8°. With leg 1 on its held heading and
-// leg 3 on today's leg-2 line (so everything at B stands as it is: the cap leg, the rise, the reserve's swing), a middle
-// leg from a point on leg 1 can meet leg 3's forward half only between the two headings, a CHAMFER whose two corners
-// share the 17.8° and are both under 14.5°. So one end direction moves, and B's is held: leg 1 swings, and the middle
-// leg jogs between them.
+// WHY LEG 1'S HEADING MOVES. A fold corner cannot be cut flatter than FOLD_DEFLECT_MIN (14.5°: past it the pair's
+// tip cone passes the 85° a plane-bounded blank holds, TODO 138), and K turns 17.8°. With leg 1 on its held heading,
+// K1 short of today's K and leg 3 on today's leg-2 line (so everything at B stands as it is: the cap leg, the rise,
+// the reserve's swing), the middle leg can meet leg 3's forward half only between the two headings: a CHAMFER whose two
+// corners share the 17.8°, both under 14.5°. Past K the held heading does give designs (an overshoot, the middle leg
+// cutting back), but those leg-1 runs reach into the reserve train. So the search swings leg 1 and takes the least
+// swing that works; B's end is held.
 //
 // WHAT IS DESIGNED HERE, all of it read off laws the build already uses, each taking its numbers as inputs:
 //   · CORNERS (`corner`): the pair's shaft angle from the two legs, its module the least that keeps both blanks at

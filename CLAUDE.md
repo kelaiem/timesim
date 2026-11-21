@@ -365,7 +365,10 @@ in a pocket in the base plate's top face, RED on the motion works' corner K, who
 arm. **Read a plate's faces with `tools/plate-faces.mjs`, never off a box over the plate**, which takes in what is
 mounted on it (the build publishes `clock.plateFaces`; the helper holds each face to the slab's own geometry):
 landing 3c's first cut put the base plate's top at 8.40 (it is at 0, the pillars reach 8.40) and was withdrawn. Since 3c the line's bend is the
-roomiest at which the LOAD HOLDS THE BAR IN (RB4); the 18T bar met it by luck.
+roomiest at which the LOAD HOLDS THE BAR IN (RB4); the 18T bar met it by luck. The setting traverse that clears it is
+designed in a line in `src/setting-traverse-line.js` (pure, imported by nothing yet: two corners A → K1 → K2 → B, the
+build's own corner, opening and block laws, leg 1 swung the least that clears the bar's pocket, the barrel's column
+and the reserve train's swept discs), held by `tools/probe-setting-traverse-line.mjs`.
 
 `service-life.html` (§344) is the SERVICE-LIFE VIEW: the escape wheel's club
 tooth worn over a century of 5-yearly service (TODO 299's Archard row),
