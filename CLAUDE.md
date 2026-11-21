@@ -359,7 +359,11 @@ still (the chain's torque has one sign winding and running; TODO 318 has the arg
 ceiling. Since landing 2 it is cut as METAL in the line: the bar's width from its load, the pins by TODO 193's law,
 the bankings one pin in an arc slot, the return blade at the flat-blade floor bearing on the bar's boss (a blade on
 the first wheel closed the window, and is the control), the friction clip over muPlain's band.
-`tools/probe-keyless-rocking-bar.mjs` holds it, each rule with a control.
+`tools/probe-keyless-rocking-bar.mjs` holds it, each rule with a control. Since landings 3a–3c the FOLD is
+planned against a native boot (`foldRockingBar`, held by `tools/probe-keyless-rocking-bar-fold.mjs`): the bar's plate
+in a pocket in the base plate's top face, corner K's bore cut blind beneath it, and the bar on 11 + 10T wheels
+(`ROCKING_BAR_FOLD_FORK`, forced by the mainspring barrel's well), its bend derived against the barrel (`keepOut`).
+Since 3c the line's bend is the roomiest at which the LOAD HOLDS THE BAR IN (RB4); the 18T bar met it by luck.
 
 `service-life.html` (§344) is the SERVICE-LIFE VIEW: the escape wheel's club
 tooth worn over a century of 5-yearly service (TODO 299's Archard row),
