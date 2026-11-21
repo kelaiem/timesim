@@ -37,6 +37,7 @@ const r = await bootNative({ query: '' });
 const C = r.clock, THREE = await import('three');
 const I = await import('../src/inspect.js');
 const { foldRockingBar, convexGap } = await import('../src/keyless-rocking-bar.js');
+const { plateFaces } = await import('./plate-faces.mjs');
 const L = await import('../src/layout.js');
 const G = await import('../src/geometry.js');
 const fails = [];
@@ -54,15 +55,19 @@ C.setPose({ tension: 0.52 }); C.scene.updateMatrixWorld(true); let dA = ang() - 
 const windSenseWorld = Math.sign(dA);
 C.setPose({}); C.scene.updateMatrixWorld(true);
 
-// the plate's openings as cut: every hole of its extrude, in world xy (the plate stands at the origin, unrotated); its
-// faces off the SLAB's own geometry, never a box over the plate and its children, which include the pillars standing
-// on it (landings 3b–3c read the top face at 8.40 that way, where it is at 0)
+// the plate's openings as cut: every hole of its extrude, in world xy (the plate stands at the origin, unrotated). Its
+// faces come from the build through tools/plate-faces.mjs, which holds each published face to the slab's own geometry:
+// never a box over the plate and its children (landings 3b–3c read the top face at 8.40 that way, the pillars' top)
 const body = [plate, ...plate.children].find((o) => o.isMesh && o.geometry.parameters?.shapes);
-body.geometry.computeBoundingBox();
-const pb = body.geometry.boundingBox.clone().applyMatrix4(body.matrixWorld);   // its own geometry: setFromObject would take in its children, the pillars to 8.40
-const plateTopZ = pb.max.z, plateBackZ = pb.min.z;
-ok('the plate\'s faces are the slab\'s: top at PLATE_TOP 0, BACK_PLATE_T apart', Math.abs(plateTopZ) < 1e-6 && Math.abs(plateTopZ - plateBackZ - 2.3) < 1e-6,
-  `z ${f(plateBackZ)} … ${f(plateTopZ)} (the plate group's box reads ${f(new THREE.Box3().setFromObject(plate).max.z)} at the top)`);
+const PF = plateFaces(C, THREE).base;
+const plateTopZ = PF.top, plateBackZ = PF.back;
+{
+  const groupTop = new THREE.Box3().setFromObject(plate).max.z;
+  ok('the plate\'s faces are the build\'s and the slab\'s (tools/plate-faces.mjs)', Math.abs(plateTopZ - plateBackZ - PF.thickness) < 1e-6,
+    `z ${f(plateBackZ)} … ${f(plateTopZ)}, ${f(PF.thickness)} thick`);
+  ok('the plate\'s faces CONTROL a box over the plate and its children reads another top', Math.abs(groupTop - plateTopZ) > 1,
+    `${f(groupTop)} (the pillars), the trap landings 3b–3c fell into`);
+}
 const shape = [].concat(body.geometry.parameters.shapes)[0];
 const holesW = shape.extractPoints(72).holes.map((h) => h.map((p) => new THREE.Vector3(p.x, p.y, 0).applyMatrix4(body.matrixWorld)).map((v) => [v.x, v.y]));
 const hullOf = (pts) => { const P = [...pts].sort((a, b) => a[0] - b[0] || a[1] - b[1]); const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
@@ -126,6 +131,7 @@ if (plan.armBends.some((h) => h)) {
 }
 
 // F2 the floor
+ok('F2 the pocket floor lies inside the slab, between its faces (the frame row)', plan.floorZ > plateBackZ && plan.floorZ < plateTopZ, `floor ${f(plan.floorZ)} in ${f(plateBackZ)} … ${f(plateTopZ)}: a pocket read in the wrong frame fails here`);
 ok('F2 the pocket floor leaves STOCK_MIN_U of plate', plan.floorLeft >= L.STOCK_MIN_U, `floor at z ${f(plan.floorZ)}, ${f(plan.floorLeft)} u of plate under it`);
 
 let f3 = { d: Infinity };

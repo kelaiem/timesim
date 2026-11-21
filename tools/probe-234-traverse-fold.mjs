@@ -198,7 +198,9 @@ const R = await page.evaluate(async ({ STEP, SEARCH, ALPHA_RUN, ALPHA_MIN, ALPHA
   const rodR = tr ? tr.geometry.parameters.radiusTop : null;
   const Z = A.z;
   const plate = byName.get('backPlate'); if (!plate) throw new Error('backPlate not found');
-  const plateBack = new THREE.Box3().setFromObject(plate).min.z;
+  // the dial face from the build, held to the slab's own geometry (tools/plate-faces.mjs): a box over the plate takes in
+  // its pillars, which happened not to move the back face, and did move the top (§334 landing 3c)
+  const plateBack = (await import(new URL('tools/plate-faces.mjs', location.href).href)).plateFaces(clock, THREE).base.back;
   const LEG1_R = (plateBack - Z) - CLEAR_MARGIN;
   const barrel = { x: clock.P.barrel.x, y: clock.P.barrel.y };
   const p0g = clock.scene.getObjectByName('reservePinion0'); if (!p0g) throw new Error('reservePinion0 not found');
