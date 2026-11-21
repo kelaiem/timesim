@@ -33,7 +33,7 @@
 //   RB15 the banking slot's ends stand the swing apart
 //   RB16 the transfer and the spur stand CLEAR_MARGIN apart, so the bar is the only path between them (the centre
 //        distance is DERIVED from it). CONTROL: at the direct routing's mesh distance the two still mesh
-import { solveRockingBar, ROCKING_BAR_INPUTS } from '../src/keyless-rocking-bar.js';
+import { solveRockingBar as solveLine, ROCKING_BAR_INPUTS, ROCKING_BAR_FOLD_FORK, foldForkRows } from '../src/keyless-rocking-bar.js';
 import { CLEAR_MARGIN, STOCK_MIN_U, UNIT_MM, SPRING_SIGMA_Y_PA, FRICTION, PIVOT_BORE_CLEAR } from '../src/layout.js';
 
 const fails = [];
@@ -41,40 +41,48 @@ const ok = (name, cond, detail = '') => { console.log(`${cond ? 'PASS' : 'FAIL'}
 const deg = (r) => (r * 180 / Math.PI).toFixed(3);
 const f = (v, n = 4) => Number(v).toPrecision(n);
 
-for (const v of ['one', 'two']) {
-  const B = solveRockingBar(v), M = solveRockingBar(v, {}, -solveRockingBar(v).side);
-  ok(`[${v}] solves`, B.feasible, B.why || '');
+// §334 landing 3c: the default build's bar is the two-wheel line under the fold's fork (ROCKING_BAR_FOLD_FORK, the
+// carried wheels the barrel forces), so every rule is held for it too, each with its own control, the way a fork is
+// re-derived from the reference's own laws at its inputs
+const CASES = [['one', 'one', {}], ['two', 'two', {}], ['two, fold fork', 'two', foldForkRows()]];
+for (const [label, v, FK] of CASES) {
+  const solveRockingBar = (vv, over = {}, side) => solveLine(vv, { ...FK, ...over }, side);
+  const B = solveRockingBar(v);
+  // the mirrored bar keeps B's own bend: since landing 3c a derived bend must let the load hold the bar in, and on the
+  // mirrored side none does, which is the control's own point
+  const M = solveRockingBar(v, B.feasible && B.chain.length > 3 ? { bendDeg: B.beta * 180 / Math.PI } : {}, -(B.side ?? 1));
+  ok(`[${label}] solves`, B.feasible, B.why || '');
   if (!B.feasible) continue;
 
-  ok(`[${v}] RB1 engaged at full depth`, Math.abs(B.engaged.depthErr) < 1e-9, `depth error ${B.engaged.depthErr.toExponential(1)} u`);
-  ok(`[${v}] RB1 neutral tips CLEAR_MARGIN apart`, Math.abs(B.neutral.gap - CLEAR_MARGIN) < 1e-9, `gap ${f(B.neutral.gap, 6)} u after a ${deg(B.swing)}° swing`);
+  ok(`[${label}] RB1 engaged at full depth`, Math.abs(B.engaged.depthErr) < 1e-9, `depth error ${B.engaged.depthErr.toExponential(1)} u`);
+  ok(`[${label}] RB1 neutral tips CLEAR_MARGIN apart`, Math.abs(B.neutral.gap - CLEAR_MARGIN) < 1e-9, `gap ${f(B.neutral.gap, 6)} u after a ${deg(B.swing)}° swing`);
   const half = B.gapLF(B.centres(B.engaged.phi + B.side * B.swing / 2, B.beta));
-  ok(`[${v}] RB1 CONTROL half the swing is short of the margin`, half < CLEAR_MARGIN, `gap ${f(half)} u`);
+  ok(`[${label}] RB1 CONTROL half the swing is short of the margin`, half < CLEAR_MARGIN, `gap ${f(half)} u`);
 
   if (v === 'two') {
-    ok(`[${v}] RB2 non-meshing members clear, engaged`, B.engaged.clear.gap >= CLEAR_MARGIN, `worst ${f(B.engaged.clear.gap)} u (${B.engaged.clear.pair.slice(0, 2).join('T and ')}T), bend ${deg(B.beta)}°`);
-    ok(`[${v}] RB2 non-meshing members clear, neutral`, B.neutral.clear.gap >= CLEAR_MARGIN, `worst ${f(B.neutral.clear.gap)} u`);
+    ok(`[${label}] RB2 non-meshing members clear, engaged`, B.engaged.clear.gap >= CLEAR_MARGIN, `worst ${f(B.engaged.clear.gap)} u (${B.engaged.clear.pair.slice(0, 2).join('T and ')}T), bend ${deg(B.beta)}°`);
+    ok(`[${label}] RB2 non-meshing members clear, neutral`, B.neutral.clear.gap >= CLEAR_MARGIN, `worst ${f(B.neutral.clear.gap)} u`);
     const phi0 = B.engagedAt(0, B.side);
     const g0 = phi0 === null ? -Infinity : B.pairClear(B.centres(phi0, 0)).gap;
-    ok(`[${v}] RB2 CONTROL the straight bar fouls`, g0 < CLEAR_MARGIN, phi0 === null ? 'cannot engage at all' : `worst ${f(g0)} u`);
+    ok(`[${label}] RB2 CONTROL the straight bar fouls`, g0 < CLEAR_MARGIN, phi0 === null ? 'cannot engage at all' : `worst ${f(g0)} u`);
   }
 
-  ok(`[${v}] RB3 winding carries the bar in`, B.carrySense === B.inputs.windSense, `carry ${B.carrySense}, wind ${B.inputs.windSense}`);
-  ok(`[${v}] RB3 CONTROL the mirrored bar is carried away`, M.carrySense !== M.inputs.windSense);
+  ok(`[${label}] RB3 winding carries the bar in`, B.carrySense === B.inputs.windSense, `carry ${B.carrySense}, wind ${B.inputs.windSense}`);
+  ok(`[${label}] RB3 CONTROL the mirrored bar is carried away`, M.carrySense !== M.inputs.windSense);
 
-  ok(`[${v}] RB4 the load holds the bar on its depth banking`, B.kMin > 0, `k ${f(B.kMin)}–${f(B.kMax)} per unit torque, over ${B.corners.length} pressure-angle corners`);
-  ok(`[${v}] RB4 CONTROL on the mirrored bar the load kicks it out`, M.kMax < 0, `k ${f(M.kMin)}–${f(M.kMax)}`);
+  ok(`[${label}] RB4 the load holds the bar on its depth banking`, B.kMin > 0, `k ${f(B.kMin)}–${f(B.kMax)} per unit torque, over ${B.corners.length} pressure-angle corners`);
+  ok(`[${label}] RB4 CONTROL on the mirrored bar the load kicks it out`, M.kMax < 0, `k ${f(M.kMin)}–${f(M.kMax)}`);
 
-  ok(`[${v}] RB5 the same force system winding and back-driven`, B.sameForceSystem < 1e-12, `max |k_wind − k_run| ${B.sameForceSystem.toExponential(1)}`);
+  ok(`[${label}] RB5 the same force system winding and back-driven`, B.sameForceSystem < 1e-12, `max |k_wind − k_run| ${B.sameForceSystem.toExponential(1)}`);
   // at zero pressure angle on every mesh: reversing the torque flips each tooth force whole there, while at a
   // tilted corner the part that presses the teeth apart stays a push, so only this corner negates exactly
   const al = B.corners.find((r) => r.alphas.every((x) => x === 0)).alphas;
   const kw = B.kAt(B.engaged.centres, al, 'wind'), kr = B.kAt(B.engaged.centres, al, 'torqueReversed');
-  ok(`[${v}] RB5 CONTROL reversing the torque reverses the moment`, Math.abs(kw + kr) < 1e-12 && Math.abs(kw) > 1e-3, `${f(kw)} against ${f(kr)}`);
+  ok(`[${label}] RB5 CONTROL reversing the torque reverses the moment`, Math.abs(kw + kr) < 1e-12 && Math.abs(kw) > 1e-3, `${f(kw)} against ${f(kr)}`);
 
   const ratio = B.chain.slice(0, -1).reduce((p, n, i) => p * n / B.chain[i + 1], 1);
-  ok(`[${v}] RB6 the idlers cancel from the ratio`, Math.abs(ratio - B.ratio) < 1e-12, `${f(ratio)} = ${B.chain[0]}/${B.chain.at(-1)}`);
-  ok(`[${v}] RB6 winding sense at the crown`, B.sense.sameAsDirect === (v === 'two'),
+  ok(`[${label}] RB6 the idlers cancel from the ratio`, Math.abs(ratio - B.ratio) < 1e-12, `${f(ratio)} = ${B.chain[0]}/${B.chain.at(-1)}`);
+  ok(`[${label}] RB6 winding sense at the crown`, B.sense.sameAsDirect === (v === 'two'),
     `${B.sense.meshes} meshes: ${B.sense.sameAsDirect ? 'the direct routing\'s sense' : 'REVERSED against the direct routing (right only where an idler already routes it)'}`);
 
   const W = B.window;
@@ -83,74 +91,77 @@ for (const v of ['one', 'two']) {
   const rel = (a, b) => Math.abs(a / b - 1) < 1e-9;
   const equal = rel(W.Ms_Nmm / W.Mg_Nmm, W.q) && rel(W.MfLo_Nmm / W.MsE_Nmm, W.q) && rel(W.MfMax_Nmm / W.MfHi_Nmm, W.q)
     && rel(W.MsE_Nmm / W.Ms_Nmm, W.rise) && rel(W.MfHi_Nmm / W.MfLo_Nmm, W.muSpread);
-  ok(`[${v}] RB7 weight < spring (neutral, engaged) < carry (low, high μ) < ceiling, equal ratio margins`, ordered && equal && W.q > 1,
+  ok(`[${label}] RB7 weight < spring (neutral, engaged) < carry (low, high μ) < ceiling, equal ratio margins`, ordered && equal && W.q > 1,
     `${chain.map((x) => f(x)).join(' < ')} N·mm; margins ×${f(W.q, 3)}, spring rise ×${f(W.rise, 3)}, friction spread ×${f(W.muSpread, 3)}`);
   const draft = solveRockingBar(v, { bladeAt: 'firstWheel', bladeH_u: STOCK_MIN_U });
-  ok(`[${v}] RB7 CONTROL landing 2's first draft (blade on the first wheel, at the plate floor) has no window`, draft.window.q < 1,
+  ok(`[${label}] RB7 CONTROL landing 2's first draft (blade on the first wheel, at the plate floor) has no window`, draft.window.q < 1,
     `q ${f(draft.window.q, 3)}: the blade's moment rises ×${f(draft.window.rise, 4)} over the swing`);
 
   // RB16 the bar is the only path: the transfer and the spur stand clear of each other
-  ok(`[${v}] RB16 the transfer and the spur stand CLEAR_MARGIN apart, so the bar is the only path between them`,
+  ok(`[${label}] RB16 the transfer and the spur stand CLEAR_MARGIN apart, so the bar is the only path between them`,
     B.gapDF >= CLEAR_MARGIN - 1e-12, `centre distance ${f(B.inputs.centreDistance_u)} u, tips ${f(B.gapDF)} u apart`);
   const direct = B.inputs.module * (B.chain[0] + B.chain.at(-1)) / 2;
   const viaDirect = solveRockingBar(v, { centreDistance_u: direct });
-  ok(`[${v}] RB16 CONTROL at the direct routing's ${f(direct)} u the two still mesh`, viaDirect.gapDF < 0,
+  ok(`[${label}] RB16 CONTROL at the direct routing's ${f(direct)} u the two still mesh`, viaDirect.gapDF < 0,
     `tips ${f(viaDirect.gapDF)} u apart (landings 1 and 2 used this distance)`);
 
   // RB10 the bar's section
   const M_ = B.metal, sigY = SPRING_SIGMA_Y_PA / 1e6;
-  ok(`[${v}] RB10 the bar's section carries its worst load at or under yield`, M_.sigma <= sigY * (1 + 1e-9) && M_.w >= STOCK_MIN_U * UNIT_MM - 1e-12,
+  ok(`[${label}] RB10 the bar's section carries its worst load at or under yield`, M_.sigma <= sigY * (1 + 1e-9) && M_.w >= STOCK_MIN_U * UNIT_MM - 1e-12,
     `width ${f(M_.w * 1000)} µm (${M_.wLoad > STOCK_MIN_U * UNIT_MM ? 'load' : '§50 floor'}), ${f(M_.sigma)} MPa against ${sigY}; M ${f(M_.Mmax)} N·mm, N ${f(M_.Nmax)} N`);
   const big = B.sizeMetal(B.window.Tw_Nmm * 1e3);
-  ok(`[${v}] RB10 CONTROL a thousandfold load is load-governed and works exactly at yield`, big.wLoad > STOCK_MIN_U * UNIT_MM && rel(big.sigma, sigY),
+  ok(`[${label}] RB10 CONTROL a thousandfold load is load-governed and works exactly at yield`, big.wLoad > STOCK_MIN_U * UNIT_MM && rel(big.sigma, sigY),
     `width ${f(big.w * 1000)} µm at ${f(big.sigma)} MPa`);
 
   // RB11 the pins (TODO 193's law)
   const pinSig = (F, L, d) => 32 * F * L / (Math.PI * Math.pow(d, 3));
   const pinsOk = M_.pins.every((p, i) => pinSig(p.F_N + (i === M_.pins.length - 1 ? M_.Fbank : 0), M_.lever, p.d_mm) <= sigY * (1 + 1e-9));
-  ok(`[${v}] RB11 every carried wheel's pin at or under yield, the last carrying the banking`, pinsOk,
+  ok(`[${label}] RB11 every carried wheel's pin at or under yield, the last carrying the banking`, pinsOk,
     M_.pins.map((p) => `⌀${f(p.d_mm * 1000)} µm for ${f(p.F_N)} N`).join(', ') + `; banking ${f(M_.Fbank)} N`);
   const bigLast = big.pins.at(-1);
-  ok(`[${v}] RB11 CONTROL under a thousandfold load the last pin works exactly at yield`,
+  ok(`[${label}] RB11 CONTROL under a thousandfold load the last pin works exactly at yield`,
     rel(pinSig(bigLast.F_N + big.Fbank, big.lever, bigLast.d_mm), sigY), `⌀${f(bigLast.d_mm * 1000)} µm`);
 
   // RB12 the return blade
   const Bl = B.blade;
   const mN = Bl.k_Npmm * Bl.preload_mm * Bl.lever_mm, mE = Bl.k_Npmm * (Bl.preload_mm + Bl.swing_mm) * Bl.lever_mm;   // rate × deflection × lever
-  ok(`[${v}] RB12 the blade's preload and rate give the window's spring at both bankings`,
+  ok(`[${label}] RB12 the blade's preload and rate give the window's spring at both bankings`,
     rel(mN, B.window.Ms_Nmm) && rel(mE, B.window.MsE_Nmm) && rel(Bl.swing_mm, Bl.lever_mm * B.swing),
     `bearing at ${f(Bl.lever_mm)} mm from D; ${f(Bl.L_mm)} mm × ${f(Bl.h_mm * 1000)} µm, rate ${f(Bl.k_Npmm)} N/mm, preload ${f(Bl.preload_mm * 1000)} µm, swing ${f(Bl.swing_mm * 1000)} µm`);
-  ok(`[${v}] RB12 the blade works under the ribbons' alloy at full swing`, Bl.sigmaE <= Bl.sigmaLimit, `${f(Bl.sigmaE)} MPa against ${Bl.sigmaLimit}`);
+  ok(`[${label}] RB12 the blade works under the ribbons' alloy at full swing`, Bl.sigmaE <= Bl.sigmaLimit, `${f(Bl.sigmaE)} MPa against ${Bl.sigmaLimit}`);
 
   // RB13 the friction carry
   const C_ = B.clip, mu = FRICTION.muPlain;
-  ok(`[${v}] RB13 the clip's grip gives the carry at both ends of the friction band`,
+  ok(`[${label}] RB13 the clip's grip gives the carry at both ends of the friction band`,
     rel(mu.favourable * C_.N_N * C_.r_mm, B.window.MfLo_Nmm) && rel(mu.adverse * C_.N_N * C_.r_mm, B.window.MfHi_Nmm) && C_.sigma <= C_.sigmaLimit * (1 + 1e-9),
     `grip ${f(C_.N_N)} N at r ${f(C_.r_mm)} mm, jaws ${f(C_.jawL_mm)} mm × ${f(C_.h_mm * 1000)} µm at ${f(C_.sigma)} MPa`);
-  ok(`[${v}] RB13 the clip's interference (REPORT)`, true, `${f(C_.interference_mm * 1000)} µm a jaw: tight to hold; a longer jaw would ease it and is the fold's to find`);
+  ok(`[${label}] RB13 the clip's interference (REPORT)`, true, `${f(C_.interference_mm * 1000)} µm a jaw: tight to hold; a longer jaw would ease it and is the fold's to find`);
 
   // RB14 tip on tip
-  ok(`[${v}] RB14 a tip landing on a tip slides off under the winding torque`, B.tip.margin > 1,
+  ok(`[${label}] RB14 a tip landing on a tip slides off under the winding torque`, B.tip.margin > 1,
     `the carry pushes ${f(B.tip.push_N * 1000)} mN; its tip friction needs ${f(B.tip.tipTorqueAtD_Nmm)} N·mm at the transfer against ${f(W.Tw_Nmm)} (×${f(B.tip.margin)}); at worst ${f(B.tip.crownTurnDeg)}° more crown turn before it drops in`);
 
   // RB15 the banking slot
   const Sl = B.slot;
-  ok(`[${v}] RB15 the slot's ends stand the swing apart, its width the pin's with running clearance`,
+  ok(`[${label}] RB15 the slot's ends stand the swing apart, its width the pin's with running clearance`,
     rel(Sl.travel_mm / Sl.r_mm, B.swing) && rel(Sl.width_mm, Sl.pinD_mm + 2 * PIVOT_BORE_CLEAR * UNIT_MM),
     `radius ${f(Sl.r_mm)} mm, travel ${f(Sl.travel_mm * 1000)} µm, width ${f(Sl.width_mm * 1000)} µm`);
 
-  ok(`[${v}] RB8 released, the bar lets go of crown-side drag`, W.releaseLimit_Nmm > 0,
+  ok(`[${label}] RB8 released, the bar lets go of crown-side drag`, W.releaseLimit_Nmm > 0,
     `up to ${f(W.releaseLimit_Nmm)} N·mm at the transfer wheel, ${(100 * W.releaseLimit_Nmm / W.Tw_Nmm).toFixed(2)}% of the ${f(W.Tw_Nmm)} N·mm winding torque there (REPORT: the movement models no load-independent crown drag)`);
 
   const c = B.inputs.module * (B.chain[0] + B.chain[1]) / 2 + B.inputs.module * (B.chain.at(-2) + B.chain.at(-1)) / 2;
   const reach = v === 'one' ? c : Infinity;
   const forkD = B.inputs.centreDistance_u * 1.35;
   const K = solveRockingBar(v, { centreDistance_u: forkD });
-  ok(`[${v}] RB9 a fork of the centre distance re-derives`, K.feasible && Math.abs(K.engaged.depthErr) < 1e-9 && Math.abs(K.neutral.gap - CLEAR_MARGIN) < 1e-9 && K.kMin > 0,
+  // the fold fork is the DEFAULT build's bar, at its own distance: whether it would re-derive at another is reported, since
+  // the idler routings that stand the transfer farther out take the one-wheel bar (§334 landing 3d)
+  if (label === 'two, fold fork') console.log(`REPORT [${label}] RB9 at ${f(forkD)} u the forked bar ${K.feasible ? `re-derives (k ≥ ${f(K.kMin)})` : `does not: ${K.why}`}`);
+  else ok(`[${label}] RB9 a fork of the centre distance re-derives`, K.feasible && Math.abs(K.engaged.depthErr) < 1e-9 && Math.abs(K.neutral.gap - CLEAR_MARGIN) < 1e-9 && K.kMin > 0,
     K.feasible ? `at ${f(forkD)} u: engaged ${deg(K.engaged.phi)}°, swing ${deg(K.swing)}°, k ≥ ${f(K.kMin)}` : K.why);
   if (Number.isFinite(reach)) {
     const out = solveRockingBar(v, { centreDistance_u: reach + 0.1 });
-    ok(`[${v}] RB9 CONTROL out of reach the bar refuses`, !out.feasible, `at ${f(reach + 0.1)} u, reach ${f(reach)} u`);
+    ok(`[${label}] RB9 CONTROL out of reach the bar refuses`, !out.feasible, `at ${f(reach + 0.1)} u, reach ${f(reach)} u`);
   }
 }
 
