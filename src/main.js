@@ -7189,7 +7189,9 @@ if (KB_BUILT) {
   kbBladeStud = post('kbBladeStud', SP.stud.at, SP.stud.r, SP.stud.z0, SP.stud.z1);
   kbBladePin = post('kbBladePin', SP.pin.at, SP.pin.r, SP.pin.z0, SP.pin.z1, kbBarGroup, D0);   // riveted in the bar's ear
   // a frame's metal: the centreline offset half the strip each side, extruded through the layer
-  KB_BLADE_GEOS = SP.frames.map((pts) => {
+  KB_BLADE_GEOS = SP.frames.map((all) => {
+    // a centreline point nearer the end than the strip is thick would fold the two edges across each other at the end
+    const pts = all.filter((p, i) => i === all.length - 1 || Math.hypot(p.x - all[all.length - 1].x, p.y - all[all.length - 1].y) >= SP.h);
     const n = pts.length, hh = SP.h / 2, L = [], R = [];
     for (let i = 0; i < n; i++) {
       const a = pts[Math.max(0, i - 1)], c = pts[Math.min(n - 1, i + 1)], l = Math.hypot(c.x - a.x, c.y - a.y);

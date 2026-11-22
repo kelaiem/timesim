@@ -55,7 +55,10 @@ const disc = (c, rr, z0, z1) => { const g = new THREE.CylinderGeometry(rr, rr, z
 const prism = (pts, z0, z1) => { const g = new THREE.ExtrudeGeometry(new THREE.Shape(pts.map(([x, y]) => new THREE.Vector2(x, y))), { depth: z1 - z0, bevelEnabled: false }); g.translate(0, 0, z0); const m = new THREE.Mesh(g); m.updateMatrixWorld(true); return m; };
 const strip = (pts, hw) => { const L = [], R = []; for (let i = 0; i < pts.length; i++) { const a = pts[Math.max(0, i - 1)], c = pts[Math.min(pts.length - 1, i + 1)], l = Math.hypot(c.x - a.x, c.y - a.y), nx = -(c.y - a.y) / l, ny = (c.x - a.x) / l;
   L.push([pts[i].x + nx * hw, pts[i].y + ny * hw]); R.push([pts[i].x - nx * hw, pts[i].y - ny * hw]); } return [...L, ...R.reverse()]; };
-const reachD = L0.reach[0], reachC = L0.reach[1], reachF = L0.reach[2], PSI = [0, 0.5, 1].map((f) => f * -20.96 * DEG);
+// the bar's swing OUT as the build poses it (its group's angle at kbSwing 0): its SIGN is the build's, read, never typed —
+// a typed −20.96° swept the carried wheel the wrong way and passed a stud it hits (the battery's intraUnit found it)
+C.setPose({ kbSwing: 0 }); const PSI_OUT = byName.kbBarGroup.rotation.z;
+const reachD = L0.reach[0], reachC = L0.reach[1], reachF = L0.reach[2], PSI = [0, 0.25, 0.5, 0.75, 1].map((f) => f * PSI_OUT);
 
 // the candidates: every path whose stud's column clears the bar's own wheels (the stud passes the wheel band) and whose
 // end faces the pin's in-swing; b at a quarter of the band's stock (the softest the scan found worth its height)
