@@ -577,7 +577,7 @@ export const UNDER_PLATE = Object.freeze({ driverTeeth: 9, carriedTeeth: 11, sid
   // §334 landing 6: the CURVED return blade under the bar (studR, studAz in degrees from the carried wheel, turn ±1, span in
   // degrees, tipR, b_u its width) — the softest path whose stud clears in every spec point, re-derived by
   // probe-keyless-rocking-bar-curved.mjs (C0)
-  blade: Object.freeze({ studR: 3.75, studAz: 50, turn: -1, span: 120, tipR: BLADE_TIP_MIN_U, b_u: 0.18 }) });
+  blade: Object.freeze({ studR: 3.75, studAz: 60, turn: -1, span: 120, tipR: BLADE_TIP_MIN_U, b_u: 0.18 }) });
 
 // THE UNDER-PLATE BAR'S METAL, one law for the build and its probe (§334 landing 5a). The stack hangs from the base
 // plate's back face: the bar's three wheels one CLEAR_MARGIN under it, cut from the winding band's stock, and the

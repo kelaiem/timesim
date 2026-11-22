@@ -117,7 +117,15 @@ const failedSpecs = specClear.filter((c) => !Array.isArray(c.clear) && c.why !==
 const everywhere = shortlist.filter((x) => specClear.every((c) => c.clear === null && c.why === 'no bar built' || (Array.isArray(c.clear) && c.clear.includes(key(x.b)))));
 console.log(`  ${specs.length} spec points: ${failedSpecs.length} failed to judge; ${everywhere.length} of the shortlist clear in every one`);
 for (const c of specClear) if (Array.isArray(c.clear) && c.clear.length < shortlist.length) console.log(`    ${c.spec}: refuses ${shortlist.filter((x) => !c.clear.includes(key(x.b))).map((x) => `${x.b.studR}/${x.b.studAz}`).join(' ')}`);
-const win = everywhere[0], decl = RB.UNDER_PLATE.blade;
+// a TIE on grip (the same path turned round the pivot has the same rate and lever) goes to the one whose own metal —
+// the blade's frames, its stud and its pin, not the bar's outline that every candidate shares — stands furthest off
+// the movement in the default build: list order is not a reason
+const ownWorst = (S) => { let w = Infinity;
+  for (const f of [0, 0.5, 1]) w = Math.min(w, nearest(prism(strip(S.frameAt(f), S.h / 2), S.layer.z0, S.layer.z1), ['crownWheelArbor']).d);
+  return Math.min(w, nearest(disc(S.stud.at, S.stud.r, S.stud.z0, PF.back)).d); };
+const tied = everywhere.filter((x) => Math.abs(x.j.grip - everywhere[0]?.j.grip) < 1e-9).map((x) => ({ ...x, own: ownWorst(x.j.S) })).sort((a, b) => b.own - a.own);
+if (tied.length > 1) console.log(`  tied on grip: ${tied.map((x) => `${key(x.b)} own metal ${x.own.toFixed(3)}`).join('; ')}`);
+const win = tied[0], decl = RB.UNDER_PLATE.blade;
 row('C0', !!win && !!decl && key(win.b) === key(decl) && failedSpecs.length === 0,
   `the softest clear everywhere: ${win ? `${key(win.b)} (grip ${win.j.grip.toFixed(3)} N, worst ${win.w.d.toFixed(3)} ${win.w.n})` : '—'}; declared ${decl ? key(decl) : 'none'}`);
 const J = decl ? judge(decl) : null;
