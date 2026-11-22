@@ -386,10 +386,10 @@ when a question was asked; the summaries are what it answered.
 | `probe-handset-reach.mjs` |  | report | HOW FAR DOWN THE HAND-SETTING CHAIN DOES THE `handSet` AXIS ACTUALLY REACH? |
 | `probe-hud-orbit-roll.mjs` |  | acceptance | DOES A CANVAS DRAG STILL SPIN THE VIEW AFTER THE HUD HAS ROLLED IT? — the orbit axis after a §57 arcball roll, measured. |
 | `probe-interplate-demand.mjs` |  | acceptance | WHAT PINS THE THREE-QUARTER PLATE'S UNDERSIDE — the inter-plate z demand, per station, and the wheel-in-bore inventory. |
+| `probe-keyless-rocking-bar-clip.mjs` |  | acceptance | THE ROCKING BAR'S FRICTION CLIP, CUT AS METAL (§334 landing 6) — acceptance, one native boot. |
 | `probe-keyless-rocking-bar-curved.mjs` |  | acceptance | THE ROCKING BAR'S CURVED RETURN BLADE, PLACED UNDER THE BAR (§334 landing 6) — acceptance, native boots. |
 | `probe-keyless-rocking-bar-fold.mjs` |  | acceptance | THE ROCKING BAR'S FOLD, PLANNED AGAINST THE BUILT MOVEMENT (§334 landings 3b and 3c, TODO 318) — acceptance, one native boot. |
 | `probe-keyless-rocking-bar-run.mjs` |  | acceptance | THE CROWN STANDS STILL WHILE THE WATCH RUNS (§334 landing 5b, TODO 318's acceptance) — one native boot. |
-| `probe-keyless-rocking-bar-springs.mjs` |  | acceptance | THE ROCKING BAR'S RETURN BLADE AND BANKING, PLACED UNDER THE PLATE (§334 landing 5c) — acceptance, one native boot. |
 | `probe-keyless-rocking-bar-under.mjs` |  | acceptance | THE ROCKING BAR UNDER THE PLATE, PLANNED AGAINST THE BUILT MOVEMENT (§334 landing 4, TODO 318) — acceptance, one native boot. |
 | `probe-keyless-rocking-bar.mjs` |  | acceptance | THE KEYLESS FUSEE'S ROCKING BAR, IN A LINE (TODO 318, roadmap §334) — acceptance, pure Node. |
 | `probe-l3-shaft-ld-filter.mjs` |  | acceptance | §234 Landing 4 — CAN ANY SHAFT SECTION CLEAR TURN_LD_TARGET AND ITS OWN CORRIDOR TOGETHER? A REPORT. (INDEX.md's `kind` column says acceptance because the classifier keys on `process.exit`, and this exits only when a tree will not boot at all — `probe-234-group-c.mjs` and the other §234 probes carry the same label for the same reason.) |

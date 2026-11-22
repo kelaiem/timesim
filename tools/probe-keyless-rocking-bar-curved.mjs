@@ -61,7 +61,7 @@ const reachD = L0.reach[0], reachC = L0.reach[1], reachF = L0.reach[2], PSI = [0
 // end faces the pin's in-swing; b at a quarter of the band's stock (the softest the scan found worth its height)
 const B_U = 0.18, cands = [];
 for (let studR = 3.0; studR <= 5.5 + 1e-9; studR += 0.25) for (let studAz = 0; studAz < 360; studAz += 10) for (const turn of [1, -1])
-  for (let span = 120; span <= 420; span += 30) for (const tipR of [1.25, 1.35, 1.5]) {
+  for (let span = 120; span <= 420; span += 30) for (const tipR of [RB.BLADE_TIP_MIN_U, 1.35, 1.5]) {   // the least the pin's hole keeps a §50 wall to the bore at
     const blade = { studR, studAz, turn, span, tipR, b_u: B_U };
     const P = RB.curvedBladePath(blade), th = Math.atan2(K.centres[1].y - D.y, K.centres[1].x - D.x);
     const s = { x: D.x + P.pts[0].x * Math.cos(th) - P.pts[0].y * Math.sin(th), y: D.y + P.pts[0].x * Math.sin(th) + P.pts[0].y * Math.cos(th) };
@@ -70,7 +70,7 @@ for (let studR = 3.0; studR <= 5.5 + 1e-9; studR += 0.25) for (let studAz = 0; s
     if (own < M) continue;
     cands.push(blade);
   }
-const key = (b) => `${b.studR}/${b.studAz}/${b.turn}/${b.span}/${b.tipR}`;
+const key = (b) => `${b.studR}/${b.studAz}/${b.turn}/${b.span}/${b.tipR === RB.BLADE_TIP_MIN_U ? 'min' : b.tipR}`;
 const judge = (blade) => {
   const U = foldWith(sense, blade);
   if (!U.feasible) return { ok: false, why: U.why };

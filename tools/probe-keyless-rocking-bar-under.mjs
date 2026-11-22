@@ -27,7 +27,7 @@ import { bootNative } from './native/host.mjs';
 const r = await bootNative({ query: '' });
 const C = r.clock, THREE = await import('three');
 const I = await import('../src/inspect.js');
-const { foldUnderPlate, underPlateMetal, UNDER_PLATE } = await import('../src/keyless-rocking-bar.js');
+const { foldUnderPlate, underPlateMetal, underPlateCurvedSpring, UNDER_PLATE } = await import('../src/keyless-rocking-bar.js');
 const { gearOuterR } = await import('../src/geometry.js');
 const { CLEAR_MARGIN: M, UNIT_MM, KW_MODULE, crownWheelTeeth, WIND_SPUR_TEETH } = await import('../src/layout.js');
 const { plateFaces } = await import('./plate-faces.mjs');
@@ -52,7 +52,7 @@ const fuseeTorque_Nmm = C.going?.energy?.windTorqueAtTransfer_Nmm ?? 1.760290574
 
 const meshes = []; C.scene.traverse((o) => { if (o.isMesh && !o.userData?.schematic && o.geometry?.attributes?.position) meshes.push(o); });
 const within = (o, names) => { for (let p = o; p; p = p.parent) if (names.includes(p.name)) return true; return false; };
-const REPLACED = ['transferArbor', 'transferWheel', 'backPlate', 'crownWheelArbor', 'kbDriver', 'kbCarried', 'kbFollower', 'kbBar', 'kbPin'];   // the bar's own metal, and what it replaced
+const REPLACED = ['transferArbor', 'transferWheel', 'backPlate', 'crownWheelArbor', 'kbDriver', 'kbCarried', 'kbFollower', 'kbBar', 'kbPin', 'kbBlade', 'kbBladeStud', 'kbBladePin', 'kbClip'];   // the bar's own metal, and what it replaced
 const nearest = (probe, excuse = []) => { const pb = new THREE.Box3().setFromObject(probe).expandByScalar(1.5); let best = { d: Infinity, n: '-' };
   for (const o of meshes) { if (within(o, REPLACED) || within(o, excuse)) continue; if (!new THREE.Box3().setFromObject(o).intersectsBox(pb)) continue;
     const d = I.meshClearance(probe, o, 1.5); if (d < best.d) best = { d, n: o.name || `(in ${o.parent?.name})` }; } return best; };
@@ -66,8 +66,11 @@ const circ = (c, rr, n = 24) => Array.from({ length: n }, (_, k) => [c.x + rr * 
 const tb = new THREE.Box3().setFromObject(TW);
 const twR = gearOuterR({ module: KW_MODULE, teeth: crownWheelTeeth, thickness: 0.725, mates: [{ teeth: WIND_SPUR_TEETH, mates: [crownWheelTeeth] }] });
 
-function fit(driverTeeth, carriedTeeth, side) {
-  const U = foldUnderPlate({ axisAt: axis, spurAt: spur, windSenseWorld: wind, driverTeeth, carriedTeeth, fuseeTorque_Nmm, side });
+// `blade`: null ranks a fit by the LINE's reference blade (landing 2's straight strip on the boss), which is how the
+// fold is chosen — the teeth first, then the spring placed for the bar they make (§334 landing 6: the curved blade's path
+// is placed on the declared bar, so ranking other bars by it would judge them with a spring nobody placed for them)
+function fit(driverTeeth, carriedTeeth, side, blade = null) {
+  const U = foldUnderPlate({ axisAt: axis, spurAt: spur, windSenseWorld: wind, driverTeeth, carriedTeeth, fuseeTorque_Nmm, side, blade });
   if (!U.feasible) return { U, rows: [], worst: -Infinity };
   const L = U.line, F = U.followerAt, rows = [];
   const K = underPlateMetal(U, PF.back), { zG0: zW0, zG1: zW1, zB0, zB1 } = K;   // the wheels' reach, their edge bevel included
@@ -84,6 +87,7 @@ function fit(driverTeeth, carriedTeeth, side) {
   rows.push(['carried wheel (whole swing)', w]);
   rows.push(['carried wheel pin (whole swing)', pinW]);
   rows.push(['bar plate (whole swing)', plW]);
+  if (blade) { const CL = underPlateCurvedSpring(U, PF.back, blade).clip; let lobeW = null; for (let k = 0; k <= 8; k++) { const phi = L.engaged.phi + (L.neutral.phi - L.engaged.phi) * k / 8, d = U.centresWorld(phi)[1], e = U.centresWorld(L.engaged.phi)[1], rot = Math.atan2(d.y - axis.y, d.x - axis.x) - Math.atan2(e.y - axis.y, e.x - axis.x); const lb = CL.lobe.map(([x, y]) => [axis.x + (x - axis.x) * Math.cos(rot) - (y - axis.y) * Math.sin(rot), axis.y + (x - axis.x) * Math.sin(rot) + (y - axis.y) * Math.cos(rot)]); const nn = nearest(prism(lb, zB0, zB1)); if (!lobeW || nn.d < lobeW.d) lobeW = nn; } rows.push(['bar boss lobe for the clip (whole swing)', lobeW]); }
   return { U, rows, worst: Math.min(...rows.map(([, n]) => n.d)) };
 }
 
@@ -99,14 +103,14 @@ const win = ok[0];
 row('U0', win && win.nD === UNDER_PLATE.driverTeeth && win.nc === UNDER_PLATE.carriedTeeth && UNDER_PLATE.side === 1,
   win ? `widest clear window ${win.nD}:${win.nc}:${win.nD} (q ${win.q.toFixed(3)}); declared ${UNDER_PLATE.driverTeeth}:${UNDER_PLATE.carriedTeeth}:${UNDER_PLATE.driverTeeth} side ${UNDER_PLATE.side}` : 'no candidate fits');
 
-const D = fit(UNDER_PLATE.driverTeeth, UNDER_PLATE.carriedTeeth, UNDER_PLATE.side), U = D.U, L = U.line;
+const D = fit(UNDER_PLATE.driverTeeth, UNDER_PLATE.carriedTeeth, UNDER_PLATE.side, UNDER_PLATE.blade), U = D.U, L = U.line;   // as built: the curved blade's line
 row('U1', U.feasible && L.inputs.followerTeeth === L.inputs.driverTeeth && L.chain.length === 3,
   `chain ${L.chain.join(':')}, ratio ${(L.inputs.driverTeeth / L.inputs.followerTeeth).toFixed(3)}, line sense ${L.inputs.windSense}`);
 const eS = Math.abs(Math.hypot(U.followerAt.x - spur.x, U.followerAt.y - spur.y) - Math.hypot(axis.x - spur.x, axis.y - spur.y));
 const eD = Math.abs(Math.hypot(U.followerAt.x - axis.x, U.followerAt.y - axis.y) - L.inputs.centreDistance_u);
 row('U2', eS < 1e-9 && eD < 1e-9, `follower at (${U.followerAt.x.toFixed(3)}, ${U.followerAt.y.toFixed(3)}), swung ${U.swingDeg.toFixed(2)}° round the spur; |F−S| err ${eS.toExponential(1)}, |F−D| err ${eD.toExponential(1)}`);
 for (const [w, n] of D.rows) console.log(`    ${w.padEnd(32)} ${n.d.toFixed(3)}  (${n.n})`);
-const ctl = fit(UNDER_PLATE.driverTeeth, UNDER_PLATE.carriedTeeth, -1);
+const ctl = fit(UNDER_PLATE.driverTeeth, UNDER_PLATE.carriedTeeth, -1, UNDER_PLATE.blade);
 row('U3', D.worst >= M && ctl.worst < M, `worst ${D.worst.toFixed(3)} ≥ ${M}; CONTROL side −1 worst ${ctl.worst.toFixed(3)} (${ctl.rows.find(([, n]) => n.d === ctl.worst)?.[1].n})`);
 const KS = underPlateMetal(U, PF.back);
 // U4 (landing 5a): the build placed exactly this plan
