@@ -69,7 +69,7 @@ function fit(driverTeeth, carriedTeeth, side) {
   const U = foldUnderPlate({ axisAt: axis, spurAt: spur, windSenseWorld: wind, driverTeeth, carriedTeeth, fuseeTorque_Nmm, side });
   if (!U.feasible) return { U, rows: [], worst: -Infinity };
   const L = U.line, F = U.followerAt, rows = [];
-  const K = underPlateMetal(U, PF.back), { zW0, zW1, zB0, zB1 } = K;
+  const K = underPlateMetal(U, PF.back), { zG0: zW0, zG1: zW1, zB0, zB1 } = K;   // the wheels' reach, their edge bevel included
   rows.push(['driver', nearest(disc(axis, L.reach[0], zW0, zW1))]);
   rows.push(['follower', nearest(disc(F, L.reach[2], zW0, zW1))]);
   rows.push(['follower arbor under the plate', nearest(disc(F, 0.7, zW0, PF.back))]);

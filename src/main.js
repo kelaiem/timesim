@@ -7142,6 +7142,7 @@ if (KB_BUILT) {
   keyless.add(kbPin);
   const barShape = new THREE.Shape(K.outline.map(([x, y]) => new THREE.Vector2(x, y)));
   const bore = new THREE.Path(); bore.absarc(K.bore.at.x, K.bore.at.y, K.bore.r, 0, 2 * Math.PI, true); barShape.holes.push(bore);
+  const pinHole = new THREE.Path(); pinHole.absarc(K.pin.at.x, K.pin.at.y, K.pin.r, 0, 2 * Math.PI, true); barShape.holes.push(pinHole);   // the pin is riveted in its own hole
   const barGeo = new THREE.ExtrudeGeometry(barShape, { depth: K.zB1 - K.zB0, bevelEnabled: false, curveSegments: 32 });
   barGeo.translate(0, 0, K.zB0);
   kbBar = new THREE.Mesh(barGeo, MATS.steel);
@@ -7479,6 +7480,7 @@ windSpinner.add(stem);
   bush.rotation.y = Math.PI / 2;
   bush.rotation.order = 'ZYX';
   bush.position.set(uWind.x * bushDist, uWind.y * bushDist, Z_KEYLESS);
+  bush.name = 'stemBush';   // §334 landing 5a: NAMED (TODO 136's rule) — the bar's six meshes renumbered the unit and stranded the rows that called it TorusGeometry#30
   keyless.add(bush);
   const footTop = -1.4; // 0.6 into the plate's back face (−2)
   const foot = new THREE.Mesh(
@@ -7489,6 +7491,7 @@ windSpinner.add(stem);
   // collars instead — measured, the outer collar clipped it at full pull.
   foot.rotation.z = stemAngle;
   foot.position.set(uWind.x * bushDist, uWind.y * bushDist, (footTop + Z_KEYLESS) / 2);
+  foot.name = 'stemBushFoot';   // §334 landing 5a: was BoxGeometry#31 by index
   keyless.add(foot);
   // Rule 6 — the boss's other wall: pushed outboard by the groove, the
   // whole foot must still stand ON the plate.
@@ -16833,6 +16836,16 @@ const maintDetent = new THREE.Group();
     return c;
   };
   const ARM_HALF = 0.55; // arm half-width + a working skin
+  const detPostLowGap = (x, y) => {   // XY distance from (x, y) to the low corridor's swept metal (circles and stadiums)
+    let g = Infinity;
+    for (const o of LOW_LINKAGE_OBSTACLES) {
+      if (o.ax === undefined) { g = Math.min(g, Math.hypot(x - o.x, y - o.y) - o.r); continue; }
+      const dx = o.bx - o.ax, dy = o.by - o.ay, L2 = dx * dx + dy * dy;
+      const t = L2 ? clamp(((x - o.ax) * dx + (y - o.ay) * dy) / L2, 0, 1) : 0;
+      g = Math.min(g, Math.hypot(x - o.ax - t * dx, y - o.ay - t * dy) - o.r);
+    }
+    return g;
+  };
   const prefer = uWindAngle + Math.PI / 4;
   let bestAz = null;
   for (let dDeg = 0; dDeg <= 180; dDeg += 5) {
@@ -16843,7 +16856,11 @@ const maintDetent = new THREE.Group();
       for (let r = pivR; r <= postR + POST_R; r += (postR - pivR) / 8) {
         c = Math.min(c, detClearAt(P.barrel.x + ux * r, P.barrel.y + uy * r));
       }
-      if (c >= CLEAR_MARGIN + ARM_HALF) { bestAz = azw; break; }
+      // Rule 5 — the POST stands from the plate up through the low corridor (the arm and the cock are above it), so it
+      // consumes LOW_LINKAGE_OBSTACLES, the band's one swept footprint. It never did: the transfer wheel used to veto
+      // every azimuth that reached the reset rod, and §334 landing 5a's move of that wheel to the bar's follower let
+      // the scan swing the post into the rod (inspection: Maintaining detent ⇄ Reset rod FORBIDDEN).
+      if (c >= CLEAR_MARGIN + ARM_HALF && detPostLowGap(P.barrel.x + ux * postR, P.barrel.y + uy * postR) - POST_FOOT_R >= CLEAR_MARGIN) { bestAz = azw; break; }
     }
     if (bestAz !== null) break;
   }

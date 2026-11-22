@@ -3724,7 +3724,7 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Keyless works', a: 'windingPinion', b: 'crownWheel', why: 'the winding corner\'s working mesh — a 20:8 bevel pair sharing the apex where the crown wheel\'s axis crosses the stem' },
   // 'CylinderGeometry#7' until TODO 50 named the stem's round journal (the
   // turned-part split — see the strike sleeve above for why that stales a row).
-  { unit: 'Keyless works', a: 'windStem', b: 'BoxGeometry#31', why: 'stem in its bushing block' },
+  { unit: 'Keyless works', a: 'windStem', b: 'stemBushFoot', why: 'stem in its bushing block' },
   // TODO 214 — the yoke spring is a grounded blade now, aimed each pose from its
   // stud to its tangent on the yoke's tail pin: its root is IN the stud.
   { unit: 'Keyless works', a: 'yokeSpring', b: 'yokeSpringPost', why: 'the yoke spring\'s blade anchored in its stud — the root of a grounded cantilever' },
@@ -3858,7 +3858,17 @@ export const INTRA_UNIT_CONTACTS = [
   // all five. Two of them turned out to describe one body twice: the crown
   // wheel's "companion" and the transfer wheel are the same blank, which is
   // exactly what an index label hides and a name does not.
-  { unit: 'Keyless works', a: 'crownWheel', b: 'transferArbor', why: '§47: the crown wheel keyed on its arbor — the arbor passes through the wheel it drives' },
+  { unit: 'Keyless works', a: 'crownWheel', b: 'crownWheelArbor', why: '§47: the crown wheel keyed on its arbor — the arbor passes through the wheel it drives (§334 landing 5a: its own arbor now, the transfer wheel on the follower\'s)' },
+  // §334 landing 5a — the rocking bar under the plate, its joints by construction: the driver keyed on the crown
+  // wheel's arbor, the bar's bore running on it, the carried wheel's pin riveted in the bar and the wheel running on
+  // it, the follower keyed on the transfer arbor, and the bar's two working meshes
+  { unit: 'Keyless works', a: 'kbDriver', b: 'crownWheelArbor', why: '§334 5a: the bar\'s driver keyed on the crown wheel\'s arbor' },
+  { unit: 'Keyless works', a: 'kbBar', b: 'crownWheelArbor', why: '§334 5a: the bar\'s bore on the crown wheel\'s arbor — the running fit it swings on' },
+  { unit: 'Keyless works', a: 'kbPin', b: 'kbBar', why: '§334 5a: the carried wheel\'s pin, riveted in its hole in the bar' },
+  { unit: 'Keyless works', a: 'kbCarried', b: 'kbPin', why: '§334 5a: the carried wheel\'s bore on its pin — the running fit' },
+  { unit: 'Keyless works', a: 'kbFollower', b: 'transferArbor', why: '§334 5a: the follower keyed on the transfer arbor, which carries the transfer wheel through the plate' },
+  { unit: 'Keyless works', a: 'kbDriver', b: 'kbCarried', why: '§334 5a: the bar\'s first working mesh, 9:11' },
+  { unit: 'Keyless works', a: 'kbCarried', b: 'kbFollower', why: '§334 5a: the bar\'s second working mesh, 11:9' },
   { unit: 'Keyless works', a: 'crownWheel', b: 'cwScrew', why: '§47: the same wheel seated on the blued screw below it — the axial seat that seats the wheel on its shoulder' },
   { unit: 'Keyless works', a: 'transferWheel', b: 'transferArbor', why: '§47: the TRANSFER wheel at the plate-top end of the same arbor — keyed to it, which is why tick() poses the two wheels from one angle' },
   { unit: 'Fusee & great wheel', a: 'maintPawl', b: 'maintPawlStud', why: '§47: each maintaining pawl on its own pivot stud — the pawl rides the stud it rocks about. Both pawls and both studs carry one name each, so this one row covers both stations (it was two rows by index, #15 and #17, until §329\'s stop-work pin shifted the indices and orphaned them)' },
@@ -5322,8 +5332,8 @@ export const PLATE_SEATS = [
   { unit: "Fusee cock", mesh: "bridgeFoot", kind: "fastened", why: "§336: the leg's foot flange, on the plate face (bored for the screw and the steady pins since landing 4)" },
   { unit: "Fusee cock", mesh: "screwShanks", kind: "fastened", why: "§336: the cock's foot screw, tapped through the plate" },
   { unit: "Fusee cock", mesh: "steadyPin", kind: "planted", why: "§336 landing 4 (TODO 286): the foot's two steady pins, pressed through the plate — they key the cock against its arm's twist" },
-  { unit: "Keyless works", mesh: "TorusGeometry#30", kind: "housed", why: "the crown stem's bushing, in the plate rim's notch (§186)" },
-  { unit: "Keyless works", mesh: "BoxGeometry#31", kind: "housed", why: "the crown-stem sleeve, standing in the plate rim's notch" },
+  { unit: "Keyless works", mesh: "stemBush", kind: "housed", why: "the crown stem's bushing, in the plate rim's notch (§186)" },
+  { unit: "Keyless works", mesh: "stemBushFoot", kind: "housed", why: "the crown-stem sleeve, standing in the plate rim's notch" },
   { unit: "Setting lever", mesh: "settingLeverPivot", kind: "pivot", why: "the lever's pivot, seated mid-plate (CylinderGeometry#8 until §343 named it: the index moved with the hack rod's own stud, #7 on a build whose lever carries none)" },
   { unit: "Yoke", mesh: "CylinderGeometry#4", kind: "pivot", why: "the yoke's pivot, seated mid-plate (#3 until TODO 214's tail pin)" },
   { unit: "Keyless works", mesh: "yokeSpringPost", kind: "planted", why: "TODO 214: the yoke spring's stud, planted in the plate's dial face" },
@@ -5400,7 +5410,8 @@ export const PLATE_SEATS = [
   // TODO 209 — two arrival "debt" rows that are bore fits, not clearances: each
   // shaft passes THROUGH the plate, and the reading is its radial gap to the
   // bore wall, a running fit (0.0497, 0.0998), not a part that should clear it.
-  { unit: "Keyless works", mesh: "transferArbor", kind: "pivot", why: "the transfer arbor, running through its plate bore from the crown wheel below to the transfer wheel above" },
+  { unit: "Keyless works", mesh: "transferArbor", kind: "pivot", why: "the transfer arbor, running through its plate bore from the crown wheel below to the transfer wheel above (§334 landing 5a: from the bar's follower below)" },
+  { unit: "Keyless works", mesh: "crownWheelArbor", kind: "pivot", why: "§334 landing 5a: the crown wheel's own arbor, its upper end running in the old transfer bore" },
   { unit: "Alarm winding train", mesh: "CylinderGeometry#0", kind: "pivot", why: "the climb arbor's rod, running through its plate bore (contrate below, pinion above)" },
   { unit: "Case", mesh: "caseMiddle", kind: "housed", why: SPEC.caseShape ? "TODO 300: the form case middle's fitted bore (SEAT_FIT off the plate's reach) and its ledge, which the plate's dial face bears on" : "the case middle's ledge, which the plate's rim sits on" },
   { unit: "Case", mesh: "caseClampScrew", kind: "fastened", why: SPEC.caseShape ? "TODO 300: the casing-clamp screws, threaded blind into the plate's edge" : "the clamp screws, through the rim's bores (§186)" },

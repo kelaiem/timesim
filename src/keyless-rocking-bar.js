@@ -51,7 +51,7 @@
 // stop is declared nowhere in the movement and is not priced. The clip's interference (about 6 µm a jaw) is reported,
 // not judged, for want of a tolerance to judge it by. Shock is not covered. The two search snippets that ground the
 // mechanism are quoted in TODO 318 and still owe a full read.
-import { gearToothSpec, gearOuterR } from './geometry.js';
+import { gearToothSpec, gearOuterR, gearBevel } from './geometry.js';
 import { KW_MODULE, crownWheelTeeth, windPinionTeeth, WIND_SPUR_TEETH, KW_WIND_IDLER_TEETH, CLEAR_MARGIN, UNIT_MM,
   FRICTION, STOCK, STOCK_MIN_U, SPRING_FLAT_U, SPRING_SIGMA_Y_PA, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, PIVOT_BORE_CLEAR } from './layout.js';
 
@@ -553,12 +553,15 @@ export const UNDER_PLATE = Object.freeze({ driverTeeth: 9, carriedTeeth: 11, sid
 // with D's bore cut out. The pin is the line's solved diameter, its wheel's bore the running fit over it.
 export function underPlateMetal(U, plateBackZ, { phi = null } = {}) {
   const L = U.line, M = CLEAR_MARGIN, stock = L.inputs.stock_u, mm = 1 / UNIT_MM;
-  const zW1 = plateBackZ - M, zW0 = zW1 - stock, zB1 = zW0 - M, zB0 = zB1 - stock;
+  // a cut wheel's edge bevel stands proud of its stock on both faces (gearBevel, the module-bound value at this
+  // stock), so the margins are taken from the bevel's reach, the winding band's own rule (Z_WIND_BOT)
+  const bev = gearBevel(L.inputs.module, stock, true);
+  const zW1 = plateBackZ - M - bev, zW0 = zW1 - stock, zB1 = zW0 - bev - M, zB0 = zB1 - stock;
   const P = U.centresWorld(phi === null ? L.engaged.phi : phi);
   const w = L.metal.w * mm, pinR = Math.max(STOCK_MIN_U, L.metal.pins[0].d_mm * mm / 2);
   const boreR = L.inputs.pivotR_u + PIVOT_BORE_CLEAR;
   const circ = (c, r, n = 32) => Array.from({ length: n }, (_, k) => [c.x + r * Math.cos(2 * Math.PI * k / n), c.y + r * Math.sin(2 * Math.PI * k / n)]);
   const outline = hull([...circ(P[0], L.inputs.pivotR_u + w), ...circ(P[1], pinR + w / 2 + PIVOT_BORE_CLEAR)]);
-  return { zW0, zW1, zB0, zB1, stock, centres: P, outline, bore: { at: P[0], r: boreR }, pin: { at: P[1], r: pinR, z0: zB0, z1: zW1 },
+  return { zW0, zW1, zB0, zB1, zG0: zW0 - bev, zG1: zW1 + bev, bevel: bev, stock, centres: P, outline, bore: { at: P[0], r: boreR }, pin: { at: P[1], r: pinR, z0: zB0, z1: zW1 },
     carriedBoreR: pinR + PIVOT_BORE_CLEAR };
 }
