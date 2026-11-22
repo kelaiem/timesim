@@ -3883,7 +3883,10 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Keyless works', a: 'kbCarried', b: 'kbFollower', why: '§334 5a: the bar\'s second working mesh, 11:9' },
   // §334 landing 5c — the bar's return blade: anchored in its stud and bearing on the bar's ear
   { unit: 'Keyless works', a: 'kbBlade', b: 'kbBladeStud', why: '§334 5c: the return blade anchored in its stud — the root of a grounded cantilever' },
-  { unit: 'Keyless works', a: 'kbBlade', b: 'kbBar', why: '§334 5c: the return blade\'s tip on the bar\'s ear, the spring\'s working contact' },
+  { unit: 'Keyless works', a: 'kbBlade', b: 'kbBladePin', why: '§334 landing 6: the curved return blade\'s end on the pin hanging from the bar\'s ear, the spring\'s working contact' },
+  { unit: 'Keyless works', a: 'kbBladePin', b: 'kbBar', why: '§334 landing 6: the blade\'s pin riveted through the bar\'s ear' },
+  { unit: 'Keyless works', a: 'kbClip', b: 'crownWheelArbor', why: '§334 landing 6: the friction clip\'s jaws on the crown wheel\'s arbor, the grip that carries the bar in' },
+  { unit: 'Keyless works', a: 'kbClip', b: 'kbBar', why: '§334 landing 6: each clip jaw rooted in its pocket\'s wall in the bar\'s boss' },
   { unit: 'Keyless works', a: 'crownWheel', b: 'cwScrew', why: '§47: the same wheel seated on the blued screw below it — the axial seat that seats the wheel on its shoulder' },
   { unit: 'Keyless works', a: 'transferWheel', b: 'transferArbor', why: '§47: the TRANSFER wheel at the plate-top end of the same arbor — keyed to it, which is why tick() poses the two wheels from one angle' },
   { unit: 'Fusee & great wheel', a: 'maintPawl', b: 'maintPawlStud', why: '§47: each maintaining pawl on its own pivot stud — the pawl rides the stud it rocks about. Both pawls and both studs carry one name each, so this one row covers both stations (it was two rows by index, #15 and #17, until §329\'s stop-work pin shifted the indices and orphaned them)' },
@@ -9587,6 +9590,8 @@ export const STOCK_KIND_BY_MESH = {
   yokeSpringPost: 'pivot',     // …and the stud it is anchored in (PIVOT_MIN_U)
   kbBlade: 'spring',           // §334 5c — the rocking bar's return blade, SPRING_FLAT_U in the direction it bends
   kbBladeStud: 'pivot',        // …and its stud (PIVOT_MIN_U)
+  kbClip: 'spring',            // §334 landing 6 — the friction clip's jaws, the line's section (SPRING_FLAT_U) in the direction they bend
+  kbBladePin: 'pivot',         // §334 landing 6 — the pin on the bar's ear the curved blade bears on (PIVOT_MIN_U)
   yokeTailPin: 'pivot',        // TODO 214 — the yoke's tail pin, the prong's own stock
   settingLeverBeakPin: 'pivot', // TODO 214 — the lever's beak pin, ⌀ 0.27 mm pin stock
   // §100 (TODO 39) — the going drum's FIXED arbor, now built where it is

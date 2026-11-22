@@ -22,6 +22,9 @@
 //       swing's in-mesh part), the blade takes it to its banking, and then the crown side stands
 //   R6  wind, let go for a minute, wind again: the teeth stay in phase through the second swing in
 //   R7  the Wind button draws the engagement over several frames at 60 fps (its POSED pacing, KB_ENGAGE_SHOW_S)
+//   R8  let go (nothing on the crown) and the bar springs out at once, drawn over the same pacing, the crown side
+//       turning back by the whole swing; a re-wind caught part-way in or out of mesh meets the teeth in phase.
+//       CONTROL: the crown held (dragged, still) keeps the bar in
 import { bootNative } from './native/host.mjs';
 
 const r = await bootNative({ query: '' });
@@ -114,6 +117,28 @@ row('R4', worstOff < 0.02 && worstD < 1e-6 && ctl !== null && ctl > 0.02,
   let part = 0, depth = null;
   for (let i = 0; i < 600 && depth === null; i++) { C.step(1 / 60); if (C.kbSwing > 0 && C.kbSwing < 1) part++; if (C.kbSwing === 1) depth = i; }
   row('R7', depth !== null && part >= 15, `the Wind button: the bar drawn part-way for ${part} frames, at depth on frame ${depth}`);
+}
+// R8 (landing 6): let go and the bar springs out at once, drawn over KB_ENGAGE_SHOW_S at 60 fps, the crown side turning
+// back by the whole swing; a re-wind that catches it part-way (in mesh, and out of mesh) still meets the teeth in phase.
+// CONTROL: held (the crown dragged, no input) the bar stays in
+{
+  const windTo1 = () => { let rr = C.crownRotation; for (let i = 0; i < 400 && C.kbSwing < 1; i++) { rr += sign * 0.05; C.setCrownRotation(rr); C.step(1 / 60); } return rr; };
+  C.resetInputs(); C.setCrownOut(false); C.setPose({ tension: 0.4, crownPullT: 0 }); C.runDown(300);
+  windTo1();
+  const side0 = C.barrelWindTurns + C.kbLead, bank0 = C.barrelWindTurns;
+  let frames = 0, outAt = null;
+  for (let i = 0; i < 120 && outAt === null; i++) { C.step(1 / 60); if (C.kbSwing > 0) frames++; else outAt = i; }
+  const fell = side0 - (C.barrelWindTurns + C.kbLead) - (bank0 - C.barrelWindTurns), want = C.kbSwingTurns;
+  // catches: part-way in mesh, then part-way out of mesh, each wound back to depth and measured
+  const catchAt = (target) => { windTo1(); while (C.kbSwing > target) C.step(1 / 60); let rr = C.crownRotation, worst = 0;
+    for (let i = 0; i < 400 && C.kbSwing < 1; i++) { rr += sign * 0.05; C.setCrownRotation(rr); C.step(1 / 60); }
+    for (let i = 0; i < 4; i++) { rr += sign * 0.05; C.setCrownRotation(rr); C.step(1 / 60); for (const st of SITES) { const m = C.measureMeshNow(st); worst = Math.max(worst, m.ok ? m.off : Infinity); } }
+    return worst; };
+  const wIn = catchAt((1 + C.kbTipS) / 2), wOut = catchAt(C.kbTipS / 2);
+  windTo1(); C.setCrownDragging?.(true); for (let i = 0; i < 60; i++) C.step(1 / 60); const heldSwing = C.kbSwing; C.setCrownDragging?.(false);
+  row('R8', outAt !== null && frames >= 15 && Math.abs(fell - want) < 1e-4 && wIn < 0.02 && wOut < 0.02 && (C.setCrownDragging ? heldSwing > 0.999 : true),   // the run-down's own creep over those frames (it carries the bar a hair out through the mesh, the crown side with the bank) is ~1e-5
+    `let go: the bar drawn out over ${frames} frames, at its banking on frame ${outAt}; the crown side fell ${fell.toFixed(6)} (the whole swing ${want.toFixed(6)}); `
+    + `caught in mesh and wound back ${(wIn * 100).toFixed(3)}%, caught out of mesh ${(wOut * 100).toFixed(3)}% of a pitch; CONTROL held: ${C.setCrownDragging ? `swing ${heldSwing}` : 'no hook'}`);
 }
 console.log(fails.length ? `FAIL ${fails.join(', ')}` : 'PASS all rows');
 process.exit(fails.length ? 1 : 0);
