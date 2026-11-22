@@ -49631,7 +49631,7 @@ function stemSlipLocal() { return windSign * -windStemSlip; }
 let setPathRot = 0;        // accumulated rotation actually delivered to the setting path
 let autoWindRemaining = 0; // radians left to auto-turn (Wind button)
 const AUTO_WIND_RATE = 48; // rad/s — the Wind button's auto-turn speed
-const KB_ENGAGE_SHOW_S = 0.3; // §334 5c — POSED: the Wind button draws the rocking bar's engagement over this long (a hand's drag in the probe took about this), so it is seen at real speed
+const KB_ENGAGE_SHOW_S = 0.3; // §334 5c — POSED: the Wind button draws the rocking bar's swing over this long (a hand's drag in the probe took about this), so it is seen at real speed
 
 // --- Alarm (BUILT §24) -----------------------------------------------------
 // THE REFERENCE is the Jaeger-LeCoultre Memovox (1950, cal. 489): a second
@@ -64483,11 +64483,11 @@ function tick(t) {
   const setEngaged = crownPullT > 0.5;
   if (autoWindRemaining > 0 && windEngaged) {
     // §334 5c — POSED DISPLAY PACING (the owner's ask): while the rocking bar is still engaging, the Wind button turns
-    // the crown no faster than draws the whole engagement — up to a tooth to find, then the swing — over
-    // KB_ENGAGE_SHOW_S. The real bar swings in milliseconds, and at AUTO_WIND_RATE the whole of it fell inside one
+    // the crown no faster than draws the bar's SWING over KB_ENGAGE_SHOW_S (the tooth it first turns to find, up to
+    // one follower tooth, goes at the same pace). The real bar swings in milliseconds, and at AUTO_WIND_RATE the whole of it fell inside one
     // frame. A hand on the crown is never paced: its own speed is what the drag delivers.
     const rate = KB_BUILT && kbSwing < 1
-      ? Math.min(AUTO_WIND_RATE, (KB_PITCH_TURNS + KB_PSI_N / KB_DRIVER_RAD_PER_TURN) * Math.abs(STEM_RAD_PER_TURN) / KB_ENGAGE_SHOW_S)
+      ? Math.min(AUTO_WIND_RATE, (KB_PSI_N / KB_DRIVER_RAD_PER_TURN) * Math.abs(STEM_RAD_PER_TURN) / KB_ENGAGE_SHOW_S)
       : AUTO_WIND_RATE;
     const step = Math.min(autoWindRemaining, rate * rawDt);
     crownRotation += step;

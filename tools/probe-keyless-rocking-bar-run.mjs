@@ -113,7 +113,7 @@ row('R4', worstOff < 0.02 && worstD < 1e-6 && ctl !== null && ctl > 0.02,
   C.pressWind();
   let part = 0, depth = null;
   for (let i = 0; i < 600 && depth === null; i++) { C.step(1 / 60); if (C.kbSwing > 0 && C.kbSwing < 1) part++; if (C.kbSwing === 1) depth = i; }
-  row('R7', depth !== null && part >= 8, `the Wind button: the bar drawn part-way for ${part} frames, at depth on frame ${depth}`);
+  row('R7', depth !== null && part >= 15, `the Wind button: the bar drawn part-way for ${part} frames, at depth on frame ${depth}`);
 }
 console.log(fails.length ? `FAIL ${fails.join(', ')}` : 'PASS all rows');
 process.exit(fails.length ? 1 : 0);
