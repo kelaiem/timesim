@@ -1996,6 +1996,54 @@
     </div>
   </details>
 
+  <!-- ===================== ROCKING BAR ===================== -->
+  <details class="mech" id="rocking-bar">
+    <summary>Rocking bar — why a fusee's crown has to let go<span class="where">interface · src/keyless-rocking-bar.js</span></summary>
+    <div class="mech-body">
+      <p><b>An ordinary hand-wound watch never needs one.</b> Its mainspring is coiled in a
+      drum, the barrel. The crown winds the spring's INNER end, through a ratchet wheel on the
+      barrel's centre arbor, and a click (a small spring pawl) stops that arbor turning back.
+      The spring's OUTER end turns the drum, and the drum drives the watch. Winding and running
+      happen at opposite ends of the spring, so while the watch runs the arbor stands still,
+      held by its click, and the crown geared to it stands still too.</p>
+      <p><b>A fusee watch winds and runs through the same part.</b> The spring's pull comes out
+      through the chain, which winds off the fusee cone (the entry above). The barrel's arbor is
+      set once and never turned again. You wind by turning the fusee BACKWARDS to haul the chain
+      back onto it, and while the watch runs the chain pulls the same fusee FORWARDS, and the
+      fusee drives the train. A crown geared solidly to it turns whenever the watch runs: before
+      this mechanism the movement's crown turned 4.2 times backwards over a full run-down
+      (<code>TODO 318</code>). With a key it never showed, because the key was taken away.</p>
+      <p><b>No one-way clutch can fix it.</b> The chain pulls the fusee the same way ALWAYS:
+      winding, the crown overpowers it; running, it wins. Only the motion reverses, never the
+      pull. A one-way part decides by the direction of the pull it carries, so wherever it sits
+      in the winding train it either carries the crown round while the watch runs, or will not
+      carry the winding at all. The stem's own saw coupling (the entry above) is exactly such a
+      one-way, and it carried the crown.</p>
+      <p><b>So the crown is disconnected.</b> Its last two winding wheels ride a ROCKING BAR, an
+      arm pivoted on the crown wheel's own arbor under the plate (<code>foldUnderPlate</code>).
+      The DRIVER on that arbor meshes a CARRIED wheel on the bar, which drops into the FOLLOWER
+      on the transfer wheel's arbor. A return blade holds the bar out, and a friction clip ties
+      it to the driver, so turning the crown first swings the bar in (the clip beats the blade)
+      and then winds. The crown side first turns to the tooth the carried wheel will meet, so
+      the teeth arrive in step, never tip on tip. Let go, and the blade swings the bar back out,
+      the crown turning back a little with it. While the watch runs the follower turns with the
+      fusee and the crown stands still.</p>
+      <p><b>The springs are metal.</b> The return blade is a CURVED strip in its own layer under
+      the bar (<code>underPlateCurvedSpring</code>): a long arc bends with a long arm, so it is
+      soft, and a soft blade lets the clip be gentle. Its stud was placed by a search over every
+      path and checked in every swept build arrangement, and one placement cleared them all. The
+      clip is ONE jaw on the arbor in a pocket of the bar's hub, with the bore's far wall as its
+      second jaw (<code>underPlateClip</code>): two opposite pockets would have grown the hub into
+      the winding stem, which passes just behind the arbor.</p>
+      <p><b>Open debt, stated.</b> The bar's swing is MODELLED, not simulated: its two ends are
+      the swing law's, because the BANKING (the stops at each end) is not cut yet, and nothing
+      steps the bar by force. Its drawn swing is posed over a fixed display time, where the real
+      one takes milliseconds. And the rocking bar was chosen on an argument and two search
+      snippets; a printed citation for how keyless fusees disengage is owed
+      (<code>TODO 318</code>).</p>
+    </div>
+  </details>
+
   <!-- ===================== COLUMN WHEEL ===================== -->
   <details class="mech" id="column-wheel">
     <summary>The column wheel — a rotary switch with teeth<span class="where">alarm · src/main.js §43, §25 D</span></summary>
