@@ -51,7 +51,7 @@
 // stop is declared nowhere in the movement and is not priced. The clip's interference (about 6 µm a jaw) is reported,
 // not judged, for want of a tolerance to judge it by. Shock is not covered. The two search snippets that ground the
 // mechanism are quoted in TODO 318 and still owe a full read.
-import { gearToothSpec, gearOuterR } from './geometry.js';
+import { gearToothSpec, gearOuterR, gearBevel } from './geometry.js';
 import { KW_MODULE, crownWheelTeeth, windPinionTeeth, WIND_SPUR_TEETH, KW_WIND_IDLER_TEETH, CLEAR_MARGIN, UNIT_MM,
   FRICTION, STOCK, STOCK_MIN_U, SPRING_FLAT_U, SPRING_SIGMA_Y_PA, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, PIVOT_BORE_CLEAR } from './layout.js';
 
@@ -526,7 +526,7 @@ export function foldRockingBar({ transferAt, spurAt, windSenseWorld, plateTopZ, 
 // The line is solved with nF = nD so the winding ratio is today's, and ONE carried wheel, so the two meshes keep the
 // driver and the follower turning the same way, which keeps the winding sense (the line's RB rules decide the rest).
 // Pure: no metal is cut here. Returns the follower's centre, the swing round the spur and the line it placed.
-export function foldUnderPlate({ axisAt, spurAt, windSenseWorld, driverTeeth, carriedTeeth, fuseeTorque_Nmm, side = 1, pivotR_u = 0.5 }) {
+export function foldUnderPlate({ axisAt, spurAt, windSenseWorld, driverTeeth, carriedTeeth, fuseeTorque_Nmm, side = 1, pivotR_u = ROCKING_BAR_INPUTS.pivotR_u.v }) {
   const L = solveRockingBar('one', { driverTeeth, followerTeeth: driverTeeth, carried: { one: [carriedTeeth], two: [12, 12] }, fuseeTorque_Nmm, pivotR_u });
   if (!L.feasible) return { feasible: false, why: `the line does not solve: ${L.why}` };
   const d = L.inputs.centreDistance_u, ex = axisAt.x - spurAt.x, ey = axisAt.y - spurAt.y, rS = Math.hypot(ex, ey);
@@ -545,3 +545,23 @@ export function foldUnderPlate({ axisAt, spurAt, windSenseWorld, driverTeeth, ca
 // fit whose every member stands CLEAR_MARGIN off the movement with the WIDEST spring window; side +1 is the crossing
 // of the spur's circle south of today's transfer (the other is the setting traverse's and the winding pinion's).
 export const UNDER_PLATE = Object.freeze({ driverTeeth: 9, carriedTeeth: 11, side: 1 });
+
+// THE UNDER-PLATE BAR'S METAL, one law for the build and its probe (§334 landing 5a). The stack hangs from the base
+// plate's back face: the bar's three wheels one CLEAR_MARGIN under it, cut from the winding band's stock, and the
+// bar's plate one margin under them. The plate is the hull of a boss round D (the bar's bore on the crown wheel's
+// arbor, its wall the solved width) and the carried wheel's pin boss (half the width, plus the pin's own radius),
+// with D's bore cut out. The pin is the line's solved diameter, its wheel's bore the running fit over it.
+export function underPlateMetal(U, plateBackZ, { phi = null } = {}) {
+  const L = U.line, M = CLEAR_MARGIN, stock = L.inputs.stock_u, mm = 1 / UNIT_MM;
+  // a cut wheel's edge bevel stands proud of its stock on both faces (gearBevel, the module-bound value at this
+  // stock), so the margins are taken from the bevel's reach, the winding band's own rule (Z_WIND_BOT)
+  const bev = gearBevel(L.inputs.module, stock, true);
+  const zW1 = plateBackZ - M - bev, zW0 = zW1 - stock, zB1 = zW0 - bev - M, zB0 = zB1 - stock;
+  const P = U.centresWorld(phi === null ? L.engaged.phi : phi);
+  const w = L.metal.w * mm, pinR = Math.max(STOCK_MIN_U, L.metal.pins[0].d_mm * mm / 2);
+  const boreR = L.inputs.pivotR_u + PIVOT_BORE_CLEAR;
+  const circ = (c, r, n = 32) => Array.from({ length: n }, (_, k) => [c.x + r * Math.cos(2 * Math.PI * k / n), c.y + r * Math.sin(2 * Math.PI * k / n)]);
+  const outline = hull([...circ(P[0], L.inputs.pivotR_u + w), ...circ(P[1], pinR + w / 2 + PIVOT_BORE_CLEAR)]);
+  return { zW0, zW1, zB0, zB1, zG0: zW0 - bev, zG1: zW1 + bev, bevel: bev, stock, centres: P, outline, bore: { at: P[0], r: boreR }, pin: { at: P[1], r: pinR, z0: zB0, z1: zW1 },
+    carriedBoreR: pinR + PIVOT_BORE_CLEAR };
+}

@@ -12,7 +12,8 @@ import { VALIDATED_CONFIGS } from './validated-configs.js';   // TODO 158: the c
 import { aesthetics, confirmAestheticsBoot, writeOverrides, clearOverrides, serializeOverrides, importAesthetics, IMPORT_OUTCOME, encodeShare, SHARE_PARAM, stripLinkParams, LINK_OUTCOME, LINK_DROPPED } from './aesthetics.js';
 import { loadState, saveState, clearState, hasState } from './state.js';
 import { isSoftwareRenderer, savedView } from './boot-view.js';   // the view a boot opens in — one law, read here and by the loading screen (index.html)
-import * as BD from './balance-drive.js';   // §246 tier two — the driven balance (pure; the live loop steps it)
+import * as BD from './balance-drive.js';
+import { foldUnderPlate, underPlateMetal, UNDER_PLATE, ROCKING_BAR_INPUTS } from './keyless-rocking-bar.js';   // §334 landing 5a: the winding coupling's rocking bar, under the plate   // §246 tier two — the driven balance (pure; the live loop steps it)
 // §73 tier one — the chrome's strings. UI_LANG resolves once at import
 // (?lang → localStorage → navigator.language → en); t() falls back to its
 // English input when an entry is missing, so a gap is visible, never blank.
@@ -4480,8 +4481,31 @@ const ALARM_LINK_ROD_R_SECTION = Math.max(STOCK_MIN_U, ALARM_LINK_ROD_LEN_U / (2
 const ALARM_LINK_ROD_BUSH_BORE = ALARM_LINK_ROD_R_SECTION + PIVOT_BORE_CLEAR;   // 0.647 — the running fit (was 0.35 at the bare 0.30 rod, §234 Landing 4)
 const ALARM_LINK_ROD_BUSH_OD = ALARM_LINK_ROD_BUSH_BORE + STOCK_MIN_U;         // 0.963 — a wall at the §50 floor
 const ALARM_LINK_ROD_PLATE_BORE_R = ALARM_LINK_ROD_BUSH_OD + 0.01;             // 0.973 — the hole both plates carry
+// §334 landing 5a — THE ROCKING BAR UNDER THE PLATE, a coupling of the keyless works (TODO 318: no one-way can keep
+// the crown still while the watch runs, so the winding wheels ride a bar that a spring swings out of mesh). The crown
+// wheel's arbor stops in the plate: its upper bearing is still this bore. The bar's DRIVER rides that arbor under the
+// plate, one carried wheel turns on a pin in the bar, and the FOLLOWER's arbor runs up through a new bore at the
+// follower's centre to carry the transfer wheel, which only swings round the spur at its own mesh distance (the
+// fold, `foldUnderPlate`; its choice 9:11:9 is `UNDER_PLATE`, re-derived by probe-keyless-rocking-bar-under.mjs).
+// nF = nD keeps the crown→fusee ratio, and two meshes keep the winding sense, so the transfer wheel's spin law is
+// today's. The fold reads the WORLD sense the crown wheel winds in, CROWN_RAD_PER_TURN's sign, which is what the
+// probe measures on the posed wheel. Landing 5a holds the bar ENGAGED (posed, the stand-in for landing 5b's spring
+// and carry), so the crown still turns while the watch runs, as before: TODO 318 stays open. Not built when the
+// stem's routing parks a winding idler (§33 step 2): that routing keeps the direct transfer.
+const KB_FUSEE_TORQUE_NMM = ROCKING_BAR_INPUTS.fuseeTorque_Nmm.v * crownWheelTeeth / WIND_SPUR_TEETH;   // the transfer's share: one mesh down from the fusee
+const kbFoldFor = (kw, barrel) => foldUnderPlate({ axisAt: { x: kw.uWind.x * kw.cwDist, y: kw.uWind.y * kw.cwDist }, spurAt: barrel,
+  windSenseWorld: Math.sign(CROWN_RAD_PER_TURN), driverTeeth: UNDER_PLATE.driverTeeth, carriedTeeth: UNDER_PLATE.carriedTeeth,
+  fuseeTorque_Nmm: KB_FUSEE_TORQUE_NMM, side: UNDER_PLATE.side });
+const KB = windIdler ? null : kbFoldFor({ uWind, cwDist }, P.barrel);
+if (KB && !KB.feasible) console.warn(`§334 landing 5a: the under-plate bar does not fold: ${KB.why} — the transfer stays coaxial with the crown wheel`);
+const KB_BUILT = !!(KB && KB.feasible);
+// the transfer wheel's centre, for every reader of it: the follower's when the bar is built, the crown wheel's when not
+const transferAtFor = (kw, barrel) => { if (kw.windIdler) return { x: kw.uWind.x * kw.cwDist, y: kw.uWind.y * kw.cwDist };
+  const f = kbFoldFor(kw, barrel); return f.feasible ? f.followerAt : { x: kw.uWind.x * kw.cwDist, y: kw.uWind.y * kw.cwDist }; };
+const TRANSFER_XY = KB_BUILT ? KB.followerAt : { x: uWind.x * cwDist, y: uWind.y * cwDist };
 const BACK_PLATE_HOLES = [
   { x: uWind.x * cwDist, y: uWind.y * cwDist, r: 0.7 + 0.05 },
+  ...(KB_BUILT ? [{ x: TRANSFER_XY.x, y: TRANSFER_XY.y, r: 0.7 + 0.05 }] : []),   // §334 landing 5a: the follower arbor's bearing, the transfer wheel's own bore's idiom
   ...(windIdler ? [{ x: windIdler.x, y: windIdler.y, r: 0.7 + 0.05 }] : []), // §33 step 2 — the winding idler's arbor bore, only when the spec parks one
   // TODO 150 item 1 — the bare 1.95 that stood here is gone; the drop
   // corner's own recess is MW_DROP_PLATE_HOLE, sized off the cut blank
@@ -7066,7 +7090,7 @@ const transferWheel = G.makeGear({ name: 'transferWheel', module: KW_MODULE, tee
 // the table's own comments have called that the stale-row trap three times now,
 // so the answer is the one they keep recommending rather than new indices.
 transferWheel.traverse((o) => { if (o.isMesh) o.name = 'transferWheel'; });
-transferWheel.position.set(uWind.x * cwDist, uWind.y * cwDist, Z_TRANSFER);
+transferWheel.position.set(TRANSFER_XY.x, TRANSFER_XY.y, Z_TRANSFER);
 keyless.add(transferWheel);
 // TODO 132 — the transfer wheel's index ON ITS ARBOR, and the only freedom the
 // keyless winding mesh has. Crown wheel and transfer wheel are one rigid body
@@ -7080,12 +7104,51 @@ let transferWheelClock = 0;
 // keyless plane: the wheel hangs below the corner's apex, so the arbor that
 // keys it has to get there.
 const _cwArborLo = Z_KEYLESS - KW_SPEC.crownWheel.zWebHi;
+// §334 landing 5a — with the bar built the transfer arbor is the FOLLOWER's: from the follower's lower face up through
+// its bore to the transfer wheel. The crown wheel keeps its own arbor, from its web up to the plate's top face, the
+// old bore its upper bearing, the bar's driver keyed on it and the bar pivoted on it under the plate.
+const KB_METAL = KB_BUILT ? underPlateMetal(KB, -BACK_PLATE_T) : null;
+const _trArborLo = KB_BUILT ? KB_METAL.zW0 : _cwArborLo;
 const transferArbor = new THREE.Mesh(
-  new THREE.CylinderGeometry(0.7, 0.7, Z_TRANSFER - _cwArborLo, 14), MATS.steel);
+  new THREE.CylinderGeometry(0.7, 0.7, Z_TRANSFER - _trArborLo, 14), MATS.steel);
 transferArbor.name = 'transferArbor';
 transferArbor.rotation.x = Math.PI / 2;
-transferArbor.position.set(uWind.x * cwDist, uWind.y * cwDist, (Z_TRANSFER + _cwArborLo) / 2);
+transferArbor.position.set(TRANSFER_XY.x, TRANSFER_XY.y, (Z_TRANSFER + _trArborLo) / 2);
 keyless.add(transferArbor);
+let crownWheelArbor = null, kbDriver = null, kbCarried = null, kbFollower = null, kbBar = null, kbPin = null;
+let kbDriverClock = 0, kbCarriedClock = 0, kbFollowerClock = 0;   // TODO 132's free indices, solved with the keyless meshes
+if (KB_BUILT) {
+  const D0 = { x: uWind.x * cwDist, y: uWind.y * cwDist }, K = KB_METAL, zW = (K.zW0 + K.zW1) / 2;
+  crownWheelArbor = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, PLATE_TOP - _cwArborLo, 14), MATS.steel);
+  crownWheelArbor.name = 'crownWheelArbor';
+  crownWheelArbor.rotation.x = Math.PI / 2;
+  crownWheelArbor.position.set(D0.x, D0.y, (PLATE_TOP + _cwArborLo) / 2);
+  keyless.add(crownWheelArbor);
+  const nD = UNDER_PLATE.driverTeeth, nC = UNDER_PLATE.carriedTeeth;
+  const spurOf = (name, teeth, mates, boreR, at) => {
+    const g = G.makeGear({ name, module: KW_MODULE, teeth, mates, thickness: K.stock, boreR, spokes: 0, material: MATS.steel, hub: false });
+    g.traverse((o) => { if (o.isMesh) o.name = name; });
+    g.position.set(at.x, at.y, zW);
+    keyless.add(g);
+    return g;
+  };
+  kbDriver = spurOf('kbDriver', nD, [{ teeth: nC, mates: [nD] }], 0.7, D0);
+  kbCarried = spurOf('kbCarried', nC, [{ teeth: nD, mates: [nC] }, { teeth: nD, mates: [nC] }], K.carriedBoreR, K.centres[1]);
+  kbFollower = spurOf('kbFollower', nD, [{ teeth: nC, mates: [nD] }], 0.7, TRANSFER_XY);
+  kbPin = new THREE.Mesh(new THREE.CylinderGeometry(K.pin.r, K.pin.r, K.pin.z1 - K.pin.z0, 14), MATS.steel);
+  kbPin.name = 'kbPin';
+  kbPin.rotation.x = Math.PI / 2;
+  kbPin.position.set(K.pin.at.x, K.pin.at.y, (K.pin.z0 + K.pin.z1) / 2);
+  keyless.add(kbPin);
+  const barShape = new THREE.Shape(K.outline.map(([x, y]) => new THREE.Vector2(x, y)));
+  const bore = new THREE.Path(); bore.absarc(K.bore.at.x, K.bore.at.y, K.bore.r, 0, 2 * Math.PI, true); barShape.holes.push(bore);
+  const pinHole = new THREE.Path(); pinHole.absarc(K.pin.at.x, K.pin.at.y, K.pin.r, 0, 2 * Math.PI, true); barShape.holes.push(pinHole);   // the pin is riveted in its own hole
+  const barGeo = new THREE.ExtrudeGeometry(barShape, { depth: K.zB1 - K.zB0, bevelEnabled: false, curveSegments: 32 });
+  barGeo.translate(0, 0, K.zB0);
+  kbBar = new THREE.Mesh(barGeo, MATS.steel);
+  kbBar.name = 'kbBar';
+  keyless.add(kbBar);
+}
 // §33 step 2 — THE WINDING IDLER, built only when the spec'd stem parks
 // one (solveKeyless returns its solved two-circle position). It bridges
 // the transfer wheel to the fusee spur in the SAME thin band the transfer
@@ -7417,6 +7480,7 @@ windSpinner.add(stem);
   bush.rotation.y = Math.PI / 2;
   bush.rotation.order = 'ZYX';
   bush.position.set(uWind.x * bushDist, uWind.y * bushDist, Z_KEYLESS);
+  bush.name = 'stemBush';   // §334 landing 5a: NAMED (TODO 136's rule) — the bar's six meshes renumbered the unit and stranded the rows that called it TorusGeometry#30
   keyless.add(bush);
   const footTop = -1.4; // 0.6 into the plate's back face (−2)
   const foot = new THREE.Mesh(
@@ -7427,6 +7491,7 @@ windSpinner.add(stem);
   // collars instead — measured, the outer collar clipped it at full pull.
   foot.rotation.z = stemAngle;
   foot.position.set(uWind.x * bushDist, uWind.y * bushDist, (footTop + Z_KEYLESS) / 2);
+  foot.name = 'stemBushFoot';   // §334 landing 5a: was BoxGeometry#31 by index
   keyless.add(foot);
   // Rule 6 — the boss's other wall: pushed outboard by the groove, the
   // whole foot must still stand ON the plate.
@@ -10934,6 +10999,14 @@ let SETTING_CAP_PHASE =
 registerSub('Keyless works', 'Crown wheel', crownWheel);
 registerSub('Keyless works', 'Transfer wheel', transferWheel);
 registerSub('Keyless works', 'Transfer arbor', transferArbor);
+if (KB_BUILT) {   // §334 landing 5a
+  registerSub('Keyless works', 'Crown wheel arbor', crownWheelArbor);
+  registerSub('Keyless works', 'Rocking bar', kbBar);
+  registerSub('Keyless works', 'Rocking bar', kbPin);
+  registerSub('Keyless works', 'Rocking bar', kbCarried);
+  registerSub('Keyless works', 'Bar driver', kbDriver);
+  registerSub('Keyless works', 'Bar follower', kbFollower);
+}
 registerSub('Keyless works', 'Crown-wheel screw', cwScrew);
 registerSub('Keyless works', 'Winding pinion', windPinionGroup);
 registerSub('Keyless works', 'Winding stem', windSpinner, { tickOwned: true });
@@ -12038,7 +12111,7 @@ hammerGroup.add(hammerTailBar);
 // moves their station; only the centre travels.
 const CORRIDOR_Z_BOT = Math.min(ROD_PLANE_Z, ROD2_PLANE_Z) - LINK_T / 2;
 const TRANSFER_SWEPT_R = xyRadiusAbout(transferWheel,
-  { x: uWind.x * cwDist, y: uWind.y * cwDist }, GW_UNDER_Z, CORRIDOR_Z_BOT);
+  TRANSFER_XY, GW_UNDER_Z, CORRIDOR_Z_BOT);
 const WIND_SPUR_SWEPT_R = xyRadiusAbout(windSpur, P.barrel, GW_UNDER_Z, CORRIDOR_Z_BOT);
 // §234 — THE THIRD ARBOR, the corridor's missing wall. Its lower staff runs
 // from the pinion down through the band to the base plate's jewel (r 0.5),
@@ -12053,7 +12126,7 @@ const FORK_LEG_SWEPT_R = xyRadiusAbout(forkCock.obj, forkCock.legB, GW_UNDER_Z, 
 // argument rather than a shared constant, so the reset solve, the stop-work
 // solve and the §86 envelope check (at 0) each say which blank they price.
 const lowRodObstaclesFor = (p, kw, halfW) => [
-  { x: kw.uWind.x * kw.cwDist, y: kw.uWind.y * kw.cwDist, r: TRANSFER_SWEPT_R + halfW + CLEAR_MARGIN, what: 'the transfer wheel', of: () => transferWheel },
+  { ...transferAtFor(kw, p.barrel), r: TRANSFER_SWEPT_R + halfW + CLEAR_MARGIN, what: 'the transfer wheel', of: () => transferWheel },   // §334 landing 5a: the follower's centre, by the build's own fold
   { x: p.barrel.x, y: p.barrel.y, r: WIND_SPUR_SWEPT_R + halfW + CLEAR_MARGIN, what: 'the winding spur', of: () => windSpur },
   { x: p.center.x, y: p.center.y, r: 1.4 * 1.7 + halfW + CLEAR_MARGIN, what: 'the centre arbor’s lower collar', of: () => centerArbor },
   { x: p.fourth.x, y: p.fourth.y, r: 1.4 * 1.7 + halfW + CLEAR_MARGIN, what: 'the fourth arbor’s lower collar', of: () => fourthArbor },
@@ -12082,7 +12155,7 @@ const lowRodObstaclesFor = (p, kw, halfW) => [
 ];
 // The keyless radii the corridor reads, captured like the solver's own
 // inputs — the stem handle re-solves these, the train handles do not.
-const LOW_ROD_KEYLESS = { uWind, cwDist, crownWheelR, windSpurR };
+const LOW_ROD_KEYLESS = { uWind, cwDist, crownWheelR, windSpurR, windIdler };
 // §234 — the reset link is cut from the pair's one blank, and its corridor is
 // priced at that half-width.
 const RESET_LINK_W = LINK_W;
@@ -16747,7 +16820,7 @@ const maintDetent = new THREE.Group();
   // keyless parts in the cock's z-reach are the transfer wheel + arbor —
   // an analytic circle on the stem ray.
   const detObstacles = [drumGroup, centerArbor, thirdArbor, fourthArbor, escapeArbor, forkGroup];
-  const transferXY = { x: uWind.x * cwDist, y: uWind.y * cwDist, r: crownWheelR + 0.7 };
+  const transferXY = { ...TRANSFER_XY, r: crownWheelR + 0.7 };   // §334 landing 5a: the transfer wheel stands at the follower
   const detClearAt = (x, y) => {
     let c = plateR - 1.5 - Math.hypot(x, y); // stay well inside the plate rim
     for (const o of detObstacles) {
@@ -16763,6 +16836,16 @@ const maintDetent = new THREE.Group();
     return c;
   };
   const ARM_HALF = 0.55; // arm half-width + a working skin
+  const detPostLowGap = (x, y) => {   // XY distance from (x, y) to the low corridor's swept metal (circles and stadiums)
+    let g = Infinity;
+    for (const o of LOW_LINKAGE_OBSTACLES) {
+      if (o.ax === undefined) { g = Math.min(g, Math.hypot(x - o.x, y - o.y) - o.r); continue; }
+      const dx = o.bx - o.ax, dy = o.by - o.ay, L2 = dx * dx + dy * dy;
+      const t = L2 ? clamp(((x - o.ax) * dx + (y - o.ay) * dy) / L2, 0, 1) : 0;
+      g = Math.min(g, Math.hypot(x - o.ax - t * dx, y - o.ay - t * dy) - o.r);
+    }
+    return g;
+  };
   const prefer = uWindAngle + Math.PI / 4;
   let bestAz = null;
   for (let dDeg = 0; dDeg <= 180; dDeg += 5) {
@@ -16773,7 +16856,11 @@ const maintDetent = new THREE.Group();
       for (let r = pivR; r <= postR + POST_R; r += (postR - pivR) / 8) {
         c = Math.min(c, detClearAt(P.barrel.x + ux * r, P.barrel.y + uy * r));
       }
-      if (c >= CLEAR_MARGIN + ARM_HALF) { bestAz = azw; break; }
+      // Rule 5 — the POST stands from the plate up through the low corridor (the arm and the cock are above it), so it
+      // consumes LOW_LINKAGE_OBSTACLES, the band's one swept footprint. It never did: the transfer wheel used to veto
+      // every azimuth that reached the reset rod, and §334 landing 5a's move of that wheel to the bar's follower let
+      // the scan swing the post into the rod (inspection: Maintaining detent ⇄ Reset rod FORBIDDEN).
+      if (c >= CLEAR_MARGIN + ARM_HALF && detPostLowGap(P.barrel.x + ux * postR, P.barrel.y + uy * postR) - POST_FOOT_R >= CLEAR_MARGIN) { bestAz = azw; break; }
     }
     if (bestAz !== null) break;
   }
@@ -25968,7 +26055,7 @@ await (async () => {
   await breathe(187);
   {
     const keylessRest = [settingWheel, minuteArbor, windSpur, crownWheel, transferWheel,
-      ...(windIdlerWheel ? [windIdlerWheel] : [])].map((o) => [o, o.rotation.z]);
+      ...(windIdlerWheel ? [windIdlerWheel] : []), ...(KB_BUILT ? [kbDriver, kbCarried, kbFollower] : [])].map((o) => [o, o.rotation.z]);
     settingWheel.rotation.z = settingWheelBase;                 // settingWheelSpin = 0 at rest
     settingBevel.rotation.z = settingBevelBase;                 // …and its bevel half, same arbor
     minuteArbor.rotation.z = minuteWheelBase;                   // the knob, solved just below
@@ -25976,6 +26063,7 @@ await (async () => {
     crownWheel.rotation.z = crownWheelBase;                     // crownWheelSpin = 0 with it
     transferWheel.rotation.z = transferWheelClock;               // …and the arbor's world angle is 0 there (TODO 136: the wheel's own base is LOCAL to its flipped mount)
     if (windIdlerWheel) windIdlerWheel.rotation.z = windIdlerClock;
+    if (KB_BUILT) { kbDriver.rotation.z = kbDriverClock; kbCarried.rotation.z = kbCarriedClock; kbFollower.rotation.z = kbFollowerClock; }   // crownWheelSpin = 0 here
     // The SETTING mesh. The setting wheel is the datum: its own teeth answer
     // to the sliding clutch, whose axis lies along the stem — a crossed-axis
     // mesh no parallel-axis solve can phase — so the one freedom here is the
@@ -26001,6 +26089,18 @@ await (async () => {
     await breathe(191);
     if (windIdlerWheel) windIdlerClock = windIdlerWheel.rotation.z;   // the arbor's world angle is 0 at this pose
     transferWheelClock = transferWheel.rotation.z;
+    // §334 landing 5a — THE BAR'S MESHES, driver → carried → follower, the driver the datum (its index on the crown
+    // wheel's arbor is the free one; the crown wheel's own mesh is crossed-axis). The transfer wheel was phased to the
+    // spur above, on the follower's arbor at its own free index, so the two chains share no member.
+    if (KB_BUILT) {
+      await breathe(390);
+      solveGearChain('keyless:', [
+        { obj: kbDriver, teeth: UNDER_PLATE.driverTeeth, name: 'bar driver' },
+        { obj: kbCarried, teeth: UNDER_PLATE.carriedTeeth, name: 'bar carried wheel' },
+        { obj: kbFollower, teeth: UNDER_PLATE.driverTeeth, name: 'bar follower' },
+      ], KW_MODULE, ['wind', 'reserve']);
+      kbDriverClock = kbDriver.rotation.z; kbCarriedClock = kbCarried.rotation.z; kbFollowerClock = kbFollower.rotation.z;
+    }
     // TODO 151's (d) landing — THE SETTING FOLD's own mesh, cap ⇄ minute
     // wheel, solved the same way every other declared mesh in this movement
     // is: `mwArbor` posed to tick's own rest value at tau 0, handSetOffset 0
@@ -60577,7 +60677,7 @@ function reconfShadowSolve(overrides) {
 // approximation — it is a different watch, and an OPTIMISTIC one.
 const keylessKwOf = (kl) => ({
   postEng: kl.postEng, postRel: kl.postRel, tailPostWorldAt: kl.tailPostWorldAt,
-  plateR: kl.plateR, uWind: kl.uWind, cwDist: kl.cwDist,
+  plateR: kl.plateR, uWind: kl.uWind, cwDist: kl.cwDist, windIdler: kl.windIdler ?? null,   // §334 5a: the routing decides whether the bar folds
   crownWheelR: kl.crownWheelR, windSpurR: kl.windSpurR,
   // §87: the pin is a fraction of the TAIL ARM, so the shadow needs the
   // candidate's lever pivot to place it — the arm is what moved.
@@ -64828,6 +64928,11 @@ function tick(t) {
   // exactly what would leave the transfer wheel counter-rotating in silence.
   crownWheel.rotation.z = crownWheelBase - crownWheelSpin;
   transferWheel.rotation.z = crownWheelSpin + transferWheelClock; // keyed to the same arbor, at the index the spur mesh was solved to (TODO 132)
+  if (KB_BUILT) {   // §334 landing 5a — the bar's wheels: two meshes from the crown wheel's arbor to the follower's, 9:9 (the follower turns with the driver)
+    kbDriver.rotation.z = kbDriverClock + crownWheelSpin;
+    kbCarried.rotation.z = kbCarriedClock - crownWheelSpin * (UNDER_PLATE.driverTeeth / UNDER_PLATE.carriedTeeth);
+    kbFollower.rotation.z = kbFollowerClock + crownWheelSpin;
+  }
   if (windIdlerWheel) windIdlerWheel.rotation.z = windIdlerClock - crownWheelSpin * (crownWheelTeeth / windIdler.teeth); // §33 step 2 — one mesh, negated, counts dropping out downstream; TODO 132 phases it
   {
     // Winding spur, let-down square and fusee cone are keyed together;
