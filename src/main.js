@@ -991,6 +991,7 @@ function transferAudit() {
 // under the other, and a combined sweep hides exactly that. TODO 117 is that
 // case, and it was invisible until each input was walked separately.
 const declaredMeshes = new Map();      // site -> row
+const MESH_ENGAGED_BY = { kbSwing: () => kbSwing === 1 };   // §334 5b: the states a conditional mesh may name
 function declareMesh(site, row) {
   if (declaredMeshes.has(site)) { console.warn(`§194: mesh '${site}' declared twice`); return; }
   if (!row.a || !row.b) { console.warn(`§194: mesh '${site}' names no member pair`); return; }
@@ -1072,8 +1073,12 @@ function measureMeshNow(site, inject = 0) {
   // disagrees with the declared tooth count, or whose folded resultant is
   // weak, is not a measurement of anything. Reported, never silently used.
   const credible = mA.gaps === uA.teeth && mB.gaps === uB.teeth && mA.conf >= 0.9 && mB.conf >= 0.9;
+  // §334 landing 5b — a mesh that holds only in one state (the rocking bar's carried wheel ⇄ follower, in mesh only
+  // with the bar in) names that state, and a pose outside it is reported NOT ENGAGED rather than as a phase: the
+  // checks judge the mesh where it meshes, and a row never engaged over their net fails as untestable.
+  const engaged = !row.engagedBy || (MESH_ENGAGED_BY[row.engagedBy] ? MESH_ENGAGED_BY[row.engagedBy]() : false);
   return {
-    ok: true, site, a: row.a, b: row.b, off, credible,
+    ok: true, site, a: row.a, b: row.b, off, credible, engaged,
     gaugeA: { gaps: mA.gaps, conf: mA.conf, teeth: uA.teeth },
     gaugeB: { gaps: mB.gaps, conf: mB.conf, teeth: uB.teeth },
     // Two gears can only mesh if they share a module, so a disagreement is a
@@ -26109,11 +26114,16 @@ await (async () => {
     // spur above, on the follower's arbor at its own free index, so the two chains share no member.
     if (KB_BUILT) {
       await breathe(390);
+      // §334 5b — both meshes are driven only by WINDING: running down, the bar is out and the crown side stands. The
+      // second holds only with the bar in, and says so.
       solveGearChain('keyless:', [
         { obj: kbDriver, teeth: UNDER_PLATE.driverTeeth, name: 'bar driver' },
         { obj: kbCarried, teeth: UNDER_PLATE.carriedTeeth, name: 'bar carried wheel' },
         { obj: kbFollower, teeth: UNDER_PLATE.driverTeeth, name: 'bar follower' },
-      ], KW_MODULE, ['wind', 'reserve']);
+      ], KW_MODULE, ['wind']);
+      const second = declaredMeshes.get('keyless bar carried wheel ⇄ bar follower');
+      if (second) second.engagedBy = 'kbSwing';
+      else console.warn('§334 5b: the bar\'s second mesh was not declared — no row to mark conditional');
       kbDriverClock = kbDriver.rotation.z; kbCarriedClock = kbCarried.rotation.z; kbFollowerClock = kbFollower.rotation.z;
     }
     // TODO 151's (d) landing — THE SETTING FOLD's own mesh, cap ⇄ minute
@@ -68267,6 +68277,7 @@ window.__clock = {
   get kbLead() { return kbLead; },
   get kbSwing() { return kbSwing; },
   get kbPitchTurns() { return KB_PITCH_TURNS; },
+  get reserveBarrelTurns() { return RESERVE_BARREL_TURNS; },
   get simTime() { return simTime; },
   get tau() { return tauIntegrated; },
   // What the HANDS read, in seconds (τ displaced by the setting offset and
