@@ -666,3 +666,23 @@ function starUnion(o, polys, n) {
   }
   return out;
 }
+
+// A CURVED CANTILEVER's rate at its tip (§334 landing 6): a blade of section b × h (h the thickness it bends through)
+// along the polyline `path` (mm, root first, tip last), loaded at the tip by a force along `dir` (unit). Castigliano:
+// the tip's deflection along dir is ∫ M(s)² / (E I) ds / F with M(s) = F·|(p(s) − tip) × dir|, the arm of the tip
+// force about each section, so the rate is F/δ. A straight blade loaded square to its length reads 3EI/L³ (the control
+// the probe holds it to). Returns the rate (N/mm) and the largest arm (mm), which sets the root stress 6·F·arm/(b h²).
+export function curvedBladeRate(path, dir, b_mm, h_mm, E_MPa = MAINSPRING_E_PA / 1e6) {
+  const I = b_mm * Math.pow(h_mm, 3) / 12, tip = path[path.length - 1];
+  let integral = 0, armMax = 0;
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i - 1], c = path[i], n = 24;
+    const L = Math.hypot(c.x - a.x, c.y - a.y);
+    for (let k = 0; k < n; k++) {
+      const t = (k + 0.5) / n, x = a.x + (c.x - a.x) * t, y = a.y + (c.y - a.y) * t;
+      const arm = Math.abs((x - tip.x) * dir.y - (y - tip.y) * dir.x);
+      integral += arm * arm * (L / n); armMax = Math.max(armMax, arm);
+    }
+  }
+  return { k_Npmm: E_MPa * I / integral, armMax_mm: armMax, length_mm: path.slice(1).reduce((s, p, i) => s + Math.hypot(p.x - path[i].x, p.y - path[i].y), 0) };
+}
