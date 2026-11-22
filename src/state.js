@@ -50,6 +50,9 @@ const defaultState = {
   // save without this field re-derives the knob's datum and SNAPS it to
   // the coupling's pitch (see the restore in main.js).
   windStemSlip: 0,
+  // §334 landing 5b: the crown side's lead over the spur side, in barrel turns — the run-down the crown did NOT
+  // follow while the rocking bar was out. Persisted: it is where the crown stands, and no pose re-derives it.
+  kbLead: 0,
   // The jumper's folded snap correction. crownRotation alone restores the
   // RAW setting input; without this the quantized part of it is lost and a
   // reload moves the hands by up to half a minute (and un-syncs a clock that
@@ -97,6 +100,7 @@ function sanitize(state) {
     tauIntegrated: state.tauIntegrated,
     crownRotation: state.crownRotation,
     windStemSlip: state.windStemSlip,   // TODO 50: the clutch's parked index — must round-trip
+    kbLead: state.kbLead,               // §334 landing 5b: where the crown side stands against the spur side
 
     jumpCorr: state.jumpCorr,
     crownOut: state.crownOut,
