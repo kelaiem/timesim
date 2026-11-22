@@ -49617,6 +49617,7 @@ let windStemSlip = 0;      // stem rotation not delivered to the winding wheel (
 // milliseconds against a frame, and no rate is posed for it).
 let kbLead = 0;
 let kbSwing = 0;
+let kbOwed = 0;   // §334 landing 6: crown-side turns the hand-free release took back IN MESH (the follower held), retraced first by a re-wind
 let kbWinding = false;   // §334 5c: this tick's crown input reaches the bar (the clip's carry beats the blade while the driver turns forward)
 // TODO 50 — the parked gap: how far the clutch stands past the nearest
 // drive face, in stem radians ∈ [0, pitch). WRAPAROUND-GUARDED: float
@@ -64423,8 +64424,9 @@ function updateLabels() {
 // With the rocking bar OUT (the running watch) the crown side does not follow: the lead grows by what drained and
 // nothing on the crown side moves, the stem clutch's parked gap included (TODO 50's pickup below is the drive face
 // travelling from the pinion's side, and the pinion is on the crown side). With no bar built, or the bar in, it is
-// the law it always was.
-function drainBarrelBy(dTauS, holdIn = false) {
+// the law it always was. `snap` (runDown's, an instrument advancing hours) takes the bar to its banking where the teeth
+// part; the live loop passes false, and its release law draws the free swing with the crown turning back (landing 6).
+function drainBarrelBy(dTauS, holdIn = false, snap = true) {
   const before = barrelWindTurns;
   barrelWindTurns = Math.max(0, barrelWindTurns - dTauS / (HOURS_PER_FUSEE_TURN * 3600));
   let drained = before - barrelWindTurns;
@@ -64441,9 +64443,9 @@ function drainBarrelBy(dTauS, holdIn = false) {
       const avail = (kbSwing - KB_TIP_S) * KB_PSI_N / KB_DRIVER_RAD_PER_TURN, use = Math.min(drained, avail);
       kbSwing -= use * KB_DRIVER_RAD_PER_TURN / KB_PSI_N;
       const rest = drained - use;
-      if (rest > 0 || kbSwing <= KB_TIP_S + 1e-12) { kbSwing = 0; kbLead += rest; }
+      if (rest > 0 || kbSwing <= KB_TIP_S + 1e-12) { kbSwing = snap ? 0 : KB_TIP_S; kbLead += rest; }
       drained = use;   // what the crown side followed
-    } else { kbSwing = 0; kbLead += drained; return total; }
+    } else { if (snap) kbSwing = 0; kbLead += drained; return total; }   // landing 6: in the live loop (snap false) the release law draws the free swing
   }
   // TODO 50 sub-pitch pickup: with the coupling's faces parted (a
   // reversal parked the clutch mid-pitch), the pinion's run-down advance
@@ -64546,7 +64548,7 @@ function tick(t) {
           const K = KB_DRIVER_RAD_PER_TURN / KB_PSI_N;
           if (kbSwing < KB_TIP_S) {
             const freeLeft = (KB_TIP_S - kbSwing) / K;
-            if (kbSwing === 0) {
+            if (kbSwing === 0) {   // (a release the crown catches part-way out retraces its own lead exactly: no pick)
               const t = kbLead + freeLeft, r = t - Math.floor(t / KB_PITCH_TURNS) * KB_PITCH_TURNS;
               const need = r > KB_PITCH_EPS && KB_PITCH_TURNS - r > KB_PITCH_EPS ? KB_PITCH_TURNS - r : 0;
               const pick = Math.min(turnsDelta, need);
@@ -64559,7 +64561,12 @@ function tick(t) {
               kbSwing = take >= freeLeft ? KB_TIP_S : kbSwing + take * K;
             }
           }
-          if (turnsDelta > 0 && kbSwing >= KB_TIP_S) {
+          if (turnsDelta > 0 && kbSwing >= KB_TIP_S && kbOwed > 0) {   // landing 6: retrace a release caught in mesh, the crown side alone
+            const back = Math.min(turnsDelta, kbOwed, (1 - kbSwing) / K);
+            kbLead += back; kbOwed -= back; turnsDelta -= back; kbSwing = Math.min(1, kbSwing + back * K);
+            if (kbSwing >= 1) kbOwed = 0;
+          }
+          if (turnsDelta > 0 && kbSwing >= KB_TIP_S && kbSwing < 1) {
             const meshLeft = (1 - kbSwing) / K;
             kbSwing = turnsDelta >= meshLeft ? 1 : kbSwing + turnsDelta * K;   // turnsDelta is not spent: the bank follows
           }
@@ -64595,6 +64602,22 @@ function tick(t) {
     windStemSlip += crownRotDelta;
     windArrestStalled = false;
   }
+  // §334 landing 6 — LET GO, THE BAR SPRINGS OUT. With nothing holding the crown (no drag, no Wind button, no input
+  // this tick) the return blade swings the bar back to its banking, and the clip carries the driver with it: the crown
+  // turns back by the swing. In mesh the carried wheel rolls out on the follower, which the click holds, so the crown
+  // side alone falls there (kbOwed keeps what it took, for a re-wind that catches it). Until landing 6 only the
+  // run-down carried the bar out of mesh, 0.042 barrel turns of it, so at 1× the bar stood in for some forty minutes.
+  // The real swing takes milliseconds; it is DRAWN over KB_ENGAGE_SHOW_S (POSED, the engagement's own pacing).
+  if (KB_BUILT && kbSwing > 0 && !kbWinding && !crownDragging && !(autoWindRemaining > 0) && windIn === 0 && rawDt > 0) {
+    const ds = Math.min(kbSwing, rawDt / KB_ENGAGE_SHOW_S);
+    const inMesh = Math.max(0, Math.min(ds, kbSwing - KB_TIP_S));
+    const back = ds * KB_PSI_N / KB_DRIVER_RAD_PER_TURN;
+    kbLead -= back;
+    kbOwed += inMesh * KB_PSI_N / KB_DRIVER_RAD_PER_TURN;
+    kbSwing -= ds;
+    if (kbSwing < 1e-12) kbSwing = 0;
+    if (kbSwing === 0) kbOwed = 0;   // at its banking: a re-wind picks its tooth afresh
+  }
   if (setEngaged) {
     setPathRot += crownRotDelta; // bidirectional — no ratchet on the setting path
   }
@@ -64626,7 +64649,7 @@ function tick(t) {
   // this tick's is decided below), a one-frame lag that's imperceptible but
   // avoids a circular dependency (this frame's impulse depends on tension,
   // which depends on this drain). A pose (zero dt) drains nothing.
-  drainBarrelBy(rawDt > 0 ? Math.min(lastDTau, maintRoom) : 0);   // §334 5b: the run-down is one function, which runDown() (inspection) calls too
+  drainBarrelBy(rawDt > 0 ? Math.min(lastDTau, maintRoom) : 0, false, false);   // §334 5b: the run-down is one function, which runDown() (inspection) calls too
   const tension = clamp(barrelWindTurns / RESERVE_BARREL_TURNS, 0, 1);
 
   // §246 tier two — THE BALANCE IS DRIVEN, and τ is what it does. In the live
@@ -68400,6 +68423,7 @@ window.__clock = {
     tick(lastTickRawT);
   },
   pressWind() { pressWind(); },
+  setCrownDragging(v) { crownDragging = !!v; },   // §334 landing 6: an instrument's hand on the crown (the release's control)
   get windSign() { return windSign; },
   get windArrestStalled() { return windArrestStalled; },
   get kbLead() { return kbLead; },
@@ -68805,7 +68829,7 @@ window.__clock = {
   resetInputs() {
     crownRotation = 0; lastCrownRotation = 0;
     windStemSlip = 0; setPathRot = 0;
-    kbLead = 0; kbSwing = 0;   // §334 5b: canonical is RUNNING — the bar out, the crown side level with the spur side
+    kbLead = 0; kbSwing = 0; kbOwed = 0;   // §334 5b: canonical is RUNNING — the bar out, the crown side level with the spur side
     autoWindRemaining = 0;
     jumpCorr = 0; jumpDisp = null;
     alarmCrownRotation = 0;
@@ -68871,7 +68895,7 @@ window.__clock = {
     // re-seeds so no crown delta leaks into the next tick, the
     // alarmCrownRotation convention above.
     if (p.windStemSlip !== undefined) { windStemSlip = p.windStemSlip; lastCrownRotation = crownRotation; }
-    if (p.kbSwing !== undefined) kbSwing = clamp(p.kbSwing, 0, 1);   // §334 5b: the rocking bar's swing, 0 out, 1 in
+    if (p.kbSwing !== undefined) { kbSwing = clamp(p.kbSwing, 0, 1); kbOwed = 0; }   // §334 5b: the rocking bar's swing, 0 out, 1 in
     if (p.kbLead !== undefined) kbLead = p.kbLead;                    // §334 5b: the crown side's lead, in barrel turns
     if (p.setPathRot !== undefined) { setPathRot = p.setPathRot; lastCrownRotation = crownRotation; jumpDisp = null; } // §35: the handSet axis poses the setting path directly (the only input that spins the keyless minute wheel)
     // TODO 135 — a pose naming the setting turn names where the jumper SEATS. tick's
