@@ -550,7 +550,7 @@ export function foldUnderPlate({ axisAt, spurAt, windSenseWorld, driverTeeth, ca
 // 10T reaches the winding pinion's inner end, 2.15 u off the crown wheel's axis) and one carried wheel of 10–14, the
 // fit whose every member stands CLEAR_MARGIN off the movement with the WIDEST spring window; side +1 is the crossing
 // of the spur's circle south of today's transfer (the other is the setting traverse's and the winding pinion's).
-export const UNDER_PLATE = Object.freeze({ driverTeeth: 9, carriedTeeth: 11, side: 1, bladeAz: 125, postAz: 0, postR: 6.5 });   // §334 5c: bladeAz/postAz in degrees, postR in u, re-derived by probe-keyless-rocking-bar-springs.mjs (S0)
+export const UNDER_PLATE = Object.freeze({ driverTeeth: 9, carriedTeeth: 11, side: 1, bladeAz: 125, postAz: 65, postR: 6 });   // §334 5c: bladeAz/postAz in degrees, postR in u, re-derived by probe-keyless-rocking-bar-springs.mjs (S0)
 
 // THE UNDER-PLATE BAR'S METAL, one law for the build and its probe (§334 landing 5a). The stack hangs from the base
 // plate's back face: the bar's three wheels one CLEAR_MARGIN under it, cut from the winding band's stock, and the
@@ -624,7 +624,11 @@ export function underPlateSprings(U, plateBackZ, { bladeAz, postAz, postR, psi =
   const cap = (e, from) => { const c = at(rK, e), u = { x: Math.cos(e), y: Math.sin(e) }, v = { x: -Math.sin(e) * sg, y: Math.cos(e) * sg };
     return (R) => Array.from({ length: 65 }, (_, k) => { const a = from + (k / 64) * Math.PI; return { x: c.x + R * (u.x * Math.cos(a) + v.x * Math.sin(a)), y: c.y + R * (u.y * Math.cos(a) + v.y * Math.sin(a)) }; }); };
   const slotRing = (wall) => { const R = hwS + wall;
-    return [...arcPts(rK + R, e1, e2), ...cap(e2, 0)(R), ...arcPts(rK - R, e2, e1), ...cap(e1, Math.PI)(R)].map((p) => [p.x, p.y]); };
+    const pts = [...arcPts(rK + R, e1, e2), ...cap(e2, 0)(R), ...arcPts(rK - R, e2, e1), ...cap(e1, Math.PI)(R)];
+    // each cap begins and ends on its arcs' end points: drop the repeats, or the ring carries zero-length edges
+    const out = []; for (const p of pts) { const q = out[out.length - 1]; if (!q || Math.hypot(p.x - q.x, p.y - q.y) > 1e-9) out.push(p); }
+    if (out.length > 1 && Math.hypot(out[0].x - out[out.length - 1].x, out[0].y - out[out.length - 1].y) <= 1e-9) out.pop();
+    return out.map((p) => [p.x, p.y]); };
   const zb1 = K.zB0 - M, zb0 = zb1 - K.stock;
   const postAt = at(postR, th + postAz), postRad = pk;   // the post: the banking pin's own section, which carries its load
   const bridgeOutline = hull([...slotRing(STOCK_MIN_U), ...circ(postAt, postRad + STOCK_MIN_U, 32)]);

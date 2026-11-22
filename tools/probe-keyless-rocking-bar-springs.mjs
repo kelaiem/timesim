@@ -7,9 +7,11 @@
 // banking BRIDGE for its post's place; where each goes is free, so this SEARCHES them against the built movement and
 // the bar's own wheels, and holds the declared `UNDER_PLATE.bladeAz` / `.postAz` / `.postR` to the answer.
 //   S0  CHOICE: on a 5° grid, the blade azimuth whose stud and blade stand farthest from everything (the movement's
-//       metal exact, the bar's own wheels and plate analytic, over the whole swing); then, on a 5° × 0.25 u grid beyond
-//       the carried wheel's reach, the post NEAREST the slot whose post, bridge and run-down pin all clear (the shortest
-//       bridge); the declared values are that answer
+//       metal exact, the bar's own wheels and plate analytic, over the whole swing); then, on a 5° × 0.25 u grid all round the
+//       driver from 2.5 u out, the post NEAREST the slot whose post, bridge and run-down pin all clear (the shortest
+//       bridge) — in the default build AND in every swept spec point's (SWEEP_POINTS, each booted in a child process:
+//       the bridge stands in the keyless works, which every later solve reads as built, and a post that leaves the
+//       default clear took the reserve train's room on `stopwork-140`); the declared values are that answer
 //   S1  the blade's tip deflects by the line's own swing at its lever (within the ear's half-width offset), and pushes
 //       the bar toward its banking out
 //   S2  the carried pin touches the bridge slot's in-end engaged and its out-end at the banking, and clears it by the
@@ -17,8 +19,11 @@
 //   S3  every new member stands CLEAR_MARGIN off the movement and off the bar's own wheels and plate over the swing
 //       (exact for the movement's metal); CONTROL: the blade at the carried wheel's own azimuth fouls its wheel's path
 import { bootNative } from './native/host.mjs';
+import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
-const r = await bootNative({ query: '' });
+const SCAN = process.env.KB_SCAN_SPEC;   // child mode: one spec point's clear posts, as JSON on the last line
+const r = await bootNative({ query: SCAN ?? '' });
 const C = r.clock, THREE = await import('three');
 const I = await import('../src/inspect.js');
 const { foldUnderPlate, underPlateMetal, underPlateSprings, UNDER_PLATE, polyGap } = await import('../src/keyless-rocking-bar.js');
@@ -46,7 +51,7 @@ const DEG = Math.PI / 180;
 
 const meshes = []; C.scene.traverse((o) => { if (o.isMesh && !o.userData?.schematic && o.geometry?.attributes?.position) meshes.push(o); });
 const within = (o, names) => { for (let p = o; p; p = p.parent) if (names.includes(p.name)) return true; return false; };
-const OWN = ['backPlate', 'kbBarGroup', 'kbBar', 'kbPin', 'kbCarried', 'kbDriver', 'kbFollower', 'kbBlade', 'kbBladeStud', 'kbBankPin'];
+const OWN = ['backPlate', 'kbBarGroup', 'kbBar', 'kbPin', 'kbCarried', 'kbDriver', 'kbFollower', 'kbBlade', 'kbBladeStud', 'kbBridge', 'kbBridgePost'];   // the bar's own metal, built or planned
 const nearest = (probe, also = []) => { const pb = new THREE.Box3().setFromObject(probe).expandByScalar(1.5); let best = { d: Infinity, n: '-' };
   for (const o of meshes) { if (within(o, OWN) || within(o, also)) continue; if (!new THREE.Box3().setFromObject(o).intersectsBox(pb)) continue;
     const d = I.meshClearance(probe, o, 1.5); if (d < best.d) best = { d, n: o.name || `(in ${o.parent?.name})` }; } return best; };
@@ -98,15 +103,37 @@ function postScore(az, rr, bladeAz, exact = true) {
   return { ...res, post, bridge, pin, worst: Math.min(own, bar, post.d, bridge.d, pin.d) };
 }
 const fmtD = (a) => (a / DEG).toFixed(0) + '°';
+const POST_GRID = [];
+for (let a = -180; a < 180; a += 5) for (let rr = 2.5; rr <= 7.5 + 1e-9; rr += 0.25) POST_GRID.push([a, rr]);
+const key = (a, rr) => `${a}/${rr}`;
+if (SCAN !== undefined) {
+  // a spec point: the post and the bridge against that build's metal (its own wheels and bar are the default's law)
+  const clear = [];
+  for (const [a, rr] of POST_GRID) {
+    const S = underPlateSprings(U, PF.back, { bladeAz: UNDER_PLATE.bladeAz * DEG, postAz: a * DEG, postR: rr }), Q = S.bridge.post;
+    if (postOwn(Q.at, Q.r) < M) continue;
+    if (Math.min(nearest(disc(Q.at, Q.r, Q.z0, PF.back)).d, nearest(prism(S.bridge.outline, S.bridge.z0, S.bridge.z1)).d) >= M) clear.push(key(a, rr));
+  }
+  console.log(JSON.stringify({ spec: SCAN, clear }));
+  process.exit(0);
+}
+const { SWEEP_POINTS } = await import('./ci-battery.mjs');
+const self = fileURLToPath(import.meta.url), loader = new URL('./native/loader.mjs', import.meta.url).href;
+// (the native loader's once-only flag must not ride into a child, or the child never registers it)
+const runChild = (q) => new Promise((res) => { let out = ''; const ch = spawn(process.execPath, ['--import', loader, self], { env: { ...process.env, KB_SCAN_SPEC: q, __TIMESIM_NATIVE_LOADER__: '' }, stdio: ['ignore', 'pipe', 'pipe'] });
+  let err = ''; ch.stderr.on('data', (d) => { err += d; });
+  ch.stdout.on('data', (d) => { out += d; }); ch.on('close', (code) => { const last = out.trim().split('\n').pop(); try { res(JSON.parse(last)); } catch { res({ spec: q, clear: null, why: `exit ${code}: ${err.trim().split('\n').slice(-3).join(' | ')}` }); } }); });
+const specClear = [];
+for (let i = 0; i < SWEEP_POINTS.length; i += 2) specClear.push(...await Promise.all(SWEEP_POINTS.slice(i, i + 2).map((p) => runChild(p.q))));   // two at a time: each child is a whole boot
+const everywhere = new Set(POST_GRID.map(([a, rr]) => key(a, rr)).filter((k) => specClear.every((c) => c.clear && c.clear.includes(k))));
+console.log(`  spec points scanned: ${specClear.map((c) => `${c.spec || '(default)'} ${c.clear ? c.clear.length : `FAILED (${c.why})`}`).join('; ')}; clear in every one ${everywhere.size}`);
 const grid = Array.from({ length: 72 }, (_, k) => (-180 + 5 * k) * DEG);
-if (process.env.KB_DEBUG) for (const a of grid) { const b = bladeScore(a, false); console.log(`  blade ${fmtD(a)}: own ${b.own.toFixed(3)} bar ${b.barGap.toFixed(3)}`); }
 const blades = grid.map((a) => bladeScore(a, false)).filter((b) => b.worst >= M).map((b) => bladeScore(b.az)).filter((b) => b.worst >= M).sort((a, b) => b.worst - a.worst);
 if (!blades.length) { row('S0', false, 'no blade azimuth clears'); process.exit(1); }
 const B = blades[0];
-console.log('  chosen blade', fmtD(B.az), JSON.stringify({ worst: B.worst, stud: B.stud, blade: B.blade }));
-const postGrid = [];
-for (let a = -60; a <= 60; a += 5) for (let rr = 5.0; rr <= 7.5 + 1e-9; rr += 0.25) postGrid.push([a * DEG, rr]);
-const posts = postGrid.map(([a, rr]) => postScore(a, rr, B.az, false)).filter((b) => b.worst >= M).map((b) => postScore(b.az, b.rr, B.az)).filter((b) => b.worst >= M)
+const postGrid = POST_GRID.filter(([a, rr]) => everywhere.has(key(a, rr))).map(([a, rr]) => [a * DEG, rr]);
+const postsA = postGrid.map(([a, rr]) => postScore(a, rr, B.az, false));
+const posts = postsA.filter((b) => b.worst >= M).map((b) => postScore(b.az, b.rr, B.az)).filter((b) => b.worst >= M)
   // of the posts that clear, the one NEAREST the slot: the shortest bridge, the stiffest under the banking load (the pin
   // run's clearance does not depend on the post, so "farthest" would only push it to the grid's edge)
   .map((b) => { const S = underPlateSprings(U, PF.back, { bladeAz: B.az, postAz: b.az, postR: b.rr }); return { ...b, span: dist(S.bridge.post.at, carriedAt(S.psiN / 2)) }; })

@@ -4518,6 +4518,19 @@ const KB_PITCH_EPS = 1e-12;
 // The bar's swing ψ about the driver's axis, world radians, 0 engaged: the line's own angles (engaged and neutral, in
 // the line's frame) mapped by the fold's sense, so `s` = 1 is the depth the line solved and `s` = 0 its banking.
 const kbPsiAt = (s) => KB_BUILT ? Math.sign(CROWN_RAD_PER_TURN) * (1 - s) * (KB.line.neutral.phi - KB.line.engaged.phi) : 0;
+// §334 5c — THE SWING IS DRIVEN BY THE DRIVER. The friction clip ties the bar to the driver's arbor, so while they move
+// together the bar swings exactly as far as the driver turns: KB_PSI_N of swing (its whole travel, world radians) is
+// KB_PSI_N / |CROWN_RAD_PER_TURN| of crown-side bank. KB_TIP_S is the swing at which the carried wheel's tips meet the
+// follower's (the line's own gap law, gapLF = 0, bisected between its banking and its depth): short of it the bar
+// swings free, past it it is in mesh.
+const KB_PSI_N = KB_BUILT ? Math.abs(KB.line.neutral.phi - KB.line.engaged.phi) : 1;
+const KB_DRIVER_RAD_PER_TURN = Math.abs(CROWN_RAD_PER_TURN);
+const KB_TIP_S = KB_BUILT ? (() => {
+  const L = KB.line, g = (phi) => L.gapLF(L.centres(phi, L.beta));
+  let a = L.neutral.phi, b = L.engaged.phi;   // g(a) > 0 (apart), g(b) < 0 (at depth)
+  for (let k = 0; k < 80; k++) { const m = (a + b) / 2; if (g(m) > 0) a = m; else b = m; }
+  return (a - L.neutral.phi) / (L.engaged.phi - L.neutral.phi);
+})() : 1;
 const BACK_PLATE_HOLES = [
   { x: uWind.x * cwDist, y: uWind.y * cwDist, r: 0.7 + 0.05 },
   ...(KB_BUILT ? [{ x: TRANSFER_XY.x, y: TRANSFER_XY.y, r: 0.7 + 0.05 }] : []),   // §334 landing 5a: the follower arbor's bearing, the transfer wheel's own bore's idiom
@@ -49591,6 +49604,7 @@ let windStemSlip = 0;      // stem rotation not delivered to the winding wheel (
 // milliseconds against a frame, and no rate is posed for it).
 let kbLead = 0;
 let kbSwing = 0;
+let kbWinding = false;   // §334 5c: this tick's crown input reaches the bar (the clip's carry beats the blade while the driver turns forward)
 // TODO 50 — the parked gap: how far the clutch stands past the nearest
 // drive face, in stem radians ∈ [0, pitch). WRAPAROUND-GUARDED: float
 // residue can leave the slip a hair past the face (positive ε), which the
@@ -64395,11 +64409,27 @@ function updateLabels() {
 // nothing on the crown side moves, the stem clutch's parked gap included (TODO 50's pickup below is the drive face
 // travelling from the pinion's side, and the pinion is on the crown side). With no bar built, or the bar in, it is
 // the law it always was.
-function drainBarrelBy(dTauS) {
+function drainBarrelBy(dTauS, holdIn = false) {
   const before = barrelWindTurns;
   barrelWindTurns = Math.max(0, barrelWindTurns - dTauS / (HOURS_PER_FUSEE_TURN * 3600));
-  const drained = before - barrelWindTurns;
-  if (KB_BUILT && kbSwing < 1) { kbLead += drained; return drained; }
+  let drained = before - barrelWindTurns;
+  const total = drained;
+  // §334 5c — with the bar in mesh the run-down back-drives the follower, the carried wheel and the driver, and the
+  // driver carries the bar OUT through its clip: the crown side follows the drain (the crown turns back) until the
+  // teeth part at KB_TIP_S; then the return blade takes the bar to its banking and the crown side stands. `holdIn` is
+  // the acceptance probe's control, the bar held in mesh (the old rigid chain).
+  // While the crown winds the clip's carry holds the bar where the winding put it: in mesh the crown side follows the
+  // drain as it always did; short of mesh the follower runs alone.
+  if (KB_BUILT && !holdIn && drained > 0) {
+    if (kbWinding) { if (kbSwing < KB_TIP_S) { kbLead += drained; return total; } }   // short of mesh the follower runs alone; in mesh the crown side follows
+    else if (kbSwing > KB_TIP_S) {
+      const avail = (kbSwing - KB_TIP_S) * KB_PSI_N / KB_DRIVER_RAD_PER_TURN, use = Math.min(drained, avail);
+      kbSwing -= use * KB_DRIVER_RAD_PER_TURN / KB_PSI_N;
+      const rest = drained - use;
+      if (rest > 0 || kbSwing <= KB_TIP_S + 1e-12) { kbSwing = 0; kbLead += rest; }
+      drained = use;   // what the crown side followed
+    } else { kbSwing = 0; kbLead += drained; return total; }
+  }
   // TODO 50 sub-pitch pickup: with the coupling's faces parted (a
   // reversal parked the clutch mid-pitch), the pinion's run-down advance
   // first CLOSES the gap from its own side — the drive face travels to
@@ -64415,7 +64445,7 @@ function drainBarrelBy(dTauS) {
       windStemSlip += windSign * Math.min(stemRad, gap);       // TODO 115 — closing the gap is the winding direction
     }
   }
-  return drained;
+  return total;
 }
 function tick(t) {
   // dt since the last tick — needed because τ is now a genuinely integrated
@@ -64462,7 +64492,7 @@ function tick(t) {
   // direction winds. Everything below is the arithmetic it always was.
   const windIn = windSign * crownRotDelta;
   let windBankedNow = 0;   // TODO 224 — what this tick banked: windBack falls exactly when it is > 0
-  if (KB_BUILT && rawDt > 0) kbSwing = 0;   // §334 5b: the return spring holds the bar out unless this tick winds (below)
+  kbWinding = false;
   if (windEngaged) {
     if (windIn > 0) {
       // TODO 50 sub-pitch take-up: after a reversal the clutch stands a
@@ -64482,14 +64512,35 @@ function tick(t) {
         let turnsDelta = drive / Math.abs(STEM_RAD_PER_TURN);
         // §334 landing 5b — the bar swings in, and the carried wheel meets the follower at the next whole tooth: that
         // much of the input turns the crown side alone (the lead grows to the tooth), then the bank follows.
-        if (KB_BUILT) {
-          const r = kbLead - Math.floor(kbLead / KB_PITCH_TURNS) * KB_PITCH_TURNS;
-          const need = r > KB_PITCH_EPS && KB_PITCH_TURNS - r > KB_PITCH_EPS ? KB_PITCH_TURNS - r : 0;
-          const pick = Math.min(turnsDelta, need);
-          kbLead += pick; turnsDelta -= pick;
-          // until the lead reaches the tooth the carried wheel rides the follower's tips, so the bar is shown at its
-          // banking (out), never at full depth through teeth it has not met; it drops in at the tooth
-          if (rawDt > 0 && pick >= need) kbSwing = 1;
+        if (KB_BUILT) kbWinding = true;
+        if (KB_BUILT && kbSwing < 1) {
+          // The crown's turn is spent DRAWING THE ENGAGEMENT before any of it winds (the owner's ask; the arrest's
+          // idiom, which spends none past full). The clip carries the bar with the driver, so the bar's swing is the
+          // driver's turn (KB_PSI_N for the whole travel). 1. Out of mesh the crown side first turns to the tooth the
+          // carried wheel will meet: the lead that is a whole follower tooth when the tips meet (KB_TIP_S). 2. Then the
+          // bar swings in freely to the tips, the crown side alone. 3. In mesh, it swings on to depth as the driver
+          // turns, and the follower turns with it: the bank follows, the lead held (the same law the run-down uses to
+          // carry it back out, so a wind resumed part-way through either leaves the teeth in phase).
+          const K = KB_DRIVER_RAD_PER_TURN / KB_PSI_N;
+          if (kbSwing < KB_TIP_S) {
+            const freeLeft = (KB_TIP_S - kbSwing) / K;
+            if (kbSwing === 0) {
+              const t = kbLead + freeLeft, r = t - Math.floor(t / KB_PITCH_TURNS) * KB_PITCH_TURNS;
+              const need = r > KB_PITCH_EPS && KB_PITCH_TURNS - r > KB_PITCH_EPS ? KB_PITCH_TURNS - r : 0;
+              const pick = Math.min(turnsDelta, need);
+              kbLead += pick; turnsDelta -= pick;
+              if (pick < need) turnsDelta = 0;   // still turning to the tooth
+            }
+            if (turnsDelta > 0) {
+              const take = Math.min(turnsDelta, freeLeft);
+              kbLead += take; turnsDelta -= take;
+              kbSwing = take >= freeLeft ? KB_TIP_S : kbSwing + take * K;
+            }
+          }
+          if (turnsDelta > 0 && kbSwing >= KB_TIP_S) {
+            const meshLeft = (1 - kbSwing) / K;
+            kbSwing = turnsDelta >= meshLeft ? 1 : kbSwing + turnsDelta * K;   // turnsDelta is not spent: the bank follows
+          }
         }
         // §47 — the cap is the ARREST, not a number: the bank saturates because
         // the finger's beak is on the stop lug and the whole path from the lug
@@ -68322,7 +68373,8 @@ window.__clock = {
   // advances the bank and what the bank drives, which is what the crown's stand is a question about.
   // `barIn` holds the bar in mesh instead: the old rigid chain, the acceptance probe's control.
   runDown(seconds, chunk = 60, barIn = false) {
-    for (let left = seconds; left > 0; left -= chunk) { kbSwing = barIn ? 1 : 0; drainBarrelBy(Math.min(chunk, left)); }
+    kbWinding = false;
+    for (let left = seconds; left > 0; left -= chunk) drainBarrelBy(Math.min(chunk, left), barIn);
     tick(lastTickRawT);
   },
   get windSign() { return windSign; },
@@ -68330,6 +68382,8 @@ window.__clock = {
   get kbLead() { return kbLead; },
   get kbSwing() { return kbSwing; },
   get kbPitchTurns() { return KB_PITCH_TURNS; },
+  get kbTipS() { return KB_TIP_S; },
+  get kbSwingTurns() { return KB_PSI_N / KB_DRIVER_RAD_PER_TURN; },   // crown-side bank for the whole swing
   get reserveBarrelTurns() { return RESERVE_BARREL_TURNS; },
   get simTime() { return simTime; },
   get tau() { return tauIntegrated; },
