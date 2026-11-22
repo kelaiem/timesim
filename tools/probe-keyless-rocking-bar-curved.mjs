@@ -98,8 +98,11 @@ if (SCAN !== undefined) {
 // rank by the grip the line asks (the softest first), keep the first that clear here
 const ranked = cands.map((b) => ({ b, j: judge(b) })).filter((x) => x.j.ok && x.j.q > 1).sort((a, b) => a.j.grip - b.j.grip);
 const shortlist = [];
-for (const x of ranked) { if (shortlist.length >= 8) break; const w = exact(x.j.S); if (w.d >= M) shortlist.push({ ...x, w }); }
-console.log(`  ${cands.length} paths clear the bar's own wheels, ${ranked.length} face the pin with a window; the softest clear in the default build: ${shortlist.map((x) => `${key(x.b)} grip ${x.j.grip.toFixed(3)} N`).join('; ')}`);
+// one per stud position (the softest path from it), so a spec point that refuses one stud cannot empty the list
+const seenStud = new Set();
+for (const x of ranked) { if (shortlist.length >= 40) break; const sk = `${x.b.studR}/${x.b.studAz}`; if (seenStud.has(sk)) continue;
+  const w = exact(x.j.S); if (w.d >= M) { shortlist.push({ ...x, w }); seenStud.add(sk); } }
+console.log(`  ${cands.length} paths clear the bar's own wheels, ${ranked.length} face the pin with a window; the softest clear in the default build, one per stud: ${shortlist.map((x) => `${key(x.b)} ${x.j.grip.toFixed(3)} N`).join('; ')}`);
 // every spec point, two children at a time
 const { SPEC_POINTS } = await import('./ci-battery.mjs');
 const self = fileURLToPath(import.meta.url), loader = new URL('./native/loader.mjs', import.meta.url).href;
@@ -113,6 +116,7 @@ for (let i = 0; i < specs.length; i += 2) specClear.push(...await Promise.all(sp
 const failedSpecs = specClear.filter((c) => !Array.isArray(c.clear) && c.why !== 'no bar built');
 const everywhere = shortlist.filter((x) => specClear.every((c) => c.clear === null && c.why === 'no bar built' || (Array.isArray(c.clear) && c.clear.includes(key(x.b)))));
 console.log(`  ${specs.length} spec points: ${failedSpecs.length} failed to judge; ${everywhere.length} of the shortlist clear in every one`);
+for (const c of specClear) if (Array.isArray(c.clear) && c.clear.length < shortlist.length) console.log(`    ${c.spec}: refuses ${shortlist.filter((x) => !c.clear.includes(key(x.b))).map((x) => `${x.b.studR}/${x.b.studAz}`).join(' ')}`);
 const win = everywhere[0], decl = RB.UNDER_PLATE.blade;
 row('C0', !!win && !!decl && key(win.b) === key(decl) && failedSpecs.length === 0,
   `the softest clear everywhere: ${win ? `${key(win.b)} (grip ${win.j.grip.toFixed(3)} N, worst ${win.w.d.toFixed(3)} ${win.w.n})` : '—'}; declared ${decl ? key(decl) : 'none'}`);
