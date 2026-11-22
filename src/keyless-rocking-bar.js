@@ -53,7 +53,7 @@
 // mechanism are quoted in TODO 318 and still owe a full read.
 import { gearToothSpec, gearOuterR, gearBevel } from './geometry.js';
 import { KW_MODULE, crownWheelTeeth, windPinionTeeth, WIND_SPUR_TEETH, KW_WIND_IDLER_TEETH, CLEAR_MARGIN, UNIT_MM,
-  FRICTION, STOCK, STOCK_MIN_U, SPRING_FLAT_U, SPRING_SIGMA_Y_PA, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, PIVOT_BORE_CLEAR } from './layout.js';
+  FRICTION, STOCK, STOCK_MIN_U, SPRING_FLAT_U, SPRING_SIGMA_Y_PA, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, PIVOT_BORE_CLEAR, PIVOT_MIN_U } from './layout.js';
 
 const G_ACC = 9.80665;   // m/s², standard gravity
 
@@ -77,6 +77,7 @@ export const ROCKING_BAR_INPUTS = Object.freeze({
   bladeH_u: { v: SPRING_FLAT_U, why: 'the movement\'s flat-blade floor (SPRING_FLAT_U, 0.05 mm), which every blade spring here is cut to' },
   bendDeg: { v: null, why: 'a two-wheel bar\'s bend between its arms, degrees; null = DERIVED (the roomiest: its non-meshing members farthest apart). The fold forks it where the movement\'s metal forces another' },
   armBends: { v: null, why: 'each arm\'s sideways bow at its middle, u (left of the arm\'s run positive); null = straight. The fold sets them to route an arm round metal it meets (the owner\'s rule: a link yields), never the wheels\' centres' },
+  bladeLever_u: { v: null, why: 'the blade\'s contact radius on the bar, u; null = the boss edge (pivotR + w). The under-plate fold sets it where its ear\'s face carries the contact (§334 landing 5c)' },
   bladeAt: { v: 'boss', why: 'where the return blade bears: the bar\'s boss round D, the smallest lever (\'firstWheel\' is landing 2\'s first draft, kept for the control)' },
 });
 
@@ -319,7 +320,7 @@ export function solveRockingBar(variant = 'two', over = {}, side = null) {
   // moment RISES by k·swing·r²: the bar's own boss edge is the smallest lever there is (first draft: the first
   // wheel's boss, whose rise outgrew the carry and closed the window, q 0.21), and a blade as long as the bar reaches
   // and as thin as the flat-blade floor is the softest one. One band stock deep.
-  const rS = I.bladeAt === 'boss' ? rC0 + metal.w : mmOf(c[0]), Lb = I.bladeAt === 'boss' ? len(Bmm) : mmOf(c[0]);
+  const rS = I.bladeLever_u != null ? mmOf(I.bladeLever_u) : I.bladeAt === 'boss' ? rC0 + metal.w : mmOf(c[0]), Lb = I.bladeAt === 'boss' ? len(Bmm) : mmOf(c[0]);
   const Ib = tBar * Math.pow(hBlade, 3) / 12, kB = 3 * Esp * Ib / Math.pow(Lb, 3);   // N/mm
   const dSwing = rS * swing;                            // mm of extra deflection, neutral → engaged
   // THE FRICTION CARRY: a two-jaw clip in the bar's boss gripping D's arbor at the bore radius, each jaw a quarter
@@ -527,7 +528,12 @@ export function foldRockingBar({ transferAt, spurAt, windSenseWorld, plateTopZ, 
 // driver and the follower turning the same way, which keeps the winding sense (the line's RB rules decide the rest).
 // Pure: no metal is cut here. Returns the follower's centre, the swing round the spur and the line it placed.
 export function foldUnderPlate({ axisAt, spurAt, windSenseWorld, driverTeeth, carriedTeeth, fuseeTorque_Nmm, side = 1, pivotR_u = ROCKING_BAR_INPUTS.pivotR_u.v }) {
-  const L = solveRockingBar('one', { driverTeeth, followerTeeth: driverTeeth, carried: { one: [carriedTeeth], two: [12, 12] }, fuseeTorque_Nmm, pivotR_u });
+  // §334 5c — the blade bears on its ear's face one CLEAR_MARGIN beyond the boss edge (underPlateSprings): at the edge
+  // itself the strip, tilting as the bar swings in, would cut into the round boss behind its tip. The line is solved
+  // at that lever, so its blade, its window and its swing are the metal's.
+  const L0 = solveRockingBar('one', { driverTeeth, followerTeeth: driverTeeth, carried: { one: [carriedTeeth], two: [12, 12] }, fuseeTorque_Nmm, pivotR_u });
+  const L = solveRockingBar('one', { driverTeeth, followerTeeth: driverTeeth, carried: { one: [carriedTeeth], two: [12, 12] }, fuseeTorque_Nmm, pivotR_u,
+    bladeLever_u: pivotR_u + L0.metal.w / UNIT_MM + CLEAR_MARGIN });
   if (!L.feasible) return { feasible: false, why: `the line does not solve: ${L.why}` };
   const d = L.inputs.centreDistance_u, ex = axisAt.x - spurAt.x, ey = axisAt.y - spurAt.y, rS = Math.hypot(ex, ey);
   const c = 1 - d * d / (2 * rS * rS);
@@ -544,7 +550,7 @@ export function foldUnderPlate({ axisAt, spurAt, windSenseWorld, driverTeeth, ca
 // 10T reaches the winding pinion's inner end, 2.15 u off the crown wheel's axis) and one carried wheel of 10–14, the
 // fit whose every member stands CLEAR_MARGIN off the movement with the WIDEST spring window; side +1 is the crossing
 // of the spur's circle south of today's transfer (the other is the setting traverse's and the winding pinion's).
-export const UNDER_PLATE = Object.freeze({ driverTeeth: 9, carriedTeeth: 11, side: 1 });
+export const UNDER_PLATE = Object.freeze({ driverTeeth: 9, carriedTeeth: 11, side: 1, bladeAz: 125, postAz: 0, postR: 6.5 });   // §334 5c: bladeAz/postAz in degrees, postR in u, re-derived by probe-keyless-rocking-bar-springs.mjs (S0)
 
 // THE UNDER-PLATE BAR'S METAL, one law for the build and its probe (§334 landing 5a). The stack hangs from the base
 // plate's back face: the bar's three wheels one CLEAR_MARGIN under it, cut from the winding band's stock, and the
@@ -564,4 +570,84 @@ export function underPlateMetal(U, plateBackZ, { phi = null } = {}) {
   const outline = hull([...circ(P[0], L.inputs.pivotR_u + w), ...circ(P[1], pinR + w / 2 + PIVOT_BORE_CLEAR)]);
   return { zW0, zW1, zB0, zB1, zG0: zW0 - bev, zG1: zW1 + bev, bevel: bev, stock, centres: P, outline, bore: { at: P[0], r: boreR }, pin: { at: P[1], r: pinR, z0: zB0, z1: zW1 },
     carriedBoreR: pinR + PIVOT_BORE_CLEAR };
+}
+
+// THE UNDER-PLATE BAR'S SPRING AND BANKING (§334 landing 5c), one law for the build and its probe. Azimuths are WORLD
+// angles about the driver's axis, measured from the carried wheel's azimuth with the bar engaged; ψ is the bar's swing
+// from engaged (world radians), ψN its banking out.
+//  · THE RETURN BLADE bears on a radial EAR on the boss, one §50 floor wide, the contact one CLEAR_MARGIN beyond the
+//    boss edge (the line's lever, `bladeLever_u`, which foldUnderPlate sets there: at the edge itself the strip, tilting
+//    as the bar swings in, cuts into the round boss behind its tip). The blade lies along the radius at the ear's
+//    azimuth with the bar OUT, its root a stud at the line's length beyond, and pushes the bar toward its banking out;
+//    swinging the bar in deflects its tip by the lever times the swing. It is drawn AIMED from its root at the ear's
+//    face, as the yoke spring is (a straight strip whose tip follows the contact).
+//  · THE BANKING is the line's own: the carried wheel's PIN, run down through the bar into an arc slot in a fixed
+//    BRIDGE one margin under it, the slot's two ends each touching the pin at one end of the swing (engaged: the line's
+//    depth; out: its banking). In the bar's own plane a slotted ear reached the winding pinion, the motion works'
+//    corner or the stem at every azimuth its pin could take; under the carried wheel's path the band is free. The
+//    bridge is the hull of the slot's ring and its POST, which stands from it up to the plate's back face at
+//    (postR, postAz) — beyond the carried wheel's reach, since the stem runs under the driver.
+export function underPlateSprings(U, plateBackZ, { bladeAz, postAz, postR, psi = 0 }) {
+  const L = U.line, mm = 1 / UNIT_MM, M = CLEAR_MARGIN;
+  const K = underPlateMetal(U, plateBackZ);
+  const D = K.centres[0], C = K.centres[1];
+  const th = Math.atan2(C.y - D.y, C.x - D.x);
+  const CN = U.centresWorld(L.neutral.phi)[1];
+  let psiN = Math.atan2(CN.y - D.y, CN.x - D.x) - th; psiN = Math.atan2(Math.sin(psiN), Math.cos(psiN));
+  const sOut = Math.sign(psiN);
+  const at = (r, a) => ({ x: D.x + r * Math.cos(a), y: D.y + r * Math.sin(a) });
+  const rot = (p, d) => { const c = Math.cos(d), s = Math.sin(d), x = p.x - D.x, y = p.y - D.y; return { x: D.x + x * c - y * s, y: D.y + x * s + y * c }; };
+  const rb = L.inputs.pivotR_u + L.metal.w * mm, hw = STOCK_MIN_U / 2, rc = L.blade.lever_mm * mm;   // rc: the contact, on the ear
+  // the blade ear, in the bar at engaged (azimuth aE), and the blade at the bar OUT
+  const aE = th + bladeAz, aN = aE + psiN;
+  const earPts = (d) => [[rb * 0.5, -hw], [rc + M, -hw], [rc + M, hw], [rb * 0.5, hw]]
+    .map(([r, o]) => rot({ x: D.x + r * Math.cos(aE) - o * Math.sin(aE), y: D.y + r * Math.sin(aE) + o * Math.cos(aE) }, d)).map((p) => [p.x, p.y]);
+  const h = L.blade.h_mm * mm, Lb = L.blade.L_mm * mm;
+  const off = -sOut * (hw + h / 2);   // the blade's centreline beside the ear, on the side it pushes from
+  const tN = { x: -Math.sin(aN), y: Math.cos(aN) };
+  const contactN = { x: D.x + rc * Math.cos(aN) + off * tN.x, y: D.y + rc * Math.sin(aN) + off * tN.y };
+  const root = { x: D.x + (rc + Lb) * Math.cos(aN) + off * tN.x, y: D.y + (rc + Lb) * Math.sin(aN) + off * tN.y };
+  const bladeAt = (d) => { const t = rot(contactN, d - psiN); return { root, tip: t, ang: Math.atan2(t.y - root.y, t.x - root.x), len: Math.hypot(t.x - root.x, t.y - root.y) }; };
+  const b0 = bladeAt(psi);
+  const blade = { ...b0, h, height: K.stock, deflection: Math.hypot(b0.tip.x - contactN.x, b0.tip.y - contactN.y) };
+  const stud = { at: root, r: Math.max(PIVOT_MIN_U, h), z0: K.zB0 - 0.1, z1: plateBackZ + 0.3 };
+  // the bar's outline: the union of the line's bar and an arm out to the blade's ear, read along rays from D
+  const bossPts = circ(D, rb, 48).map(([x, y]) => [x, y]);
+  const outlineAt = (d) => { const R = (pts) => pts.map(([x, y]) => { const p = rot({ x, y }, d); return [p.x, p.y]; });
+    return starUnion(D, [R(K.outline), hull([...R(bossPts), ...earPts(d)])], 720); };
+  // the banking: the carried pin's path is the arc at the carried wheel's radius from th (engaged) to th + ψN (out)
+  const rK = Math.hypot(C.x - D.x, C.y - D.y), pk = K.pin.r, hwS = pk + PIVOT_BORE_CLEAR;
+  const del = (hwS - pk) / rK;
+  const e1 = th + sOut * del, e2 = th + psiN - sOut * del;   // the slot's end centres: each end's wall on the pin at its end of the swing
+  const arcPts = (r, a1, a2, n = 32) => Array.from({ length: n + 1 }, (_, k) => at(r, a1 + (a2 - a1) * k / n));
+  const sg = Math.sign(e2 - e1) || 1;
+  const cap = (e, from) => { const c = at(rK, e), u = { x: Math.cos(e), y: Math.sin(e) }, v = { x: -Math.sin(e) * sg, y: Math.cos(e) * sg };
+    return (R) => Array.from({ length: 65 }, (_, k) => { const a = from + (k / 64) * Math.PI; return { x: c.x + R * (u.x * Math.cos(a) + v.x * Math.sin(a)), y: c.y + R * (u.y * Math.cos(a) + v.y * Math.sin(a)) }; }); };
+  const slotRing = (wall) => { const R = hwS + wall;
+    return [...arcPts(rK + R, e1, e2), ...cap(e2, 0)(R), ...arcPts(rK - R, e2, e1), ...cap(e1, Math.PI)(R)].map((p) => [p.x, p.y]); };
+  const zb1 = K.zB0 - M, zb0 = zb1 - K.stock;
+  const postAt = at(postR, th + postAz), postRad = pk;   // the post: the banking pin's own section, which carries its load
+  const bridgeOutline = hull([...slotRing(STOCK_MIN_U), ...circ(postAt, postRad + STOCK_MIN_U, 32)]);
+  return { psiN, sOut, rb, rc, ear: earPts(psi), earAt: earPts, blade, bladeAt, stud, outline: outlineAt(psi), outlineAt,
+    bridge: { outline: bridgeOutline, slot: slotRing(0), z0: zb0, z1: zb1, post: { at: postAt, r: postRad, z0: zb0, z1: plateBackZ + 0.3 } },
+    pinRun: { z0: zb0 - 0.1, z1: K.pin.z1 },   // the carried pin, run down through the bridge
+  };
+}
+
+// The union of convex polygons that each contain `o`, as one ring: along each of `n` rays from o, the farthest exit.
+function starUnion(o, polys, n) {
+  const out = [];
+  for (let k = 0; k < n; k++) {
+    const a = 2 * Math.PI * k / n, ux = Math.cos(a), uy = Math.sin(a);
+    let best = 0;
+    for (const P of polys) for (let i = 0; i < P.length; i++) {
+      const [x1, y1] = P[i], [x2, y2] = P[(i + 1) % P.length];
+      const ex = x2 - x1, ey = y2 - y1, den = ux * ey - uy * ex;
+      if (Math.abs(den) < 1e-15) continue;
+      const wx = x1 - o.x, wy = y1 - o.y, t = (wx * ey - wy * ex) / den, s = (wx * uy - wy * ux) / den;
+      if (t > 0 && s >= -1e-12 && s <= 1 + 1e-12 && t > best) best = t;
+    }
+    out.push([o.x + best * ux, o.y + best * uy]);
+  }
+  return out;
 }
