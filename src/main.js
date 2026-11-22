@@ -7144,7 +7144,7 @@ transferArbor.rotation.x = Math.PI / 2;
 transferArbor.position.set(TRANSFER_XY.x, TRANSFER_XY.y, (Z_TRANSFER + _trArborLo) / 2);
 keyless.add(transferArbor);
 let crownWheelArbor = null, kbDriver = null, kbCarried = null, kbFollower = null, kbBar = null, kbPin = null, kbBarGroup = null;
-let kbBlade = null, kbBladeStud = null, kbBridge = null, kbBridgePost = null;   // §334 5c: the return blade and the banking
+let kbBlade = null, kbBladeStud = null;   // §334 5c: the return blade and the banking
 let kbDriverClock = 0, kbCarriedClock = 0, kbFollowerClock = 0;   // TODO 132's free indices, solved with the keyless meshes
 if (KB_BUILT) {
   const D0 = { x: uWind.x * cwDist, y: uWind.y * cwDist }, K = KB_METAL, zW = (K.zW0 + K.zW1) / 2;
@@ -7170,15 +7170,16 @@ if (KB_BUILT) {
   kbDriver = spurOf('kbDriver', nD, [{ teeth: nC, mates: [nD] }], 0.7, D0);
   kbCarried = spurOf('kbCarried', nC, [{ teeth: nD, mates: [nC] }, { teeth: nD, mates: [nC] }], K.carriedBoreR, K.centres[1], kbBarGroup);
   kbFollower = spurOf('kbFollower', nD, [{ teeth: nC, mates: [nD] }], 0.7, TRANSFER_XY);
-  // §334 landing 5c — the return blade and the banking, placed by probe-keyless-rocking-bar-springs.mjs (UNDER_PLATE's
-  // bladeAz, postAz, postR); see underPlateSprings for the law. The carried pin runs down through the bar into the
-  // banking bridge's slot, and the bar's outline grows the blade's ear.
-  const SP = underPlateSprings(KB, -BACK_PLATE_T, { bladeAz: UNDER_PLATE.bladeAz * DEG2RAD, postAz: UNDER_PLATE.postAz * DEG2RAD, postR: UNDER_PLATE.postR });
+  // §334 landing 5c — the return blade, placed by probe-keyless-rocking-bar-springs.mjs (UNDER_PLATE.bladeAz); see
+  // underPlateSprings for the law. The bar's outline grows the blade's ear. The BANKING is not cut: under the bar a
+  // bridge meets the motion works' corner one way round and the stem the other, and a free-standing post six units out
+  // stood in some arrangement's reserve train (§334 landing 5c's record); the swing's two ends are the law's.
+  const SP = underPlateSprings(KB, -BACK_PLATE_T, { bladeAz: UNDER_PLATE.bladeAz * DEG2RAD, wayR: 4 });
   KB_SPRINGS = SP;
-  kbPin = new THREE.Mesh(new THREE.CylinderGeometry(K.pin.r, K.pin.r, K.pin.z1 - SP.pinRun.z0, 14), MATS.steel);
+  kbPin = new THREE.Mesh(new THREE.CylinderGeometry(K.pin.r, K.pin.r, K.pin.z1 - K.pin.z0, 14), MATS.steel);
   kbPin.name = 'kbPin';
   kbPin.rotation.x = Math.PI / 2;
-  kbPin.position.set(K.pin.at.x - D0.x, K.pin.at.y - D0.y, (SP.pinRun.z0 + K.pin.z1) / 2);
+  kbPin.position.set(K.pin.at.x - D0.x, K.pin.at.y - D0.y, (K.pin.z0 + K.pin.z1) / 2);
   kbBarGroup.add(kbPin);
   const zBar = (K.zB0 + K.zB1) / 2;
   const post = (name, at, r, z0, z1) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, z1 - z0, 14), MATS.blueSteel); m.name = name; m.rotation.x = Math.PI / 2; m.position.set(at.x, at.y, (z0 + z1) / 2); keyless.add(m); return m; };
@@ -7192,15 +7193,6 @@ if (KB_BUILT) {
     kbBlade.rotation.z = SP.blade.ang; kbBlade.scale.x = SP.blade.len;
     keyless.add(kbBlade);
   }
-  {
-    const shape = new THREE.Shape(SP.bridge.outline.map(([x, y]) => new THREE.Vector2(x, y)));
-    const slot = new THREE.Path(SP.bridge.slot.slice().reverse().map(([x, y]) => new THREE.Vector2(x, y))); shape.holes.push(slot);
-    const postHole = new THREE.Path(); postHole.absarc(SP.bridge.post.at.x, SP.bridge.post.at.y, SP.bridge.post.r, 0, 2 * Math.PI, true); shape.holes.push(postHole);   // the post is riveted through it
-    const g = new THREE.ExtrudeGeometry(shape, { depth: SP.bridge.z1 - SP.bridge.z0, bevelEnabled: false, curveSegments: 32 });
-    g.translate(0, 0, SP.bridge.z0);
-    kbBridge = new THREE.Mesh(g, MATS.steel); kbBridge.name = 'kbBridge'; keyless.add(kbBridge);
-  }
-  kbBridgePost = post('kbBridgePost', SP.bridge.post.at, SP.bridge.post.r, SP.bridge.post.z0, SP.bridge.post.z1);
   const barShape = new THREE.Shape(SP.outlineAt(0).map(([x, y]) => new THREE.Vector2(x, y)));
   const bore = new THREE.Path(); bore.absarc(K.bore.at.x, K.bore.at.y, K.bore.r, 0, 2 * Math.PI, true); barShape.holes.push(bore);
   const pinHole = new THREE.Path(); pinHole.absarc(K.pin.at.x, K.pin.at.y, K.pin.r, 0, 2 * Math.PI, true); barShape.holes.push(pinHole);   // the pin is riveted in its own hole
@@ -11069,8 +11061,6 @@ if (KB_BUILT) {   // §334 landing 5a
   registerSub('Keyless works', 'Bar follower', kbFollower);
   registerSub('Keyless works', 'Bar return blade', kbBlade);
   registerSub('Keyless works', 'Bar return blade', kbBladeStud);
-  registerSub('Keyless works', 'Bar banking', kbBridge);
-  registerSub('Keyless works', 'Bar banking', kbBridgePost);
 }
 registerSub('Keyless works', 'Crown-wheel screw', cwScrew);
 registerSub('Keyless works', 'Winding pinion', windPinionGroup);

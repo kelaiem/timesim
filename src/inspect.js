@@ -3881,12 +3881,9 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Keyless works', a: 'kbFollower', b: 'transferArbor', why: '§334 5a: the follower keyed on the transfer arbor, which carries the transfer wheel through the plate' },
   { unit: 'Keyless works', a: 'kbDriver', b: 'kbCarried', why: '§334 5a: the bar\'s first working mesh, 9:11' },
   { unit: 'Keyless works', a: 'kbCarried', b: 'kbFollower', why: '§334 5a: the bar\'s second working mesh, 11:9' },
-  // §334 landing 5c — the bar's return blade and its banking: the blade anchored in its stud and bearing on the bar's
-  // ear, the bridge riveted on its post, the carried pin in the bridge's slot (its two ends are the banking)
+  // §334 landing 5c — the bar's return blade: anchored in its stud and bearing on the bar's ear
   { unit: 'Keyless works', a: 'kbBlade', b: 'kbBladeStud', why: '§334 5c: the return blade anchored in its stud — the root of a grounded cantilever' },
   { unit: 'Keyless works', a: 'kbBlade', b: 'kbBar', why: '§334 5c: the return blade\'s tip on the bar\'s ear, the spring\'s working contact' },
-  { unit: 'Keyless works', a: 'kbBridge', b: 'kbBridgePost', why: '§334 5c: the banking bridge riveted on its post' },
-  { unit: 'Keyless works', a: 'kbPin', b: 'kbBridge', why: '§334 5c: the carried pin in the bridge\'s slot — the banking, touching an end at each end of the swing' },
   { unit: 'Keyless works', a: 'crownWheel', b: 'cwScrew', why: '§47: the same wheel seated on the blued screw below it — the axial seat that seats the wheel on its shoulder' },
   { unit: 'Keyless works', a: 'transferWheel', b: 'transferArbor', why: '§47: the TRANSFER wheel at the plate-top end of the same arbor — keyed to it, which is why tick() poses the two wheels from one angle' },
   { unit: 'Fusee & great wheel', a: 'maintPawl', b: 'maintPawlStud', why: '§47: each maintaining pawl on its own pivot stud — the pawl rides the stud it rocks about. Both pawls and both studs carry one name each, so this one row covers both stations (it was two rows by index, #15 and #17, until §329\'s stop-work pin shifted the indices and orphaned them)' },
@@ -5430,7 +5427,6 @@ export const PLATE_SEATS = [
   // bore wall, a running fit (0.0497, 0.0998), not a part that should clear it.
   { unit: "Keyless works", mesh: "transferArbor", kind: "pivot", why: "the transfer arbor, running through its plate bore from the crown wheel below to the transfer wheel above (§334 landing 5a: from the bar's follower below)" },
   { unit: "Keyless works", mesh: "kbBladeStud", kind: "planted", why: "§334 5c: the bar's return-blade stud, planted in the plate's dial face" },
-  { unit: "Keyless works", mesh: "kbBridgePost", kind: "planted", why: "§334 5c: the banking bridge's post, planted in the plate's dial face" },
   { unit: "Keyless works", mesh: "crownWheelArbor", kind: "pivot", why: "§334 landing 5a: the crown wheel's own arbor, its upper end running in the old transfer bore" },
   { unit: "Alarm winding train", mesh: "CylinderGeometry#0", kind: "pivot", why: "the climb arbor's rod, running through its plate bore (contrate below, pinion above)" },
   { unit: "Case", mesh: "caseMiddle", kind: "housed", why: SPEC.caseShape ? "TODO 300: the form case middle's fitted bore (SEAT_FIT off the plate's reach) and its ledge, which the plate's dial face bears on" : "the case middle's ledge, which the plate's rim sits on" },

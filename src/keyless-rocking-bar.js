@@ -550,7 +550,7 @@ export function foldUnderPlate({ axisAt, spurAt, windSenseWorld, driverTeeth, ca
 // 10T reaches the winding pinion's inner end, 2.15 u off the crown wheel's axis) and one carried wheel of 10–14, the
 // fit whose every member stands CLEAR_MARGIN off the movement with the WIDEST spring window; side +1 is the crossing
 // of the spur's circle south of today's transfer (the other is the setting traverse's and the winding pinion's).
-export const UNDER_PLATE = Object.freeze({ driverTeeth: 9, carriedTeeth: 11, side: 1, bladeAz: 125, postAz: 65, postR: 6 });   // §334 5c: bladeAz/postAz in degrees, postR in u, re-derived by probe-keyless-rocking-bar-springs.mjs (S0)
+export const UNDER_PLATE = Object.freeze({ driverTeeth: 9, carriedTeeth: 11, side: 1, bladeAz: 125 });   // §334 5c: bladeAz in degrees, re-derived by probe-keyless-rocking-bar-springs.mjs (S0)
 
 // THE UNDER-PLATE BAR'S METAL, one law for the build and its probe (§334 landing 5a). The stack hangs from the base
 // plate's back face: the bar's three wheels one CLEAR_MARGIN under it, cut from the winding band's stock, and the
@@ -587,7 +587,7 @@ export function underPlateMetal(U, plateBackZ, { phi = null } = {}) {
 //    corner or the stem at every azimuth its pin could take; under the carried wheel's path the band is free. The
 //    bridge is the hull of the slot's ring and its POST, which stands from it up to the plate's back face at
 //    (postR, postAz) — beyond the carried wheel's reach, since the stem runs under the driver.
-export function underPlateSprings(U, plateBackZ, { bladeAz, postAz, postR, psi = 0 }) {
+export function underPlateSprings(U, plateBackZ, { bladeAz, wayR, wayLong = false, psi = 0 }) {
   const L = U.line, mm = 1 / UNIT_MM, M = CLEAR_MARGIN;
   const K = underPlateMetal(U, plateBackZ);
   const D = K.centres[0], C = K.centres[1];
@@ -630,10 +630,18 @@ export function underPlateSprings(U, plateBackZ, { bladeAz, postAz, postR, psi =
     if (out.length > 1 && Math.hypot(out[0].x - out[out.length - 1].x, out[0].y - out[out.length - 1].y) <= 1e-9) out.pop();
     return out.map((p) => [p.x, p.y]); };
   const zb1 = K.zB0 - M, zb0 = zb1 - K.stock;
-  const postAt = at(postR, th + postAz), postRad = pk;   // the post: the banking pin's own section, which carries its load
-  const bridgeOutline = hull([...slotRing(STOCK_MIN_U), ...circ(postAt, postRad + STOCK_MIN_U, 32)]);
+  // the bridge is ANCHORED ON THE BLADE'S STUD, run down through it (a free-standing post six units out stood in some
+  // arrangement's reserve train every time: every later solve reads the keyless works as built). It is two straight
+  // legs, slot → W → stud, bent at W (midway round between them, at `wayR` from D) so neither passes the crown wheel's
+  // arbor; each leg is a hull containing W, so the bridge is their union read along rays from W.
+  const aSlot = th + psiN / 2, aStud = Math.atan2(root.y - D.y, root.x - D.x);
+  let dA = aStud - aSlot; dA = Math.atan2(Math.sin(dA), Math.cos(dA));
+  if (wayLong) dA -= 2 * Math.PI * Math.sign(dA);   // round the other way
+  const W = at(wayR, aSlot + dA / 2), legHalf = pk + STOCK_MIN_U;
+  const studR = Math.max(PIVOT_MIN_U, h);
+  const bridgeOutline = starUnion(W, [hull([...slotRing(STOCK_MIN_U), ...circ(W, legHalf, 32)]), hull([...circ(W, legHalf, 32), ...circ(root, studR + STOCK_MIN_U, 32)])], 720);
   return { psiN, sOut, rb, rc, ear: earPts(psi), earAt: earPts, blade, bladeAt, stud, outline: outlineAt(psi), outlineAt,
-    bridge: { outline: bridgeOutline, slot: slotRing(0), z0: zb0, z1: zb1, post: { at: postAt, r: postRad, z0: zb0, z1: plateBackZ + 0.3 } },
+    bridge: { outline: bridgeOutline, slot: slotRing(0), z0: zb0, z1: zb1, way: W, anchor: { at: root, r: studR } },
     pinRun: { z0: zb0 - 0.1, z1: K.pin.z1 },   // the carried pin, run down through the bridge
   };
 }
