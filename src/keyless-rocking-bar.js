@@ -77,6 +77,8 @@ export const ROCKING_BAR_INPUTS = Object.freeze({
   bladeH_u: { v: SPRING_FLAT_U, why: 'the movement\'s flat-blade floor (SPRING_FLAT_U, 0.05 mm), which every blade spring here is cut to' },
   bendDeg: { v: null, why: 'a two-wheel bar\'s bend between its arms, degrees; null = DERIVED (the roomiest: its non-meshing members farthest apart). The fold forks it where the movement\'s metal forces another' },
   armBends: { v: null, why: 'each arm\'s sideways bow at its middle, u (left of the arm\'s run positive); null = straight. The fold sets them to route an arm round metal it meets (the owner\'s rule: a link yields), never the wheels\' centres' },
+  bladeL_u: { v: null, why: 'the return blade\'s length, u; null = the bar\'s own reach (landing 1). A softer, longer blade cuts the carry the clip must make (§334 landing 6)' },
+  bladeB_u: { v: null, why: 'the return blade\'s height (the dimension it does not bend in), u; null = the band\'s stock' },
   bladeLever_u: { v: null, why: 'the blade\'s contact radius on the bar, u; null = the boss edge (pivotR + w). The under-plate fold sets it where its ear\'s face carries the contact (§334 landing 5c)' },
   bladeAt: { v: 'boss', why: 'where the return blade bears: the bar\'s boss round D, the smallest lever (\'firstWheel\' is landing 2\'s first draft, kept for the control)' },
 });
@@ -320,8 +322,9 @@ export function solveRockingBar(variant = 'two', over = {}, side = null) {
   // moment RISES by k·swing·r²: the bar's own boss edge is the smallest lever there is (first draft: the first
   // wheel's boss, whose rise outgrew the carry and closed the window, q 0.21), and a blade as long as the bar reaches
   // and as thin as the flat-blade floor is the softest one. One band stock deep.
-  const rS = I.bladeLever_u != null ? mmOf(I.bladeLever_u) : I.bladeAt === 'boss' ? rC0 + metal.w : mmOf(c[0]), Lb = I.bladeAt === 'boss' ? len(Bmm) : mmOf(c[0]);
-  const Ib = tBar * Math.pow(hBlade, 3) / 12, kB = 3 * Esp * Ib / Math.pow(Lb, 3);   // N/mm
+  const rS = I.bladeLever_u != null ? mmOf(I.bladeLever_u) : I.bladeAt === 'boss' ? rC0 + metal.w : mmOf(c[0]);
+  const Lb = I.bladeL_u != null ? mmOf(I.bladeL_u) : I.bladeAt === 'boss' ? len(Bmm) : mmOf(c[0]), bB = I.bladeB_u != null ? mmOf(I.bladeB_u) : tBar;
+  const Ib = bB * Math.pow(hBlade, 3) / 12, kB = 3 * Esp * Ib / Math.pow(Lb, 3);   // N/mm
   const dSwing = rS * swing;                            // mm of extra deflection, neutral → engaged
   // THE FRICTION CARRY: a two-jaw clip in the bar's boss gripping D's arbor at the bore radius, each jaw a quarter
   // round of the bore long, as thin as §50 allows. Its friction is muPlain's band (steel on oiled steel): the slip
@@ -344,8 +347,8 @@ export function solveRockingBar(variant = 'two', over = {}, side = null) {
   }
   const MsE = Ms * rise, MfLo = MsE * q, MfHi = MfLo * (muHi / muLo), MfNom = MfLo * (muNom / muLo);
   const F0 = Ms / rS, d0 = F0 / kB, FE = MsE / rS;
-  const blade = { lever_mm: rS, L_mm: Lb, h_mm: hBlade, b_mm: tBar, k_Npmm: kB, preload_mm: d0, swing_mm: dSwing, F0_N: F0, FE_N: FE,
-    sigmaE: 6 * FE * Lb / (tBar * hBlade * hBlade), sigmaLimit: sigSpring };
+  const blade = { lever_mm: rS, L_mm: Lb, h_mm: hBlade, b_mm: bB, k_Npmm: kB, preload_mm: d0, swing_mm: dSwing, F0_N: F0, FE_N: FE,
+    sigmaE: 6 * FE * Lb / (bB * hBlade * hBlade), sigmaLimit: sigSpring };
   const Nc = MfLo / (muLo * rC);                       // the clip's total grip
   // each jaw as thin as its own grip lets it work at the alloy's low end, floored at the flat-blade floor: the
   // thinnest jaw needs the most interference, which is the easiest to hold to a tolerance
