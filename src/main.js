@@ -49631,6 +49631,7 @@ function stemSlipLocal() { return windSign * -windStemSlip; }
 let setPathRot = 0;        // accumulated rotation actually delivered to the setting path
 let autoWindRemaining = 0; // radians left to auto-turn (Wind button)
 const AUTO_WIND_RATE = 48; // rad/s — the Wind button's auto-turn speed
+const KB_ENGAGE_SHOW_S = 0.3; // §334 5c — POSED: the Wind button draws the rocking bar's engagement over this long (a hand's drag in the probe took about this), so it is seen at real speed
 
 // --- Alarm (BUILT §24) -----------------------------------------------------
 // THE REFERENCE is the Jaeger-LeCoultre Memovox (1950, cal. 489): a second
@@ -52773,10 +52774,11 @@ function syncUpdate(realDt) {
 // reserve reaches the stop and the viewer hears the bank (§47). The old
 // literal 16 was ~3× a full wind — before the arrest existed, all of it
 // past full drove the transfer⇄spur mesh teeth-through-teeth.
-document.getElementById('btn-wind').addEventListener('click', () => {
+function pressWind() {   // the Wind button's one action; §334 5c's __clock.pressWind calls it too, so an instrument presses the same button
   if (crownOut) return; // crown must be pushed in (winding position) to wind
   autoWindRemaining += (RESERVE_BARREL_TURNS * (WIND_SPUR_TEETH / windPinionTeeth) + 1) * 2 * Math.PI;
-});
+}
+document.getElementById('btn-wind').addEventListener('click', pressWind);
 
 // --- crown: click to pull/push, drag to turn -------------------------------
 const crownBtn = document.getElementById('btn-crown');
@@ -64480,7 +64482,14 @@ function tick(t) {
   const windEngaged = crownPullT < 0.5;
   const setEngaged = crownPullT > 0.5;
   if (autoWindRemaining > 0 && windEngaged) {
-    const step = Math.min(autoWindRemaining, AUTO_WIND_RATE * rawDt);
+    // §334 5c — POSED DISPLAY PACING (the owner's ask): while the rocking bar is still engaging, the Wind button turns
+    // the crown no faster than draws the whole engagement — up to a tooth to find, then the swing — over
+    // KB_ENGAGE_SHOW_S. The real bar swings in milliseconds, and at AUTO_WIND_RATE the whole of it fell inside one
+    // frame. A hand on the crown is never paced: its own speed is what the drag delivers.
+    const rate = KB_BUILT && kbSwing < 1
+      ? Math.min(AUTO_WIND_RATE, (KB_PITCH_TURNS + KB_PSI_N / KB_DRIVER_RAD_PER_TURN) * Math.abs(STEM_RAD_PER_TURN) / KB_ENGAGE_SHOW_S)
+      : AUTO_WIND_RATE;
+    const step = Math.min(autoWindRemaining, rate * rawDt);
     crownRotation += step;
     autoWindRemaining -= step;
   }
@@ -68377,6 +68386,7 @@ window.__clock = {
     for (let left = seconds; left > 0; left -= chunk) drainBarrelBy(Math.min(chunk, left), barIn);
     tick(lastTickRawT);
   },
+  pressWind() { pressWind(); },
   get windSign() { return windSign; },
   get windArrestStalled() { return windArrestStalled; },
   get kbLead() { return kbLead; },

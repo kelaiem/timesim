@@ -21,6 +21,7 @@
 //   R5  letting go after winding: the run-down carries the bar out through the mesh (the crown side falling by the
 //       swing's in-mesh part), the blade takes it to its banking, and then the crown side stands
 //   R6  wind, let go for a minute, wind again: the teeth stay in phase through the second swing in
+//   R7  the Wind button draws the engagement over several frames at 60 fps (its POSED pacing, KB_ENGAGE_SHOW_S)
 import { bootNative } from './native/host.mjs';
 
 const r = await bootNative({ query: '' });
@@ -104,6 +105,15 @@ row('R4', worstOff < 0.02 && worstD < 1e-6 && ctl !== null && ctl > 0.02,
     if (C.kbSwing === 1) for (const st of SITES) { const m = C.measureMeshNow(st); if (m.ok) worst = Math.max(worst, m.off); } } };
   wind(40); C.runDown(60); sawPart = C.kbSwing > C.kbTipS && C.kbSwing < 1; wind(40);
   row('R6', sawPart && worst < 0.02 && C.kbSwing === 1, `a minute's run-down left the bar ${sawPart ? 'part-way out, in mesh' : 'NOT part-way'}; through the second wind the worst mesh reads ${(worst * 100).toFixed(3)}% of a pitch`);
+}
+// R7: the Wind button (pressWind, the button's own action) draws the engagement: at 60 frames a second the bar is seen
+// part-way for several frames before it is at depth (POSED pacing, KB_ENGAGE_SHOW_S), where unpaced it fitted in one
+{
+  C.resetInputs(); C.setCrownOut(false); C.setPose({ tension: 0.3, crownPullT: 0 }); C.runDown(600);
+  C.pressWind();
+  let part = 0, depth = null;
+  for (let i = 0; i < 600 && depth === null; i++) { C.step(1 / 60); if (C.kbSwing > 0 && C.kbSwing < 1) part++; if (C.kbSwing === 1) depth = i; }
+  row('R7', depth !== null && part >= 8, `the Wind button: the bar drawn part-way for ${part} frames, at depth on frame ${depth}`);
 }
 console.log(fails.length ? `FAIL ${fails.join(', ')}` : 'PASS all rows');
 process.exit(fails.length ? 1 : 0);
