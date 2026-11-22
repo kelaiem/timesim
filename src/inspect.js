@@ -14517,7 +14517,18 @@ export async function checkJumperMovers(clock, { yieldEvery = 16 } = {}) {
           }
         } else if (row.kind === 'lawed') {
           let g = Infinity;
-          for (const Sm of x.rec.samples || []) { place(Q, x.cs, Sm); g = Math.min(g, disp()); }
+          const isWheel = (n) => n && n.userData && n.userData.teeth > 0 && n.userData.r > 0;   // the count rides the gear's group
+          if (isWheel(m) || isWheel(m.parent)) {
+            // §334 landing 5b — a toothed wheel on a lawed body turns on its own axis too, and the solve read its
+            // REVOLUTION at each sample (main.js, jmpRevolutionOf), so its distance from a sample is its centre's and
+            // its axis's, its own spin taken out: the centre's offset, and the axis's tilt times its reach
+            if (!x.reach) x.reach = Math.max(...x.cs.map((p) => Math.hypot(p.x, p.y)));
+            const c = new THREE.Vector3().setFromMatrixPosition(m.matrixWorld), a = new THREE.Vector3().setFromMatrixColumn(m.matrixWorld, 2).normalize();
+            for (const Sm of x.rec.samples || []) {
+              const cs = new THREE.Vector3().setFromMatrixPosition(Sm), as = new THREE.Vector3().setFromMatrixColumn(Sm, 2).normalize();
+              g = Math.min(g, Math.max(c.distanceTo(cs), x.reach * a.clone().cross(as).length()));
+            }
+          } else for (const Sm of x.rec.samples || []) { place(Q, x.cs, Sm); g = Math.min(g, disp()); }
           x.lawGap = Math.max(x.lawGap, g);
         } else if (row.kind === 'revolve') {
           const ax = rotorAxisOf(row.onto);

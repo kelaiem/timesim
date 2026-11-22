@@ -66380,6 +66380,9 @@ const JMP_SITE_MOVERS = [
   ]),
   // judged at every pull of the solve's own crown grid (settingLeverAngleAt)
   { name: 'setting lever', kind: 'lawed', roots: [settingLeverGroup], grid: 'pull' },
+  // §334 landing 5b — the rocking bar swings about the driver's axis by its own law (kbPsiAt, out → in), carrying its
+  // pin and the carried wheel; read at the law's samples, the wheel at its index on the bar
+  ...(KB_BUILT ? [(() => { const pose = (u) => { kbBarGroup.rotation.z = kbPsiAt(u); }; return { name: 'rocking bar', kind: 'lawed', roots: [kbBarGroup], pose, stroke: jmpStrokeOf([kbBarGroup], pose) }; })()] : []),   // the stroke measured off the law, the link run's rule
   // ---- revolve: the dial-centre groups, onto the entries already turning there
   { name: 'hour group', kind: 'revolve', roots: [hourWheelGroup], onto: mwHourWheel, slack: 0 },
   // the reader drops on its lift by at most ALARM_PIN_DROP (tick's clamp) — and
@@ -66646,6 +66649,17 @@ const JMP_SITE = await (async () => {
   // for in silence.
   let nonFiniteTris = 0;
   const nonFiniteMeshes = new Set();
+  const jmpRevDiscs = new Map();
+  const jmpRevolutionOf = (o) => {   // the wheel's revolution as a closed disc, placed where the wheel stands now
+    let g = jmpRevDiscs.get(o.geometry);
+    if (!g) {
+      const pos = o.geometry.attributes.position; let r = 0, z0 = Infinity, z1 = -Infinity;
+      for (let i = 0; i < pos.count; i++) { r = Math.max(r, Math.hypot(pos.getX(i), pos.getY(i))); z0 = Math.min(z0, pos.getZ(i)); z1 = Math.max(z1, pos.getZ(i)); }
+      g = new THREE.CylinderGeometry(r, r, z1 - z0, 64); g.rotateX(Math.PI / 2); g.translate(0, 0, (z0 + z1) / 2);
+      jmpRevDiscs.set(o.geometry, g);
+    }
+    const m = new THREE.Mesh(g); m.matrixWorld.copy(o.matrixWorld); return m;
+  };
   const pushTris = (m, into) => {
     const pos = m.geometry.attributes.position, idx = m.geometry.index;
     const n = idx ? idx.count : pos.count;
@@ -66729,7 +66743,12 @@ const JMP_SITE = await (async () => {
           if (recs.has(o)) recs.get(o).samples.push(o.matrixWorld.clone());
           if (!box.setFromObject(o).intersectsBox(region)) return;
           if (recs.has(o)) recs.get(o).inRegion = true;
-          const arr = []; pushTris(o, arr); staticList.push(arr); staticBDep.push(false); staticTris.push(arr.length / 9);
+          // §334 landing 5b — a toothed wheel carried by a lawed body (the rocking bar's carried wheel) also TURNS on its
+          // own axis, at any angle, so what it occupies at a sample is its REVOLUTION: a disc of its tip radius over
+          // its thickness, in its own frame at that sample, rather than its teeth at one angle
+          const arr = []; const isWheel = (n) => n && n.userData?.teeth > 0 && n.userData?.r > 0;   // the count rides the gear's group (makeGear), its body under it
+          pushTris(isWheel(o) || isWheel(o.parent) ? jmpRevolutionOf(o) : o, arr);
+          staticList.push(arr); staticBDep.push(false); staticTris.push(arr.length / 9);
         });
       }
     }
