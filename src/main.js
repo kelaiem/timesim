@@ -13,7 +13,7 @@ import { aesthetics, confirmAestheticsBoot, writeOverrides, clearOverrides, seri
 import { loadState, saveState, clearState, hasState } from './state.js';
 import { isSoftwareRenderer, savedView } from './boot-view.js';   // the view a boot opens in — one law, read here and by the loading screen (index.html)
 import * as BD from './balance-drive.js';
-import { foldUnderPlate, underPlateMetal, underPlateCurvedSpring, UNDER_PLATE, ROCKING_BAR_INPUTS } from './keyless-rocking-bar.js';   // §334 landing 5a: the winding coupling's rocking bar, under the plate   // §246 tier two — the driven balance (pure; the live loop steps it)
+import { foldUnderPlate, underPlateMetal, underPlateCurvedSpring, underPlateBanking, UNDER_PLATE, ROCKING_BAR_INPUTS } from './keyless-rocking-bar.js';   // §334 landing 5a: the winding coupling's rocking bar, under the plate   // §246 tier two — the driven balance (pure; the live loop steps it)
 // §73 tier one — the chrome's strings. UI_LANG resolves once at import
 // (?lang → localStorage → navigator.language → en); t() falls back to its
 // English input when an entry is missing, so a gap is visible, never blank.
@@ -7146,7 +7146,7 @@ transferArbor.rotation.x = Math.PI / 2;
 transferArbor.position.set(TRANSFER_XY.x, TRANSFER_XY.y, (Z_TRANSFER + _trArborLo) / 2);
 keyless.add(transferArbor);
 let crownWheelArbor = null, kbDriver = null, kbCarried = null, kbFollower = null, kbBar = null, kbPin = null, kbBarGroup = null;
-let kbBlade = null, kbBladeStud = null, kbBladePin = null, KB_BLADE_GEOS = null, kbClipJaws = [];   // §334 5c: the return blade and the banking
+let kbBlade = null, kbBladeStud = null, kbBladePin = null, KB_BLADE_GEOS = null, kbClipJaws = [], kbBankPost = null, kbBankTongue = null;   // §334 5c: the return blade and the banking
 let kbDriverClock = 0, kbCarriedClock = 0, kbFollowerClock = 0;   // TODO 132's free indices, solved with the keyless meshes
 if (KB_BUILT) {
   const D0 = { x: uWind.x * cwDist, y: uWind.y * cwDist }, K = KB_METAL, zW = (K.zW0 + K.zW1) / 2;
@@ -7187,7 +7187,20 @@ if (KB_BUILT) {
   kbBarGroup.add(kbPin);
   const post = (name, at, r, z0, z1, parent = keyless, o = { x: 0, y: 0 }) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, z1 - z0, 14), MATS.blueSteel); m.name = name; m.rotation.x = Math.PI / 2; m.position.set(at.x - o.x, at.y - o.y, (z0 + z1) / 2); parent.add(m); return m; };
   kbBladeStud = post('kbBladeStud', SP.stud.at, SP.stud.r, SP.stud.z0, SP.stud.z1);
-  kbBladePin = post('kbBladePin', SP.pin.at, SP.pin.r, SP.pin.z0, SP.pin.z1, kbBarGroup, D0);   // riveted in the bar's ear
+  // §334 landing 7 — THE BANKING (underPlateBanking): a post planted in the plate drops past the wheels, the bar and the
+  // blade into a slot in a TONGUE of the bar's own, a layer under the blade, riding the bar's arbor and the blade's pin;
+  // the slot's end walls stop the bar engaged and out. Placed by probe-keyless-rocking-bar-banking.mjs (UNDER_PLATE.banking).
+  const BK = underPlateBanking(KB, -BACK_PLATE_T, UNDER_PLATE.blade, UNDER_PLATE.banking);
+  kbBladePin = post('kbBladePin', SP.pin.at, SP.pin.r, BK.bladePinZ0, SP.pin.z1, kbBarGroup, D0);   // riveted in the bar's ear, run on down through the tongue
+  kbBankPost = post('kbBankPost', BK.post.at, BK.post.r, BK.post.z0, BK.post.z1);
+  {
+    const sh = new THREE.Shape(BK.outline.map(([x, y]) => new THREE.Vector2(x - D0.x, y - D0.y)));
+    const hole = (c, r) => { const h = new THREE.Path(); h.absarc(c.x - D0.x, c.y - D0.y, r, 0, 2 * Math.PI, true); return h; };
+    sh.holes.push(hole(BK.bore.at, BK.bore.r), hole(BK.pinHole.at, BK.pinHole.r), new THREE.Path(BK.slot.map(([x, y]) => new THREE.Vector2(x - D0.x, y - D0.y))));
+    const g = new THREE.ExtrudeGeometry(sh, { depth: BK.layer.z1 - BK.layer.z0, bevelEnabled: false, curveSegments: 32 });
+    g.translate(0, 0, BK.layer.z0);
+    kbBankTongue = new THREE.Mesh(g, MATS.steel); kbBankTongue.name = 'kbBankTongue'; kbBarGroup.add(kbBankTongue);
+  }
   // a frame's metal: the centreline offset half the strip each side, extruded through the layer
   KB_BLADE_GEOS = SP.frames.map((all) => {
     // a centreline point nearer the end than the strip is thick would fold the two edges across each other at the end
@@ -11086,6 +11099,8 @@ if (KB_BUILT) {   // §334 landing 5a
   registerSub('Keyless works', 'Bar return blade', kbBladeStud);
   registerSub('Keyless works', 'Bar return blade', kbBladePin);
   for (const j of kbClipJaws) registerSub('Keyless works', 'Bar friction clip', j);
+  registerSub('Keyless works', 'Bar banking', kbBankPost);
+  registerSub('Keyless works', 'Bar banking', kbBankTongue);
 }
 registerSub('Keyless works', 'Crown-wheel screw', cwScrew);
 registerSub('Keyless works', 'Winding pinion', windPinionGroup);
