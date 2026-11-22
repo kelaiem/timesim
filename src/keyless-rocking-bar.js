@@ -77,6 +77,8 @@ export const ROCKING_BAR_INPUTS = Object.freeze({
   bladeH_u: { v: SPRING_FLAT_U, why: 'the movement\'s flat-blade floor (SPRING_FLAT_U, 0.05 mm), which every blade spring here is cut to' },
   bendDeg: { v: null, why: 'a two-wheel bar\'s bend between its arms, degrees; null = DERIVED (the roomiest: its non-meshing members farthest apart). The fold forks it where the movement\'s metal forces another' },
   armBends: { v: null, why: 'each arm\'s sideways bow at its middle, u (left of the arm\'s run positive); null = straight. The fold sets them to route an arm round metal it meets (the owner\'s rule: a link yields), never the wheels\' centres' },
+  bladeK_Npmm: { v: null, why: 'the return blade\'s rate at its tip, N/mm; null = the straight cantilever 3EI/L³. A CURVED blade\'s rate, by curvedBladeRate over its path (§334 landing 6)' },
+  bladeArm_mm: { v: null, why: 'the largest arm of the tip force about the blade, mm (its root stress); null = the straight blade\'s length' },
   bladeL_u: { v: null, why: 'the return blade\'s length, u; null = the bar\'s own reach (landing 1). A softer, longer blade cuts the carry the clip must make (§334 landing 6)' },
   bladeB_u: { v: null, why: 'the return blade\'s height (the dimension it does not bend in), u; null = the band\'s stock' },
   bladeLever_u: { v: null, why: 'the blade\'s contact radius on the bar, u; null = the boss edge (pivotR + w). The under-plate fold sets it where its ear\'s face carries the contact (§334 landing 5c)' },
@@ -324,7 +326,8 @@ export function solveRockingBar(variant = 'two', over = {}, side = null) {
   // and as thin as the flat-blade floor is the softest one. One band stock deep.
   const rS = I.bladeLever_u != null ? mmOf(I.bladeLever_u) : I.bladeAt === 'boss' ? rC0 + metal.w : mmOf(c[0]);
   const Lb = I.bladeL_u != null ? mmOf(I.bladeL_u) : I.bladeAt === 'boss' ? len(Bmm) : mmOf(c[0]), bB = I.bladeB_u != null ? mmOf(I.bladeB_u) : tBar;
-  const Ib = bB * Math.pow(hBlade, 3) / 12, kB = 3 * Esp * Ib / Math.pow(Lb, 3);   // N/mm
+  const Ib = bB * Math.pow(hBlade, 3) / 12, kB = I.bladeK_Npmm != null ? I.bladeK_Npmm : 3 * Esp * Ib / Math.pow(Lb, 3);   // N/mm
+  const armB = I.bladeArm_mm != null ? I.bladeArm_mm : Lb;
   const dSwing = rS * swing;                            // mm of extra deflection, neutral → engaged
   // THE FRICTION CARRY: a two-jaw clip in the bar's boss gripping D's arbor at the bore radius, each jaw a quarter
   // round of the bore long, as thin as §50 allows. Its friction is muPlain's band (steel on oiled steel): the slip
@@ -348,7 +351,7 @@ export function solveRockingBar(variant = 'two', over = {}, side = null) {
   const MsE = Ms * rise, MfLo = MsE * q, MfHi = MfLo * (muHi / muLo), MfNom = MfLo * (muNom / muLo);
   const F0 = Ms / rS, d0 = F0 / kB, FE = MsE / rS;
   const blade = { lever_mm: rS, L_mm: Lb, h_mm: hBlade, b_mm: bB, k_Npmm: kB, preload_mm: d0, swing_mm: dSwing, F0_N: F0, FE_N: FE,
-    sigmaE: 6 * FE * Lb / (bB * hBlade * hBlade), sigmaLimit: sigSpring };
+    sigmaE: 6 * FE * armB / (bB * hBlade * hBlade), sigmaLimit: sigSpring };
   const Nc = MfLo / (muLo * rC);                       // the clip's total grip
   // each jaw as thin as its own grip lets it work at the alloy's low end, floored at the flat-blade floor: the
   // thinnest jaw needs the most interference, which is the easiest to hold to a tolerance
@@ -530,13 +533,18 @@ export function foldRockingBar({ transferAt, spurAt, windSenseWorld, plateTopZ, 
 // The line is solved with nF = nD so the winding ratio is today's, and ONE carried wheel, so the two meshes keep the
 // driver and the follower turning the same way, which keeps the winding sense (the line's RB rules decide the rest).
 // Pure: no metal is cut here. Returns the follower's centre, the swing round the spur and the line it placed.
-export function foldUnderPlate({ axisAt, spurAt, windSenseWorld, driverTeeth, carriedTeeth, fuseeTorque_Nmm, side = 1, pivotR_u = ROCKING_BAR_INPUTS.pivotR_u.v }) {
+export function foldUnderPlate({ axisAt, spurAt, windSenseWorld, driverTeeth, carriedTeeth, fuseeTorque_Nmm, side = 1, pivotR_u = ROCKING_BAR_INPUTS.pivotR_u.v, blade = null }) {
   // §334 5c — the blade bears on its ear's face one CLEAR_MARGIN beyond the boss edge (underPlateSprings): at the edge
   // itself the strip, tilting as the bar swings in, would cut into the round boss behind its tip. The line is solved
   // at that lever, so its blade, its window and its swing are the metal's.
   const L0 = solveRockingBar('one', { driverTeeth, followerTeeth: driverTeeth, carried: { one: [carriedTeeth], two: [12, 12] }, fuseeTorque_Nmm, pivotR_u });
+  // §334 landing 6 — with a CURVED blade declared (UNDER_PLATE.blade) the line takes its rate and its root arm off the
+  // blade's own path, and its lever is the tip's radius: the curve is what makes the spring soft enough for a clip
+  const cb = blade ? (() => { const P = curvedBladePath(blade), mm = UNIT_MM;
+    const c = curvedBladeRate(P.pts.map((p) => ({ x: p.x * mm, y: p.y * mm })), P.dir, blade.b_u * mm, ROCKING_BAR_INPUTS.bladeH_u.v * mm);
+    return { bladeK_Npmm: c.k_Npmm, bladeArm_mm: c.armMax_mm, bladeB_u: blade.b_u, bladeLever_u: P.lever, bladeL_u: c.length_mm / mm }; })() : null;
   const L = solveRockingBar('one', { driverTeeth, followerTeeth: driverTeeth, carried: { one: [carriedTeeth], two: [12, 12] }, fuseeTorque_Nmm, pivotR_u,
-    bladeLever_u: pivotR_u + L0.metal.w / UNIT_MM + CLEAR_MARGIN });
+    ...(cb ?? { bladeLever_u: pivotR_u + L0.metal.w / UNIT_MM + CLEAR_MARGIN }) });
   if (!L.feasible) return { feasible: false, why: `the line does not solve: ${L.why}` };
   const d = L.inputs.centreDistance_u, ex = axisAt.x - spurAt.x, ey = axisAt.y - spurAt.y, rS = Math.hypot(ex, ey);
   const c = 1 - d * d / (2 * rS * rS);
@@ -685,4 +693,79 @@ export function curvedBladeRate(path, dir, b_mm, h_mm, E_MPa = MAINSPRING_E_PA /
     }
   }
   return { k_Npmm: E_MPa * I / integral, armMax_mm: armMax, length_mm: path.slice(1).reduce((s, p, i) => s + Math.hypot(p.x - path[i].x, p.y - path[i].y), 0) };
+}
+
+// THE CURVED RETURN BLADE'S PATH (§334 landing 6), in the frame of D with the carried wheel (engaged) along +x: a polar
+// spiral from its stud at (studR, studAz) round `span` degrees (turn ±1) to its tip at tipR, its radius running
+// linearly with the angle. Returns the path (u) and the tip's push direction (square to the radius there, the sense the
+// pin moves as the bar swings OUT, which the blade resists). One law for the line's rate and the fold's metal.
+export function curvedBladePath({ studR, studAz, turn, span, tipR }, n = null) {
+  const DEG = Math.PI / 180, m = n ?? Math.max(12, Math.ceil(span / 3)), pts = [];
+  for (let k = 0; k <= m; k++) { const f = k / m, r = studR + (tipR - studR) * f, a = (studAz + turn * span * f) * DEG; pts.push({ x: r * Math.cos(a), y: r * Math.sin(a) }); }
+  const ta = (studAz + turn * span) * DEG, a = pts[m - 1], c = pts[m], l = Math.hypot(c.x - a.x, c.y - a.y);
+  // the push is along the blade's END, its axis there; the pin moves round D (tangent t), so the lever the swing works
+  // through is the tip's radius times the share of the pin's motion along that axis
+  const dir = { x: (c.x - a.x) / l, y: (c.y - a.y) / l }, t = { x: -Math.sin(ta), y: Math.cos(ta) };
+  return { pts, tipAz: studAz + turn * span, dir, lever: tipR * Math.abs(dir.x * t.x + dir.y * t.y) };
+}
+
+// THE CURVED RETURN BLADE AS METAL (§334 landing 6), one law for the build and its probe. `blade` is curvedBladePath's
+// declaration plus its height b_u. The blade lies in its own LAYER one margin under the bar (the free band the survey
+// found: 1.1–1.7 u deep almost all round, the stem's sector apart), its stud dropping from the plate's back face, and
+// its END bears on a PIN hanging from an ear of the bar at the tip's radius. Its rest shape is the bar OUT (the
+// preload's few microns aside); swinging in, the pin pushes the end along the push direction and the blade BENDS:
+// each frame's points are displaced by the same Castigliano integral the rate is (a unit load at each point, both
+// directions), the force set by the pin's travel along the push. `frames` shapes from out (0) to engaged (1), drawn as
+// distinct geometries (MODELING rule 6).
+export function underPlateCurvedSpring(U, plateBackZ, blade, { frames = 17 } = {}) {
+  const L = U.line, mm = UNIT_MM, M = CLEAR_MARGIN;
+  const K = underPlateMetal(U, plateBackZ);
+  const D = K.centres[0], C = K.centres[1];
+  const th = Math.atan2(C.y - D.y, C.x - D.x);
+  const CN = U.centresWorld(L.neutral.phi)[1];
+  let psiN = Math.atan2(CN.y - D.y, CN.x - D.x) - th; psiN = Math.atan2(Math.sin(psiN), Math.cos(psiN));
+  const rotD = (p, d) => { const c = Math.cos(d), s = Math.sin(d), x = p.x - D.x, y = p.y - D.y; return { x: D.x + x * c - y * s, y: D.y + x * s + y * c }; };
+  const P = curvedBladePath(blade);
+  const W = (p) => ({ x: D.x + p.x * Math.cos(th) - p.y * Math.sin(th), y: D.y + p.x * Math.sin(th) + p.y * Math.cos(th) });
+  const pathOut = P.pts.map(W);                                   // the rest shape, the bar OUT
+  const pinR = PIVOT_MIN_U, h = ROCKING_BAR_INPUTS.bladeH_u.v, b = blade.b_u;
+  const pinOut = pathOut[pathOut.length - 1];                     // the pin's centre with the bar out
+  // the pin's motion as the bar swings in (world): its direction at the tip, which the blade's end must face
+  const pinAt = (f) => rotD(pinOut, -f * psiN);                    // f: 0 out → 1 engaged
+  const inDir = (() => { const a = pinAt(0), c = pinAt(1e-4); const l = Math.hypot(c.x - a.x, c.y - a.y); return { x: (c.x - a.x) / l, y: (c.y - a.y) / l }; })();
+  // the blade stops one pin radius short of the pin's centre, its end on the pin's in-side
+  const n = pathOut.length, last = pathOut[n - 1], prev = pathOut[n - 2], segL = Math.hypot(last.x - prev.x, last.y - prev.y);
+  const endPt = { x: last.x + (prev.x - last.x) * (pinR / segL), y: last.y + (prev.y - last.y) * (pinR / segL) };
+  const body = [...pathOut.slice(0, n - 1), endPt];
+  const arrive = { x: (endPt.x - prev.x), y: (endPt.y - prev.y) }, al = Math.hypot(arrive.x, arrive.y);
+  const facesIn = (arrive.x * inDir.x + arrive.y * inDir.y) / al < 0;   // the end heads against the pin's in-swing: the pin pushes into it
+  // the deflected frames: displacement of each body point under a tip force along the end's push direction
+  const dir = { x: -arrive.x / al, y: -arrive.y / al };          // the force the pin puts on the blade's end, along its axis
+  const E = MAINSPRING_E_PA / 1e6, I = (b * mm) * Math.pow(h * mm, 3) / 12;
+  const tip = endPt, segs = [];
+  for (let i = 1; i < body.length; i++) segs.push([body[i - 1], body[i]]);
+  const quad = (fn) => { let s = 0; for (const [a, c] of segs) { const ln = Math.hypot(c.x - a.x, c.y - a.y), m = 16;
+    for (let k = 0; k < m; k++) { const t = (k + 0.5) / m, p = { x: a.x + (c.x - a.x) * t, y: a.y + (c.y - a.y) * t }; s += fn(p) * ln / m; } } return s; };
+  const armF = (p) => (p.x - tip.x) * dir.y - (p.y - tip.y) * dir.x;
+  const flex = quad((p) => armF(p) * armF(p));                     // u³ units: tip compliance along dir is flex·u³/(E I) per N
+  // displacement of point q along unit e under unit tip force: ∫ over the part between the root and q
+  const dispAt = (q, idx, e) => { let s = 0; for (let i = 1; i <= idx; i++) { const a = body[i - 1], c = body[i], ln = Math.hypot(c.x - a.x, c.y - a.y), m = 16;
+    for (let k = 0; k < m; k++) { const t = (k + 0.5) / m, p = { x: a.x + (c.x - a.x) * t, y: a.y + (c.y - a.y) * t };
+      s += armF(p) * ((p.x - q.x) * e.y - (p.y - q.y) * e.x) * ln / m; } } return s; };
+  const ex = { x: 1, y: 0 }, ey = { x: 0, y: 1 };
+  const unitDisp = body.map((q, i) => ({ x: dispAt(q, i, ex), y: dispAt(q, i, ey) }));   // per (F·u³/EI)
+  const frameAt = (f) => { const travel = (pinAt(f).x - pinOut.x) * dir.x + (pinAt(f).y - pinOut.y) * dir.y;   // along the push
+    const Fs = travel / flex;                                       // so the tip's displacement along dir is `travel`
+    return body.map((q, i) => ({ x: q.x + Fs * unitDisp[i].x, y: q.y + Fs * unitDisp[i].y })); };
+  const frameList = Array.from({ length: frames }, (_, k) => frameAt(k / (frames - 1)));
+  const zl1 = K.zB0 - M, zl0 = zl1 - b;                            // the blade's layer, a margin under the bar
+  const stud = { at: body[0], r: PIVOT_MIN_U, z0: zl0 - 0.1, z1: plateBackZ + 0.3 };
+  // the pin hangs from an ear of the bar: in the bar's frame (engaged) it stands at pinAt(1)
+  const pinEngaged = pinAt(1);
+  const pin = { at: pinEngaged, r: pinR, z0: zl0 - 0.1, z1: K.zB1 };
+  const earAround = (c) => circ(c, pinR + STOCK_MIN_U, 32);
+  const bossPts = circ(D, L.inputs.pivotR_u + L.metal.w / mm, 48);
+  const outlineAt = (d) => { const R = (pts) => pts.map(([x, y]) => { const p = rotD({ x, y }, d); return [p.x, p.y]; });
+    return starUnion(D, [R(K.outline), hull([...R(bossPts), ...R(earAround(pinEngaged))])], 720); };
+  return { psiN, inDir, facesIn, body, frames: frameList, frameAt, stud, pin, layer: { z0: zl0, z1: zl1 }, h, b, outlineAt, travel: (f) => (pinAt(f).x - pinOut.x) * dir.x + (pinAt(f).y - pinOut.y) * dir.y };
 }

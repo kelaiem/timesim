@@ -4,7 +4,7 @@
 
 # The instruments
 
-459 scripts. **329 are ACCEPTANCE tests** — they decide and exit non-zero.
+460 scripts. **330 are ACCEPTANCE tests** — they decide and exit non-zero.
 **130 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -386,6 +386,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-handset-reach.mjs` |  | report | HOW FAR DOWN THE HAND-SETTING CHAIN DOES THE `handSet` AXIS ACTUALLY REACH? |
 | `probe-hud-orbit-roll.mjs` |  | acceptance | DOES A CANVAS DRAG STILL SPIN THE VIEW AFTER THE HUD HAS ROLLED IT? — the orbit axis after a §57 arcball roll, measured. |
 | `probe-interplate-demand.mjs` |  | acceptance | WHAT PINS THE THREE-QUARTER PLATE'S UNDERSIDE — the inter-plate z demand, per station, and the wheel-in-bore inventory. |
+| `probe-keyless-rocking-bar-curved.mjs` |  | acceptance | THE ROCKING BAR'S CURVED RETURN BLADE, PLACED UNDER THE BAR (§334 landing 6) — acceptance, native boots. |
 | `probe-keyless-rocking-bar-fold.mjs` |  | acceptance | THE ROCKING BAR'S FOLD, PLANNED AGAINST THE BUILT MOVEMENT (§334 landings 3b and 3c, TODO 318) — acceptance, one native boot. |
 | `probe-keyless-rocking-bar-run.mjs` |  | acceptance | THE CROWN STANDS STILL WHILE THE WATCH RUNS (§334 landing 5b, TODO 318's acceptance) — one native boot. |
 | `probe-keyless-rocking-bar-springs.mjs` |  | acceptance | THE ROCKING BAR'S RETURN BLADE AND BANKING, PLACED UNDER THE PLATE (§334 landing 5c) — acceptance, one native boot. |
