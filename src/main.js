@@ -13,7 +13,7 @@ import { aesthetics, confirmAestheticsBoot, writeOverrides, clearOverrides, seri
 import { loadState, saveState, clearState, hasState } from './state.js';
 import { isSoftwareRenderer, savedView } from './boot-view.js';   // the view a boot opens in — one law, read here and by the loading screen (index.html)
 import * as BD from './balance-drive.js';
-import { foldUnderPlate, underPlateMetal, UNDER_PLATE, ROCKING_BAR_INPUTS } from './keyless-rocking-bar.js';   // §334 landing 5a: the winding coupling's rocking bar, under the plate   // §246 tier two — the driven balance (pure; the live loop steps it)
+import { foldUnderPlate, underPlateMetal, underPlateSprings, UNDER_PLATE, ROCKING_BAR_INPUTS } from './keyless-rocking-bar.js';   // §334 landing 5a: the winding coupling's rocking bar, under the plate   // §246 tier two — the driven balance (pure; the live loop steps it)
 // §73 tier one — the chrome's strings. UI_LANG resolves once at import
 // (?lang → localStorage → navigator.language → en); t() falls back to its
 // English input when an entry is missing, so a gap is visible, never blank.
@@ -4504,6 +4504,7 @@ const kbFoldFor = (kw, barrel) => foldUnderPlate({ axisAt: { x: kw.uWind.x * kw.
 const KB = windIdler ? null : kbFoldFor({ uWind, cwDist }, P.barrel);
 if (KB && !KB.feasible) console.warn(`§334 landing 5a: the under-plate bar does not fold: ${KB.why} — the transfer stays coaxial with the crown wheel`);
 const KB_BUILT = !!(KB && KB.feasible);
+let KB_SPRINGS = null;   // §334 5c: underPlateSprings' answer, set at the bar's build
 // the transfer wheel's centre, for every reader of it: the follower's when the bar is built, the crown wheel's when not
 const transferAtFor = (kw, barrel) => { if (kw.windIdler) return { x: kw.uWind.x * kw.cwDist, y: kw.uWind.y * kw.cwDist };
   const f = kbFoldFor(kw, barrel); return f.feasible ? f.followerAt : { x: kw.uWind.x * kw.cwDist, y: kw.uWind.y * kw.cwDist }; };
@@ -4517,6 +4518,19 @@ const KB_PITCH_EPS = 1e-12;
 // The bar's swing ψ about the driver's axis, world radians, 0 engaged: the line's own angles (engaged and neutral, in
 // the line's frame) mapped by the fold's sense, so `s` = 1 is the depth the line solved and `s` = 0 its banking.
 const kbPsiAt = (s) => KB_BUILT ? Math.sign(CROWN_RAD_PER_TURN) * (1 - s) * (KB.line.neutral.phi - KB.line.engaged.phi) : 0;
+// §334 5c — THE SWING IS DRIVEN BY THE DRIVER. The friction clip ties the bar to the driver's arbor, so while they move
+// together the bar swings exactly as far as the driver turns: KB_PSI_N of swing (its whole travel, world radians) is
+// KB_PSI_N / |CROWN_RAD_PER_TURN| of crown-side bank. KB_TIP_S is the swing at which the carried wheel's tips meet the
+// follower's (the line's own gap law, gapLF = 0, bisected between its banking and its depth): short of it the bar
+// swings free, past it it is in mesh.
+const KB_PSI_N = KB_BUILT ? Math.abs(KB.line.neutral.phi - KB.line.engaged.phi) : 1;
+const KB_DRIVER_RAD_PER_TURN = Math.abs(CROWN_RAD_PER_TURN);
+const KB_TIP_S = KB_BUILT ? (() => {
+  const L = KB.line, g = (phi) => L.gapLF(L.centres(phi, L.beta));
+  let a = L.neutral.phi, b = L.engaged.phi;   // g(a) > 0 (apart), g(b) < 0 (at depth)
+  for (let k = 0; k < 80; k++) { const m = (a + b) / 2; if (g(m) > 0) a = m; else b = m; }
+  return (a - L.neutral.phi) / (L.engaged.phi - L.neutral.phi);
+})() : 1;
 const BACK_PLATE_HOLES = [
   { x: uWind.x * cwDist, y: uWind.y * cwDist, r: 0.7 + 0.05 },
   ...(KB_BUILT ? [{ x: TRANSFER_XY.x, y: TRANSFER_XY.y, r: 0.7 + 0.05 }] : []),   // §334 landing 5a: the follower arbor's bearing, the transfer wheel's own bore's idiom
@@ -7130,6 +7144,7 @@ transferArbor.rotation.x = Math.PI / 2;
 transferArbor.position.set(TRANSFER_XY.x, TRANSFER_XY.y, (Z_TRANSFER + _trArborLo) / 2);
 keyless.add(transferArbor);
 let crownWheelArbor = null, kbDriver = null, kbCarried = null, kbFollower = null, kbBar = null, kbPin = null, kbBarGroup = null;
+let kbBlade = null, kbBladeStud = null;   // §334 5c: the return blade and the banking
 let kbDriverClock = 0, kbCarriedClock = 0, kbFollowerClock = 0;   // TODO 132's free indices, solved with the keyless meshes
 if (KB_BUILT) {
   const D0 = { x: uWind.x * cwDist, y: uWind.y * cwDist }, K = KB_METAL, zW = (K.zW0 + K.zW1) / 2;
@@ -7155,12 +7170,30 @@ if (KB_BUILT) {
   kbDriver = spurOf('kbDriver', nD, [{ teeth: nC, mates: [nD] }], 0.7, D0);
   kbCarried = spurOf('kbCarried', nC, [{ teeth: nD, mates: [nC] }, { teeth: nD, mates: [nC] }], K.carriedBoreR, K.centres[1], kbBarGroup);
   kbFollower = spurOf('kbFollower', nD, [{ teeth: nC, mates: [nD] }], 0.7, TRANSFER_XY);
+  // §334 landing 5c — the return blade, placed by probe-keyless-rocking-bar-springs.mjs (UNDER_PLATE.bladeAz); see
+  // underPlateSprings for the law. The bar's outline grows the blade's ear. The BANKING is not cut: under the bar a
+  // bridge meets the motion works' corner one way round and the stem the other, and a free-standing post six units out
+  // stood in some arrangement's reserve train (§334 landing 5c's record); the swing's two ends are the law's.
+  const SP = underPlateSprings(KB, -BACK_PLATE_T, { bladeAz: UNDER_PLATE.bladeAz * DEG2RAD, wayR: 4 });
+  KB_SPRINGS = SP;
   kbPin = new THREE.Mesh(new THREE.CylinderGeometry(K.pin.r, K.pin.r, K.pin.z1 - K.pin.z0, 14), MATS.steel);
   kbPin.name = 'kbPin';
   kbPin.rotation.x = Math.PI / 2;
   kbPin.position.set(K.pin.at.x - D0.x, K.pin.at.y - D0.y, (K.pin.z0 + K.pin.z1) / 2);
   kbBarGroup.add(kbPin);
-  const barShape = new THREE.Shape(K.outline.map(([x, y]) => new THREE.Vector2(x, y)));
+  const zBar = (K.zB0 + K.zB1) / 2;
+  const post = (name, at, r, z0, z1) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, z1 - z0, 14), MATS.blueSteel); m.name = name; m.rotation.x = Math.PI / 2; m.position.set(at.x, at.y, (z0 + z1) / 2); keyless.add(m); return m; };
+  kbBladeStud = post('kbBladeStud', SP.stud.at, SP.stud.r, SP.stud.z0, SP.stud.z1);
+  {
+    const geo = new THREE.BoxGeometry(1, SP.blade.h, SP.blade.height);
+    geo.translate(0.5, 0, 0);   // origin at the anchored end, the yoke spring's idiom
+    kbBlade = new THREE.Mesh(geo, MATS.blueSteel);
+    kbBlade.name = 'kbBlade';
+    kbBlade.position.set(SP.blade.root.x, SP.blade.root.y, zBar);
+    kbBlade.rotation.z = SP.blade.ang; kbBlade.scale.x = SP.blade.len;
+    keyless.add(kbBlade);
+  }
+  const barShape = new THREE.Shape(SP.outlineAt(0).map(([x, y]) => new THREE.Vector2(x, y)));
   const bore = new THREE.Path(); bore.absarc(K.bore.at.x, K.bore.at.y, K.bore.r, 0, 2 * Math.PI, true); barShape.holes.push(bore);
   const pinHole = new THREE.Path(); pinHole.absarc(K.pin.at.x, K.pin.at.y, K.pin.r, 0, 2 * Math.PI, true); barShape.holes.push(pinHole);   // the pin is riveted in its own hole
   const barGeo = new THREE.ExtrudeGeometry(barShape, { depth: K.zB1 - K.zB0, bevelEnabled: false, curveSegments: 32 });
@@ -11026,6 +11059,8 @@ if (KB_BUILT) {   // §334 landing 5a
   registerSub('Keyless works', 'Rocking bar', kbCarried);
   registerSub('Keyless works', 'Bar driver', kbDriver);
   registerSub('Keyless works', 'Bar follower', kbFollower);
+  registerSub('Keyless works', 'Bar return blade', kbBlade);
+  registerSub('Keyless works', 'Bar return blade', kbBladeStud);
 }
 registerSub('Keyless works', 'Crown-wheel screw', cwScrew);
 registerSub('Keyless works', 'Winding pinion', windPinionGroup);
@@ -49559,6 +49594,7 @@ let windStemSlip = 0;      // stem rotation not delivered to the winding wheel (
 // milliseconds against a frame, and no rate is posed for it).
 let kbLead = 0;
 let kbSwing = 0;
+let kbWinding = false;   // §334 5c: this tick's crown input reaches the bar (the clip's carry beats the blade while the driver turns forward)
 // TODO 50 — the parked gap: how far the clutch stands past the nearest
 // drive face, in stem radians ∈ [0, pitch). WRAPAROUND-GUARDED: float
 // residue can leave the slip a hair past the face (positive ε), which the
@@ -49585,6 +49621,7 @@ function stemSlipLocal() { return windSign * -windStemSlip; }
 let setPathRot = 0;        // accumulated rotation actually delivered to the setting path
 let autoWindRemaining = 0; // radians left to auto-turn (Wind button)
 const AUTO_WIND_RATE = 48; // rad/s — the Wind button's auto-turn speed
+const KB_ENGAGE_SHOW_S = 0.3; // §334 5c — POSED: the Wind button draws the rocking bar's swing over this long (a hand's drag in the probe took about this), so it is seen at real speed
 
 // --- Alarm (BUILT §24) -----------------------------------------------------
 // THE REFERENCE is the Jaeger-LeCoultre Memovox (1950, cal. 489): a second
@@ -52727,10 +52764,11 @@ function syncUpdate(realDt) {
 // reserve reaches the stop and the viewer hears the bank (§47). The old
 // literal 16 was ~3× a full wind — before the arrest existed, all of it
 // past full drove the transfer⇄spur mesh teeth-through-teeth.
-document.getElementById('btn-wind').addEventListener('click', () => {
+function pressWind() {   // the Wind button's one action; §334 5c's __clock.pressWind calls it too, so an instrument presses the same button
   if (crownOut) return; // crown must be pushed in (winding position) to wind
   autoWindRemaining += (RESERVE_BARREL_TURNS * (WIND_SPUR_TEETH / windPinionTeeth) + 1) * 2 * Math.PI;
-});
+}
+document.getElementById('btn-wind').addEventListener('click', pressWind);
 
 // --- crown: click to pull/push, drag to turn -------------------------------
 const crownBtn = document.getElementById('btn-crown');
@@ -64363,11 +64401,27 @@ function updateLabels() {
 // nothing on the crown side moves, the stem clutch's parked gap included (TODO 50's pickup below is the drive face
 // travelling from the pinion's side, and the pinion is on the crown side). With no bar built, or the bar in, it is
 // the law it always was.
-function drainBarrelBy(dTauS) {
+function drainBarrelBy(dTauS, holdIn = false) {
   const before = barrelWindTurns;
   barrelWindTurns = Math.max(0, barrelWindTurns - dTauS / (HOURS_PER_FUSEE_TURN * 3600));
-  const drained = before - barrelWindTurns;
-  if (KB_BUILT && kbSwing < 1) { kbLead += drained; return drained; }
+  let drained = before - barrelWindTurns;
+  const total = drained;
+  // §334 5c — with the bar in mesh the run-down back-drives the follower, the carried wheel and the driver, and the
+  // driver carries the bar OUT through its clip: the crown side follows the drain (the crown turns back) until the
+  // teeth part at KB_TIP_S; then the return blade takes the bar to its banking and the crown side stands. `holdIn` is
+  // the acceptance probe's control, the bar held in mesh (the old rigid chain).
+  // While the crown winds the clip's carry holds the bar where the winding put it: in mesh the crown side follows the
+  // drain as it always did; short of mesh the follower runs alone.
+  if (KB_BUILT && !holdIn && drained > 0) {
+    if (kbWinding) { if (kbSwing < KB_TIP_S) { kbLead += drained; return total; } }   // short of mesh the follower runs alone; in mesh the crown side follows
+    else if (kbSwing > KB_TIP_S) {
+      const avail = (kbSwing - KB_TIP_S) * KB_PSI_N / KB_DRIVER_RAD_PER_TURN, use = Math.min(drained, avail);
+      kbSwing -= use * KB_DRIVER_RAD_PER_TURN / KB_PSI_N;
+      const rest = drained - use;
+      if (rest > 0 || kbSwing <= KB_TIP_S + 1e-12) { kbSwing = 0; kbLead += rest; }
+      drained = use;   // what the crown side followed
+    } else { kbSwing = 0; kbLead += drained; return total; }
+  }
   // TODO 50 sub-pitch pickup: with the coupling's faces parted (a
   // reversal parked the clutch mid-pitch), the pinion's run-down advance
   // first CLOSES the gap from its own side — the drive face travels to
@@ -64383,7 +64437,7 @@ function drainBarrelBy(dTauS) {
       windStemSlip += windSign * Math.min(stemRad, gap);       // TODO 115 — closing the gap is the winding direction
     }
   }
-  return drained;
+  return total;
 }
 function tick(t) {
   // dt since the last tick — needed because τ is now a genuinely integrated
@@ -64418,7 +64472,14 @@ function tick(t) {
   const windEngaged = crownPullT < 0.5;
   const setEngaged = crownPullT > 0.5;
   if (autoWindRemaining > 0 && windEngaged) {
-    const step = Math.min(autoWindRemaining, AUTO_WIND_RATE * rawDt);
+    // §334 5c — POSED DISPLAY PACING (the owner's ask): while the rocking bar is still engaging, the Wind button turns
+    // the crown no faster than draws the bar's SWING over KB_ENGAGE_SHOW_S (the tooth it first turns to find, up to
+    // one follower tooth, goes at the same pace). The real bar swings in milliseconds, and at AUTO_WIND_RATE the whole of it fell inside one
+    // frame. A hand on the crown is never paced: its own speed is what the drag delivers.
+    const rate = KB_BUILT && kbSwing < 1
+      ? Math.min(AUTO_WIND_RATE, (KB_PSI_N / KB_DRIVER_RAD_PER_TURN) * Math.abs(STEM_RAD_PER_TURN) / KB_ENGAGE_SHOW_S)
+      : AUTO_WIND_RATE;
+    const step = Math.min(autoWindRemaining, rate * rawDt);
     crownRotation += step;
     autoWindRemaining -= step;
   }
@@ -64430,7 +64491,7 @@ function tick(t) {
   // direction winds. Everything below is the arithmetic it always was.
   const windIn = windSign * crownRotDelta;
   let windBankedNow = 0;   // TODO 224 — what this tick banked: windBack falls exactly when it is > 0
-  if (KB_BUILT && rawDt > 0) kbSwing = 0;   // §334 5b: the return spring holds the bar out unless this tick winds (below)
+  kbWinding = false;
   if (windEngaged) {
     if (windIn > 0) {
       // TODO 50 sub-pitch take-up: after a reversal the clutch stands a
@@ -64450,14 +64511,35 @@ function tick(t) {
         let turnsDelta = drive / Math.abs(STEM_RAD_PER_TURN);
         // §334 landing 5b — the bar swings in, and the carried wheel meets the follower at the next whole tooth: that
         // much of the input turns the crown side alone (the lead grows to the tooth), then the bank follows.
-        if (KB_BUILT) {
-          const r = kbLead - Math.floor(kbLead / KB_PITCH_TURNS) * KB_PITCH_TURNS;
-          const need = r > KB_PITCH_EPS && KB_PITCH_TURNS - r > KB_PITCH_EPS ? KB_PITCH_TURNS - r : 0;
-          const pick = Math.min(turnsDelta, need);
-          kbLead += pick; turnsDelta -= pick;
-          // until the lead reaches the tooth the carried wheel rides the follower's tips, so the bar is shown at its
-          // banking (out), never at full depth through teeth it has not met; it drops in at the tooth
-          if (rawDt > 0 && pick >= need) kbSwing = 1;
+        if (KB_BUILT) kbWinding = true;
+        if (KB_BUILT && kbSwing < 1) {
+          // The crown's turn is spent DRAWING THE ENGAGEMENT before any of it winds (the owner's ask; the arrest's
+          // idiom, which spends none past full). The clip carries the bar with the driver, so the bar's swing is the
+          // driver's turn (KB_PSI_N for the whole travel). 1. Out of mesh the crown side first turns to the tooth the
+          // carried wheel will meet: the lead that is a whole follower tooth when the tips meet (KB_TIP_S). 2. Then the
+          // bar swings in freely to the tips, the crown side alone. 3. In mesh, it swings on to depth as the driver
+          // turns, and the follower turns with it: the bank follows, the lead held (the same law the run-down uses to
+          // carry it back out, so a wind resumed part-way through either leaves the teeth in phase).
+          const K = KB_DRIVER_RAD_PER_TURN / KB_PSI_N;
+          if (kbSwing < KB_TIP_S) {
+            const freeLeft = (KB_TIP_S - kbSwing) / K;
+            if (kbSwing === 0) {
+              const t = kbLead + freeLeft, r = t - Math.floor(t / KB_PITCH_TURNS) * KB_PITCH_TURNS;
+              const need = r > KB_PITCH_EPS && KB_PITCH_TURNS - r > KB_PITCH_EPS ? KB_PITCH_TURNS - r : 0;
+              const pick = Math.min(turnsDelta, need);
+              kbLead += pick; turnsDelta -= pick;
+              if (pick < need) turnsDelta = 0;   // still turning to the tooth
+            }
+            if (turnsDelta > 0) {
+              const take = Math.min(turnsDelta, freeLeft);
+              kbLead += take; turnsDelta -= take;
+              kbSwing = take >= freeLeft ? KB_TIP_S : kbSwing + take * K;
+            }
+          }
+          if (turnsDelta > 0 && kbSwing >= KB_TIP_S) {
+            const meshLeft = (1 - kbSwing) / K;
+            kbSwing = turnsDelta >= meshLeft ? 1 : kbSwing + turnsDelta * K;   // turnsDelta is not spent: the bank follows
+          }
         }
         // §47 — the cap is the ARREST, not a number: the bank saturates because
         // the finger's beak is on the stop lug and the whole path from the lug
@@ -64995,6 +65077,7 @@ function tick(t) {
     // the driver whenever the lead is a whole follower tooth, which is the only lead the winding law leaves engaged.
     const psi = kbPsiAt(kbSwing);
     kbBarGroup.rotation.z = psi;
+    { const bp = KB_SPRINGS.bladeAt(psi); kbBlade.rotation.z = bp.ang; kbBlade.scale.x = bp.len; }   // §334 5c: the blade's tip on its ear
     kbDriver.rotation.z = kbDriverClock + crownWheelSpin;
     kbCarried.rotation.z = kbCarriedClock + (UNDER_PLATE.driverTeeth / UNDER_PLATE.carriedTeeth) * (psi - crownWheelSpin);
     kbFollower.rotation.z = kbFollowerClock + transferSpin;
@@ -66382,7 +66465,8 @@ const JMP_SITE_MOVERS = [
   { name: 'setting lever', kind: 'lawed', roots: [settingLeverGroup], grid: 'pull' },
   // §334 landing 5b — the rocking bar swings about the driver's axis by its own law (kbPsiAt, out → in), carrying its
   // pin and the carried wheel; read at the law's samples, the wheel at its index on the bar
-  ...(KB_BUILT ? [(() => { const pose = (u) => { kbBarGroup.rotation.z = kbPsiAt(u); }; return { name: 'rocking bar', kind: 'lawed', roots: [kbBarGroup], pose, stroke: jmpStrokeOf([kbBarGroup], pose) }; })()] : []),   // the stroke measured off the law, the link run's rule
+  ...(KB_BUILT ? [(() => { const pose = (u) => { const psi = kbPsiAt(u), bp = KB_SPRINGS.bladeAt(psi); kbBarGroup.rotation.z = psi; kbBlade.rotation.z = bp.ang; kbBlade.scale.x = bp.len; };
+    return { name: 'rocking bar', kind: 'lawed', roots: [kbBarGroup, kbBlade], pose, stroke: jmpStrokeOf([kbBarGroup, kbBlade], pose) }; })()] : []),   // §334 5c: the blade rides the bar's law   // the stroke measured off the law, the link run's rule
   // ---- revolve: the dial-centre groups, onto the entries already turning there
   { name: 'hour group', kind: 'revolve', roots: [hourWheelGroup], onto: mwHourWheel, slack: 0 },
   // the reader drops on its lift by at most ALARM_PIN_DROP (tick's clamp) — and
@@ -68288,14 +68372,18 @@ window.__clock = {
   // advances the bank and what the bank drives, which is what the crown's stand is a question about.
   // `barIn` holds the bar in mesh instead: the old rigid chain, the acceptance probe's control.
   runDown(seconds, chunk = 60, barIn = false) {
-    for (let left = seconds; left > 0; left -= chunk) { kbSwing = barIn ? 1 : 0; drainBarrelBy(Math.min(chunk, left)); }
+    kbWinding = false;
+    for (let left = seconds; left > 0; left -= chunk) drainBarrelBy(Math.min(chunk, left), barIn);
     tick(lastTickRawT);
   },
+  pressWind() { pressWind(); },
   get windSign() { return windSign; },
   get windArrestStalled() { return windArrestStalled; },
   get kbLead() { return kbLead; },
   get kbSwing() { return kbSwing; },
   get kbPitchTurns() { return KB_PITCH_TURNS; },
+  get kbTipS() { return KB_TIP_S; },
+  get kbSwingTurns() { return KB_PSI_N / KB_DRIVER_RAD_PER_TURN; },   // crown-side bank for the whole swing
   get reserveBarrelTurns() { return RESERVE_BARREL_TURNS; },
   get simTime() { return simTime; },
   get tau() { return tauIntegrated; },
