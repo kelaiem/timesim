@@ -13,7 +13,7 @@ import { aesthetics, confirmAestheticsBoot, writeOverrides, clearOverrides, seri
 import { loadState, saveState, clearState, hasState } from './state.js';
 import { isSoftwareRenderer, savedView } from './boot-view.js';   // the view a boot opens in — one law, read here and by the loading screen (index.html)
 import * as BD from './balance-drive.js';
-import { foldUnderPlate, underPlateMetal, UNDER_PLATE, ROCKING_BAR_INPUTS } from './keyless-rocking-bar.js';   // §334 landing 5a: the winding coupling's rocking bar, under the plate   // §246 tier two — the driven balance (pure; the live loop steps it)
+import { foldUnderPlate, underPlateMetal, underPlateSprings, UNDER_PLATE, ROCKING_BAR_INPUTS } from './keyless-rocking-bar.js';   // §334 landing 5a: the winding coupling's rocking bar, under the plate   // §246 tier two — the driven balance (pure; the live loop steps it)
 // §73 tier one — the chrome's strings. UI_LANG resolves once at import
 // (?lang → localStorage → navigator.language → en); t() falls back to its
 // English input when an entry is missing, so a gap is visible, never blank.
@@ -4504,6 +4504,7 @@ const kbFoldFor = (kw, barrel) => foldUnderPlate({ axisAt: { x: kw.uWind.x * kw.
 const KB = windIdler ? null : kbFoldFor({ uWind, cwDist }, P.barrel);
 if (KB && !KB.feasible) console.warn(`§334 landing 5a: the under-plate bar does not fold: ${KB.why} — the transfer stays coaxial with the crown wheel`);
 const KB_BUILT = !!(KB && KB.feasible);
+let KB_SPRINGS = null;   // §334 5c: underPlateSprings' answer, set at the bar's build
 // the transfer wheel's centre, for every reader of it: the follower's when the bar is built, the crown wheel's when not
 const transferAtFor = (kw, barrel) => { if (kw.windIdler) return { x: kw.uWind.x * kw.cwDist, y: kw.uWind.y * kw.cwDist };
   const f = kbFoldFor(kw, barrel); return f.feasible ? f.followerAt : { x: kw.uWind.x * kw.cwDist, y: kw.uWind.y * kw.cwDist }; };
@@ -7130,6 +7131,7 @@ transferArbor.rotation.x = Math.PI / 2;
 transferArbor.position.set(TRANSFER_XY.x, TRANSFER_XY.y, (Z_TRANSFER + _trArborLo) / 2);
 keyless.add(transferArbor);
 let crownWheelArbor = null, kbDriver = null, kbCarried = null, kbFollower = null, kbBar = null, kbPin = null, kbBarGroup = null;
+let kbBlade = null, kbBladeStud = null, kbBridge = null, kbBridgePost = null;   // §334 5c: the return blade and the banking
 let kbDriverClock = 0, kbCarriedClock = 0, kbFollowerClock = 0;   // TODO 132's free indices, solved with the keyless meshes
 if (KB_BUILT) {
   const D0 = { x: uWind.x * cwDist, y: uWind.y * cwDist }, K = KB_METAL, zW = (K.zW0 + K.zW1) / 2;
@@ -7155,12 +7157,38 @@ if (KB_BUILT) {
   kbDriver = spurOf('kbDriver', nD, [{ teeth: nC, mates: [nD] }], 0.7, D0);
   kbCarried = spurOf('kbCarried', nC, [{ teeth: nD, mates: [nC] }, { teeth: nD, mates: [nC] }], K.carriedBoreR, K.centres[1], kbBarGroup);
   kbFollower = spurOf('kbFollower', nD, [{ teeth: nC, mates: [nD] }], 0.7, TRANSFER_XY);
-  kbPin = new THREE.Mesh(new THREE.CylinderGeometry(K.pin.r, K.pin.r, K.pin.z1 - K.pin.z0, 14), MATS.steel);
+  // §334 landing 5c — the return blade and the banking, placed by probe-keyless-rocking-bar-springs.mjs (UNDER_PLATE's
+  // bladeAz, postAz, postR); see underPlateSprings for the law. The carried pin runs down through the bar into the
+  // banking bridge's slot, and the bar's outline grows the blade's ear.
+  const SP = underPlateSprings(KB, -BACK_PLATE_T, { bladeAz: UNDER_PLATE.bladeAz * DEG2RAD, postAz: UNDER_PLATE.postAz * DEG2RAD, postR: UNDER_PLATE.postR });
+  KB_SPRINGS = SP;
+  kbPin = new THREE.Mesh(new THREE.CylinderGeometry(K.pin.r, K.pin.r, K.pin.z1 - SP.pinRun.z0, 14), MATS.steel);
   kbPin.name = 'kbPin';
   kbPin.rotation.x = Math.PI / 2;
-  kbPin.position.set(K.pin.at.x - D0.x, K.pin.at.y - D0.y, (K.pin.z0 + K.pin.z1) / 2);
+  kbPin.position.set(K.pin.at.x - D0.x, K.pin.at.y - D0.y, (SP.pinRun.z0 + K.pin.z1) / 2);
   kbBarGroup.add(kbPin);
-  const barShape = new THREE.Shape(K.outline.map(([x, y]) => new THREE.Vector2(x, y)));
+  const zBar = (K.zB0 + K.zB1) / 2;
+  const post = (name, at, r, z0, z1) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, z1 - z0, 14), MATS.blueSteel); m.name = name; m.rotation.x = Math.PI / 2; m.position.set(at.x, at.y, (z0 + z1) / 2); keyless.add(m); return m; };
+  kbBladeStud = post('kbBladeStud', SP.stud.at, SP.stud.r, SP.stud.z0, SP.stud.z1);
+  {
+    const geo = new THREE.BoxGeometry(1, SP.blade.h, SP.blade.height);
+    geo.translate(0.5, 0, 0);   // origin at the anchored end, the yoke spring's idiom
+    kbBlade = new THREE.Mesh(geo, MATS.blueSteel);
+    kbBlade.name = 'kbBlade';
+    kbBlade.position.set(SP.blade.root.x, SP.blade.root.y, zBar);
+    kbBlade.rotation.z = SP.blade.ang; kbBlade.scale.x = SP.blade.len;
+    keyless.add(kbBlade);
+  }
+  {
+    const shape = new THREE.Shape(SP.bridge.outline.map(([x, y]) => new THREE.Vector2(x, y)));
+    const slot = new THREE.Path(SP.bridge.slot.slice().reverse().map(([x, y]) => new THREE.Vector2(x, y))); shape.holes.push(slot);
+    const postHole = new THREE.Path(); postHole.absarc(SP.bridge.post.at.x, SP.bridge.post.at.y, SP.bridge.post.r, 0, 2 * Math.PI, true); shape.holes.push(postHole);   // the post is riveted through it
+    const g = new THREE.ExtrudeGeometry(shape, { depth: SP.bridge.z1 - SP.bridge.z0, bevelEnabled: false, curveSegments: 32 });
+    g.translate(0, 0, SP.bridge.z0);
+    kbBridge = new THREE.Mesh(g, MATS.steel); kbBridge.name = 'kbBridge'; keyless.add(kbBridge);
+  }
+  kbBridgePost = post('kbBridgePost', SP.bridge.post.at, SP.bridge.post.r, SP.bridge.post.z0, SP.bridge.post.z1);
+  const barShape = new THREE.Shape(SP.outlineAt(0).map(([x, y]) => new THREE.Vector2(x, y)));
   const bore = new THREE.Path(); bore.absarc(K.bore.at.x, K.bore.at.y, K.bore.r, 0, 2 * Math.PI, true); barShape.holes.push(bore);
   const pinHole = new THREE.Path(); pinHole.absarc(K.pin.at.x, K.pin.at.y, K.pin.r, 0, 2 * Math.PI, true); barShape.holes.push(pinHole);   // the pin is riveted in its own hole
   const barGeo = new THREE.ExtrudeGeometry(barShape, { depth: K.zB1 - K.zB0, bevelEnabled: false, curveSegments: 32 });
@@ -11026,6 +11054,10 @@ if (KB_BUILT) {   // §334 landing 5a
   registerSub('Keyless works', 'Rocking bar', kbCarried);
   registerSub('Keyless works', 'Bar driver', kbDriver);
   registerSub('Keyless works', 'Bar follower', kbFollower);
+  registerSub('Keyless works', 'Bar return blade', kbBlade);
+  registerSub('Keyless works', 'Bar return blade', kbBladeStud);
+  registerSub('Keyless works', 'Bar banking', kbBridge);
+  registerSub('Keyless works', 'Bar banking', kbBridgePost);
 }
 registerSub('Keyless works', 'Crown-wheel screw', cwScrew);
 registerSub('Keyless works', 'Winding pinion', windPinionGroup);
@@ -64995,6 +65027,7 @@ function tick(t) {
     // the driver whenever the lead is a whole follower tooth, which is the only lead the winding law leaves engaged.
     const psi = kbPsiAt(kbSwing);
     kbBarGroup.rotation.z = psi;
+    { const bp = KB_SPRINGS.bladeAt(psi); kbBlade.rotation.z = bp.ang; kbBlade.scale.x = bp.len; }   // §334 5c: the blade's tip on its ear
     kbDriver.rotation.z = kbDriverClock + crownWheelSpin;
     kbCarried.rotation.z = kbCarriedClock + (UNDER_PLATE.driverTeeth / UNDER_PLATE.carriedTeeth) * (psi - crownWheelSpin);
     kbFollower.rotation.z = kbFollowerClock + transferSpin;
@@ -66382,7 +66415,8 @@ const JMP_SITE_MOVERS = [
   { name: 'setting lever', kind: 'lawed', roots: [settingLeverGroup], grid: 'pull' },
   // §334 landing 5b — the rocking bar swings about the driver's axis by its own law (kbPsiAt, out → in), carrying its
   // pin and the carried wheel; read at the law's samples, the wheel at its index on the bar
-  ...(KB_BUILT ? [(() => { const pose = (u) => { kbBarGroup.rotation.z = kbPsiAt(u); }; return { name: 'rocking bar', kind: 'lawed', roots: [kbBarGroup], pose, stroke: jmpStrokeOf([kbBarGroup], pose) }; })()] : []),   // the stroke measured off the law, the link run's rule
+  ...(KB_BUILT ? [(() => { const pose = (u) => { const psi = kbPsiAt(u), bp = KB_SPRINGS.bladeAt(psi); kbBarGroup.rotation.z = psi; kbBlade.rotation.z = bp.ang; kbBlade.scale.x = bp.len; };
+    return { name: 'rocking bar', kind: 'lawed', roots: [kbBarGroup, kbBlade], pose, stroke: jmpStrokeOf([kbBarGroup, kbBlade], pose) }; })()] : []),   // §334 5c: the blade rides the bar's law   // the stroke measured off the law, the link run's rule
   // ---- revolve: the dial-centre groups, onto the entries already turning there
   { name: 'hour group', kind: 'revolve', roots: [hourWheelGroup], onto: mwHourWheel, slack: 0 },
   // the reader drops on its lift by at most ALARM_PIN_DROP (tick's clamp) — and
