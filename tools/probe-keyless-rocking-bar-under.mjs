@@ -14,7 +14,8 @@
 //       (the line's q: the friction band the clip must cover, over the band it has)
 //   U1  the line solves with nF = nD (today's winding ratio) and one carried wheel (two meshes: today's winding sense)
 //   U2  the follower is on the spur's circle (the transfer wheel keeps its mesh with the spur) and d from the axis
-//   U4  (once built, landing 5a) every bar member and the moved transfer wheel stand where the plan puts them
+//   U4  (once built, landing 5a) every bar member and the moved transfer wheel stand where the plan puts them, at
+//       both ends of the bar's swing since landing 5b
 //   U3  exact mesh distance (meshClearance) ≥ CLEAR_MARGIN from every other metal: the driver, the follower, the carried
 //       wheel, its pin and the bar's plate at every sampled swing angle (underPlateMetal, the build's own law), the follower's arbor below and above the plate,
 //       and the moved transfer wheel (its mate the spur excused). The plate itself, and the transfer wheel and arbor
@@ -110,11 +111,17 @@ row('U3', D.worst >= M && ctl.worst < M, `worst ${D.worst.toFixed(3)} ≥ ${M}; 
 const KS = underPlateMetal(U, PF.back);
 // U4 (landing 5a): the build placed exactly this plan
 if (built) {
-  const K = underPlateMetal(U, PF.back), at = (n) => wp(n), e = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-  const errs = { driver: e(at('kbDriver'), axis), carried: e(at('kbCarried'), K.centres[1]), follower: e(at('kbFollower'), U.followerAt),
-    transfer: e(at('transferWheel'), U.followerAt), pin: e(at('kbPin'), K.pin.at) };
+  // since landing 5b the bar swings: held to the plan at both ends of its swing, engaged and at its banking
+  const e = (a, b) => Math.hypot(a.x - b.x, a.y - b.y), errs = {};
+  for (const [tag, swing, phi] of [['in', 1, U.line.engaged.phi], ['out', 0, U.line.neutral.phi]]) {
+    C.setPose({ kbSwing: swing }); C.scene.updateMatrixWorld(true);
+    const K = underPlateMetal(U, PF.back, { phi });
+    Object.assign(errs, { [`driver ${tag}`]: e(wp('kbDriver'), axis), [`carried ${tag}`]: e(wp('kbCarried'), K.centres[1]), [`pin ${tag}`]: e(wp('kbPin'), K.pin.at),
+      [`follower ${tag}`]: e(wp('kbFollower'), U.followerAt), [`transfer ${tag}`]: e(wp('transferWheel'), U.followerAt) });
+  }
+  C.setPose({ kbSwing: 0 }); C.scene.updateMatrixWorld(true);
   const worstE = Math.max(...Object.values(errs));
-  row('U4', worstE < 1e-9, `the build's bar is the plan: worst centre error ${worstE.toExponential(1)} (${Object.entries(errs).map(([k, v]) => `${k} ${v.toExponential(0)}`).join(', ')})`);
+  row('U4', worstE < 1e-9, `the build's bar is the plan, in and out: worst centre error ${worstE.toExponential(1)}`);
 } else console.log('  U4 not built: the plan only');
 console.log(`  REPORT stack: wheels z ${KS.zW0.toFixed(3)}…${KS.zW1.toFixed(3)}, bar plate ${KS.zB0.toFixed(3)}…${KS.zB1.toFixed(3)} (plate back ${PF.back}), transfer wheel ${tb.min.z.toFixed(3)}…${tb.max.z.toFixed(3)}; window q ${L.window.q.toFixed(3)}`);
 console.log(fails.length ? `FAIL ${fails.join(', ')}` : 'PASS all rows');

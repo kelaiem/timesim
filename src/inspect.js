@@ -1385,7 +1385,9 @@ export const AXES = [
   {
     name: 'reserve',
     n: 60,
-    pose: (f) => ({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1 - f }),
+    // §334 5b — running down the rocking bar is OUT and the crown side stands where full wind left it: the lead
+    // grows by exactly what drained (the live loop's law, posed)
+    pose: (f, clock) => ({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1 - f, kbSwing: 0, kbLead: f * (clock?.reserveBarrelTurns ?? 0) }),
   },
   {
     // TODO 38 W4 — the GOING WIND, closing the item's last tranche: before
@@ -1416,7 +1418,17 @@ export const AXES = [
     // derivation, priced by measurement, per the item's own rule.
     name: 'wind',
     n: 720,
-    pose: (f) => ({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1 - Math.abs(2 * f - 1) }),
+    // §334 5b — winding, the rocking bar IN, the lead a whole tooth (0)
+    pose: (f) => ({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1 - Math.abs(2 * f - 1), kbSwing: 1, kbLead: 0 }),
+  },
+  {
+    // §334 landing 5b — THE ROCKING BAR'S SWING, cycled out → in → out at half wind: the return spring's stroke and
+    // the carry's. Without it no axis moves the bar through its swing (the wind axis holds it in, the rest hold it
+    // out), so the sweeps would never see its path and `restoring` could not judge its spring. 32 steps put a
+    // sample every ~0.8° of a ~13° swing.
+    name: 'barSwing',
+    n: 32,
+    pose: (f) => ({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 0.5, kbSwing: 1 - Math.abs(2 * f - 1), kbLead: 0 }),
   },
   {
     // TODO 71 — the ARREST'S OWN reversal: the arming band, cycled. The wind
@@ -12867,10 +12879,11 @@ export function checkMeshPhase(clock) {
       clock.scene.updateMatrixWorld(true);
       const m = clock.measureMeshNow(r.site);
       if (!m.ok) { malformed.push({ site: r.site, why: m.why }); worst = null; break; }
+      if (m.engaged === false) continue;   // §334 5b: a conditional mesh, out of mesh at this pose — judged where it meshes
       if (!worst || m.off > worst.off) worst = { ...m, poseIndex: pi };
       if (m.off < lo) lo = m.off;
     }
-    if (!worst) continue;
+    if (!worst) { if (!malformed.some((x) => x.site === r.site)) malformed.push({ site: r.site, why: 'never engaged over the pose net — a conditional mesh no pose puts in mesh cannot be judged' }); continue; }
     const row = {
       site: r.site, a: worst.a, b: worst.b, chain: r.chain, inputs: r.inputs || [],
       offPct: +(worst.off * 100).toFixed(3), poseIndex: worst.poseIndex,
@@ -14504,7 +14517,18 @@ export async function checkJumperMovers(clock, { yieldEvery = 16 } = {}) {
           }
         } else if (row.kind === 'lawed') {
           let g = Infinity;
-          for (const Sm of x.rec.samples || []) { place(Q, x.cs, Sm); g = Math.min(g, disp()); }
+          const isWheel = (n) => n && n.userData && n.userData.teeth > 0 && n.userData.r > 0;   // the count rides the gear's group
+          if (isWheel(m) || isWheel(m.parent)) {
+            // §334 landing 5b — a toothed wheel on a lawed body turns on its own axis too, and the solve read its
+            // REVOLUTION at each sample (main.js, jmpRevolutionOf), so its distance from a sample is its centre's and
+            // its axis's, its own spin taken out: the centre's offset, and the axis's tilt times its reach
+            if (!x.reach) x.reach = Math.max(...x.cs.map((p) => Math.hypot(p.x, p.y)));
+            const c = new THREE.Vector3().setFromMatrixPosition(m.matrixWorld), a = new THREE.Vector3().setFromMatrixColumn(m.matrixWorld, 2).normalize();
+            for (const Sm of x.rec.samples || []) {
+              const cs = new THREE.Vector3().setFromMatrixPosition(Sm), as = new THREE.Vector3().setFromMatrixColumn(Sm, 2).normalize();
+              g = Math.min(g, Math.max(c.distanceTo(cs), x.reach * a.clone().cross(as).length()));
+            }
+          } else for (const Sm of x.rec.samples || []) { place(Q, x.cs, Sm); g = Math.min(g, disp()); }
           x.lawGap = Math.max(x.lawGap, g);
         } else if (row.kind === 'revolve') {
           const ax = rotorAxisOf(row.onto);

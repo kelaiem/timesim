@@ -47,6 +47,8 @@ export const INSPECTION_SLICES = [
   { axis: 'crown', poses: 49 },
   { axis: 'reserve', poses: 61 },
   { axis: 'wind', poses: 721 },
+  // §334 landing 5b — the rocking bar's swing, out → in → out. poses = n 32 plus the endpoint.
+  { axis: 'barSwing', poses: 33 },
   // TODO 71 — the arrest's arming band, cycled (see the axis's own comment).
   { axis: 'arrest', poses: 97 },
   { axis: 'train', poses: 97 },
@@ -314,6 +316,7 @@ export const CLEARANCE_SLICES = [
   { axis: 'crown', poses: 49 },
   { axis: 'reserve', poses: 61 },
   { axis: 'wind', poses: 721 },
+  { axis: 'barSwing', poses: 33 },
   { axis: 'arrest', poses: 97 },
   { axis: 'train', poses: 97 },
   { axis: 'jumperEngage', poses: 121 },
@@ -348,6 +351,7 @@ export const UNDECLARED_CLEARANCE_SLICES = [
   { axis: 'crown', poses: 49 },
   { axis: 'reserve', poses: 61 },
   { axis: 'wind', poses: 721 },
+  { axis: 'barSwing', poses: 33 },
   { axis: 'arrest', poses: 97 },
   { axis: 'train', poses: 97 },
   { axis: 'jumperEngage', poses: 121 },
@@ -502,6 +506,7 @@ export const EXPECTED_CONTACT_SLICES = [
   { axis: 'crown', poses: 49 },
   { axis: 'reserve', poses: 61 },
   { axis: 'wind', poses: 721 },
+  { axis: 'barSwing', poses: 33 },
   { axis: 'arrest', poses: 97 },
   { axis: 'train', poses: 97 },
   { axis: 'jumperEngage', poses: 121 },
