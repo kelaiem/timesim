@@ -543,18 +543,27 @@ export function foldUnderPlate({ axisAt, spurAt, windSenseWorld, driverTeeth, ca
   const cb = blade ? (() => { const P = curvedBladePath(blade), mm = UNIT_MM;
     const c = curvedBladeRate(P.pts.map((p) => ({ x: p.x * mm, y: p.y * mm })), P.dir, blade.b_u * mm, ROCKING_BAR_INPUTS.bladeH_u.v * mm);
     return { bladeK_Npmm: c.k_Npmm, bladeArm_mm: c.armMax_mm, bladeB_u: blade.b_u, bladeLever_u: P.lever, bladeL_u: c.length_mm / mm }; })() : null;
-  const L = solveRockingBar('one', { driverTeeth, followerTeeth: driverTeeth, carried: { one: [carriedTeeth], two: [12, 12] }, fuseeTorque_Nmm, pivotR_u,
-    ...(cb ?? { bladeLever_u: pivotR_u + L0.metal.w / UNIT_MM + CLEAR_MARGIN }) });
-  if (!L.feasible) return { feasible: false, why: `the line does not solve: ${L.why}` };
-  const d = L.inputs.centreDistance_u, ex = axisAt.x - spurAt.x, ey = axisAt.y - spurAt.y, rS = Math.hypot(ex, ey);
-  const c = 1 - d * d / (2 * rS * rS);
-  if (Math.abs(c) > 1) return { feasible: false, why: `the bar's span ${d.toFixed(3)} u cannot reach the spur's circle` };
-  const swing = side * Math.acos(c), a = Math.atan2(ey, ex) + swing;
-  const F = { x: spurAt.x + rS * Math.cos(a), y: spurAt.y + rS * Math.sin(a) };
-  const xh = { x: (F.x - axisAt.x) / d, y: (F.y - axisAt.y) / d }, yh = { x: -xh.y * windSenseWorld, y: xh.x * windSenseWorld };
-  const toW = (p) => ({ x: axisAt.x + xh.x * p.x + yh.x * p.y, y: axisAt.y + xh.y * p.x + yh.y * p.y });
-  return { feasible: true, line: L, followerAt: F, swingDeg: swing * 180 / Math.PI, spurR: rS, toW,
-    centresWorld: (phi) => L.centres(phi, 0).map(toW) };
+  const fold = (inputs) => {
+    const L = solveRockingBar('one', { driverTeeth, followerTeeth: driverTeeth, carried: { one: [carriedTeeth], two: [12, 12] }, fuseeTorque_Nmm, pivotR_u, ...inputs });
+    if (!L.feasible) return { feasible: false, why: `the line does not solve: ${L.why}` };
+    const d = L.inputs.centreDistance_u, ex = axisAt.x - spurAt.x, ey = axisAt.y - spurAt.y, rS = Math.hypot(ex, ey);
+    const c = 1 - d * d / (2 * rS * rS);
+    if (Math.abs(c) > 1) return { feasible: false, why: `the bar's span ${d.toFixed(3)} u cannot reach the spur's circle` };
+    const swing = side * Math.acos(c), a = Math.atan2(ey, ex) + swing;
+    const F = { x: spurAt.x + rS * Math.cos(a), y: spurAt.y + rS * Math.sin(a) };
+    const xh = { x: (F.x - axisAt.x) / d, y: (F.y - axisAt.y) / d }, yh = { x: -xh.y * windSenseWorld, y: xh.x * windSenseWorld };
+    const toW = (p) => ({ x: axisAt.x + xh.x * p.x + yh.x * p.y, y: axisAt.y + xh.y * p.x + yh.y * p.y });
+    return { feasible: true, line: L, followerAt: F, swingDeg: swing * 180 / Math.PI, spurR: rS, toW,
+      centresWorld: (phi) => L.centres(phi, 0).map(toW) };
+  };
+  const U1 = fold(cb ?? { bladeLever_u: pivotR_u + L0.metal.w / UNIT_MM + CLEAR_MARGIN });
+  if (!cb || !U1.feasible) return U1;
+  // the curved blade's lever over the WHOLE swing: the pin's travel along the blade's end from out to engaged, over the
+  // swing. The tip's own lever (P.lever) is the slope at the start, and over the bar's ~21° the pin's arc carries the end
+  // further (14% on the declared blade). The swing is the teeth's, so one more solve at the secant lever is exact.
+  const S = underPlateCurvedSpring(U1, 0, blade, { frames: 2 });
+  const secant = Math.abs(S.travel(1) / S.psiN);
+  return fold({ ...cb, bladeLever_u: secant });
 }
 
 // The dial-side fold's choice, re-derived by tools/probe-keyless-rocking-bar-under.mjs (U0): over driver teeth 8–9 (a
