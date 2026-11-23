@@ -7191,9 +7191,9 @@ if (KB_BUILT) {
   // into a slot in a TONGUE of the bar's own, one margin under it beside the return blade, riding the carried wheel's
   // pin (run on down) and a rivet on the bar's axis; the slot's end walls stop the bar engaged and out. Placed by
   // probe-keyless-rocking-bar-banking.mjs (UNDER_PLATE.banking).
-  const BK = underPlateBanking(KB, -BACK_PLATE_T, UNDER_PLATE.blade, UNDER_PLATE.banking);
+  const BK = UNDER_PLATE.banking ? underPlateBanking(KB, -BACK_PLATE_T, UNDER_PLATE.blade, UNDER_PLATE.banking) : { feasible: false, why: 'none declared', quiet: true };
   kbBladePin = post('kbBladePin', SP.pin.at, SP.pin.r, SP.pin.z0, SP.pin.z1, kbBarGroup, D0);   // riveted in the bar's ear
-  if (!BK.feasible) console.warn(`§334 landing 7: the banking does not fit: ${BK.why}`);
+  if (!BK.feasible) { if (!BK.quiet) console.warn(`§334 landing 7: the banking does not fit: ${BK.why}`); }
   else {
     kbPin.geometry.dispose();
     kbPin.geometry = new THREE.CylinderGeometry(K.pin.r, K.pin.r, K.pin.z1 - BK.pinZ0, 14);

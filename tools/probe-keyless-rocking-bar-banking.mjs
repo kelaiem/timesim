@@ -15,17 +15,35 @@
 //       duty, and ranking by the load instead ran to the search's edge, because a longer arm always loads the post
 //       less), the first whose post and tongue (swept over the swing) stand CLEAR_MARGIN off the movement's metal in the
 //       default build AND in every spec point (SPEC_POINTS, each booted in a child process: the post stands in the
-//       keyless works, which every later solve reads as built). A tie on R goes to the one standing furthest off
-//       the movement. The declared banking is that answer
+//       keyless works, which every later solve reads as built). A tie on R goes to the one whose post and tongue
+//       stand furthest off the bar's own metal. The declared banking is that answer
 //   B1  the slot's two end walls each touch the post at one end of the swing (engaged and out) to float noise, and
 //       stand clear of it in between. CONTROL: the slot cut for a swing 2° short pinches the post at the out end
+//   B3  the place moves no LATER solve: booted in every spec point with that banking (the probe's loader rewrites the
+//       declaration as the module loads), each point boots exactly the warnings it boots with no banking; the shortest
+//       place that clears everywhere AND passes is B0's answer
 //   B2  the load: the post's diameter is TODO 193's pin law at the line's moment over R and its cantilever, at least
 //       §50's floor; the tongue's arm at its root is wider than the bending at yield asks
 import { bootNative } from './native/host.mjs';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-const SCAN = process.env.KB_BANK_SPEC;   // child mode: which of the candidates (JSON in KB_BANK_CANDS) clear this spec point
+// the whole probe judges places against builds with NO banking (a declared one moves the solves after it, which would
+// bias every place's clearance toward the declared one): it re-runs itself under its loader with the banking set to none
+if (process.env.KB_BANK_OVERRIDE === undefined) {
+  const { spawnSync } = await import('node:child_process');
+  const r0 = spawnSync(process.execPath, ['--import', new URL('./native/loader.mjs', import.meta.url).href, '--import', new URL('./probe-keyless-rocking-bar-banking-loader.mjs', import.meta.url).href, fileURLToPath(import.meta.url)],
+    { env: { ...process.env, KB_BANK_OVERRIDE: 'null', __TIMESIM_NATIVE_LOADER__: '', __KB_BANK_LOADER__: '' }, stdio: 'inherit' });
+  process.exit(r0.status ?? 1);
+}
+const SCAN = process.env.KB_BANK_SPEC;
+// child mode B3: boot one spec point with the banking the loader wrote in (KB_BANK_OVERRIDE), and print its warnings
+if (process.env.KB_BANK_BOOT !== undefined) {
+  const { bootNative } = await import('./native/host.mjs');
+  const rr = await bootNative({ query: process.env.KB_BANK_BOOT });
+  console.log(JSON.stringify({ spec: process.env.KB_BANK_BOOT, warns: (rr.clock.buildWarns ?? []).map(String) }));
+  process.exit(0);
+}   // child mode: which of the candidates (JSON in KB_BANK_CANDS) clear this spec point
 const r = await bootNative({ query: SCAN ?? '' });
 const C = r.clock, THREE = await import('three');
 const I = await import('../src/inspect.js');
@@ -124,8 +142,8 @@ if (process.env.KB_BANK_DRY) process.exit(0);   // a dry run: the default build'
 const { SPEC_POINTS } = await import('./ci-battery.mjs');
 const self = fileURLToPath(import.meta.url), loader = new URL('./native/loader.mjs', import.meta.url).href;
 // (the native loader's once-only flag must not ride into a child, or the child never registers it)
-const runChild = (q) => new Promise((res) => { let out = ''; const ch = spawn(process.execPath, ['--import', loader, self],
-  { env: { ...process.env, KB_BANK_SPEC: q, KB_BANK_CANDS: JSON.stringify(shortlist.map((x) => x.b)), __TIMESIM_NATIVE_LOADER__: '' }, stdio: ['ignore', 'pipe', 'ignore'] });
+const runChild = (q) => new Promise((res) => { let out = ''; const ch = spawn(process.execPath, ['--import', loader, '--import', new URL('./probe-keyless-rocking-bar-banking-loader.mjs', import.meta.url).href, self],
+  { env: { ...process.env, KB_BANK_SPEC: q, KB_BANK_CANDS: JSON.stringify(shortlist.map((x) => x.b)), __TIMESIM_NATIVE_LOADER__: '', __KB_BANK_LOADER__: '' }, stdio: ['ignore', 'pipe', 'ignore'] });
   ch.stdout.on('data', (d) => { out += d; }); ch.on('close', () => { try { res(JSON.parse(out.trim().split('\n').pop())); } catch { res({ spec: q, clear: null }); } }); });
 const specs = process.env.KB_BANK_QUICK ? [] : SPEC_POINTS.map((p) => p.q).filter((q) => q);   // QUICK: the default build only (iterating; B0 then says nothing about the spec points)
 const specClear = [];
@@ -134,8 +152,36 @@ const failedSpecs = specClear.filter((c) => !Array.isArray(c.clear) && c.why !==
 const everywhere = shortlist.filter((x) => specClear.every((c) => c.clear === null && c.why === 'no bar built' || (Array.isArray(c.clear) && c.clear.includes(key(x.b)))));
 console.log(`  ${specs.length} spec points: ${failedSpecs.length} failed to judge; ${everywhere.length} of the shortlist clear in every one`);
 for (const c of specClear) if (Array.isArray(c.clear) && c.clear.length < shortlist.length) console.log(`    ${c.spec}: refuses ${shortlist.filter((x) => !c.clear.includes(key(x.b))).map((x) => key(x.b)).join(' ')}`);
-const tied = everywhere.filter((x) => Math.abs(x.b.R - everywhere[0]?.b.R) < 1e-9).sort((a, b) => b.w.d - a.w.d);
-const win = tied[0], decl = RB.UNDER_PLATE.banking;
+// B3: the post and the tongue are metal every LATER solve reads as built (the reserve train swings clear of the keyless
+// works, the setting traverse round the reserve), so a place that clears the metal can still move another solve: on
+// stopwork-140 the first answer, 5.5/330, sent the reserve where the traverse's cap, the stub and leg 2's blocks all
+// warn. Each place is booted in every spec point with that banking (the probe's own loader rewrites the declaration as
+// the module loads) and must boot exactly the warnings the same point boots with NO banking.
+const bootLoader = new URL('./probe-keyless-rocking-bar-banking-loader.mjs', import.meta.url).href;
+const bootWith = (q, b) => new Promise((res) => { let out = ''; const ch = spawn(process.execPath, ['--import', loader, '--import', bootLoader, self],
+  { env: { ...process.env, KB_BANK_BOOT: q, KB_BANK_OVERRIDE: JSON.stringify(b), __TIMESIM_NATIVE_LOADER__: '', __KB_BANK_LOADER__: '' }, stdio: ['ignore', 'pipe', 'ignore'] });
+  ch.stdout.on('data', (d) => { out += d; }); ch.on('close', () => { try { res(JSON.parse(out.trim().split('\n').pop())); } catch { res({ spec: q, warns: null }); } }); });
+const pairs = async (qs, b) => { const out = []; for (let i = 0; i < qs.length; i += 2) out.push(...await Promise.all(qs.slice(i, i + 2).map((q) => bootWith(q, b)))); return out; };
+const warnKey = (w) => w === null ? null : [...w].sort().join('\n');
+const bootSpecs = process.env.KB_BANK_QUICK ? [] : ['', ...specs];
+const base = new Map((await pairs(bootSpecs, null)).map((x) => [x.spec, warnKey(x.warns)]));
+const SENSITIVE = 'case=free&alarm=0&barrelstep=-140&rsvaz=0&rsvidl=2&frame=lands&drumaz=140';
+const solvesHeld = [];
+let bootChecked = 0;
+for (const x of everywhere) {
+  if (bootSpecs.length === 0) { solvesHeld.push(x); break; }
+  const first = bootSpecs.includes(SENSITIVE) ? [SENSITIVE] : [];
+  const pre = await pairs(first, x.b); bootChecked++;
+  if (pre.some((y) => warnKey(y.warns) !== base.get(y.spec))) { console.log(`    ${key(x.b)}: moves a later solve on stopwork-140`); continue; }
+  const all = await pairs(bootSpecs.filter((q) => q !== SENSITIVE), x.b);
+  const moved = all.filter((y) => warnKey(y.warns) !== base.get(y.spec));
+  if (moved.length) { console.log(`    ${key(x.b)}: moves a later solve on ${moved.map((y) => y.spec || 'the default').join(', ')}`); continue; }
+  solvesHeld.push(x); break;
+}
+console.log(`  B3: ${bootChecked} place(s) booted against ${bootSpecs.length} builds; ${solvesHeld.length ? `${key(solvesHeld[0].b)} moves no later solve` : 'none moves no later solve'}`);
+// the DECLARED banking, read off the file's text: this process runs under the loader with the banking set to none
+const declText = (await import('node:fs')).readFileSync(new URL('../src/keyless-rocking-bar.js', import.meta.url), 'utf8').match(/banking: Object\.freeze\(\{ R: ([0-9.]+), alpha: ([0-9.]+) \}\)/);
+const win = solvesHeld[0] ?? null, decl = declText ? { R: Number(declText[1]), alpha: Number(declText[2]) } : null;   // the shortest clear everywhere that moves no later solve (B3)
 row('B0', !!win && !!decl && key(win.b) === key(decl) && failedSpecs.length === 0,
   `the shortest clear everywhere: ${win ? `${key(win.b)} (${win.B.load.F_N.toFixed(3)} N on the post, worst ${win.w.d.toFixed(3)} ${win.w.n})` : '—'}; declared ${decl ? key(decl) : 'none'}`);
 
