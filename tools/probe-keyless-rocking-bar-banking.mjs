@@ -95,7 +95,8 @@ const key = (b) => `${b.R}/${b.alpha}`;
 
 if (SCAN !== undefined) {
   const list = JSON.parse(process.env.KB_BANK_CANDS), clear = [];
-  for (const b of list) { const B = judge(b); if (ownClear(B) >= M && exact(B).d >= M) clear.push(key(b)); }
+  for (const b of list) { const B = judge(b), o = ownClear(B), e = exact(B); if (o >= M && e.d >= M) clear.push(key(b));
+    if (process.env.KB_BANK_WHY) console.log(`${key(b)} own ${o.toFixed(3)} exact ${e.d.toFixed(3)} ${e.n}`); }
   console.log(JSON.stringify({ spec: SCAN, clear }));
   process.exit(0);
 }
@@ -104,12 +105,13 @@ const cands = [];
 for (let R = 1.75; R <= 9 + 1e-9; R += 0.25) for (let alpha = 0; alpha < 360; alpha += 5) cands.push({ R, alpha });
 const own = cands.map((b) => ({ b, B: judge(b) })).map((x) => ({ ...x, own: ownClear(x.B) })).filter((x) => x.own >= M)
   .sort((a, b) => a.b.R - b.b.R || b.own - a.own);
-// one per 20° of azimuth (the lightest there), so a spec point that refuses one region cannot empty the list
-const shortlist = [], seen = new Set(), blocked = {};
-for (const x of own) { if (shortlist.length >= 24) break; const bin = Math.floor(x.b.alpha / 20); if (seen.has(bin)) continue;
-  const w = exact(x.B); if (w.d >= M) { shortlist.push({ ...x, w }); seen.add(bin); } else if (process.env.KB_BANK_DRY) blocked[bin] = (blocked[bin] ?? {}), blocked[bin][w.n] = (blocked[bin][w.n] ?? 0) + 1; }
+// every place that clears the default build, shortest first, up to 60: the default leaves only a few sectors open
+// (one per 20° of azimuth left three, and two reserve-train arrangements refused all three)
+const shortlist = [], blocked = {};
+for (const x of own) { if (shortlist.length >= 60) break;
+  const w = exact(x.B); if (w.d >= M) shortlist.push({ ...x, w }); else if (process.env.KB_BANK_DRY) { const bin = Math.floor(x.b.alpha / 20); blocked[bin] = (blocked[bin] ?? {}); blocked[bin][w.n] = (blocked[bin][w.n] ?? 0) + 1; } }
 if (process.env.KB_BANK_DRY) console.log('  blocked by bin:', JSON.stringify(blocked));
-console.log(`  ${cands.length} places, ${own.length} clear of the bar's own metal; the shortest clear in the default build, one per 20°: ${shortlist.map((x) => `${key(x.b)} ${x.B.load.F_N.toFixed(3)} N (${x.w.d.toFixed(3)} ${x.w.n})`).join('; ')}`);
+console.log(`  ${cands.length} places, ${own.length} clear of the bar's own metal; the shortest clear in the default build: ${shortlist.map((x) => `${key(x.b)} ${x.B.load.F_N.toFixed(3)} N (${x.w.d.toFixed(3)} ${x.w.n})`).join('; ')}`);
 if (process.env.KB_BANK_DRY) process.exit(0);   // a dry run: the default build's shortlist only
 const { SPEC_POINTS } = await import('./ci-battery.mjs');
 const self = fileURLToPath(import.meta.url), loader = new URL('./native/loader.mjs', import.meta.url).href;
