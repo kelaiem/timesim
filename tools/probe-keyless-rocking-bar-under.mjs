@@ -52,7 +52,7 @@ const fuseeTorque_Nmm = C.going?.energy?.windTorqueAtTransfer_Nmm ?? 1.760290574
 
 const meshes = []; C.scene.traverse((o) => { if (o.isMesh && !o.userData?.schematic && o.geometry?.attributes?.position) meshes.push(o); });
 const within = (o, names) => { for (let p = o; p; p = p.parent) if (names.includes(p.name)) return true; return false; };
-const REPLACED = ['transferArbor', 'transferWheel', 'backPlate', 'crownWheelArbor', 'kbDriver', 'kbCarried', 'kbFollower', 'kbBar', 'kbPin', 'kbBlade', 'kbBladeStud', 'kbBladePin', 'kbClip'];   // the bar's own metal, and what it replaced
+const REPLACED = ['transferArbor', 'transferWheel', 'backPlate', 'crownWheelArbor', 'kbDriver', 'kbCarried', 'kbFollower', 'kbBar', 'kbPin', 'kbBlade', 'kbBladeStud', 'kbBladePin', 'kbClip', 'kbBankPost', 'kbBankTongue', 'kbBankRivet'];   // the bar's own metal, and what it replaced
 const nearest = (probe, excuse = []) => { const pb = new THREE.Box3().setFromObject(probe).expandByScalar(1.5); let best = { d: Infinity, n: '-' };
   for (const o of meshes) { if (within(o, REPLACED) || within(o, excuse)) continue; if (!new THREE.Box3().setFromObject(o).intersectsBox(pb)) continue;
     const d = I.meshClearance(probe, o, 1.5); if (d < best.d) best = { d, n: o.name || `(in ${o.parent?.name})` }; } return best; };
