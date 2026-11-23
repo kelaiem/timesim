@@ -133,8 +133,8 @@ const own = cands.map((b) => ({ b, B: judge(b) })).map((x) => ({ ...x, own: ownC
   .sort((a, b) => a.b.R - b.b.R || b.own - a.own);
 // every place that clears the default build, shortest first, up to 60: the default leaves only a few sectors open
 // (one per 20° of azimuth left three, and two reserve-train arrangements refused all three)
-const shortlist = [], blocked = {};
-for (const x of own) { if (shortlist.length >= 60) break;
+const SHORT_CAP = Number(process.env.KB_BANK_CAP ?? 60), shortlist = [], blocked = {};
+for (const x of own) { if (shortlist.length >= SHORT_CAP) break;
   const w = exact(x.B); if (w.d >= M) shortlist.push({ ...x, w }); else if (process.env.KB_BANK_DRY) { const bin = Math.floor(x.b.alpha / 20); blocked[bin] = (blocked[bin] ?? {}); blocked[bin][w.n] = (blocked[bin][w.n] ?? 0) + 1; } }
 if (process.env.KB_BANK_DRY) console.log('  blocked by bin:', JSON.stringify(blocked));
 console.log(`  ${cands.length} places, ${own.length} clear of the bar's own metal; the shortest clear in the default build: ${shortlist.map((x) => `${key(x.b)} ${x.B.load.F_N.toFixed(3)} N (${x.w.d.toFixed(3)} ${x.w.n})`).join('; ')}`);
@@ -145,12 +145,16 @@ const self = fileURLToPath(import.meta.url), loader = new URL('./native/loader.m
 const runChild = (q) => new Promise((res) => { let out = ''; const ch = spawn(process.execPath, ['--import', loader, '--import', new URL('./probe-keyless-rocking-bar-banking-loader.mjs', import.meta.url).href, self],
   { env: { ...process.env, KB_BANK_SPEC: q, KB_BANK_CANDS: JSON.stringify(shortlist.map((x) => x.b)), __TIMESIM_NATIVE_LOADER__: '', __KB_BANK_LOADER__: '' }, stdio: ['ignore', 'pipe', 'ignore'] });
   ch.stdout.on('data', (d) => { out += d; }); ch.on('close', () => { try { res(JSON.parse(out.trim().split('\n').pop())); } catch { res({ spec: q, clear: null }); } }); });
+// the spec points that DECLARE the banking's omission (their SPEC_POINTS row expects its warning: the banking yields to
+// that build's reserve train, TODO 319) are not asked to clear it; B3 holds that the build really leaves it out there
+const OMIT_PREFIX = '§334 landing 7: the rocking bar\'s banking';
+const OMIT_SPECS = new Set(SPEC_POINTS.filter((p) => (p.expectWarns ?? []).includes(OMIT_PREFIX)).map((p) => p.q));
 const specs = process.env.KB_BANK_QUICK ? [] : SPEC_POINTS.map((p) => p.q).filter((q) => q);   // QUICK: the default build only (iterating; B0 then says nothing about the spec points)
 const specClear = [];
 for (let i = 0; i < specs.length; i += 2) specClear.push(...await Promise.all(specs.slice(i, i + 2).map((q) => runChild(q))));
 const failedSpecs = specClear.filter((c) => !Array.isArray(c.clear) && c.why !== 'no bar built');
-const everywhere = shortlist.filter((x) => specClear.every((c) => c.clear === null && c.why === 'no bar built' || (Array.isArray(c.clear) && c.clear.includes(key(x.b)))));
-console.log(`  ${specs.length} spec points: ${failedSpecs.length} failed to judge; ${everywhere.length} of the shortlist clear in every one`);
+const everywhere = shortlist.filter((x) => specClear.every((c) => OMIT_SPECS.has(c.spec) || c.clear === null && c.why === 'no bar built' || (Array.isArray(c.clear) && c.clear.includes(key(x.b)))));
+console.log(`  ${specs.length} spec points (${OMIT_SPECS.size} declaring the banking's omission): ${failedSpecs.length} failed to judge; ${everywhere.length} of the shortlist clear in every other one`);
 for (const c of specClear) if (Array.isArray(c.clear) && c.clear.length < shortlist.length) console.log(`    ${c.spec}: refuses ${shortlist.filter((x) => !c.clear.includes(key(x.b))).map((x) => key(x.b)).join(' ')}`);
 // B3: the post and the tongue are metal every LATER solve reads as built (the reserve train swings clear of the keyless
 // works, the setting traverse round the reserve), so a place that clears the metal can still move another solve: on
@@ -163,6 +167,10 @@ const bootWith = (q, b) => new Promise((res) => { let out = ''; const ch = spawn
   ch.stdout.on('data', (d) => { out += d; }); ch.on('close', () => { try { res(JSON.parse(out.trim().split('\n').pop())); } catch { res({ spec: q, warns: null }); } }); });
 const pairs = async (qs, b) => { const out = []; for (let i = 0; i < qs.length; i += 2) out.push(...await Promise.all(qs.slice(i, i + 2).map((q) => bootWith(q, b)))); return out; };
 const warnKey = (w) => w === null ? null : [...w].sort().join('\n');
+// a point declaring the omission must boot its no-banking warnings plus exactly one omission warning
+const sameAsBase = (y) => { if (y.warns === null) return false; const b = base.get(y.spec);
+  if (!OMIT_SPECS.has(y.spec)) return warnKey(y.warns) === b;
+  const om = y.warns.filter((w) => w.startsWith(OMIT_PREFIX)); return om.length === 1 && warnKey(y.warns.filter((w) => !w.startsWith(OMIT_PREFIX))) === b; };
 const bootSpecs = process.env.KB_BANK_QUICK ? [] : ['', ...specs];
 const base = new Map((await pairs(bootSpecs, null)).map((x) => [x.spec, warnKey(x.warns)]));
 const SENSITIVE = 'case=free&alarm=0&barrelstep=-140&rsvaz=0&rsvidl=2&frame=lands&drumaz=140';
@@ -172,9 +180,9 @@ for (const x of everywhere) {
   if (bootSpecs.length === 0) { solvesHeld.push(x); break; }
   const first = bootSpecs.includes(SENSITIVE) ? [SENSITIVE] : [];
   const pre = await pairs(first, x.b); bootChecked++;
-  if (pre.some((y) => warnKey(y.warns) !== base.get(y.spec))) { console.log(`    ${key(x.b)}: moves a later solve on stopwork-140`); continue; }
+  if (pre.some((y) => !sameAsBase(y))) { console.log(`    ${key(x.b)}: moves a later solve on stopwork-140`); continue; }
   const all = await pairs(bootSpecs.filter((q) => q !== SENSITIVE), x.b);
-  const moved = all.filter((y) => warnKey(y.warns) !== base.get(y.spec));
+  const moved = all.filter((y) => !sameAsBase(y));
   if (moved.length) { console.log(`    ${key(x.b)}: moves a later solve on ${moved.map((y) => y.spec || 'the default').join(', ')}`); continue; }
   solvesHeld.push(x); break;
 }

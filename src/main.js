@@ -7146,7 +7146,7 @@ transferArbor.rotation.x = Math.PI / 2;
 transferArbor.position.set(TRANSFER_XY.x, TRANSFER_XY.y, (Z_TRANSFER + _trArborLo) / 2);
 keyless.add(transferArbor);
 let crownWheelArbor = null, kbDriver = null, kbCarried = null, kbFollower = null, kbBar = null, kbPin = null, kbBarGroup = null;
-let kbBlade = null, kbBladeStud = null, kbBladePin = null, KB_BLADE_GEOS = null, kbClipJaws = [], kbBankPost = null, kbBankTongue = null, kbBankRivet = null;   // §334 5c: the return blade and the banking
+let kbBlade = null, kbBladeStud = null, kbBladePin = null, KB_BLADE_GEOS = null, kbClipJaws = [], kbBankPost = null, kbBankTongue = null, kbBankRivet = null, KB_BANK_PLAN = null, KB_BANK_REMOVE = null, KB_BANK_OMITTED = null;   // §334 5c: the return blade and the banking
 let kbDriverClock = 0, kbCarriedClock = 0, kbFollowerClock = 0;   // TODO 132's free indices, solved with the keyless meshes
 if (KB_BUILT) {
   const D0 = { x: uWind.x * cwDist, y: uWind.y * cwDist }, K = KB_METAL, zW = (K.zW0 + K.zW1) / 2;
@@ -7234,14 +7234,29 @@ if (KB_BUILT) {
   kbBlade = new THREE.Mesh(KB_BLADE_GEOS[0], MATS.blueSteel);
   kbBlade.name = 'kbBlade';
   keyless.add(kbBlade);
-  const barShape = new THREE.Shape(SP.outlineAt(0).map(([x, y]) => new THREE.Vector2(x, y)));
-  // §334 landing 6 — the bore as cut: the running bore on the arbor with the friction clip's pocket (underPlateClip)
-  barShape.holes.push(new THREE.Path(SP.clip.hole.map(([x, y]) => new THREE.Vector2(x, y))));
-  const pinHole = new THREE.Path(); pinHole.absarc(K.pin.at.x, K.pin.at.y, K.pin.r, 0, 2 * Math.PI, true); barShape.holes.push(pinHole);   // the pin is riveted in its own hole
-  if (BK.feasible) { const rv = new THREE.Path(); rv.absarc(BK.rivet.at.x, BK.rivet.at.y, BK.rivet.r, 0, 2 * Math.PI, true); barShape.holes.push(rv); }   // §334 landing 7: the tongue's rivet
-  const bladePinHole = new THREE.Path(); bladePinHole.absarc(SP.pin.at.x, SP.pin.at.y, SP.pin.r, 0, 2 * Math.PI, true); barShape.holes.push(bladePinHole);   // §334 landing 6: and the blade's
-  const barGeo = new THREE.ExtrudeGeometry(barShape, { depth: K.zB1 - K.zB0, bevelEnabled: false, curveSegments: 32 });
-  barGeo.translate(-D0.x, -D0.y, K.zB0);
+  const barGeoFor = (withRivet) => {
+    const barShape = new THREE.Shape(SP.outlineAt(0).map(([x, y]) => new THREE.Vector2(x, y)));
+    // §334 landing 6 — the bore as cut: the running bore on the arbor with the friction clip's pocket (underPlateClip)
+    barShape.holes.push(new THREE.Path(SP.clip.hole.map(([x, y]) => new THREE.Vector2(x, y))));
+    const pinHole = new THREE.Path(); pinHole.absarc(K.pin.at.x, K.pin.at.y, K.pin.r, 0, 2 * Math.PI, true); barShape.holes.push(pinHole);   // the pin is riveted in its own hole
+    if (withRivet) { const rv = new THREE.Path(); rv.absarc(BK.rivet.at.x, BK.rivet.at.y, BK.rivet.r, 0, 2 * Math.PI, true); barShape.holes.push(rv); }   // §334 landing 7: the tongue's rivet
+    const bladePinHole = new THREE.Path(); bladePinHole.absarc(SP.pin.at.x, SP.pin.at.y, SP.pin.r, 0, 2 * Math.PI, true); barShape.holes.push(bladePinHole);   // §334 landing 6: and the blade's
+    const g = new THREE.ExtrudeGeometry(barShape, { depth: K.zB1 - K.zB0, bevelEnabled: false, curveSegments: 32 });
+    g.translate(-D0.x, -D0.y, K.zB0);
+    return g;
+  };
+  const barGeo = barGeoFor(BK.feasible);
+  // §334 landing 7 — the banking can be taken out again, once the reserve train's station is known (below, at its
+  // first read of the keyless works): this puts the bar, the carried pin and the tongue's parts back as without it
+  if (BK.feasible) KB_BANK_REMOVE = (why) => {
+    keyless.remove(kbBankPost); kbBarGroup.remove(kbBankTongue); kbBarGroup.remove(kbBankRivet);
+    for (const m of [kbBankPost, kbBankTongue, kbBankRivet]) m.geometry.dispose();
+    kbBankPost = kbBankTongue = kbBankRivet = null;
+    kbPin.geometry.dispose(); kbPin.geometry = new THREE.CylinderGeometry(K.pin.r, K.pin.r, K.pin.z1 - K.pin.z0, 14); kbPin.position.z = (K.pin.z0 + K.pin.z1) / 2;
+    kbBar.geometry.dispose(); kbBar.geometry = barGeoFor(false);
+    KB_BANK_OMITTED = why;
+  };
+  KB_BANK_PLAN = BK.feasible ? BK : null;
   kbBar = new THREE.Mesh(barGeo, MATS.steel);
   kbBar.name = 'kbBar';
   kbBarGroup.add(kbBar);
@@ -10550,6 +10565,40 @@ const CAP_SOLVE = await (async () => {
     zLo: transferArbor.position.z - transferArbor.geometry.parameters.height / 2,
     zHi: transferArbor.position.z + transferArbor.geometry.parameters.height / 2 };
   await breathe(76);
+  // §334 landing 7 — THE BANKING YIELDS TO THE RESERVE TRAIN'S SWING (the owner's choice, 2026-11-23). The reserve's
+  // first wheel owns its swing window (RSV_SWING_MAX_DEG either side of its line), which it spends to leave the setting
+  // traverse room. Where the banking's post or its tongue (over the bar's swing) would stand within CLEAR_MARGIN of the
+  // reserve's members ANYWHERE in that window, it takes the swing the reserve needs: measured on stopwork-140, the
+  // reserve then kept its line and the traverse's cap, stub and leg 2 all warned. So the banking is taken out there,
+  // said, and recorded as omitted, and the bar's two ends are the swing law's on that build. Re-siting that reserve
+  // train is filed (TODO 319).
+  if (KB_BANK_REMOVE) {
+    const BKp = KB_BANK_PLAN;
+    let worst = Infinity, who = null;
+    const swings = []; for (let d = -RSV_SWING_MAX_DEG; d <= RSV_SWING_MAX_DEG + 1e-9; d += RSV_SWING_STEP_DEG) swings.push(d * DEG2RAD);
+    const rmAll = swings.map((dl) => reserveMembersAt(dl)).filter(Boolean).flatMap((x) => x.members);
+    const polyD = (P, pts) => { let d = Infinity, inside = false;
+      for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [ax, ay] = pts[j], [bx, by] = pts[i], ex = bx - ax, ey = by - ay;
+        const t = Math.max(0, Math.min(1, ((P.x - ax) * ex + (P.y - ay) * ey) / (ex * ex + ey * ey))); d = Math.min(d, Math.hypot(P.x - ax - t * ex, P.y - ay - t * ey));
+        if ((ay > P.y) !== (by > P.y) && P.x < ax + (bx - ax) * (P.y - ay) / (by - ay)) inside = !inside; }
+      return inside ? -d : d; };
+    const D0 = KB_METAL.centres[0];
+    for (const m of rmAll) {
+      const zOver = (z0, z1) => Math.min(z1, m.zHi) - Math.max(z0, m.zLo) > -CLEAR_MARGIN;
+      if (zOver(BKp.post.z0, BKp.post.z1)) { const d = Math.hypot(BKp.post.at.x - m.x, BKp.post.at.y - m.y) - BKp.post.r - m.r; if (d < worst) { worst = d; who = `post ⇄ reserve ${m.name}`; } }
+      if (zOver(BKp.layer.z0, BKp.layer.z1)) for (let k = 0; k <= 8; k++) {
+        const psi = kbPsiAt(k / 8), c = Math.cos(psi), sn = Math.sin(psi);
+        const T = BKp.outline.map(([x, y]) => [D0.x + (x - D0.x) * c - (y - D0.y) * sn, D0.y + (x - D0.x) * sn + (y - D0.y) * c]);
+        const d = polyD({ x: m.x, y: m.y }, T) - m.r; if (d < worst) { worst = d; who = `tongue ⇄ reserve ${m.name}`; }
+      }
+    }
+    if (worst < CLEAR_MARGIN) {
+      const why = `§334 landing 7: the rocking bar's banking stands in the reserve train's station (${who} ${worst.toFixed(3)} against CLEAR_MARGIN ${CLEAR_MARGIN}), so it is not cut and the bar's ends are the swing law's on this build (TODO 319)`;
+      console.warn(why);
+      KB_BANK_REMOVE(why);
+      for (const mesh of ['kbBankPost', 'kbBankTongue', 'kbBankRivet']) BUILD_OMITTED.push({ unit: 'Keyless works', mesh, why });
+    }
+  }
   const staticPts = await reserveObstaclePoints(keyless);   // what the keyless works hold before the traverse — the reserve reads these too (no mwCorner* here yet, so this is meshPoints)
   const rsvStatic = reserveSwingStatic(staticPts);   // TODO 280: the static half sifted once and memoized per swing — the same answer as staticPts.concat(…), see reserveSwingStatic
   const disposeTree = (g) => g.traverse((o) => { if (o.isMesh) o.geometry.dispose(); });
