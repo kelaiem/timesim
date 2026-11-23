@@ -577,7 +577,10 @@ export const UNDER_PLATE = Object.freeze({ driverTeeth: 9, carriedTeeth: 11, sid
   // §334 landing 6: the CURVED return blade under the bar (studR, studAz in degrees from the carried wheel, turn ±1, span in
   // degrees, tipR, b_u its width) — the softest path whose stud clears in every spec point, re-derived by
   // probe-keyless-rocking-bar-curved.mjs (C0)
-  blade: Object.freeze({ studR: 3, studAz: 170, turn: -1, span: 150, tipR: BLADE_TIP_MIN_U, b_u: 0.18 }) });
+  blade: Object.freeze({ studR: 3, studAz: 170, turn: -1, span: 150, tipR: BLADE_TIP_MIN_U, b_u: 0.18 }),
+  // §334 landing 7: the BANKING's post, R u from the pivot at alpha degrees from the carried wheel — the shortest tongue
+  // whose post and tongue clear in every spec point, re-derived by probe-keyless-rocking-bar-banking.mjs (B0)
+  banking: Object.freeze({ R: 5.5, alpha: 330 }) });
 
 // THE UNDER-PLATE BAR'S METAL, one law for the build and its probe (§334 landing 5a). The stack hangs from the base
 // plate's back face: the bar's three wheels one CLEAR_MARGIN under it, cut from the winding band's stock, and the
@@ -768,4 +771,81 @@ export function underPlateClip(U, plateBackZ, { n = 24, avoid = null } = {}) {
   const lobe = [[D.x, D.y], ...Array.from({ length: n + 1 }, (_, k) => at(bossR, l0 + (l1 - l0) * k / n))];
   return { jaw, hole, lobe, r0, h, rP, bossR, turn, pinWall: pocketWall(root), z0: K.zB0, z1: K.zB1, grip_N: L.clip.N_N, sideLoad_N: L.clip.N_N / 2,
     interference_mm: L.clip.interference_mm };
+}
+
+// THE BANKING AS METAL (§334 landing 7), one law for the build and its probe. The line banks the bar with one pin in
+// an arc slot whose ends stand the swing apart (landing 2: the carried wheel's own arbor in a slot in the plate). In the
+// bar's own plane a slotted ear meets the winding pinion, the motion works' corner or the stem at every azimuth, and a
+// bridge under the bar met the corner one way round and the stem the other (landing 5c's record). So the slot is cut
+// in a TONGUE, a plate of the bar's own one margin under it, in the return blade's layer and clear of the blade in
+// PLAN, and the pin is a fixed POST planted in the plate that drops past the wheels and the bar into it:
+//  · the layer: one §50 stock under the bar's margin. A layer under the blade's sat in the reserve pinion of the
+//    reserve-train arrangements (it stands 0.92 u below the bar there), and this one ends a margin above it;
+//  · the tongue rides two pins of the bar: the carried wheel's own pin run on down (the line's banking pin, so the
+//    load path is the line's) and a RIVET on the bar's axis, as near the pivot as the blade's pin and a §50 wall in
+//    the bar's arm allow (two fixings, so it cannot turn on either);
+//  · its slot ring stands at radius R, azimuth `alpha` from the carried wheel (engaged), the post's centre on that
+//    circle, and its end walls each touch the post at one end of the swing (engaged, and out), the line's rule;
+//  · the LOAD is the line's: the depth banking's reaction carries the winding moment about D (metal.Fbank at the
+//    carried pin's radius), so at R it is that moment over R. The post is a cantilever from the plate to the tongue's
+//    mid-plane, sized by TODO 193's pin law; the tongue's arm is held in bending at the alloy's yield over its width.
+// `banking` = { R, alpha } in u and degrees. Returned in WORLD coordinates with the bar ENGAGED.
+export function underPlateBanking(U, plateBackZ, blade, banking, { n = 32, swingShort = 0 } = {}) {
+  const L = U.line, M = CLEAR_MARGIN, mm = UNIT_MM;
+  const K = underPlateMetal(U, plateBackZ);
+  const SP = underPlateCurvedSpring(U, plateBackZ, blade, { frames: 2 });
+  const D = K.centres[0], C = K.centres[1], th = Math.atan2(C.y - D.y, C.x - D.x), rC = Math.hypot(C.x - D.x, C.y - D.y);
+  const at = (r, a) => ({ x: D.x + r * Math.cos(a), y: D.y + r * Math.sin(a) });
+  const R = banking.R, a0 = th + banking.alpha * Math.PI / 180;
+  const tT = STOCK_MIN_U, z1 = K.zB0 - M, z0 = z1 - tT;
+  // the load: the line's depth-banking moment about D, carried to R
+  const Mbank_Nmm = L.metal.Fbank * L.slot.r_mm, F_N = Mbank_Nmm / (R * mm);
+  const sigY = SPRING_SIGMA_Y_PA / 1e6;
+  const lever_mm = (plateBackZ - (z0 + z1) / 2) * mm;   // the post's cantilever: the plate's back face to the tongue's mid-plane
+  const postD_mm = Math.max(STOCK_MIN_U * mm, Math.cbrt(32 * F_N * lever_mm / (Math.PI * sigY)));   // TODO 193's pin law
+  const pk = postD_mm / mm / 2, hwS = pk + PIVOT_BORE_CLEAR;
+  // the slot, in the bar's frame (engaged): the post at a0 when engaged, at a0 − ψN when out (the bar turned by ψN).
+  // (`swingShort`, radians, cuts it for a swing that much short: the probe's control, never the build's)
+  const sOut = Math.sign(SP.psiN) || 1, psiN = SP.psiN - sOut * swingShort, del = 2 * Math.asin((hwS - pk) / (2 * R));   // the cap's centre a CHORD of hwS − pk from the post's
+  const e1 = a0 - sOut * del, e2 = a0 - psiN + sOut * del;   // each cap's centre stepped INTO the slot, which runs from a0 back by ψN
+  const arc = (r, a1, a2, m = n) => Array.from({ length: m + 1 }, (_, k) => at(r, a1 + (a2 - a1) * k / m));
+  const sg = Math.sign(e2 - e1) || 1;
+  // the caps are the stops, so they are cut fine: a chord of a coarse cap stands inside the circle and pinched the post
+  // 4.4e-4 at a 32-step half round; at 128 its sagitta is under the instruments' touch (1e-4)
+  const cap = (e, from, Rr) => { const c = at(R, e), u = { x: Math.cos(e), y: Math.sin(e) }, v = { x: -Math.sin(e) * sg, y: Math.cos(e) * sg };
+    return Array.from({ length: 129 }, (_, k) => { const a = from + (k / 128) * Math.PI; return { x: c.x + Rr * (u.x * Math.cos(a) + v.x * Math.sin(a)), y: c.y + Rr * (u.y * Math.cos(a) + v.y * Math.sin(a)) }; }); };
+  const slotRing = (wall) => { const Rr = hwS + wall;
+    const pts = [...arc(R + Rr, e1, e2), ...cap(e2, 0, Rr), ...arc(R - Rr, e2, e1), ...cap(e1, Math.PI, Rr)];
+    const out = []; for (const p of pts) { const q = out[out.length - 1]; if (!q || Math.hypot(p.x - q.x, p.y - q.y) > 1e-9) out.push(p); }
+    if (out.length > 1 && Math.hypot(out[0].x - out[out.length - 1].x, out[0].y - out[out.length - 1].y) <= 1e-9) out.pop();
+    return out.map((p) => [p.x, p.y]); };
+  const circ = (c, r, m = 32) => Array.from({ length: m }, (_, k) => [c.x + r * Math.cos(2 * Math.PI * k / m), c.y + r * Math.sin(2 * Math.PI * k / m)]);
+  // the two fixings: the carried wheel's pin, and the rivet on the axis
+  const cPin = K.pin, rvR = PIVOT_MIN_U, ring = (r) => r + STOCK_MIN_U;
+  const inside = (P, pts) => { let d = Infinity, inn = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [ax, ay] = pts[j], [bx, by] = pts[i], ex = bx - ax, ey = by - ay;
+      const t = Math.max(0, Math.min(1, ((P.x - ax) * ex + (P.y - ay) * ey) / (ex * ex + ey * ey))); d = Math.min(d, Math.hypot(P.x - ax - t * ex, P.y - ay - t * ey));
+      if ((ay > P.y) !== (by > P.y) && P.x < ax + (bx - ax) * (P.y - ay) / (by - ay)) inn = !inn; }
+    return inn ? d : -d; };
+  const barOut = SP.outlineAt(0);
+  let rivet = null;
+  for (let r = K.bore.r + ring(rvR); r < rC - ring(cPin.r) - ring(rvR); r += 0.01) {
+    const P = at(r, th);
+    if (inside(P, barOut) < ring(rvR)) continue;                                            // a §50 wall round its hole in the bar's arm
+    if (Math.hypot(P.x - SP.pin.at.x, P.y - SP.pin.at.y) - ring(rvR) - SP.pin.r < M) continue;   // the tongue's ring a margin off the blade's pin
+    rivet = { at: P, r: rvR }; break;
+  }
+  if (!rivet) return { feasible: false, why: 'no place on the bar\'s axis for the tongue\'s rivet' };
+  const outline = hull([...circ(cPin.at, ring(cPin.r)), ...circ(rivet.at, ring(rvR)), ...slotRing(STOCK_MIN_U)]);
+  // the arm's bending where it leaves the carried pin's ring toward the post, the load tangential at R
+  const toPost = { x: Math.cos(a0) * R + D.x - cPin.at.x, y: Math.sin(a0) * R + D.y - cPin.at.y }, lp = Math.hypot(toPost.x, toPost.y);
+  const Mroot_Nmm = F_N * Math.max(0, lp - ring(cPin.r)) * mm, wLoad_mm = Math.sqrt(6 * Mroot_Nmm / (tT * mm * sigY));
+  return { feasible: true, R, alpha: banking.alpha, a0, psiN, outline, slot: slotRing(0), rivet,
+    holes: [{ at: cPin.at, r: cPin.r }, { at: rivet.at, r: rivet.r }],
+    layer: { z0, z1, t: tT },
+    post: { at: at(R, a0), r: pk, z0: z0 - 0.1, z1: plateBackZ + 0.3 },
+    pinZ0: z0 - 0.1,                                        // the carried wheel's pin, run on down through the tongue
+    rivetZ: { z0: z0 - 0.1, z1: K.zB1 },
+    root: { at: { x: cPin.at.x + toPost.x / lp * (ring(cPin.r) + 0.05), y: cPin.at.y + toPost.y / lp * (ring(cPin.r) + 0.05) }, dir: { x: toPost.x / lp, y: toPost.y / lp } },
+    load: { Mbank_Nmm, F_N, lever_mm, postD_mm, wLoad_mm, sigY } };
 }

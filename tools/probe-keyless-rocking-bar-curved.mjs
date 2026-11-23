@@ -47,7 +47,7 @@ const DEG = Math.PI / 180, dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
 const meshes = []; C.scene.traverse((o) => { if (o.isMesh && !o.userData?.schematic && o.geometry?.attributes?.position) meshes.push(o); });
 const within = (o, names) => { for (let p = o; p; p = p.parent) if (names.includes(p.name)) return true; return false; };
-const OWN = ['backPlate', 'kbBarGroup', 'kbBar', 'kbPin', 'kbCarried', 'kbDriver', 'kbFollower', 'kbBlade', 'kbBladeStud', 'kbBladePin'];   // the bar's own metal, the blade it replaces included
+const OWN = ['backPlate', 'kbBarGroup', 'kbBar', 'kbPin', 'kbCarried', 'kbDriver', 'kbFollower', 'kbBlade', 'kbBladeStud', 'kbBladePin', 'kbClip', 'kbBankPost', 'kbBankTongue', 'kbBankRivet'];   // the bar's own metal, the blade it replaces included (the banking's parts are held to the blade by the banking probe)
 const nearest = (probe, also = []) => { const pb = new THREE.Box3().setFromObject(probe).expandByScalar(1.2); let best = { d: Infinity, n: '-' };
   for (const o of meshes) { if (within(o, OWN) || within(o, also)) continue; if (!new THREE.Box3().setFromObject(o).intersectsBox(pb)) continue;
     const d = I.meshClearance(probe, o, 1.2); if (d < best.d) best = { d, n: o.name || `(in ${o.parent?.name})` }; } return best; };

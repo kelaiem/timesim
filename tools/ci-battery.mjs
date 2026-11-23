@@ -1070,7 +1070,9 @@ export const SPEC_POINTS = [
     // are gone; the dial stands 0.51 u further from the plate for them, which puts this free case over the round build's
     // height cap (11.464 mm against CASE_HEIGHT_MAX_MM 11.367) — debt about the case, declared as the form builds declare it
     // (TODO 300 retired the §186 row it carried beside that: the form case now locates and holds its movement)
-    expectWarns: ['§261: cased assembly'],
+    // §334 landing 7 — and the rocking bar's banking yields to this build's reserve train, whose first wheel needs the
+    // banking's sector for its swing (the owner's choice, 2026-11-23; re-siting the reserve is TODO 319)
+    expectWarns: ['§261: cased assembly', '§334 landing 7: the rocking bar\'s banking'],
     why: '§329 landing 4 — the stop-work on the alarm-off free case with the drum turned to 140° (−7.5% case area); boots exactly the free build\'s §261 depth row (TODO 300 retired its §186 row), swept' },
   // §343 landing 4 — THE FREE CASE WITH ITS ALARM, SWEPT. No point built it: stopwork-140 is the free case without the
   // alarm, so when the r 11.5 balance's round case moved the arc gong out to r 47.90 and the 14,400 free outline (fitted

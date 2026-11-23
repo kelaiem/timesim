@@ -44,7 +44,7 @@ that band's swept footprint.
 | [§337](built/0337.md) | The geared Geneva stop-work: a finger wheel geared off the cone, so every reserve has an exact star | 1 |
 | [§336](built/0336.md) | The fusee cock: the fusee's top bush on a cranked cock standing on the base plate | 1 |
 | [§335](built/0335.md) | Fusee gear window: the great wheel framed through a second window outside the cone's | 1 |
-| [§334](built/0334.md) | The crown stands still while the watch runs: the keyless fusee's rocking bar, designed in a line — PARTIAL: landings 1–6 shipped (the line spec, the metal, the fold's plan, the traverse in a line, the bar under the plate built, the crown still, the return blade, the curved blade and the friction clip); the banking is owed | 1 |
+| [§334](built/0334.md) | The crown stands still while the watch runs: the keyless fusee's rocking bar, designed in a line — PARTIAL: landings 1–7 shipped (the line spec, the metal, the fold's plan, the traverse in a line, the bar under the plate built, the crown still, the return blade, the curved blade and the friction clip, the banking); owed: a printed citation for the choice | 1 |
 | [§332](built/0332.md) | The free case's dial print follows the case: scaled to the smallest seconds face that reads | 1 |
 | [§331](built/0331.md) | The convex form case: its band bored for its tubes, and cut without slivers | 1 |
 | [§330](built/0330.md) | Hosted pull requests take the push's four-way battery split | 1 |

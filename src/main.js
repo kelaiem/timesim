@@ -13,7 +13,7 @@ import { aesthetics, confirmAestheticsBoot, writeOverrides, clearOverrides, seri
 import { loadState, saveState, clearState, hasState } from './state.js';
 import { isSoftwareRenderer, savedView } from './boot-view.js';   // the view a boot opens in — one law, read here and by the loading screen (index.html)
 import * as BD from './balance-drive.js';
-import { foldUnderPlate, underPlateMetal, underPlateCurvedSpring, UNDER_PLATE, ROCKING_BAR_INPUTS } from './keyless-rocking-bar.js';   // §334 landing 5a: the winding coupling's rocking bar, under the plate   // §246 tier two — the driven balance (pure; the live loop steps it)
+import { foldUnderPlate, underPlateMetal, underPlateCurvedSpring, underPlateBanking, UNDER_PLATE, ROCKING_BAR_INPUTS } from './keyless-rocking-bar.js';   // §334 landing 5a: the winding coupling's rocking bar, under the plate   // §246 tier two — the driven balance (pure; the live loop steps it)
 // §73 tier one — the chrome's strings. UI_LANG resolves once at import
 // (?lang → localStorage → navigator.language → en); t() falls back to its
 // English input when an entry is missing, so a gap is visible, never blank.
@@ -7146,7 +7146,7 @@ transferArbor.rotation.x = Math.PI / 2;
 transferArbor.position.set(TRANSFER_XY.x, TRANSFER_XY.y, (Z_TRANSFER + _trArborLo) / 2);
 keyless.add(transferArbor);
 let crownWheelArbor = null, kbDriver = null, kbCarried = null, kbFollower = null, kbBar = null, kbPin = null, kbBarGroup = null;
-let kbBlade = null, kbBladeStud = null, kbBladePin = null, KB_BLADE_GEOS = null, kbClipJaws = [];   // §334 5c: the return blade and the banking
+let kbBlade = null, kbBladeStud = null, kbBladePin = null, KB_BLADE_GEOS = null, kbClipJaws = [], kbBankPost = null, kbBankTongue = null, kbBankRivet = null, KB_BANK_PLAN = null, KB_BANK_REMOVE = null, KB_BANK_OMITTED = null;   // §334 5c: the return blade and the banking
 let kbDriverClock = 0, kbCarriedClock = 0, kbFollowerClock = 0;   // TODO 132's free indices, solved with the keyless meshes
 if (KB_BUILT) {
   const D0 = { x: uWind.x * cwDist, y: uWind.y * cwDist }, K = KB_METAL, zW = (K.zW0 + K.zW1) / 2;
@@ -7187,7 +7187,27 @@ if (KB_BUILT) {
   kbBarGroup.add(kbPin);
   const post = (name, at, r, z0, z1, parent = keyless, o = { x: 0, y: 0 }) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, z1 - z0, 14), MATS.blueSteel); m.name = name; m.rotation.x = Math.PI / 2; m.position.set(at.x - o.x, at.y - o.y, (z0 + z1) / 2); parent.add(m); return m; };
   kbBladeStud = post('kbBladeStud', SP.stud.at, SP.stud.r, SP.stud.z0, SP.stud.z1);
+  // §334 landing 7 — THE BANKING (underPlateBanking): a post planted in the plate drops past the wheels and the bar
+  // into a slot in a TONGUE of the bar's own, one margin under it beside the return blade, riding the carried wheel's
+  // pin (run on down) and a rivet on the bar's axis; the slot's end walls stop the bar engaged and out. Placed by
+  // probe-keyless-rocking-bar-banking.mjs (UNDER_PLATE.banking).
+  const BK = UNDER_PLATE.banking ? underPlateBanking(KB, -BACK_PLATE_T, UNDER_PLATE.blade, UNDER_PLATE.banking) : { feasible: false, why: 'none declared', quiet: true };
   kbBladePin = post('kbBladePin', SP.pin.at, SP.pin.r, SP.pin.z0, SP.pin.z1, kbBarGroup, D0);   // riveted in the bar's ear
+  if (!BK.feasible) { if (!BK.quiet) console.warn(`§334 landing 7: the banking does not fit: ${BK.why}`); }
+  else {
+    kbPin.geometry.dispose();
+    kbPin.geometry = new THREE.CylinderGeometry(K.pin.r, K.pin.r, K.pin.z1 - BK.pinZ0, 14);
+    kbPin.position.z = (K.pin.z1 + BK.pinZ0) / 2;                                    // the carried wheel's pin, run on down through the tongue
+    kbBankRivet = post('kbBankRivet', BK.rivet.at, BK.rivet.r, BK.rivetZ.z0, BK.rivetZ.z1, kbBarGroup, D0);
+    kbBankPost = post('kbBankPost', BK.post.at, BK.post.r, BK.post.z0, BK.post.z1);
+    const sh = new THREE.Shape(BK.outline.map(([x, y]) => new THREE.Vector2(x - D0.x, y - D0.y)));
+    const hole = (c, r) => { const h = new THREE.Path(); h.absarc(c.x - D0.x, c.y - D0.y, r, 0, 2 * Math.PI, true); return h; };
+    for (const h of BK.holes) sh.holes.push(hole(h.at, h.r));
+    sh.holes.push(new THREE.Path(BK.slot.map(([x, y]) => new THREE.Vector2(x - D0.x, y - D0.y))));
+    const g = new THREE.ExtrudeGeometry(sh, { depth: BK.layer.z1 - BK.layer.z0, bevelEnabled: false, curveSegments: 32 });
+    g.translate(0, 0, BK.layer.z0);
+    kbBankTongue = new THREE.Mesh(g, MATS.steel); kbBankTongue.name = 'kbBankTongue'; kbBarGroup.add(kbBankTongue);
+  }
   // a frame's metal: the centreline offset half the strip each side, extruded through the layer
   KB_BLADE_GEOS = SP.frames.map((all) => {
     // a centreline point nearer the end than the strip is thick would fold the two edges across each other at the end
@@ -7214,13 +7234,29 @@ if (KB_BUILT) {
   kbBlade = new THREE.Mesh(KB_BLADE_GEOS[0], MATS.blueSteel);
   kbBlade.name = 'kbBlade';
   keyless.add(kbBlade);
-  const barShape = new THREE.Shape(SP.outlineAt(0).map(([x, y]) => new THREE.Vector2(x, y)));
-  // §334 landing 6 — the bore as cut: the running bore on the arbor with the friction clip's pocket (underPlateClip)
-  barShape.holes.push(new THREE.Path(SP.clip.hole.map(([x, y]) => new THREE.Vector2(x, y))));
-  const pinHole = new THREE.Path(); pinHole.absarc(K.pin.at.x, K.pin.at.y, K.pin.r, 0, 2 * Math.PI, true); barShape.holes.push(pinHole);   // the pin is riveted in its own hole
-  const bladePinHole = new THREE.Path(); bladePinHole.absarc(SP.pin.at.x, SP.pin.at.y, SP.pin.r, 0, 2 * Math.PI, true); barShape.holes.push(bladePinHole);   // §334 landing 6: and the blade's
-  const barGeo = new THREE.ExtrudeGeometry(barShape, { depth: K.zB1 - K.zB0, bevelEnabled: false, curveSegments: 32 });
-  barGeo.translate(-D0.x, -D0.y, K.zB0);
+  const barGeoFor = (withRivet) => {
+    const barShape = new THREE.Shape(SP.outlineAt(0).map(([x, y]) => new THREE.Vector2(x, y)));
+    // §334 landing 6 — the bore as cut: the running bore on the arbor with the friction clip's pocket (underPlateClip)
+    barShape.holes.push(new THREE.Path(SP.clip.hole.map(([x, y]) => new THREE.Vector2(x, y))));
+    const pinHole = new THREE.Path(); pinHole.absarc(K.pin.at.x, K.pin.at.y, K.pin.r, 0, 2 * Math.PI, true); barShape.holes.push(pinHole);   // the pin is riveted in its own hole
+    if (withRivet) { const rv = new THREE.Path(); rv.absarc(BK.rivet.at.x, BK.rivet.at.y, BK.rivet.r, 0, 2 * Math.PI, true); barShape.holes.push(rv); }   // §334 landing 7: the tongue's rivet
+    const bladePinHole = new THREE.Path(); bladePinHole.absarc(SP.pin.at.x, SP.pin.at.y, SP.pin.r, 0, 2 * Math.PI, true); barShape.holes.push(bladePinHole);   // §334 landing 6: and the blade's
+    const g = new THREE.ExtrudeGeometry(barShape, { depth: K.zB1 - K.zB0, bevelEnabled: false, curveSegments: 32 });
+    g.translate(-D0.x, -D0.y, K.zB0);
+    return g;
+  };
+  const barGeo = barGeoFor(BK.feasible);
+  // §334 landing 7 — the banking can be taken out again, once the reserve train's station is known (below, at its
+  // first read of the keyless works): this puts the bar, the carried pin and the tongue's parts back as without it
+  if (BK.feasible) KB_BANK_REMOVE = (why) => {
+    keyless.remove(kbBankPost); kbBarGroup.remove(kbBankTongue); kbBarGroup.remove(kbBankRivet);
+    for (const m of [kbBankPost, kbBankTongue, kbBankRivet]) m.geometry.dispose();
+    kbBankPost = kbBankTongue = kbBankRivet = null;
+    kbPin.geometry.dispose(); kbPin.geometry = new THREE.CylinderGeometry(K.pin.r, K.pin.r, K.pin.z1 - K.pin.z0, 14); kbPin.position.z = (K.pin.z0 + K.pin.z1) / 2;
+    kbBar.geometry.dispose(); kbBar.geometry = barGeoFor(false);
+    KB_BANK_OMITTED = why;
+  };
+  KB_BANK_PLAN = BK.feasible ? BK : null;
   kbBar = new THREE.Mesh(barGeo, MATS.steel);
   kbBar.name = 'kbBar';
   kbBarGroup.add(kbBar);
@@ -10529,6 +10565,45 @@ const CAP_SOLVE = await (async () => {
     zLo: transferArbor.position.z - transferArbor.geometry.parameters.height / 2,
     zHi: transferArbor.position.z + transferArbor.geometry.parameters.height / 2 };
   await breathe(76);
+  // §334 landing 7 — THE BANKING YIELDS TO THE RESERVE TRAIN'S SWING (the owner's choice, 2026-11-23). The reserve's
+  // first wheel owns its swing window (RSV_SWING_MAX_DEG either side of its line), which it spends to leave the setting
+  // traverse room. Where the banking's post or its tongue (over the bar's swing) would stand within CLEAR_MARGIN of the
+  // reserve's members ANYWHERE in that window, it takes the swing the reserve needs: measured on stopwork-140, the
+  // reserve then kept its line and the traverse's cap, stub and leg 2 all warned. So the banking is taken out there,
+  // said, and recorded as omitted, and the bar's two ends are the swing law's on that build. Re-siting that reserve
+  // train is filed (TODO 319).
+  if (KB_BANK_REMOVE) {
+    const BKp = KB_BANK_PLAN;
+    let worst = Infinity, who = null;
+    const swings = []; for (let d = -RSV_SWING_MAX_DEG; d <= RSV_SWING_MAX_DEG + 1e-9; d += RSV_SWING_STEP_DEG) swings.push(d * DEG2RAD);
+    // each swing re-cuts the reserve's p1 for that swing's module (~17 ms), so the walk hands the thread back between them
+    const rmAll = [];
+    for (const dl of swings) {
+      await breathe(391);
+      const rm = reserveMembersAt(dl); if (rm) rmAll.push(...rm.members);
+    }
+    const polyD = (P, pts) => { let d = Infinity, inside = false;
+      for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [ax, ay] = pts[j], [bx, by] = pts[i], ex = bx - ax, ey = by - ay;
+        const t = Math.max(0, Math.min(1, ((P.x - ax) * ex + (P.y - ay) * ey) / (ex * ex + ey * ey))); d = Math.min(d, Math.hypot(P.x - ax - t * ex, P.y - ay - t * ey));
+        if ((ay > P.y) !== (by > P.y) && P.x < ax + (bx - ax) * (P.y - ay) / (by - ay)) inside = !inside; }
+      return inside ? -d : d; };
+    const D0 = KB_METAL.centres[0];
+    for (const m of rmAll) {
+      const zOver = (z0, z1) => Math.min(z1, m.zHi) - Math.max(z0, m.zLo) > -CLEAR_MARGIN;
+      if (zOver(BKp.post.z0, BKp.post.z1)) { const d = Math.hypot(BKp.post.at.x - m.x, BKp.post.at.y - m.y) - BKp.post.r - m.r; if (d < worst) { worst = d; who = `post ⇄ reserve ${m.name}`; } }
+      if (zOver(BKp.layer.z0, BKp.layer.z1)) for (let k = 0; k <= 8; k++) {
+        const psi = kbPsiAt(k / 8), c = Math.cos(psi), sn = Math.sin(psi);
+        const T = BKp.outline.map(([x, y]) => [D0.x + (x - D0.x) * c - (y - D0.y) * sn, D0.y + (x - D0.x) * sn + (y - D0.y) * c]);
+        const d = polyD({ x: m.x, y: m.y }, T) - m.r; if (d < worst) { worst = d; who = `tongue ⇄ reserve ${m.name}`; }
+      }
+    }
+    if (worst < CLEAR_MARGIN) {
+      const why = `§334 landing 7: the rocking bar's banking stands in the reserve train's station (${who} ${worst.toFixed(3)} against CLEAR_MARGIN ${CLEAR_MARGIN}), so it is not cut and the bar's ends are the swing law's on this build (TODO 319)`;
+      console.warn(why);
+      KB_BANK_REMOVE(why);
+      for (const mesh of ['kbBankPost', 'kbBankTongue', 'kbBankRivet']) BUILD_OMITTED.push({ unit: 'Keyless works', mesh, why });
+    }
+  }
   const staticPts = await reserveObstaclePoints(keyless);   // what the keyless works hold before the traverse — the reserve reads these too (no mwCorner* here yet, so this is meshPoints)
   const rsvStatic = reserveSwingStatic(staticPts);   // TODO 280: the static half sifted once and memoized per swing — the same answer as staticPts.concat(…), see reserveSwingStatic
   const disposeTree = (g) => g.traverse((o) => { if (o.isMesh) o.geometry.dispose(); });
@@ -11086,6 +11161,7 @@ if (KB_BUILT) {   // §334 landing 5a
   registerSub('Keyless works', 'Bar return blade', kbBladeStud);
   registerSub('Keyless works', 'Bar return blade', kbBladePin);
   for (const j of kbClipJaws) registerSub('Keyless works', 'Bar friction clip', j);
+  if (kbBankPost) { registerSub('Keyless works', 'Bar banking', kbBankPost); registerSub('Keyless works', 'Bar banking', kbBankTongue); registerSub('Keyless works', 'Bar banking', kbBankRivet); }
 }
 registerSub('Keyless works', 'Crown-wheel screw', cwScrew);
 registerSub('Keyless works', 'Winding pinion', windPinionGroup);
