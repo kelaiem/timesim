@@ -168,7 +168,11 @@ const bootWith = (q, b) => new Promise((res) => { let out = ''; const ch = spawn
 const pairs = async (qs, b) => { const out = []; for (let i = 0; i < qs.length; i += 2) out.push(...await Promise.all(qs.slice(i, i + 2).map((q) => bootWith(q, b)))); return out; };
 const warnKey = (w) => w === null ? null : [...w].sort().join('\n');
 // a point declaring the omission must boot its no-banking warnings plus exactly one omission warning
+// and a point that may warn freely (`expect: 'any'`, an arrangement out of its window on purpose) may also carry the
+// omission (its reserve's window can cover the banking too) but nothing else new
+const ANY_SPECS = new Set(SPEC_POINTS.filter((p) => p.expect === 'any').map((p) => p.q));
 const sameAsBase = (y) => { if (y.warns === null) return false; const b = base.get(y.spec);
+  if (ANY_SPECS.has(y.spec)) { const om = y.warns.filter((w) => w.startsWith(OMIT_PREFIX)); return om.length <= 1 && warnKey(y.warns.filter((w) => !w.startsWith(OMIT_PREFIX))) === b; }
   if (!OMIT_SPECS.has(y.spec)) return warnKey(y.warns) === b;
   const om = y.warns.filter((w) => w.startsWith(OMIT_PREFIX)); return om.length === 1 && warnKey(y.warns.filter((w) => !w.startsWith(OMIT_PREFIX))) === b; };
 const bootSpecs = process.env.KB_BANK_QUICK ? [] : ['', ...specs];
