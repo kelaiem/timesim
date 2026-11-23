@@ -10576,7 +10576,12 @@ const CAP_SOLVE = await (async () => {
     const BKp = KB_BANK_PLAN;
     let worst = Infinity, who = null;
     const swings = []; for (let d = -RSV_SWING_MAX_DEG; d <= RSV_SWING_MAX_DEG + 1e-9; d += RSV_SWING_STEP_DEG) swings.push(d * DEG2RAD);
-    const rmAll = swings.map((dl) => reserveMembersAt(dl)).filter(Boolean).flatMap((x) => x.members);
+    // each swing re-cuts the reserve's p1 for that swing's module (~17 ms), so the walk hands the thread back between them
+    const rmAll = [];
+    for (const dl of swings) {
+      await breathe(391);
+      const rm = reserveMembersAt(dl); if (rm) rmAll.push(...rm.members);
+    }
     const polyD = (P, pts) => { let d = Infinity, inside = false;
       for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [ax, ay] = pts[j], [bx, by] = pts[i], ex = bx - ax, ey = by - ay;
         const t = Math.max(0, Math.min(1, ((P.x - ax) * ex + (P.y - ay) * ey) / (ex * ex + ey * ey))); d = Math.min(d, Math.hypot(P.x - ax - t * ex, P.y - ay - t * ey));
