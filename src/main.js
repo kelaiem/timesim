@@ -7146,7 +7146,7 @@ transferArbor.rotation.x = Math.PI / 2;
 transferArbor.position.set(TRANSFER_XY.x, TRANSFER_XY.y, (Z_TRANSFER + _trArborLo) / 2);
 keyless.add(transferArbor);
 let crownWheelArbor = null, kbDriver = null, kbCarried = null, kbFollower = null, kbBar = null, kbPin = null, kbBarGroup = null;
-let kbBlade = null, kbBladeStud = null, kbBladePin = null, KB_BLADE_GEOS = null, kbClipJaws = [], kbBankPost = null, kbBankTongue = null;   // §334 5c: the return blade and the banking
+let kbBlade = null, kbBladeStud = null, kbBladePin = null, KB_BLADE_GEOS = null, kbClipJaws = [], kbBankPost = null, kbBankTongue = null, kbBankRivet = null;   // §334 5c: the return blade and the banking
 let kbDriverClock = 0, kbCarriedClock = 0, kbFollowerClock = 0;   // TODO 132's free indices, solved with the keyless meshes
 if (KB_BUILT) {
   const D0 = { x: uWind.x * cwDist, y: uWind.y * cwDist }, K = KB_METAL, zW = (K.zW0 + K.zW1) / 2;
@@ -7187,16 +7187,23 @@ if (KB_BUILT) {
   kbBarGroup.add(kbPin);
   const post = (name, at, r, z0, z1, parent = keyless, o = { x: 0, y: 0 }) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, z1 - z0, 14), MATS.blueSteel); m.name = name; m.rotation.x = Math.PI / 2; m.position.set(at.x - o.x, at.y - o.y, (z0 + z1) / 2); parent.add(m); return m; };
   kbBladeStud = post('kbBladeStud', SP.stud.at, SP.stud.r, SP.stud.z0, SP.stud.z1);
-  // §334 landing 7 — THE BANKING (underPlateBanking): a post planted in the plate drops past the wheels, the bar and the
-  // blade into a slot in a TONGUE of the bar's own, a layer under the blade, riding the bar's arbor and the blade's pin;
-  // the slot's end walls stop the bar engaged and out. Placed by probe-keyless-rocking-bar-banking.mjs (UNDER_PLATE.banking).
+  // §334 landing 7 — THE BANKING (underPlateBanking): a post planted in the plate drops past the wheels and the bar
+  // into a slot in a TONGUE of the bar's own, one margin under it beside the return blade, riding the carried wheel's
+  // pin (run on down) and a rivet on the bar's axis; the slot's end walls stop the bar engaged and out. Placed by
+  // probe-keyless-rocking-bar-banking.mjs (UNDER_PLATE.banking).
   const BK = underPlateBanking(KB, -BACK_PLATE_T, UNDER_PLATE.blade, UNDER_PLATE.banking);
-  kbBladePin = post('kbBladePin', SP.pin.at, SP.pin.r, BK.bladePinZ0, SP.pin.z1, kbBarGroup, D0);   // riveted in the bar's ear, run on down through the tongue
-  kbBankPost = post('kbBankPost', BK.post.at, BK.post.r, BK.post.z0, BK.post.z1);
-  {
+  kbBladePin = post('kbBladePin', SP.pin.at, SP.pin.r, SP.pin.z0, SP.pin.z1, kbBarGroup, D0);   // riveted in the bar's ear
+  if (!BK.feasible) console.warn(`§334 landing 7: the banking does not fit: ${BK.why}`);
+  else {
+    kbPin.geometry.dispose();
+    kbPin.geometry = new THREE.CylinderGeometry(K.pin.r, K.pin.r, K.pin.z1 - BK.pinZ0, 14);
+    kbPin.position.z = (K.pin.z1 + BK.pinZ0) / 2;                                    // the carried wheel's pin, run on down through the tongue
+    kbBankRivet = post('kbBankRivet', BK.rivet.at, BK.rivet.r, BK.rivetZ.z0, BK.rivetZ.z1, kbBarGroup, D0);
+    kbBankPost = post('kbBankPost', BK.post.at, BK.post.r, BK.post.z0, BK.post.z1);
     const sh = new THREE.Shape(BK.outline.map(([x, y]) => new THREE.Vector2(x - D0.x, y - D0.y)));
     const hole = (c, r) => { const h = new THREE.Path(); h.absarc(c.x - D0.x, c.y - D0.y, r, 0, 2 * Math.PI, true); return h; };
-    sh.holes.push(hole(BK.bore.at, BK.bore.r), hole(BK.pinHole.at, BK.pinHole.r), new THREE.Path(BK.slot.map(([x, y]) => new THREE.Vector2(x - D0.x, y - D0.y))));
+    for (const h of BK.holes) sh.holes.push(hole(h.at, h.r));
+    sh.holes.push(new THREE.Path(BK.slot.map(([x, y]) => new THREE.Vector2(x - D0.x, y - D0.y))));
     const g = new THREE.ExtrudeGeometry(sh, { depth: BK.layer.z1 - BK.layer.z0, bevelEnabled: false, curveSegments: 32 });
     g.translate(0, 0, BK.layer.z0);
     kbBankTongue = new THREE.Mesh(g, MATS.steel); kbBankTongue.name = 'kbBankTongue'; kbBarGroup.add(kbBankTongue);
@@ -7231,6 +7238,7 @@ if (KB_BUILT) {
   // §334 landing 6 — the bore as cut: the running bore on the arbor with the friction clip's pocket (underPlateClip)
   barShape.holes.push(new THREE.Path(SP.clip.hole.map(([x, y]) => new THREE.Vector2(x, y))));
   const pinHole = new THREE.Path(); pinHole.absarc(K.pin.at.x, K.pin.at.y, K.pin.r, 0, 2 * Math.PI, true); barShape.holes.push(pinHole);   // the pin is riveted in its own hole
+  if (BK.feasible) { const rv = new THREE.Path(); rv.absarc(BK.rivet.at.x, BK.rivet.at.y, BK.rivet.r, 0, 2 * Math.PI, true); barShape.holes.push(rv); }   // §334 landing 7: the tongue's rivet
   const bladePinHole = new THREE.Path(); bladePinHole.absarc(SP.pin.at.x, SP.pin.at.y, SP.pin.r, 0, 2 * Math.PI, true); barShape.holes.push(bladePinHole);   // §334 landing 6: and the blade's
   const barGeo = new THREE.ExtrudeGeometry(barShape, { depth: K.zB1 - K.zB0, bevelEnabled: false, curveSegments: 32 });
   barGeo.translate(-D0.x, -D0.y, K.zB0);
@@ -11099,8 +11107,7 @@ if (KB_BUILT) {   // §334 landing 5a
   registerSub('Keyless works', 'Bar return blade', kbBladeStud);
   registerSub('Keyless works', 'Bar return blade', kbBladePin);
   for (const j of kbClipJaws) registerSub('Keyless works', 'Bar friction clip', j);
-  registerSub('Keyless works', 'Bar banking', kbBankPost);
-  registerSub('Keyless works', 'Bar banking', kbBankTongue);
+  if (kbBankPost) { registerSub('Keyless works', 'Bar banking', kbBankPost); registerSub('Keyless works', 'Bar banking', kbBankTongue); registerSub('Keyless works', 'Bar banking', kbBankRivet); }
 }
 registerSub('Keyless works', 'Crown-wheel screw', cwScrew);
 registerSub('Keyless works', 'Winding pinion', windPinionGroup);

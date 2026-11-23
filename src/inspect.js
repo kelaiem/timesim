@@ -3888,8 +3888,9 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Keyless works', a: 'kbClip', b: 'crownWheelArbor', why: '§334 landing 6: the friction clip\'s jaws on the crown wheel\'s arbor, the grip that carries the bar in' },
   { unit: 'Keyless works', a: 'kbClip', b: 'kbBar', why: '§334 landing 6: each clip jaw rooted in its pocket\'s wall in the bar\'s boss' },
   { unit: 'Keyless works', a: 'kbBankTongue', b: 'kbBankPost', why: '§334 landing 7: the banking post in the tongue\'s slot — its end walls stop the bar engaged and out' },
-  { unit: 'Keyless works', a: 'kbBankTongue', b: 'kbBladePin', why: '§334 landing 7: the tongue riveted on the blade\'s pin, run down through it' },
-  { unit: 'Keyless works', a: 'kbBankTongue', b: 'crownWheelArbor', why: '§334 landing 7: the tongue\'s bore on the crown wheel\'s arbor, the bar\'s own axis' },
+  { unit: 'Keyless works', a: 'kbBankTongue', b: 'kbPin', why: '§334 landing 7: the tongue on the carried wheel\'s pin, run on down through it (the line\'s banking pin)' },
+  { unit: 'Keyless works', a: 'kbBankTongue', b: 'kbBankRivet', why: '§334 landing 7: the tongue riveted to the bar\'s arm' },
+  { unit: 'Keyless works', a: 'kbBankRivet', b: 'kbBar', why: '§334 landing 7: the tongue\'s rivet set in the bar\'s arm' },
   { unit: 'Keyless works', a: 'crownWheel', b: 'cwScrew', why: '§47: the same wheel seated on the blued screw below it — the axial seat that seats the wheel on its shoulder' },
   { unit: 'Keyless works', a: 'transferWheel', b: 'transferArbor', why: '§47: the TRANSFER wheel at the plate-top end of the same arbor — keyed to it, which is why tick() poses the two wheels from one angle' },
   { unit: 'Fusee & great wheel', a: 'maintPawl', b: 'maintPawlStud', why: '§47: each maintaining pawl on its own pivot stud — the pawl rides the stud it rocks about. Both pawls and both studs carry one name each, so this one row covers both stations (it was two rows by index, #15 and #17, until §329\'s stop-work pin shifted the indices and orphaned them)' },
@@ -9596,6 +9597,7 @@ export const STOCK_KIND_BY_MESH = {
   kbBladeStud: 'pivot',        // …and its stud (PIVOT_MIN_U)
   kbClip: 'spring',            // §334 landing 6 — the friction clip's jaws, the line's section (SPRING_FLAT_U) in the direction they bend
   kbBankPost: 'pivot',         // §334 landing 7 — the banking post, TODO 193's pin law at the banking load
+  kbBankRivet: 'pivot',        // §334 landing 7 — the tongue's rivet (PIVOT_MIN_U)
   kbBladePin: 'pivot',         // §334 landing 6 — the pin on the bar's ear the curved blade bears on (PIVOT_MIN_U)
   yokeTailPin: 'pivot',        // TODO 214 — the yoke's tail pin, the prong's own stock
   settingLeverBeakPin: 'pivot', // TODO 214 — the lever's beak pin, ⌀ 0.27 mm pin stock

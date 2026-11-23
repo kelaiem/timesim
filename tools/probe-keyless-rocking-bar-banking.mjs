@@ -4,11 +4,13 @@
 //   node --import ./tools/native/loader.mjs tools/probe-keyless-rocking-bar-banking.mjs
 //
 // The line banks the bar with one pin in an arc slot whose ends stand the swing apart. `underPlateBanking`
-// (src/keyless-rocking-bar.js) cuts the slot in a TONGUE of the bar's own, a layer under the return blade, and plants
-// the pin as a fixed POST in the plate that drops past the wheels, the bar and the blade into it. Its place, (R, alpha)
+// (src/keyless-rocking-bar.js) cuts the slot in a TONGUE of the bar's own, one margin under it beside the return blade,
+// riding the carried wheel's pin and a rivet, and plants the pin as a fixed POST in the plate that drops past the wheels
+// and the bar into it. Its place, (R, alpha)
 // about the bar's pivot, is free, so this SEARCHES it and holds the declared `UNDER_PLATE.banking` to the answer.
 //   B0  CHOICE: of the places whose post clears the bar's own metal (the three wheels' reach over the swing, the bar's
-//       outline swept, the blade's every frame, its stud and its pin) and whose tongue clears the blade's stud, ranked
+//       outline swept, the blade's every frame, its stud and its pin) and whose tongue clears the blade in plan (it
+//       shares the blade's layer: every frame, the stud and the pin), ranked
 //       by the tongue's reach R (the shortest first: the post is sized for the load there, so every place meets its P1
 //       duty, and ranking by the load instead ran to the search's edge, because a longer arm always loads the post
 //       less), the first whose post and tongue (swept over the swing) stand CLEAR_MARGIN off the movement's metal in the
@@ -77,14 +79,20 @@ const prism = (pts, z0, z1, holes = []) => { const sh = new THREE.Shape(pts.map(
 const judge = (b) => { const B = RB.underPlateBanking(U, PF.back, BLADE, b); return B; };
 // the bar's own metal, analytically: the post column against everything the bar carries or passes, over the swing
 const ownClear = (B) => {
+  if (!B.feasible) return -Infinity;
   const P = B.post.at, pk = B.post.r; let w = Infinity;
   w = Math.min(w, dist(P, D) - L.reach[0] - pk, dist(P, F) - L.reach[2] - pk);
-  for (const f of FR) { const psi = (1 - f) * SP.psiN;
+  // the tongue shares the blade's layer, so it is held off the blade IN PLAN: the blade's every frame against the tongue
+  // as the bar stands then (both ways round: the blade's points to the tongue, the tongue's corners to the blade)
+  w = Math.min(w, polyDist(SP.pin.at, B.outline) - SP.pin.r);                                 // the blade's pin (both on the bar)
+  for (const f of FR) { const psi = (1 - f) * SP.psiN, T = rotPts(B.outline, psi), fr = SP.frameAt(f);
     w = Math.min(w, dist(P, rotD(K.centres[1], psi)) - L.reach[1] - pk);                    // the carried wheel
     w = Math.min(w, polyDist(P, SP.outlineAt(psi)) - pk);                                    // the bar's plate (its clip lobe included)
-    w = Math.min(w, polyline(P, SP.frameAt(f)) - SP.h / 2 - pk);                             // the blade
+    w = Math.min(w, polyline(P, fr) - SP.h / 2 - pk);                                        // the blade
     w = Math.min(w, dist(P, rotD(SP.pin.at, psi)) - SP.pin.r - pk);                          // the blade's pin
-    w = Math.min(w, polyDist(SP.stud.at, rotPts(B.outline, psi)) - SP.stud.r); }            // the tongue against the blade's stud
+    w = Math.min(w, polyDist(SP.stud.at, T) - SP.stud.r);                                    // the tongue against the blade's stud
+    for (const q of fr) w = Math.min(w, polyDist(q, T) - SP.h / 2);                          // the blade against the tongue
+    for (const [x, y] of T) w = Math.min(w, polyline({ x, y }, fr) - SP.h / 2); }
   return Math.min(w, dist(P, SP.stud.at) - SP.stud.r - pk);
 };
 const exact = (B) => { let w = { d: Infinity, n: '-' }; const take = (n) => { if (n.d < w.d) w = n; };
@@ -144,9 +152,9 @@ if (decl) {
     `the post touches the slot's end walls engaged ${ends[0].toExponential(1)} and out ${ends[1].toExponential(1)}, stands ${mid.toFixed(4)} clear in between; CONTROL the slot 2° short pinches it ${ctl.toFixed(4)} at the out end`);
   // B2: the load
   const want = Math.max(STOCK_MIN_U * UNIT_MM, Math.cbrt(32 * B.load.F_N * B.load.lever_mm / (Math.PI * B.load.sigY)));
-  // the tongue's arm at the hub's edge: its width across the line from D to the post, read off the outline at that radius
-  const hubR = B.bore.r + STOCK_MIN_U, u = { x: Math.cos(B.a0), y: Math.sin(B.a0) }, v = { x: -u.y, y: u.x };
-  let lo = Infinity, hi = -Infinity; for (let k = -400; k <= 400; k++) { const s = k * 0.01, Q = { x: D.x + u.x * (hubR + 0.05) + v.x * s, y: D.y + u.y * (hubR + 0.05) + v.y * s };
+  // the tongue's arm where it leaves the carried pin's ring toward the post: its width across that line
+  const u = B.root.dir, v = { x: -u.y, y: u.x };
+  let lo = Infinity, hi = -Infinity; for (let k = -400; k <= 400; k++) { const s = k * 0.01, Q = { x: B.root.at.x + v.x * s, y: B.root.at.y + v.y * s };
     if (polyDist(Q, B.outline) < 0) { lo = Math.min(lo, s); hi = Math.max(hi, s); } }
   const width_mm = (hi - lo) * UNIT_MM;
   row('B2', Math.abs(B.load.postD_mm - want) < 1e-12 && B.load.postD_mm >= STOCK_MIN_U * UNIT_MM && width_mm > B.load.wLoad_mm,
