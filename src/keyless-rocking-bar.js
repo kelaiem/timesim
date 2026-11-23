@@ -806,12 +806,14 @@ export function underPlateBanking(U, plateBackZ, blade, banking, { n = 32, swing
   const pk = postD_mm / mm / 2, hwS = pk + PIVOT_BORE_CLEAR;
   // the slot, in the bar's frame (engaged): the post at a0 when engaged, at a0 − ψN when out (the bar turned by ψN).
   // (`swingShort`, radians, cuts it for a swing that much short: the probe's control, never the build's)
-  const sOut = Math.sign(SP.psiN) || 1, psiN = SP.psiN - sOut * swingShort, del = (hwS - pk) / R;
+  const sOut = Math.sign(SP.psiN) || 1, psiN = SP.psiN - sOut * swingShort, del = 2 * Math.asin((hwS - pk) / (2 * R));   // the cap's centre a CHORD of hwS − pk from the post's
   const e1 = a0 - sOut * del, e2 = a0 - psiN + sOut * del;   // each cap's centre stepped INTO the slot, which runs from a0 back by ψN
   const arc = (r, a1, a2, m = n) => Array.from({ length: m + 1 }, (_, k) => at(r, a1 + (a2 - a1) * k / m));
   const sg = Math.sign(e2 - e1) || 1;
+  // the caps are the stops, so they are cut fine: a chord of a coarse cap stands inside the circle and pinched the post
+  // 4.4e-4 at a 32-step half round; at 128 its sagitta is under the instruments' touch (1e-4)
   const cap = (e, from, Rr) => { const c = at(R, e), u = { x: Math.cos(e), y: Math.sin(e) }, v = { x: -Math.sin(e) * sg, y: Math.cos(e) * sg };
-    return Array.from({ length: 33 }, (_, k) => { const a = from + (k / 32) * Math.PI; return { x: c.x + Rr * (u.x * Math.cos(a) + v.x * Math.sin(a)), y: c.y + Rr * (u.y * Math.cos(a) + v.y * Math.sin(a)) }; }); };
+    return Array.from({ length: 129 }, (_, k) => { const a = from + (k / 128) * Math.PI; return { x: c.x + Rr * (u.x * Math.cos(a) + v.x * Math.sin(a)), y: c.y + Rr * (u.y * Math.cos(a) + v.y * Math.sin(a)) }; }); };
   const slotRing = (wall) => { const Rr = hwS + wall;
     const pts = [...arc(R + Rr, e1, e2), ...cap(e2, 0, Rr), ...arc(R - Rr, e2, e1), ...cap(e1, Math.PI, Rr)];
     const out = []; for (const p of pts) { const q = out[out.length - 1]; if (!q || Math.hypot(p.x - q.x, p.y - q.y) > 1e-9) out.push(p); }

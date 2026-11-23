@@ -127,7 +127,7 @@ const self = fileURLToPath(import.meta.url), loader = new URL('./native/loader.m
 const runChild = (q) => new Promise((res) => { let out = ''; const ch = spawn(process.execPath, ['--import', loader, self],
   { env: { ...process.env, KB_BANK_SPEC: q, KB_BANK_CANDS: JSON.stringify(shortlist.map((x) => x.b)), __TIMESIM_NATIVE_LOADER__: '' }, stdio: ['ignore', 'pipe', 'ignore'] });
   ch.stdout.on('data', (d) => { out += d; }); ch.on('close', () => { try { res(JSON.parse(out.trim().split('\n').pop())); } catch { res({ spec: q, clear: null }); } }); });
-const specs = SPEC_POINTS.map((p) => p.q).filter((q) => q);
+const specs = process.env.KB_BANK_QUICK ? [] : SPEC_POINTS.map((p) => p.q).filter((q) => q);   // QUICK: the default build only (iterating; B0 then says nothing about the spec points)
 const specClear = [];
 for (let i = 0; i < specs.length; i += 2) specClear.push(...await Promise.all(specs.slice(i, i + 2).map((q) => runChild(q))));
 const failedSpecs = specClear.filter((c) => !Array.isArray(c.clear) && c.why !== 'no bar built');
@@ -148,7 +148,8 @@ if (decl) {
   const ends = [wall(B.slot, 1), wall(B.slot, 0)], mid = Math.min(...[0.1, 0.25, 0.5, 0.75, 0.9].map((f) => wall(B.slot, f)));
   // CONTROL: the same law cutting the slot for a swing 2° short of the line's
   const ctl = wall(RB.underPlateBanking(U, PF.back, BLADE, decl, { swingShort: 2 * Math.PI / 180 }).slot, 0);
-  row('B1', Math.abs(ends[0]) < 1e-6 && Math.abs(ends[1]) < 1e-6 && mid > 1e-3 && ctl < -1e-3,
+  row('B1', Math.abs(ends[0]) < 1e-4 && Math.abs(ends[1]) < 1e-4 &&   // CONTACT_TOUCH, the instruments' touch: the cap is a polygon
+  mid > 1e-3 && ctl < -1e-3,
     `the post touches the slot's end walls engaged ${ends[0].toExponential(1)} and out ${ends[1].toExponential(1)}, stands ${mid.toFixed(4)} clear in between; CONTROL the slot 2° short pinches it ${ctl.toFixed(4)} at the out end`);
   // B2: the load
   const want = Math.max(STOCK_MIN_U * UNIT_MM, Math.cbrt(32 * B.load.F_N * B.load.lever_mm / (Math.PI * B.load.sigY)));
