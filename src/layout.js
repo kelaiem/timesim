@@ -158,6 +158,7 @@ const RATE_TABLE = {
       // escape step is the clean one NEAREST the design, −42°, and the balance keeps its designed target.
       escapeStepDeg: -42 } },   // 7/140 = 1/20
 };
+import { SPEC_FIELDS } from './spec-fields.js';   // §351 landing 0 — the one spec schema: each key's kind, where it is offered, its accepted values
 export const DEFAULT_VPH = 14400;   // §343 landing 3 — the chronometer's beat is the shipped watch (the owner's call)
 // The row a rate's balance reads: its own, or the shipped movement's.
 // §339 landing 3d: at ?barrels=2 a row's `parallel` balance, the one the two barrels' doubled drive is solved for.
@@ -224,12 +225,35 @@ export const PULLEY_BARREL_HOURS = 30;
 // them as `__clock.specRefusals`. They are a record of what the URL ASKED that was not built, not build warnings: the
 // build that runs is a whole supported watch, so rule 6's silence is about it and this list is about the request.
 const SPEC_REFUSALS_ = [];
-const refuseSpec = (msg) => { SPEC_REFUSALS_.push(msg); console.warn(msg); };
+// §351 landing 0: a refusal names the URL keys it set aside (`keys`) beside its sentence (`text`), so a reader can tell
+// which part of a link was not built, and so the honoured pass below can tell which keys a specific refusal already said.
+// `by` says which: 'rule' for a refusal a resolver states with its reason (the double barrel off its seat), 'unused' for a
+// key the honoured pass below found set aside.
+const refuseSpec = (keys, text, by = 'rule') => { SPEC_REFUSALS_.push(Object.freeze({ keys: Object.freeze(keys), text, by })); console.warn(text); };
+// §351 landing 0 — THE KINDS THE TABLE NAMES, one rule each (src/spec-fields.js' `kind` column). They are the expressions
+// the resolver wrote out per key before the table existed, verbatim, so every field they feed resolves bit for bit as it did:
+// an 'angle' is any finite number taken mod 360 into [0, 360), a 'step' a finite number clamped to ±180, a 'number' any
+// finite number. Each is null when the value is not a finite number, which is the absent key's own null.
+const SPEC_KINDS = Object.freeze({
+  angle: (v) => (Number.isFinite(Number(v)) ? ((Number(v) % 360) + 360) % 360 : null),
+  step: (v) => (Number.isFinite(Number(v)) ? Math.max(-180, Math.min(180, Number(v))) : null),
+  number: (v) => (Number.isFinite(Number(v)) ? Number(v) : null),
+});
+// The fields a generic kind resolves (drumaz is an 'angle' in what it accepts, but keeps its own null rule: an empty or
+// null value is absent there, where every other angle reads Number(null) as 0 — kept so neither moves).
+const SPEC_KIND_OWN = new Set(['drumAzDeg']);
+const resolveKinded = (raw) => {
+  const out = {};
+  for (const row of Object.values(SPEC_FIELDS))
+    if (SPEC_KINDS[row.kind] && !SPEC_KIND_OWN.has(row.field)) out[row.field] = SPEC_KINDS[row.kind](raw[row.field]);
+  return out;
+};
 export const SPEC = (() => {
   const raw0 = (typeof globalThis !== 'undefined' && globalThis.__WATCH_SPEC) || {};
   const given = (v) => v !== undefined && v !== null && v !== '';
   const designed = raw0.arrangement === 'designed';
   const raw = !designed && !Object.keys(ARRANGEMENT).some((k) => given(raw0[k])) ? { ...raw0, ...ARRANGEMENT } : raw0;
+  const K = resolveKinded(raw);   // §351 landing 0: every angle, step and plain number, by the table's kind
   // TODO 292 — a rate whose row carries no balance the spring can drive is REFUSED, loudly: the build is the 18,000
   // watch, never a stale balance quietly claiming the target at the asked rate.
   // §339 landing 3d: a row may carry a `parallel` balance, the one ?barrels=2's doubled drive reaches, so the refusal is
@@ -255,8 +279,7 @@ export const SPEC = (() => {
   // stem line; the UI speaks dial-clock and translates). null = as
   // designed: the identity spec must not even ROTATE BY ZERO — the solve
   // skips the transform entirely so identity stays bit-exact.
-  const crownAzDeg = Number.isFinite(Number(raw.crownAzDeg))
-    ? ((Number(raw.crownAzDeg) % 360) + 360) % 360 : null;
+  const crownAzDeg = K.crownAzDeg;
   // §33 step 3 — the going train's ARRANGEMENT angles as specs. These are
   // solveLayout's own inputs (they always were the arrangement's degrees
   // of freedom; step 3 only hands the viewer the knobs): the barrel's
@@ -265,20 +288,17 @@ export const SPEC = (() => {
   // a target it must move off is a warning, live and at boot). null = as
   // designed: the argument is not even passed, so identity stays on the
   // default constants bit-exactly.
-  const stepDeg = (v) => Number.isFinite(Number(v)) ? Math.max(-180, Math.min(180, Number(v))) : null;
-  const barrelStepDeg = stepDeg(raw.barrelStepDeg);
-  const escapeStepDeg = stepDeg(raw.escapeStepDeg);
-  const balanceStepDeg = stepDeg(raw.balanceStepDeg);
+  const barrelStepDeg = K.barrelStepDeg;
+  const escapeStepDeg = K.escapeStepDeg;
+  const balanceStepDeg = K.balanceStepDeg;
   // §33 step 2 — THE STEM DECOUPLED: the stem line's own azimuth (world
   // degrees), independent of the barrel. null = as designed: the stem
   // derives from the barrel's azimuth exactly as §13 built it, bit-exact.
-  const stemAzDeg = Number.isFinite(Number(raw.stemAzDeg))
-    ? ((Number(raw.stemAzDeg) % 360) + 360) % 360 : null;
+  const stemAzDeg = K.stemAzDeg;
   // §33 (alarm crown handle) — the ALARM corner's azimuth (movement-frame
   // world degrees, like crownAzDeg). null = as designed: the corner keeps
   // its solved two-candidate choice and its exact literals.
-  const alarmAzDeg = Number.isFinite(Number(raw.alarmAzDeg))
-    ? ((Number(raw.alarmAzDeg) % 360) + 360) % 360 : null;
+  const alarmAzDeg = K.alarmAzDeg;
   // §33 (pusher handle) — the ALARM MODULE's azimuth (world degrees): the
   // striking wheel's station, from which the whole alarm work — gong,
   // hammer, striker, barrel, lock, column, pawl, pusher — is seeded. null =
@@ -287,8 +307,7 @@ export const SPEC = (() => {
   // could park the pusher's chain inside the movement while the toggle it
   // drives stayed at the corner; the pusher is the module's grip, not its
   // own part, so the handle moves the module.
-  const alarmModAzDeg = Number.isFinite(Number(raw.alarmModAzDeg))
-    ? ((Number(raw.alarmModAzDeg) % 360) + 360) % 360 : null;
+  const alarmModAzDeg = K.alarmModAzDeg;
   // §129 — THE ALARM BARREL'S OWN BEARING off the striking wheel, which
   // ?alarmmod= cannot reach: that key turns the whole module, so the barrel
   // keeps its bearing and the arrangement is unchanged. This one moves the
@@ -297,8 +316,7 @@ export const SPEC = (() => {
   // room for a consumer of the barrel that did not exist then. Module-relative
   // like the literal it overrides, so it composes with ?alarmmod= rather than
   // fighting it. null = as designed: the solved literal stands, bit-exact.
-  const alarmBarrelAzDeg = Number.isFinite(Number(raw.alarmBarrelAzDeg))
-    ? ((Number(raw.alarmBarrelAzDeg) % 360) + 360) % 360 : null;
+  const alarmBarrelAzDeg = K.alarmBarrelAzDeg;
   // §94 tier A — THE SMALL-SECONDS STATION. d4 is the centre→fourth
   // distance, already solveLayout's own argument (D4 below): the two-bar
   // solves the third wheel's wedge so the fourth lands exactly d4 below the
@@ -314,7 +332,7 @@ export const SPEC = (() => {
   // NaN, and reconfigure mode REFUSES against the same window before a drag
   // can propose one. null = as designed: LAYOUT_INPUTS passes no `d4` at
   // all, so the solve runs on the D4 constant and identity stays bit-exact.
-  const d4 = Number.isFinite(Number(raw.d4)) ? Number(raw.d4) : null;
+  const d4 = K.d4;
   // §94 tier C — THE RESERVE STATION'S RADIUS. The power-reserve subdial's
   // centre distance, dial-local; the station sits on the dial's 12-o'clock
   // axis (x = 0), so one radius key places it and an azimuth key can join
@@ -325,7 +343,7 @@ export const SPEC = (() => {
   // the span solve in main.js, jointly with reserveh. null = as designed:
   // KEYLESS_INPUTS passes no radius at all, so the station derives from
   // dialRadius · 0.39 and identity stays bit-exact.
-  const rsvr = Number.isFinite(Number(raw.rsvr)) ? Number(raw.rsvr) : null;
+  const rsvr = K.rsvr;
   // §308 landing 4, option A — THE RESERVE STATION'S AZIMUTH, the key the
   // note above left room for: dial-clock degrees (0 = 12 o'clock, 90 = 3,
   // clockwise as the dial is read from the front), so the station is the
@@ -336,7 +354,7 @@ export const SPEC = (() => {
   // reduction train's own bounds are asserted beside its span solve. null =
   // as designed: KEYLESS_INPUTS passes no azimuth, the station stays on the
   // 12 o'clock axis by the original expression and identity is bit-exact.
-  const rsvAzDeg = Number.isFinite(Number(raw.rsvAzDeg)) ? Number(raw.rsvAzDeg) : null;
+  const rsvAzDeg = K.rsvAzDeg;
   // §308 landing 4, option A — THE RESERVE HAND'S SWEEP, the owner's quarter
   // fan for a corner: the graduated arc in degrees, which TODO 18's coupling
   // makes an INPUT of the reduction train (R = turns · 360/sweep — the counts
@@ -344,7 +362,7 @@ export const SPEC = (() => {
   // given; main.js warns and builds the designed 300° for a sweep it cannot
   // graduate (not an integer in (0, 360), which reserveReduction needs to
   // reduce R exactly). null = as designed (300°), bit-exact.
-  const rsvSweepDeg = Number.isFinite(Number(raw.rsvSweepDeg)) ? Number(raw.rsvSweepDeg) : null;
+  const rsvSweepDeg = K.rsvSweepDeg;
   // §313 — THE RESERVE TRAIN'S IDLERS, an arrangement's own key: how many idlers
   // stand between p1 and w2 (§308 L4 option B's machinery, which until here only a
   // sector station could reach). They come in PAIRS, so the hand keeps its sense,
@@ -364,7 +382,7 @@ export const SPEC = (() => {
   // post clearing the carrier's own ring root, and standing inboard of the
   // outer coil), and main.js clamps against them and says so. null = as
   // designed: HAIRSPRING_STUD_R is the window's inboard end, bit-exact.
-  const studr = Number.isFinite(Number(raw.studr)) ? Number(raw.studr) : null;
+  const studr = K.studr;
   // §98 — THE ALARM CORNER'S RADIUS, §76's missing pin. The corner's
   // DEFAULT tracks the plate (alarmCornerR = dialRadius·0.39 since §94
   // tier B), so a grown balance grows the plate and carries the whole
@@ -376,7 +394,7 @@ export const SPEC = (() => {
   // past ≈19.9) and the winding chain's derived idler — all loud, all
   // with numbers. null = as designed: identity passes nothing and the
   // default arithmetic is untouched, bit-exact.
-  const alarmr = Number.isFinite(Number(raw.alarmr)) ? Number(raw.alarmr) : null;
+  const alarmr = K.alarmr;
   // §97 — THE SHARED SUB-DIAL WELL RADIUS. One radius serves both wells
   // (their pivots are fixed on their arbors, so radius is the only shared
   // freedom), and it stops being a browser-local finish multiplier: a spec
@@ -387,7 +405,7 @@ export const SPEC = (() => {
   // rather than building a well that breaches either bore — the exact
   // degeneracy TODO 33 closed. null = as designed: the solve runs on the
   // ceiling, which is today's value exactly.
-  const subdialr = Number.isFinite(Number(raw.subdialr)) ? Number(raw.subdialr) : null;
+  const subdialr = K.subdialr;
   // §125 — THE DIAL'S OWN RADIUS. The one dimension the ask "grow the dial"
   // is about was the one dimension no URL could carry: every number §125
   // measured on a grown face had to come off a patched tree. Like d4/rsvr/
@@ -396,7 +414,7 @@ export const SPEC = (() => {
   // ceiling) and the boot assert in main.js measures the rim against the
   // actual metal in the dial's slab. null = as designed: solveKeyless runs
   // its own arithmetic (dialRadius = plateR) and identity stays bit-exact.
-  const dialr = Number.isFinite(Number(raw.dialr)) ? Number(raw.dialr) : null;
+  const dialr = K.dialr;
   // §184 — THE TIER-SPLIT TRIPLE'S OTHER TWO LEGS. `alarmBarrelAzDeg` (θ_b) has
   // been a spec since §112; θ_g and θ_a were bare literals in main.js, so two
   // thirds of a solved triple could not be moved from a URL at all — and the
@@ -408,10 +426,8 @@ export const SPEC = (() => {
   // warns, with the fouling pair and its depth. A clamp here would silently
   // build a different watch than the URL asked for. null = as designed, and
   // identity stays bit-exact.
-  const alarmGovAzDeg = Number.isFinite(Number(raw.alarmGovAzDeg))
-    ? ((Number(raw.alarmGovAzDeg) % 360) + 360) % 360 : null;
-  const alarmGovAnchorAzDeg = Number.isFinite(Number(raw.alarmGovAnchorAzDeg))
-    ? ((Number(raw.alarmGovAnchorAzDeg) % 360) + 360) % 360 : null;
+  const alarmGovAzDeg = K.alarmGovAzDeg;
+  const alarmGovAnchorAzDeg = K.alarmGovAnchorAzDeg;
   // §307 — THE CASE'S OUTLINE: 'rect' cuts the plates, the dial and the case
   // to the FORM rectangle `solveKeyless` derives beside plateR (formPlate —
   // the tightest rectangle the stations and the keyless floors stand inside,
@@ -505,9 +521,9 @@ export const SPEC = (() => {
   // null = the drum on the chain, as designed.
   const wantsPulley = Number(raw.pulley) === 1, wantsDouble = Number(raw.barrels) === 2;
   const pulley = !wantsPulley ? null
-    : wantsDouble ? (refuseSpec('§339: ?pulley=1 is refused with ?barrels=2 — the chain pulley and the double barrel were never solved together; building the double barrel where it stands'), null)
+    : wantsDouble ? (refuseSpec(['pulley'], '§339: ?pulley=1 is refused with ?barrels=2 — the chain pulley and the double barrel were never solved together; building the double barrel where it stands'), null)
     : reserveHours === PULLEY_BARREL_HOURS ? true
-    : (refuseSpec(`§339: ?pulley=1 is refused at ${reserveHours} h — PULLEY_BARREL was solved at ${PULLEY_BARREL_HOURS} h; building the one drum`), null);
+    : (refuseSpec(['pulley'], `§339: ?pulley=1 is refused at ${reserveHours} h — PULLEY_BARREL was solved at ${PULLEY_BARREL_HOURS} h; building the one drum`), null);
   // §339 landing 3c — ?barrels=2: THE DOUBLE BARREL. Today's drum AND a parallel second barrel (PARALLEL_BARREL below), for
   // POWER (the owner's rewiring, 2026-11-18: the key names the design that IS two going barrels; it was `?barrels=3` while
   // `2` meant the chain pulley above). Its seat was solved on the round alarm-free build at the shipped reserve, so a build
@@ -515,13 +531,13 @@ export const SPEC = (() => {
   // builds the one drum. null = the one drum (a `1` is that null, so it is not a second key). Any other count names no
   // design and says so: an old `?barrels=3` link must not quietly build the default.
   const barrels = wantsDouble ? (alarm === false && reserveHours === PULLEY_BARREL_HOURS && !raw.caseShape ? 2
-      : (refuseSpec(`§339: ?barrels=2 is refused here — PARALLEL_BARREL's seat was solved on the round alarm-free build at ${PULLEY_BARREL_HOURS} h; building the one drum`), null))
+      : (refuseSpec(['barrels'], `§339: ?barrels=2 is refused here — PARALLEL_BARREL's seat was solved on the round alarm-free build at ${PULLEY_BARREL_HOURS} h; building the one drum`), null))
     : given(raw.barrels) && Number(raw.barrels) !== 1
-      ? (refuseSpec(`§339: ?barrels=${raw.barrels} names no design — 2 is the double barrel (it was 3 before 2026-11-18), and the chain pulley is ?pulley=1; building the one drum`), null)
+      ? (refuseSpec(['barrels'], `§339: ?barrels=${raw.barrels} names no design — 2 is the double barrel (it was 3 before 2026-11-18), and the chain pulley is ?pulley=1; building the one drum`), null)
     : null;
   const drivenHere = !RATE_TABLE[vphAsked].undriven || (barrels === 2 && !!RATE_TABLE[vphAsked].parallel);
   if (!drivenHere)
-    refuseSpec(`TODO 292: ?vph=${vphAsked} is refused — ${RATE_TABLE[vphAsked].undriven}; this build is the ${DEFAULT_VPH} A/h watch`);
+    refuseSpec(['vph'], `TODO 292: ?vph=${vphAsked} is refused — ${RATE_TABLE[vphAsked].undriven}; this build is the ${DEFAULT_VPH} A/h watch`);
   const vph = drivenHere ? vphAsked : DEFAULT_VPH;
   // §339 landing 3g — a row's `parallel` entry may DECLARE its train's arrangement (the 36,000 row's 140/7 fourth wheel
   // is 4 u larger in radius, so the escape and balance stations move): it stands where the spec names no step.
@@ -558,7 +574,7 @@ export const ROUTE_SPEC = (() => {
   const raw = (typeof globalThis !== 'undefined' && globalThis.__WATCH_SPEC) || {};
   if (raw.routeSpec === undefined) return null;      // the identity build: no key, no paths
   const refuse = (why) => {
-    refuseSpec(`§36 route spec refused (${why}) — building the identity movement`);
+    refuseSpec(['route', 'routebush'], `§36 route spec refused (${why}) — building the identity movement`);
     return null;
   };
   const nums = (s, n) => {
@@ -590,7 +606,43 @@ export const ROUTE_SPEC = (() => {
   }
   return Object.freeze({ points: Object.freeze(points), bushes: Object.freeze(bushes) });
 })();
-// Every refusal SPEC and ROUTE_SPEC made, in the order made (frozen now that both have been evaluated).
+// §351 landing 0 — WAS EACH KEY THE LINK GAVE HONOURED? The table's `kind` decides, against the RESOLVED spec: a key is
+// honoured when the build carries the value the link asked for (an angle is the same angle after mod 360; a step or a
+// reserve is honoured only unclamped and unsnapped). A key the build did not use, or used as another value, is named in
+// SPEC_REFUSALS with the value it became and what the key accepts, unless a specific refusal above already named it or
+// the value is one of its row's `defaults` spellings. Before this pass ?vph=12345, ?case=bogus, ?reserveh=31 and
+// ?barrelstep=400 each built something other than what the link said, and said nothing.
+export function specHonoured(key, v, spec = SPEC, route = ROUTE_SPEC) {
+  const row = SPEC_FIELDS[key], f = row.field, n = Number(v);
+  switch (row.kind) {
+    case 'angle': case 'number': case 'idlers': case 'choice': case 'formrect':
+      return { ok: spec[f] !== null, became: spec[f] };
+    case 'step': return { ok: spec[f] === n, became: spec[f] };
+    case 'rate': return { ok: spec.vph === n, became: spec.vph };
+    case 'reserve': return { ok: spec.reserveHours === n, became: spec.reserveHours };
+    case 'marker': return { ok: v === 'designed', became: null };
+    case 'barrels': return { ok: spec.barrels === n, became: spec.barrels ?? 1 };
+    case 'pulley': return { ok: spec.pulley === true, became: null };
+    case 'alarm': return { ok: n === 0 && spec.alarm === false, became: null };
+    case 'strap': return { ok: n === STRAP_MM_DEFAULT || spec.strapMm === n, became: spec.strapMm ?? STRAP_MM_DEFAULT };
+    case 'route': return { ok: route !== null, became: null };
+    default: throw new Error(`specHonoured: src/spec-fields.js gives '${key}' the kind '${row.kind}', which no rule here reads`);
+  }
+}
+(() => {
+  const raw0 = (typeof globalThis !== 'undefined' && globalThis.__WATCH_SPEC) || {};
+  const said = new Set(SPEC_REFUSALS_.flatMap((r) => r.keys));
+  for (const [key, row] of Object.entries(SPEC_FIELDS)) {
+    const v = raw0[row.field];
+    if (v === undefined || v === '' || said.has(key) || (row.defaults ?? []).includes(String(v))) continue;
+    const h = specHonoured(key, v);
+    if (h.ok) continue;
+    const shown = typeof v === 'number' && Number.isNaN(v) ? 'a value that is not a number' : `${v}`;
+    refuseSpec([key], `?${key}=${shown} ${h.became === null || h.became === undefined ? 'was not used' : `became ${h.became}`}: ${key} takes ${row.accepts}`, 'unused');
+  }
+})();
+// Every refusal SPEC and ROUTE_SPEC made, and every key the honoured pass found set aside, in the order made: frozen
+// {keys, text, by} rows (keys are the link's own, never field names).
 export const SPEC_REFUSALS = Object.freeze(SPEC_REFUSALS_.slice());
 
 // TODO 158 — THE CONFIGURATION KEY: an exact name for the geometry a build
@@ -614,6 +666,15 @@ export function configKey({ spec = SPEC, route = null, tuned = [] } = {}) {
   for (const k of Object.keys(spec).sort()) if (spec[k] !== null && spec[k] !== undefined) s[k] = spec[k];
   const t = [...tuned].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
   return `cfg1:${JSON.stringify({ spec: s, route: route ?? null, tuned: t })}`;
+}
+// §351 landing 0 — THE ARRANGEMENT KEY'S SPEC: the spec with every key the table marks `arrangement: false` set to null
+// (the case and its fit, the gong seat, the hands, the strap, the arrest and the frame: keys that move no metal the alarm's
+// arming seat or a gong seat stands on). main.js keyed its arming fixed point, its gong seats and the case menu's seat
+// lookup off this one rule written out four times; each caller now asks here and adds back what its own lookup keeps.
+export function arrangementSpec(spec = SPEC) {
+  const out = { ...spec };
+  for (const row of Object.values(SPEC_FIELDS)) if (row.arrangement === false) out[row.field] = null;
+  return out;
 }
 // §329 — is the Geneva stop-work BUILT (main.js, in §47's block), instead of §47's stop iron? The one question every reader asks
 // (main.js, inspect.js, lubrication.js, the action groups below), derived from the spec so all of them agree before the build.

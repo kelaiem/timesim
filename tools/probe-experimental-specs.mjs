@@ -30,7 +30,7 @@ if (process.argv[2] === '--one') {
   const L = await import('../src/layout.js');
   const X = await import('../src/experimental-specs.js');
   const current = Object.fromEntries(X.EXPERIMENTAL_SPECS.map((row) => [row.id, row.current(L.SPEC)]));
-  process.stdout.write('\n@@' + JSON.stringify({ warns: r.warns, refusals: [...L.SPEC_REFUSALS], current }) + '\n');
+  process.stdout.write('\n@@' + JSON.stringify({ warns: r.warns, refusals: L.SPEC_REFUSALS.map((r) => r.text), current }) + '\n');
   process.exit(0);
 }
 

@@ -38,10 +38,10 @@ const row = (key, group, extra = {}) => Object.freeze({ key, group, ...extra });
 
 // The spec fields a deep link can carry, one row each. A link records the
 // NAME only (values are never read off a URL). The ones that also have a
-// dropdown in the panel take their value from it (`values: 'options'`): the
-// six in the Time and Appearance sections, and the Experimental build group's
-// four (src/experimental-specs.js, one dropdown per row, tagged by its key).
-const SPEC_DROPDOWNS = new Set(['vph', 'reserveh', 'studr', 'case', 'alarm', 'strap', 'barrels', 'frame', 'arrest', 'hands']);
+// dropdown in the panel take their value from it (`values: 'options'`): every
+// key the spec table offers outside a link (src/spec-fields.js' `offered`:
+// the main menus' and the Experimental build group's), read off the table.
+const SPEC_DROPDOWNS = new Set(Object.keys(SPEC_FIELDS).filter((k) => SPEC_FIELDS[k].offered !== 'url'));
 const SPEC_ROWS = Object.keys(SPEC_FIELDS).map((k) =>
   row(`spec:${k}`, 'build', SPEC_DROPDOWNS.has(k) ? { values: 'options' } : {}));
 
