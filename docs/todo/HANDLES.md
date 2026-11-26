@@ -42,6 +42,7 @@ heading, and [the index](../../TODO.md) is where it is shown.
 
 | item | handle |
 |---|---|
+| 320 | double barrel detent seat |
 | 319 | banking yields stopwork-140 |
 | 318 | crown turns running down |
 | 317 | reversal floor misses recoil |
