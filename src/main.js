@@ -23,7 +23,7 @@ import { UI_LANG, setUiLang, LOCALES, fillLanguagePicker, t, fmtNum, fmtInt, fmt
 // consumed unchanged below; the geometry fingerprint proves the move changed
 // no part's position.
 import {
-  SPEC, SPEC_REFUSALS, SPEC_RATES, DEFAULT_VPH, RATE_VARIANT, ALARM_BUILT, PULLEY_BARREL, PARALLEL_BARREL, DRUM_AZ_DEG,
+  SPEC, SPEC_REFUSALS, arrangementSpec, SPEC_RATES, DEFAULT_VPH, RATE_VARIANT, ALARM_BUILT, PULLEY_BARREL, PARALLEL_BARREL, DRUM_AZ_DEG,
   F_BALANCE, BEAT_DEG, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_STEP, BALANCE_R_REF, BAL_R_STEP, balanceWheelDims, BALANCE_R_SPEC, AMPLITUDE_POSED_DEG, LIFT_DEG, IMPULSE_WIDTH,
   CLEAR_MARGIN, HANDOFF_TRACK_TOL, ZERO_AREA_MAX, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK, FORK_HALF_Z,
   BAL_T, BAL_RIM_F, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T, NICKEL_SILVER_SIGMA_Y_PA,
@@ -3164,10 +3164,9 @@ const FREE_ROW = FREE_KEY ? FREE_OUTLINES[FREE_KEY] ?? null : null;
 // generated for this very spec. An explicit ?formrect= still wins. Free outlines take their fit from FREE_ROW already.
 const FORM_SEAT_FIT = (() => {
   if (!SPEC.caseShape || SPEC.caseShape === 'free' || SPEC.formRectSpec || !ALARM_BUILT || SPEC.gongSeat === 'arc') return null;
-  const base = { ...SPEC, hands: null, strapMm: null, arrest: null, frame: null, formRectSpec: null, gongSeat: null };
-  const seats = GONG_SEATS_ARRANGED[configKey({ spec: { ...base, caseShape: null } })] ?? GONG_SEATS;   // ALARM_ARR_KEY's rule, read early
+  const seats = GONG_SEATS_ARRANGED[configKey({ spec: arrangementSpec(SPEC) })] ?? GONG_SEATS;   // ALARM_ARR_KEY's rule (layout.js arrangementSpec), read early
   const row = seats[SPEC.caseShape]?.[SPEC.gongSeat ?? defaultSeatMode(seats, SPEC.caseShape)];
-  return row?.formrect && row.specKey === configKey({ spec: { ...base, caseShape: SPEC.caseShape } }) ? Object.freeze([...row.formrect]) : null;
+  return row?.formrect && row.specKey === configKey({ spec: { ...arrangementSpec(SPEC), caseShape: SPEC.caseShape } }) ? Object.freeze([...row.formrect]) : null;
 })();
 // TODO 298 — AN ALARM-FREE BOX FORM CASE IS CUT TO ITS OWN GENERATED FIT. FORM_SEAT_FIT above answers only where the alarm is
 // built (the gong seat's fixed point carries the fit), so before this every ?alarm=0 box kind was cut to the solvers'
@@ -8962,7 +8961,7 @@ const ALARM_FLANGE_OUT = 4.05;                  // the carrier flange's rim (hoi
 // and arrest: null — §329 landing 2a's ?arrest=trailing only MEASURES a site, so it keeps every row the build without it reads)
 // (frame: null too, §328 — a land stands on the pillar's seat with the pillar's footprint, so the frame moves no metal the
 // link stands on; measured, the round lands build re-derives the default arrangement's 5.2248 inside the link assert's tolerance — it stays silent)
-const ALARM_ARR_KEY = configKey({ spec: { ...SPEC, hands: null, strapMm: null, arrest: null, frame: null, caseShape: null, formRectSpec: null, gongSeat: null } });
+const ALARM_ARR_KEY = configKey({ spec: arrangementSpec(SPEC) });   // §351 landing 0: the rule is layout.js' arrangementSpec, read off the spec table
 const ALARM_PINB_SEAT_FIXED = Object.freeze({
   'cfg1:{"spec":{"reserveHours":30,"vph":18000},"route":null,"tuned":[]}': 5.2780,   // §278 landing 6: re-quoted to its fixed point — the reclaim moved the dial-hung column against the held arming blade's corner, and hanger 3's jog, moved beside the blade, lengthened the ground's developed path and with it the section and the room (was 5.2650). TODO 240: re-quoted to its fixed point — the re-aimed lever reflects the blade to the nose by its new ratio, and the pin's journal is charged on the same-side reaction (was 5.4263). mN at the pin — the shared equal margin, re-derived and asserted at the link's arming solve (rounded to 0.1 µN). §261 2c: re-quoted to its fixed point — the folded same-side beak reflects the arming blade to the nose by its own lever (was 5.2502)
   'cfg1:{"spec":{"alarmModAzDeg":60,"barrelStepDeg":0,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":6,"vph":18000},"route":null,"tuned":[]}': 5.1837,   // §313: the swung barrel, the reserve at 12 on six idlers, the module at 60°
@@ -19914,7 +19913,7 @@ const GONG_SEAT_MODE = FORM && ALARM_BUILT ? (SPEC.gongSeat ?? defaultSeatMode(G
 // (frame: null, §328 step 1b — tools/gong-seats.mjs solves the seat with the frame left out of its map, pillars and lands
 // alike, and the frame yields to the seat's `keep`; with `frame` in the key `?frame=pillars` was refused its seat, lost the
 // keep, and stood its 315° pillar in the strike group's corner on the rect case)
-const GONG_SPEC_KEY = configKey({ spec: { ...SPEC, hands: null, strapMm: null, arrest: null, frame: null, ...(SEAT_KIND ? { caseShape: SEAT_KIND } : {}), formRectSpec: null, gongSeat: null } });
+const GONG_SPEC_KEY = configKey({ spec: { ...arrangementSpec(SPEC), caseShape: SEAT_KIND ? SEAT_KIND : SPEC.caseShape } });   // the arrangement's spec with the seat's case kept
 const GONG_ARR_KEY = ALARM_ARR_KEY;   // the one arrangement key (§313 reads it first, for the arming fixed point)
 const GONG_SEAT_LOOKUP = (() => {
   if (!FORM || !ALARM_BUILT || GONG_SEAT_MODE === 'arc') return null;
@@ -53027,7 +53026,7 @@ updateCrownUI();
   caseSel.value = SPEC.caseShape ?? '';
   caseSel.addEventListener('change', () => {
     const kind = caseSel.value;
-    const key = configKey({ spec: { ...SPEC, hands: null, strapMm: null, arrest: null, frame: null, caseShape: kind, formRectSpec: null, gongSeat: null } });   // §328: GONG_SPEC_KEY's own
+    const key = configKey({ spec: { ...arrangementSpec(SPEC), caseShape: kind } });   // §328: GONG_SPEC_KEY's own
     location.search = caseShapeSearch(location.search, kind, (seat) => seat.specKey === key);   // reload-tier, like the beat rate: back IS undo
   });
   const alarmSpecSel = document.getElementById('spec-alarm');
@@ -53100,7 +53099,7 @@ updateCrownUI();
     const row = document.getElementById('spec-verdict');
     row.style.display = '';
     const lines = [];
-    for (const r of SPEC_REFUSALS) lines.push(`⚠ not built as asked — ${r}`);
+    for (const r of SPEC_REFUSALS) lines.push(`⚠ not built as asked — ${r.text}`);
     if (w) lines.push(`⚠ this spec does not close: ${w} structural assert${w === 1 ? '' : 's'} (see console)`);
     if (atEdge) lines.push(`⚠ hairspring ${hMm.toFixed(3)} mm — at the ${atEdge} of real stock (${stockLo}–${stockHi})`);
     if (noStart) lines.push(`⚠ at ${fmtInt(SPEC.vph)} A/h the train cannot start the balance from rest — a stopped balance needs a swing`);
