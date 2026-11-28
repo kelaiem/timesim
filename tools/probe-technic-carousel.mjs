@@ -52,7 +52,7 @@ import { CATALOGUES, TECHNIC_FORK } from '../src/layout.js';
 import { frameFork, frameKeyless } from '../src/technic-frame.js';
 import { TECHNIC_FUSEE_SPRING, solveFusee, frameFusee } from '../src/technic-fusee.js';
 import { frameAlarm } from '../src/technic-alarm.js';
-import { frameEscapement } from '../src/technic-escapement.js';
+import { frameEscapementCell } from '../src/technic-drive.js';
 import { frameTrain } from '../src/technic-train.js';
 import { clockModules, clockLayout } from '../src/technic-clock.js';
 import { loadPack } from './technic-pack.mjs';
@@ -69,7 +69,7 @@ console.log('THE TECHNIC CAROUSEL — stops derived from the built cells (displa
 // the real inputs, per generation
 const fusRun = solveFusee(TECHNIC_FUSEE_SPRING).best, ff = fusRun && frameFusee();
 const fuseeIn = { framed: !!(fusRun && ff.framed), reason: ff?.reason ?? 'no step set fits the table' };
-const alarmIn = frameAlarm(), escIn = frameEscapement();
+const alarmIn = frameAlarm(), escIn = frameEscapementCell();
 // the clock (§312): its declared layout judged over the vendored parts, as the page reads it
 const lib = loadPack(), clockIn = {};
 const clockOf = (gen) => { if (!clockIn[gen]) { const m = clockModules(lib, gen), l = m.framed ? clockLayout(lib, m) : null; clockIn[gen] = { framed: !!l?.framed, reason: m.reason ?? l?.reason, refused: l?.refused.map((r) => r.key) ?? [] }; } return clockIn[gen]; };

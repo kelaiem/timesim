@@ -46,7 +46,8 @@ import { colourOf } from './technic-colour.js';
 import { substitutesFor, alternativeText, judgedText, sameItemWarnings, SUBSTITUTE_HONESTY } from './technic-substitutes.js';
 import { TECHNIC_FUSEE_SPRING, solveFusee, frameFusee, fuseeBuild } from './technic-fusee.js';
 import { frameAlarm, alarmStates, alarmBuild } from './technic-alarm.js';
-import { frameEscapement, escapementBuild } from './technic-escapement.js';
+import { escapementBuild } from './technic-escapement.js';
+import { frameEscapementCell } from './technic-drive.js';
 import { frameTrain, trainBuild } from './technic-train.js';
 
 export const GENERATIONS = ['technic_2026', 'technic_classic'];
@@ -285,7 +286,7 @@ export function buildOf(lib, gen, cell) {
   else if (cell === 'keyless') { const f = frameKeyless(gen); build = f.framed ? ldrawBuild(f, lib) : null; reason = f.framed ? null : f.reason; }
   else if (cell === 'fusee') { const run = solveFusee(TECHNIC_FUSEE_SPRING).best, f = run && frameFusee(); build = f && f.framed ? fuseeBuild(f, lib, { run }) : null; reason = build ? null : 'not framed'; }
   else if (cell === 'alarm') { const f = frameAlarm(); build = f.framed ? alarmBuild(f, lib, alarmStates(lib, f).armed) : null; reason = build ? null : 'not framed'; }
-  else if (cell === 'escapement') { const f = frameEscapement(); build = f.framed ? escapementBuild(f, lib) : null; reason = build ? null : 'not framed'; }
+  else if (cell === 'escapement') { const f = frameEscapementCell(); build = f.framed ? escapementBuild(f, lib) : null; reason = build ? null : 'not framed'; }
   else if (cell === 'train') { const f = frameTrain(gen); build = f.framed ? trainBuild(f, lib, { run: solveFusee(TECHNIC_FUSEE_SPRING).best }) : null; reason = build ? null : f.reason; }
   else throw new Error(`technic-bom: no cell ${cell}`);
   if (build) m.set(key, build);

@@ -66,7 +66,7 @@ import { repickColours, colourOf, unlistedUnits, COLOUR_BASELINE_300 } from '../
 import { solveFusee, TECHNIC_FUSEE_SPRING, frameFusee, cordChoice } from '../src/technic-fusee.js';
 import { frameAlarm, alarmStates, alarmBuild } from '../src/technic-alarm.js';
 import { frameFork, frameKeyless } from '../src/technic-frame.js';
-import { frameEscapement } from '../src/technic-escapement.js';
+import { frameEscapementCell } from '../src/technic-drive.js';
 import * as C from '../src/technic-carousel.js';
 import * as B from '../src/technic-bom.js';
 
@@ -513,7 +513,7 @@ console.log('\nPAGE');
   // has no list yet; addBomDetails skips a cell that was not built)
   ok(/for \(const c of cellIds\(\)\) addBomDetails\(c, gen\)/.test(page) && /import \{[^}]*cellIds[^}]*\} from '\.\/src\/technic-bom\.js'/.test(page), 'technic.html does not give every built cell a parts list');
   // every carousel stop's cell has a BOM
-  const run = solveFusee(TECHNIC_FUSEE_SPRING).best, ff = frameFusee(), al = frameAlarm(), es = frameEscapement();
+  const run = solveFusee(TECHNIC_FUSEE_SPRING).best, ff = frameFusee(), al = frameAlarm(), es = frameEscapementCell();
   for (const gen of B.GENERATIONS) {
     const stops = C.stopsOf(C.describeCells({ rows: TECHNIC_FORK.rows.map((r, k) => ({ key: r.key, chain: r.chains[gen], frame: frameFork(gen)[k] })), keyless: frameKeyless(gen),
       fusee: { framed: !!(run && ff.framed), reason: '' }, alarm: al, escapement: es })).stops;

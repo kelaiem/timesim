@@ -89,6 +89,15 @@ export const TECHNIC_DRIVE = Object.freeze({ tableDeg: 8.75, traceSteps: 1750, e
 // the going train's escapement: §287's, its pallets at the driven setting
 export const DRIVEN_ESCAPEMENT = Object.freeze({ ...TECHNIC_ESCAPEMENT, phaseDeg: TECHNIC_DRIVE.palletDeg });
 
+// THE ESCAPEMENT CELL's frame (§352): §287's escapement on the GOING TRAIN's balance, so the cell's parts list, booklet
+// and wanted list are the balance the drive's figures (and the knife's free-decay test) are about — the rating nut on
+// its rod at TECHNIC_DRIVE's place, which also takes the bob axle up from 3L to 4L to carry the connector. The pallets
+// keep §287's setting (TECHNIC_ESCAPEMENT.phaseDeg): a setting on a friction pin, not a part, and the cell's posed
+// swing is traced at it. One function, so the page, the parts list and the probes cannot frame different cells.
+export function frameEscapementCell() {
+  return frameEscapement(TECHNIC_ESCAPEMENT, TECHNIC_BALANCE, { rating: { nutV: TECHNIC_DRIVE.nutV } });
+}
+
 // ── THE DRIVE: the spring law → the escape arbor ─────────────────────────────
 // τ_e = Munit · P / ρ_b · η_mesh^n / ratio, at the run's sample `s` (fuseeRun's samples: P = M × arm, in the
 // table's torque unit × mm). `table` is read ONLY through the run's samples, which fuseeRun made from it.
