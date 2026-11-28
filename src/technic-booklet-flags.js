@@ -482,7 +482,7 @@ export const BOOKLET_FLAGS = {
   }
  },
  "shared|escapement|swing": {
-  "sig": "df6a1d23",
+  "sig": "f4b891e3",
   "steps": {
    "8": {
     "d": "+z"
@@ -551,6 +551,9 @@ export const BOOKLET_FLAGS = {
    },
    "27": {
     "d": "−z"
+   },
+   "28": {
+    "d": "+z"
    }
   }
  },

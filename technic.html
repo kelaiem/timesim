@@ -408,10 +408,10 @@ import { TECHNIC_FUSEE_SPRING, solveFusee, frameFusee, fuseeBuild, cordPath, cor
          loopPhaseLine, loopRideSpecs, pawlRideSteps, LOOP_RUN_S } from './src/technic-fusee.js';
 import { frameAlarm, alarmStates, alarmBuild, TECHNIC_ALARM_STRIKE, strikesPerBarrelTurn, ALARM_Y, ALARM_DIM_MM, TECHNIC_ALARM, alarmShafts,
          columnModel, columnWarmSteps, columnStart, columnAdvance, columnCommand, columnPose, columnPhase, trainAngles } from './src/technic-alarm.js';
-import { frameEscapement, escapementBuild, cycleModelSteps, cyclePose, balanceMoments, framedBalance, periodAt, partSolid, escSpec,
+import { escapementBuild, cycleModelSteps, cyclePose, balanceMoments, framedBalance, periodAt, partSolid, escSpec,
          ESC_SWING_DEG, BEAT_PERIOD_S, TECHNIC_ESCAPEMENT, TECHNIC_BALANCE, F2_PLAY_MM, ESC_DENSITY, G_MM_S2, RATE_BAND } from './src/technic-escapement.js';
 import { frameTrain, trainBuild, trainModel, trainPose, goingTime } from './src/technic-train.js';
-import { contactTablesSteps, driveDeclared, TECHNIC_DRIVE, DRIVEN_ESCAPEMENT, TECHNIC_DRIVE_FRICTION, NMM, DAY_S } from './src/technic-drive.js';
+import { contactTablesSteps, driveDeclared, frameEscapementCell, TECHNIC_DRIVE, DRIVEN_ESCAPEMENT, TECHNIC_DRIVE_FRICTION, NMM, DAY_S } from './src/technic-drive.js';
 import { describeCells, stopsOf, skipNote, indicator, step, resolveId, resolveFocus, initialTour, swipeDir, withCell, ease, TWEEN_S, CAROUSEL_WRAPS } from './src/technic-carousel.js';
 import { copyText } from './src/technic-clipboard.js';
 import { clockModules, clockLayout, clockBuild, TECHNIC_CLOCK } from './src/technic-clock.js';
@@ -1722,7 +1722,7 @@ async function build(gen) {
     const k = TECHNIC_FORK.rows.length + 3;
     escBand = new THREE.Group(); escBand.position.set((k % 2) * LEGO_CELL, 0, Math.floor(k / 2) * LEGO_CELL); world.add(escBand);
     const div = document.createElement('div'); div.className = 'row';
-    escFrame ??= frameEscapement();
+    escFrame ??= frameEscapementCell();
     escView = null;
     if (escFrame.framed) {
       const lbl = labelSprite(`${k + 1}. escapement and balance`); lbl.position.set(-30, 60, 0); escBand.add(lbl);
@@ -1802,7 +1802,7 @@ async function build(gen) {
       const v = trainView;
       trainCycle(F.sense).then((c) => { if (trainView === v) { v.cycle = c; trainRemodel(); } });
       measureDrive(F, b, run).then((d) => { if (trainView === v) { v.drive = d; trainRemodel(); writeDrive(); } });
-      (escMomentsP ??= measureEscMoments(escFrame ?? frameEscapement())).then((m) => { escMoments ??= m; if (trainView === v) trainRemodel(); });
+      (escMomentsP ??= measureEscMoments(escFrame ?? frameEscapementCell())).then((m) => { escMoments ??= m; if (trainView === v) trainRemodel(); });
       (fuseeRidesP ??= measureRides(fuseeBuildNow ?? b.fusee)).then((r) => { if (trainView === v) { v.rides = r; trainRemodel(); } });
       cellReg.train = { band: trainBand, row: div, label: lbl, frame: F, build: b, shafts: made };
     } else div.innerHTML = `<b>${k + 1}. going train</b><br><span class="bad">not framed in LEGO: ${trainFrame.reason ?? 'no step set fits the table'}</span>`;
